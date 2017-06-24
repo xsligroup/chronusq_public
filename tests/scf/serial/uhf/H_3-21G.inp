@@ -1,0 +1,21 @@
+
+[MOLECULE]
+charge = 0
+mult = 2
+# H 
+geom:
+ H   0.000000    0.000000    0.000000
+
+[QM]
+reference = UHF
+job = SCF 
+
+[BASIS]
+basis = 3-21g 
+
+[SCF]
+guess=core
+alg=skip
+
+ 
+

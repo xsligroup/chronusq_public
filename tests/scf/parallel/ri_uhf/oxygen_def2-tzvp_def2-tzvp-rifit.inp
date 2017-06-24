@@ -1,0 +1,33 @@
+#
+#  O2 UHF/def2-tzvpd/def2-tzvpd-rifit : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real UHF
+job = SCF
+
+[BASIS]
+basis = def2-tzvp 
+
+[DFBASIS]
+basis = def2-tzvp-rifit
+
+[INTS]
+alg = incore
+ri = auxbasis
+
+[MISC]
+nsmp = 2
+mem = 100 MB
+

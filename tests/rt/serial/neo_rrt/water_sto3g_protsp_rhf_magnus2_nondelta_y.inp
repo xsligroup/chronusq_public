@@ -1,0 +1,57 @@
+#
+#  test0.05 - Water RHF/STO-3G/PROT-SP : RT
+#  SERIAL
+chronusq: realtime(stepsize = 0.05au, maxsteps = 20,  magnus2, autosave=1)
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0 Q
+ H    -0.866811829    0.6014357793               0 Q
+
+# 
+#  Job Specification
+#
+[QM]
+reference =complex RHF
+job = RT
+
+[PROTQM]
+reference =complex UHF
+
+[SCF]
+NEO = TRUE
+guess = classical
+prot_guess = tight
+
+[RT]
+FIELD:
+ StepField(0.,0.15) Electric 0. 0.001 0.
+
+
+[BASIS]
+basis = sto-3g
+
+
+[PBASIS]
+basis = prot-sp
+
+
+[INTS]
+ALG = INCORE
+
+
+[PINTS]
+ALG = INCORE
+
+
+[EPINTS]
+ALG = INCORE
+
+
+[MISC]
+nsmp = 1
+mem  = 100 mb

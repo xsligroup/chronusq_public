@@ -1,0 +1,33 @@
+#
+#  O2 ROHF/cc-pvtz/cc-pvtz-jkfit : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real ROHF
+job = SCF
+
+[BASIS]
+basis = cc-pvtz 
+
+[DFBASIS]
+basis = cc-pvtz-jkfit
+
+[INTS]
+alg = incore
+ri = auxbasis
+
+[MISC]
+nsmp = 1
+mem = 300 MB
+

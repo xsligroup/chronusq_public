@@ -1,0 +1,26 @@
+#
+#  Water X2CHF/6-311+G(d,p) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Zn  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[MISC]
+nsmp = 2
+mem = 200 MB
+

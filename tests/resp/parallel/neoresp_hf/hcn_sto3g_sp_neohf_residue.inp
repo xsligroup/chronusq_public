@@ -1,0 +1,53 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+  C  0 0 -0.49687143 
+  H  0 0 -1.56687143 Q
+  N  0 0  0.64972857
+
+[QM]
+reference = Real RHF
+job = RESP 
+
+[PROTQM]
+reference = REAL UHF
+
+[SCF]
+NEO = TRUE
+MAXITER = 20000
+GUESS = SAD
+PROT_GUESS = TIGHT
+EXTRAP = TRUE
+ENETOL = 1e-10
+DENTOL = 1e-8
+
+[RESPONSE]
+DOFULL=TRUE
+NEO=TRUE
+
+[BASIS]
+basis = sto-3g
+
+[PBASIS]
+DefineBasis = ON
+BasisDef:
+   ****
+  H      0 
+  S    1    1.000000
+     4   1.0
+  P    1    1.000000
+     4   1.0
+   ****
+
+[MISC]
+nsmp = 2
+
+[INTS]
+ALG = INCORE
+
+[PINTS]
+ALG = INCORE
+
+[EPINTS]
+ALG = INCORE

@@ -1,0 +1,22 @@
+
+[MOLECULE]
+charge = 0
+mult = 2
+# Rb-He(6A) 
+geom:
+ He  0.000000    0.000000    0.000000
+ Rb  0.000000    0.000000    6.000000
+
+[QM]
+reference = UHF
+job = SCF 
+
+[BASIS]
+basis = sto-3g 
+
+[SCF]
+damp=false
+guess=sad
+
+ 
+

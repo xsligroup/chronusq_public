@@ -1,0 +1,34 @@
+#
+#  Ag2 ALHX2CHF/sto-3g : SCF
+#  SERIAL
+#
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Ag  0.0  0.0  0.0 
+ Ag  0.0  0.0  2.5
+
+#
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+atomicx2c = ALH
+
+[SCF]
+guess = sad
+
+[BASIS]
+basis = sto-3g
+
+[INTS]
+libcint = true
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+

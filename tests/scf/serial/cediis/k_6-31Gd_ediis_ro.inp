@@ -1,0 +1,28 @@
+#
+#  Li UHF/6-31G(d) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom: 
+ K 0. 0. 0.
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real ROHF
+job = SCF
+
+[BASIS]
+basis = 6-31G(d) 
+
+[SCF]
+diisalg = EDIIS
+
+[MISC]
+nsmp = 1
+mem = 100 MB
+

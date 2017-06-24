@@ -1,0 +1,28 @@
+#
+#  testDFT - Water RBHANDH/sto-3g / SCF Serial
+#  SMP
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0.  -0.07579184359              0.
+ H     0.866811829    0.6014357793               0.
+ H    -0.866811829    0.6014357793               0.
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real RBHANDH
+job = SCF
+
+[BASIS]
+basis = sto-3g
+[SCF]
+
+[MISC]
+nsmp = 1
+mem = 4GB
+

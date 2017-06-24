@@ -1,0 +1,21 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ Ne(10.5)              0.    0.0              0.
+ He-3(1.5)              0.    0.0              3.729
+ 1(0.5)              0.    0.0              6.729
+
+# 
+#  Job Specification
+#
+[QM]
+reference = UHF
+job = SCF 
+
+[SCF]
+
+[BASIS]
+basis = STO-3G
+

@@ -1,0 +1,11 @@
+*build*
+!*buildtdms*
+!*buildsigma*
+!bin/buildblas
+!*cibuild*
+!*corehbuild*
+!*fockbuild*
+doc
+*.*.swp
+*~
+

@@ -1,0 +1,30 @@
+#
+#  Water X2CSLATER/6-311+G(d,p) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Cd  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CSLATER
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[MISC]
+nsmp = 2
+mem = 200 MB
+
+[DFTINT]
+NANG = 302
+NRAD = 500
+

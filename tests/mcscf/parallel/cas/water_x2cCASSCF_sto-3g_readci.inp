@@ -1,0 +1,34 @@
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O     0.0           -0.07579184359              0.0
+ H     0.866811829    0.6014357793               0.0
+ H    -0.866811829    0.6014357793               0.0
+
+#
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = MCSCF
+
+[BASIS]
+basis = sto-3g 
+
+[SCF]
+guess=readmo
+alg=skip
+
+[MCSCF]
+JobType = CASCI
+readci=true
+NACTO = 8 
+NACTE = 4
+NRoots = 1
+
+[MISC]
+mem = 1 GB
+nsmp = 2 
+

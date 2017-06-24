@@ -1,0 +1,41 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0 
+mult = 2 
+geom: 
+ N    0.00000 0.00000 0.0
+ O    0.00000 0.0 1.152
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Complex X2CHF 
+job = MCSCF
+
+[SCF]
+field = Magnetic 0.0 0.0 -0.000004254382157328696258 
+accuracy = 1e-10
+
+[MCSCF]
+JOBTYPE = CASCI
+NACTO = 12
+NACTE = 7
+StateAverage = True
+NRoots = 2
+maxscfiter = 512
+
+[BASIS]
+basis =  6-31g   
+basistype = GIAO
+
+[INTS]
+ALG = incore
+
+[MISC]
+MEM = 3GB
+NSMP = 1
+
+
+
+

@@ -1,0 +1,36 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O      0.000000     0.000000     0.000000
+ H      0.757160     0.586260     0.000000
+ H     -0.757160     0.586260     0.000000
+
+#
+#  Job Specification
+#
+[QM]
+reference = Complex RHF
+job = RESP
+
+[SCF]
+guess=core
+maxiter=500
+damperror = 5.0e-5
+field = Magnetic 0.0 0.0 0.00005
+
+[MISC]
+nsmp = 2
+mem = 500 MB
+
+[INTS]
+alg=incore
+
+[RESPONSE]
+TYPE = RESIDUE
+
+# 6-311g(d,p)
+[BASIS]
+basis = sto-3g
+basistype = GIAO
+

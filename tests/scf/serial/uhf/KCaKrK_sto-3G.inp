@@ -1,0 +1,21 @@
+
+[MOLECULE]
+charge = 0
+mult = 3
+# KCaKrK
+readgeom=fchk
+
+[QM]
+reference = UHF
+job = SCF 
+
+[BASIS]
+basis = sto-3g 
+
+[SCF]
+printmos=1
+maxiter=2000
+guess=fchkmo
+enetol=1e-14
+dentol=1e-14
+

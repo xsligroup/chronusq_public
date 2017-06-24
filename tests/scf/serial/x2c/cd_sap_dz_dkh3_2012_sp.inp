@@ -1,0 +1,26 @@
+#
+#  Cd scalarX2CHF/Sapporo-dkh3-dzp-2012-sp : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Cd  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = SpinFree
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+

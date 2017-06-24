@@ -1,0 +1,27 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom:
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CLSDA
+job = RESP
+
+[SCF]
+guess=readmo
+alg=skip
+
+[RESPONSE]
+TYPE = RESIDUE
+
+[BASIS]
+basis = 3-21g 
+
+[MISC]
+NSMP = 1

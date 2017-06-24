@@ -1,0 +1,28 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ H  1.000000000  0.00000000000  0.0
+ H  0.000000000  1.00000000000  0.0
+ H  0.000000000  0.00000000000  1.0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = GLSDA 
+job = RESP
+
+[SCF]
+guess=fchkmo
+damperror=0.0
+
+[RESPONSE]
+TYPE = RESIDUE
+
+[BASIS]
+basis = 3-21g 
+
+[MISC]
+NSMP = 1

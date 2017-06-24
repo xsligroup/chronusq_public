@@ -1,0 +1,33 @@
+#
+#  testDFT - Oxy UBLYP/6-311+G(d,p) / SCF Serial
+#  SMP
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real UBLYP
+job = SCF
+
+[DFTINT]
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
+[BASIS]
+basis = 6-311+G(d,p)
+[SCF]
+
+[MISC]
+nsmp = 1
+mem = 4GB
+

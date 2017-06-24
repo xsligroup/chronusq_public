@@ -1,0 +1,35 @@
+#
+#  test0.05 - Water RHF/STO-3G : RESP
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = RHF
+job = RESP
+
+[RESPONSE]
+TYPE = MOR
+DAMP = 0.01
+BFREQ = RANGE(0.15,300,0.01)
+BOPS  = EDL MD
+DOFULL = TRUE
+
+[MOR]
+REFINE = TRUE
+
+[BASIS]
+basis = 6-31G(D)
+
+[MISC]
+nsmp = 2

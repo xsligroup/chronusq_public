@@ -1,0 +1,20 @@
+[MOLECULE]
+mult = 2
+charge = 2
+geom:
+  Li      0.00000000 0.00000000 0.00000000
+
+[QM]
+REFERENCE = UHF
+JOB = RESP
+
+[RESPONSE]
+PROPAGATOR = ParticleParticle
+PPSPINMAT  = BB
+
+[BASIS]
+basis = cc-pVDZ
+forcecart = TRUE
+
+[MISC]
+NSMP = 2

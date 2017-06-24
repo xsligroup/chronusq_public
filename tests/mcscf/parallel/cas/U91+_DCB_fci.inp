@@ -1,0 +1,52 @@
+[Molecule]
+charge = 91
+mult = 2
+geom:
+ U   0.0 0.0 0.0
+
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = MCSCF
+
+[SCF]
+guess = core
+damp = false
+MaxIter = 2000
+
+[INTS]
+alg = incore
+libcint = true
+FiniteNuclei = false
+DIRACCOULOMB = True
+SSSS = True 
+Gaunt = True
+Gauge = True
+SCHWARZ = 1e-100
+
+
+[MCSCF]
+JOBTYPE = CASSCF
+NACTO = 6
+NACTE = 1
+NRoots = 6
+stateaverage = true
+
+[MISC]
+nsmp = 4
+
+[BASIS]
+DefineBasis = On
+BasisDef:
+ ****
+ U  0
+  P 1 1.00
+  15.0       1.0
+ ****
+ Pu  0
+  P 1 1.00
+  15.0       1.0
+

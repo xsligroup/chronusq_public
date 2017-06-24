@@ -1,0 +1,31 @@
+#
+#  AgBr DLHX2CHF/sto-3g : SCF
+#  SERIAL
+#
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Ag  0.0  0.0   1.0 
+ Br  0.0  0.0  -1.0
+
+#
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+atomicx2c = DLH
+
+[SCF]
+guess = core
+
+[BASIS]
+basis = sto-3g
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+

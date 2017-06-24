@@ -1,0 +1,19 @@
+[MOLECULE]
+mult = 2
+charge = 2
+geom:
+  Li      0.00000000 0.00000000 0.00000000
+
+[QM]
+REFERENCE = GHF
+JOB = RESP
+
+[RESPONSE]
+PROPAGATOR = ParticleParticle
+
+[BASIS]
+basis = cc-pVDZ
+forcecart = TRUE
+
+[MISC]
+NSMP = 1

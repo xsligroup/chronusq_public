@@ -1,0 +1,40 @@
+#
+#  Al/6-31G : MCSCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom: 
+ Al        0      0       0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = MCSCF
+
+[SCF]
+guess=readmo
+alg=skip
+
+[BASIS]
+basis = 6-31g 
+
+[MISC]
+mem = 1 GB
+nsmp = 1
+
+[MCSCF]
+JOBTYPE = CASCI
+NACTO = 8 
+NACTE = 3
+NRoots = 6
+StateAverage = True
+
+[INTS]
+alg = incore
+tpitransalg = N6
+

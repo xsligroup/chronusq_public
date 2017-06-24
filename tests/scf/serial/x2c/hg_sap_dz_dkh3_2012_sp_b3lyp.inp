@@ -1,0 +1,31 @@
+#
+#  Water X2CB3LYP/6-311+G(d,p) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Hg  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CB3LYP
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+
+[DFTINT]
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1

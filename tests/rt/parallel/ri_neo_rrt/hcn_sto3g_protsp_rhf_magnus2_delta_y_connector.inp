@@ -1,0 +1,60 @@
+#
+#  test0.05 - HCN RHF/STO-3G/PROT-SP : RT
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ N               0             0               0
+ C               1.15824       0               0
+ H               2.22844       0               0 Q
+
+# 
+#  Job Specification
+#
+[QM]
+reference = RHF
+job = RT
+
+[PROTQM]
+reference = UHF
+
+[SCF]
+NEO = TRUE
+guess = core
+prot_guess = tight
+
+[RT]
+TMAX   = 1.
+DELTAT = 0.05
+RESTARTSTEP = MAGNUS2
+FIELD:
+ StepField(0.,0.0001) Electric 0. 0.001 0.
+
+
+[BASIS]
+basis = sto-3g
+
+
+[PBASIS]
+basis = prot-sp
+
+[INTS]
+ALG = INCORE
+ri  = dynamiceri
+RITHRESHOLD = 1e-4
+
+[PINTS]
+ALG = INCORE
+ri  = dynamiceri
+RITHRESHOLD = 1e-4
+
+[EPINTS]
+ALG = INCORE
+RI = ELEC_AND_PROT_AUX
+
+[MISC]
+nsmp = 2
+mem  = 100 mb

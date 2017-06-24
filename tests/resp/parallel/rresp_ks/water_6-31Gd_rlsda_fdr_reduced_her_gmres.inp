@@ -1,0 +1,34 @@
+#
+#  test0.05 - Water RLSDA/STO-3G : RESP
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = RLSDA
+job = RESP
+
+[RESPONSE]
+TYPE = FDR
+DOREDUCED = TRUE
+BFREQ = RANGE(0.0,10,0.01)
+BOPS  = EDL MD
+DOFULL = FALSE
+AOPS  = HEROPS
+
+[BASIS]
+basis = 6-31G(D)
+
+[MISC]
+NSMP = 2
+mem= 512MB

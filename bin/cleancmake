@@ -1,0 +1,6 @@
+#!/bin/sh
+
+rm -fr CMakeFiles Testing include src tests external
+rm -f CMakeCache.txt CTestTestfile.cmake Makefile cmake_install.cmake
+
+

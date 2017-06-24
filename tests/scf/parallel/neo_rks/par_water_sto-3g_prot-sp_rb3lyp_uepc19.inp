@@ -1,0 +1,42 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O     0.0     -0.076    0.0
+ H     0.867    0.601    0.0  Q  
+ H    -0.867    0.601    0.0  Q
+
+
+[QM]
+reference = Real RB3LYP
+job = SCF
+
+[PROTQM]
+reference = Real UEPC19
+
+[SCF]
+NEO = TRUE
+GUESS = CORE
+PROT_GUESS = CORE
+PRINTMOS = 1
+EXTRAP = TRUE
+MAXITER = 512
+
+[BASIS]
+basis = sto-3g
+
+[PBASIS]
+basis = prot-sp
+
+[MISC]
+nsmp = 2
+mem = 100 MB
+
+[INTS]
+ALG = INCORE
+
+[PINTS]
+ALG = INCORE
+
+[EPINTS]
+ALG = INCORE

@@ -1,0 +1,33 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ Cu  0.0     0.0     0.0
+ H   0.0     0.0     1.0
+ H   0.2     0.8     0.0
+ H  -0.8    -0.4    -0.4
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = SCF
+
+[SCF]
+guess = core
+damp = false
+
+[INTS]
+alg = incore
+libcint = true
+DIRACCOULOMB = on
+SSSS = off
+Gaunt = true
+
+[MISC]
+nsmp = 1
+mem = 500 MB
+
+[BASIS]
+basis = 3-21g

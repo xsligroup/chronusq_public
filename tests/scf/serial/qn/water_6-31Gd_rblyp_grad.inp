@@ -1,0 +1,37 @@
+#
+#  Water RBLYP/6-31G(d) : SCF
+#  Gradient Descent
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real RBLYP
+job = SCF
+
+[SCF]
+Alg = NR
+NRApprox = GradDescent
+FDCTol = 1E-11
+damp = true
+dampParam = 0.1
+dampError = 1E-10
+MaxIter = 300
+
+[BASIS]
+basis = 6-31G(d) 
+
+[MISC]
+nsmp = 1
+mem = 100 MB
+

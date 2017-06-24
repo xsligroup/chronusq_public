@@ -1,0 +1,45 @@
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O     0.0           -0.07579184359              0.0
+ H     0.866811829    0.6014357793               0.0
+ H    -0.866811829    0.6014357793               0.0
+
+#
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = PERTURB
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+guess=readmo
+alg=skip
+
+[MCSCF]
+JobType = CASCI
+readci=true
+NACTO = 8 
+NACTE = 4
+NRoots = 1
+
+[PERTURB]
+frozencore = 4
+frozenvirtual = 2
+IMAGINARYSHIFT = 0.1
+
+[INTS]
+libcint=true
+tpitransalg = N5
+alg = incore
+dc=true
+
+[MISC]
+mem = 1 GB
+nsmp = 4
+

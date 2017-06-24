@@ -1,0 +1,30 @@
+#
+#  Water RHF/6-31G(d) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real RHF
+job = SCF
+
+[BASIS]
+basis = 6-31G(d) 
+
+[SCF]
+FIELD = Electric 0.01 0. 0.
+
+[MISC]
+nsmp = 1
+mem = 100 MB
+

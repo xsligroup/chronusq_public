@@ -1,0 +1,29 @@
+#
+#  test water_6-31Gd_x2chf_mmut
+chronusq: realtime(stepsize = 0.05au, maxsteps = 20,  mmut, restartalgorithm=magnus2, autosave=1, autorestart=10)
+
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = RT
+
+[RT]
+FIELD:
+  StepField(0.,0.15) Electric 0. 0.001 0.
+
+[BASIS]
+basis = 6-31G(D)
+
+[MISC]
+NSMP=1

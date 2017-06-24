@@ -1,0 +1,67 @@
+/* 
+ *  This file is part of the Chronus Quantum (ChronusQ) software package
+ *  
+ *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *  
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  
+ *  Contact the Developers:
+ *    E-Mail: xsli@uw.edu
+ *  
+ */
+
+#pragma once
+
+// GTest header
+#include <gtest/gtest.h>
+
+// Global test root and output directories
+#define TEST_ROOT "@PROJECT_SOURCE_DIR@/tests/"
+#define TEST_OUT "@PROJECT_BINARY_DIR@/tests/"
+
+//#define _CQ_GENERATE_TESTS
+#define _CQ_NTHREADS_PARTEST 2
+
+// Only do Parallel tests if we're not generating tests and 
+// a proper number of threads is defined
+#if !defined(_CQ_GENERATE_TESTS) && defined(_CQ_NTHREADS_PARTEST)
+  #define _CQ_DO_PARTESTS
+#endif
+
+#include <chronusq_sys.hpp>
+#include <util/threads.hpp>
+
+/**
+ *  Test fixture for serial ChronusQ UTs. Sets the number of
+ *  SMP threads to 1.
+ */
+struct SerialJob {
+  SerialJob(){ ChronusQ::SetNumThreads(1); }
+};
+
+#ifdef _CQ_NTHREADS_PARTEST
+
+/**
+ *  Test fixture for parallel ChronusQ UTs. Sets the number of
+ *  SMP threads to _CQ_NTHREADS_PARTEST.
+ */
+struct ParallelJob {
+  ParallelJob(){ ChronusQ::SetNumThreads(_CQ_NTHREADS_PARTEST); }
+};
+
+#endif
+
+// Disable MPI tests
+#define _CQ_NO_MPI if(MPISize() > 1) return;

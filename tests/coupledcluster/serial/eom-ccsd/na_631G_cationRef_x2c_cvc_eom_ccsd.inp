@@ -1,0 +1,48 @@
+# CVS is currently not working.
+#
+#  Molecule Specification 
+#
+[Molecule]
+charge = 1
+mult = 1 
+geom:
+ Na 0.0 0.0 0.0 
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+TABLKSIZE = 4
+USEDIIS = true
+ETOL = 1e-12
+TTOL = 1e-10
+NEVARIATION = 1
+FROZENOCCUPIED = 1-2
+FROZENVIRTUAL = 19-26
+
+[EOMCC]
+NROOTS = 7
+OscillatorStrength = True
+HBARTYPE = EXPLICIT
+DIAGMETHOD = FULL
+CVSCORE = 11
+CVSCONTINUUM = 12-18
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+INCFOCK = off 
+
+[MISC]
+MEM = 256 MB
+nsmp = 1
+
+[INTS]
+ALG = INCORE
+Libcint = false
+

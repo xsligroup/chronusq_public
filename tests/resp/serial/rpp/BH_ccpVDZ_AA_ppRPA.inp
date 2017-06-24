@@ -1,0 +1,19 @@
+[MOLECULE]
+mult = 1
+charge = 0
+geom:
+  B      0.00000000 0.00000000 0.00000000
+  H      0.00000000 0.00000000 1.23200000
+
+[QM]
+REFERENCE = RHF
+JOB = RESP
+
+[RESPONSE]
+PROPAGATOR = ParticleParticle
+PPSPINMAT  = AA
+
+[BASIS]
+basis = cc-pVDZ
+forcecart = TRUE
+

@@ -1,0 +1,30 @@
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ Be        0      0       0
+
+#
+#  Job Specification
+#
+[QM]
+reference = RHF
+job = MCSCF
+
+[BASIS]
+basis = sto-3g 
+
+[MISC]
+mem = 1 GB
+nsmp = 4
+
+[MCSCF]
+JobType = CASCI
+NACTO = 3
+NACTE = 2
+CASORBITAL = 2-3, 5
+NRoots = 1 
+
+[INTS]
+alg = incore

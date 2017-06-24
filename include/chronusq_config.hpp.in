@@ -1,0 +1,61 @@
+/* 
+ *  This file is part of the Chronus Quantum (ChronusQ) software package
+ *  
+ *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *  
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  
+ *  Contact the Developers:
+ *    E-Mail: xsli@uw.edu
+ *  
+ */
+
+
+// #pragma once
+// The Configured Options and Settings for ChronusQ 
+    
+
+
+
+// Version Information
+#define ChronusQ_VERSION_MAJOR "@ChronusQ_VERSION_MAJOR@"
+#define ChronusQ_VERSION_MINOR "@ChronusQ_VERSION_MINOR@"
+#define ChronusQ_VERSION_PATCH "@ChronusQ_VERSION_PATCH@"
+
+// AUTHOR file path
+#define ChronusQ_AUTHOR_LIST "@AUTHOR_PATH@"
+
+// Basis Path
+#define BASIS_PATH "@BASIS_PATH@"
+
+
+// MKL
+#cmakedefine _CQ_MKL
+
+// MPI / ScaLAPACK / BLACS
+#cmakedefine CQ_ENABLE_MPI
+#cmakedefine LONG_INT_IS_INT64_T
+#cmakedefine CQ_HAS_TA
+
+/*
+// Add a fatal preprocessor error if less than ICC 17.0.4
+#ifdef __INTEL_COMPILER
+  #if __INTEL_COMPILER < 1704
+    #error ChronusQ MUST be compiled with ICC 17.0.4+
+  #endif
+#endif
+*/
+
+

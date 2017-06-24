@@ -1,0 +1,30 @@
+#
+#  Water X2CHF/6-311+G(d,p) : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0  -0.07579184359               0
+ H     0.866811829    0.6014357793               0
+ H    -0.866811829    0.6014357793               0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = 6-311+G(d,p) 
+
+[INTS]
+libcint = true
+
+[MISC]
+nsmp = 1
+mem = 200 MB

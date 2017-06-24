@@ -1,0 +1,42 @@
+#
+#  Heavy atom U single electron test
+#  for removing duplicated primitives
+#  and linear dependency in overlap.
+#
+#  Molecule Specification
+[Molecule]
+charge = 91
+mult = 2
+geom: 
+ U    0.  0.  0.
+
+#
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+
+#
+#  Basis Specification
+#
+[BASIS]
+definebasis = true
+basisdef :
+ ****
+ U     0
+ S   3   1.00
+       0.3425250914D+01       0.1543289673D+00
+       0.6239137298D+00       0.5353281423D+00
+       0.1688554041D+00       0.4446345422D+00
+ S   1   1.00
+       0.6239137298D+00       1.0
+ S   1   1.00
+       0.1688554040D+00       1.0
+ ****
+

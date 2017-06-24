@@ -1,0 +1,35 @@
+#
+#  O2 UPBE0/6-31++g(d)/aug-cc-pvdz-rifit : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real UPBE0
+job = SCF
+
+[BASIS]
+basis = 6-31++g(d) 
+forcecart = true
+
+[DFBASIS]
+basis = aug-cc-pvdz-rifit
+forcecart = true
+
+[INTS]
+alg = incore
+ri = auxbasis
+
+[MISC]
+nsmp = 2
+mem = 100 MB
+

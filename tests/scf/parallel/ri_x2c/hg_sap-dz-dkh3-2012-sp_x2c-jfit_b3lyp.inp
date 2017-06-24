@@ -1,0 +1,36 @@
+#
+#  Hg X2CB3LYP/Sapporo-dkh3-dzp-2012-sp/x2c-jfit : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Hg  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CB3LYP
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[DFBASIS]
+basis = X2C-jfit
+
+[INTS]
+alg = incore
+ri = auxbasis
+
+[MISC]
+nsmp = 2
+mem = 200 MB
+
+[DFTINT]
+NANG = 302
+NRAD = 500

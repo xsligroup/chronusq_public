@@ -1,0 +1,37 @@
+#
+#  H2S RHF/cc-pVDZ dynamic-ERI span-factor Cholesky 1e-4 : SCF
+#  PARALLEL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ S     0.0    0.00    0.104
+ H     0.0    0.97   -0.83
+ H     0.0   -0.98   -0.84
+
+[QM]
+reference = RHF
+job = SCF
+
+[SCF]
+guess = core
+maxiter = 50
+
+[INTS]
+alg = incore
+ri  = dynamiceri
+rithreshold = 1e-4
+risigma = 1e-1
+rimaxqual = 100
+rigencontr = true
+libcint = false
+
+[MISC]
+nsmp = 2
+mem = 100 MB
+
+[BASIS]
+basis = cc-pvdz 
+forcecart = false

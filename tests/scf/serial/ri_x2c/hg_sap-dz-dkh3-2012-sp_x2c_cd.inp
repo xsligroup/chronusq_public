@@ -1,0 +1,31 @@
+#
+#  Hg X2CHF/Sapporo-dkh3-dzp-2012-sp default Cholesky : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ Hg  0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = OneE
+
+[BASIS]
+basis = SAPPORO-DKH3-DZP-2012-SP 
+
+[INTS]
+alg = incore
+ri = cholesky
+rithreshold = 1e-6
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+

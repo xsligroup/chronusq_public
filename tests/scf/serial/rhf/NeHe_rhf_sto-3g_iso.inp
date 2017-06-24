@@ -1,0 +1,20 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ Ne-22              0.    0.0              0.
+ He-3              0.    0.0              3.729
+
+# 
+#  Job Specification
+#
+[QM]
+reference = RHF
+job = SCF 
+
+[SCF]
+
+[BASIS]
+basis = STO-3G
+

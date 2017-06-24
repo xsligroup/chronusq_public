@@ -1,0 +1,43 @@
+[Molecule]
+charge = 183
+mult = 2
+geom:
+ U   0.0 0.0 0.0
+ Pu  0.0 0.0 1.5
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+x2ctype = Fock
+
+[SCF]
+guess = core
+damp = false
+diisAlg = cdiis
+
+[INTS]
+alg = incore
+libcint = true
+FiniteNuclei = true
+DiracCoulomb = true
+Gaunt = true
+Gauge = true
+SSSS=true
+
+[MISC]
+nsmp = 1
+
+[BASIS]
+DefineBasis = On
+BasisDef:
+ ****
+ U  0
+  P 1 1.00
+  15.0       1.0
+ ****
+ Pu  0
+  P 1 1.00
+  15.0       1.0

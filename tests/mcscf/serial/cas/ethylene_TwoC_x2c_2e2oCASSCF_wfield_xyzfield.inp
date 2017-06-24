@@ -1,0 +1,33 @@
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ C     0.0000     0.0000     0.6695
+ C     0.0000     0.0000    -0.6695
+ H     0.0000     0.9289     1.2321
+ H     0.0000    -0.9289     1.2321
+ H     0.0000     0.9289    -1.2321
+ H     0.0000    -0.9289    -1.2321
+
+[QM]
+reference = X2CHF
+job = MCSCF
+
+[SCF]
+guess = core
+FIELD: ELECTRIC 0.001 0.001 0.001
+
+[MCSCF]
+JOBTYPE = CASSCF
+NACTO = 4
+NACTE = 2
+NRoots = 1
+StateAverage = false
+printmos=1
+printmult=true
+
+[INTS]
+alg = direct 
+
+[BASIS]
+basis = sto-3g

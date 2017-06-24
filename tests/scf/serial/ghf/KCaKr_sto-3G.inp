@@ -1,0 +1,23 @@
+
+[MOLECULE]
+charge = 0
+mult = 2
+# KCaKr 
+geom:
+ Kr  0.000000    0.000000    0.000000
+ K   0.000000   10.000000    0.000000
+ Ca  0.000000    0.000000   10.000000
+
+[QM]
+reference = GHF
+job = SCF 
+
+[BASIS]
+basis = sto-3g 
+
+[SCF]
+maxiter=2000
+guess=fchkmo
+enetol=1e-14
+dentol=1e-14
+

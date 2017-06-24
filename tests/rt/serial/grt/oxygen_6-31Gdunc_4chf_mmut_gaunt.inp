@@ -1,0 +1,71 @@
+#
+#  test oxygen_6-31Gdunc_4chf_mmut_gaunt
+chronusq: realtime(stepsize = 0.05au, maxsteps = 10,  mmut, restartalgorithm=magnus2, autosave=1, autorestart=5)
+
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = RT
+
+[RT]
+FIELD:
+  StepField(0.,0.15) Electric 0. 0.001 0.
+
+[INTS]
+Libcint = true
+ALG = incore
+gaunt = true
+
+[SCF]
+guess = CORE
+
+[BASIS]
+definebasis = on
+basisdef = : 
+****
+O     0
+S    1   1.00
+      0.5484671660D+04       1.00000000D+00
+S    1   1.00
+      0.8252349460D+03       1.00000000D+00
+S    1   1.00
+      0.1880469580D+03       1.00000000D+00
+S    1   1.00
+      0.5296450000D+02       1.00000000D+00
+S    1   1.00
+      0.1689757040D+02       1.00000000D+00
+S    1   1.00
+      0.1553961625D+02       1.00000000D+00
+S    1   1.00
+      0.5799635340D+01       1.00000000D+00
+S    1   1.00
+      0.3599933586D+01       1.00000000D+00
+S    1   1.00
+      0.1013761750D+01       1.00000000D+00
+S    1   1.00
+      0.2700058226D+00       1.00000000D+00
+P    1   1.00
+      0.1553961625D+02       1.00000000D+00
+P    1   1.00
+      0.3599933586D+01       1.00000000D+00
+P    1   1.00
+      0.1013761750D+01       1.00000000D+00
+P    1   1.00
+      0.2700058226D+00       1.00000000D+00
+D    1   1.00
+      0.8000000000D+00       1.00000000D+00
+**** 
+
+[MISC]
+NSMP=1
+memtype = os

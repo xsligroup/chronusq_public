@@ -1,0 +1,43 @@
+#
+#  Al/6-31G : MCSCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom: 
+ Al        0      0       0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = MCSCF
+
+[BASIS]
+basis = 6-31g 
+
+[MISC]
+mem = 1 GB
+nsmp = 1
+
+[MCSCF]
+JOBTYPE = RASCI
+NACTO = 2 8 2
+NACTE = 5
+NRoots = 6
+RAS1MAXHOLE = 1
+RAS3MAXELEC = 1
+CIDiagAlg = Davidson
+
+[INTS]
+alg = incore
+DC = true
+SSSS = true
+Gaunt = true
+Gauge = true
+libcint = true
+
+

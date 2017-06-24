@@ -1,0 +1,27 @@
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ B               0  0  0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = UHF
+job = SCF
+
+[SCF]
+damp=false
+guess=readmo
+swapmo:
+ 2 3 A
+ 1 2 B
+
+[BASIS]
+basis = sto-3g 
+
+[MISC]
+NSMP = 1
+mem = 1gb

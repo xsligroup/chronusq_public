@@ -1,0 +1,28 @@
+#
+#  test0429 - Water RBLYP/cc-pVDZ : RT
+#  SMP
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real UB3LYP
+job = RESP
+
+[BASIS]
+basis = 6-31G(D)
+
+[RESPONSE]
+TYPE = FDR
+BFREQ = RANGE(0.0,10,0.01)
+BOPS  = EDL MD
+DOFULL = TRUE
+

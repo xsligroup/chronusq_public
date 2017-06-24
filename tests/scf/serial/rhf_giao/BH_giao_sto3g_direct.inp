@@ -1,0 +1,40 @@
+#
+#  testGIAO - BH RHF/aug-cc-pvtz : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ B               0    0.0000000000               0
+ H          1.2352    0.000000000                0
+
+# 
+#  Job Specification
+# Magnetic field (0.0, 0.0, 0.02)     
+#
+[QM]
+reference = COMPLEX RHF
+job = SCF
+
+[BASIS]
+basis = STO-3G
+#basis = CC-PVDZ  
+basisType = GIAO
+#basis = 6-31g
+#basis = 6-311+G(D,P)
+#basis = STOTEST.GBS 
+
+[SCF]
+MAXITER = 512
+ENETOL  = 1.0e-10
+DENTOL  = 1.0e-8
+DIIS    = FALSE
+GUESS=CORE
+Field = Magnetic 0.0 0.0 0.02
+
+[MISC]
+nsmp = 1
+
+

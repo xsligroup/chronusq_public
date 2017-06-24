@@ -1,0 +1,38 @@
+#
+#  testCEDIIS - Acetaldehyde RHF Sapporo-DZP
+#  Serial
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ C     -1.07600    0.89680   -0.05650
+ C      0.00880    0.50230    0.89080
+ H     -0.65860    1.54350   -0.85640
+ H     -1.52070   -0.00970   -0.51760
+ H     -1.86750    1.45150    0.48980
+ O      0.62770    1.35630    1.50440
+ H      0.25020   -0.54550    1.03650
+
+# 
+#  Job Specification
+#
+[QM]
+reference = REAL RHF
+job = SCF
+
+[BASIS]
+basis = Sapporo-DZP-no
+
+[SCF]
+maxiter=200
+diis=true
+diisalg=cediis
+nkeep=20
+damp=false
+
+[MISC]
+nsmp = 1
+mem = 1GB
+

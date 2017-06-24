@@ -1,0 +1,34 @@
+
+#
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O       0.0000  0.0000  0.1173
+ H       0.0000  0.7572  -0.4692
+ H       0.0000  -0.7572 -0.4692
+# 
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = CC
+
+[CC]
+TYPE = CCSD
+
+# needed for CC run
+[EOMCC]
+hbartype = implicit
+
+[MISC]
+MEM = 256 MB
+nsmp = 4
+
+[INTS]
+ALG = INCORE
+libcint = true
+
+[BASIS]
+basis = sto-3g
+ 

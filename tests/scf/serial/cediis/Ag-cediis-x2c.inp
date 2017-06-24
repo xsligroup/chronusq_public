@@ -1,0 +1,31 @@
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ Ag  0.0     0.0     0.0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = SCF
+
+[SCF]
+guess = core
+damp = false
+diis = true
+diisalg = cediis
+nkeep = 20
+
+[INTS]
+alg = incore
+libcint = true
+Gaunt = true
+
+[MISC]
+nsmp = 1
+mem = 1300 MB
+
+[BASIS]
+basis = sapporo-dkh3-dzp-2012-no
