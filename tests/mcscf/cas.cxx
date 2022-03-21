@@ -166,9 +166,15 @@ TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G ) {
 
 // Al readmo tests
 TEST(CASCI_READMO_SKIPSCF, PAR_Al_631G) {
+<<<<<<< HEAD
   CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref", true);
   CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref", true);
   CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref", true);
+=======
+  CQMCSCFREFTEST("mcscf/parallel/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref"); 
+  CQMCSCFREFTEST("mcscf/parallel/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref"); 
+  CQMCSCFREFTEST("mcscf/parallel/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref"); 
+>>>>>>> Fix the issue that SkipSCF would change molecular orbitals.
 }
 
 TEST(CASCI_DAVIDSON, PAR_Al_631G) {
