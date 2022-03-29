@@ -1,22 +1,22 @@
 #
 # This file is part of the Chronus Quantum (ChronusQ) software package
-# 
+#
 # Copyright (C) 2014-2022 Li Research Group (University of Washington)
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-# 
+#
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
@@ -24,17 +24,17 @@
 # Directories for SCF tests
 set(SCF_TEST_SOURCE_ROOT "${TEST_ROOT}/scf" )
 set(SCF_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/scf" )
-  
+
 
 # Set up compilation of SCF test exe
-add_executable(scftest ../ut.cxx 
+add_executable(scftest ../ut.cxx
 	rhf.cxx uhf.cxx ghf.cxx rohf.cxx x2chf.cxx fourcomphf.cxx rhfnr.cxx
         rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx
-	rks.cxx uks.cxx x2cks.cxx ks.cxx
+	rks.cxx uks.cxx x2cks.cxx ks.cxx neo_rhf.cxx neo_rks.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx
 )
 
-target_include_directories(scftest PUBLIC ${SCF_TEST_SOURCE_ROOT} 
+target_include_directories(scftest PUBLIC ${SCF_TEST_SOURCE_ROOT}
   ${TEST_BINARY_ROOT})
 target_link_libraries(scftest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
 target_link_libraries(scftest PUBLIC ChronusQ::gtest)
@@ -62,7 +62,10 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_rohf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_uks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_x2c)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/cediis)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/qn)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rhf)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rks)
 
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rks)
@@ -81,9 +84,8 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_rohf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_uks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_x2c)
-file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rks)
-file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/cediis)
-file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/qn)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_rhf)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_rks)
 
 
 include( CQTestGeneration )
@@ -114,6 +116,7 @@ add_cq_test( RI_RKS_SCF   scftest "RI_RKS.*"     )
 add_cq_test( RI_UKS_SCF   scftest "RI_UKS.*"     )
 add_cq_test( RI_X2CKS_SCF scftest "RI_X2CKS.*"   )
 add_cq_test( NEO_RKS_SCF  scftest "NEO_RKS.*"  )
+add_cq_test( NEO_RHF_SCF  scftest "NEO_RHF.*"  )
 add_cq_test( CEDIIS_SCF   scftest "CEDIIS.*"  )
 add_cq_test( QN_SCF       scftest "QN_SCF*"  )
 add_cq_test( FOURC_QN_SCF scftest "FOURC_QN_SCF*"  )
@@ -141,6 +144,8 @@ if( CQ_ENABLE_MPI )
   add_cq_mpi_test( RI_UKS_SCF_MPI   2   scftest "RI_UKS.*"   )
   add_cq_mpi_test( RI_X2CKS_SCF_MPI 2   scftest "RI_X2CKS.*" )
   add_cq_mpi_test( QN_SCF_MPI       2   scftest "QN_SCF*"  )
+  #add_cq_mpi_test( NEO_RKS_MPI          2    scftest "NEO_RKS.*"  )
+  #add_cq_mpi_test( NEO_RHF_MPI          2    scftest "NEO_RHF.*"  )
 endif()
 
 
