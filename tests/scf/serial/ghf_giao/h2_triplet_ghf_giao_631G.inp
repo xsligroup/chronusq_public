@@ -32,6 +32,7 @@ basisType = GIAO
 MAXITER = 30240
 ENETOL  = 1.0e-10
 DENTOL  = 1.0e-8
+FDCTol  = 1.0e-6
 DIIS    = FALSE
 Field = Magnetic 0.0 0.0 -0.001
 GUESS=RANDOM
