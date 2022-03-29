@@ -62,6 +62,8 @@ namespace ChronusQ {
       "FVORBITAL",
       "OSCISTREN",
       "GENIVO",
+      "PRINTMOS",
+      "PRINTRDMS",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS"
     };
@@ -76,6 +78,33 @@ namespace ChronusQ {
         CErr("Keyword MCSCF." + keyword + " is not recognized",std::cout);// Error
     }
     // Check for disallowed combinations (if any)
+  }
+
+  void HandleRDMPrinting(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<MCWaveFunctionBase> &mcwf) {
+
+    // Parse RDM printing
+    std::string printRDMString;
+    OPTOPT( printRDMString = input.getData<std::string>("MCSCF.PRINTRDMS"));
+    if ( not printRDMString.empty() ) {
+      std::cout << "  * Printing RDM detected: " << std::endl;
+
+      std::vector<std::string> rdmTokens;
+      split(rdmTokens, printRDMString, " \t,");
+
+      if( rdmTokens.size() != 1 and rdmTokens.size() != 2 ) CErr("Need 1 or 2 entries in single line for RDM printing");
+
+      // Parse rdmCut if present
+      if( rdmTokens.size() == 2 ) mcwf->rdmCut=std::stod(trim(rdmTokens[1]));
+
+      try { mcwf->printRDMs = std::stoi(trim(rdmTokens[0])); }
+      catch(...) {
+        CErr("Invalid PRINTRDMS input. Please use number 0 ~ 2.");
+      }
+      if (mcwf->printRDMs >= 3 ) CErr("MCSCF print RDM level is not valid!");
+
+    }
+
   }
 
   std::unordered_map<std::string,int> MCSCFSpinMap = {
@@ -482,6 +511,19 @@ namespace ChronusQ {
 
    // Oscillator strength
    OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )
+
+   // Printing Options
+   // MOs
+   if ( input.containsData("MCSCF.PRINTMOS") ) {
+     try { mcscf->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
+     catch(...) {
+       CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
+     }
+   }
+   if (mcscf->printMOCoeffs >= 10 ) CErr("MCSCF print level is not valid!");
+
+   // RDMs
+   HandleRDMPrinting(out, input,  mcscf);
 
    // MO swapping
    // Should occur after active orbital selection

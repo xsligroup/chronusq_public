@@ -49,7 +49,7 @@ namespace ChronusQ {
   void MCWaveFunction<MatsT,IntsT>::computeOneRDM() {
 
     for (auto i = 0ul; i < NStates; i++)
-      computeOneRDM(i);
+      MCWaveFunction<MatsT, IntsT>::computeOneRDM(i);
 
   } // MCWaveFunction::computeOneRDM
 

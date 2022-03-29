@@ -196,6 +196,8 @@ namespace ChronusQ {
        // only print k Largerst coefficient
        printMCSCFState(std::cout, i, this->StateEnergy[i], C, Cindx, NPrintC);  
     }
+
+    this->print1RDMs();
     
     std::cout << BannerTop << std::endl;
   
