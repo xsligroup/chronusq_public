@@ -74,22 +74,53 @@ namespace ChronusQ {
   
   template <typename MatsT, typename IntsT>
   void MCWaveFunction<MatsT,IntsT>::print1RDMs() {
-    
+
+    if( printRDMs==0 ) return;
+
     std::cout << std::endl << "MCWaveFunction 1RDMs:" << std::endl;
     std::cout << bannerTop << std::endl;
-     
+
     size_t nCorrO = this->MOPartition.nCorrO;
     size_t nS     = this->NStates;
+    size_t nRDMEle= 0; // used for line breaker
 
-    for (auto i = 0ul; i < nS; i++) { 
-       
-      prettyPrintSmart(std::cout, "State " + std::to_string(i), 
-        this->oneRDM[i].pointer(), nCorrO, nCorrO, nCorrO);
+    //Print full 1RDM
+    if( printRDMs==1 ){
+      std::cout << "Printing full 1-RDM" << std::endl;
+      for (auto i = 0ul; i < nS; i++) {
 
+        prettyPrintSmart(std::cout, "State " + std::to_string(i),
+          this->oneRDM[i].pointer(), nCorrO, nCorrO, nCorrO);
+
+      }
+    } else if( printRDMs==2 ){
+      std::cout.precision(2);
+      std::cout << "Printing large (>" << std::fixed << rdmCut << ") diagonal elements of real 1-RDM" << std::endl;
+
+      for (auto i = 0ul; i < nS; i++) {
+
+        std::cout << std::endl << "State " << i+1 << ": ";
+        nRDMEle = 0;
+
+        for( auto ipp = 0ul; ipp < nCorrO; ipp++){
+
+          if( std::real(this->oneRDM[i].pointer()[ipp*nCorrO+ipp]) > rdmCut ){
+            if( nRDMEle > 6 ){
+              std::cout << std::endl << "         ";
+              nRDMEle = 0;
+            }
+            std::cout << std::setw(3) << ipp+1 << "(" << std::real(this->oneRDM[i].pointer()[ipp*nCorrO+ipp]) << ")" << " ";
+            nRDMEle++;
+          }
+        }
+
+        std::cout << std::endl;
+
+      }
     }
-    
+
     std::cout << bannerTop << std::endl;
-  
+
   }; //MCWaveFunction::print1RDMs
 
   template <typename MatsT, typename IntsT>
@@ -103,7 +134,7 @@ namespace ChronusQ {
       std::fill_n(ss_ptr->eps2, ss_ptr->nC * ss_ptr->nAlphaOrbital(),double(0.));
 
     if (not printMOLevel)
-      printMOLevel = ss_ptr->scfControls.printMOCoeffs;
+      printMOLevel = printMOCoeffs;
     ss_ptr->WaveFunction<MatsT,IntsT>::printMOInfo(out, printMOLevel);
 
   } //MCWaveFunction::printMOInfo

@@ -64,6 +64,9 @@ namespace ChronusQ {
     ProgramTimer::tock("Diagonalization");
     
     ProgramTimer::tock("Solve CI");
+
+    // Initial 1RDM construction
+    MCWaveFunction<MatsT, IntsT>::computeOneRDM();
      
     // MCSCF Cycles 
     
