@@ -52,6 +52,7 @@ namespace ChronusQ {
       "SCFENECONV",
       "SCFGRADCONV",
       "SCFALG",
+      "ROTATENEGORBS",
       "HESSDIAGSCALE",
       "CASORBITAL",
       "RAS1ORBITAL",
@@ -65,7 +66,7 @@ namespace ChronusQ {
       "PRINTMOS",
       "PRINTRDMS",
       "MAXDAVIDSONSPACE",
-      "NDAVIDSONGUESS"
+      "NDAVIDSONGUESS",
     };
 
     // Specified keywords
@@ -271,7 +272,6 @@ namespace ChronusQ {
       CErr("Not Implemented yet");
     }
 
-    // if (ss->nC == 4)
     // OPTOPT( mcscf.FourCompNoPair = input.getData<bool>("MCSCF.FOURCOMPNOPAIR"));
     
     // set up scheme
@@ -372,9 +372,9 @@ namespace ChronusQ {
       std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
       
       // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = (ss->nC == 4 and mcscf->FourCompNoPair) ? mcscf->MOPartition.nMO: 0ul;  
+      size_t fourCOffSet = mcscf->MOPartition.nNegMO;  
       
-      std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO + fourCOffSet, 'N');
+      std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');
       
       // parse input
       SET_ORBITAL_INDEX(inputOrbIndices, fcMOStrings, 'I');
@@ -465,15 +465,20 @@ namespace ChronusQ {
       
       mcscfSettings->doSCF = true;
       
-      OPTOPT(mcscfSettings->doIVOs =
-        input.getData<bool>("MCSCF.GENIVO"); )
+      if (ss->nC == 4) {
+        // default as true
+        mcscfSettings->ORSettings.rotate_negative_positive = true;
+        OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
+          = input.getData<bool>("MCSCF.ROTATENEGORBS"); )
+      }
+
+      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>("MCSCF.GENIVO"); )
 
       bool StateAverage = false;
       OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
       if(StateAverage) {
         //TODO: make as input in the future
-        std::vector<double> SAWeights = std::vector<double>(nR);
-        std::fill_n(SAWeights.begin(), nR, 1./nR);
+        std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
         mcscf->turnOnStateAverage(SAWeights);
       }
       

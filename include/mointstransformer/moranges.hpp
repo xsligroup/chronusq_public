@@ -79,8 +79,11 @@ namespace ChronusQ {
 
       resetMORanges();
       
-      // general indices
-      addMORanges({'p','q','r','s'}, {offset, nT});
+      // negative energy MO indices
+      if (ss_.nC == 4) addMORanges({'m', 'n'}, {0ul, mopart.nNegMO});
+
+      // general electronic indices
+      addMORanges({'p','q','r','s'}, {0ul, nT});
       
       // inactive core indices
       addMORanges({'i','j','k','l'}, {offset, nInact});

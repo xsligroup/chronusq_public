@@ -38,8 +38,10 @@ namespace ChronusQ {
   
     std::cout << std::left << std::endl;
     FormattedLine(std::cout,"* MO Space Partition:");
-    FormattedLine(std::cout,"  Number of Electronic MOs:",     mopart.nMO);
-    FormattedLine(std::cout,"  Number of Electrons in Full Space:",          ref.nO);
+    FormattedLine(std::cout,"  Number of Electronic MOs:", mopart.nElecMO);
+    if (ref.nC == 4)
+      FormattedLine(std::cout,"  Number of Negative MOs:", mopart.nNegMO);
+    FormattedLine(std::cout,"  Number of Electrons in Full Space:",  ref.nO);
     
     std::cout << std::endl;
     FormattedLine(std::cout,"  Number of Inactive Orbitals:",     mopart.nInact);

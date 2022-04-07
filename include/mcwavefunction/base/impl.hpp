@@ -32,19 +32,27 @@ namespace ChronusQ {
   
     auto & mopart = this->MOPartition;
     auto & wfn = referenceWaveFunction();
+    
+    if (wfn.nC == 4 and not this->FourCompNoPair)
+      CErr("4C without no-pair approximation is not implemented.");
 
     if (wfn.nC == 1) {
-      mopart.nMO = wfn.nAlphaOrbital();
-    } else if (wfn.nC ==4 and not this->FourCompNoPair) {
-      mopart.nMO = 2 * (wfn.nV + wfn.nO); 
-      CErr("4C without no-pair approximation is not implemented.");
+      mopart.nElecMO = wfn.nAlphaOrbital();
     } else { 
-      mopart.nMO = wfn.nV + wfn.nO;
+      mopart.nElecMO = wfn.nV + wfn.nO;
     } 
     
+    
+    if (wfn.nC == 4) {
+      mopart.nMO = 2 * mopart.nElecMO;
+      mopart.nNegMO = mopart.nElecMO;
+    } else {
+      mopart.nMO = mopart.nElecMO; 
+    }
+
     size_t nCorrO = std::accumulate(nActO.begin(), nActO.end(), 0);
     
-    if( nCorrO > mopart.nMO or nCorrO <=0 or (nCorrE > wfn.nO) or nCorrE <= 0)  
+    if( nCorrO > mopart.nElecMO or nCorrO <=0 or (nCorrE > wfn.nO) or nCorrE <= 0)  
       CErr("This is not a valid active space, please modify the input!");
     
     if (wfn.nC == 1) {
@@ -69,11 +77,11 @@ namespace ChronusQ {
       mopart.nInact = wfn.nO - nCorrE;
     }    
     
-    mopart.nFVirt = mopart.nMO - nCorrO - mopart.nInact;
+    mopart.nFVirt = mopart.nElecMO - nCorrO - mopart.nInact;
     mopart.nCorrO = nCorrO;
     mopart.nCorrE = nCorrE;
 
-    if( mopart.nMO < (nCorrO + mopart.nInact) )
+    if( mopart.nElecMO < (nCorrO + mopart.nInact) )
       CErr("This is not a valid active space, please modify the input!");
     
   
@@ -141,8 +149,8 @@ namespace ChronusQ {
 
   }; // partiation MOSpace
   
-  // set state average
-  void MCWaveFunctionBase::turnOnStateAverage(std::vector<double> weight) {
+
+  void MCWaveFunctionBase::turnOnStateAverage(const std::vector<double> & weight) {
     
     size_t NS = this->NStates;
     
@@ -153,7 +161,7 @@ namespace ChronusQ {
     this->SAWeight = std::vector<double>(NS);
     std::copy_n(weight.begin(), NS, this->SAWeight.begin());
   };
-
+  
   // Generate the category offset for nC=1: fCat[iCata+iCatb*nCat]
   std::vector<int> MCWaveFunctionBase::genfCat(std::vector<std::vector<size_t>> LCata,
     std::vector<std::vector<size_t>> LCatb, size_t nCata, size_t nCatb) {
@@ -211,12 +219,11 @@ namespace ChronusQ {
 
     std::vector<size_t> nOrbs;
     std::vector<char> orbIdentifiers;
-    size_t totalRefMO = MOPartition.nMO;
+    size_t totalElecMO = MOPartition.nElecMO;
     
-    if (referenceWaveFunction().nC == 4 and FourCompNoPair) {
-      nOrbs.push_back(MOPartition.nMO);
+    if (referenceWaveFunction().nC == 4) {
+      nOrbs.push_back(MOPartition.nNegMO);
       orbIdentifiers.push_back('N');
-      totalRefMO *= 2;  
     }
 
     // set up numbers 
@@ -251,7 +258,7 @@ namespace ChronusQ {
         }
         scan_start = scan_end;
       }
-    } else if (orbIndices.size() == totalRefMO) {
+    } else if (orbIndices.size() == totalElecMO) {
       
       // generating swapping pairs if necessary 
       std::vector<std::vector<std::pair<size_t, size_t>>> moPairs;
@@ -264,7 +271,7 @@ namespace ChronusQ {
         for (size_t j = scan_start; j < scan_end; j++) {
           if (orbIndices[j] != scan_id) { 
             bool found = false;
-            for (size_t k = scan_end; k < totalRefMO; k++) {
+            for (size_t k = scan_end; k < totalElecMO; k++) {
               if (orbIndices[k] == scan_id) {
                 found = true;
                 moPairs[0].push_back({j+1, k+1});

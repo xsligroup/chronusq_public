@@ -40,11 +40,11 @@ namespace ChronusQ {
     
     ProgramTimer::tick("MCSCF Total");
     
-    // Initial Printing
-    this->printMCSCFHeader();
-    
     // allocating memeory
     this->alloc(); 
+    
+    // Initial Printing
+    this->printMCSCFHeader();
     
     // MCSCF Intial CI solution
     std::cout << "Cycle 0:\n" << std::endl;

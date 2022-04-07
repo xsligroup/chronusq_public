@@ -31,7 +31,7 @@
 
 namespace ChronusQ {
 
-  void MCSCFSettings::print() {
+  void MCSCFSettings::print(bool fourComp) {
     
     std::cout << std::endl;
     FormattedLine(std::cout,"* Computation Parameters:");
@@ -47,7 +47,7 @@ namespace ChronusQ {
     
     if(this->doSCF) {
       std::cout << std::endl;
-      ORSettings.print();
+      ORSettings.print(fourComp);
       
       std::cout << std::endl;
       FormattedLine(std::cout,"  SCF Maxmium Number of Iteration:",    maxSCFIter);
@@ -94,14 +94,15 @@ namespace ChronusQ {
     std::cout << std::endl;
     this->printMOSpacePatition();
 
-    settings.print();
+    settings.print(ref.nC == 4);
  
     std::cout << std::endl;
     if(this->settings.doSCF and this->StateAverage) {
       FormattedLine(std::cout,"  State Average is ON, with weights:");
+      auto & weights = this->SAWeight;
       for (auto i = 0ul; i < this->NStates; i ++)
         std::cout << "        State " << std::setw(5) << std::right << i << ":" 
-                  << std::setw(16) <<  this->SAWeight[i] << std::endl;
+                  << std::setw(16) <<  weights[i] << std::endl;
       
       std::cout << std::left << std::endl;
     }
