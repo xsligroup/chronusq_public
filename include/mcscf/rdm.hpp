@@ -41,11 +41,12 @@ namespace ChronusQ {
     if (this->StateAverage) {
       
       size_t nCorrO  = this->MOPartition.nCorrO;
-      
+      auto & weights = this->SAWeight;
+
       oneRDMSOI->clear();
       
       for (auto i = 0ul; i < this->NStates; i++)
-        *oneRDMSOI += this->SAWeight[i] * this->oneRDM[i];
+        *oneRDMSOI += weights[i] * this->oneRDM[i];
     }    
 
   }; // MCSCF::computeOneRDM()
@@ -76,12 +77,13 @@ namespace ChronusQ {
     if(this->StateAverage) {
       
       auto twoRDMtmp = InCore4indexTPI<MatsT>(this->memManager,nCorrO); 
+      auto & weights = this->SAWeight;
       twoRDMSOI->clear();
 
       for (auto i = 0ul; i < this->NStates; i++) {
         this->ciBuilder->computeTwoRDM(*this, this->CIVecs[i], twoRDMtmp);
         MatAdd('N', 'N', nCorrO2, nCorrO2, 
-          MatsT(this->SAWeight[i]), twoRDMtmp.pointer(), nCorrO2, 
+          MatsT(weights[i]), twoRDMtmp.pointer(), nCorrO2, 
           MatsT(1.), twoRDMSOI->pointer(), nCorrO2, twoRDMSOI->pointer(), nCorrO2);
       }  
       

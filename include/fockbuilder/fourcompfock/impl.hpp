@@ -31,6 +31,7 @@
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
 
 //#define _PRINT_MATRICES
+//#define _FOCK_CONTRACTION_TIME
 
 namespace ChronusQ {
 
@@ -188,8 +189,10 @@ namespace ChronusQ {
 
     if(this->hamiltonianOptions_.BareCoulomb) { // DIRECT_COULOMB
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto topBareCoulomb = tick();
-  
+#endif
+
       /*+++++++++++++++++++++++++++++++++++++++++++++*/
       /* Start of Direct Coulomb (LL|LL) Contraction */
       /*+++++++++++++++++++++++++++++++++++++++++++++*/
@@ -242,10 +245,12 @@ namespace ChronusQ {
       /*   End of Direct Coulomb (LL|LL) Contraction */
       /*---------------------------------------------*/
 
+#ifdef _FOCK_CONTRACTION_TIME
       // Print out BareCoulomb duration 
       auto durBareCoulomb = tock(topBareCoulomb);
       std::cout << "Bare Coulomb Contraction duration = " << durBareCoulomb << std::endl;
- 
+#endif 
+
     } // DIRECT_COULOMB
 
 
@@ -263,7 +268,9 @@ namespace ChronusQ {
 
     if(this->hamiltonianOptions_.DiracCoulomb) { // DIRAC_COULOMB
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto topERIDC = tick();
+#endif
 
       /*++++++++++++++++++++++++++++++++++++++++++++*/
       /* Start of Dirac-Coulomb (LL|LL) Contraction */
@@ -480,8 +487,10 @@ namespace ChronusQ {
     
     }  // computeExchange
       
+#ifdef _FOCK_CONTRACTION_TIME 
       auto durERIDC = tock(topERIDC);
       std::cout << "Dirac-Coulomb Contraction duration   = " << durERIDC << std::endl;
+#endif    
     } // Dirac Coulomb
   
 
@@ -531,8 +540,10 @@ namespace ChronusQ {
       auto nERIRef = 0;
       if(this->hamiltonianOptions_.DiracCoulomb) nERIRef += 4;
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto topERIDG = tick();
-  
+#endif
+
 #if 0 // Gaunt LLLL Spin-Free
       /* Gaunt LLLL Spin-Free */
       std::vector<TwoBodyContraction<MatsT>> contractGLLSF94 =
@@ -1346,9 +1357,11 @@ namespace ChronusQ {
       /*------------------------------------*/
       } // computeExchange, LLSS exchange part 
   
+#ifdef _FOCK_CONTRACTION_TIME
       auto durERIDG = tock(topERIDG);
       std::cout << "Gaunt Contraction duration   = " << durERIDG << std::endl;
-  
+#endif
+
     } //GAUNT
 
 
@@ -1391,7 +1404,9 @@ namespace ChronusQ {
       double C4 = 1./(16*SpeedOfLight*SpeedOfLight*SpeedOfLight*SpeedOfLight);
       dcomplex scaleC4 = dcomplex(C4,0.0);
       dcomplex iscaleC4 = dcomplex(0.0,C4);
+#ifdef _FOCK_CONTRACTION_TIME
       auto topERIDCSSSS = tick();
+#endif
 
       auto nERIRef = 0;
       if(this->hamiltonianOptions_.DiracCoulomb) nERIRef += 4;
@@ -1864,9 +1879,10 @@ namespace ChronusQ {
      } // computeExchange
 
       
+#ifdef _FOCK_CONTRACTION_TIME
       auto durERIDCSSSS = tock(topERIDCSSSS);
       std::cout << "SSSS duration   = " << durERIDCSSSS << std::endl;
-
+#endif
 
 
     } ////Dirac-Coulomb-SSSS
@@ -1910,7 +1926,9 @@ namespace ChronusQ {
     if(this->hamiltonianOptions_.Gauge) {//Gauge
 
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto topERIGauge = tick();
+#endif
 
       auto nERIRef = 0;
       if(this->hamiltonianOptions_.DiracCoulomb) nERIRef += 4;
@@ -2609,9 +2627,10 @@ namespace ChronusQ {
 #endif
 
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto durERIGauge = tock(topERIGauge);
       std::cout << "Gauge duration   = " << durERIGauge << std::endl;
-
+#endif
 
 
 
@@ -2814,8 +2833,9 @@ namespace ChronusQ {
 
     if(this->hamiltonianOptions_.BareCoulomb) { // DIRECT_COULOMB
 
+#ifdef _FOCK_CONTRACTION_TIME
       auto topBareCoulomb = tick();
-
+#endif
       /*+++++++++++++++++++++++++++++++++++++++++++++*/
       /* Start of Direct Coulomb (LL|LL) Contraction */
       /*+++++++++++++++++++++++++++++++++++++++++++++*/
@@ -2858,8 +2878,10 @@ namespace ChronusQ {
       /*---------------------------------------------*/
 
       // Print out BareCoulomb duration 
+#ifdef _FOCK_CONTRACTION_TIME
       auto durBareCoulomb = tock(topBareCoulomb);
-//      std::cout << "Non-relativistic Coulomb duration = " << durBareCoulomb << std::endl;
+      std::cout << "Non-relativistic Coulomb duration = " << durBareCoulomb << std::endl;
+#endif
 
     } // DIRECT_COULOMB
 

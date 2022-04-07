@@ -35,7 +35,7 @@
 
 //#define __DEBUGERI__
 #define __INHOUSEGAUGE__
-
+// _REPORT_INCORE_INTEGRAL_TIMINGS 
 
 namespace ChronusQ {
 
@@ -83,7 +83,9 @@ namespace ChronusQ {
 
     std::cout<<"Using Libcint "<<std::endl;
 
+#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
     auto topERI4 = tick();
+#endif
 
     #pragma omp parallel
     {
@@ -163,8 +165,10 @@ namespace ChronusQ {
 
     }; // omp region
 
+#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
     auto durERI4 = tock(topERI4);
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
+#endif
 
     memManager_.free(buffAll, atm, bas, env);
 
@@ -302,7 +306,10 @@ namespace ChronusQ {
     std::cout<<"Using Libcint "<<std::endl;
 
 #if 1 // (ij|kl)
+
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
     auto topERI4 = tick();
+#endif
 
     #pragma omp parallel
     {
@@ -383,10 +390,12 @@ namespace ChronusQ {
 
     }; // omp region
 
+#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
     auto durERI4 = tock(topERI4);
     //std::cout << "L = "<< basisSet_.shells[s1].contr[0].l<<" "<<basisSet_.shells[s2].contr[0].l<<" "
     //	               << basisSet_.shells[s3].contr[0].l<<" "<<basisSet_.shells[s4].contr[0].l<<std::endl;
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
+#endif
 
 #ifdef __DEBUGERI__
     // Debug output of the ERIs
@@ -422,8 +431,9 @@ namespace ChronusQ {
       int AzBy = 7;
       int AzBz = 8;
   
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto topERIDC = tick();
-  
+#endif  
       #pragma omp parallel
       {
         int thread_id = GetThreadID();
@@ -532,10 +542,12 @@ namespace ChronusQ {
         }; // s1
   
       }; // omp region
-  
+ 
+#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
       auto durERIDC = tock(topERIDC);
       std::cout << "Libcint-ERI-Dirac-Coulomb duration   = " << durERIDC << std::endl;
-    
+#endif   
+
 
 #if 0
       std::cout << std::scientific << std::setprecision(16);
@@ -595,8 +607,10 @@ namespace ChronusQ {
       int BzCy = 7;
       int BzCz = 8;
   
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto topERIGaunt = tick();
-  
+#endif
+
       #pragma omp parallel
       {
         int thread_id = GetThreadID();
@@ -799,10 +813,12 @@ namespace ChronusQ {
         }; // s1
   
       }; // omp region
-  
+ 
+#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
       auto durERIGaunt = tock(topERIGaunt);
       std::cout << "Libcint-ERI-Gaunt duration   = " << durERIGaunt << std::endl;
-  
+#endif
+
   
 #ifdef __DEBUGERI__
 
@@ -1068,8 +1084,10 @@ namespace ChronusQ {
       int AzBzCzDy = 79;
       int AzBzCzDz = 80;
 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto topERIDCSSSS = tick();
-  
+#endif
+
       #pragma omp parallel
       {
         int thread_id = GetThreadID();
@@ -1386,10 +1404,12 @@ namespace ChronusQ {
         }; // s1
   
       }; // omp region
-  
+ 
+
+#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
       auto durERIDCSSSS = tock(topERIDCSSSS);
       std::cout << "Libcint-ERI-Dirac-Coulomb-SSSS duration   = " << durERIDCSSSS << std::endl;
-
+#endif
 
 #if 0 
       std::cout << std::scientific << std::setprecision(16);
@@ -1557,7 +1577,9 @@ namespace ChronusQ {
       if (hamiltonianOptions.Gaunt) nERIRef += 19; // Gaunt
       if (hamiltonianOptions.DiracCoulombSSSS) nERIRef += 16; // Dirac-Coulomb-SSSS
 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto topERIGauge = tick();
+#endif
 
 #pragma omp parallel
       {
@@ -1793,9 +1815,10 @@ namespace ChronusQ {
       }
 
 
-
+#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
       auto durERIGauge = tock(topERIGauge);
       std::cout << "Libcint-ERI-Gauge duration   = " << durERIGauge << std::endl;
+#endif
 
 #if 0
       // LSSL
@@ -1917,7 +1940,9 @@ namespace ChronusQ {
 
     std::cout<<"Using Libcint "<<std::endl;
 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
     auto topERI4 = tick();
+#endif
 
     #pragma omp parallel
     {
@@ -1998,8 +2023,11 @@ namespace ChronusQ {
 
     }; // omp region
 
+
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
     auto durERI4 = tock(topERI4);
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
+#endif
 
     memManager_.free(cacheAll, buffAll, env, bas, atm);
 

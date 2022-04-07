@@ -53,8 +53,9 @@ namespace ChronusQ {
      size_t nDavidsonGuess   = 3;
 
      // SCF Settings 
-     bool   doSCF              = false;
-     bool   doIVOs             = false;
+     bool doSCF           = false;
+     bool doIVOs          = false;
+     
      size_t maxSCFIter         = 0;
      double scfEnergyConv      = 1.0e-8; 
      double scfGradientConv    = 1.0e-4;
@@ -67,7 +68,7 @@ namespace ChronusQ {
      MCSCFSettings(const MCSCFSettings &) = default;
      MCSCFSettings(MCSCFSettings &&) = default;
 
-     void print();
+     void print(bool);
   }; // struct MCSCFSettings 
   
   template <typename MatsT, typename IntsT>
