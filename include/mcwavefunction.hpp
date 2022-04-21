@@ -128,6 +128,7 @@ namespace ChronusQ {
     virtual void computeOneRDM(size_t);    
     virtual void computeOneRDM();
     virtual void computeTDMs(); // compute TDMs
+    void rdm2pdm(SquareMatrix<MatsT> &, double scale = 1.);
     
     WaveFunctionBase & referenceWaveFunction() { return dynamic_cast<WaveFunctionBase&>(ref_); }
     SingleSlater<MatsT,IntsT> & reference() const  { return ref_;} 
@@ -143,6 +144,8 @@ namespace ChronusQ {
     void printMOInfo(std::ostream&, size_t a = 0);
 
     // Properties
+    void populationAnalysis(size_t);
+    void populationAnalysis();
     double oscillator_strength(size_t, size_t s1 = 0);
 
     // Memory functions

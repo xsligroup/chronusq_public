@@ -61,6 +61,7 @@ namespace ChronusQ {
       "SWAPMO",
       "INORBITAL",
       "FVORBITAL",
+      "POPULATION",
       "OSCISTREN",
       "GENIVO",
       "PRINTMOS",
@@ -513,6 +514,9 @@ namespace ChronusQ {
               input.getData<double>("MCSCF.HESSDIAGSCALE"); )
      
    } // SCF Options
+
+   // Mulliken charge analysis
+   OPTOPT( mcscf->PopulationAnalysis = input.getData<bool>("MCSCF.POPULATION"); )
 
    // Oscillator strength
    OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )

@@ -59,7 +59,6 @@ namespace ChronusQ {
     size_t coreOrbOff = nC == 4 ? nAO / 2 : 0;
     size_t corrOrbOff = coreOrbOff + mopart.nFCore + nInact;
     size_t virtOrbOff = corrOrbOff + nCorrO;
-    double coreOcc = nC == 1 ? 2.: 1.;
     
     /**************************************/
     /* Step 1: build scaled AO density    */
@@ -67,32 +66,15 @@ namespace ChronusQ {
     SquareMatrix<MatsT> SCR(mem, nAO); 
     SCR.clear();
     
-    // Core contribution
-    for(auto i = coreOrbOff; i < corrOrbOff; i++) SCR(i,i) = coreOcc; 
-    
     // Cas contribution
     double scale = double(nCorrE - 1) / double(nCorrE);
-    SetMat('N', nCorrO, nCorrO, scale, oneRDM.pointer(), nCorrO, 
-      SCR.pointer() + corrOrbOff * (nAO + 1), nAO);
+    mcwfn_.rdm2pdm(oneRDM, scale);
 
-#ifdef _DEBUG_OR_IVOS
-    std::cout << " coreOrbOff = " << coreOrbOff <<std::endl;
-    std::cout << " corrOrbOff = " << corrOrbOff <<std::endl;
-    std::cout << " virtOrbOff = " << virtOrbOff <<std::endl;
-
-    oneRDM.output(std::cout, "MO 1RDM from active space", true);
-    SCR.output(std::cout, "MO Scaled 1PDM", true);
-#endif
-    
-    // Transform to AO basis 
-    SCR = SCR.transform('C', mo.pointer(), nAO, nAO);
-    
     /****************************************************/
     /* Step 2: form and diagonalize virtual fock matrix */
     /****************************************************/
     
     // form fock through SingleSlater 
-    *ss.onePDM = SCR.template spinScatter<MatsT>(); 
     ss.formFock(pert, false, 1.); 
     SCR = ss.fockMatrix->template spinGather<MatsT>(); 
     
