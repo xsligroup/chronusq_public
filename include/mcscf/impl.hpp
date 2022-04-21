@@ -181,6 +181,13 @@ namespace ChronusQ {
     this->printMCSCFFooter();
  
     // property calculation
+
+    // mulliken analysis
+    if (this->PopulationAnalysis) {
+      std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
+      MCWaveFunction<MatsT,IntsT>::populationAnalysis();
+    }
+
     // oscillator strength
     if (this->NosS1) {
       
