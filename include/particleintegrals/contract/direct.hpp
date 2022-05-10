@@ -2424,7 +2424,7 @@ namespace ChronusQ {
             buf_vec[d],
             buf_vec[d] + n1*n2*n3*n4,
             intBuffer_loc+d*lenIntBuffer,
-            std::bind1st(std::multiplies<double>(),0.5*s1234_deg)
+            std::bind(std::multiplies<double>(),0.5*s1234_deg,std::placeholders::_1)
           );
         }
 

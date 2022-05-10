@@ -83,6 +83,18 @@ namespace ChronusQ {
     virtual void output(std::ostream&, const std::string& = "",
                         bool printFull = false) const = 0;
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
+
+#ifdef CQ_ENABLE_MPI
+      // BCast ParticleIntegrals to all MPI processes
+      if( MPISize(comm) > 1 ) {
+        std::cerr  << "  *** Scattering a ParticleIntegrals object ***\n";
+        MPIBCast(NB,root,comm);
+      }
+#endif
+
+    }
+
     template <typename TransT>
     static std::shared_ptr<ParticleIntegrals> transform(
         const ParticleIntegrals&, char TRANS, const TransT* T, int NT, int LDT);

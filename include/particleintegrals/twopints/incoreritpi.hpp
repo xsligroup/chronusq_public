@@ -181,6 +181,28 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
+      TwoPInts<IntsT>::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        size_t NBRI_bcast = NBRI;
+        size_t NBNBRI_bcast = NBNBRI;
+        MPIBCast(NBRI_bcast,root,comm);
+        MPIBCast(NBNBRI_bcast,root,comm);
+
+        if (NBRI_bcast != NBRI or NBNBRI_bcast != NBNBRI) {
+          NBRI = NBRI_bcast;
+          NBNBRI = NBNBRI_bcast;
+          malloc();
+        }
+
+        MPIBCast(ERI3J,this->nBasis()*NBNBRI,root,comm);
+      }
+#endif
+
+    }
+
     InCore4indexTPI<IntsT> to4indexERI() {
       InCore4indexTPI<IntsT> eri4i(this->memManager(), this->nBasis());
       size_t NB2 = this->nBasis() * this->nBasis();

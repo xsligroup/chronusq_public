@@ -152,6 +152,27 @@ namespace ChronusQ {
         components_.emplace_back(p);
     }
 
+    VectorInts& operator=( const VectorInts &other ) {
+      if (this != &other) {
+        order_ = other.order_;
+        symmetric_ = other.symmetric_;
+        components_.clear();
+        for (const auto & comp : other.components_)
+          components_.push_back(comp);
+      }
+      return *this;
+    }
+    VectorInts& operator=( VectorInts &&other ) {
+      if (this != &other) {
+        order_ = other.order_;
+        symmetric_ = other.symmetric_;
+        components_.clear();
+        for (const auto & comp : other.components_)
+          components_.push_back(comp);
+      }
+      return *this;
+    }
+
     size_t size() const { return components_.size(); }
     bool symmetric() const { return symmetric_; }
     size_t order() const { return order_; }
@@ -229,6 +250,43 @@ namespace ChronusQ {
           out << "VectorInts[" + s + "]";
         out << std::endl;
       }
+    }
+
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      ParticleIntegrals::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        size_t order_bcast = order_;
+        bool symmetric_bcast = symmetric_;
+        MPIBCast(order_bcast,root,comm);
+        MPIBCast(symmetric_bcast,root,comm);
+
+        if (order_bcast != order_ or symmetric_bcast != symmetric_) {
+          order_ = order_bcast;
+          symmetric_ = symmetric_bcast;
+          components_.clear();
+          size_t size = nComponents();
+          components_.reserve(size);
+          for (size_t i = 0; i < size; i++) {
+            components_.emplace_back(memManager_, NB);
+          }
+        }
+
+        for (OnePInts<IntsT>& comp : components_)
+          comp.broadcast(comm, root);
+      }
+#endif
+    }
+
+    template <typename IntsU>
+    VectorInts<IntsU> spatialToSpinBlock() const {
+      VectorInts<IntsU> spinBlockInts(memManager_, NB * 2, order_, symmetric_);
+      size_t size = nComponents();
+      for (size_t i = 0; i < size; i++) {
+        spinBlockInts.components_[i] = components_[i].template spatialToSpinBlock<IntsU>();
+      }
+      return spinBlockInts;
     }
 
     template <typename TransT>

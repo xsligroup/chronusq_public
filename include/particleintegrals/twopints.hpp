@@ -143,6 +143,16 @@ namespace ChronusQ {
     virtual IntsT operator()(size_t, size_t, size_t, size_t) const = 0;
     virtual IntsT operator()(size_t, size_t) const = 0;
 
+    void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      ParticleIntegrals::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        MPIBCast(sNB,root,comm);
+      }
+#endif
+    }
+
     //virtual TensorContraction ERITensor();
 
     virtual ~TwoPInts() {}

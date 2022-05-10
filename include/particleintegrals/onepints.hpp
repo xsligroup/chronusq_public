@@ -68,13 +68,17 @@ namespace ChronusQ {
         mat_(std::move(other)) {}
 
     OnePInts& operator=( const OnePInts &other ) {
-      NB = other.nBasis();
-      mat_ = other.mat_;
+      if (this != &other) {
+        NB = other.nBasis();
+        mat_ = other.mat_;
+      }
       return *this;
     }
     OnePInts& operator=( OnePInts &&other ) {
-      NB = other.nBasis();
-      mat_ = std::move(other.mat_);
+      if (this != &other) {
+        NB = other.nBasis();
+        mat_ = std::move(other.mat_);
+      }
       return *this;
     }
     template <typename IntsU>
@@ -129,6 +133,11 @@ namespace ChronusQ {
       else {
         out << opiStr << std::endl;
       }
+    }
+
+    void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      ParticleIntegrals::broadcast(comm, root);
+      mat_.broadcast(comm, root);
     }
 
     template <typename IntsU>

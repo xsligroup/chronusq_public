@@ -181,6 +181,26 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
+
+#ifdef CQ_ENABLE_MPI
+      // BCast matrix to all MPI processes
+      if( MPISize(comm) > 1 ) {
+        std::cerr  << "  *** Scattering a matrix ***\n";
+        size_t N_bcast = N_;
+        MPIBCast(N_bcast,root,comm);
+
+        if (N_bcast != N_) {
+          N_ = N_bcast;
+          malloc();
+        }
+
+        MPIBCast(ptr_,N_*N_,root,comm);
+      }
+#endif
+
+    }
+
     template <typename MatsU>
     PauliSpinorSquareMatrices<MatsU> spinScatter(
         bool hasXY = true, bool hasZ = true) const;
