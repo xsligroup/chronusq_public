@@ -123,6 +123,13 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      TwoPInts<IntsT>::broadcast(comm, root);
+#ifdef CQ_ENABLE_MPI
+      CErr("DirectTPI::broadcast() NYI");
+#endif
+    }
+
     virtual ~DirectTPI() {
       if(schwarz_)  this->memManager().free(schwarz_);
       if(schwarz2_) this->memManager().free(schwarz2_);
