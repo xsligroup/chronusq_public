@@ -479,21 +479,21 @@ namespace ChronusQ {
 
     MatsT * MO2 = nullptr;
     if( groupAB ) {
-      out << "\n\nCanonical Molecular Orbital Analysis (Alpha + Beta)";
+      out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha + Beta)";
       if (this->nC == 1 and not this->iCS) MO2 = this->mo[1].pointer();
       else MO2 =  this->mo[0].pointer() + (this->nC/2)*NB;
     }
     else if( this->nC >= 2 ) {
       out << "\n *** NOTICE: Alpha and Beta Analysis refer to the SAME "
         << "Canonical MOs ***";
-      out << "\n\nCanonical Molecular Orbital Analysis (Alpha)";
+      out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha)";
     }
     if( this->nC == 4 ) out << " for Large component";
     analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(), this->mo[0].pointer(),
             NOrb, molecule(), basisSet(), this->memManager, groupAtm, MO2);
 
     if( not groupAB and (this->nC >= 2 or not this->iCS) ) {
-      out << "\n\nCanonical Molecular Orbital Analysis (Beta)";
+      out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta)";
       if( this->nC == 4 ) out << " for Large component";
       if( this->nC == 1 )
         analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(),
@@ -509,11 +509,11 @@ namespace ChronusQ {
       IntsT* ssOverlap = this->memManager.template malloc<IntsT>(NB*NB);
       SetMat('N',NB,NB,1./(2*SpeedOfLight*SpeedOfLight),this->aoints.kinetic->pointer(),
                 NB,ssOverlap,NB);
-      out << "\n\nCanonical Molecular Orbital Analysis (Alpha) for Small component";
+      out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha) for Small component";
       analyzeMOPrint(out, NB, NOrb, ssOverlap, this->mo[0].pointer() + NB,
             NOrb, molecule(), basisSet(), this->memManager, groupAtm, MO2);
       if( not groupAB ) {
-        out << "\n\nCanonical Molecular Orbital Analysis (Beta) for Small component";
+        out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta) for Small component";
         analyzeMOPrint(out, NB, NOrb, ssOverlap, this->mo[0].pointer() + 3*NB,
                NOrb, molecule(), basisSet(), this->memManager, groupAtm);
       }

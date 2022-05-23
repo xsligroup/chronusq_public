@@ -126,7 +126,7 @@ namespace ChronusQ {
     double f = (2./3.) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(D);
 
     // output
-    std::cout << "\nExcited State: " << std::setw(3) << std::right << s2+1
+    std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
               << " to state: " << std::setw(3) << std::right << s1+1 << ":";
     std::cout << std::setw(15) << std::right << "E(Eh) = "
               << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);
