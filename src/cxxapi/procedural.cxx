@@ -271,9 +271,9 @@ namespace ChronusQ {
       bool firstStep = true;
       std::shared_ptr<RealTimeBase> rt = nullptr;
 
-      if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
-        compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
-      }
+//      if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
+//        compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
+//      }
 
       JobType elecJob = CQGeometryOptions(output, input, job, mol, ss, rt,
         ep_aoints, emPert);
@@ -314,6 +314,11 @@ namespace ChronusQ {
 
         // Run SCF job
         if( elecJob == SCF ) {
+
+          if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
+            compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
+          }
+
           ss->formCoreH(emPert, true);
           if(firstStep) {
             ss->formGuess(guessSSOptions);
@@ -372,6 +377,10 @@ namespace ChronusQ {
         }
 
         if ( elecJob == MR ) {
+
+          if (doNEO)
+            CErr("NEO-MCSCF NYI!",output);
+
           auto mcscf = CQMCSCFOptions(output,input,ss);
           mcscf->savFile = rstFile;
           mcscf->run(emPert);
