@@ -1,25 +1,14 @@
-diff --git CMakeLists.txt CMakeLists.txt
-index f3b5ccd..7faf71e 100644
---- CMakeLists.txt
-+++ CMakeLists.txt
-@@ -30,7 +30,9 @@ if(QUADMATH_FOUND)
-   set(HAVE_QUADMATH_H 1 CACHE INTERNAL "Have QUADMATH")
- endif()
-
--find_package(BLAS REQUIRED)
-+if ( NOT BLAS_LIBRARIES )
-+  find_package(BLAS REQUIRED)
-+endif()
-
- include(CheckFunctionExists)
- set(CMAKE_REQUIRED_INCLUDES math.h)
-@@ -132,6 +134,9 @@ set_target_properties(cint PROPERTIES
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0d15b7a..9da6b3c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -165,6 +165,9 @@ set_target_properties(cint PROPERTIES
    VERSION ${cint_VERSION}
    SOVERSION ${cint_SOVERSION}
    LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 +target_include_directories(cint
 +  INTERFACE ${PROJECT_BINARY_DIR}/include
 +  PUBLIC    ${PROJECT_SOURCE_DIR}/include)
- target_link_libraries(cint ${BLAS_LIBRARIES})
  if(QUADMATH_FOUND)
    target_link_libraries(cint quadmath)
+ endif()

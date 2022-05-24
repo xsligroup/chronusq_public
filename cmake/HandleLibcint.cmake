@@ -153,7 +153,7 @@ if ( NOT TARGET ChronusQ::Libcint )
       FetchContent_Declare (
         Libcint
         GIT_REPOSITORY "https://github.com/sunqm/libcint"
-        GIT_TAG "v4.4.3"
+        GIT_TAG "v5.1.2"
         UPDATE_COMMAND cd ${FETCHCONTENT_BASE_DIR}/libcint-src && patch -N < ${PROJECT_SOURCE_DIR}/external/libcint/patch/CMakeLists.txt.patch || patch -N < ${PROJECT_SOURCE_DIR}/external/libcint/patch/CMakeLists.txt.patch | grep "Skipping patch" -q
       )
   
@@ -169,10 +169,6 @@ if ( NOT TARGET ChronusQ::Libcint )
 
       endif()
 
-      if ( TARGET openblas )
-        add_dependencies( cint openblas )
-      endif()
-  
       add_library ( ChronusQ::Libcint ALIAS cint )
 
     endif()
