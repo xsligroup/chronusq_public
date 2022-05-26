@@ -1297,8 +1297,8 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   template <typename U>
-  void PolarizationPropagator<SingleSlater<MatsT, IntsT>>::preConditioner(size_t nVec, 
-    U shift, U* V, U* AV) {
+  void PolarizationPropagator<SingleSlater<MatsT, IntsT>>::preConditioner(size_t nVec,
+      U shift, SolverVectors<U> &V, SolverVectors<U> &AV) {
 
 
     auto& ss = dynamic_cast<SingleSlater<MatsT, IntsT>&>(*this->ref_);
@@ -1328,9 +1328,12 @@ namespace ChronusQ {
     size_t NS = this->nSingleDim_;
     size_t hNS = NS / 2;
 
+    bool isRaw = V.underlyingType() == typeid(RawVectors<U>)
+        and AV.underlyingType() == typeid(RawVectors<U>);
+    if (isRaw and MPIRank(this->comm_) == 0)
     for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      auto * AVk = AV + iVec * NS;
-      auto * Vk  = V  + iVec * NS;
+      auto * AVk = AV.getPtr() + iVec * NS;
+      auto * Vk  = V.getPtr()  + iVec * NS;
       for(auto k = 0ul; k < N; k++) {
 
         size_t i = k / NV;
@@ -1380,6 +1383,61 @@ namespace ChronusQ {
         } // Y update
 
       } // Beta update
+
+
+    } // loop over vectors
+
+    else if (not isRaw)
+    for(auto iVec = 0ul; iVec < nVec; iVec++) {
+      for(auto k = 0ul; k < N; k++) {
+
+        size_t i = k / NV;
+        size_t a = (k % NV) + NO;
+
+        AV.set(k, iVec, V.get(k, iVec) / diag(eps[a],eps[i]));
+
+      } // X update
+
+
+      if( not doReduced )
+        for(auto k = 0ul; k < N; k++) {
+
+          size_t i = k / NV;
+          size_t a = (k % NV) + NO;
+
+          AV.set(k + hNS, iVec, V.get(k + hNS, iVec) / diag(eps[a],eps[i]));
+
+        } // Y update
+
+
+        if( ss.nC == 1 ) {
+
+          eps = ss.iCS ? eps : ss.eps2;
+
+          N  = nOBVB;
+          NV = ss.nVB;
+          NO = ss.nOB;
+
+          for(auto k = 0ul; k < N; k++) {
+
+            size_t i = k / NV;
+            size_t a = (k % NV) + NO;
+
+            AV.set(k + nOAVA, iVec, V.get(k + nOAVA, iVec) / diag(eps[a],eps[i]));
+
+          } // X update
+
+          if( not doReduced )
+            for(auto k = 0ul; k < N; k++) {
+
+              size_t i = k / NV;
+              size_t a = (k % NV) + NO;
+
+              AV.set(k + nOAVA + hNS, iVec, V.get(k + nOAVA + hNS, iVec) / diag(eps[a],eps[i]));
+
+            } // Y update
+
+        } // Beta update
 
 
     } // loop over vectors
@@ -2196,7 +2254,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void PolarizationPropagator< SingleSlater<MatsT, IntsT> >::resGuess(
-      size_t nGuess, MatsT *G, size_t LDG) {
+      size_t nGuess, SolverVectors<MatsT> &G, size_t LDG) {
 
     SingleSlater<MatsT, IntsT>& ss = dynamic_cast<SingleSlater<MatsT,IntsT>&>(*this->ref_);
     size_t N = getNSingleDim(true);
@@ -2251,9 +2309,9 @@ namespace ChronusQ {
     std::sort(indx.begin(),indx.end(),compare);
 
     // Set guess
-    std::fill_n(G, nGuess*LDG, 0.); // FIXME: Assumes guess is contiguous
+    G.clear();
 
-    for(size_t iG = 0; iG < nGuess; iG++) G[iG * LDG + indx[iG]] = 1.;
+    for(size_t iG = 0; iG < nGuess; iG++) G.set(indx[iG], iG, 1.);
 
     /*
     // Confirm

@@ -121,8 +121,8 @@ void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
 #endif
 
 
-  typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, EigT *V, 
-      EigT *AV) {
+typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT> &V,
+    SolverVectors<EigT> &AV) {
 
 #ifdef CQ_ENABLE_MPI
     if( isMPI ) {
@@ -143,28 +143,32 @@ void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
 
       }
 
-      grid->Scatter(N,nVec,V,N,VLOC,MLoc_V,0,0);
+      grid->Scatter(N,nVec,V.getPtr(),N,VLOC,MLoc_V,0,0);
 
       Gemm_MPI('N','N',N,nVec,N,EigT(1.),ALOC,1,1,descA,VLOC,1,1,descV,
           EigT(0.),AVLOC,1,1,descV);
 
-      grid->Gather(N,nVec,AV,N,AVLOC,MLoc_V,0,0);
+      grid->Gather(N,nVec,AV.getPtr(),N,AVLOC,MLoc_V,0,0);
 
     } else 
 #endif
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nVec,N,EigT(1.),A,N,V,N,EigT(0.),AV,N);
+  blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+      N,nVec,N,EigT(1.),A,N,V.getPtr(),N,EigT(0.),AV.getPtr(),N);
 
   };
 
-  typename Davidson<EigT>::LinearTrans_t PC = [&]( size_t nVec, EigT *V, 
-      EigT *AV) {
+  typename Davidson<EigT>::LinearTrans_t PC = [&]( size_t nVec, SolverVectors<EigT> &V,
+      SolverVectors<EigT> &AV) {
 
-    if( V != AV ) std::copy_n(V,nVec*N,AV);
+    ROOT_ONLY(MPI_COMM_WORLD);
+
+    if( V.getPtr() != AV.getPtr() )
+      AV.set_data(0, nVec, V, 0);
 
     if( doPre )
     // Scale by inverse diagonals
     for( auto k = 0ul; k < N; k++ ) 
-      blas::scal(nVec, EigT(1.) / DIAG[k], AV + k, N);
+      blas::scal(nVec, EigT(1.) / DIAG[k], AV.getPtr() + k, N);
   };
 
 #ifndef _CQ_GENERATE_TESTS
@@ -184,7 +188,7 @@ void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
   dcomplex *refW = mem.malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
-  dcomplex *W = davidson.eigVal();
+  const dcomplex *W = davidson.eigVal();
 
   for(auto k = 0ul; k < nRoots; k++) {
     double diff1 = std::abs((W[k] - refW[k])/refW[k]);

@@ -31,6 +31,7 @@
 #include <cerr.hpp>
 #include <util/mpi.hpp>
 #include <util/timer.hpp>
+#include <itersolver.hpp>
 
 
 namespace ChronusQ {
@@ -87,10 +88,10 @@ namespace ChronusQ {
     CQMemManager& memManager_;
 
 
-    std::function< void(size_t,T,T*,T*) >       PC_;
-    std::function< void(size_t,dcomplex,dcomplex*,dcomplex*) > cmplxPC_;
+    std::function< void(size_t,T,SolverVectors<T>&,SolverVectors<T>&) >       PC_;
+    std::function< void(size_t,dcomplex,SolverVectors<dcomplex>&,SolverVectors<dcomplex>&) > cmplxPC_;
 
-    std::function< void(size_t,T*,T*) >     nSPC_;
+    std::function< void(size_t,SolverVectors<T>&,SolverVectors<T>&) >     nSPC_;
 
 
 #ifdef CQ_ENABLE_MPI
@@ -112,7 +113,7 @@ namespace ChronusQ {
 
     void writeMeta();
 
-    template <typename U> void iterLinearTrans(size_t nVec, U* V, U* AV);
+    template <typename U> void iterLinearTrans(size_t nVec, SolverVectors<U> &V, SolverVectors<U> &AV);
 
 
   public:
@@ -173,7 +174,7 @@ namespace ChronusQ {
     virtual std::pair<size_t,T*> formPropGrad(ResponseOperator) = 0;
     virtual void                 configOptions()                = 0;
     virtual void                 eigVecNorm()                   = 0;
-    virtual void                 resGuess(size_t, T*, size_t)   = 0;
+    virtual void                 resGuess(size_t, SolverVectors<T> &, size_t)   = 0;
 
     virtual void formLinearTrans( 
       std::vector<RESPONSE_CONTRACTION<double>>
@@ -413,7 +414,7 @@ namespace ChronusQ {
 
     template <typename U>
     void runIterFDR(FDResponseResults<T,U> &results,
-        std::function< void(size_t,U,U*,U*) > &preCond );
+                    std::function< void(size_t,U,SolverVectors<U>&,SolverVectors<U>&) > &preCond );
 
 
 
@@ -580,13 +581,13 @@ namespace ChronusQ {
    */
   template <typename T>
   template <typename U> 
-  void ResponseTBase<T>::iterLinearTrans(size_t nVec, U* V, U* AV) {
+  void ResponseTBase<T>::iterLinearTrans(size_t nVec, SolverVectors<U> &V, SolverVectors<U> &AV) {
 
     std::vector<RESPONSE_CONTRACTION<U>> cList(1);
     cList.back().nVec = nVec;
     cList.back().N    = nSingleDim_;
-    cList.back().X    = V;
-    cList.back().AX   = AV;
+    cList.back().X    = V.getPtr();
+    cList.back().AX   = AV.getPtr();
 
 #ifdef CQ_ENABLE_MPI
     CB_INT MLoc, NLoc;
@@ -607,7 +608,7 @@ namespace ChronusQ {
       cList.back().DescX  = fullMatGrid_->descInit(nSingleDim_,nVec,0,0,MLoc);
       cList.back().DescAX = cList.back().DescX;
 
-      fullMatGrid_->Scatter(nSingleDim_,nVec,V,nSingleDim_,cList.back().X,
+      fullMatGrid_->Scatter(nSingleDim_,nVec,V.getPtr(),nSingleDim_,cList.back().X,
         MLoc,0,0);
     }
 #endif
@@ -617,7 +618,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
     if( genSettings.isDist() ) {
 
-      fullMatGrid_->Gather(nSingleDim_,nVec,AV,nSingleDim_,cList.back().AX,
+      fullMatGrid_->Gather(nSingleDim_,nVec,AV.getPtr(),nSingleDim_,cList.back().AX,
         MLoc,0,0);
 
       if( cList.back().X  ) this->memManager_.free(cList.back().X );

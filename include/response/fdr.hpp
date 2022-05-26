@@ -191,14 +191,14 @@ namespace ChronusQ {
   template <typename T>
   template <typename U>
   void ResponseTBase<T>::runIterFDR(FDResponseResults<T,U> &results,
-      std::function< void(size_t,U,U*,U*) > &preCond ) {
+      std::function< void(size_t,U,SolverVectors<U>&,SolverVectors<U>&) > &preCond ) {
 
     bool isRoot = MPIRank(comm_) == 0;
     bool isDist = this->genSettings.isDist();
 
     ProgramTimer::tick("Iter FDR");
 
-    typename GMRES<U>::LinearTrans_t lt = [&](size_t nVec, U *V, U *AV) {
+    typename GMRES<U>::LinearTrans_t lt = [&](size_t nVec, SolverVectors<U> &V, SolverVectors<U> &AV) {
 
       iterLinearTrans(nVec,V,AV);
 
@@ -207,14 +207,11 @@ namespace ChronusQ {
 
     typename GMRES<U>::Shift_t pc = 
       bool(preCond) ? preCond :
-      [&](size_t nVec, U shift, U *V, U *AV) {
+      [&](size_t nVec, U shift, SolverVectors<U> &V, SolverVectors<U> &AV) {
 
       if( not this->fullMatrix_ ) CErr();
 
-      for(auto iVec = 0ul; iVec < nVec;            iVec++) 
-      for(auto k    = 0ul; k < this->nSingleDim_;  k++) 
-        AV[ k + iVec*this->nSingleDim_ ] = 
-          V[ k + iVec*this->nSingleDim_]; 
+      AV.set_data(0, nVec, V, 0);
 
     };
 
@@ -226,17 +223,18 @@ namespace ChronusQ {
 
 
     // Set the RHS and shifts
-    if( isRoot ) {
-      gmres.setRHS(fdrSettings.nRHS,results.RHS,this->nSingleDim_);
-      gmres.setShifts(results.shifts.size(),&results.shifts[0]);
-    }
+    gmres.setRHS(fdrSettings.nRHS,results.RHS,this->nSingleDim_);
+    gmres.setShifts(results.shifts.size(),&results.shifts[0]);
 
     gmres.rhsBS   = fdrSettings.nRHS;
     gmres.shiftBS = results.shifts.size();
 
     gmres.run();
 
-    if( isRoot ) gmres.getSol(results.SOL);
+    if( isRoot )
+      std::copy_n(gmres.getSol()->getPtr(),
+                  fdrSettings.nRHS * results.shifts.size() * nSingleDim_,
+                  results.SOL);
 
     ProgramTimer::tock("Iter FDR");
 

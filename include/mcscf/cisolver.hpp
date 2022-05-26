@@ -79,7 +79,7 @@ namespace ChronusQ {
 #endif
 
 
-      GeneralEigenSymm('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet); 
+      GeneralEigen('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet);
       //HermetianEigen('V', 'L', NDet, fullH, NDet, Energy, mem);
       
 #ifdef _DEBUG_CIENGINE_IMPL
@@ -115,7 +115,7 @@ namespace ChronusQ {
       using LinearTrans_t = typename IterDiagonalizer<MatsT>::LinearTrans_t;
       
       // define linear transformation
-      LinearTrans_t func = [&] (size_t nVec, MatsT * V, MatsT * AV) {
+      LinearTrans_t func = [&] (size_t nVec, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
           
 #ifdef CQ_ENABLE_MPI
 	    // disable MPI for now
@@ -123,19 +123,19 @@ namespace ChronusQ {
 #endif
         
         ProgramTimer::tick("Sigma");
-	    mcwfn.ciBuilder->buildSigma(mcwfn, nVec, V, AV);
+	    mcwfn.ciBuilder->buildSigma(mcwfn, nVec, V.getPtr(), AV.getPtr());
         ProgramTimer::tock("Sigma");
       
       }; 
       
       // define preconditioner
-      LinearTrans_t PC = [&] (size_t nVec, MatsT * S, MatsT *R) {
+      LinearTrans_t PC = [&] (size_t nVec, SolverVectors<MatsT> &S, SolverVectors<MatsT> &R) {
 
 #ifdef CQ_ENABLE_MPI
 	    // disable MPI for now
 	    ROOT_ONLY(mcwfn.comm);
 #endif
-	    this->davidsonPC(nVec, NDet, S, R, diagH, curEig);
+	    this->davidsonPC(nVec, NDet, S.getPtr(), R.getPtr(), diagH, curEig);
       }; 
       
       std::cout << "  Use Davidson Diagonalization ... \n" << std::endl;
@@ -146,15 +146,15 @@ namespace ChronusQ {
       davidson.setM(m);
       davidson.setkG(kG);
       davidson.setEigForT(curEig);
-      davidson.setGuess(nG, [&] (size_t nGuess, MatsT * Guess, size_t N) {
-	    this->davidsonGS(nGuess, N, diagH, Guess);
+      davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
+        this->davidsonGS(nGuess, N, diagH, Guess.getPtr());
       });
 
       davidson.run();
       
       // copy over eigenvalues and eigenvectors
       auto davidsonEig = davidson.eigVal();
-      auto davidsonVec = davidson.VR();
+      auto davidsonVec = davidson.VR()->getPtr();
 	  for (auto i = 0ul; i < nR; i++) {
 		StateEnergy[i] = std::real(davidsonEig[i]);
         std::copy_n(davidsonVec+i*NDet, NDet, CIVecs[i]);

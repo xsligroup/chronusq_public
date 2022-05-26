@@ -51,4 +51,7 @@ namespace ChronusQ {
   
   template class Davidson<double>;
   template class Davidson<dcomplex>;
+
+  template class SolverVectors<double>;
+  template class SolverVectors<dcomplex>;
 };

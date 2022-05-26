@@ -224,7 +224,7 @@ namespace ChronusQ {
   template<typename MatsT, typename IntsT>
   template<typename U>
   void PolarizationPropagator<NEOSS<MatsT,IntsT>>::neoPreConditioner(size_t nVec,
-    U shift, U* V, U* AV) {
+      U shift, SolverVectors<U> &V, SolverVectors<U> &AV) {
 
     auto& neoss = dynamic_cast<NEOSS<MatsT, IntsT>&>(*this->ref_);
 
@@ -251,9 +251,12 @@ namespace ChronusQ {
       );
     }
 
+    bool isRaw = V.underlyingType() == typeid(RawVectors<U>)
+        and AV.underlyingType() == typeid(RawVectors<U>);
+    if (isRaw and MPIRank(this->comm_) == 0)
     for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      U* AVk = AV + iVec * NS;
-      U* Vk  = V  + iVec * NS;
+      U* AVk = AV.getPtr() + iVec * NS;
+      U* Vk  = V.getPtr()  + iVec * NS;
       size_t off = 0;
       for(const auto& ss: subsystems) {
         double* eps = ss->eps1;
@@ -310,6 +313,67 @@ namespace ChronusQ {
         // Update subblocks
         AVk += NNext;
         Vk += NNext;
+        off += NNext;
+
+      } // Subsytem loop
+    } // Vector loop
+
+    else if (not isRaw)
+    for(auto iVec = 0ul; iVec < nVec; iVec++) {
+      size_t off = 0;
+      for(const auto& ss: subsystems) {
+        double* eps = ss->eps1;
+
+        size_t nOAVA = ss->nOA * ss->nVA;
+        size_t nOBVB = ss->nOB * ss->nVB;
+        size_t nOV = ss->nO * ss->nV;
+
+        size_t N  = (ss->nC == 1) ? nOAVA  : nOV;
+        size_t NV = (ss->nC == 1) ? ss->nVA : ss->nV;
+        size_t NO = (ss->nC == 1) ? ss->nOA : ss->nO;
+
+        size_t NNext = (ss->nC == 1) ? nOAVA + nOBVB : nOV;
+
+        const bool doBeta = ss->nC == 1;
+
+        // TODO: Profile; are the if blocks in the hot loop significant?
+        // Alpha / full
+        for(auto k = 0; k < N; k++) {
+          size_t i = k / NV;
+          size_t a = (k % NV) + NO;
+          U scale = diagonals.size() != 0 ?
+              diag(diagonals[k+off]) :
+              diag(eps[a]-eps[i]);
+
+          // X update
+          AV.set(k + off, iVec, V.get(k + off, iVec) / scale);
+          // Y update
+          if( not this->doReduced )
+            AV.set(k + off + hNS, iVec, V.get(k + off + hNS, iVec) / scale);
+        }
+
+        // Beta
+        if( doBeta ) {
+
+          eps = ss->iCS ? eps : ss->eps2;
+          N  = nOBVB;
+          NV = ss->nVB;
+          NO = ss->nOB;
+
+          for(auto k = 0; k < N; k++) {
+            size_t i = k / NV;
+            size_t a = (k % NV) + NO;
+            U scale = diagonals.size() != 0 ?
+                diag(diagonals[k+off+nOAVA]) :
+                diag(eps[a]-eps[i]);
+
+            AV.set(k + off + nOAVA, iVec, V.get(k + off + nOAVA, iVec) / scale);
+            if( not this->doReduced )
+              AV.set(k + off + hNS + nOAVA, iVec, V.get(k + off + hNS + nOAVA, iVec) / scale);
+          }
+        }
+
+        // Update subblocks
         off += NNext;
 
       } // Subsytem loop
