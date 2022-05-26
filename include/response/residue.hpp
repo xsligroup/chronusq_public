@@ -76,8 +76,8 @@ namespace ChronusQ {
       dcomplex *W = 
         memManager_.template malloc<dcomplex>(nSingleDim_);
 
-      GeneralEigenSymm(JOBVL,JOBVR,nSingleDim_,fMatUse,nSingleDim_,
-        W, resResults.VL, nSingleDim_, resResults.VR, nSingleDim_);
+      GeneralEigen(JOBVL, JOBVR, nSingleDim_, fMatUse, nSingleDim_,
+                   W, resResults.VL, nSingleDim_, resResults.VR, nSingleDim_);
       
       for(auto k = 0; k < nSingleDim_; k++)
         resResults.W[k] = std::real(W[k]);
@@ -124,7 +124,7 @@ namespace ChronusQ {
     bool isDist = this->genSettings.isDist();
 
 
-    typename GPLHR<T>::LinearTrans_t lt = [&](size_t nVec, T *V, T *AV) {
+    typename GPLHR<T>::LinearTrans_t lt = [&](size_t nVec, SolverVectors<T> &V, SolverVectors<T> &AV) {
 
       iterLinearTrans(nVec,V,AV);
 
@@ -135,14 +135,11 @@ namespace ChronusQ {
 
     typename GPLHR<T>::Shift_t pc =
       bool(PC_) ? PC_ :
-      [&](size_t nVec, T shift, T *V, T *AV) {
+      [&](size_t nVec, T shift, SolverVectors<T> &V, SolverVectors<T> &AV) {
 
       //if( not this->fullMatrix_ ) CErr();
 
-      for(auto iVec = 0ul; iVec < nVec;            iVec++) 
-      for(auto k    = 0ul; k < this->nSingleDim_;  k++)
-        AV[ k + iVec*this->nSingleDim_ ] = 
-          V[ k + iVec*this->nSingleDim_]; 
+      AV.set_data(0, nVec, V, 0);
     };
 
 
@@ -159,7 +156,7 @@ namespace ChronusQ {
 
     if( hasResGuess_ )
       gplhr.setGuess(resSettings.nRoots,
-          [&](size_t nG, T* G, size_t LDG){ this->resGuess(nG,G,LDG); });
+          [&](size_t nG, SolverVectors<T> & G, size_t LDG){ this->resGuess(nG,G,LDG); });
 
 
 
@@ -170,10 +167,11 @@ namespace ChronusQ {
       // Extract data from GPLHR storage
       for(auto k = 0; k < resSettings.nRoots; k++)
         resResults.W[k] = std::real(gplhr.eigVal()[k]);
-  
-      std::copy_n(gplhr.VR(), this->nSingleDim_ * resSettings.nRoots,
-          resResults.VR);
-  
+
+      std::copy_n(gplhr.VR()->getPtr(),
+                  this->nSingleDim_ * resSettings.nRoots,
+                  resResults.VR);
+
     }
 
     ProgramTimer::tock("Iter Diagonalize");

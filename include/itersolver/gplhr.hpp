@@ -75,43 +75,47 @@ namespace ChronusQ {
 
 
     // Initialize pointers
-    _F *V = nullptr , *W = nullptr , *S = nullptr , *P = nullptr ;
-    _F *AV = nullptr, *AW = nullptr, *AS = nullptr, *AP = nullptr;
-    _F *Q = nullptr , *Qp = nullptr, *Q1 = nullptr, *Q2 = nullptr, 
-       *Q3_p = nullptr;
+    std::shared_ptr<SolverVectors<_F>> V = nullptr;
+    std::shared_ptr<SolverVectors<_F>> W = nullptr , S = nullptr , P = nullptr ;
+    std::shared_ptr<SolverVectors<_F>> AV = nullptr;
+    std::shared_ptr<SolverVectors<_F>> AW = nullptr, AS = nullptr, AP = nullptr;
+    std::shared_ptr<SolverVectors<_F>> Q = nullptr;
+    std::shared_ptr<SolverVectors<_F>> Qp = nullptr, Q1 = nullptr, Q2 = nullptr,
+       Q3_p = nullptr;
 
 
     _F *BETA = nullptr; dcomplex *ALPHA = nullptr;
     _F *RMAT = nullptr, *PHI = nullptr, *PSI = nullptr;
     _F *VSR  = nullptr, *VSL = nullptr, *MA  = nullptr, *MB = nullptr;
-    _F *VSCR = nullptr, *VSCR2 = nullptr;
-
-    if( isRoot ) {
+    std::shared_ptr<SolverVectors<_F>> VSCR = nullptr, VSCR2 = nullptr;
 
       // V  = [V W S1...Sm P]
-      V = this->memManager_.template malloc<_F>(NMSS);
-      W = V + NNR;
-      S = W + NNR;
-      P = S + this->m * NNR;
+//      V = this->memManager_.template malloc<_F>(NMSS);
+      V = this->vecGen_(MSS);
+      W = std::make_shared<SolverVectorsView<_F>>(*V, nR);
+      S = std::make_shared<SolverVectorsView<_F>>(*W, nR);
+      P = std::make_shared<SolverVectorsView<_F>>(*S, this->m * nR);
 
       // AV = [AV AW AS1...ASm AP]
-      AV = this->memManager_.template malloc<_F>(NMSS);
-      AW = AV + NNR;
-      AS = AW + NNR;
-      AP = AS + this->m * NNR;
+      AV = this->vecGen_(MSS);
+      AW = std::make_shared<SolverVectorsView<_F>>(*AV, nR);
+      AS = std::make_shared<SolverVectorsView<_F>>(*AW, nR);
+      AP = std::make_shared<SolverVectorsView<_F>>(*AS, this->m * nR);
 
 
       // Q = [Q Q1 Q2 Q3]
-      Q = this->memManager_.template malloc<_F>(NMSS);
-      Qp = Q + NNR;
+      Q = this->vecGen_(MSS);
+      Qp = std::make_shared<SolverVectorsView<_F>>(*Q, nR);
 
-      Q1   = Qp;
-      Q2   = Q1 + NNR;
-      Q3_p = Q2 + this->m * NNR;
-
-
+      Q1   = std::make_shared<SolverVectorsView<_F>>(*Qp);
+      Q2   = std::make_shared<SolverVectorsView<_F>>(*Q1, nR);
+      Q3_p = std::make_shared<SolverVectorsView<_F>>(*Q2, this->m * nR);
 
 
+
+
+
+//      if( isRoot ) {
 
       // EVAL(I) = ALPHA(I) / BETA(I)
       ALPHA = this->memManager_.template malloc<dcomplex>(MSS);
@@ -128,7 +132,7 @@ namespace ChronusQ {
       MA  = this->memManager_.template malloc<_F>(MSS2);
       MB  = this->memManager_.template malloc<_F>(MSS2);
 
-    } // ROOT only
+//    } // ROOT only
 
 
 
@@ -136,8 +140,8 @@ namespace ChronusQ {
 
 
     // Need a NNR scratch on all processes
-    VSCR  = this->memManager_.template malloc<_F>(NNR); 
-    VSCR2 = this->memManager_.template malloc<_F>(NNR); 
+    VSCR  = this->vecGen_(nR);
+    VSCR2 = this->vecGen_(nR);
 
 
 
@@ -146,20 +150,20 @@ namespace ChronusQ {
 
 
 
-    if( isRoot ) {
+//    if( isRoot ) {
 
       // Initailize V as Guess, if no Guess set, init to identity
-      if( Guess ) std::copy_n(Guess,NNR,V);
+      if( Guess ) V->set_data(0, nR, *Guess, 0);
       else {
-        std::fill_n(V, NNR, 0.);
-        for(auto i = 0ul; i < nR; i++) V[i * (N+1)] = 1.0;
+        V->clear();
+        for(auto i = 0ul; i < nR; i++) V->set(i, i, 1.0);
       }
 
 
       // V <- QR(V)
-      QR(N,nR,V,N,this->memManager_);
+      V->QR(0, nR, this->memManager_);
 
-    } // ROOT only
+//    } // ROOT only
 
 
 
@@ -169,12 +173,12 @@ namespace ChronusQ {
     MPI_Barrier(this->comm_);
 
 
-    _F * VSend  = isRoot ? V  : nullptr;
-    _F * AVRecv = isRoot ? AV : nullptr;
+    std::shared_ptr<SolverVectors<_F>> VSend  = V;
+    std::shared_ptr<SolverVectors<_F>> AVRecv = AV;
 
 
     // AV <- A * V
-    this->linearTrans_(nR,VSend,AVRecv);
+    this->linearTrans_(nR, *VSend, *AVRecv);
 
     // Sync processes
     MPI_Barrier(this->comm_);
@@ -185,23 +189,24 @@ namespace ChronusQ {
 
     double nrmA = 0.;
 
-    if( isRoot ) {
+//    if( isRoot ) {
 
 
-      // Q <- AV - sig * V 
-      std::copy_n(AV, NNR, Q);
-      blas::axpy( NNR, -sigma, V, 1, Q, 1 );
+      // Q <- AV - sig * V
+      Q->set_data(0, nR, *AV, 0);
+      Q->axpy(0, nR, -sigma, *V, 0);
 
       // Q <- QR(Q)
-      QR(N,nR,Q,N,this->memManager_);
+      Q->QR(0, nR, this->memManager_);
         
 
 
 
       // PHI <- Q**H * AV
       // PSI <- Q**H * V
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nR,nR,N,_F(1.),Q,N,AV,N,_F(0.),PHI,nR);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nR,nR,N,_F(1.),Q,N,V,N,_F(0.),PSI,nR);
+      Q->dot_product(0, *AV, 0, nR,nR,PHI,nR);
+      Q->dot_product(0, *V, 0, nR,nR,PSI,nR);
+
 
 
       // VSR, VSL, ALPHA, BETA <- ORDQZ(PHI,PSI,sigma)
@@ -241,24 +246,24 @@ namespace ChronusQ {
       // VR  <- VR  * VSR
       // VL  <- VL  * VSL
       // AVR <- AVR * VSR
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),V,N,VSR,nR,_F(0.),VSCR,N);
-      std::copy_n(VSCR,NNR,V);
+      V->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSR,nR,_F(0.),*VSCR, 0);
+      V->set_data(0, nR, *VSCR, 0);
       
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),Q,N,VSL,nR,_F(0.),VSCR,N);
-      std::copy_n(VSCR,NNR,Q);
+      Q->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSL,nR,_F(0.),*VSCR, 0);
+      Q->set_data(0, nR, *VSCR, 0);
       
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),AV,N,VSR,nR,_F(0.),VSCR,N);
-      std::copy_n(VSCR,NNR,AV);
+      AV->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSR,nR,_F(0.),*VSCR, 0);
+      AV->set_data(0, nR, *VSCR, 0);
 
       // Form initial residuals in W
       // W = AV * MB - V * MA
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.) ,AV,N,MB,nR,_F(0.),W,N);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(-1.),V ,N,MA,nR,_F(1.),W,N);
+      AV->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),MB,nR,_F(0.),*W, 0);
+      V->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(-1.),MA,nR,_F(1.),*W, 0);
 
 
       // Get Residual Norms
-      nrmA =  lapack::lange(lapack::Norm::Fro,N,nR,AV,N);
-      getResidualNorms(N,nR,W,RelRes,this->eigVal_,nrmA);
+      nrmA = AV->norm2F(0, nR);
+      getResidualNorms(N,nR,*W,RelRes,this->eigVal_,nrmA);
 
 
 
@@ -298,7 +303,7 @@ namespace ChronusQ {
 
 
 
-    } // ROOT only
+//    } // ROOT only
 
     size_t iter = 0;
 
@@ -309,28 +314,27 @@ namespace ChronusQ {
 
       ProgramTimer::tick("Diagonalize Iter");
 
-      if( isRoot ) {
+//      if( isRoot ) {
 
         std::cout << "    GPLHRIter " << std::setw(5) << iter+1;
     
         // V, RMAT <- QR(V)
-        QR(N,nR,V,N,RMAT,nR,this->memManager_);
+        V->QR(0, nR, this->memManager_, RMAT, nR);
 
         // AV <- X : [X * RMAT = AV]
-        blas::trsm(blas::Layout::ColMajor,blas::Side::Right,blas::Uplo::Upper,blas::Op::NoTrans,blas::Diag::NonUnit,
-          N,nR,_F(1.),RMAT,nR,AV,N);
+        AV->trsm(0, nR,_F(1.),RMAT,nR);
 
         // Q <- QR(Q)
-        QR(N,nR,Q,N,this->memManager_);
+        Q->QR(0, nR, this->memManager_);
 
 
         // W = (I - V * V**H) * T * (I - V * V**H) * W 
-        newSMatrix(N,nR,V,N,V,N,W,N,RMAT,nR);
+        newSMatrix(nR,*V,*V,*W,RMAT,nR);
 
         // W <- QR(W)
-        QR(N,nR,W,N,this->memManager_);
+        W->QR(0, nR, this->memManager_);
 
-      } // ROOT only
+//      } // ROOT only
 
 
       // Sync processes
@@ -339,9 +343,10 @@ namespace ChronusQ {
       // AW <- A * W
       auto LTst = tick();
 
-      _F * WSend  = isRoot ? W  : nullptr;
-      _F * AWRecv = isRoot ? AW : nullptr;
-      this->linearTrans_(nR,WSend,AWRecv);
+      std::shared_ptr<SolverVectors<_F>> WSend  = W;
+      std::shared_ptr<SolverVectors<_F>> AWRecv = AW;
+
+      this->linearTrans_(nR, *WSend, *AWRecv);
 
 
       double LTdur = tock(LTst);
@@ -355,45 +360,40 @@ namespace ChronusQ {
       // S(0) = W, AS(0) = AW
       for( auto k = 1; k <= this->m; k++ ) {
 
-        _F *SSend = nullptr, *ASRecv = nullptr;
+        std::shared_ptr<SolverVectors<_F>> SSend = nullptr, ASRecv = nullptr;
 
-        if( isRoot ) {
+        // S(k-1) / AS(k-1)
+        std::shared_ptr<SolverVectors<_F>> Sprev  = std::make_shared<SolverVectorsView<_F>>(*W, (k - 1) * nR);
+        std::shared_ptr<SolverVectors<_F>> ASprev = std::make_shared<SolverVectorsView<_F>>(*AW, (k - 1) * nR);
 
-          // S(k-1) / AS(k-1)
-          _F *Sprev  = W  + (k-1) * NNR;
-          _F *ASprev = AW + (k-1) * NNR;
+        // S(k) / AS(k)
+        std::shared_ptr<SolverVectors<_F>> Scur  = std::make_shared<SolverVectorsView<_F>>(*W, k * nR);
+        std::shared_ptr<SolverVectors<_F>> AScur = std::make_shared<SolverVectorsView<_F>>(*AW, k * nR);
 
-          // S(k) / AS(k)
-          _F *Scur  = W  + k * NNR;
-          _F *AScur = AW + k * NNR;
-
-          SSend  = Scur;
-          ASRecv = AScur;
+        SSend  = Scur;
+        ASRecv = AScur;
 
 
+
+//        if( isRoot ) {
           // S(k) = AS(k-1) * MB - S(k-1) * MA
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.) ,ASprev,N,MB,nR,_F(0.),Scur,N);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(-1.),Sprev ,N,MA,nR,_F(1.),Scur,N);
+          ASprev->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.) ,MB,nR,_F(0.),*Scur, 0);
+          Sprev->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(-1.),MA,nR,_F(1.),*Scur, 0);
 
           // S(k) = (I - V * V**H) * T * (I - V * V**H) * S(k-1) 
-          newSMatrix(N,nR,V,N,V,N,Scur,N,RMAT,nR);
+          newSMatrix(nR,*V,*V,*Scur,RMAT,nR);
 
 
           // Project out previous S's
           // S(k) = (I - S(l) * S(l)**H) * S(k)  for l = [0,k)
           for(auto l = 0; l < k; l++) 
-            halfProj(N,nR,W + l * NNR,N,Scur,N,RMAT,nR);
+            halfProj(nR, SolverVectorsView<_F>(*W, l * nR), *Scur, RMAT, nR);
        
 
           // S(k) = QR(S(k))
-          QR(N,nR,Scur,N,this->memManager_);
+          Scur->QR(0, nR, this->memManager_);
 
-        } else { // ROOT only
-
-          SSend  = nullptr;
-          ASRecv = nullptr;
-
-        }
+//        }
 
 
 
@@ -403,7 +403,7 @@ namespace ChronusQ {
         // AS(k) = A * S(k) 
         LTst = tick();
 
-        this->linearTrans_(nR,SSend,ASRecv);
+        this->linearTrans_(nR, *SSend, *ASRecv);
 
         LTdur += tock(LTst);
 
@@ -418,7 +418,7 @@ namespace ChronusQ {
       const size_t nQp = iter ? 2 + this->m : 1 + this->m;
       const size_t nQ  = nQp + 1;
 
-      if( isRoot ) {
+//      if( isRoot ) {
 
         // Conjugate direction orthogonalization
         if (iter) {
@@ -426,39 +426,38 @@ namespace ChronusQ {
           // P = (I - V * V**H) * P
           // P = (I - W * W**H) * P
           // P = (I - S * S**H) * P
-          halfProj2(N,     nR,V,N,AV,N,P,N,AP,N,RMAT,nR  ); // Project out V
-          halfProj2(N,     nR,W,N,AW,N,P,N,AP,N,RMAT,nR  ); // Project out W
-          halfProj2(N,M_NR,nR,S,N,AS,N,P,N,AP,N,RMAT,M_NR); // Project out S
+          halfProj2(     nR,*V,*AV,*P,*AP,RMAT,nR  ); // Project out V
+          halfProj2(     nR,*W,*AW,*P,*AP,RMAT,nR  ); // Project out W
+          halfProj2(M_NR,nR,*S,*AS,*P,*AP,RMAT,M_NR); // Project out S
 
           // P, RMAT <- QR(P)
-          QR(N,nR,P,N,RMAT,nR,this->memManager_);
+          P->QR(0, nR, this->memManager_, RMAT, nR);
 
           // AP <- X : [X * RMAT = AP]
-          blas::trsm(blas::Layout::ColMajor,blas::Side::Right,blas::Uplo::Upper,blas::Op::NoTrans,blas::Diag::NonUnit,
-            N,nR,_F(1.),RMAT,nR,AP,N);
+          AP->trsm(0, nR,_F(1.),RMAT,nR);
 
         }
 
-        _F * Q3 = iter ? Q3_p : nullptr;
+        std::shared_ptr<SolverVectors<_F>> Q3 = iter ? Q3_p : nullptr;
 
         // Q' = (A - sigma * I) [W, S, [P]]
-        std::copy_n(AW,nQp * NNR, Qp);
-        blas::axpy( nQp * NNR, -sigma, W, 1, Qp, 1);
+        Qp->set_data(0, nQp*nR, *AW, 0);
+        Qp->axpy(0, nQp * nR, -sigma, *W, 0);
 
 
 
 
         // Q1 = (I - Q * Q**H) * Q1
         // Q1 = QR(Q1)
-        halfProj(N,nR,Q,N,Q1,N,RMAT,nR);
-        QR(N,nR,Q1,N,this->memManager_);
+        halfProj(nR,*Q,*Q1,RMAT,nR);
+        Q1->QR(0, nR, this->memManager_);
 
         // Q2 = (I - Q  * Q**H ) * Q2
         // Q2 = (I - Q1 * Q1**H) * Q2
         // Q2 = QR(Q2)
-        halfProj(N,nR,M_NR,Q ,N,Q2,N,RMAT,nR);
-        halfProj(N,nR,M_NR,Q1,N,Q2,N,RMAT,nR);
-        QR(N,M_NR,Q2,N,this->memManager_);
+        halfProj(nR,M_NR,*Q,*Q2,RMAT,nR);
+        halfProj(nR,M_NR,*Q1,*Q2,RMAT,nR);
+        Q2->QR(0, M_NR, this->memManager_);
 
 
         if( Q3 ) {
@@ -466,18 +465,18 @@ namespace ChronusQ {
           // Q3 = (I - Q1 * Q1**H) * Q3
           // Q3 = (I - Q2 * Q2**H) * Q3
           // Q3 = QR(Q3)
-          halfProj(N,     nR,Q ,N,Q3,N,RMAT,nR);
-          halfProj(N,     nR,Q1,N,Q3,N,RMAT,nR);
-          halfProj(N,M_NR,nR,Q2,N,Q3,N,RMAT,M_NR);
-          QR(N,nR,Q3,N,this->memManager_);
+          halfProj(nR,*Q,*Q3,RMAT,nR);
+          halfProj(nR,*Q1,*Q3,RMAT,nR);
+          halfProj(M_NR,nR,*Q2,*Q3,RMAT,M_NR);
+          Q3->QR(0, nR, this->memManager_);
         }
 
 
 
         // PHI <- Q**H * AV
         // PSI <- Q**H * V
-        blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nQ*nR, nQ*nR, N, _F(1.), Q,N, AV,N, _F(0.), PHI, nQ*nR); 
-        blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nQ*nR, nQ*nR, N, _F(1.), Q,N, V ,N, _F(0.), PSI, nQ*nR); 
+        Q->dot_product(0, *AV, 0, nQ*nR, nQ*nR, PHI, nQ*nR);
+        Q->dot_product(0, *V, 0, nQ*nR, nQ*nR, PSI, nQ*nR);
 
         // VSR, VSL, ALPHA, BETA <- ORDQZ(PHI,PSI,sigma)
         OrdQZ2('V','V',nQ*nR,PHI,nQ*nR,PSI,nQ*nR,ALPHA,BETA,hardLimD,sigmaD,
@@ -503,57 +502,57 @@ namespace ChronusQ {
         _F * VSRt_P = VSRt_S + M_NR;
 
         // VSCR = V * VSR_V + W * VSR_W + S * VSR_S + P * VSR_P
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),V,N,VSR_V,nQ*nR,_F(0.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),W,N,VSR_W,nQ*nR,_F(1.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,M_NR,_F(1.),S,N,VSR_S,nQ*nR,_F(1.),VSCR,N);
+        V->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSR_V,nQ*nR,_F(0.),*VSCR, 0);
+        W->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSR_W,nQ*nR,_F(1.),*VSCR, 0);
+        S->multiply_matrix(0, blas::Op::NoTrans,nR,M_NR,_F(1.),VSR_S,nQ*nR,_F(1.),*VSCR, 0);
         if( iter )
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),P,N,VSR_P,nQ*nR,_F(1.),VSCR,N);
+          P->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSR_P,nQ*nR,_F(1.),*VSCR, 0);
 
 
         // VSCR2 = V * VSRt_V + W * VSRt_W + S * VSRt_S + P * VSRt_P
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),V,N,VSRt_V,nQ*nR,_F(0.),VSCR2,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),W,N,VSRt_W,nQ*nR,_F(1.),VSCR2,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,M_NR,_F(1.),S,N,VSRt_S,nQ*nR,_F(1.),VSCR2,N);
-        if( iter )                          
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),P,N,VSRt_P,nQ*nR,_F(1.),VSCR2,N);
+        V->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSRt_V,nQ*nR,_F(0.),*VSCR2, 0);
+        W->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSRt_W,nQ*nR,_F(1.),*VSCR2, 0);
+        S->multiply_matrix(0, blas::Op::NoTrans,nR,M_NR,_F(1.),VSRt_S,nQ*nR,_F(1.),*VSCR2, 0);
+        if( iter )
+          P->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSRt_P,nQ*nR,_F(1.),*VSCR2, 0);
 
         // V = VSCR
         // P = VSCR2
-        std::copy_n(VSCR ,NNR,V);
-        std::copy_n(VSCR2,NNR,P);
+        V->set_data(0, nR, *VSCR, 0);
+        P->set_data(0, nR, *VSCR2, 0);
 
 
         // VSCR = AV * VSR_V + AW * VSR_W + AS * VSR_S + AP * VSR_P
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),AV,N,VSR_V,nQ*nR,_F(0.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),AW,N,VSR_W,nQ*nR,_F(1.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,M_NR,_F(1.),AS,N,VSR_S,nQ*nR,_F(1.),VSCR,N);
+        AV->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSR_V,nQ*nR,_F(0.),*VSCR, 0);
+        AW->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSR_W,nQ*nR,_F(1.),*VSCR, 0);
+        AS->multiply_matrix(0, blas::Op::NoTrans,nR,M_NR,_F(1.),VSR_S,nQ*nR,_F(1.),*VSCR, 0);
         if( iter )
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),AP,N,VSR_P,nQ*nR,_F(1.),VSCR,N);
+          AP->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSR_P,nQ*nR,_F(1.),*VSCR, 0);
 
         // VSCR2 = AV * VSRt_V + AW * VSRt_W + AS * VSRt_S + AP * VSRt_P
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),AV,N,VSRt_V,nQ*nR,_F(0.),VSCR2,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),AW,N,VSRt_W,nQ*nR,_F(1.),VSCR2,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,M_NR,_F(1.),AS,N,VSRt_S,nQ*nR,_F(1.),VSCR2,N);
-        if( iter )                           
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),AP,N,VSRt_P,nQ*nR,_F(1.),VSCR2,N);
+        AV->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSRt_V,nQ*nR,_F(0.),*VSCR2, 0);
+        AW->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSRt_W,nQ*nR,_F(1.),*VSCR2, 0);
+        AS->multiply_matrix(0, blas::Op::NoTrans,nR,M_NR,_F(1.),VSRt_S,nQ*nR,_F(1.),*VSCR2, 0);
+        if( iter )
+          AP->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSRt_P,nQ*nR,_F(1.),*VSCR2, 0);
 
 
         // AV = VSCR
         // AP = VSCR2
-        std::copy_n(VSCR ,NNR,AV);
-        std::copy_n(VSCR2,NNR,AP);
+        AV->set_data(0, nR, *VSCR, 0);
+        AP->set_data(0, nR, *VSCR2, 0);
 
         // VSCR = Q * VSR_V + Q1 * VSR_W + Q2 * VSR_S + Q3 * VSR_P
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),Q ,N,VSL_V,nQ*nR,_F(0.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR  ,_F(1.),Q1,N,VSL_W,nQ*nR,_F(1.),VSCR,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,M_NR,_F(1.),Q2,N,VSL_S,nQ*nR,_F(1.),VSCR,N);
+        Q->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSL_V,nQ*nR,_F(0.),*VSCR, 0);
+        Q1->multiply_matrix(0, blas::Op::NoTrans,nR,nR  ,_F(1.),VSL_W,nQ*nR,_F(1.),*VSCR, 0);
+        Q2->multiply_matrix(0, blas::Op::NoTrans,nR,M_NR,_F(1.),VSL_S,nQ*nR,_F(1.),*VSCR, 0);
         if( Q3 )
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),Q3,N,VSL_P,nQ*nR,_F(1.),VSCR,N);
+          Q3->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSL_P,nQ*nR,_F(1.),*VSCR, 0);
 
         // Q = VSCR
-        std::copy_n(VSCR,NNR,Q);
+        Q->set_data(0, nR, *VSCR, 0);
 
-      } // ROOT only
+//      } // ROOT only
 
       // Refresh AV
       if( (iter+1) % 100 == 0 ) {
@@ -568,7 +567,7 @@ namespace ChronusQ {
         LTst = tick();
 
 
-        this->linearTrans_(nR,VSend,AVRecv);
+        this->linearTrans_(nR,*VSend,*AVRecv);
 
         LTdur += tock(LTst);
 
@@ -576,7 +575,7 @@ namespace ChronusQ {
         MPI_Barrier(this->comm_);
       }
 
-      if( isRoot ) {
+//      if( isRoot ) {
 
         // Update MA, MB
         getTriU(nR,PHI,nQ*nR,PSI,nQ*nR,MA,nR,MB,nR);
@@ -587,8 +586,8 @@ namespace ChronusQ {
         
 
         // W = AV * MB - V * MA
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.) ,AV,N,MB,nR,_F(0.),W,N);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(-1.),V ,N,MA,nR,_F(1.),W,N);
+        AV->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.) ,MB,nR,_F(0.),*W, 0);
+        V->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(-1.),MA,nR,_F(1.),*W, 0);
         
         /*
         // Adaptive sigma
@@ -628,13 +627,13 @@ namespace ChronusQ {
 
 
         // Get Residual norms
-        getResidualNorms(N,nR,W,RelRes,this->eigVal_,nrmA);
+        getResidualNorms(N,nR,*W,RelRes,this->eigVal_,nrmA);
         
 
         // Check convergence
         isConverged = checkConv(nR,RelRes);
 
-      } // ROOT only
+//      } // ROOT only
 
 
       // Bcast converged
@@ -701,21 +700,18 @@ namespace ChronusQ {
     
 
 
-    if( isRoot ) {
+//    if( isRoot ) {
 
       // Reconstruct Eigen vectors
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nR,nR,N,_F(1.),V,N,AV,N,_F(0.),PSI,nR);
-      GeneralEigenSymm('N','V',nR,PSI,nR,ALPHA,VSL,nR,VSR,nR);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nR,nR,_F(1.),V,N,VSR,nR,_F(0.),this->VR_,N);
+      V->dot_product(0, *AV, 0, nR, nR, PSI, nR);
+      GeneralEigen('N', 'V', nR, PSI, nR, ALPHA, VSL, nR, VSR, nR);
+      V->multiply_matrix(0, blas::Op::NoTrans,nR,nR,_F(1.),VSR,nR,_F(0.),*this->VR_, 0);
 
-    }
+//    }
 
 
     // Free Scratch space
-    
-    if(V)      this->memManager_.free(V);
-    if(AV)     this->memManager_.free(AV);
-    if(Q)      this->memManager_.free(Q);
+
     if(ALPHA)  this->memManager_.free(ALPHA);
     if(BETA)   this->memManager_.free(BETA);
     if(RMAT)   this->memManager_.free(RMAT);
@@ -725,8 +721,6 @@ namespace ChronusQ {
     if(VSR)    this->memManager_.free(VSR);
     if(MA)     this->memManager_.free(MA);
     if(MB)     this->memManager_.free(MB);
-    if(VSCR)   this->memManager_.free(VSCR);
-    if(VSCR2)  this->memManager_.free(VSCR2);
 
     if( isRoot ) {
 
@@ -753,14 +747,14 @@ namespace ChronusQ {
     Assuming eigenvalues are finite.
   */
   template <typename _F>
-  void GPLHR<_F>::getResidualNorms(size_t N, size_t nR, _F *WMAT, double *RelRes, dcomplex *LAMBDA, double nrmA) { 
+  void GPLHR<_F>::getResidualNorms(size_t N, size_t nR, const SolverVectors<_F> &WMAT, double *RelRes, dcomplex *LAMBDA, double nrmA) {
 
-    ROOT_ONLY(this->comm_);
+    // ROOT_ONLY(this->comm_);
 
 
     for (auto i = 0; i < nR; i++) {
 
-      double nrmI = blas::nrm2(N,WMAT + i*N,1);
+      double nrmI = WMAT.norm2F(i, 1);
       RelRes[i] = nrmI / (nrmA + std::abs(LAMBDA[i]));
 
     }
@@ -784,7 +778,7 @@ namespace ChronusQ {
   void GPLHR<_F>::getTriU(size_t N, _F *TRIUA, size_t LDTRIUA, _F *TRIUB, 
     size_t LDTRIUB, _F *MA, size_t LDMA, _F *MB, size_t LDMB){
 
-    ROOT_ONLY(this->comm_);
+    // ROOT_ONLY(this->comm_);
 #if 0
 
     // G(TRIUB) = TRIUA * CA + TRIUB * CB
@@ -874,18 +868,18 @@ namespace ChronusQ {
    *  S = (I - V * V**H) * S
    */
   template <typename _F>
-  void GPLHR<_F>::halfProj(size_t N, size_t nV, size_t nS, _F *V, size_t LDV,
-    _F *S, size_t LDS, _F *SCR, size_t LDSCR) {
+  void GPLHR<_F>::halfProj(size_t nV, size_t nS, const SolverVectors<_F> &V,
+                           SolverVectors<_F> &S, _F *SCR, size_t LDSCR) {
 
     if( LDSCR < nV ) CErr("nV MUST be >= LDSCR");
 
-    ROOT_ONLY(this->comm_);
+    // ROOT_ONLY(this->comm_);
 
     // SCR = V**H * S
-    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nV,nS,N,_F(1.) ,V,LDV,S  ,LDS  ,_F(0.) ,SCR,LDSCR);
+    V.dot_product(0, S, 0, nV, nS, SCR, LDSCR);
 
     // S = S - V * SCR
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nS,nV, _F(-1.),V,LDV,SCR,LDSCR,_F(1.),S,  LDS  );
+    V.multiply_matrix(0, blas::Op::NoTrans, nS, nV, _F(-1.), SCR, LDSCR, _F(1.), S, 0);
 
   }
 
@@ -897,22 +891,21 @@ namespace ChronusQ {
    *  AS = AS - V * V**H  * S
    */
   template <typename _F>
-  void GPLHR<_F>::halfProj2(size_t N, size_t nV, size_t nS, _F *V, size_t LDV,
-    _F* AV, size_t LDAV, _F *S, size_t LDS, _F* AS, size_t LDAS, _F *SCR, 
-    size_t LDSCR) {
+  void GPLHR<_F>::halfProj2(size_t nV, size_t nS, const SolverVectors<_F> &V, const SolverVectors<_F> &AV,
+                            SolverVectors<_F> &S, SolverVectors<_F> &AS, _F *SCR, size_t LDSCR) {
 
     if( LDSCR < nV ) CErr("nV MUST be >= LDSCR");
 
-    ROOT_ONLY(this->comm_);
+    // ROOT_ONLY(this->comm_);
 
     // SCR = V**H * S
-    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nV,nS,N,_F(1.) ,V,LDV,S  ,LDS  ,_F(0.) ,SCR,LDSCR);
+    V.dot_product(0, S, 0, nV, nS, SCR, LDSCR);
 
     // S = S - V * SCR
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nS,nV, _F(-1.),V,LDV,SCR,LDSCR,_F(1.),S,  LDS  );
+    V.multiply_matrix(0, blas::Op::NoTrans, nS, nV, _F(-1.), SCR, LDSCR, _F(1.), S, 0);
 
     // AS = AS - AV * SCR
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nS,nV, _F(-1.),AV,LDAV,SCR,LDSCR,_F(1.),AS,LDAS  );
+    AV.multiply_matrix(0, blas::Op::NoTrans, nS, nV, _F(-1.), SCR, LDSCR, _F(1.), AS, 0);
 
   }
 
@@ -926,15 +919,15 @@ namespace ChronusQ {
    *  where T is the preconditioner
    */
   template <typename _F>
-  void GPLHR<_F>::newSMatrix(size_t N, size_t nR, _F *V, size_t LDV, _F *Q, 
-    size_t LDQ, _F *S, size_t LDS, _F *SCR, size_t LDSCR) {
+  void GPLHR<_F>::newSMatrix(size_t nR, const SolverVectors<_F> &V, const SolverVectors<_F> &Q,
+                             SolverVectors<_F> &S, _F *SCR, size_t LDSCR) {
 
 
-    ROOT_ONLY(this->comm_);
+    // ROOT_ONLY(this->comm_);
 
-    halfProj(N,nR,V,LDV,S,LDS,SCR,LDSCR);
+    halfProj(nR,V,S,SCR,LDSCR);
     this->preCondWShift_(nR,sigma,S,S);
-    halfProj(N,nR,Q,LDQ,S,LDS,SCR,LDSCR);
+    halfProj(nR,Q,S,SCR,LDSCR);
 
   }
 

@@ -31,6 +31,14 @@ namespace ChronusQ {
   template <typename _F>
   void IterDiagonalizer<_F>::run() {
 
+    if( MPISize(this->comm_) > 1 ) {
+
+      MPIBCast(nRoots_,0,this->comm_);
+      MPIBCast(this->N_,0,this->comm_);
+      MPIBCast(this->mSS_,0,this->comm_);
+
+    }
+
     bool isRoot = MPIRank(this->comm_) == 0;
     this->mSS_ = std::min(this->mSS_,this->N_);
     this->nGuess_ = std::min(this->nGuess_,this->N_);
@@ -57,14 +65,6 @@ namespace ChronusQ {
                                  << this->convCrit_ << "\n";
 
       std::cout << "\n\n" << std::endl;
-    }
-
-    if( MPISize(this->comm_) > 1 ) {
-
-      MPIBCast(nRoots_,0,this->comm_);
-      MPIBCast(this->N_,0,this->comm_);
-      MPIBCast(this->mSS_,0,this->comm_);
-
     }
 
     // Macro iterations UNFINISHED

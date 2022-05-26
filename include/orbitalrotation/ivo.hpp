@@ -87,7 +87,7 @@ namespace ChronusQ {
     dcomplex * EIVOs = mem.template malloc<dcomplex>(nFVirt);
     MatsT * U = mem.template malloc<MatsT>(nFVirt * nFVirt);
     MatsT * dummy = nullptr;
-    GeneralEigenSymm('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt); 
+    GeneralEigen('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt);
 
     /*****************************************************************/
     /* Step 3: transform virtal MO: C'(mu,b) = \sum_a C(mu,a) U(a,b) */

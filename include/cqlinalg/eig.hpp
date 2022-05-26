@@ -42,8 +42,8 @@ namespace ChronusQ {
    *  parameter documentation.
    */ 
   template <typename _F>
-  int GeneralEigenSymm(char JOBVL, char JOBVR, int N, _F *A, int LDA, dcomplex *W,
-    _F *VL, int LDVL, _F *VR, int LDVR);
+  int GeneralEigen(char JOBVL, char JOBVR, int N, _F *A, int LDA, dcomplex *W,
+                   _F *VL, int LDVL, _F *VR, int LDVR);
 
 
   // Hermetian Eigenproblem
