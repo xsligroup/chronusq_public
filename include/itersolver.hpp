@@ -54,12 +54,12 @@ namespace ChronusQ {
     virtual void set(size_t i, size_t j, _F value) = 0;
     // Clear elements
     void clear(size_t shift = 0) {
-      clear(shift, size());
+      clear(shift, size() - shift);
     }
     virtual void clear(size_t shift, size_t nVec) = 0;
     // Print elements
     void print(std::ostream& out, std::string str, size_t shift = 0) const {
-      print(out, str, shift, size());
+      print(out, str, shift, size() - shift);
     }
     virtual void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const = 0;
     // Get underlying type
@@ -126,7 +126,7 @@ namespace ChronusQ {
      * @param scalar Scalar factor
      */
     void scale(_F scalar, size_t shift = 0) {
-      scale(scalar, shift, size());
+      scale(scalar, shift, size() - shift);
     }
     virtual void scale(_F scalar, size_t shift, size_t nVec) = 0;
 
@@ -136,7 +136,7 @@ namespace ChronusQ {
      * @param nVec   Number of vectors to conjugate
      */
     void conjugate(size_t shift = 0) {
-      conjugate(shift, size());
+      conjugate(shift, size() - shift);
     }
     virtual void conjugate(size_t shift, size_t nVec) = 0;
 
@@ -200,7 +200,7 @@ namespace ChronusQ {
      * @return      2(F)-Norm of vector(s)
      */
     double norm2F(size_t shift) const {
-      return norm2F(shift, size());
+      return norm2F(shift, size() - shift);
     }
     virtual double norm2F(size_t shift, size_t nVec) const = 0;
 
@@ -212,7 +212,7 @@ namespace ChronusQ {
      * @return      The norm of the element with the greatest norm
      */
     double maxNormElement(size_t shift) const {
-      return maxNormElement(shift, size());
+      return maxNormElement(shift, size() - shift);
     }
     virtual double maxNormElement(size_t shift, size_t nVec) const = 0;
 
@@ -285,6 +285,7 @@ namespace ChronusQ {
       getPtr(j)[i] = value;
     }
 
+    using SolverVectors<_F>::clear;
     void clear(size_t shift, size_t nVec) override {
       ROOT_ONLY(comm_);
       if (nVec == std::numeric_limits<size_t>::max()) {
@@ -295,6 +296,7 @@ namespace ChronusQ {
       std::fill_n(getPtr(shift), nVec*length(), 0.);
     }
 
+    using SolverVectors<_F>::print;
     void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
       ROOT_ONLY(comm_);
       if (nVec == std::numeric_limits<size_t>::max()) {
@@ -314,8 +316,10 @@ namespace ChronusQ {
 
     virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) override;
 
+    using SolverVectors<_F>::scale;
     virtual void scale(_F scalar, size_t shift, size_t nVec) override;
 
+    using SolverVectors<_F>::conjugate;
     virtual void conjugate(size_t shift, size_t nVec) override;
 
     virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
@@ -327,8 +331,10 @@ namespace ChronusQ {
 
     virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
 
+    using SolverVectors<_F>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;
 
+    using SolverVectors<_F>::maxNormElement;
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
 
     virtual ~RawVectors() {
@@ -382,10 +388,12 @@ namespace ChronusQ {
       vecs_.set(i, shift() + j, value);
     }
 
+    using SolverVectors<_F>::clear;
     void clear(size_t shift, size_t nVec) override {
       vecs_.clear(this->shift() + shift, nVec);
     }
 
+    using SolverVectors<_F>::print;
     void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
       out << "Printing a SolverVectorsView object with shift: " << this->shift() << std::endl;
       vecs_.print(out, str, shift + this->shift(), nVec);
@@ -405,8 +413,10 @@ namespace ChronusQ {
 
     virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) override;
 
+    using SolverVectors<_F>::scale;
     virtual void scale(_F scalar, size_t shift, size_t nVec) override;
 
+    using SolverVectors<_F>::conjugate;
     virtual void conjugate(size_t shift, size_t nVec) override;
 
     virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
@@ -418,8 +428,10 @@ namespace ChronusQ {
 
     virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
 
+    using SolverVectors<_F>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;
 
+    using SolverVectors<_F>::maxNormElement;
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
 
     virtual ~SolverVectorsView() {}
