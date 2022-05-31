@@ -38,6 +38,7 @@ namespace ChronusQ {
    *   IN -> inactive
    *   CO -> correlated
    *   FV -> frozen virtual
+   *   NA -> negative MO for 4C only
    */
   template <typename MatsT, typename IntsT>  
   double OrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & pert,
@@ -50,8 +51,6 @@ namespace ChronusQ {
     if (not orbitalGradient_) 
       orbitalGradient_ = std::make_shared<SquareMatrix<MatsT>>(mem, mopart.nMO);
 
-    MatsT * G = orbitalGradient_->pointer();
-
     size_t nTOrb   = mopart.nMO;
     size_t nCorrO  = mopart.nCorrO;
     size_t nInact  = mopart.nInact;
@@ -63,19 +62,17 @@ namespace ChronusQ {
     MatsT * SCR  = mem.template malloc<MatsT>(SCRDim*SCRDim);
     MatsT * SCR2 = mem.template malloc<MatsT>(nCorrO*nInact);
 
-    // zero out IN-IN and FV-FV block s
-    SetMat('N', nInact, nInact, MatsT(0.), SCR, nInact, G, nTOrb);
-    SetMat('N', nFVirt, nFVirt, MatsT(0.), SCR, nFVirt, G + nINCO * (nTOrb + 1), nTOrb);
+    // zero out G
+    std::fill_n(orbitalGradient_->pointer(), nTOrb * nTOrb, MatsT(0.));
+    
+    // point to start of the positive energy part 
+    MatsT * G = orbitalGradient_->pointer() + mopart.nNegMO * (nTOrb + 1);
     
     // CO-CO block
     if (settings.rotate_within_correlated) {
       CErr("rotate MOs within correlated orbitals not implemented");
-    } else {
-      SetMat('N', nCorrO, nCorrO, MatsT(0.), SCR, nCorrO, G + nInact * (nTOrb + 1), nTOrb);
-    }
+    } 
     
-    MatsT fc;
-
     // IN-CO block
     if (settings.rotate_inact_correlated) {
       // g_it = -2 * (F1_it - F2_ti)
@@ -87,13 +84,11 @@ namespace ChronusQ {
       MatAdd('N', 'N', nInact, nCorrO, MatsT(1.), SCR, nInact,
         MatsT(-1.), SCR2, nInact, SCR, nInact);
       //  blas::scal(nInact * nCorrO, MatsT(2.), SCR, 1);
-      fc = MatsT(1.);
-    } else {
-      fc = MatsT(0.); 
-    }
+      
+      SetMat('N', nInact, nCorrO, -MatsT(1.), SCR, nInact, G + nTOrb * nInact, nTOrb);
+      SetMat('C', nInact, nCorrO,  MatsT(1.), SCR, nInact, G + nInact, nTOrb);
+    } 
     
-    SetMat('N', nInact, nCorrO, -fc, SCR, nInact, G + nTOrb * nInact, nTOrb);
-    SetMat('C', nInact, nCorrO,  fc, SCR, nInact, G + nInact, nTOrb);
 
     // IN-FV block
     if (settings.rotate_inact_virtual) {
@@ -101,13 +96,10 @@ namespace ChronusQ {
       // pupulate SCR as F1_ia
       this->formGeneralizedFock1(pert, oneRDM, SCR, "ia");
       //  blas::scal(nInact * nFVirt, MatsT(2.), SCR, 1);
-      fc = MatsT(1.);
-    } else {
-      fc = MatsT(0.); 
-    }
+      SetMat('N', nInact, nFVirt, -MatsT(1.), SCR, nInact, G + nTOrb * nINCO, nTOrb);
+      SetMat('C', nInact, nFVirt,  MatsT(1.), SCR, nInact, G + nINCO, nTOrb);
+    } 
 
-    SetMat('N', nInact, nFVirt, -fc, SCR, nInact, G + nTOrb * nINCO, nTOrb);
-    SetMat('C', nInact, nFVirt,  fc, SCR, nInact, G + nINCO, nTOrb);
 
     // CO-FV block
     if (settings.rotate_correlated_virtual) { 
@@ -115,16 +107,36 @@ namespace ChronusQ {
        // pupulate SCR as F2_ta
       this->formGeneralizedFock2(pert, oneRDM, twoRDM, SCR, "a");
       // blas::scal(nCorrO * nFVirt, MatsT(2.), SCR, 1); 
-      fc = MatsT(1.);
-    } else {
-      fc = MatsT(0.); 
-    }
-
-    SetMat('R', nCorrO, nFVirt, -fc, SCR, nCorrO, G + nTOrb * nINCO + nInact, nTOrb);
-    SetMat('T', nCorrO, nFVirt,  fc, SCR, nCorrO, G + nTOrb * nInact + nINCO, nTOrb);
+      SetMat('R', nCorrO, nFVirt, -MatsT(1.), SCR, nCorrO, G + nTOrb * nINCO + nInact, nTOrb);
+      SetMat('T', nCorrO, nFVirt,  MatsT(1.), SCR, nCorrO, G + nTOrb * nInact + nINCO, nTOrb);
+    } 
   
     mem.free(SCR, SCR2);
     
+    // repointing to the begining
+    G = orbitalGradient_->pointer();
+    
+    // NA-PO block
+    // which is the formualed similarly as IN-FV block and CO-FV block
+    if (settings.rotate_negative_positive) {
+      size_t nNegMO = mopart.nNegMO;
+      SCR  = mem.template malloc<MatsT>(nNegMO * std::max(nInact, nCorrO)); 
+      
+      // IN-NA block
+      if (nInact > 0) {
+        this->formGeneralizedFock1(pert, oneRDM, SCR, "in");
+        SetMat('N', nInact, nNegMO, -MatsT(1.), SCR, nInact, G + nNegMO, nTOrb);
+        SetMat('C', nInact, nNegMO,  MatsT(1.), SCR, nInact, G + nNegMO * nTOrb, nTOrb);
+      }
+
+      // CO-NA Block
+      this->formGeneralizedFock2(pert, oneRDM, twoRDM, SCR, "n");
+      SetMat('R', nCorrO, nNegMO, -MatsT(1.), SCR, nCorrO, G + nNegMO + nInact, nTOrb);
+      SetMat('T', nCorrO, nNegMO,  MatsT(1.), SCR, nCorrO, G + (nNegMO + nInact) * nTOrb, nTOrb);
+      
+      mem.free(SCR);
+    }
+
     double orbitalGradientNorm =  lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, G, nTOrb); 
 
 #ifdef DEBUG_ORBITALROTATION_GRADIENT

@@ -529,6 +529,7 @@ namespace ChronusQ {
         CErr("Spin-Orbit Scaling = "+ X + " is not compatible with X2CType = SpinFree",out);
       hamiltonianOptions.Boettger = false;
       hamiltonianOptions.AtomicMeanField = true;
+      CErr("AMFI NYI!",out);
 
     } else if( not X.compare("DEFAULT") ) {
 

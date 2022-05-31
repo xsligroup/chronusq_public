@@ -52,7 +52,8 @@ namespace ChronusQ {
     bool rotate_inact_correlated    = true;
     bool rotate_correlated_virtual  = true;
     bool rotate_inact_virtual       = true;
-    
+    bool rotate_negative_positive   = false;
+
     OrbitalRotationAlgorithm alg = ORB_ROT_APPROX_QUASI_2ND_ORDER;
 
     // handle hessians 
@@ -67,7 +68,7 @@ namespace ChronusQ {
     OrbitalRotationSettings(const OrbitalRotationSettings &) = default;
     OrbitalRotationSettings(OrbitalRotationSettings      &&) = default;
   
-    void print();
+    void print(bool fourComp);
   };
   
   /* 
@@ -92,7 +93,7 @@ namespace ChronusQ {
 
   public:
     
-    OrbitalRotationSettings settings;
+    OrbitalRotationSettings & settings;
 
     // delete default Constructor
     OrbitalRotation() = delete;
@@ -110,11 +111,14 @@ namespace ChronusQ {
         settings.rotate_inact_correlated = false;
         settings.rotate_inact_virtual    = false;
       }
+      
       if (mopart.nFVirt == 0) {
         std::cout << "  No Frozen Virtual in Orbital Rotations" << std::endl;
         settings.rotate_correlated_virtual = false; 
-        settings.rotate_inact_virtual       = false;
+        settings.rotate_inact_virtual      = false;
       }
+       
+
     
     }; // constructor
     
@@ -139,9 +143,6 @@ namespace ChronusQ {
       MatsT *);
     //void computeOrbOrbHessian(MatsT *);
     
-    template <typename MatsU>
-    void MatExpT(char, size_t, double, MatsU*, size_t, MatsU*, size_t, CQMemManager &);
-
   }; // class OrbitalRotation
   
 

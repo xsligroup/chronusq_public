@@ -55,13 +55,13 @@ namespace ChronusQ {
 
   template void ResponseTBase<double>::
     runIterFDR(FDResponseResults<double,double> &,
-      std::function< void(size_t,double,double*,double*) > & );
+               std::function< void(size_t,double,SolverVectors<double>&,SolverVectors<double>&) > & );
   template void ResponseTBase<double>::
     runIterFDR(FDResponseResults<double,dcomplex> &,
-      std::function< void(size_t,dcomplex,dcomplex*,dcomplex*) > & );
+               std::function< void(size_t,dcomplex,SolverVectors<dcomplex>&,SolverVectors<dcomplex>&) > & );
   template void ResponseTBase<dcomplex>::
     runIterFDR(FDResponseResults<dcomplex,dcomplex> &,
-      std::function< void(size_t,dcomplex,dcomplex*,dcomplex*) > & );
+               std::function< void(size_t,dcomplex,SolverVectors<dcomplex>&,SolverVectors<dcomplex>&) > & );
 
   template void ResponseTBase<double>::
     fdrObservables(FDResponseResults<double,double> &);
@@ -252,22 +252,22 @@ namespace ChronusQ {
       std::ostream&,size_t,double*,std::vector<std::pair<std::string,double*>>,double*,double*);
 
   template void PolarizationPropagator<SingleSlater<double,double>>::preConditioner(size_t nVec,
-      double shift, double *V, double *AV);
+      double shift, SolverVectors<double> &V, SolverVectors<double> &AV);
   template void PolarizationPropagator<SingleSlater<double,double>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
   template void PolarizationPropagator<SingleSlater<dcomplex,double>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
   template void PolarizationPropagator<SingleSlater<dcomplex,dcomplex>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
 
   template void ParticleParticlePropagator<SingleSlater<double,double>>::preConditioner(size_t nVec,
-      double shift, double *V, double *AV);
+      double shift, SolverVectors<double> &V, SolverVectors<double> &AV);
   template void ParticleParticlePropagator<SingleSlater<double,double>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
   template void ParticleParticlePropagator<SingleSlater<dcomplex,double>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
   template void ParticleParticlePropagator<SingleSlater<dcomplex,dcomplex>>::preConditioner(size_t nVec,
-      dcomplex shift, dcomplex *V, dcomplex *AV);
+      dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV);
           
 }; // namespace ChronusQ
 

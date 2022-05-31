@@ -39,6 +39,7 @@ namespace ChronusQ {
    *   IN -> inactive,      indexed by i, j, k, l
    *   CO -> correlated,    indexed by t, u, v, w
    *   FV -> frozen virtual indexed by a, b, c, d
+   *   NA -> negative energy orbitals, indexed by m, n
    */
   template <typename MatsT, typename IntsT>  
   void OrbitalRotation<MatsT, IntsT>::computeOrbOrbHessianDiag(EMPerturbation & pert, 
@@ -54,6 +55,7 @@ namespace ChronusQ {
     size_t nCorrO  = mopart.nCorrO;
     size_t nInact  = mopart.nInact;
     size_t nFVirt  = mopart.nFVirt;
+    size_t nNegMO  = mopart.nNegMO;
     
     size_t nINCO   = nInact + nCorrO;
     size_t SCRDim  = std::max(nCorrO, std::max(nInact, nFVirt));
@@ -62,7 +64,7 @@ namespace ChronusQ {
     
     // Allocate SCR
     MatsT * SCR   = mem.template malloc<MatsT>(SCRDim2);
-    MatsT * F1_ii = nullptr, * F1_aa = nullptr; 
+    MatsT * F1_ii = nullptr, * F1_aa = nullptr, * F1_nn = nullptr; 
     MatsT * RDM1_tt = mem.template malloc<MatsT>(nCorrO); 
     MatsT * F1_tt = mem.template malloc<MatsT>(nCorrO);
     MatsT * F2_tt = mem.template malloc<MatsT>(nCorrO);
@@ -87,18 +89,23 @@ namespace ChronusQ {
       F1_aa = mem.template malloc<MatsT>(nFVirt);
       this->formGeneralizedFock1(pert, oneRDM, F1_aa, "aa", true); 
     }
-  
-    // put one to the IN-IN and FV-FV blocks
-    std::fill_n(SCR, SCRDim2, notRotatedHessian);
-    SetMat('N', nInact, nInact, MatsT(1.), SCR, nInact, H, nTOrb);
-    SetMat('N', nFVirt, nFVirt, MatsT(1.), SCR, nFVirt, H + nINCO * (nTOrb+1), nTOrb);
+    
+    if (nNegMO > 0) {
+      //  F1_nn -> SCR
+      F1_nn = mem.template malloc<MatsT>(nNegMO);
+      this->formGeneralizedFock1(pert, oneRDM, F1_nn, "nn", true); 
+    }
 
+    // intialize H as all one
+    std::fill_n(H, nTOrb*nTOrb, notRotatedHessian);
+    
     // CO-CO block
     if (settings.rotate_within_correlated) {
       CErr("rotate MOs within correlated orbitals not implemented");
-    } else {
-      SetMat('N', nCorrO, nCorrO, MatsT(1.), SCR, nCorrO, H + nInact * (nTOrb + 1), nTOrb);
-    }
+    } 
+    
+    // point to start of the positive energy MO part 
+    MatsT * HP = H + nNegMO * (nTOrb + 1);
     
     // IN-CO block
     if (settings.rotate_inact_correlated) {
@@ -107,25 +114,24 @@ namespace ChronusQ {
       for (auto t = 0ul; t < nCorrO; t++)
       for (auto i = 0ul; i < nInact; i++)
         SCR[i + t * nInact] = F1_tt[t] + RDM1_tt[t] * F1_ii[i] - F2_tt[t]- F1_ii[i];
-    } else {
-      std::fill_n(SCR, nCorrO * nInact, notRotatedHessian);
+      
+      SetMat('N', nInact, nCorrO, MatsT(1.), SCR, nInact, HP + nTOrb * nInact, nTOrb);
+      SetMat('C', nInact, nCorrO, MatsT(1.), SCR, nInact, HP + nInact, nTOrb);
     } 
     
-    SetMat('N', nInact, nCorrO, MatsT(1.), SCR, nInact, H + nTOrb * nInact, nTOrb);
-    SetMat('C', nInact, nCorrO, MatsT(1.), SCR, nInact, H + nInact, nTOrb);
 
     // IN-FV block
     if (settings.rotate_inact_virtual) {
       // H_{ia,ia} = F1_aa - F1_ii  
+#pragma omp parallel for schedule(static) default(shared)       
       for (auto a = 0ul; a < nFVirt; a++)
       for (auto i = 0ul; i < nInact; i++)
         SCR[i + a * nInact] = F1_aa[a] - F1_ii[i];
-    } else {
-      std::fill_n(SCR, nInact * nFVirt, notRotatedHessian);
-    }
+      
+      SetMat('N', nInact, nFVirt, MatsT(1.), SCR, nInact, HP + nTOrb * nINCO, nTOrb);
+      SetMat('C', nInact, nFVirt, MatsT(1.), SCR, nInact, HP + nINCO, nTOrb);
+    } 
     
-    SetMat('N', nInact, nFVirt, MatsT(1.), SCR, nInact, H + nTOrb * nINCO, nTOrb);
-    SetMat('C', nInact, nFVirt, MatsT(1.), SCR, nInact, H + nINCO, nTOrb);
 
     // CO-FV block
     if (settings.rotate_correlated_virtual) { 
@@ -134,19 +140,46 @@ namespace ChronusQ {
       for (auto a = 0ul; a < nFVirt; a++)
       for (auto t = 0ul; t < nCorrO; t++)
         SCR[t + a * nCorrO] = RDM1_tt[t] * F1_aa[a] - F2_tt[t];
-    } else {
-      std::fill_n(SCR, nCorrO * nFVirt, notRotatedHessian);
-    }
-
-    SetMat('N', nCorrO, nFVirt, MatsT(1.), SCR, nCorrO, H + nTOrb * nINCO + nInact, nTOrb);
-    SetMat('C', nCorrO, nFVirt, MatsT(1.), SCR, nCorrO, H + nTOrb * nInact + nINCO, nTOrb);
     
-    // Free SCR
-    if(SCR)     mem.free(SCR); 
+      SetMat('N', nCorrO, nFVirt, MatsT(1.), SCR, nCorrO, HP + nTOrb * nINCO + nInact, nTOrb);
+      SetMat('C', nCorrO, nFVirt, MatsT(1.), SCR, nCorrO, HP + nTOrb * nInact + nINCO, nTOrb);
+    } 
+    
+    if(SCR) mem.free(SCR); 
+    
+    // NA-PO block
+    if (settings.rotate_negative_positive) {
+      
+      SCR = mem.template malloc<MatsT>(nNegMO * std::max(nInact, nCorrO));
+      
+      // IN-NA block
+      if (nInact > 0) {
+#pragma omp parallel for schedule(static) default(shared)       
+        for (auto n = 0ul; n < nNegMO; n++)
+        for (auto i = 0ul; i < nInact; i++)
+          SCR[i + n * nInact] = F1_nn[n] - F1_ii[i];
+      
+        SetMat('N', nInact, nNegMO, MatsT(1.), SCR, nInact, H + nNegMO, nTOrb);
+        SetMat('C', nInact, nNegMO, MatsT(1.), SCR, nInact, H + nNegMO * nTOrb, nTOrb);
+      }
+
+#pragma omp parallel for schedule(static) default(shared)       
+      for (auto n = 0ul; n < nNegMO; n++)
+      for (auto t = 0ul; t < nCorrO; t++)
+        SCR[t + n * nCorrO] = RDM1_tt[t] * F1_nn[n] - F2_tt[t];
+    
+      SetMat('N', nCorrO, nNegMO, MatsT(1.), SCR, nCorrO, H + nNegMO + nInact, nTOrb);
+      SetMat('C', nCorrO, nNegMO, MatsT(1.), SCR, nCorrO, H + (nNegMO + nInact) * nTOrb, nTOrb);
+      
+      mem.free(SCR);
+    }
+    
+    // Free SCRs
     if(F1_ii)   mem.free(F1_ii);
     if(F2_tt)   mem.free(F2_tt);
     if(F1_tt)   mem.free(F1_tt);
     if(F1_aa)   mem.free(F1_aa);
+    if(F1_nn)   mem.free(F1_nn);
     if(RDM1_tt) mem.free(RDM1_tt);
     
     // Scale Hessian
@@ -161,15 +194,18 @@ namespace ChronusQ {
 //      if (std::abs(OOHessianD[i]) > this->hessianDiagDampingThreshold)
 //        OOHessianD[i] /= this->hessianDiagDamping;
 //      else 
-      if (std::abs(H[pq]) < settings.hessianDiagMinTol) H[pq]  = MatsT(1.0e6);
+      if (std::abs(H[pq]) < settings.hessianDiagMinTol) {
+        if ( std::real(H[pq]) > 0.) H[pq]  = MatsT(1.0e6);
+        else H[pq] = -MatsT(1.0e6);
+      }
     }
 //*/
 
 #ifdef DEBUG_ORBITALROTATION_HESSIAN 
-  prettyPrintSmart(std::cout, "OR Orbital-Orbital Hessian Approximated Diagonal",
-    H, nTOrb, nTOrb, nTOrb);
-  double HDNorm = lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, H, nTOrb); 
-  std::cout << "Hessian Approximated Diagonal Norm = " << HDNorm << std::endl;
+    prettyPrintSmart(std::cout, "OR Orbital-Orbital Hessian Approximated Diagonal",
+      H, nTOrb, nTOrb, nTOrb);
+    double HDNorm = lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, H, nTOrb); 
+    std::cout << "Hessian Approximated Diagonal Norm = " << HDNorm << std::endl;
 #endif  
 
   }; // OrbitalRotation<MatsT>::computeOrbOrbHessianDiag

@@ -43,6 +43,8 @@ namespace ChronusQ {
     DetScheme scheme = CAS;
 
     size_t nMO=0;     /// < Total Number of Molecular Orbitals
+    size_t nElecMO=0; /// < Total Number of Electronic Molecular Orbitals
+    size_t nNegMO=0;  /// < Total Number of Negative Energy Molecular Orbitals
     size_t nInact=0;  /// < Number of Uncorrelated Core Orbitals
     size_t nFVirt=0;  /// < Number of Uncorrelated Virtual Orbtals
     size_t nFCore=0;  /// < Number of Frozen Core Orbitals (won't do rotations)
@@ -101,11 +103,17 @@ namespace ChronusQ {
     double InactEnergy;
     std::vector<double> StateEnergy;
 
+    bool StateAverage    = false;
+    std::vector<double> SAWeight;
+    
+    bool PopulationAnalysis = false; // default is do not do Mulliken analysis
     size_t NosS1 = 0; // number of initial states s1 for oscillator strength
     double * osc_str = nullptr; // matrix to save oscillator strength
 
-    bool StateAverage = false;
-    std::vector<double> SAWeight;
+    // Print Settings
+    size_t printMOCoeffs = 0;
+    size_t printRDMs = 0;
+    double rdmCut = 0.10;
 
     MCWaveFunctionBase()                           = delete;
     MCWaveFunctionBase(const MCWaveFunctionBase &) = default;
@@ -126,7 +134,7 @@ namespace ChronusQ {
     ~MCWaveFunctionBase() { dealloc(); };
 
     void partitionMOSpace(std::vector<size_t>, size_t);
-    void turnOnStateAverage(std::vector<double>);
+    void turnOnStateAverage(const std::vector<double> &);
     std::vector<int> genfCat(std::vector<std::vector<size_t>>,
       std::vector<std::vector<size_t>>, size_t, size_t);
     std::vector<int> genfCat(std::vector<std::vector<size_t>>, size_t);

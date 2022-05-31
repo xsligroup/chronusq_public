@@ -111,6 +111,27 @@ namespace ChronusQ {
         components_.emplace_back(p);
     }
 
+    MultipoleInts& operator=( const MultipoleInts &other ) {
+      if (this != &other) {
+        highOrder_ = other.highOrder_;
+        symmetric_ = other.symmetric_;
+        components_.clear();
+        for (const auto & comp : other.components_)
+          components_.push_back(comp);
+      }
+      return *this;
+    }
+    MultipoleInts& operator=( MultipoleInts &&other ) {
+      if (this != &other) {
+        highOrder_ = other.highOrder_;
+        symmetric_ = other.symmetric_;
+        components_.clear();
+        for (const auto & comp : other.components_)
+          components_.push_back(comp);
+      }
+      return *this;
+    }
+
     size_t size() const { return cumeComponents(highOrder()); }
     bool symmetric() const { return symmetric_; }
     size_t highOrder() const { return highOrder_; }
@@ -135,9 +156,18 @@ namespace ChronusQ {
       return components_[s.size()-1][s];
     }
 
-    std::vector<IntsT*> pointersByOrder(size_t order) {
+    VectorInts<IntsT>& getByOrder(size_t order) {
       orderCheck(order--);
-      return components_[order].pointers();
+      return components_[order];
+    }
+
+    const VectorInts<IntsT>& getByOrder(size_t order) const {
+      orderCheck(order--);
+      return components_[order];
+    }
+
+    std::vector<IntsT*> pointersByOrder(size_t order) {
+      return getByOrder(order).pointers();
     }
 
     std::vector<IntsT*> dipolePointers() {
@@ -178,7 +208,7 @@ namespace ChronusQ {
         for (size_t i = 0; i < size(); i++) {
           std::string label_i = label(i);
           prettyPrintSmart(out, oeiStr+label_i, operator[](label_i).pointer(),
-              this->nBasis(), this->nBasis(), this->nBasis());
+                           this->nBasis(), this->nBasis(), this->nBasis());
         }
       } else {
         std::string oeiStr;
@@ -203,6 +233,42 @@ namespace ChronusQ {
         }
         out << std::endl;
       }
+    }
+
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      ParticleIntegrals::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        size_t highOrder_bcast = highOrder_;
+        bool symmetric_bcast = symmetric_;
+        MPIBCast(highOrder_bcast,root,comm);
+        MPIBCast(symmetric_bcast,root,comm);
+
+        if (highOrder_bcast != highOrder_ or symmetric_bcast != symmetric_) {
+          highOrder_ = highOrder_bcast;
+          symmetric_ = symmetric_bcast;
+          components_.clear();
+          components_.reserve(highOrder_);
+          for (size_t i = 1; i <= highOrder_; i++) {
+            components_.emplace_back(memManager_, NB, i, symmetric_);
+          }
+        }
+
+        for (VectorInts<IntsT>& comp : components_)
+          comp.broadcast(comm, root);
+      }
+#endif
+    }
+
+    template <typename IntsU>
+    MultipoleInts<IntsU> spatialToSpinBlock() const {
+      MultipoleInts<IntsU> spinBlockInts(memManager_, NB * 2, highOrder_, symmetric_);
+      size_t size = components_.size();
+      for (size_t i = 0; i < size; i++) {
+        spinBlockInts.components_[i] = components_[i].template spatialToSpinBlock<IntsU>();
+      }
+      return spinBlockInts;
     }
 
     template <typename TransT>

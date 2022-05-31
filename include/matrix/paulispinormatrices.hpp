@@ -265,6 +265,12 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      SquareMatrix<MatsT>::broadcast(comm, root);
+      for (SquareMatrix<MatsT>& comp : components_)
+        comp.broadcast(comm, root);
+    }
+
     template <typename MatsU>
     SquareMatrix<MatsU> spinGather() const;
 

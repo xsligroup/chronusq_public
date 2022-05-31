@@ -39,24 +39,24 @@ namespace ChronusQ {
   void IterLinearSolver<_F>::setRHS(size_t nRHS, T*RHS, size_t LDRHS) {
 
 
-    // NO MPI
-    ROOT_ONLY(this->comm_);
-
-
     // Copy RHS
     nRHS_ = nRHS;
-    RHS_  = this->memManager_.template malloc<_F>(nRHS*this->N_);
+    RHS_ = this->vecGen_(nRHS);
 
-    if( LDRHS == this->N_ )
-      std::copy_n(RHS, nRHS*this->N_, RHS_);
-    else
-      for(auto iRHS = 0ul; iRHS < nRHS; iRHS++)
-        std::copy_n(RHS + iRHS*LDRHS, this->N_, RHS_ + iRHS*this->N_);
+
+    // NO MPI
+//    ROOT_ONLY(this->comm_);
+    if( MPIRank(this->comm_) == 0 )
+      if( LDRHS == this->N_ )
+        std::copy_n(RHS, nRHS*this->N_, RHS_->getPtr());
+      else
+        for(auto iRHS = 0ul; iRHS < nRHS; iRHS++)
+          std::copy_n(RHS + iRHS*LDRHS, this->N_, RHS_->getPtr(iRHS));
 
     // Compute norms of RHS
     for(auto iRHS = 0; iRHS < nRHS; iRHS++)
       rhsNorm_.emplace_back(
-        blas::nrm2(this->N_, RHS_ + iRHS*this->N_, 1)
+          RHS_->norm2F(iRHS, 1)
       );
 
     std::cout << "\n  * IterLinearSolver has recieved " << nRHS 
@@ -81,7 +81,7 @@ namespace ChronusQ {
   void IterLinearSolver<_F>::setShifts(size_t nShift, T* shifts) {
 
     // NO MPI
-    ROOT_ONLY(this->comm_);
+//    ROOT_ONLY(this->comm_);
 
     std::cout << "\n  * IterLinearSolver has recieved " << nShift
               << "  shifts:\n";
@@ -153,7 +153,7 @@ namespace ChronusQ {
       size_t nOmegaDo = std::min(shiftBS, nOmega - iOmega);
       std::vector<_F> shiftBatch(nOmegaDo);
 
-      if( isRoot ) 
+//      if( isRoot )
         std::copy_n(&shifts_[iOmega], nOmegaDo, shiftBatch.begin());
 
 
@@ -162,10 +162,12 @@ namespace ChronusQ {
 
       // RHS batch size information
       size_t nRHSDo   = std::min(rhsBS, nRHS_ - iRHS);
-      _F*    RHSBatch = RHS_ + iRHS*this->N_;
+      std::shared_ptr<SolverVectors<_F>> RHSBatch =
+          RHS_ == nullptr ? nullptr : std::make_shared<SolverVectorsView<_F>>(*RHS_, iRHS);
 
       // Pointer to solution
-      _F*  SOLBatch = SOL_ + (iRHS + iOmega*nRHS_)*this->N_;
+      std::shared_ptr<SolverVectors<_F>> SOLBatch =
+          SOL_ == nullptr ? nullptr : std::make_shared<SolverVectorsView<_F>>(*SOL_, iRHS + iOmega * nRHS_);
 
 
       if( isRoot ) {
@@ -210,34 +212,33 @@ namespace ChronusQ {
 
 
   template <typename _F>
-  void IterLinearSolver<_F>::runBatch(size_t nRHS, size_t nShift, _F* RHS, 
-    _F *shifts, _F* SOL, double *RHSNorm) {
+  void IterLinearSolver<_F>::runBatch(size_t nRHS, size_t nShift,
+                                      std::shared_ptr<SolverVectors<_F>> RHS, _F *shifts,
+                                      std::shared_ptr<SolverVectors<_F>> SOL, double *RHSNorm) {
 
     // No MPI
-    ROOT_ONLY(this->comm_);
+//    ROOT_ONLY(this->comm_);
 
     // Zero out guess
-    std::fill_n(V_, nRHS*nShift*this->N_, 0.);
+    V_->clear();
 
     // Initial residual is RHS for zero guess 
     // FIXME: not for general guess
     for(auto iOmega = 0; iOmega < nShift; iOmega++)
-      std::copy_n(RHS, nRHS*this->N_, RES_ + iOmega*nRHS*this->N_);
+      RES_->set_data(iOmega*nRHS, nRHS, *RHS, 0);
 
     // Precondition the residuals
-    for(auto iOmega = 0; iOmega < nShift; iOmega++)
-      this->preCondWShift_(nRHS,shifts[iOmega],
-        RES_ + iOmega*nRHS*this->N_,
-        RES_ + iOmega*nRHS*this->N_
-      );
+    for(auto iOmega = 0; iOmega < nShift; iOmega++) {
+      SolverVectorsView<_F> RES_view(*RES_, iOmega * nRHS);
+      this->preCondWShift_(nRHS,shifts[iOmega], RES_view, RES_view);
+    }
 
 
     // Clear out and compute the preconditioned residual norms
     resNorm_.clear();
     resNorm_.emplace_back(nShift * nRHS,0.);
     for(auto iDo = 0; iDo < nShift * nRHS; iDo++)
-      resNorm_.back()[iDo] = 
-        blas::nrm2(this->N_, RES_ + iDo*this->N_, 1);
+      resNorm_.back()[iDo] = RES_->norm2F(iDo, 1);
 
     //prettyPrintSmart(std::cout,"R0",RES_,this->N_,1,this->N_);
 

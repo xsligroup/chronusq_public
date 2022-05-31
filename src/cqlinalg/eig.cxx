@@ -436,8 +436,8 @@ namespace ChronusQ {
   // see include/cqlinalg/eig.hpp for docs
 
   template<>
-  int GeneralEigenSymm(char JOBVL, char JOBVR, int N, double *A, int LDA, 
-    dcomplex *W, double *VL, int LDVL, double *VR, int LDVR) {
+  int GeneralEigen(char JOBVL, char JOBVR, int N, double *A, int LDA,
+                   dcomplex *W, double *VL, int LDVL, double *VR, int LDVR) {
   
     // Convert char to lapackpp friendly input
     lapack::Job JVL;
@@ -461,10 +461,10 @@ namespace ChronusQ {
     else                              EigenSort(N,W);
   
     return INFO;
-  }; // GeneralEigenSymm (real)
+  }; // GeneralEigen (real)
   
   template<>
-  int GeneralEigenSymm(char JOBVL, char JOBVR, int N, dcomplex *A, int LDA, 
+  int GeneralEigen(char JOBVL, char JOBVR, int N, dcomplex *A, int LDA,
     dcomplex *W, dcomplex *VL, int LDVL, dcomplex *VR, int LDVR) {
 
     // Convert char to lapackpp friendly input
@@ -490,7 +490,7 @@ namespace ChronusQ {
   
     return INFO;
   
-  }; // GeneralEigenSymm (complex)
+  }; // GeneralEigen (complex)
   
   template<>
   int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, double *W,

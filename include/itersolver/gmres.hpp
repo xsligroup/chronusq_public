@@ -30,8 +30,9 @@ namespace ChronusQ {
 
 
   template <typename _F>
-  void GMRES<_F>::runBatch(size_t nRHS, size_t nShift, _F* RHS, _F *shifts, 
-    _F* SOL, double *RHSNorm ) {
+  void GMRES<_F>::runBatch(size_t nRHS, size_t nShift,
+      std::shared_ptr<SolverVectors < _F>> RHS, _F *shifts,
+      std::shared_ptr<SolverVectors < _F>> SOL, double *RHSNorm ) {
 
     bool isRoot = MPIRank(this->comm_) == 0;
     bool isConverged = false;
@@ -43,14 +44,14 @@ namespace ChronusQ {
 
 
     // Zero out the scratch allocations
-    if( isRoot ) {
+//    if( isRoot ) {
 
       std::fill_n(J_, 2 * this->mSS_ * nRHS * nShift         , 0.);
-      std::fill_n(U_, this->N_ * this->mSS_ * nRHS * nShift  , 0.);  
+      U_->clear();
       std::fill_n(R_, this->mSS_ * this->mSS_ * nRHS * nShift, 0.);
       std::fill_n(W_, (this->mSS_ + 1) * nRHS * nShift       , 0.);
 
-    }
+//    }
 
 
 
@@ -59,28 +60,29 @@ namespace ChronusQ {
 
     // Construct the initial Householder reflectors in place
       
-    if( isRoot ) {
+//    if( isRoot ) {
 
       // Copy over residuals to HHR
-      std::copy_n(this->RES_, nRHS * nShift * this->N_, HHR_);
+      HHR_->set_data(0, nRHS * nShift, *this->RES_, 0);
 
       for(auto iDo = 0ul; iDo < nShift * nRHS; iDo++) {
 
-        _F * curHHR = HHR_ + iDo*this->N_;
+        std::shared_ptr<SolverVectors < _F>> curHHR = std::make_shared<SolverVectorsView < _F>>(*HHR_, iDo);
 
-        _F beta = curHHR[0];
-        if(std::abs(curHHR[0]) < std::numeric_limits<double>::epsilon())
+        _F beta = curHHR->get(0, 0);
+        if(std::abs(beta) < std::numeric_limits<double>::epsilon())
           beta = this->resNorm_.back()[iDo];
         else
-          beta *= this->resNorm_.back()[iDo] / std::abs(curHHR[0]);
+          beta *= this->resNorm_.back()[iDo] / std::abs(beta);
 
-        curHHR[0] += beta;
+        curHHR->set(0, 0, curHHR->get(0, 0) + beta);
 
         // Normalize the HHR column
-        double norm = Normalize(this->N_,curHHR,1);
+        double norm = curHHR->norm2F(0, 1);
+        curHHR->scale(1/norm, 0, 1);
 
         // Copy the HHR to the first column of U
-        std::copy_n(curHHR,this->N_, U_ + iDo*this->N_*this->mSS_);
+        U_->set_data(iDo*this->mSS_, 1, *curHHR, 0);
 
         // Apply HHR projection to residual
         W_[iDo * (this->mSS_ + 1)] = -beta;
@@ -89,7 +91,7 @@ namespace ChronusQ {
 
       }
 
-    }
+//    }
 
 
 
@@ -98,14 +100,12 @@ namespace ChronusQ {
     std::vector<bool>   solConv( nRHS * nShift, false );
 
     // AX Scratch
-    _F * VContract  = nullptr;
-    _F * AVContract = nullptr;
-    if( nRHS * nShift > 1 and isRoot ) {
+    std::shared_ptr<SolverVectors<_F>> VContract  = nullptr;
+    std::shared_ptr<SolverVectors<_F>> AVContract = nullptr;
+    if( nRHS * nShift > 1 ) {
 
-      VContract = 
-        this->memManager_.template malloc<_F>(this->N_*nRHS*nShift);
-      AVContract = 
-        this->memManager_.template malloc<_F>(this->N_*nRHS*nShift);
+      VContract = this->vecGen_(nRHS*nShift);
+      AVContract = this->vecGen_(nRHS*nShift);
 
     }
 
@@ -129,44 +129,45 @@ namespace ChronusQ {
       if( isConverged ) break;
 
       size_t nConv(0), nNotConv(0);
-      if( isRoot ) {
+//      if( isRoot ) {
         nNotConv = std::count(solConv.begin(),solConv.end(),false);
         nConv = solConv.size() - nNotConv;
-      }
+//      }
 
 
-      if( isRoot ) // Only root process
+//      if( isRoot ) // Only root process
       for(auto iDo = 0ul; iDo < nRHS * nShift; iDo++) {
 
         if( solConv[iDo] ) continue;
 
-        _F * curV   = this->V_ + iDo*this->N_;
-        _F * curHHR = HHR_     + iDo*this->N_;
+        std::shared_ptr<SolverVectors < _F>> curV = std::make_shared<SolverVectorsView < _F>>(*this->V_, iDo);
+        std::shared_ptr<SolverVectors < _F>> curHHR = std::make_shared<SolverVectorsView < _F>>(*HHR_, iDo);
 
-        std::copy_n(curHHR,this->N_,curV);
-        blas::scal(this->N_, -2. * SmartConj(curHHR[iMicro]), curV, 1);
-        curV[iMicro] += 1.; 
+        curV->set_data(0, 1, *curHHR, 0);
+        curV->scale(-2. * SmartConj(curHHR->get(iMicro, 0)), 0, 1);
+        curV->set(iMicro, 0, curV->get(iMicro, 0) + 1.);
 
         if( iMicro > 0 )
         for(int k = iMicro-1; k >= 0; k--) {
 
-          _F * curU = U_ + (k+iDo*this->mSS_)*this->N_;
+          std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, k+iDo*this->mSS_);
 
-          _F inner = blas::dot(this->N_, curU, 1, curV, 1);
-          blas::axpy(this->N_, -2.*inner, curU, 1, curV, 1);
+          _F inner = 0;
+          curU->dot_product(0, *curV, 0, 1, 1, &inner, 1);
+          curV->axpy(0, 1, -2.*inner, *curU, 0);
 
         }
 
         // Explicitly normalize V column
-        Normalize(this->N_,curV,1);
+        curV->scale(1.0 / curV->norm2F(0, 1), 0, 1);
 
       }
 
-      bool CopyBuffer = isRoot and VContract and (nConv != 0);
+      bool CopyBuffer = VContract and (nConv != 0);// isRoot and VContract and (nConv != 0);
 
       size_t nContract = nShift * nRHS;
-      _F * VSend  = this->V_;
-      _F * AVRecv = this->AV_;
+      std::shared_ptr<SolverVectors<_F>> VSend  = this->V_;
+      std::shared_ptr<SolverVectors<_F>> AVRecv = this->AV_;
       if( CopyBuffer ) {
 
         VSend  = VContract;
@@ -176,9 +177,7 @@ namespace ChronusQ {
         for(auto iDo = 0; iDo < nRHS * nShift; iDo++)
         if( not solConv[iDo] ) {
 
-          std::copy_n(this->V_ + iDo*this->N_, this->N_, 
-            VContract + nContract*this->N_);
-          nContract++;
+          VContract->set_data(nContract++, 1, *this->V_, iDo);
 
         }
 
@@ -188,10 +187,9 @@ namespace ChronusQ {
       if( MPISize(this->comm_) > 1 ) MPIBCast(nContract,0,this->comm_);
 
       // Form (A-sB)X product and precondition product
-      MPI_Barrier(this->comm_);
       auto topLT = tick();
 
-      this->linearTrans_(nContract, VSend, AVRecv);
+      this->linearTrans_(nContract, *VSend, *AVRecv);
 
       double durLT = tock(topLT);
       MPI_Barrier(this->comm_);
@@ -202,72 +200,75 @@ namespace ChronusQ {
         for(auto iDo = 0; iDo < nRHS * nShift; iDo++)
         if( not solConv[iDo] ) {
 
-          std::copy_n(AVRecv + iContract*this->N_, this->N_, 
-            this->AV_ + iDo*this->N_);
-          iContract++;
+          this->AV_->set_data(iDo, 1, *AVRecv, iContract++);
 
         }
 
       }
 
-      if( isRoot )
+//      if( isRoot )
       for(auto iS = 0; iS < nShift; iS++) {
-        _F *curV  = this->V_  + iS*nRHS*this->N_;
-        _F *curAV = this->AV_ + iS*nRHS*this->N_;
-        this->shiftVec_     (nRHS, -shifts[iS], curV , curAV);
-        this->preCondWShift_(nRHS, shifts[iS], curAV, curAV);
+        std::shared_ptr<SolverVectors < _F>> curV  = std::make_shared<SolverVectorsView < _F>>(*this->V_, iS*nRHS);
+        std::shared_ptr<SolverVectors < _F>> curAV = std::make_shared<SolverVectorsView < _F>>(*this->AV_, iS*nRHS);
+        this->shiftVec_     (nRHS, -shifts[iS], *curV, *curAV);
+        this->preCondWShift_(nRHS, shifts[iS], *curAV, *curAV);
       }
 
 
       // Copy AV -> V
-      if( isRoot ) 
-        std::copy_n(this->AV_,nRHS * nShift * this->N_,this->V_);
+//      if( isRoot )
+        this->V_->set_data(0, nRHS * nShift, *this->AV_, 0);
 
       
-      if( isRoot ) this->resNorm_.emplace_back(this->resNorm_.back());
+//      if( isRoot )
+        this->resNorm_.emplace_back(this->resNorm_.back());
 
-      if( isRoot )
+//      if( isRoot )
       for(auto iDo = 0ul; iDo < nRHS * nShift; iDo++) {
 
         if( solConv[iDo] ) continue;
 
-        _F * curV   = this->V_ + iDo*this->N_;
-        _F * curHHR = HHR_     + iDo*this->N_;
+        std::shared_ptr<SolverVectors < _F>> curV   = std::make_shared<SolverVectorsView < _F>>(*this->V_, iDo);
+        std::shared_ptr<SolverVectors < _F>> curHHR = std::make_shared<SolverVectorsView < _F>>(*HHR_, iDo);
         _F * curJ   = J_       + iDo*2*this->mSS_;
         _F * curW   = W_       + iDo*(this->mSS_ + 1);
         _F * curR   = R_       + iDo*this->mSS_*this->mSS_;
 
         for(auto k = 0; k <= iMicro; k++) {
 
-          _F * curU = U_ + (k+iDo*this->mSS_)*this->N_;
+          std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, k+iDo*this->mSS_);
 
-          _F inner = blas::dot(this->N_, curU, 1, curV, 1);
-          blas::axpy(this->N_, -2.*inner, curU, 1, curV, 1);
+          _F inner = 0;
+          curU->dot_product(0, *curV, 0, 1, 1, &inner, 1);
+          curV->axpy(0, 1, -2.*inner, *curU, 0);
 
         }
 
 
-        _F * curU = U_ + (iMicro + 1 + iDo*this->mSS_)*this->N_;
+        std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, iMicro + 1 + iDo*this->mSS_);
 
         // Determine next projector
         if( iMicro < maxMicroIter - 1 ) {
 
-          std::copy_n(curV,this->N_,curHHR);
-          std::fill_n(curHHR,iMicro+1,0.);
+          curHHR->set_data(0, 1, *curV, 0);
+          for (size_t i = 0; i < iMicro+1; i++)
+            curHHR->set(i, 0, 0.0);
 
-          _F alpha = blas::nrm2(this->N_,curHHR,1);
+          _F alpha = curHHR->norm2F(0, 1);
           if( std::abs(alpha) > 1e-10 ) {
 
-            if (std::abs(curV[iMicro+1]) > 0)
-            alpha *= curV[iMicro+1] / std::abs(curV[iMicro+1]);
+            if (std::abs(curV->get(iMicro+1, 0)) > 0)
+            alpha *= curV->get(iMicro+1, 0) / std::abs(curV->get(iMicro+1, 0));
 
-            curHHR[iMicro+1] += alpha;
-            double norm = Normalize(this->N_,curHHR,1);
-            
-            std::copy_n(curHHR,this->N_,curU);
+            curHHR->set(iMicro+1, 0, curHHR->get(iMicro+1, 0) + alpha);
+            double norm = curHHR->norm2F(0, 1);
+            curHHR->scale(1/norm, 0, 1);
 
-            std::fill_n(curV + iMicro + 2, this->N_ - iMicro - 2, 0.);
-            curV[iMicro+1] = -alpha;
+            curU->set_data(0, 1, *curHHR, 0);
+
+            for (size_t i = 0; i < this->N_ - iMicro - 2; i++)
+              curV->set(i + iMicro + 2, 0, 0.0);
+            curV->set(iMicro+1, 0, -alpha);
 
           }
 
@@ -278,32 +279,34 @@ namespace ChronusQ {
         if( iMicro > 0 ) 
         for(auto j = 0ul; j < iMicro; j++) {
 
-          auto tmp = curV[j];
+          auto tmp = curV->get(j, 0);
           
-          curV[j] =
+          curV->set(j, 0,
             SmartConj(curJ[2*j    ]) * tmp + 
-            SmartConj(curJ[2*j + 1]) * curV[j+1];
+            SmartConj(curJ[2*j + 1]) * curV->get(j+1, 0));
 
-          curV[j + 1] = curJ[2*j] * curV[j+1] - curJ[2*j + 1] * tmp;
+          curV->set(j + 1, 0, curJ[2*j] * curV->get(j+1, 0) - curJ[2*j + 1] * tmp);
 
         }
 
         if( iMicro < maxMicroIter - 1 ) {
 
-          double rho = blas::nrm2(2,curV + iMicro,1);
+          double rho = std::sqrt(std::real(SmartConj(curV->get(iMicro, 0))*curV->get(iMicro, 0)
+              + SmartConj(curV->get(iMicro+1, 0))*curV->get(iMicro+1, 0)));
 
-          curJ[2*iMicro]   = curV[iMicro]   / rho;
-          curJ[2*iMicro+1] = curV[iMicro+1] / rho;
+          curJ[2*iMicro]   = curV->get(iMicro, 0)   / rho;
+          curJ[2*iMicro+1] = curV->get(iMicro+1, 0) / rho;
 
           curW[iMicro+1]   = -curJ[2*iMicro+1]         * curW[iMicro];
           curW[iMicro]     = SmartConj(curJ[2*iMicro]) * curW[iMicro];
 
-          curV[iMicro]     = rho;
-          curV[iMicro + 1] = 0.;
+          curV->set(iMicro, 0, rho);
+          curV->set(iMicro + 1, 0, 0.);
 
         }
 
-        std::copy_n(curV,this->mSS_,curR + iMicro*this->mSS_);
+        for (size_t i = 0; i < this->mSS_; i++)
+          curR[i + iMicro*this->mSS_] = curV->get(i, 0);
 
         double normR = std::abs(curW[iMicro+1]);
         this->resNorm_.back()[iDo] = normR;
@@ -348,7 +351,7 @@ namespace ChronusQ {
 
 
       // Evaluate convergence
-      if( isRoot ) {
+//      if( isRoot ) {
 
         auto OldSolConv(solConv);
         size_t nNewConv(0);
@@ -374,7 +377,7 @@ namespace ChronusQ {
         isConverged = std::all_of(solConv.begin(),solConv.end(),
             [&](bool x){ return x; });
 
-      }
+//      }
 
       // Broadcast the convergence result to all the mpi processes
       if(MPISize(this->comm_) > 1) MPIBCast(isConverged,0,this->comm_);
@@ -387,8 +390,8 @@ namespace ChronusQ {
     double durGMRES = tock(topGMRES);
 
     // Cleanup memory
-    if( VContract )  this->memManager_.free(VContract);
-    if( AVContract ) this->memManager_.free(AVContract);
+//    if( VContract )  this->memManager_.free(VContract);
+//    if( AVContract ) this->memManager_.free(AVContract);
 
     if( isRoot )
       std::cout << "\n    * GMRES Converged in " << iMicro  
@@ -397,13 +400,13 @@ namespace ChronusQ {
 
     // Reconstruct the solution for the batch
           
-    if( isRoot )
+//    if( isRoot )
     for(auto iDo = 0; iDo < nShift*nRHS; iDo++) {
 
       _F *curR   = R_   + iDo * this->mSS_ * this->mSS_;
       _F *curW   = W_   + iDo * (this->mSS_ + 1);
-      _F *curU   = U_   + iDo * this->mSS_ * this->N_;
-      _F *curHHR = HHR_ + iDo * this->N_;
+      std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, iDo * this->mSS_);
+      std::shared_ptr<SolverVectors < _F>> curHHR = std::make_shared<SolverVectorsView < _F>>(*HHR_, iDo);
 
       int nMicro = mDim[iDo];
 
@@ -412,24 +415,25 @@ namespace ChronusQ {
       lapack::gesv(nMicro,1,curR,this->mSS_,IPIV,curW,this->mSS_+1);
       this->memManager_.free(IPIV);
 
-      std::copy_n(curU + (nMicro-1)*this->N_, this->N_, curHHR);
+      curHHR->set_data(0, 1, *curU, nMicro-1);
 
-      _F fact = curW[nMicro-1] * SmartConj(curU[(nMicro-1)*(this->N_+1)]);
-      blas::scal(this->N_,-2.*fact,curHHR,1);
-      curHHR[nMicro-1] += curW[nMicro-1];
+      _F fact = curW[nMicro-1] * SmartConj(curU->get(nMicro-1, nMicro-1));
+      curHHR->scale(-2.*fact, 0, 1);
+      curHHR->set(nMicro-1, 0, curHHR->get(nMicro-1, 0) + curW[nMicro-1]);
 
       if( nMicro > 1 )
       for(int k = nMicro - 2; k >= 0; k--) {
 
-        curHHR[k] += curW[k];
-        _F inner = blas::dot(this->N_,curU + k*this->N_,1,curHHR,1);
-        blas::axpy(this->N_,-2.*inner,curU + k*this->N_,1,curHHR,1);
+        curHHR->set(k, 0, curHHR->get(k, 0) + curW[k]);
+        _F inner = 0;
+        curU->dot_product(k, *curHHR, 0, 1, 1, &inner, 1);
+        curHHR->axpy(0, 1, -2.*inner, *curU, k);
 
       }
 
       // FIXME: assumes 0 guess
-      _F *curSOL = SOL + iDo * this->N_;
-      std::copy_n(curHHR,this->N_,curSOL);
+      std::shared_ptr<SolverVectors < _F>> curSOL = std::make_shared<SolverVectorsView < _F>>(*SOL, iDo);
+      curSOL->set_data(0, 1, *curHHR, 0);
 
     }
 

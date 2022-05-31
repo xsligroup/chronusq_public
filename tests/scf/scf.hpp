@@ -93,7 +93,9 @@ static void CQSCRSCF( std::string in, std::string ref, std::string scr ) {
 #endif
 
 };
-
+ 
+// FIXME: Need to generate a specific test functions for NEO calculations in the future 
+//
 static void CQSCFTEST( std::string in, std::string ref,
   double tol        = 1e-8,
   bool checkSEXP    = true,

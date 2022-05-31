@@ -166,6 +166,28 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      OnePInts<IntsT>::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        size_t nRel = components_.size();
+        MPIBCast(nRel,root,comm);
+
+        if (components_.size() != nRel) {
+          components_.clear();
+          components_.reserve(nRel);
+          for (size_t i = 0; i < nRel; i++) {
+            components_.emplace_back(this->memManager_, this->NB);
+          }
+        }
+
+        for (OnePInts<IntsT>& comp : components_)
+          comp.broadcast(comm, root);
+      }
+#endif
+    }
+
     template <typename TransT>
     OnePRelInts<typename std::conditional<
     (std::is_same<IntsT, dcomplex>::value or

@@ -29,7 +29,7 @@ basisType = GIAO
 #basis = STOTEST.GBS 
 
 [SCF]
-MAXITER = 30240
+MAXITER = 50000 
 ENETOL  = 1.0e-10
 DENTOL  = 1.0e-8
 DIIS    = FALSE

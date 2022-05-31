@@ -49,7 +49,7 @@ namespace ChronusQ {
   void MCWaveFunction<MatsT,IntsT>::computeOneRDM() {
 
     for (auto i = 0ul; i < NStates; i++)
-      computeOneRDM(i);
+      MCWaveFunction<MatsT, IntsT>::computeOneRDM(i);
 
   } // MCWaveFunction::computeOneRDM
 
@@ -72,6 +72,45 @@ namespace ChronusQ {
     }
 
   } // MCWaveFunction::computeTDMs
+
+  /*
+   * \brief transform oneRDM(MO) to onePDM(AO)
+   *
+   */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::rdm2pdm(SquareMatrix<MatsT> & rdm, double scale) {
+
+    // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq} C^*_{qv}
+    auto  &mem = memManager;
+    size_t nAO = reference().nAlphaOrbital() * reference().nC;
+    size_t fourCompOffset = (reference().nC == 4) ? reference().nAlphaOrbital() * 2: 0;
+    size_t nI = MOPartition.nFCore + MOPartition.nInact;
+    size_t nCorrO = MOPartition.nCorrO;
+
+    double fc1C = (reference().nC == 1) ? 2.0 : 1.0;
+
+    SquareMatrix<MatsT> tmpPDM(mem,nAO);
+    tmpPDM.clear();
+
+    // Core
+    for(auto i = fourCompOffset; i < nI+fourCompOffset; i++) tmpPDM(i,i) = fc1C;
+
+    // Active
+    SetMat('N', nCorrO, nCorrO, scale, rdm.pointer(), nCorrO,
+            tmpPDM.pointer() + (fourCompOffset+nI)*(nAO+1), nAO);
+
+    tmpPDM = tmpPDM.transform('C', reference().mo[0].pointer(), nAO, nAO);
+
+    if (reference().nC == 1) reference().onePDM->S() = tmpPDM;
+    // for 1C, only scalar part is rewritten
+    else {
+      *reference().onePDM = tmpPDM.template spinScatter<MatsT>();
+    }
+
+    reference().ao2orthoDen();
+
+  } //MCWaveFunction::rdm2pdm
+
 
 
 }; // namespace ChronusQ

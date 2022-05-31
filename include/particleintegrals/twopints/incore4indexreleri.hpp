@@ -176,6 +176,28 @@ namespace ChronusQ {
       }
     }
 
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
+      InCore4indexTPI<IntsT>::broadcast(comm, root);
+
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(comm) > 1 ) {
+        size_t nRel = components_.size();
+        MPIBCast(nRel,root,comm);
+
+        if (components_.size() != nRel) {
+          components_.clear();
+          components_.reserve(nRel);
+          for (size_t i = 0; i < nRel; i++) {
+            components_.emplace_back(this->memManager_, this->NB);
+          }
+        }
+
+        for (InCore4indexTPI<IntsT>& comp : components_)
+          comp.broadcast(comm, root);
+      }
+#endif
+    }
+
     // Pauil Matrice representation to spinor representation
     template <typename IntsU>
     InCore4indexRelERI<IntsU> spatialToSpinBlock() const;

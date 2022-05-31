@@ -53,13 +53,13 @@ add_cq_test(OneC_CASSCF_FULLMATRIX  mcscftest "OneC_CASSCF_FULLMATRIX.*")
 add_cq_test(X2C_CASSCF_FULLMATRIX   mcscftest "X2C_CASSCF_FULLMATRIX.*")
 add_cq_test(FourC_CASSCF_FULLMATRIX mcscftest "FourC_CASSCF_FULLMATRIX.*")
 add_cq_test(CASCI_READMO_SKIPSCF mcscftest "CASCI_READMO_SKIPSCF.*")
-add_cq_test(CASCI_DAVIDSON       mcscftest "CASCI_DAVISON.*")
+add_cq_test(CASCI_DAVIDSON       mcscftest "CASCI_DAVIDSON.*")
 add_cq_test(OneC_CAS_SWAP        mcscftest "OneC_CAS_SWAP.*")
 add_cq_test(TwoC_CAS_SWAP        mcscftest "TwoC_CAS_SWAP.*")
 add_cq_test(GHF_CAS_OSC          mcscftest "GHF_CAS_OSC.*")
 
 # RAS test
-add_cq_test(RAS_DAVIDSON         mcscftest "RAS_DAVIDSON.*")
+add_cq_test(RASCI_DAVIDSON         mcscftest "RASCI_DAVIDSON.*")
 
 if( CQ_ENABLE_MPI )
 

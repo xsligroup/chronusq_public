@@ -34,6 +34,38 @@
 namespace ChronusQ {
 
  /*
+  * \brief Perform mulliken analysis for each state
+  *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
+  *         2. SingleSlater->populationAnalysis()
+  *
+  */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::populationAnalysis(size_t i) {
+
+    std::cout << std::endl << "Population Analysis for State " << i+1 << ": ";
+    SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
+
+    // transform oneRDM to AO basis
+    rdm2pdm(this->oneRDM[i]);
+
+    ss_ptr->populationAnalysis();
+    ss_ptr->printMiscProperties(std::cout);
+
+  }; // MCWaveFunction::populationAnalysis
+
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::populationAnalysis() {
+
+    for (auto i = 0ul; i < this->NStates; i++) {
+
+      MCWaveFunction::populationAnalysis(i);
+
+    }
+
+  }; // MCWaveFunction::populationAnalysis
+
+
+ /*
   * \brief Compute oscillator strength for MC wavefunction
   *         using AO dipole and MO coefficients and MO TDM
   *         Only for 1C and 2C
@@ -94,7 +126,7 @@ namespace ChronusQ {
     double f = (2./3.) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(D);
 
     // output
-    std::cout << "\nExcited State: " << std::setw(3) << std::right << s2+1
+    std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
               << " to state: " << std::setw(3) << std::right << s1+1 << ":";
     std::cout << std::setw(15) << std::right << "E(Eh) = "
               << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);

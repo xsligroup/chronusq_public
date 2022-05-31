@@ -40,11 +40,11 @@ namespace ChronusQ {
     
     ProgramTimer::tick("MCSCF Total");
     
-    // Initial Printing
-    this->printMCSCFHeader();
-    
     // allocating memeory
     this->alloc(); 
+    
+    // Initial Printing
+    this->printMCSCFHeader();
     
     // MCSCF Intial CI solution
     std::cout << "Cycle 0:\n" << std::endl;
@@ -64,6 +64,9 @@ namespace ChronusQ {
     ProgramTimer::tock("Diagonalization");
     
     ProgramTimer::tock("Solve CI");
+
+    // Initial 1RDM construction
+    MCWaveFunction<MatsT, IntsT>::computeOneRDM();
      
     // MCSCF Cycles 
     
@@ -178,6 +181,13 @@ namespace ChronusQ {
     this->printMCSCFFooter();
  
     // property calculation
+
+    // mulliken analysis
+    if (this->PopulationAnalysis) {
+      std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
+      MCWaveFunction<MatsT,IntsT>::populationAnalysis();
+    }
+
     // oscillator strength
     if (this->NosS1) {
       

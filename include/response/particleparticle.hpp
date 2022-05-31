@@ -243,20 +243,19 @@ namespace ChronusQ {
 
           this->hasResGuess_ = false;
 
-          this->PC_ = [&](size_t nVec, MatsT shift, MatsT *V, MatsT *AV) {
+          this->PC_ = [&](size_t nVec, MatsT shift, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
 
             preConditioner(nVec,shift,V,AV);
 
           };
 
-          this->nSPC_ = [&](size_t nVec, MatsT *V, MatsT *AV) {
+          this->nSPC_ = [&](size_t nVec, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
 
             preConditioner(nVec,MatsT(0.),V,AV);
 
           };
 
-          this->cmplxPC_ = [&](size_t nVec, dcomplex shift, dcomplex *V, 
-            dcomplex *AV) {
+          this->cmplxPC_ = [&](size_t nVec, dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV) {
 
             preConditioner(nVec,shift,V,AV);
 
@@ -281,7 +280,7 @@ namespace ChronusQ {
       void                 eigVecNorm();
       void                 constructShifts();
       void                 postLinearSolve();
-      void                 resGuess(size_t, MatsT*, size_t){ CErr(); };
+      void                 resGuess(size_t, SolverVectors<MatsT> &, size_t) override { CErr(); };
 
 
       // Internal implementations for direct linear transformation
@@ -363,7 +362,7 @@ namespace ChronusQ {
 
 
       template <typename U>
-      void preConditioner(size_t nVec, U shift, U* V, U* AV);
+      void preConditioner(size_t nVec, U shift, SolverVectors<U> &V, SolverVectors<U> &AV);
 
 
 

@@ -180,7 +180,7 @@ namespace ChronusQ {
 
     RASCI_LOOP_INIT(); // check top for variable definitions
 
-#ifdef DEBUG_RASCI_IMPL
+#ifdef _DEBUG_CIBUILDER_RASCI_IMPL
     std::cout<<"Sigma build starts"<<std::endl;
     prettyPrintSmart(std::cout,"LL RASCI Sigma Build -- C", C, nStr, nVec, nStr);
 #endif

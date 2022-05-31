@@ -114,20 +114,19 @@ namespace ChronusQ {
         ResponseRefBase<SingleSlater<MatsT,IntsT>>(c,job,ref,fullMatrix),
         SingleSlaterPolarBase() { 
 
-          this->PC_ = [&](size_t nVec, MatsT shift, MatsT *V, MatsT *AV) {
+          this->PC_ = [&](size_t nVec, MatsT shift, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
 
             preConditioner(nVec,shift,V,AV);
 
           };
 
-          this->nSPC_ = [&](size_t nVec, MatsT *V, MatsT *AV) {
+          this->nSPC_ = [&](size_t nVec, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
 
             preConditioner(nVec,MatsT(0.),V,AV);
 
           };
 
-          this->cmplxPC_ = [&](size_t nVec, dcomplex shift, dcomplex *V, 
-            dcomplex *AV) {
+          this->cmplxPC_ = [&](size_t nVec, dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV) {
 
             preConditioner(nVec,shift,V,AV);
 
@@ -151,7 +150,7 @@ namespace ChronusQ {
       void                 eigVecNorm();
       void                 constructShifts();
       void                 postLinearSolve();
-      virtual void         resGuess(size_t, MatsT*, size_t);
+      virtual void         resGuess(size_t, SolverVectors<MatsT> &, size_t);
 
       MatsT getGDiag(size_t, size_t, bool, SingleSlater<MatsT,IntsT>&, MatsT*,
         MatsT*);
@@ -251,7 +250,7 @@ namespace ChronusQ {
 
 
       template <typename U>
-      void preConditioner(size_t nVec, U shift, U* V, U* AV);
+      void preConditioner(size_t nVec, U shift, SolverVectors<U> &V, SolverVectors<U> &AV);
 
 
 
@@ -390,14 +389,13 @@ namespace ChronusQ {
         std::shared_ptr<NEOSS<MatsT, IntsT>> ref, MatsT* fullMatrix = nullptr ) :
         PolarizationPropagator<SingleSlater<MatsT, IntsT>>(c,job,
           std::dynamic_pointer_cast<SingleSlater<MatsT, IntsT>>(ref),fullMatrix) {
-        this->PC_ = [&](size_t nVec, MatsT shift, MatsT *V, MatsT *AV) {
+        this->PC_ = [&](size_t nVec, MatsT shift, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
           neoPreConditioner(nVec,shift,V,AV);
         };
-        this->nSPC_ = [&](size_t nVec, MatsT *V, MatsT *AV) {
+        this->nSPC_ = [&](size_t nVec, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
           neoPreConditioner(nVec,MatsT(0.),V,AV);
         };
-        this->cmplxPC_ = [&](size_t nVec, dcomplex shift, dcomplex *V,
-          dcomplex *AV) {
+        this->cmplxPC_ = [&](size_t nVec, dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV) {
           neoPreConditioner(nVec,shift,V,AV);
         };
       }
@@ -422,7 +420,7 @@ namespace ChronusQ {
       std::pair<size_t,MatsT*> formPropGrad( ResponseOperator );
 
       template <typename U>
-      void neoPreConditioner(size_t nVec, U shift, U* V, U* AV);
+      void neoPreConditioner(size_t nVec, U shift, SolverVectors<U> &V, SolverVectors<U> &AV);
 
       template <typename U>
       std::vector< std::pair< std::pair<int,int>, U > >

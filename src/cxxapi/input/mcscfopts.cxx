@@ -52,6 +52,7 @@ namespace ChronusQ {
       "SCFENECONV",
       "SCFGRADCONV",
       "SCFALG",
+      "ROTATENEGORBS",
       "HESSDIAGSCALE",
       "CASORBITAL",
       "RAS1ORBITAL",
@@ -60,10 +61,13 @@ namespace ChronusQ {
       "SWAPMO",
       "INORBITAL",
       "FVORBITAL",
+      "POPULATION",
       "OSCISTREN",
       "GENIVO",
+      "PRINTMOS",
+      "PRINTRDMS",
       "MAXDAVIDSONSPACE",
-      "NDAVIDSONGUESS"
+      "NDAVIDSONGUESS",
     };
 
     // Specified keywords
@@ -76,6 +80,33 @@ namespace ChronusQ {
         CErr("Keyword MCSCF." + keyword + " is not recognized",std::cout);// Error
     }
     // Check for disallowed combinations (if any)
+  }
+
+  void HandleRDMPrinting(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<MCWaveFunctionBase> &mcwf) {
+
+    // Parse RDM printing
+    std::string printRDMString;
+    OPTOPT( printRDMString = input.getData<std::string>("MCSCF.PRINTRDMS"));
+    if ( not printRDMString.empty() ) {
+      std::cout << "  * Printing RDM detected: " << std::endl;
+
+      std::vector<std::string> rdmTokens;
+      split(rdmTokens, printRDMString, " \t,");
+
+      if( rdmTokens.size() != 1 and rdmTokens.size() != 2 ) CErr("Need 1 or 2 entries in single line for RDM printing");
+
+      // Parse rdmCut if present
+      if( rdmTokens.size() == 2 ) mcwf->rdmCut=std::stod(trim(rdmTokens[1]));
+
+      try { mcwf->printRDMs = std::stoi(trim(rdmTokens[0])); }
+      catch(...) {
+        CErr("Invalid PRINTRDMS input. Please use number 0 ~ 2.");
+      }
+      if (mcwf->printRDMs >= 3 ) CErr("MCSCF print RDM level is not valid!");
+
+    }
+
   }
 
   std::unordered_map<std::string,int> MCSCFSpinMap = {
@@ -242,7 +273,6 @@ namespace ChronusQ {
       CErr("Not Implemented yet");
     }
 
-    // if (ss->nC == 4)
     // OPTOPT( mcscf.FourCompNoPair = input.getData<bool>("MCSCF.FOURCOMPNOPAIR"));
     
     // set up scheme
@@ -343,9 +373,9 @@ namespace ChronusQ {
       std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
       
       // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = (ss->nC == 4 and mcscf->FourCompNoPair) ? mcscf->MOPartition.nMO: 0ul;  
+      size_t fourCOffSet = mcscf->MOPartition.nNegMO;  
       
-      std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO + fourCOffSet, 'N');
+      std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');
       
       // parse input
       SET_ORBITAL_INDEX(inputOrbIndices, fcMOStrings, 'I');
@@ -436,15 +466,20 @@ namespace ChronusQ {
       
       mcscfSettings->doSCF = true;
       
-      OPTOPT(mcscfSettings->doIVOs =
-        input.getData<bool>("MCSCF.GENIVO"); )
+      if (ss->nC == 4) {
+        // default as true
+        mcscfSettings->ORSettings.rotate_negative_positive = true;
+        OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
+          = input.getData<bool>("MCSCF.ROTATENEGORBS"); )
+      }
+
+      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>("MCSCF.GENIVO"); )
 
       bool StateAverage = false;
       OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
       if(StateAverage) {
         //TODO: make as input in the future
-        std::vector<double> SAWeights = std::vector<double>(nR);
-        std::fill_n(SAWeights.begin(), nR, 1./nR);
+        std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
         mcscf->turnOnStateAverage(SAWeights);
       }
       
@@ -480,8 +515,24 @@ namespace ChronusQ {
      
    } // SCF Options
 
+   // Mulliken charge analysis
+   OPTOPT( mcscf->PopulationAnalysis = input.getData<bool>("MCSCF.POPULATION"); )
+
    // Oscillator strength
    OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )
+
+   // Printing Options
+   // MOs
+   if ( input.containsData("MCSCF.PRINTMOS") ) {
+     try { mcscf->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
+     catch(...) {
+       CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
+     }
+   }
+   if (mcscf->printMOCoeffs >= 10 ) CErr("MCSCF print level is not valid!");
+
+   // RDMs
+   HandleRDMPrinting(out, input,  mcscf);
 
    // MO swapping
    // Should occur after active orbital selection

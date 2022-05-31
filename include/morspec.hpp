@@ -98,7 +98,7 @@ namespace ChronusQ {
     std::pair<size_t,T*> formPropGrad(ResponseOperator);
     void                 configOptions();
     void                 eigVecNorm()                   {};
-    void                 resGuess(size_t, T*, size_t){ CErr(); };
+    void                 resGuess(size_t, SolverVectors<T> &, size_t) override { CErr(); };
 
 
 
