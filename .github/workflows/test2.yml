@@ -6,7 +6,7 @@ on:
 
 jobs: 
         Test_1:
-                runs-on: self-hosted
+                runs-on: self-hosted  
 
 
                 steps:
