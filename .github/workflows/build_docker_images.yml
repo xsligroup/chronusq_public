@@ -2,7 +2,7 @@ name: Chronus Quantum Continuous Integration - Docker Build
 
 on:
         push:
-                branches: '**'
+                branches: 'none'
 
 jobs:
         build_docker_image:

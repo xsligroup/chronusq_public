@@ -2,7 +2,7 @@ name: Chronus Quantum Continuous Integration - MPI GCC Build
 
 on: 
         push:
-                branches: [master]
+                branches: [none]
 
 jobs: 
         build_mpi_gcc:

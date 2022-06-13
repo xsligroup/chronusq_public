@@ -2,7 +2,7 @@ name: Chronus Quantum Continuous Integration - GCC  Build
 
 on: 
         push:
-                branches: [master]
+                branches: [none]
 
 jobs: 
         build_gcc:
