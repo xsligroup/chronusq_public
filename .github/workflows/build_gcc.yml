@@ -1,0 +1,30 @@
+name: Chronus Quantum Continuous Integration - GCC  Build
+
+on: 
+        push:
+                branches: [master]
+
+jobs: 
+        build_gcc:
+                runs-on: self-hosted
+
+
+                steps:
+                        - name: Checkout Current CQ Branch
+                          uses: actions/checkout@v3
+
+
+                        - name: Test GCC Build
+                          run: |
+                               source /home/ci_software/gcc-10.2.0.sh
+                               mkdir build
+                               cd build
+                               cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc/10/2/0 -DCMAKE_CXX_FLAGS='-O3' -DCMAKE_C_FLAGS='-O3' -DCMAKE_Fortran_FLAGS='-O3' ..
+                               make -j8
+                               ctest
+                                                                 
+
+
+
+                          
+
