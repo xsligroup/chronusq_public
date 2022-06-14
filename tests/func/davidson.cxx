@@ -206,7 +206,7 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
   dcomplex *VR = mem.malloc<dcomplex>(N*N);
   dcomplex *VL = mem.malloc<dcomplex>(N*N);
 
-  GeneralEigenSymm('V','V',N,ACMPLX,N,W,VL,N,VR,N);
+  GeneralEigen('V','V',N,ACMPLX,N,W,VL,N,VR,N);
 
   matFile.safeWriteData("/W",W,{N});
 
