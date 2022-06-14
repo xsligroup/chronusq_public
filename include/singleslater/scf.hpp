@@ -597,8 +597,8 @@ std::vector<std::shared_ptr<Orthogonalization<MatsT>>> SingleSlater<MatsT, IntsT
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::printProperties() {
   printMOInfo(std::cout);
-  this->printMultipoles(std::cout);
-  this->printSpin(std::cout);
+  if( this->nC != 4 ) this->printMultipoles(std::cout);
+  if( this->nC != 4 ) this->printSpin(std::cout);
   printMiscProperties(std::cout);
 }
 
