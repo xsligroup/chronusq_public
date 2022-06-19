@@ -109,6 +109,12 @@ namespace ChronusQ {
     bool PopulationAnalysis = false; // default is do not do Mulliken analysis
     size_t NosS1 = 0; // number of initial states s1 for oscillator strength
     double * osc_str = nullptr; // matrix to save oscillator strength
+    bool multipoleMoment = false; // default is do not compute multipole moments
+
+    // Length gauge electric multipoles
+    std::vector<cart_t> elecDipoles;        ///< Electric Dipole in the length gauge
+    std::vector<cartmat_t> elecQuadrupoles; ///< Electric Quadrupole in the length gauge
+    std::vector<cartrk3_t> elecOctupoles;   ///< Electric Octupole in the length gauge
 
     // Print Settings
     size_t printMOCoeffs = 0;
