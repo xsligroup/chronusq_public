@@ -176,7 +176,7 @@ namespace ChronusQ {
     void computeTwoRDM();
     void computeTwoRDM(size_t);
 
-    void saveCurrentStates();
+    void saveCurrentStates(bool prop = false);
 
     void printStateEnergy();
     void printMCSCFHeader();
