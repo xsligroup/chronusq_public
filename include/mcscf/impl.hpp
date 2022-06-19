@@ -177,10 +177,15 @@ namespace ChronusQ {
     // Final printing and save states for restart
     std::cout << "\n\nMCSCF Complete!" << std::endl;
     std::cout << bannerEnd << std::endl;
-    
+
     this->printMCSCFFooter();
- 
+
     // property calculation
+    ProgramTimer::tick("Property Eval");
+
+    // dipole moment
+    if( this->multipoleMoment )
+      MCWaveFunction<MatsT,IntsT>::computeMultipole();
 
     // mulliken analysis
     if (this->PopulationAnalysis) {
@@ -190,9 +195,8 @@ namespace ChronusQ {
 
     // oscillator strength
     if (this->NosS1) {
-      
-      ProgramTimer::tick("Property Eval");
-      
+
+
       this->osc_str = this->memManager.template malloc<double>(this->NosS1*this->NStates);
       for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
@@ -200,20 +204,21 @@ namespace ChronusQ {
         else this->osc_str[s2+s1*this->NStates] = 
                 MCWaveFunction<MatsT,IntsT>::oscillator_strength(s2,s1);
       }
-      
-      ProgramTimer::tock("Property Eval");
+
     }
 
-    saveCurrentStates();
+    ProgramTimer::tock("Property Eval");
+
+    saveCurrentStates(true);
 
     ProgramTimer::tock("MCSCF Total");
  
   }; //MCSCF::run
   
   template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::saveCurrentStates() {
+  void MCSCF<MatsT,IntsT>::saveCurrentStates( bool saveProp ) {
     
-    MCWaveFunction<MatsT, IntsT>::saveCurrentStates();
+    MCWaveFunction<MatsT, IntsT>::saveCurrentStates(saveProp);
     
     // only save MO when doing orbital rotation
     if (settings.doSCF and this->savFile.exists()) {
