@@ -177,28 +177,42 @@ namespace ChronusQ {
 
 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::saveCurrentStates() {
+  void MCWaveFunction<MatsT,IntsT>::saveCurrentStates(bool sProp) {
   
     ROOT_ONLY(comm); 
   
     // Checkpoint if file exists
     if( savFile.exists() ) {
+
+      std::string prefix = "MCWFN/";
       
       size_t NS = this->NStates;
-      savFile.safeWriteData("MCWFN/NSTATES", &NS, {1});
-      savFile.safeWriteData("MCWFN/INACT_ENERGY", &(this->InactEnergy), {1});
-      savFile.safeWriteData("MCWFN/STATE_ENERGY", this->StateEnergy.data(), {NS}); 
+      savFile.safeWriteData(prefix + "NSTATES", &NS, {1});
+      savFile.safeWriteData(prefix + "INACT_ENERGY", &(this->InactEnergy), {1});
+      savFile.safeWriteData(prefix + "STATE_ENERGY", this->StateEnergy.data(), {NS});
 
       auto & mopart = this->MOPartition;
-      savFile.safeWriteData("MCWFN/ORB_INDEX", & (mopart.orbIndices[0]),{mopart.nMO});
+      savFile.safeWriteData(prefix + "ORB_INDEX", & (mopart.orbIndices[0]),{mopart.nMO});
 
-      // Save oscillator strength
-      if(NosS1) {
-        savFile.safeWriteData("MCWFN/OSC_STR", osc_str, {NosS1, NS});      
+      // Save properties after SCF
+      if( sProp ){
+
+        // Save oscillator strength
+        if(NosS1) {
+          savFile.safeWriteData(prefix + "OSC_STR", osc_str, {NosS1, NS});
+        }
+
+        // Save Multipoles
+        if( multipoleMoment ){
+          savFile.safeWriteData(prefix + "LEN_ELECTRIC_DIPOLE", & elecDipoles[0][0], {NS, 3});
+          savFile.safeWriteData(prefix + "LEN_ELECTRIC_QUADRUPOLE", & elecQuadrupoles[0][0][0], {NS, 3, 3});
+          savFile.safeWriteData(prefix + "LEN_ELECTRIC_OCTUPOLE", & elecOctupoles[0][0][0][0], {NS, 3, 3, 3});
+        }
+
       }
-    }  
-  
-  }; // MCWaveFunction<T>::saveCuurentStates
+    }
+
+  }; // MCWaveFunction<T>::saveCurrentStates
 
 }; // namespace ChronusQ
 

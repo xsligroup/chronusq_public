@@ -68,6 +68,7 @@ namespace ChronusQ {
       "PRINTRDMS",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
+      "PRINTMULT",
     };
 
     // Specified keywords
@@ -520,6 +521,9 @@ namespace ChronusQ {
 
    // Oscillator strength
    OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )
+
+   // Multipole moments
+   OPTOPT( mcscf->multipoleMoment = input.getData<bool>("MCSCF.PRINTMULT"); )
 
    // Printing Options
    // MOs

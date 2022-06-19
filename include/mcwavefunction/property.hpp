@@ -64,6 +64,54 @@ namespace ChronusQ {
 
   }; // MCWaveFunction::populationAnalysis
 
+ /*
+  * \brief Compute multipole moments for states of interest
+  *         Only for 1C and 2C
+  *         s1: state
+  */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::computeMultipole(size_t s1) {
+
+    SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
+
+    // Convert to AO basis and update PDM in ref
+    rdm2pdm(this->oneRDM[s1]);
+
+    EMPerturbation emPert;
+    ss_ptr->computeMultipole(emPert);
+
+    std::cout << std::endl;
+    std::cout << " *---------------------------------------------*" << std::endl;
+    std::cout << " *          Multipole for State " + std::to_string(s1+1) + "             *" << std::endl;
+    std::cout << " *---------------------------------------------*" << std::endl;
+    ss_ptr->printMultipoles(std::cout);
+
+    // Adding the multipole in a vector over states
+    elecDipoles.push_back(ss_ptr->elecDipole);
+    elecQuadrupoles.push_back(ss_ptr->elecQuadrupole);
+    elecOctupoles.push_back(ss_ptr->elecOctupole);
+
+  }
+
+ /*
+  * \brief Compute multipole moments for all states
+  *         Only for 1C and 2C
+  */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::computeMultipole() {
+
+    if( referenceWaveFunction().nC == 4 ){
+      std::cout << "Skipping dipole moments for 4c since NYI" << std::endl;
+      return;
+    }
+
+    for( size_t iState=0ul; iState < this->NStates; iState++ ){
+
+      MCWaveFunction<MatsT,IntsT>::computeMultipole(iState);
+
+    }
+
+  }
 
  /*
   * \brief Compute oscillator strength for MC wavefunction
@@ -71,14 +119,14 @@ namespace ChronusQ {
   *         Only for 1C and 2C
   *         s1: initial state
   *         s2: final state
-  */ 
+  */
   template <typename MatsT, typename IntsT>
   double MCWaveFunction<MatsT,IntsT>::oscillator_strength(size_t s2, size_t s1) {
 
     if (referenceWaveFunction().nC == 4) CErr("4C has no dipole.");
 
     auto  &mem = memManager;
-    size_t nAO = reference().nAlphaOrbital() * reference().nC;;
+    size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t nCorrO = MOPartition.nCorrO;
     size_t nInact = MOPartition.nInact;
 
@@ -94,7 +142,7 @@ namespace ChronusQ {
     auto MOdipole = moints.getIntegral<VectorInts,MatsT>("MOdipole");
 
     if (not MOdipole) {
-      std::shared_ptr<VectorInts<IntsT>> AOdipole = 
+      std::shared_ptr<VectorInts<IntsT>> AOdipole =
                 std::make_shared<VectorInts<IntsT>>(mem, nAO, 1, true);
       std::shared_ptr<VectorInts<MatsT>> MOdipole_scr =
                 std::make_shared<VectorInts<MatsT>>(mem, nCorrO, 1, true);
@@ -139,11 +187,6 @@ namespace ChronusQ {
     return f;
 
   } // MCWaveFunction::oscillator_strength
-
-
-
-
-
 
 
 

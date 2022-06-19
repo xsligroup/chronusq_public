@@ -136,7 +136,7 @@ namespace ChronusQ {
       this->reference().swapMOs(moPairs,sp);
     };
     
-    virtual void saveCurrentStates();
+    virtual void saveCurrentStates(bool);
     void setMORanges();
     void transformInts(EMPerturbation &);
     void printMOSpacePatition();
@@ -147,6 +147,8 @@ namespace ChronusQ {
     void populationAnalysis(size_t);
     void populationAnalysis();
     double oscillator_strength(size_t, size_t s1 = 0);
+    void computeMultipole(size_t);
+    void computeMultipole();
 
     // Memory functions
     void alloc();
