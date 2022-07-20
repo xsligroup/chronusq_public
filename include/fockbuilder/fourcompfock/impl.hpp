@@ -4481,8 +4481,6 @@ namespace ChronusQ {
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Y().pointer()+LS, NB2C, ss.twoeH->Y().pointer()+SL, NB2C);
     // Copy LS to SL part of the twoeH[MZ]
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Z().pointer()+LS, NB2C, ss.twoeH->Z().pointer()+SL, NB2C);
-    if (false) {
-    }
 
     // Form GD: G[D] = 2.0*J[D] - K[D]
     if(computeExchange) *ss.twoeH -= xHFX * *ss.exchangeMatrix;
