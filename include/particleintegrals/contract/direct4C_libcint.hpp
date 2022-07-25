@@ -569,12 +569,18 @@ namespace ChronusQ {
             auto bf12 = bf1 + bf2*nBasis;
             auto bf14 = bf1 + bf4*nBasis;
             auto bf13 = bf1 + bf3*nBasis;
+
+            /*++++++++++++++++++++++++++++++++++++++++++++*/
+            /* Start of Bare-Coulomb (LL|LL) Contraction  */
+            /*++++++++++++++++++++++++++++++++++++++++++++*/
  
-            // Start of Coulomb
+            // Coulomb
+            // Equation (B1) in Xiaosong's note
             ADCLLMS[bf12] += buff[mnkl]*DCLLMS[bf43].real();
             ADCLLMS[bf34] += buff[mnkl]*DCLLMS[bf21].real();
 
-            // Start of Exchange
+            // Exchange
+            // Equation (B2) in Xiaosong's note
             buff[mnkl] *= 0.5;
             ADXLLMS[bf14] += buff[mnkl]*DXLLMS[bf23];
             ADXLLMX[bf14] += buff[mnkl]*DXLLMX[bf23];
@@ -595,6 +601,10 @@ namespace ChronusQ {
             ADXLLMX[bf23] += buff[mnkl]*DXLLMX[bf14];
             ADXLLMY[bf23] += buff[mnkl]*DXLLMY[bf14];
             ADXLLMZ[bf23] += buff[mnkl]*DXLLMZ[bf14];
+
+            /*++++++++++++++++++++++++++++++++++++++++++++*/
+            /* End of Bare-Coulomb (LL|LL) Contraction    */
+            /*++++++++++++++++++++++++++++++++++++++++++++*/
 
           }; // bf1
           }; // bf2
@@ -906,7 +916,9 @@ namespace ChronusQ {
             /* Start of Dirac-Coulomb (LL|LL) Contraction */
             /*++++++++++++++++++++++++++++++++++++++++++++*/
   
-            //KLMN
+            // KLMN
+            // Equation (C6) in Xiaosong's note
+            // A factor of two has been multiplied to the integrals
             if(bf3 >= bf4 ) {
               ADCLLMS[bf34] +=  ERIBuffCD[DotPrdKLMN]*DCSSMS[bf21].real()
                                -ERIBuffCD[CrossZKLMN]*DCSSMZ[bf21].imag()
@@ -920,14 +932,12 @@ namespace ChronusQ {
   
   
   
-  
-  
             /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
             /* Start of Dirac-Coulomb C(2)-(SS|SS) Contraction */
             /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
   
   
-            /* MNKL */
+            // MNKL 
             if (bf1 >= bf2) {
               ADCSSMS[bf12] += ERIBuffAB[DotPrdMNKL]*DCLLMS[bf43].real();
               ADCSSMX[bf12] += ERIBuffAB[CrossXMNKL]*DCLLMS[bf43].real();
@@ -2345,8 +2355,27 @@ namespace ChronusQ {
       auto NB4_16 =16*NB4;  
       auto NB4_17 =17*NB4;  
       auto NB4_18 =18*NB4;  
-   
 
+                              //ERI0 :   ∇B∙∇C(mn|kl)
+      auto crossx    =NB4    ;//ERI1 :   ∇Bx∇C(mn|kl)-X
+      auto crossy    =NB4_2  ;//ERI2 :   ∇Bx∇C(mn|kl)-Y
+      auto crossz    =NB4_3  ;//ERI3 :   ∇Bx∇C(mn|kl)-Z
+      auto xypyx     =NB4_4  ;//ERI4 :   ∇B_x∇C_y(mn|kl) + ∇B_y∇C_x(mn|kl)
+      auto yx        =NB4_5  ;//ERI5 :   ∇B_y∇C_x(mn|kl)
+      auto xzpzx     =NB4_6  ;//ERI6 :   ∇B_x∇C_z(mn|kl) + ∇B_z∇C_x(mn|kl)
+      auto zx        =NB4_7  ;//ERI7 :   ∇B_z∇C_x(mn|kl)
+      auto yzpzy     =NB4_8  ;//ERI8 :   ∇B_y∇C_z(mn|kl) + ∇B_z∇C_y(mn|kl)
+      auto zy        =NB4_9  ;//ERI9 :   ∇B_z∇C_y(mn|kl)
+      auto mxxmyypzz =NB4_10 ;//ERI10: - ∇B_x∇C_x(mn|kl) - ∇B_y∇C_y(mn|kl) + ∇B_z∇C_z(mn|kl)
+      auto pxxmyymzz =NB4_11 ;//ERI11:   ∇B_x∇C_x(mn|kl) - ∇B_y∇C_y(mn|kl) - ∇B_z∇C_z(mn|kl)
+      auto mxxpyymzz =NB4_12 ;//ERI12: - ∇B_x∇C_x(mn|kl) + ∇B_y∇C_y(mn|kl) - ∇B_z∇C_z(mn|kl)
+      auto xx        =NB4_13 ;//ERI13:   ∇B_x∇C_x(mn|kl)
+      auto xy        =NB4_14 ;//ERI14:   ∇B_x∇C_y(mn|kl)
+      auto xz        =NB4_15 ;//ERI15:   ∇B_x∇C_z(mn|kl)
+      auto yy        =NB4_16 ;//ERI16:   ∇B_y∇C_y(mn|kl)
+      auto yz        =NB4_17 ;//ERI17:   ∇B_y∇C_z(mn|kl)
+      auto zz        =NB4_18 ;//ERI18:   ∇B_z∇C_z(mn|kl)
+ 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto topDirectGaunt = tick();
 #endif
@@ -2819,7 +2848,7 @@ namespace ChronusQ {
             //ERI16:   ∇B_y∇C_y(mn|kl)
             //ERI17:   ∇B_y∇C_z(mn|kl)
             //ERI18:   ∇B_z∇C_z(mn|kl)
-            
+           
             
             
             /*++++++++++++++++++++++++*/
@@ -2828,24 +2857,52 @@ namespace ChronusQ {
             
             // Exchange
             // MNKL
-	    // Equation (44)
-            ADXLLMS[bf14] += 3.0*( DXSSMS[bf23]*BC[MNKL       ] -iS*(DXSSMX[bf23]*BC[MNKL+NB4  ] +DXSSMY[bf23]*BC[MNKL+NB4_2 ] +DXSSMZ[bf23]*BC[MNKL+NB4_3 ]));
+	    // Equation (44) in the paper, Equation (D5) in Xiaosong's note
+            ADXLLMS[bf14] += 3.0*( DXSSMS[bf23]*BC[MNKL] 
+                              -iS*(DXSSMX[bf23]*BC[MNKL+crossx] 
+                                  +DXSSMY[bf23]*BC[MNKL+crossy] 
+                                  +DXSSMZ[bf23]*BC[MNKL+crossz]));
 	    
-	    // Equation (45)
-            ADXLLMZ[bf14] +=      -DXSSMZ[bf23]*BC[MNKL+NB4_10] -iS*DXSSMS[bf23]*BC[MNKL+NB4_3 ] -DXSSMX[bf23]*BC[MNKL+NB4_6 ] -DXSSMY[bf23]*BC[MNKL+NB4_8 ];
+	    // Equation (45) in the paper, Equation (D6) in Xiaosong's note
+            ADXLLMZ[bf14] +=  -DXSSMZ[bf23]*BC[MNKL+mxxmyypzz] 
+                           -iS*DXSSMS[bf23]*BC[MNKL+crossz] 
+                              -DXSSMX[bf23]*BC[MNKL+xzpzx] 
+                              -DXSSMY[bf23]*BC[MNKL+yzpzy];
 	    
-	    // Equation (46)
-            ADXLLMX[bf14] +=      -DXSSMX[bf23]*BC[MNKL+NB4_11] -iS*DXSSMS[bf23]*BC[MNKL+NB4   ] -DXSSMY[bf23]*BC[MNKL+NB4_4 ] -DXSSMZ[bf23]*BC[MNKL+NB4_6 ];
+	    // Equation (46) in the paper, Equation (D7) in Xiaosong's note
+            ADXLLMX[bf14] +=  -DXSSMX[bf23]*BC[MNKL+pxxmyymzz] 
+                           -iS*DXSSMS[bf23]*BC[MNKL+crossx] 
+                              -DXSSMY[bf23]*BC[MNKL+xypyx] 
+                              -DXSSMZ[bf23]*BC[MNKL+xzpzx];
 	    
-	    // Equation (47)
-            ADXLLMY[bf14] +=      -DXSSMY[bf23]*BC[MNKL+NB4_12] -iS*DXSSMS[bf23]*BC[MNKL+NB4_2 ] -DXSSMX[bf23]*BC[MNKL+NB4_4 ] -DXSSMZ[bf23]*BC[MNKL+NB4_8 ];
+	    // Equation (47) in the paper, Equation (D8) in Xiaosong's note
+            ADXLLMY[bf14] +=  -DXSSMY[bf23]*BC[MNKL+mxxpyymzz] 
+                           -iS*DXSSMS[bf23]*BC[MNKL+crossy] 
+                              -DXSSMX[bf23]*BC[MNKL+xypyx] 
+                              -DXSSMZ[bf23]*BC[MNKL+yzpzy];
             
             // LKNM
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
-              ADXLLMS[bf41] += 3.0*( DXSSMS[bf32]*BC[LKNM       ] -iS*(DXSSMX[bf32]*BC[LKNM+NB4  ] +DXSSMY[bf32]*BC[LKNM+NB4_2 ] +DXSSMZ[bf32]*BC[LKNM+NB4_3 ]));
-              ADXLLMZ[bf41] +=      -DXSSMZ[bf32]*BC[LKNM+NB4_10] -iS*DXSSMS[bf32]*BC[LKNM+NB4_3 ] -DXSSMX[bf32]*BC[LKNM+NB4_6 ] -DXSSMY[bf32]*BC[LKNM+NB4_8 ];
-              ADXLLMX[bf41] +=      -DXSSMX[bf32]*BC[LKNM+NB4_11] -iS*DXSSMS[bf32]*BC[LKNM+NB4   ] -DXSSMY[bf32]*BC[LKNM+NB4_4 ] -DXSSMZ[bf32]*BC[LKNM+NB4_6 ];
-              ADXLLMY[bf41] +=      -DXSSMY[bf32]*BC[LKNM+NB4_12] -iS*DXSSMS[bf32]*BC[LKNM+NB4_2 ] -DXSSMX[bf32]*BC[LKNM+NB4_4 ] -DXSSMZ[bf32]*BC[LKNM+NB4_8 ];
+              ADXLLMS[bf41] += 3.0*( DXSSMS[bf32]*BC[LKNM] 
+                                -iS*(DXSSMX[bf32]*BC[LKNM+crossx] 
+                                    +DXSSMY[bf32]*BC[LKNM+crossy] 
+                                    +DXSSMZ[bf32]*BC[LKNM+crossz]));
+
+              ADXLLMZ[bf41] +=  -DXSSMZ[bf32]*BC[LKNM+mxxmyypzz]
+                             -iS*DXSSMS[bf32]*BC[LKNM+crossz] 
+                                -DXSSMX[bf32]*BC[LKNM+xzpzx] 
+                                -DXSSMY[bf32]*BC[LKNM+yzpzy];
+
+              ADXLLMX[bf41] +=  -DXSSMX[bf32]*BC[LKNM+pxxmyymzz] 
+                             -iS*DXSSMS[bf32]*BC[LKNM+crossx] 
+                                -DXSSMY[bf32]*BC[LKNM+xypyx] 
+                                -DXSSMZ[bf32]*BC[LKNM+xzpzx];
+
+              ADXLLMY[bf41] +=  -DXSSMY[bf32]*BC[LKNM+mxxpyymzz] 
+                             -iS*DXSSMS[bf32]*BC[LKNM+crossy] 
+                                -DXSSMX[bf32]*BC[LKNM+xypyx] 
+                                -DXSSMZ[bf32]*BC[LKNM+yzpzy];
+
             }
             
             /*++++++++++++++++++++++++*/
@@ -2853,24 +2910,53 @@ namespace ChronusQ {
             /*++++++++++++++++++++++++*/
             
             // MNKL
-	    // Equation (48)
-            ADXSSMS[bf32]+= 3.0*DXLLMS[bf41]*BC[MNKL       ]    -iS*(DXLLMX[bf41]*BC[MNKL+NB4   ] +DXLLMY[bf41]*BC[MNKL+NB4_2 ] +DXLLMZ[bf41]*BC[MNKL+NB4_3 ]);
+	    // Equation (48) in the paper, Equation (D9) in Xiaosong's note
+            ADXSSMS[bf32]+=  3.0*DXLLMS[bf41]*BC[MNKL]
+                           -iS*( DXLLMX[bf41]*BC[MNKL+crossx]
+                                +DXLLMY[bf41]*BC[MNKL+crossy]
+                                +DXLLMZ[bf41]*BC[MNKL+crossz]);
 
-	    // Equation (49)
-            ADXSSMZ[bf32]+=    -DXLLMZ[bf41]*BC[MNKL+NB4_10] -3.0*iS*DXLLMS[bf41]*BC[MNKL+NB4_3 ] -DXLLMX[bf41]*BC[MNKL+NB4_6 ] -DXLLMY[bf41]*BC[MNKL+NB4_8 ];
+	    // Equation (49) in the paper, Equation (D10) in Xiaosong's note
+            ADXSSMZ[bf32]+=      -DXLLMZ[bf41]*BC[MNKL+mxxmyypzz] 
+                          -3.0*iS*DXLLMS[bf41]*BC[MNKL+crossz] 
+                                 -DXLLMX[bf41]*BC[MNKL+xzpzx] 
+                                 -DXLLMY[bf41]*BC[MNKL+yzpzy];
 	    
-	    // Equation (50)
-            ADXSSMX[bf32]+=    -DXLLMX[bf41]*BC[MNKL+NB4_11] -3.0*iS*DXLLMS[bf41]*BC[MNKL+NB4   ] -DXLLMZ[bf41]*BC[MNKL+NB4_6 ] -DXLLMY[bf41]*BC[MNKL+NB4_4 ];
+	    // Equation (50) in the paper, Equation (D11) in Xiaosong's note
+            ADXSSMX[bf32]+=      -DXLLMX[bf41]*BC[MNKL+pxxmyymzz] 
+                          -3.0*iS*DXLLMS[bf41]*BC[MNKL+crossx] 
+                                 -DXLLMZ[bf41]*BC[MNKL+xzpzx] 
+                                 -DXLLMY[bf41]*BC[MNKL+xypyx];
 	    
-	    // Equation (51)
-            ADXSSMY[bf32]+=    -DXLLMY[bf41]*BC[MNKL+NB4_12] -3.0*iS*DXLLMS[bf41]*BC[MNKL+NB4_2 ] -DXLLMX[bf41]*BC[MNKL+NB4_4 ] -DXLLMZ[bf41]*BC[MNKL+NB4_8 ];
+	    // Equation (51) in the paper, Equation (D12) in Xiaosong's note
+            ADXSSMY[bf32]+=      -DXLLMY[bf41]*BC[MNKL+mxxpyymzz]
+                          -3.0*iS*DXLLMS[bf41]*BC[MNKL+crossy] 
+                                 -DXLLMX[bf41]*BC[MNKL+xypyx] 
+                                 -DXLLMZ[bf41]*BC[MNKL+yzpzy];
             
             // LKNM
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
-              ADXSSMS[bf23]+= 3.0*DXLLMS[bf14]*BC[LKNM       ]    -iS*(DXLLMX[bf14]*BC[LKNM+NB4   ] +DXLLMY[bf14]*BC[LKNM+NB4_2 ] +DXLLMZ[bf14]*BC[LKNM+NB4_3 ]);
-              ADXSSMZ[bf23]+=    -DXLLMZ[bf14]*BC[LKNM+NB4_10] -3.0*iS*DXLLMS[bf14]*BC[LKNM+NB4_3 ] -DXLLMX[bf14]*BC[LKNM+NB4_6 ] -DXLLMY[bf14]*BC[LKNM+NB4_8 ];
-              ADXSSMX[bf23]+=    -DXLLMX[bf14]*BC[LKNM+NB4_11] -3.0*iS*DXLLMS[bf14]*BC[LKNM+NB4   ] -DXLLMZ[bf14]*BC[LKNM+NB4_6 ] -DXLLMY[bf14]*BC[LKNM+NB4_4 ];
-              ADXSSMY[bf23]+=    -DXLLMY[bf14]*BC[LKNM+NB4_12] -3.0*iS*DXLLMS[bf14]*BC[LKNM+NB4_2 ] -DXLLMX[bf14]*BC[LKNM+NB4_4 ] -DXLLMZ[bf14]*BC[LKNM+NB4_8 ];
+
+              ADXSSMS[bf23]+=  3.0*DXLLMS[bf14]*BC[LKNM]    
+                             -iS*( DXLLMX[bf14]*BC[LKNM+crossx] 
+                                  +DXLLMY[bf14]*BC[LKNM+crossy] 
+                                  +DXLLMZ[bf14]*BC[LKNM+crossz]);
+
+              ADXSSMZ[bf23]+=      -DXLLMZ[bf14]*BC[LKNM+mxxmyypzz]
+                            -3.0*iS*DXLLMS[bf14]*BC[LKNM+crossz]
+                                   -DXLLMX[bf14]*BC[LKNM+xzpzx] 
+                                   -DXLLMY[bf14]*BC[LKNM+yzpzy];
+
+              ADXSSMX[bf23]+=      -DXLLMX[bf14]*BC[LKNM+pxxmyymzz]
+                            -3.0*iS*DXLLMS[bf14]*BC[LKNM+crossx]
+                                   -DXLLMZ[bf14]*BC[LKNM+xzpzx] 
+                                   -DXLLMY[bf14]*BC[LKNM+xypyx];
+
+              ADXSSMY[bf23]+=      -DXLLMY[bf14]*BC[LKNM+mxxpyymzz] 
+                            -3.0*iS*DXLLMS[bf14]*BC[LKNM+crossy] 
+                                   -DXLLMX[bf14]*BC[LKNM+xypyx] 
+                                   -DXLLMZ[bf14]*BC[LKNM+yzpzy];
+
             }
             
             
@@ -2880,95 +2966,130 @@ namespace ChronusQ {
             
             // MNKL
             // TRANSKL
-	    // Equation (52), Coulomb
+	    // Equation (52) Coulomb in the paper, Equation (D13) in Xiaosong's note
             ADCLSMS[bf12]+=     (-DCLSMS[bf43] +DCSLMS[bf34])*BC[MNKL] 
-                          + iS*( (DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+NB4] 
-                                +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+NB4_2] 
-                                +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+NB4_3]);
+                          + iS*( (DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+crossx] 
+                                +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+crossy] 
+                                +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+crossz]);
             
-	    // Equation (53), Coulomb
-            ADCLSMZ[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+NB4_3]
+	    // Equation (53) Coulomb in the paper, Equation (D14) in Xiaosong's note
+            ADCLSMZ[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+crossz]
                               -(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL] 
-                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+NB4_15] 
-                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+NB4_17] 
-                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+NB4_18];
+                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+xz] 
+                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+yz] 
+                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+zz];
             
-	    // Equation (54), Coulomb
-            ADCLSMX[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+NB4] 
+	    // Equation (54) Coulomb in the paper, Equation (D15) in Xiaosong's note
+            ADCLSMX[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+crossx] 
                               -(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL]
-                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+NB4_13] 
-                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+NB4_5] 
-                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+NB4_7];
+                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+xx] 
+                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+yx] 
+                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+zx];
            
-	    // Equation (55), Coulomb
-            ADCLSMY[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+NB4_2 ] 
+	    // Equation (55) Coulomb in the paper, Equation (D16) in Xiaosong's note
+            ADCLSMY[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+crossy] 
                               -(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL] 
-                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+NB4_14] 
-                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+NB4_16] 
-                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+NB4_9];
+                              +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+xy] 
+                              +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+yy] 
+                              +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+zy];
             
             // LKNM
             // Coulomb //TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
-              // Equation (52), Coulomb
+
               ADCLSMS[bf43]+=     (-DCLSMS[bf12] +DCSLMS[bf21])*BC[LKNM] 
-                            + iS*( (DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+NB4] 
-                                  +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+NB4_2] 
-                                  +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+NB4_3]);
+                            + iS*( (DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+crossx] 
+                                  +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+crossy] 
+                                  +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+crossz]);
               
-              // Equation (53), Coulomb
-              ADCLSMZ[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+NB4_3]
+              ADCLSMZ[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+crossz]
                                 -(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM] 
-                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+NB4_15] 
-                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+NB4_17] 
-                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+NB4_18];
+                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+xz] 
+                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+yz] 
+                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+zz];
               
-              // Equation (54), Coulomb
-              ADCLSMX[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+NB4] 
+              ADCLSMX[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+crossx] 
                                 -(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM]
-                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+NB4_13] 
-                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+NB4_5] 
-                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+NB4_7];
+                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+xx] 
+                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+yx] 
+                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+zx];
              
-              // Equation (55), Coulomb
-              ADCLSMY[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+NB4_2 ] 
+              ADCLSMY[bf43]+= iS*(DCLSMS[bf12] -DCSLMS[bf21])*BC[LKNM+crossy] 
                                 -(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM] 
-                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+NB4_14] 
-                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+NB4_16] 
-                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+NB4_9];
+                                +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+xy] 
+                                +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+yy] 
+                                +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+zy];
 
             }
             
             
             // TRANSKL
-	    // Equation (52), Exchange
-            ADXLSMS[bf13]+= DXSLMS[bf24]*BC[MNKL] -iS*(DXSLMX[bf24]*BC[MNKL+NB4] +DXSLMY[bf24]*BC[MNKL+NB4_2] +DXSLMZ[bf24]*BC[MNKL+NB4_3]);
+	    // Equation (52) Exchange in the paper, Equation (D17) in Xiaosong's note
+            ADXLSMS[bf13]+=     DXSLMS[bf24]*BC[MNKL] 
+                          -iS*( DXSLMX[bf24]*BC[MNKL+crossx] 
+                               +DXSLMY[bf24]*BC[MNKL+crossy] 
+                               +DXSLMZ[bf24]*BC[MNKL+crossz]);
              
-	    // Equation (53), Exchange
-            ADXLSMZ[bf13]+=-2.0*( DXSLMZ[bf24]*BC[MNKL       ] +DXSLMY[bf24]*BC[MNKL+NB4   ] -DXSLMX[bf24]*BC[MNKL+NB4_2 ]) +iS*DXSLMS[bf24]*BC[MNKL+NB4_3 ]
-                                 -DXSLMZ[bf24]*BC[MNKL+NB4_10] -DXSLMX[bf24]*BC[MNKL+NB4_6 ] -DXSLMY[bf24]*BC[MNKL+NB4_8 ];
+	    // Equation (53) Exchange in the paper, Equation (D18) in Xiaosong's note
+            ADXLSMZ[bf13]+= -2.0*( DXSLMZ[bf24]*BC[MNKL] 
+                                  +DXSLMY[bf24]*BC[MNKL+crossx] 
+                                  -DXSLMX[bf24]*BC[MNKL+crossy] ) 
+                               +iS*DXSLMS[bf24]*BC[MNKL+crossz]
+                                  -DXSLMZ[bf24]*BC[MNKL+mxxmyypzz] 
+                                  -DXSLMX[bf24]*BC[MNKL+xzpzx] 
+                                  -DXSLMY[bf24]*BC[MNKL+yzpzy];
             
-	    // Equation (54), Exchange
-            ADXLSMX[bf13]+=-2.0*( DXSLMX[bf24]*BC[MNKL       ] -DXSLMY[bf24]*BC[MNKL+NB4_3 ] +DXSLMZ[bf24]*BC[MNKL+NB4_2 ]) +iS*DXSLMS[bf24]*BC[MNKL+NB4   ]
-                                 -DXSLMX[bf24]*BC[MNKL+NB4_11] -DXSLMY[bf24]*BC[MNKL+NB4_4 ] -DXSLMZ[bf24]*BC[MNKL+NB4_6 ];
+	    // Equation (54) Exchange in the paper, Equation (D19) in Xiaosong's note
+            ADXLSMX[bf13]+= -2.0*( DXSLMX[bf24]*BC[MNKL] 
+                                  -DXSLMY[bf24]*BC[MNKL+crossz] 
+                                  +DXSLMZ[bf24]*BC[MNKL+crossy] ) 
+                               +iS*DXSLMS[bf24]*BC[MNKL+crossx]
+                                  -DXSLMX[bf24]*BC[MNKL+pxxmyymzz]
+                                  -DXSLMY[bf24]*BC[MNKL+xypyx] 
+                                  -DXSLMZ[bf24]*BC[MNKL+xzpzx];
             
-	    // Equation (55), Exchange
-            ADXLSMY[bf13]+=-2.0*( DXSLMY[bf24]*BC[MNKL       ] +DXSLMX[bf24]*BC[MNKL+NB4_3 ] -DXSLMZ[bf24]*BC[MNKL+NB4   ]) +iS*DXSLMS[bf24]*BC[MNKL+NB4_2 ]
-                                 -DXSLMY[bf24]*BC[MNKL+NB4_12] -DXSLMX[bf24]*BC[MNKL+NB4_4 ] -DXSLMZ[bf24]*BC[MNKL+NB4_8 ];
+	    // Equation (55) Exchange in the paper, Equation (D20) in Xiaosong's note
+            ADXLSMY[bf13]+= -2.0*( DXSLMY[bf24]*BC[MNKL] 
+                                  +DXSLMX[bf24]*BC[MNKL+crossz] 
+                                  -DXSLMZ[bf24]*BC[MNKL+crossx] ) 
+                               +iS*DXSLMS[bf24]*BC[MNKL+crossy]
+                                  -DXSLMY[bf24]*BC[MNKL+mxxpyymzz] 
+                                  -DXSLMX[bf24]*BC[MNKL+xypyx] 
+                                  -DXSLMZ[bf24]*BC[MNKL+yzpzy];
             
             
             // TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
-              ADXLSMS[bf42]+= DXSLMS[bf31]*BC[LKNM] -iS*(DXSLMX[bf31]*BC[LKNM+NB4] +DXSLMY[bf31]*BC[LKNM+NB4_2] +DXSLMZ[bf31]*BC[LKNM+NB4_3]);
+
+              ADXLSMS[bf42]+=     DXSLMS[bf31]*BC[LKNM] 
+                            -iS*( DXSLMX[bf31]*BC[LKNM+crossx] 
+                                 +DXSLMY[bf31]*BC[LKNM+crossy] 
+                                 +DXSLMZ[bf31]*BC[LKNM+crossz]);
               
-              ADXLSMZ[bf42]+=-2.0*( DXSLMZ[bf31]*BC[LKNM      ] +DXSLMY[bf31]*BC[LKNM+NB4   ] -DXSLMX[bf31]*BC[LKNM+NB4_2 ]) +iS*DXSLMS[bf31]*BC[LKNM+NB4_3 ]
-                                  -DXSLMZ[bf31]*BC[LKNM+NB4_10] -DXSLMX[bf31]*BC[LKNM+NB4_6 ] -DXSLMY[bf31]*BC[LKNM+NB4_8 ];
+              ADXLSMZ[bf42]+= -2.0*( DXSLMZ[bf31]*BC[LKNM] 
+                                    +DXSLMY[bf31]*BC[LKNM+crossx] 
+                                    -DXSLMX[bf31]*BC[LKNM+crossy] ) 
+                                 +iS*DXSLMS[bf31]*BC[LKNM+crossz]
+                                    -DXSLMZ[bf31]*BC[LKNM+mxxmyypzz] 
+                                    -DXSLMX[bf31]*BC[LKNM+xzpzx] 
+                                    -DXSLMY[bf31]*BC[LKNM+yzpzy];
             
-              ADXLSMX[bf42]+=-2.0*( DXSLMX[bf31]*BC[LKNM       ] -DXSLMY[bf31]*BC[LKNM+NB4_3 ] +DXSLMZ[bf31]*BC[LKNM+NB4_2 ]) +iS*DXSLMS[bf31]*BC[LKNM+NB4  ]
-                                   -DXSLMX[bf31]*BC[LKNM+NB4_11] -DXSLMY[bf31]*BC[LKNM+NB4_4 ] -DXSLMZ[bf31]*BC[LKNM+NB4_6 ];
+              ADXLSMX[bf42]+= -2.0*( DXSLMX[bf31]*BC[LKNM] 
+                                    -DXSLMY[bf31]*BC[LKNM+crossz] 
+                                    +DXSLMZ[bf31]*BC[LKNM+crossy] ) 
+                                 +iS*DXSLMS[bf31]*BC[LKNM+crossx]
+                                    -DXSLMX[bf31]*BC[LKNM+pxxmyymzz] 
+                                    -DXSLMY[bf31]*BC[LKNM+xypyx] 
+                                    -DXSLMZ[bf31]*BC[LKNM+xzpzx];
             
-              ADXLSMY[bf42]+=-2.0*( DXSLMY[bf31]*BC[LKNM       ] +DXSLMX[bf31]*BC[LKNM+NB4_3 ] -DXSLMZ[bf31]*BC[LKNM+NB4   ]) +iS*DXSLMS[bf31]*BC[LKNM+NB4_2 ]
-                                   -DXSLMY[bf31]*BC[LKNM+NB4_12] -DXSLMX[bf31]*BC[LKNM+NB4_4 ] -DXSLMZ[bf31]*BC[LKNM+NB4_8 ];
+              ADXLSMY[bf42]+= -2.0*( DXSLMY[bf31]*BC[LKNM] 
+                                    +DXSLMX[bf31]*BC[LKNM+crossz] 
+                                    -DXSLMZ[bf31]*BC[LKNM+crossx] ) 
+                                 +iS*DXSLMS[bf31]*BC[LKNM+crossy]
+                                    -DXSLMY[bf31]*BC[LKNM+mxxpyymzz] 
+                                    -DXSLMX[bf31]*BC[LKNM+xypyx] 
+                                    -DXSLMZ[bf31]*BC[LKNM+yzpzy];
+
             }
 
           }
@@ -3809,22 +3930,25 @@ namespace ChronusQ {
                                + (DXLSMY[bf43] + DXSLMY[bf34])*BC[MNKL+sy]
      	                       + (DXLSMZ[bf43] + DXSLMZ[bf34])*BC[MNKL+sz]);
 
-            /* Equations (A26) */
+            /* Equations (A26) in the paper, (E21) in Xiaosong's note */
+            ADCLSMZ[bf12] += iS*(DXSLMS[bf34] - DXLSMS[bf43])*BC[MNKL+zs]
+                              - (DXLSMX[bf43] + DXSLMX[bf34])*BC[MNKL+zx]
+                              - (DXLSMY[bf43] + DXSLMY[bf34])*BC[MNKL+zy]
+                              - (DXLSMZ[bf43] + DXSLMZ[bf34])*BC[MNKL+zz];
+ 
+            /* Equations (A26) in the paper, (E22) in Xiaosong's note */
             ADCLSMX[bf12] += iS*(DXSLMS[bf34] - DXLSMS[bf43])*BC[MNKL+xs]
                               - (DXLSMX[bf43] + DXSLMX[bf34])*BC[MNKL+xx]
                               - (DXLSMY[bf43] + DXSLMY[bf34])*BC[MNKL+xy]
                               - (DXLSMZ[bf43] + DXSLMZ[bf34])*BC[MNKL+xz];
             
+            /* Equations (A26) in the paper, (E23) in Xiaosong's note */
             ADCLSMY[bf12] += iS*(DXSLMS[bf34] - DXLSMS[bf43])*BC[MNKL+ys]
                               - (DXLSMX[bf43] + DXSLMX[bf34])*BC[MNKL+yx]
                               - (DXLSMY[bf43] + DXSLMY[bf34])*BC[MNKL+yy]
                               - (DXLSMZ[bf43] + DXSLMZ[bf34])*BC[MNKL+yz];
             
-            ADCLSMZ[bf12] += iS*(DXSLMS[bf34] - DXLSMS[bf43])*BC[MNKL+zs]
-                              - (DXLSMX[bf43] + DXSLMX[bf34])*BC[MNKL+zx]
-                              - (DXLSMY[bf43] + DXSLMY[bf34])*BC[MNKL+zy]
-                              - (DXLSMZ[bf43] + DXSLMZ[bf34])*BC[MNKL+zz];
-            
+           
             // LKNM
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
@@ -3833,6 +3957,11 @@ namespace ChronusQ {
                                  + (DXLSMY[bf12] + DXSLMY[bf21])*BC[LKNM+sy]
                                  + (DXLSMZ[bf12] + DXSLMZ[bf21])*BC[LKNM+sz]);
 
+              ADCLSMZ[bf43] += iS*(DXSLMS[bf21] - DXLSMS[bf12])*BC[LKNM+zs]
+                                - (DXLSMX[bf12] + DXSLMX[bf21])*BC[LKNM+zx]
+                                - (DXLSMY[bf12] + DXSLMY[bf21])*BC[LKNM+zy]
+                                - (DXLSMZ[bf12] + DXSLMZ[bf21])*BC[LKNM+zz];
+ 
               ADCLSMX[bf43] += iS*(DXSLMS[bf21] - DXLSMS[bf12])*BC[LKNM+xs]
                                 - (DXLSMX[bf12] + DXSLMX[bf21])*BC[LKNM+xx]
                                 - (DXLSMY[bf12] + DXSLMY[bf21])*BC[LKNM+xy]
@@ -3842,37 +3971,32 @@ namespace ChronusQ {
                                 - (DXLSMX[bf12] + DXSLMX[bf21])*BC[LKNM+yx]
                                 - (DXLSMY[bf12] + DXSLMY[bf21])*BC[LKNM+yy]
                                 - (DXLSMZ[bf12] + DXSLMZ[bf21])*BC[LKNM+yz];
-            
-              ADCLSMZ[bf43] += iS*(DXSLMS[bf21] - DXLSMS[bf12])*BC[LKNM+zs]
-                                - (DXLSMX[bf12] + DXSLMX[bf21])*BC[LKNM+zx]
-                                - (DXLSMY[bf12] + DXSLMY[bf21])*BC[LKNM+zy]
-                                - (DXLSMZ[bf12] + DXSLMZ[bf21])*BC[LKNM+zz];
- 
+
             }
              
             // Exchange
             // MNKL, TRANS_KL
-            // See Equation (A16) for integral symmetry
+            // See Equation (A16)/(E11) for integral symmetry
             
-            /* Equation (A27) */
+            /* Equation (A27) in the paper, (E24) in Xiaosong's note */
             ADXLSMS[bf13] +=    DXSLMS[bf24]*(BC[MNKL+dot] - BC[MNKL])
                            + iS*DXSLMX[bf24]*(BC[MNKL+sx] - BC[MNKL+xs] - BC[MNKL+crossx])
                            + iS*DXSLMY[bf24]*(BC[MNKL+sy] - BC[MNKL+ys] - BC[MNKL+crossy])
                            + iS*DXSLMZ[bf24]*(BC[MNKL+sz] - BC[MNKL+zs] - BC[MNKL+crossz]);
             
-            /* Equation (A28) */
+            /* Equation (A28) in the paper, (E25) in Xiaosong's note */
             ADXLSMZ[bf13] +=    DXSLMZ[bf24]*(BC[MNKL+mxxmyypzz] - BC[MNKL]) 
                            + iS*DXSLMS[bf24]*(BC[MNKL+sz] - BC[MNKL+zs] + BC[MNKL+crossz])
                            -    DXSLMX[bf24]*(BC[MNKL+sy] + BC[MNKL+ys] - BC[MNKL+zxpxz])
                            +    DXSLMY[bf24]*(BC[MNKL+sx] + BC[MNKL+xs] + BC[MNKL+yzpzy]);
             
-            /* Equation (A29) */
+            /* Equation (A29) in the paper, (E26) in Xiaosong's note */
             ADXLSMX[bf13] +=    DXSLMX[bf24]*(BC[MNKL+pxxmyymzz] - BC[MNKL])
                            + iS*DXSLMS[bf24]*(BC[MNKL+sx] - BC[MNKL+xs] + BC[MNKL+crossx])
                            -    DXSLMY[bf24]*(BC[MNKL+sz] + BC[MNKL+zs] - BC[MNKL+xypyx])
                            +    DXSLMZ[bf24]*(BC[MNKL+sy] + BC[MNKL+ys] + BC[MNKL+zxpxz]);
             
-            /* Equation (A30) */
+            /* Equation (A30) in the paper, (E27) in Xiaosong's note */
             ADXLSMY[bf13] +=    DXSLMY[bf24]*(BC[MNKL+mxxpyymzz] - BC[MNKL])
                            + iS*DXSLMS[bf24]*(BC[MNKL+sy] - BC[MNKL+ys] + BC[MNKL+crossy])
                            +    DXSLMX[bf24]*(BC[MNKL+sz] + BC[MNKL+zs] + BC[MNKL+xypyx])
@@ -3881,25 +4005,21 @@ namespace ChronusQ {
             // LKNM, TRANS_KL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
-              /* Equation (A27) */
               ADXLSMS[bf42] +=    DXSLMS[bf31]*(BC[LKNM+dot] - BC[LKNM])
                              + iS*DXSLMX[bf31]*(BC[LKNM+sx] - BC[LKNM+xs] - BC[LKNM+crossx])
                              + iS*DXSLMY[bf31]*(BC[LKNM+sy] - BC[LKNM+ys] - BC[LKNM+crossy])
                              + iS*DXSLMZ[bf31]*(BC[LKNM+sz] - BC[LKNM+zs] - BC[LKNM+crossz]);
               
-              /* Equation (A28) */
               ADXLSMZ[bf42] +=    DXSLMZ[bf31]*(BC[LKNM+mxxmyypzz] - BC[LKNM]) 
                              + iS*DXSLMS[bf31]*(BC[LKNM+sz] - BC[LKNM+zs] + BC[LKNM+crossz])
                              -    DXSLMX[bf31]*(BC[LKNM+sy] + BC[LKNM+ys] - BC[LKNM+zxpxz])
                              +    DXSLMY[bf31]*(BC[LKNM+sx] + BC[LKNM+xs] + BC[LKNM+yzpzy]);
               
-              /* Equation (A29) */
               ADXLSMX[bf42] +=    DXSLMX[bf31]*(BC[LKNM+pxxmyymzz] - BC[LKNM])
                              + iS*DXSLMS[bf31]*(BC[LKNM+sx] - BC[LKNM+xs] + BC[LKNM+crossx])
                              -    DXSLMY[bf31]*(BC[LKNM+sz] + BC[LKNM+zs] - BC[LKNM+xypyx])
                              +    DXSLMZ[bf31]*(BC[LKNM+sy] + BC[LKNM+ys] + BC[LKNM+zxpxz]);
               
-              /* Equation (A30) */
               ADXLSMY[bf42] +=    DXSLMY[bf31]*(BC[LKNM+mxxpyymzz] - BC[LKNM])
                              + iS*DXSLMS[bf31]*(BC[LKNM+sy] - BC[LKNM+ys] + BC[LKNM+crossy])
                              +    DXSLMX[bf31]*(BC[LKNM+sz] + BC[LKNM+zs] + BC[LKNM+xypyx])
