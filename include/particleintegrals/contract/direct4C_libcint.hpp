@@ -668,13 +668,13 @@ namespace ChronusQ {
 
 
 
-    /******************************************/
-    /*                                        */
-    /* Start of Dirac-Coulomb LL and C(2)-SS  */
-    /*                                        */
-    /******************************************/
+    /***********************************/
+    /*                                 */
+    /* Start of Dirac-Coulomb C(2)     */
+    /*                                 */
+    /***********************************/
 
-    if( matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLLL ) {
+    if( matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLSS ) {
 
  
 #ifdef _REPORT_INTEGRAL_TIMINGS
@@ -684,7 +684,7 @@ namespace ChronusQ {
 #ifdef _SHZ_SCREEN_4C
       // Compute shell block norms (∞-norm) of matList.X
       // CLLMS, CSSMS, CSSMX, CSSMY, CSSMZ Densitry matrices
-      int mMat = 5;
+      int mMat = 9;
       double *ShBlkNorms_raw = memManager_.malloc<double>(mMat*nShell*nShell);
       std::vector<double*> ShBlkNorms;
   
@@ -707,7 +707,23 @@ namespace ChronusQ {
       iOff += nShell*nShell;
       ShellBlockNorm(basisSet_.shells,matList[CSSMZ].X,nBasis,ShBlkNorms_raw + iOff);
       ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
+
+      iOff += nShell*nShell;
+      ShellBlockNorm(basisSet_.shells,matList[XLSMS].X,nBasis,ShBlkNorms_raw + iOff);
+      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
   
+      iOff += nShell*nShell;
+      ShellBlockNorm(basisSet_.shells,matList[XLSMX].X,nBasis,ShBlkNorms_raw + iOff);
+      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
+  
+      iOff += nShell*nShell;
+      ShellBlockNorm(basisSet_.shells,matList[XLSMY].X,nBasis,ShBlkNorms_raw + iOff);
+      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
+  
+      iOff += nShell*nShell;
+      ShellBlockNorm(basisSet_.shells,matList[XLSMZ].X,nBasis,ShBlkNorms_raw + iOff);
+      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
+ 
       // Get the max over all the matricies for the shell block ∞-norms
       for(auto k = 0; k < nShell*nShell; k++) {
   
@@ -724,17 +740,16 @@ namespace ChronusQ {
       buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
       cacheAll = memManager_.malloc<double>(cache_size*nThreads);
       ERIBuffer = memManager_.malloc<double>(2*4*NB4*nThreads);
-
+      memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
       // Keeping track of number of integrals skipped
       std::vector<size_t> nSkipLL(nThreads,0);
 
-      memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
 
       #pragma omp parallel
       {
 
-        double C2 = 1./(4*SpeedOfLight*SpeedOfLight);
-  
+        dcomplex iscale = dcomplex(0.0, 1.0);
+
         size_t thread_id = GetThreadID();
   
         auto &AX_loc = AXthreads[thread_id];
@@ -756,11 +771,9 @@ namespace ChronusQ {
         for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++) {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
-          // Deneneracy factor for s1,s2 pair
-          double s12_deg = (s1 == s2) ? 1.0 : 2.0;
   
 #ifdef _SHZ_SCREEN_4C
-//          double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
+          double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
 #endif
   
         for(size_t s3(0), bf3_s(0); s3 < nShell; bf3_s+=n3, s3++) {
@@ -769,8 +782,8 @@ namespace ChronusQ {
           s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
   
 #ifdef _SHZ_SCREEN_4C
-//          double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
-//          shMax123 = std::max(shMax123,shMax12);
+          double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
+          shMax123 = std::max(shMax123,shMax12);
 #endif
    
         for(size_t s4(0), bf4_s(0); s4 <= s3; bf4_s+=n4, s4++, s1234++) {
@@ -783,23 +796,17 @@ namespace ChronusQ {
           #endif
 
 #ifdef _SHZ_SCREEN_4C
-//          double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
-//                                  std::max(ShBlkNorms[0][s2 + s4*nShell],
-//                                           ShBlkNorms[0][s3 + s4*nShell]));
+          double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
+                                  std::max(ShBlkNorms[0][s2 + s4*nShell],
+                                           ShBlkNorms[0][s3 + s4*nShell]));
 
-//          shMax = std::max(shMax,shMax123);
+          shMax = std::max(shMax,shMax123);
 
-//          if((shMax*SchwarzSSSS[s1+s2*nShell]*SchwarzERI[s3 + s4*nShell]) <
-//             eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
+//          double shMax = std::max(ShBlkNorms[0][s1 + s2*nShell],ShBlkNorms[0][s3 + s4*nShell]);
 
-          double shMax = std::max(ShBlkNorms[0][s1 + s2*nShell],ShBlkNorms[0][s3 + s4*nShell]);
-
-          if((shMax*SchwarzSSSS[s1+s2*nShell]*SchwarzERI[s3 + s4*nShell]) <
+          if((shMax*SchwarzSSSS[s1+s2*nShell]*SchwarzERI[s3+s4*nShell]) <
              eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
 #endif
-
-          // Degeneracy factor for s3,s4 pair
-          double s34_deg = (s3 == s4) ? 1.0 : 2.0;
 
           auto nQuad = n1*n2*n3*n4;
   
@@ -841,17 +848,17 @@ namespace ChronusQ {
   
             // ∇A∙∇B(mn|kl) followed by ∇Ax∇B(mn|kl) X, Y, and Z
             // (mn|kl)
-            ERIBuffAB[       MNKL] =  (double)s34_deg*dAdotdB;
-            ERIBuffAB[   NB4+MNKL] =  (double)s34_deg*dAcrossdB_x;
-            ERIBuffAB[ NB4_2+MNKL] =  (double)s34_deg*dAcrossdB_y;
-            ERIBuffAB[ NB4_3+MNKL] =  (double)s34_deg*dAcrossdB_z;
+            ERIBuffAB[       MNKL] =  dAdotdB;
+            ERIBuffAB[   NB4+MNKL] =  dAcrossdB_x;
+            ERIBuffAB[ NB4_2+MNKL] =  dAcrossdB_y;
+            ERIBuffAB[ NB4_3+MNKL] =  dAcrossdB_z;
   
-            // ∇C∙∇D(kl|nm) followed by ∇Cx∇D(kl|nm) X, Y, and Z
+            // ∇C∙∇D(kl|mn) followed by ∇Cx∇D(kl|mn) X, Y, and Z
             // (kl|mn)
-            ERIBuffCD[       KLMN] =  (double)s12_deg*dAdotdB;
-            ERIBuffCD[   NB4+KLMN] =  (double)s12_deg*dAcrossdB_x;
-            ERIBuffCD[ NB4_2+KLMN] =  (double)s12_deg*dAcrossdB_y;
-            ERIBuffCD[ NB4_3+KLMN] =  (double)s12_deg*dAcrossdB_z;
+            ERIBuffCD[       KLMN] =  dAdotdB;
+            ERIBuffCD[   NB4+KLMN] =  dAcrossdB_x;
+            ERIBuffCD[ NB4_2+KLMN] =  dAcrossdB_y;
+            ERIBuffCD[ NB4_3+KLMN] =  dAcrossdB_z;
  
           }
           }
@@ -873,7 +880,16 @@ namespace ChronusQ {
           auto DCSSMX  = matList[CSSMX].X;
           auto DCSSMY  = matList[CSSMY].X;
           auto DCSSMZ  = matList[CSSMZ].X;
- 
+
+          auto ADXLSMS  = AX_loc[XLSMS];
+          auto ADXLSMX  = AX_loc[XLSMX];
+          auto ADXLSMY  = AX_loc[XLSMY];
+          auto ADXLSMZ  = AX_loc[XLSMZ];
+
+          auto DXLSMS = matList[XLSMS].X;
+          auto DXLSMX = matList[XLSMX].X;
+          auto DXLSMY = matList[XLSMY].X;
+          auto DXLSMZ = matList[XLSMZ].X;
 
           for(m = 0ul,            bf1 = bf1_s; m <                  n1; ++m, bf1++) {
             auto mNB2 = m*NB2;
@@ -885,13 +901,25 @@ namespace ChronusQ {
             auto bf21 = bf2 + bf1nB;
             auto bf12 = bf1 + bf2*nBasis;
 
+            auto mn1 = m + n*NB;
+            auto mn2 = mNB2 + n*NB3;
+            auto bf2nB = bf2*nBasis;
+
           for(k = 2*maxShellSize, bf3 = bf3_s; k < 2*maxShellSize + n3; ++k, bf3++) {
             auto mnNBkNB2  = mnNB + k*NB2;
             auto kmNB2nNB3 = k + mNB2nNB3;
             auto bf3nB = bf3*nBasis;
 
+            auto kmn1 = mn1 + k*NB2;
+            auto kmn2 = k + mn2;
+
           for(l = 3*maxShellSize, bf4 = bf4_s; l < 3*maxShellSize + n4; ++l, bf4++) {
   
+
+            // Deneneracy factor for s1,s2 pair
+            double s12_deg = (bf1_s == bf2_s) ? 1.0 : 2.0;
+            double s34_deg = (bf3_s == bf4_s) ? 1.0 : 2.0;
+
             //auto MNKL = m + n*NB + k*NB2 + l*NB3;
             auto MNKL = mnNBkNB2 + l*NB3;
             //auto KLMN = k + l*NB + m*NB2 + n*NB3;
@@ -899,6 +927,17 @@ namespace ChronusQ {
   
             auto bf43 = bf4 + bf3nB;
             auto bf34 = bf3 + bf4*nBasis;
+
+            auto bf4nB= bf4*nBasis;  
+
+            auto bf14 = bf1 + bf4nB;
+            auto bf41 = bf4 + bf1nB;
+            auto bf24 = bf2 + bf4nB;
+            auto bf42 = bf4 + bf2nB;
+            auto bf23 = bf2 + bf3nB;
+            auto bf32 = bf3 + bf2nB;
+            auto bf13 = bf1 + bf3nB;
+            auto bf31 = bf3 + bf1nB;
   
             auto DotPrdMNKL = MNKL;
             auto CrossXMNKL = MNKL+NB4;
@@ -915,15 +954,16 @@ namespace ChronusQ {
             /*++++++++++++++++++++++++++++++++++++++++++++*/
             /* Start of Dirac-Coulomb (LL|LL) Contraction */
             /*++++++++++++++++++++++++++++++++++++++++++++*/
+
+           // The LLLL block is all Coulomb type
   
             // KLMN
             // Equation (C6) in Xiaosong's note
-            // A factor of two has been multiplied to the integrals
             if(bf3 >= bf4 ) {
-              ADCLLMS[bf34] +=  ERIBuffCD[DotPrdKLMN]*DCSSMS[bf21].real()
-                               -ERIBuffCD[CrossZKLMN]*DCSSMZ[bf21].imag()
-                               -ERIBuffCD[CrossXKLMN]*DCSSMX[bf21].imag()
-                               -ERIBuffCD[CrossYKLMN]*DCSSMY[bf21].imag();
+              ADCLLMS[bf34] +=  s12_deg*(ERIBuffCD[DotPrdKLMN]*DCSSMS[bf21].real()
+                                    -ERIBuffCD[CrossZKLMN]*DCSSMZ[bf21].imag()
+                                    -ERIBuffCD[CrossXKLMN]*DCSSMX[bf21].imag()
+                                    -ERIBuffCD[CrossYKLMN]*DCSSMY[bf21].imag());
             }
            
             /*------------------------------------------*/
@@ -935,19 +975,138 @@ namespace ChronusQ {
             /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
             /* Start of Dirac-Coulomb C(2)-(SS|SS) Contraction */
             /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
-  
+
+            // The SSSS block is all Coulomb type
   
             // MNKL 
+            // Equations (C13) and (C14) in Xiaosong's note
+            // Complex i for the X, Y, Z components is multiplied at the end
             if (bf1 >= bf2) {
-              ADCSSMS[bf12] += ERIBuffAB[DotPrdMNKL]*DCLLMS[bf43].real();
-              ADCSSMX[bf12] += ERIBuffAB[CrossXMNKL]*DCLLMS[bf43].real();
-              ADCSSMY[bf12] += ERIBuffAB[CrossYMNKL]*DCLLMS[bf43].real();
-              ADCSSMZ[bf12] += ERIBuffAB[CrossZMNKL]*DCLLMS[bf43].real();
-            } 
+              ADCSSMS[bf12] += s34_deg*ERIBuffAB[DotPrdMNKL]*DCLLMS[bf43].real();
+              ADCSSMX[bf12] += s34_deg*ERIBuffAB[CrossXMNKL]*DCLLMS[bf43].real();
+              ADCSSMY[bf12] += s34_deg*ERIBuffAB[CrossYMNKL]*DCLLMS[bf43].real();
+              ADCSSMZ[bf12] += s34_deg*ERIBuffAB[CrossZMNKL]*DCLLMS[bf43].real();
+            }
   
             /*-----------------------------------------------*/
             /* End of Dirac-Coulomb C(2)-(SS|SS) Contraction */
             /*-----------------------------------------------*/
+
+
+
+
+            /*++++++++++++++++++++++++++++++++++++++++++*/
+            /* Start of Dirac-Coulomb (LL|SS) / (SS|LL) */
+            /*++++++++++++++++++++++++++++++++++++++++++*/
+
+            // The LLSS block is all exchange type
+#if 1
+            //KLMN 3412
+            // Equation (C7) in Xiaosong's note
+            ADXLSMS[bf32]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf41]
+                            -( ERIBuffCD[CrossZKLMN]*DXLSMZ[bf41]
+                              +ERIBuffCD[CrossXKLMN]*DXLSMX[bf41]
+                              +ERIBuffCD[CrossYKLMN]*DXLSMY[bf41])*iscale;
+  
+            // Equation (C8) in Xiaosong's note
+            ADXLSMX[bf32]+= -ERIBuffCD[CrossXKLMN]*DXLSMS[bf41]*iscale
+                            -ERIBuffCD[CrossYKLMN]*DXLSMZ[bf41]
+                            -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf41]
+                            +ERIBuffCD[CrossZKLMN]*DXLSMY[bf41];
+  
+            // Equation (C9) in Xiaosong's note
+            ADXLSMY[bf32]+= -ERIBuffCD[CrossYKLMN]*DXLSMS[bf41]*iscale
+                            +ERIBuffCD[CrossXKLMN]*DXLSMZ[bf41]
+                            -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf41]
+                            -ERIBuffCD[CrossZKLMN]*DXLSMX[bf41];
+  
+            // Equation (C10) in Xiaosong's note
+            ADXLSMZ[bf32]+= -ERIBuffCD[CrossZKLMN]*DXLSMS[bf41]*iscale
+                            -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf41]
+                            +ERIBuffCD[CrossYKLMN]*DXLSMX[bf41]
+                            -ERIBuffCD[CrossXKLMN]*DXLSMY[bf41];
+  
+            // KLMN 3421
+            // Since the derivative is on 21, the sign of the cross product will
+            // change when the indices of 21 swap.
+            if(bf2_s!=bf1_s) {
+  
+              ADXLSMS[bf31]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf42]
+                              +( ERIBuffCD[CrossZKLMN]*DXLSMZ[bf42]
+                                +ERIBuffCD[CrossXKLMN]*DXLSMX[bf42]
+                                +ERIBuffCD[CrossYKLMN]*DXLSMY[bf42])*iscale;
+  
+              ADXLSMX[bf31]+=  ERIBuffCD[CrossXKLMN]*DXLSMS[bf42]*iscale
+                              +ERIBuffCD[CrossYKLMN]*DXLSMZ[bf42]
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf42]
+                              -ERIBuffCD[CrossZKLMN]*DXLSMY[bf42];
+  
+              ADXLSMY[bf31]+=  ERIBuffCD[CrossYKLMN]*DXLSMS[bf42]*iscale
+                              -ERIBuffCD[CrossXKLMN]*DXLSMZ[bf42]
+                              +ERIBuffCD[CrossZKLMN]*DXLSMX[bf42]
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf42];
+  
+              ADXLSMZ[bf31]+=  ERIBuffCD[CrossZKLMN]*DXLSMS[bf42]*iscale
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf42]
+                              -ERIBuffCD[CrossYKLMN]*DXLSMX[bf42]
+                              +ERIBuffCD[CrossXKLMN]*DXLSMY[bf42];
+  
+            }
+  
+            //LKMN 4312
+            if(bf3_s!=bf4_s){
+
+              ADXLSMS[bf42]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf31]
+                              -( ERIBuffCD[CrossZKLMN]*DXLSMZ[bf31]
+                                +ERIBuffCD[CrossXKLMN]*DXLSMX[bf31]
+                                +ERIBuffCD[CrossYKLMN]*DXLSMY[bf31])*iscale;
+  
+              ADXLSMX[bf42]+= -ERIBuffCD[CrossXKLMN]*DXLSMS[bf31]*iscale
+                              -ERIBuffCD[CrossYKLMN]*DXLSMZ[bf31]
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf31]
+                              +ERIBuffCD[CrossZKLMN]*DXLSMY[bf31];
+  
+              ADXLSMY[bf42]+= -ERIBuffCD[CrossYKLMN]*DXLSMS[bf31]*iscale
+                              +ERIBuffCD[CrossXKLMN]*DXLSMZ[bf31]
+                              -ERIBuffCD[CrossZKLMN]*DXLSMX[bf31]
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf31];
+  
+              ADXLSMZ[bf42]+= -ERIBuffCD[CrossZKLMN]*DXLSMS[bf31]*iscale
+                              -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf31]
+                              +ERIBuffCD[CrossYKLMN]*DXLSMX[bf31]
+                              -ERIBuffCD[CrossXKLMN]*DXLSMY[bf31];
+  
+              if(bf1_s!=bf2_s) {
+  
+                //LKNM 4321
+                ADXLSMS[bf41]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf32]
+                                +( ERIBuffCD[CrossZKLMN]*DXLSMZ[bf32]
+                                  +ERIBuffCD[CrossXKLMN]*DXLSMX[bf32]
+                                  +ERIBuffCD[CrossYKLMN]*DXLSMY[bf32])*iscale;
+  
+                ADXLSMX[bf41]+= +ERIBuffCD[CrossXKLMN]*DXLSMS[bf32]*iscale
+                                +ERIBuffCD[CrossYKLMN]*DXLSMZ[bf32]
+                                -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf32]
+                                -ERIBuffCD[CrossZKLMN]*DXLSMY[bf32];
+  
+                ADXLSMY[bf41]+= +ERIBuffCD[CrossYKLMN]*DXLSMS[bf32]*iscale
+                                -ERIBuffCD[CrossXKLMN]*DXLSMZ[bf32]
+                                +ERIBuffCD[CrossZKLMN]*DXLSMX[bf32]
+                                -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf32];
+  
+                ADXLSMZ[bf41]+= +ERIBuffCD[CrossZKLMN]*DXLSMS[bf32]*iscale
+                                -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf32]
+                                -ERIBuffCD[CrossYKLMN]*DXLSMX[bf32]
+                                +ERIBuffCD[CrossXKLMN]*DXLSMY[bf32];
+  
+              }
+            }
+  
+            /*------------------------------------------*/
+            /*   End of Dirac-Coulomb (LL|SS) / (SS|LL) */
+            /*------------------------------------------*/
+#endif
+
           };
           };
           };  
@@ -964,7 +1123,7 @@ namespace ChronusQ {
   
       } // OpenMP context
  
-      dcomplex iscale = dcomplex(0.0, 1.0);
+      dcomplex iS = dcomplex(0.0, 1.0);
 
       for( auto iTh  = 0; iTh < nThreads; iTh++) {
  
@@ -974,15 +1133,28 @@ namespace ChronusQ {
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMS],nBasis,MatsT(1.0),
            matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iscale, AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
            matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iscale, AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
            matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iscale, AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
            matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
 
+#if 1
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMS],nBasis,MatsT(1.0),
+           matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMX],nBasis,MatsT(1.0),
+           matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMY],nBasis,MatsT(1.0),
+           matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMZ],nBasis,MatsT(1.0),
+           matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
+#endif 
       };
 
 #if 1
@@ -1011,28 +1183,28 @@ namespace ChronusQ {
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),0);
-      std::cout << "Dirac-Coulomb-LL/C(2)-SS Screened " << nIntSkipLL << std::endl;
+      std::cout << "Dirac-Coulomb-C(2) Screened " << nIntSkipLL << std::endl;
 
       auto durDirectLL = tock(topDirectLL);
-      std::cout << "Dirac-Coulomb-LL/C(2)-SS AO Direct Contraction took " <<  durDirectLL << " s\n"; 
+      std::cout << "Dirac-Coulomb-C(2) AO Direct Contraction took " <<  durDirectLL << " s\n"; 
 
       std::cout << std::endl;
 #endif
     
 
-    } // if(LLLL)
+    } // if(LLSS)
    
-    /******************************************/
-    /*                                        */
-    /*   End of Dirac-Coulomb LL and C(2)-SS  */
-    /*                                        */
-    /******************************************/
+    /********************************/
+    /*                              */
+    /*   End of Dirac-Coulomb C(2)  */
+    /*                              */
+    /********************************/
 
 
 
 
 
-
+#if 0 // LLSS block is now included in the Dirac-Coulomb contraction above
 
     /***************************/
     /*                         */
@@ -1140,14 +1312,13 @@ namespace ChronusQ {
           #endif
   
 #ifdef _SHZ_SCREEN_4C
-  
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
                                            ShBlkNorms[0][s3 + s4*nShell]));
   
           shMax = std::max(shMax,shMax123);
 
-          if((shMax*SchwarzSSSS[s3+s4*nShell]*SchwarzERI[s1 + s2*nShell]) <
+          if((shMax*SchwarzSSSS[s3+s4*nShell]*SchwarzERI[s1+s2*nShell]) <
              eri.threshSchwarz()) { nSkipLS[thread_id]++; continue; }
 #endif
   
@@ -1171,7 +1342,7 @@ namespace ChronusQ {
             /* Dirac-Coulomb */
             // ∇C∙∇D(mn|kl)
             auto dCdotdD = buff[AxBx*nQuad+mnkl] + buff[AyBy*nQuad+mnkl] + buff[AzBz*nQuad+mnkl];
-            // ∇Ax∇B(mn|kl)
+            // ∇Cx∇D(mn|kl)
             auto dCcrossdD_x =  buff[AyBz*nQuad+mnkl] - buff[AzBy*nQuad+mnkl];
             auto dCcrossdD_y = -buff[AxBz*nQuad+mnkl] + buff[AzBx*nQuad+mnkl];
             auto dCcrossdD_z =  buff[AxBy*nQuad+mnkl] - buff[AyBx*nQuad+mnkl];
@@ -1202,6 +1373,7 @@ namespace ChronusQ {
           auto ADXLSMX  = AX_loc[XLSMX];
           auto ADXLSMY  = AX_loc[XLSMY];
           auto ADXLSMZ  = AX_loc[XLSMZ];
+
           auto DXLSMS = matList[XLSMS].X;
           auto DXLSMX = matList[XLSMX].X;
           auto DXLSMY = matList[XLSMY].X;
@@ -1261,7 +1433,7 @@ namespace ChronusQ {
                             -ERIBuffCD[CrossYMNKL]*DXLSMZ[bf23]
                             -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf23]
                             +ERIBuffCD[CrossZMNKL]*DXLSMY[bf23];
-  
+
             ADXLSMY[bf14]+= -ERIBuffCD[CrossYMNKL]*DXLSMS[bf23]*iscale
                             +ERIBuffCD[CrossXMNKL]*DXLSMZ[bf23]
                             -ERIBuffCD[DotPrdMNKL]*DXLSMY[bf23]
@@ -1284,7 +1456,7 @@ namespace ChronusQ {
                               +ERIBuffCD[CrossYMNKL]*DXLSMZ[bf24]
                               -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf24]
                               -ERIBuffCD[CrossZMNKL]*DXLSMY[bf24];
-  
+
               ADXLSMY[bf13]+=  ERIBuffCD[CrossYMNKL]*DXLSMS[bf24]*iscale
                               -ERIBuffCD[CrossXMNKL]*DXLSMZ[bf24]
                               +ERIBuffCD[CrossZMNKL]*DXLSMX[bf24]
@@ -1308,7 +1480,7 @@ namespace ChronusQ {
                               -ERIBuffCD[CrossYMNKL]*DXLSMZ[bf13]
                               -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf13]
                               +ERIBuffCD[CrossZMNKL]*DXLSMY[bf13];
-  
+
               ADXLSMY[bf24]+= -ERIBuffCD[CrossYMNKL]*DXLSMS[bf13]*iscale
                               +ERIBuffCD[CrossXMNKL]*DXLSMZ[bf13]
                               -ERIBuffCD[CrossZMNKL]*DXLSMX[bf13]
@@ -1330,7 +1502,7 @@ namespace ChronusQ {
                                 +ERIBuffCD[CrossYMNKL]*DXLSMZ[bf14]
                                 -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf14]
                                 -ERIBuffCD[CrossZMNKL]*DXLSMY[bf14];
-  
+
                 ADXLSMY[bf23]+= +ERIBuffCD[CrossYMNKL]*DXLSMS[bf14]*iscale
                                 -ERIBuffCD[CrossXMNKL]*DXLSMZ[bf14]
                                 +ERIBuffCD[CrossZMNKL]*DXLSMX[bf14]
@@ -1348,8 +1520,8 @@ namespace ChronusQ {
             /*   End of Dirac-Coulomb (LL|SS) / (SS|LL) */
             /*------------------------------------------*/
           }
-        }
-        }  
+          }
+          }  
           } // contraction loop
   
 #endif // Contraction
@@ -1404,7 +1576,7 @@ namespace ChronusQ {
     /*                         */
     /***************************/
 
-
+#endif
 
 
 
@@ -1574,7 +1746,7 @@ namespace ChronusQ {
       #pragma omp parallel
       {
   
-        dcomplex iscale = dcomplex(0.0, 1.0);
+        dcomplex iS = dcomplex(0.0, 1.0);
   
         size_t thread_id = GetThreadID();
   
@@ -1855,51 +2027,48 @@ namespace ChronusQ {
  
   
             /* Hermitian Density Matrices */
-            auto ScaleF = 2.0;
-            auto iScaleF = dcomplex(0.0, 2.0);
-  
-            if(bf3_s==bf4_s) {
-              ScaleF = 1.0;
-              iScaleF = dcomplex(0.0, 1.0);
-            }
+            double s34_deg = (bf3_s == bf4_s) ? 1.0 : 2.0;
   
             //
             // COULOMB
+
             // MNKL
-  
             if(bf1 >= bf2) {
   
-              /* Equation 70 in the paper */
+              /* Equation 70 in the paper, Equation (C19) in Xiaosong's note */
               ADCSSMS[bf12] +=
                 ( DCSSMS[bf43].real()*MNKLdAdotdBdCdotdD
                  -DCSSMZ[bf43].imag()*MNKLdAdotdBdCcrossdD_z
                  -DCSSMX[bf43].imag()*MNKLdAdotdBdCcrossdD_x
                  -DCSSMY[bf43].imag()*MNKLdAdotdBdCcrossdD_y
-              )*ScaleF;
+                )*s34_deg;
     
-              /* Equation 71 in the paper */
+              /* Equation 71 in the paper, Equation (C20) in Xiaosong's note */
+              // Complex i will be multipled at the end for the X, Y, Z components
               ADCSSMZ[bf12] +=
                 ( DCSSMS[bf43].real()*MNKLdAcrossdB_zdCdotdD
                  -DCSSMX[bf43].imag()*MNKLdAcrossdB_zdCcrossdD_x
                  -DCSSMY[bf43].imag()*MNKLdAcrossdB_zdCcrossdD_y
                  -DCSSMZ[bf43].imag()*MNKLdAcrossdB_zdCcrossdD_z
-                )*iScaleF;
+                )*s34_deg;
         
-              /* Equation 72 in the paper */
+              /* Equation 72 in the paper, Equation (C21) in Xiaosong's note  */
+              // Complex i will be multipled at the end for the X, Y, Z components
               ADCSSMX[bf12] +=
                 ( DCSSMS[bf43].real()*MNKLdAcrossdB_xdCdotdD
                  -DCSSMX[bf43].imag()*MNKLdAcrossdB_xdCcrossdD_x
                  -DCSSMY[bf43].imag()*MNKLdAcrossdB_xdCcrossdD_y
                  -DCSSMZ[bf43].imag()*MNKLdAcrossdB_xdCcrossdD_z
-                )*iScaleF;
+                )*s34_deg;
         
-              /* Equation 73 in the paper */
+              /* Equation 73 in the paper, Equation (C22) in Xiaosong's note */
+              // Complex i will be multipled at the end for the X, Y, Z components
               ADCSSMY[bf12] +=
                 ( DCSSMS[bf43].real()*MNKLdAcrossdB_ydCdotdD
                  -DCSSMX[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_x
                  -DCSSMY[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_y
                  -DXSSMZ[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_z
-                )*iScaleF;
+                )*s34_deg;
   
             }
   
@@ -1909,81 +2078,76 @@ namespace ChronusQ {
             /* KLMN */
             if((bf1_s!=bf3_s or bf2_s!=bf4_s) and bf3 >= bf4){
  
-              ScaleF = 2.0;
-              iScaleF = dcomplex(0.0, 2.0);
+              double s12_deg = (bf1_s == bf2_s) ? 1.0 : 2.0;
   
-              if(bf1_s==bf2_s) {
-                ScaleF = 1.0;
-                iScaleF = dcomplex(0.0, 1.0);
-              }
-  
-              /* Equation 70 in the paper */
               ADCSSMS[bf34] +=
                 ( DCSSMS[bf21].real()*KLMNdAdotdBdCdotdD
                  -DCSSMZ[bf21].imag()*KLMNdAdotdBdCcrossdD_z
                  -DCSSMX[bf21].imag()*KLMNdAdotdBdCcrossdD_x
                  -DCSSMY[bf21].imag()*KLMNdAdotdBdCcrossdD_y
-              )*ScaleF;
+               )*s12_deg;
   
-              /* Equation 71 in the paper */
               ADCSSMZ[bf34] +=
                 ( DCSSMS[bf21].real()*KLMNdAcrossdB_zdCdotdD
                  -DCSSMX[bf21].imag()*KLMNdAcrossdB_zdCcrossdD_x
                  -DCSSMY[bf21].imag()*KLMNdAcrossdB_zdCcrossdD_y
                  -DCSSMZ[bf21].imag()*KLMNdAcrossdB_zdCcrossdD_z
-              )*iScaleF;
+                )*s12_deg;
       
-              /* Equation 72 in the paper */
               ADCSSMX[bf34] +=
                 ( DCSSMS[bf21].real()*KLMNdAcrossdB_xdCdotdD
                  -DCSSMX[bf21].imag()*KLMNdAcrossdB_xdCcrossdD_x
                  -DCSSMY[bf21].imag()*KLMNdAcrossdB_xdCcrossdD_y
                  -DCSSMZ[bf21].imag()*KLMNdAcrossdB_xdCcrossdD_z
-              )*iScaleF;
+                )*s12_deg;
       
-              /* Equation 73 in the paper */
               ADCSSMY[bf34] +=
                 ( DCSSMS[bf21].real()*KLMNdAcrossdB_ydCdotdD
                  -DCSSMX[bf21].imag()*KLMNdAcrossdB_ydCcrossdD_x
                  -DCSSMY[bf21].imag()*KLMNdAcrossdB_ydCcrossdD_y
                  -DCSSMZ[bf21].imag()*KLMNdAcrossdB_ydCcrossdD_z
-              )*iScaleF;
+                )*s12_deg;
   
             }
   
-    
-#if 1
+   
             /* EXCHANGE */
+
+            // Degeneracy factor for s3,s4 pair
+            double s34_deg = (bf3_s == bf4_s) ? 1.0 : 2.0;
+            // Degeneracy factor for s1, s2, s3, s4 quartet
+            double s12_34_deg = (bf1_s == bf3_s) ? (bf2_s == bf4_s ? 1.0 : 2.0) : 2.0;
+            // Total degeneracy factor
+            double s1234_deg = s12_deg * s34_deg * s12_34_deg;
  
-  
-            // MNKL
+            // MNKL, 1234
             if(bf1 >= bf4) {
   
-              /* Equation 70 in the paper */
+              /* Equation 70 in the paper, Equation (C23) in Xiaosong's note */
               ADXSSMS[bf14] +=
                   DXSSMS[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
                +( DXSSMX[bf23]*(-MNKLdAcrossdB_xdCdotdD -MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
                  +DXSSMY[bf23]*(-MNKLdAcrossdB_ydCdotdD -MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_x +MNKLdAcrossdB_xdCcrossdD_z)
-                 +DXSSMZ[bf23]*(-MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iscale;
+                 +DXSSMZ[bf23]*(-MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iS;
     
-              /* Equation 71 in the paper */
+              /* Equation 71 in the paper, Equation (C24) in Xiaosong's note */
               ADXSSMZ[bf14] +=
                 DXSSMZ[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_zdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y)
-               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iscale
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iS
                +DXSSMY[bf23]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
                +DXSSMX[bf23]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
           
-              /* Equation 72 in the paper */
+              /* Equation 72 in the paper, Equation (C25) in Xiaosong's note */
               ADXSSMX[bf14] += 
                 DXSSMX[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
-               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iscale
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iS
                +DXSSMY[bf23]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
                +DXSSMZ[bf23]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
         
-              /* Equation 73 in the paper */
+              /* Equation 73 in the paper, Equation (C26) in Xiaosong's note */
               ADXSSMY[bf14] += 
                 DXSSMY[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_zdCcrossdD_z)
-               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iscale
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iS
                +DXSSMX[bf23]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
                +DXSSMZ[bf23]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y);
     
@@ -1996,23 +2160,23 @@ namespace ChronusQ {
                   DXSSMS[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
                +( DXSSMX[bf24]*(-MNKLdAcrossdB_xdCdotdD +MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
                  +DXSSMY[bf24]*(-MNKLdAcrossdB_ydCdotdD +MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_x -MNKLdAcrossdB_xdCcrossdD_z)
-                 +DXSSMZ[bf24]*(-MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iscale;
+                 +DXSSMZ[bf24]*(-MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iS;
    
               ADXSSMZ[bf13] +=
                 DXSSMZ[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_zdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y)
-               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iscale
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iS
                +DXSSMY[bf24]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
                +DXSSMX[bf24]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
           
               ADXSSMX[bf13] += 
                 DXSSMX[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
-               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iscale
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iS
                +DXSSMY[bf24]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
                +DXSSMZ[bf24]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
         
               ADXSSMY[bf13] += 
                 DXSSMY[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_zdCcrossdD_z)
-               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iscale
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iS
                +DXSSMX[bf24]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
                +DXSSMZ[bf24]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y);
   
@@ -2029,23 +2193,23 @@ namespace ChronusQ {
                     DXSSMS[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
                  +( DXSSMX[bf13]*( MNKLdAcrossdB_xdCdotdD -MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
                    +DXSSMY[bf13]*( MNKLdAcrossdB_ydCdotdD -MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_x -MNKLdAcrossdB_xdCcrossdD_z)
-                   +DXSSMZ[bf13]*( MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iscale;
+                   +DXSSMZ[bf13]*( MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iS;
     
                 ADXSSMZ[bf24] +=
                   DXSSMZ[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_zdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y)
-                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iscale
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iS
                  +DXSSMY[bf13]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
                  +DXSSMX[bf13]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
             
                 ADXSSMX[bf24] += 
                   DXSSMX[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iscale
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iS
                  +DXSSMY[bf13]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf13]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
           
                 ADXSSMY[bf24] += 
                   DXSSMY[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iscale
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iS
                  +DXSSMX[bf13]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf13]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y);
   
@@ -2058,23 +2222,23 @@ namespace ChronusQ {
                     DXSSMS[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
                  +( DXSSMX[bf14]*( MNKLdAcrossdB_xdCdotdD +MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
                    +DXSSMY[bf14]*( MNKLdAcrossdB_ydCdotdD +MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_x +MNKLdAcrossdB_xdCcrossdD_z)
-                   +DXSSMZ[bf14]*( MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iscale;
+                   +DXSSMZ[bf14]*( MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iS;
   
                 ADXSSMZ[bf23] +=
                   DXSSMZ[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_zdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y)
-                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iscale
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iS
                  +DXSSMY[bf14]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
                  +DXSSMX[bf14]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
             
                 ADXSSMX[bf23] += 
                   DXSSMX[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iscale
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iS
                  +DXSSMY[bf14]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf14]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
           
                 ADXSSMY[bf23] += 
                   DXSSMY[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iscale
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iS
                  +DXSSMX[bf14]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf14]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y);
   
@@ -2093,23 +2257,23 @@ namespace ChronusQ {
                     DXSSMS[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
                  +( DXSSMX[bf41]*(-KLMNdAcrossdB_xdCdotdD -KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
                    +DXSSMY[bf41]*(-KLMNdAcrossdB_ydCdotdD -KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_x +KLMNdAcrossdB_xdCcrossdD_z)
-                   +DXSSMZ[bf41]*(-KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iscale;
+                   +DXSSMZ[bf41]*(-KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iS;
     
                 ADXSSMZ[bf32] +=
                   DXSSMZ[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_zdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y)
-                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iscale
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iS
                  +DXSSMY[bf41]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
                  +DXSSMX[bf41]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
             
                 ADXSSMX[bf32] += 
                   DXSSMX[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iscale
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iS
                  +DXSSMY[bf41]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf41]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
           
                 ADXSSMY[bf32] += 
                   DXSSMY[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iscale
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iS
                  +DXSSMX[bf41]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf41]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y);
   
@@ -2122,23 +2286,23 @@ namespace ChronusQ {
                     DXSSMS[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
                  +( DXSSMX[bf42]*(-KLMNdAcrossdB_xdCdotdD +KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
                    +DXSSMY[bf42]*(-KLMNdAcrossdB_ydCdotdD +KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_x -KLMNdAcrossdB_xdCcrossdD_z)
-                   +DXSSMZ[bf42]*(-KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iscale;
+                   +DXSSMZ[bf42]*(-KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iS;
      
                 ADXSSMZ[bf31] +=
                   DXSSMZ[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_zdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y)
-                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iscale
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iS
                  +DXSSMY[bf42]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
                  +DXSSMX[bf42]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
             
                 ADXSSMX[bf31] += 
                   DXSSMX[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iscale
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iS
                  +DXSSMY[bf42]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf42]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
           
                 ADXSSMY[bf31] += 
                   DXSSMY[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iscale
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iS
                  +DXSSMX[bf42]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf42]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y);
      
@@ -2152,23 +2316,23 @@ namespace ChronusQ {
                     DXSSMS[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
                  +( DXSSMX[bf31]*( KLMNdAcrossdB_xdCdotdD -KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
                    +DXSSMY[bf31]*( KLMNdAcrossdB_ydCdotdD -KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_x -KLMNdAcrossdB_xdCcrossdD_z)
-                   +DXSSMZ[bf31]*( KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iscale;
+                   +DXSSMZ[bf31]*( KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iS;
      
                 ADXSSMZ[bf42] +=
                   DXSSMZ[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_zdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y)
-                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iscale
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iS
                  +DXSSMY[bf31]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
                  +DXSSMX[bf31]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
             
                 ADXSSMX[bf42] += 
                   DXSSMX[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iscale
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iS
                  +DXSSMY[bf31]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf31]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
           
                 ADXSSMY[bf42] += 
                   DXSSMY[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_zdCcrossdD_z)
-                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iscale
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iS
                  +DXSSMX[bf31]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
                  +DXSSMZ[bf31]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y);
      
@@ -2180,23 +2344,23 @@ namespace ChronusQ {
                       DXSSMS[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
                    +( DXSSMX[bf32]*( KLMNdAcrossdB_xdCdotdD +KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
                      +DXSSMY[bf32]*( KLMNdAcrossdB_ydCdotdD +KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_x +KLMNdAcrossdB_xdCcrossdD_z)
-                     +DXSSMZ[bf32]*( KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iscale;
+                     +DXSSMZ[bf32]*( KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iS;
   
                   ADXSSMZ[bf41] +=
                     DXSSMZ[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_zdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y)
-                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iscale
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iS
                    +DXSSMY[bf32]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
                    +DXSSMX[bf32]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
               
                   ADXSSMX[bf41] += 
                     DXSSMX[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
-                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iscale
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iS
                    +DXSSMY[bf32]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
                    +DXSSMZ[bf32]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
             
                   ADXSSMY[bf41] += 
                     DXSSMY[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_zdCcrossdD_z)
-                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iscale
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iS
                    +DXSSMX[bf32]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
                    +DXSSMZ[bf32]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y);
         
@@ -2204,7 +2368,263 @@ namespace ChronusQ {
               }
  
             }
-#endif  
+
+   
+#if 0 // Full SSSS exchange without the D^SS symmetry
+
+            /* EXCHANGE */
+ 
+  
+            // MNKL
+            if(bf1 >= bf4) {
+  
+              /* Equation 70 in the paper, Equation (C23) in Xiaosong's note */
+              ADXSSMS[bf14] +=
+                  DXSSMS[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
+               +( DXSSMX[bf23]*(-MNKLdAcrossdB_xdCdotdD -MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
+                 +DXSSMY[bf23]*(-MNKLdAcrossdB_ydCdotdD -MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_x +MNKLdAcrossdB_xdCcrossdD_z)
+                 +DXSSMZ[bf23]*(-MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iS;
+    
+              /* Equation 71 in the paper, Equation (C24) in Xiaosong's note */
+              ADXSSMZ[bf14] +=
+                DXSSMZ[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_zdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y)
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iS
+               +DXSSMY[bf23]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
+               +DXSSMX[bf23]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
+          
+              /* Equation 72 in the paper, Equation (C25) in Xiaosong's note */
+              ADXSSMX[bf14] += 
+                DXSSMX[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iS
+               +DXSSMY[bf23]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
+               +DXSSMZ[bf23]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
+        
+              /* Equation 73 in the paper, Equation (C26) in Xiaosong's note */
+              ADXSSMY[bf14] += 
+                DXSSMY[bf23]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_zdCcrossdD_z)
+               +DXSSMS[bf23]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iS
+               +DXSSMX[bf23]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
+               +DXSSMZ[bf23]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y);
+    
+            }
+  
+            //MNLK
+            if(bf3_s!=bf4_s and bf1 >= bf3) {
+  
+              ADXSSMS[bf13] +=
+                  DXSSMS[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
+               +( DXSSMX[bf24]*(-MNKLdAcrossdB_xdCdotdD +MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
+                 +DXSSMY[bf24]*(-MNKLdAcrossdB_ydCdotdD +MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_x -MNKLdAcrossdB_xdCcrossdD_z)
+                 +DXSSMZ[bf24]*(-MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iS;
+   
+              ADXSSMZ[bf13] +=
+                DXSSMZ[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_zdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y)
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iS
+               +DXSSMY[bf24]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
+               +DXSSMX[bf24]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
+          
+              ADXSSMX[bf13] += 
+                DXSSMX[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iS
+               +DXSSMY[bf24]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
+               +DXSSMZ[bf24]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
+        
+              ADXSSMY[bf13] += 
+                DXSSMY[bf24]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_zdCcrossdD_z)
+               +DXSSMS[bf24]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iS
+               +DXSSMX[bf24]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
+               +DXSSMZ[bf24]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y);
+  
+            }
+  
+  
+  
+            //NMKL
+            if(bf1_s!=bf2_s){
+              
+              if(bf2 >= bf4) {
+  
+                ADXSSMS[bf24] +=
+                    DXSSMS[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
+                 +( DXSSMX[bf13]*( MNKLdAcrossdB_xdCdotdD -MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
+                   +DXSSMY[bf13]*( MNKLdAcrossdB_ydCdotdD -MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_x -MNKLdAcrossdB_xdCcrossdD_z)
+                   +DXSSMZ[bf13]*( MNKLdAcrossdB_zdCdotdD -MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x))*iS;
+    
+                ADXSSMZ[bf24] +=
+                  DXSSMZ[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_zdCcrossdD_z +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y)
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)*iS
+                 +DXSSMY[bf13]*(-MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)
+                 +DXSSMX[bf13]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
+            
+                ADXSSMX[bf24] += 
+                  DXSSMX[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)*iS
+                 +DXSSMY[bf13]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf13]*(-MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x);
+          
+                ADXSSMY[bf24] += 
+                  DXSSMY[bf13]*(-MNKLdAdotdBdCdotdD -MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf13]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_x)*iS
+                 +DXSSMX[bf13]*(-MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD -MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf13]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD -MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y);
+  
+              }
+    
+  
+              if(bf3_s!=bf4_s and bf2 >= bf3) {
+  
+                ADXSSMS[bf23] +=
+                    DXSSMS[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x +MNKLdAcrossdB_ydCcrossdD_y +MNKLdAcrossdB_zdCcrossdD_z)
+                 +( DXSSMX[bf14]*( MNKLdAcrossdB_xdCdotdD +MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
+                   +DXSSMY[bf14]*( MNKLdAcrossdB_ydCdotdD +MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_x +MNKLdAcrossdB_xdCcrossdD_z)
+                   +DXSSMZ[bf14]*( MNKLdAcrossdB_zdCdotdD +MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x))*iS;
+  
+                ADXSSMZ[bf23] +=
+                  DXSSMZ[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_zdCcrossdD_z -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y)
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y -MNKLdAcrossdB_ydCcrossdD_x)*iS
+                 +DXSSMY[bf14]*( MNKLdAdotdBdCcrossdD_x -MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y)
+                 +DXSSMX[bf14]*(-MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
+            
+                ADXSSMX[bf23] += 
+                  DXSSMX[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z -MNKLdAcrossdB_zdCcrossdD_y)*iS
+                 +DXSSMY[bf14]*(-MNKLdAdotdBdCcrossdD_z +MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf14]*( MNKLdAdotdBdCcrossdD_y -MNKLdAcrossdB_ydCdotdD +MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x);
+          
+                ADXSSMY[bf23] += 
+                  DXSSMY[bf14]*(-MNKLdAdotdBdCdotdD +MNKLdAcrossdB_ydCcrossdD_y -MNKLdAcrossdB_xdCcrossdD_x -MNKLdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf14]*( MNKLdAdotdBdCcrossdD_y +MNKLdAcrossdB_ydCdotdD -MNKLdAcrossdB_xdCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_x)*iS
+                 +DXSSMX[bf14]*( MNKLdAdotdBdCcrossdD_z -MNKLdAcrossdB_zdCdotdD +MNKLdAcrossdB_xdCcrossdD_y +MNKLdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf14]*(-MNKLdAdotdBdCcrossdD_x +MNKLdAcrossdB_xdCdotdD +MNKLdAcrossdB_ydCcrossdD_z +MNKLdAcrossdB_zdCcrossdD_y);
+  
+      
+              }
+            }
+  
+  
+  
+  
+            if(bf1_s!=bf3_s or bf2_s!=bf4_s){
+ 
+              if(bf3 >= bf2 ) {
+  
+                ADXSSMS[bf32] +=
+                    DXSSMS[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
+                 +( DXSSMX[bf41]*(-KLMNdAcrossdB_xdCdotdD -KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
+                   +DXSSMY[bf41]*(-KLMNdAcrossdB_ydCdotdD -KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_x +KLMNdAcrossdB_xdCcrossdD_z)
+                   +DXSSMZ[bf41]*(-KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iS;
+    
+                ADXSSMZ[bf32] +=
+                  DXSSMZ[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_zdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y)
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iS
+                 +DXSSMY[bf41]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
+                 +DXSSMX[bf41]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
+            
+                ADXSSMX[bf32] += 
+                  DXSSMX[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iS
+                 +DXSSMY[bf41]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf41]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
+          
+                ADXSSMY[bf32] += 
+                  DXSSMY[bf41]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf41]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iS
+                 +DXSSMX[bf41]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf41]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y);
+  
+              }
+   
+              
+              if(bf1_s!=bf2_s and bf3>=bf1) {
+  
+                ADXSSMS[bf31] +=
+                    DXSSMS[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
+                 +( DXSSMX[bf42]*(-KLMNdAcrossdB_xdCdotdD +KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
+                   +DXSSMY[bf42]*(-KLMNdAcrossdB_ydCdotdD +KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_x -KLMNdAcrossdB_xdCcrossdD_z)
+                   +DXSSMZ[bf42]*(-KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iS;
+     
+                ADXSSMZ[bf31] +=
+                  DXSSMZ[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_zdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y)
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iS
+                 +DXSSMY[bf42]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
+                 +DXSSMX[bf42]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
+            
+                ADXSSMX[bf31] += 
+                  DXSSMX[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iS
+                 +DXSSMY[bf42]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf42]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
+          
+                ADXSSMY[bf31] += 
+                  DXSSMY[bf42]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf42]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iS
+                 +DXSSMX[bf42]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf42]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y);
+     
+     
+              }
+    
+              //NMKL
+              if(bf3_s!=bf4_s and bf4>=bf2){
+    
+                ADXSSMS[bf42] +=
+                    DXSSMS[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
+                 +( DXSSMX[bf31]*( KLMNdAcrossdB_xdCdotdD -KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
+                   +DXSSMY[bf31]*( KLMNdAcrossdB_ydCdotdD -KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_x -KLMNdAcrossdB_xdCcrossdD_z)
+                   +DXSSMZ[bf31]*( KLMNdAcrossdB_zdCdotdD -KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x))*iS;
+     
+                ADXSSMZ[bf42] +=
+                  DXSSMZ[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_zdCcrossdD_z +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y)
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)*iS
+                 +DXSSMY[bf31]*(-KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)
+                 +DXSSMX[bf31]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
+            
+                ADXSSMX[bf42] += 
+                  DXSSMX[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)*iS
+                 +DXSSMY[bf31]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf31]*(-KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x);
+          
+                ADXSSMY[bf42] += 
+                  DXSSMY[bf31]*(-KLMNdAdotdBdCdotdD -KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_zdCcrossdD_z)
+                 +DXSSMS[bf31]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_x)*iS
+                 +DXSSMX[bf31]*(-KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD -KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)
+                 +DXSSMZ[bf31]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD -KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y);
+     
+      
+    
+                if(bf1_s!=bf2_s and bf4>=bf1) {
+    
+                  ADXSSMS[bf41] +=
+                      DXSSMS[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x +KLMNdAcrossdB_ydCcrossdD_y +KLMNdAcrossdB_zdCcrossdD_z)
+                   +( DXSSMX[bf32]*( KLMNdAcrossdB_xdCdotdD +KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
+                     +DXSSMY[bf32]*( KLMNdAcrossdB_ydCdotdD +KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_x +KLMNdAcrossdB_xdCcrossdD_z)
+                     +DXSSMZ[bf32]*( KLMNdAcrossdB_zdCdotdD +KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x))*iS;
+  
+                  ADXSSMZ[bf41] +=
+                    DXSSMZ[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_zdCcrossdD_z -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y)
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y -KLMNdAcrossdB_ydCcrossdD_x)*iS
+                   +DXSSMY[bf32]*( KLMNdAdotdBdCcrossdD_x -KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y)
+                   +DXSSMX[bf32]*(-KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
+              
+                  ADXSSMX[bf41] += 
+                    DXSSMX[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_zdCcrossdD_z)
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z -KLMNdAcrossdB_zdCcrossdD_y)*iS
+                   +DXSSMY[bf32]*(-KLMNdAdotdBdCcrossdD_z +KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
+                   +DXSSMZ[bf32]*( KLMNdAdotdBdCcrossdD_y -KLMNdAcrossdB_ydCdotdD +KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x);
+            
+                  ADXSSMY[bf41] += 
+                    DXSSMY[bf32]*(-KLMNdAdotdBdCdotdD +KLMNdAcrossdB_ydCcrossdD_y -KLMNdAcrossdB_xdCcrossdD_x -KLMNdAcrossdB_zdCcrossdD_z)
+                   +DXSSMS[bf32]*( KLMNdAdotdBdCcrossdD_y +KLMNdAcrossdB_ydCdotdD -KLMNdAcrossdB_xdCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_x)*iS
+                   +DXSSMX[bf32]*( KLMNdAdotdBdCcrossdD_z -KLMNdAcrossdB_zdCdotdD +KLMNdAcrossdB_xdCcrossdD_y +KLMNdAcrossdB_ydCcrossdD_x)
+                   +DXSSMZ[bf32]*(-KLMNdAdotdBdCcrossdD_x +KLMNdAcrossdB_xdCdotdD +KLMNdAcrossdB_ydCcrossdD_z +KLMNdAcrossdB_zdCcrossdD_y);
+        
+                }
+              }
+ 
+            }
+
+#endif  // SSSS
 	  }
 	  }
 	  }
@@ -2222,21 +2642,44 @@ namespace ChronusQ {
       }; // OpenMP context
   
   
-      dcomplex iscale = dcomplex(0.0, 1.0);
+      dcomplex iS = dcomplex(0.0, 1.0);
+      XMatsT* SCR = memManager_.malloc<MatsT>(nBasis * nBasis);
+
       for( auto iTh  = 0; iTh < nThreads; iTh++) {
    
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMS],nBasis,MatsT(1.0),
            matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
            matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
            matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
+        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
            matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
- 
+
+#if 0 
+        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][XSSMS],nBasis,MatsT(0.5),
+           AXthreads[iTh][XSSMS],nBasis,SCR,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.), SCR, nBasis, MatsT(1.), 
+           matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+
+        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][XSSMX],nBasis,MatsT(0.5),
+           AXthreads[iTh][XSSMX],nBasis,SCR,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.), SCR, nBasis, MatsT(1.), 
+           matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+
+        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][XSSMZ],nBasis,MatsT(0.5),
+           AXthreads[iTh][XSSMZ],nBasis,SCR,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.), SCR, nBasis, MatsT(1.), 
+           matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+
+        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][XSSMY],nBasis,MatsT(0.5),
+           AXthreads[iTh][XSSMY],nBasis,SCR,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.), SCR, nBasis, MatsT(1.), 
+           matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+#else
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMS],nBasis,MatsT(1.0),
            matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
 
@@ -2248,19 +2691,23 @@ namespace ChronusQ {
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMZ],nBasis,MatsT(1.0),
            matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+#endif
   
       };
+
+      memManager_.free(SCR);
       
-#if 1
       // Take care of the Hermitian symmetry in the LL and SS blocks
+
+
       auto ADCSSMS = matList[CSSMS].AX;
       auto ADCSSMX = matList[CSSMX].AX;
       auto ADCSSMY = matList[CSSMY].AX;
       auto ADCSSMZ = matList[CSSMZ].AX;
-      auto ADXSSMS = matList[XSSMS].AX;
-      auto ADXSSMX = matList[XSSMX].AX;
-      auto ADXSSMY = matList[XSSMY].AX;
-      auto ADXSSMZ = matList[XSSMZ].AX;
+//      auto ADXSSMS = matList[XSSMS].AX;
+//      auto ADXSSMX = matList[XSSMX].AX;
+//      auto ADXSSMY = matList[XSSMY].AX;
+//      auto ADXSSMZ = matList[XSSMZ].AX;
 
       for( auto i = 0; i < nBasis; i++ )
       for( auto j = 0; j < i; j++ ) {
@@ -2268,12 +2715,12 @@ namespace ChronusQ {
         ADCSSMX[j + i*nBasis] = std::conj(ADCSSMX[i + j*nBasis]);
         ADCSSMY[j + i*nBasis] = std::conj(ADCSSMY[i + j*nBasis]);
         ADCSSMZ[j + i*nBasis] = std::conj(ADCSSMZ[i + j*nBasis]);
-        ADXSSMS[j + i*nBasis] = std::conj(ADXSSMS[i + j*nBasis]);
-        ADXSSMX[j + i*nBasis] = std::conj(ADXSSMX[i + j*nBasis]);
-        ADXSSMY[j + i*nBasis] = std::conj(ADXSSMY[i + j*nBasis]);
-        ADXSSMZ[j + i*nBasis] = std::conj(ADXSSMZ[i + j*nBasis]);
+//        ADXSSMS[j + i*nBasis] = std::conj(ADXSSMS[i + j*nBasis]);
+//        ADXSSMX[j + i*nBasis] = std::conj(ADXSSMX[i + j*nBasis]);
+//        ADXSSMY[j + i*nBasis] = std::conj(ADXSSMY[i + j*nBasis]);
+//        ADXSSMZ[j + i*nBasis] = std::conj(ADXSSMZ[i + j*nBasis]);
       }
-#endif
+
 
 
       memManager_.free(ERIBuffer);
