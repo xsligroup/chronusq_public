@@ -43,7 +43,7 @@
 #include <chrono>
 
 
-#define _SHZ_SCREEN_4C
+#define _SHZ_SCREEN_4C_LIBCINT
 
 #define _CONTRACTION_
 
@@ -53,9 +53,9 @@
 namespace ChronusQ {
 
 
-  /**************************/
+  /************************************/
   /* Libcint 4C-direct Implementation */
-  /**************************/
+  /************************************/
   // For DCB Hamiltonian,
   // 12 density matrices upon input stored as
   // LL(MS,MX,MY,MZ), SS(MS,MX,MY,MZ), LS(MS,MX,MY,MZ)
@@ -428,7 +428,7 @@ namespace ChronusQ {
       auto topDirect = tick();
 #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       // Compute shell block norms (∞-norm) of matList.X
       // CLLMS, XLLMS, XLLMX, XLLMY, XLLMZ Densitry matrices
       int mMat = 5;
@@ -486,7 +486,7 @@ namespace ChronusQ {
           // Deneneracy factor for s1,s2 pair
           double s12_deg = (s1 == s2) ? 1.0 : 2.0;
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
 #endif
   
@@ -495,7 +495,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], 
                                      ShBlkNorms[0][s2 + s3*nShell]);
 
@@ -511,7 +511,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
                                            ShBlkNorms[0][s3 + s4*nShell]));
@@ -632,13 +632,13 @@ namespace ChronusQ {
    
       memManager_.free(SCR);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),0);
-      std::cout << "Bare-Coulomb-Exchange Screened " << nIntSkip << std::endl;
+      std::cout << "Bare-Coulomb-Exchange Libcint Screened " << nIntSkip << std::endl;
   
       auto durDirect = tock(topDirect);
       std::cout << "Bare-Coulomb-Exchange AO Direct Contraction took " <<  durDirect << " s\n"; 
@@ -681,7 +681,7 @@ namespace ChronusQ {
       auto topDirectLL = tick();
 #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       // Compute shell block norms (∞-norm) of matList.X
       // CLLMS, CSSMS, CSSMX, CSSMY, CSSMZ Densitry matrices
       int mMat = 9;
@@ -772,7 +772,7 @@ namespace ChronusQ {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
 #endif
   
@@ -781,7 +781,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
           shMax123 = std::max(shMax123,shMax12);
 #endif
@@ -795,7 +795,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
                                            ShBlkNorms[0][s3 + s4*nShell]));
@@ -1174,7 +1174,7 @@ namespace ChronusQ {
 
       memManager_.free(ERIBuffer);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
@@ -1216,7 +1216,7 @@ namespace ChronusQ {
       auto topDirectLS = tick();
 #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       // Compute shell block norms (∞-norm) of matList.X
       // XLSMS, XLSMX, XLSMY, XLSMZ Densitry matrices
       int mMat = 4;
@@ -1284,7 +1284,7 @@ namespace ChronusQ {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
 #endif
   
@@ -1293,7 +1293,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
           shMax123 = std::max(shMax123,shMax12);
 #endif
@@ -1308,7 +1308,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
                                            ShBlkNorms[0][s3 + s4*nShell]));
@@ -1551,7 +1551,7 @@ namespace ChronusQ {
    
       memManager_.free(ERIBuffer);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
   
@@ -1680,7 +1680,7 @@ namespace ChronusQ {
       auto topDirectSSSS = tick();
 #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       // Compute shell block norms (∞-norm) of matList.X
       // CSSMS, CSSMX, CSSMY, CSSMZ Densitry matrices
       int mMat = 4;
@@ -1768,7 +1768,7 @@ namespace ChronusQ {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
 #endif
   
@@ -1777,7 +1777,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
           shMax123 = std::max(shMax123,shMax12);
 #endif
@@ -1791,7 +1791,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
                                            ShBlkNorms[0][s3 + s4*nShell]));
@@ -2432,7 +2432,7 @@ namespace ChronusQ {
 
       memManager_.free(ERIBuffer);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
@@ -2539,7 +2539,7 @@ namespace ChronusQ {
       cacheAll = memManager_.malloc<double>(cache_size*nThreads);
 
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
   
       double *SchwarzGaunt = memManager_.malloc<double>(nShell*nShell);
       memset(SchwarzGaunt,0,nShell*nShell*sizeof(double));
@@ -2701,7 +2701,7 @@ namespace ChronusQ {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s2 + s1*nShell];
 #endif
   
@@ -2710,7 +2710,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s2 == s3) ? s1 : nShell-1; // Determine the unique max of Shell 4
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
           shMax123 = std::max(shMax123,shMax12);
 #endif
@@ -2725,7 +2725,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
   
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
@@ -3359,7 +3359,7 @@ namespace ChronusQ {
   
       memManager_.free(ERIBuffer);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
       if(SchwarzGaunt!=nullptr) memManager_.free(SchwarzGaunt);
 #endif
@@ -3473,7 +3473,7 @@ namespace ChronusQ {
       cacheAll = memManager_.malloc<double>(cache_size*nThreads);
 
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
   
       double *SchwarzGauge = memManager_.malloc<double>(nShell*nShell);
       memset(SchwarzGauge,0,nShell*nShell*sizeof(double));
@@ -3649,7 +3649,7 @@ namespace ChronusQ {
   
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax12 = ShBlkNorms[0][s2 + s1*nShell];
 #endif
   
@@ -3659,7 +3659,7 @@ namespace ChronusQ {
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
           s4_max = (s2 == s3) ? s1 : nShell-1; // Determine the unique max of Shell 4
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
           double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
           shMax123 = std::max(shMax123,shMax12);
 #endif
@@ -3675,7 +3675,7 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
   
           double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
                                   std::max(ShBlkNorms[0][s2 + s4*nShell],
@@ -4438,7 +4438,7 @@ namespace ChronusQ {
    
       memManager_.free(ERIBuffer);
       memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
       if(SchwarzGauge!=nullptr) memManager_.free(SchwarzGauge);
 #endif
@@ -4466,7 +4466,7 @@ namespace ChronusQ {
 
 
 
-#ifdef _SHZ_SCREEN_4C
+#ifdef _SHZ_SCREEN_4C_LIBCINT
     if(SchwarzSSSS!=nullptr) memManager_.free(SchwarzSSSS);
     if(SchwarzERI!=nullptr) memManager_.free(SchwarzERI);
 #endif
