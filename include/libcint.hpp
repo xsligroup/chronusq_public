@@ -923,9 +923,11 @@ CQ_CINT_INT2E_WRAPPER(int2e_ipip1_spinor);
 CQ_CINT_OPT_WRAPPER(int2e_ipvip1_optimizer);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1_cart);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1_sph);
+CQ_CINT_INT2E_WRAPPER(int2e_pp1_sph);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1_spinor);
 CQ_INT_WRAPPER(int2e_ipvip1_cart);
 CQ_INT_WRAPPER(int2e_ipvip1_sph);
+CQ_INT_WRAPPER(int2e_pp1_sph);
 
 /* (NABLA i j|R12 |NABLA k l) */
 CQ_CINT_OPT_WRAPPER(int2e_ip1ip2_optimizer);
@@ -993,9 +995,11 @@ CQ_CINT_INT2E_WRAPPER(int2e_ipip1ipip2_spinor);
 CQ_CINT_OPT_WRAPPER(int2e_ipvip1ipvip2_optimizer);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1ipvip2_cart);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1ipvip2_sph);
+CQ_CINT_INT2E_WRAPPER(int2e_pp1pp2_sph);
 CQ_CINT_INT2E_WRAPPER(int2e_ipvip1ipvip2_spinor);
 CQ_INT_WRAPPER(int2e_ipvip1ipvip2_cart);
 CQ_INT_WRAPPER(int2e_ipvip1ipvip2_sph);
+CQ_INT_WRAPPER(int2e_pp1pp2_sph);
 
 /* (NABLA i j|R12 |k) */
 CQ_CINT_OPT_WRAPPER(int3c2e_ip1_optimizer);

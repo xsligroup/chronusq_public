@@ -3780,6 +3780,7 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
     bool   computeExchange = std::abs(xHFX) >= 1e-12; 
+    bool   spinFreeOnly = this->hamiltonianOptions_.SpinFreeOnly;
     
     PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
 
@@ -4030,7 +4031,8 @@ namespace ChronusQ {
           {contract1PDMLS.Z().pointer(), XScrLSMZ} };
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-      relERICon.twoBodyContract(ss.comm, true, contractDCLL, pert, computeExchange);
+      relERICon.twoBodyContract(ss.comm, true, contractDCLL, pert, 
+                                computeExchange, spinFreeOnly);
 
       // Add Dirac-Coulomb contributions to the LLLL block
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLLMS, NB1C, MatsT(1.0), 
@@ -4174,7 +4176,8 @@ namespace ChronusQ {
           {contract1PDMLS.Z().pointer(), XScrLSMZ} };
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-      relERICon.twoBodyContract(ss.comm, true, contractDCSS, pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCSS, pert, 
+                                computeExchange, spinFreeOnly);
 
       // Add (SS|SS) Coulomb contributions to the SSSS block
       MatAdd('N','N', NB1C, NB1C, 2.0*C4, CScrSSMS, NB1C, MatsT(1.0), 
@@ -4271,7 +4274,8 @@ namespace ChronusQ {
 	};
 
       // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGaunt,pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCGaunt, pert, 
+                                computeExchange, spinFreeOnly);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
@@ -4395,7 +4399,8 @@ namespace ChronusQ {
         };
 
       // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGauge,pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCGauge, pert,
+                                computeExchange, spinFreeOnly);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 

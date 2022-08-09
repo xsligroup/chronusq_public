@@ -89,6 +89,7 @@ namespace ChronusQ {
 
     // Four-Component Options
     KineticBalance kineticBalance = RKBPauli; // Choose the kinetic-balance condition; currently, only RKBPauli is implemented
+    bool SpinFreeOnly = false;  // Do spin free only calcualtions. This option must be used together with DC, SSSS, Gaunt, and/or Gauge
     bool BareCoulomb = true; // Do bare Coulomb only in Restricted-Kinetic balance (RKB)
     bool DiracCoulomb = true; // Dirac-Coulomb without SSSS
     bool DiracCoulombSSSS = false; // SSSS to Dirac-Coulomb

@@ -345,12 +345,45 @@ namespace ChronusQ {
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
             compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
           }
+//xslis
+#if 0
+          auto ssSCF = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss);
+          auto gaugeSave = ssSCF->fockBuilder->hamiltonianOptions_.Gauge;
+          auto gauntSave = ssSCF->fockBuilder->hamiltonianOptions_.Gaunt;
+          auto spinfreeonlySave = ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly;
+          auto ssssSave = ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS;
+          auto dcSave = ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb;
 
+          if(ssSCF!=nullptr) {
+            ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly = true;
+            ssSCF->fockBuilder->hamiltonianOptions_.Gauge = false;
+            ssSCF->fockBuilder->hamiltonianOptions_.Gaunt = false;
+            ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS = false;
+            //ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb = false;
+          }
+#endif
+//xslie
           ss->formCoreH(emPert, true);
           if(firstStep) {
             ss->formGuess(guessSSOptions);
             ss->formFock(emPert, false);
           }
+//xslis
+#if 0
+          if(ssSCF!=nullptr) {
+            auto scfC = std::dynamic_pointer_cast<OptimizeOrbitals<dcomplex>>(ssSCF->modifyOrbitals);
+            if(scfC!=nullptr) scfC->scfControls.eneConvTol *= 100.0;
+            ssSCF->runModifyOrbitals(emPert);
+            if(scfC!=nullptr) scfC->scfControls.eneConvTol /= 100.0;
+          }
+
+          ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly = spinfreeonlySave;
+          ssSCF->fockBuilder->hamiltonianOptions_.Gauge = gaugeSave;
+          ssSCF->fockBuilder->hamiltonianOptions_.Gaunt = gauntSave;
+          ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS = ssssSave;
+          ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb = dcSave;
+#endif
+//xslie
           ss->runModifyOrbitals(emPert);
         }
 

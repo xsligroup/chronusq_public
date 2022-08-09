@@ -61,9 +61,10 @@ namespace ChronusQ {
         const bool screen,
         std::vector<TwoBodyContraction<MatsT>> &list,
         EMPerturbation&,
-        const bool computeExchange = true) const {
+        const bool computeExchange = true, const bool spinfreeonly = false) const {
       
-      if (computeExchange) directScaffoldLibcint(comm, screen, list); 
+      if (spinfreeonly) directScaffoldLibcintSpinFreeOnly(comm, screen, list); 
+      else if (computeExchange) directScaffoldLibcint(comm, screen, list); 
       else CErr("twoBodyContract with Coulomb Only is deprecated "); 
      // directScaffold(comm, screen, list);
 //      twoBodyContract3Index(comm, list);
@@ -87,6 +88,11 @@ namespace ChronusQ {
         std::vector<TwoBodyContraction<MatsT>>&) const;
 
     void directScaffoldLibcint(
+        MPI_Comm,
+        const bool,
+        std::vector<TwoBodyContraction<MatsT>>&) const;
+
+    void directScaffoldLibcintSpinFreeOnly(
         MPI_Comm,
         const bool,
         std::vector<TwoBodyContraction<MatsT>>&) const;

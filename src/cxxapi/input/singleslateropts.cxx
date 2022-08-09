@@ -585,12 +585,16 @@ namespace ChronusQ {
 
 
     // Parse 4C options
+    OPTOPT( hamiltonianOptions.SpinFreeOnly = input.getData<bool>("INTS.SPINFREEONLY") )
     OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
     OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DC") )
-    OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
     OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
     OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
     OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS.GAUNT") )
+
+    // by default, DC includes SSSS unless "false" is set upon input
+    if(hamiltonianOptions.DiracCoulomb) hamiltonianOptions.DiracCoulombSSSS = true;
+    OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
 
     try{
       if ( input.getData<bool>("INTS.BREIT") ) {
@@ -1167,6 +1171,8 @@ namespace ChronusQ {
 
     out << "  " << std::setw(fieldNameWidth) << "Four-Component Options:" << std::endl;
     out << bannerMid << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "Spin Free Only:"
+        << (options.SpinFreeOnly ? "On" : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Bare Coulomb Term:"
         << (options.BareCoulomb ? "On" : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb Term:"
