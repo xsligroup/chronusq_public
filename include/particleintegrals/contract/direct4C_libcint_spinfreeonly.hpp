@@ -47,6 +47,8 @@
 
 #define _CONTRACTION_
 
+//#define _ONE_CENTER_APPROXIMATION_SPINFREE_
+#define _TWO_CENTER_APPROXIMATION_SPINFREE_
 
 #include <libcint.hpp>
 
@@ -555,6 +557,16 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
 #endif
 
+#ifdef _ONE_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipLL[thread_id]++; continue;}
+#endif
+
+#ifdef _TWO_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipLL[thread_id]++; continue;}
+#endif
+ 
           auto nQuad = n1*n2*n3*n4;
   
           shls[0] = int(s1);
@@ -1072,7 +1084,16 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipSSSS[thread_id]++; continue; }
 #endif
 
+#ifdef _ONE_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipSSSS[thread_id]++; continue;}
+#endif
 
+#ifdef _TWO_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipSSSS[thread_id]++; continue;}
+#endif
+ 
           auto nQuad = n1*n2*n3*n4;
   
           shls[0] = int(s1);
@@ -1635,6 +1656,16 @@ namespace ChronusQ {
           if((shMax*SchwarzGaunt[s3+s4*nShell]*SchwarzGaunt[s2 + s1*nShell]) <
              eri.threshSchwarz()) { nSkipGaunt[thread_id]++; continue; }
 #endif
+
+#ifdef _ONE_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipGaunt[thread_id]++; continue;}
+#endif
+
+#ifdef _TWO_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipGaunt[thread_id]++; continue;}
+#endif
   
   
           shls[0] = int(s2);
@@ -1642,8 +1673,8 @@ namespace ChronusQ {
           shls[2] = int(s3);
           shls[3] = int(s4);
 
-          //f(int2e_ip1ip2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
-          if(int2e_ps1ps2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
+          if(int2e_ip1ip2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
+          //if(int2e_ps1ps2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
  
           auto nQuad = n1*n2*n3*n4;
 
@@ -2258,6 +2289,16 @@ namespace ChronusQ {
           if((shMax*SchwarzGauge[s1+s2*nShell]*SchwarzGauge[s4+s3*nShell]) <
              eri.threshSchwarz()) { nSkipGauge[thread_id]++; continue; }
 #endif
+
+#ifdef _ONE_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipGauge[thread_id]++; continue;}
+#endif
+
+#ifdef _TWO_CENTER_APPROXIMATION_SPINFREE_
+          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipGauge[thread_id]++; continue;}
+#endif
   
   
           shls[0] = int(s1);
@@ -2266,10 +2307,10 @@ namespace ChronusQ {
           shls[3] = int(s4);
 
           //∇B∇C
-          //skiperi1 = int2e_gauge_r1_ssp1sps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          //skiperi2 = int2e_gauge_r2_ssp1sps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          skiperi1 = int2e_gauge_r1_sp1ps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          skiperi2 = int2e_gauge_r2_sp1ps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi1 = int2e_gauge_r1_ssp1sps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi2 = int2e_gauge_r2_ssp1sps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          //skiperi1 = int2e_gauge_r1_sp1ps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          //skiperi2 = int2e_gauge_r2_sp1ps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
 
           if(skiperi1==0 and skiperi2==0) continue;
 
