@@ -48,6 +48,14 @@ namespace ChronusQ {
     Eigen::setNbThreads(n);
   };
 
+  inline size_t GetNumThreads() {
+#ifdef _OPENMP
+    return omp_get_max_threads();
+#else
+    return 1;
+#endif
+  };
+
 
   inline size_t GetLAThreads() {
 #ifdef _CQ_MKL
@@ -67,14 +75,6 @@ namespace ChronusQ {
     omp_set_num_threads(n);
 #endif
     SetLAThreads(n);
-  };
-
-  inline size_t GetNumThreads() {
-#ifdef _OPENMP
-    return omp_get_max_threads();
-#else
-    return 1;
-#endif
   };
 
   inline size_t GetThreadID() {

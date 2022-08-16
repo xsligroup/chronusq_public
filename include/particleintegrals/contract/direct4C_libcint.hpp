@@ -47,8 +47,9 @@
 
 #define _CONTRACTION_
 
+#define _THREE_CENTER_APPROXIMATION_
+//#define _TWO_CENTER_APPROXIMATION_
 //#define _ONE_CENTER_APPROXIMATION_
-#define _TWO_CENTER_APPROXIMATION_
 
 #include <libcint.hpp>
 
@@ -810,13 +811,20 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
 #endif
 
-#ifdef _ONE_CENTER_APPROXIMATION_
+#ifdef _THREE_CENTER_APPROXIMATION_
           if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
             {nSkipLL[thread_id]++; continue;}
 #endif
 
 #ifdef _TWO_CENTER_APPROXIMATION_
           if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+            {nSkipLL[thread_id]++; continue;}
+#endif
+
+#ifdef _ONE_CENTER_APPROXIMATION_
+          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
+             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
+             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
             {nSkipLL[thread_id]++; continue;}
 #endif
  
@@ -1814,7 +1822,7 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipSSSS[thread_id]++; continue; }
 #endif
 
-#ifdef _ONE_CENTER_APPROXIMATION_
+#ifdef _THREE_CENTER_APPROXIMATION_
           if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
             {nSkipSSSS[thread_id]++; continue;}
 #endif
@@ -1824,7 +1832,13 @@ namespace ChronusQ {
             {nSkipSSSS[thread_id]++; continue;}
 #endif
  
-
+#ifdef _ONE_CENTER_APPROXIMATION_
+          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
+             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
+             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+            {nSkipSSSS[thread_id]++; continue;}
+#endif
+ 
           auto nQuad = n1*n2*n3*n4;
   
           shls[0] = int(s1);
@@ -2759,7 +2773,7 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipGaunt[thread_id]++; continue; }
 #endif
   
-#ifdef _ONE_CENTER_APPROXIMATION_
+#ifdef _THREE_CENTER_APPROXIMATION_
           if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
             {nSkipGaunt[thread_id]++; continue;}
 #endif
@@ -2769,6 +2783,12 @@ namespace ChronusQ {
             {nSkipGaunt[thread_id]++; continue;}
 #endif
   
+#ifdef _ONE_CENTER_APPROXIMATION_
+          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
+             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
+             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+            {nSkipGaunt[thread_id]++; continue;}
+#endif
           shls[0] = int(s2);
           shls[1] = int(s1);
           shls[2] = int(s3);
@@ -3718,7 +3738,7 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipGauge[thread_id]++; continue; }
 #endif
   
-#ifdef _ONE_CENTER_APPROXIMATION_
+#ifdef _THREE_CENTER_APPROXIMATION_
           if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
             {nSkipGauge[thread_id]++; continue;}
 #endif
@@ -3728,6 +3748,13 @@ namespace ChronusQ {
             {nSkipGauge[thread_id]++; continue;}
 #endif
   
+#ifdef _ONE_CENTER_APPROXIMATION_
+          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
+             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
+             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+            {nSkipGauge[thread_id]++; continue;}
+#endif
+
           shls[0] = int(s1);
           shls[1] = int(s2);
           shls[2] = int(s3);
