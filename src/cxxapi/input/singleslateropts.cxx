@@ -585,9 +585,24 @@ namespace ChronusQ {
 
 
     // Parse 4C options
-    OPTOPT( hamiltonianOptions.SpinFreeOnly = input.getData<bool>("INTS.SPINFREEONLY") )
+    //OPTOPT( hamiltonianOptions.SpinFreeOnly = input.getData<bool>("INTS.SPINFREEONLY") )
+    try { 
+      std::string DCOptions = "FALSE";
+      DCOptions = input.getData<std::string>("INTS.DC");
+      if (not query.compare("TRUE") or not query.compare("ON")) 
+        hamiltonianOptions.DiracCoulomb = true;
+      if (not query.compare("FALSE") or not query.compare("OFF"))
+        hamiltonianOptions.DiracCoulomb = false;
+      if (not query.compare("SF"))  hamiltonianOptions.DiracCoulomb_Type = SF;
+      if (not query.compare("SD"))  hamiltonianOptions.DiracCoulomb_Type = SD;
+      if (not query.compare("3C"))  hamiltonianOptions.DiracCoulomb_Type = 3C;
+      if (not query.compare("2C"))  hamiltonianOptions.DiracCoulomb_Type = 2C;
+      if (not query.compare("1C"))  hamiltonianOptions.DiracCoulomb_Type = 1C;
+      if (not query.compare("AMF")) hamiltonianOptions.DiracCoulomb_Type = AMF;
+  
+    } catch(...) {}
+
     OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
-    OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DC") )
     OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
     OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
     OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS.GAUNT") )
@@ -599,6 +614,7 @@ namespace ChronusQ {
     try{
       if ( input.getData<bool>("INTS.BREIT") ) {
         hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombSSSS = true;
         hamiltonianOptions.Gaunt = true;
         hamiltonianOptions.Gauge = true;
       }

@@ -32,6 +32,8 @@ namespace ChronusQ {
 
   enum class X2C_TYPE {OFF, ONEE, TWOE, FOCK};
 
+  enum class 4C_TYPE {EXACT, SF, SD, 3C, 2C, 1C, AMF};
+
   struct ATOMIC_X2C_TYPE {
     bool isolateAtom;  ///< If atomic OEI feel only the basis origin nuclei potential
     bool diagonalOnly; ///< If only diagonal blocks of Hamiltonian are X2C corrected
@@ -89,12 +91,15 @@ namespace ChronusQ {
 
     // Four-Component Options
     KineticBalance kineticBalance = RKBPauli; // Choose the kinetic-balance condition; currently, only RKBPauli is implemented
-    bool SpinFreeOnly = false;  // Do spin free only calcualtions. This option must be used together with DC, SSSS, Gaunt, and/or Gauge
     bool BareCoulomb = true; // Do bare Coulomb only in Restricted-Kinetic balance (RKB)
     bool DiracCoulomb = true; // Dirac-Coulomb without SSSS
     bool DiracCoulombSSSS = false; // SSSS to Dirac-Coulomb
     bool Gaunt = false; // Gaunt
     bool Gauge = false; // Gauge
+    4C_TYPE DiracCoulomb_Type; // Type of Dirac-Coulomb approximations
+    4C_TYPE SSSS_Type;         // Type of SSSS approximation
+    4C_TYPE Gaunt_Type;        // Type of Gaunt approximation
+    4C_TYPE Gauge_Type;        // Type of Gauge approximation
 
   }; // struct HamiltonianOptions
 
