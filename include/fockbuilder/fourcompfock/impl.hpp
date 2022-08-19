@@ -3780,7 +3780,6 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
     bool   computeExchange = std::abs(xHFX) >= 1e-12; 
-    bool   spinFreeOnly = true;
     
     PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
 
@@ -4032,7 +4031,9 @@ namespace ChronusQ {
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
       relERICon.twoBodyContract(ss.comm, true, contractDCLL, pert, 
-                                computeExchange, spinFreeOnly);
+        computeExchange,
+        this->hamiltonianOptions_.DiracCoulombType,
+        this->hamiltonianOptions_.DiracCoulombApproximationType);
 
       // Add Dirac-Coulomb contributions to the LLLL block
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLLMS, NB1C, MatsT(1.0), 
@@ -4177,7 +4178,9 @@ namespace ChronusQ {
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
       relERICon.twoBodyContract(ss.comm, true, contractDCSS, pert, 
-                                computeExchange, spinFreeOnly);
+        computeExchange,
+        this->hamiltonianOptions_.SSSSType,
+        this->hamiltonianOptions_.SSSSApproximationType);
 
       // Add (SS|SS) Coulomb contributions to the SSSS block
       MatAdd('N','N', NB1C, NB1C, 2.0*C4, CScrSSMS, NB1C, MatsT(1.0), 
@@ -4275,7 +4278,9 @@ namespace ChronusQ {
 
       // Call the contraction engine to do the assembly of Gaunt
       relERICon.twoBodyContract(ss.comm, true, contractDCGaunt, pert, 
-                                computeExchange, spinFreeOnly);
+        computeExchange,
+        this->hamiltonianOptions_.GauntType,
+        this->hamiltonianOptions_.GauntApproximationType);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
@@ -4400,7 +4405,9 @@ namespace ChronusQ {
 
       // Call the contraction engine to do the assembly of Gaunt
       relERICon.twoBodyContract(ss.comm, true, contractDCGauge, pert,
-                                computeExchange, spinFreeOnly);
+        computeExchange,
+        this->hamiltonianOptions_.GaugeType,
+        this->hamiltonianOptions_.GaugeApproximationType);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
