@@ -3780,7 +3780,7 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
     bool   computeExchange = std::abs(xHFX) >= 1e-12; 
-    bool   spinFreeOnly = this->hamiltonianOptions_.SpinFreeOnly;
+    bool   spinFreeOnly = true;
     
     PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
 

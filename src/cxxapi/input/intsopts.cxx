@@ -60,7 +60,7 @@ namespace ChronusQ {
       "RIGENCONTR",   // True or False
       "RIBUILD4INDEX",// True or False
       "FINITENUCLEI", // True or False
-      "LIBCINT"       // Ture or False
+      "LIBCINT",      // Ture or False
 
       "BARECOULOMB",  // True or False
       "DC",           // True or False, SF, SD, 3C, 2C, 1C, AMF

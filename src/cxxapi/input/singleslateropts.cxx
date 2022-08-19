@@ -25,6 +25,7 @@
 #include <cxxapi/options.hpp>
 #include <cxxapi/output.hpp>
 #include <cerr.hpp>
+#include <regex>
 #include <corehbuilder.hpp>
 #include <corehbuilder/nonrel.hpp>
 #include <corehbuilder/fourcomp.hpp>
@@ -585,20 +586,54 @@ namespace ChronusQ {
 
 
     // Parse 4C options
-    //OPTOPT( hamiltonianOptions.SpinFreeOnly = input.getData<bool>("INTS.SPINFREEONLY") )
     try { 
       std::string DCOptions = "FALSE";
       DCOptions = input.getData<std::string>("INTS.DC");
-      if (not query.compare("TRUE") or not query.compare("ON")) 
+      auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
+      auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
+      auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
+      auto const regexSF = std::regex("sf|spinfree",std::regex_constants::icase);
+      auto const regexSD = std::regex("sd|spindependent",std::regex_constants::icase);
+      auto const regex3C = std::regex("3c|3center|threecenter",std::regex_constants::icase);
+      auto const regex2C = std::regex("2c|2center|twocenter",std::regex_constants::icase);
+      auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
+      auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
+
+      if( std::regex_search(DCOptions, regexTRUE) ) {
         hamiltonianOptions.DiracCoulomb = true;
-      if (not query.compare("FALSE") or not query.compare("OFF"))
+        hamiltonianOptions.DiracCoulombType = TYPE_4C::All;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(DCOptions, regexFALSE) ){
         hamiltonianOptions.DiracCoulomb = false;
-      if (not query.compare("SF"))  hamiltonianOptions.DiracCoulomb_Type = SF;
-      if (not query.compare("SD"))  hamiltonianOptions.DiracCoulomb_Type = SD;
-      if (not query.compare("3C"))  hamiltonianOptions.DiracCoulomb_Type = 3C;
-      if (not query.compare("2C"))  hamiltonianOptions.DiracCoulomb_Type = 2C;
-      if (not query.compare("1C"))  hamiltonianOptions.DiracCoulomb_Type = 1C;
-      if (not query.compare("AMF")) hamiltonianOptions.DiracCoulomb_Type = AMF;
+      }
+
+      if( std::regex_search(DCOptions, regexALL) ){
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombType = TYPE_4C::All;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(DCOptions, regexSF) ) {
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombType = TYPE_4C::SpinFree;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(DCOptions, regexSD) ) {
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::None;
+      }
+
+      if( std::regex_search(DCOptions, regex3C) ){
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+      } else if ( std::regex_search(DCOptions, regex2C) ) {
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+      } else if ( std::regex_search(DCOptions, regex1C) ) {
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+      } else if ( std::regex_search(DCOptions, regexAMF) ) {
+        hamiltonianOptions.DiracCoulomb = true;
+        hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+      }
   
     } catch(...) {}
 
@@ -1187,18 +1222,39 @@ namespace ChronusQ {
 
     out << "  " << std::setw(fieldNameWidth) << "Four-Component Options:" << std::endl;
     out << bannerMid << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "Spin Free Only:"
-        << (options.SpinFreeOnly ? "On" : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Bare Coulomb Term:"
         << (options.BareCoulomb ? "On" : "Off") << std::endl;
+
+    char TYPE_4C_NAME[3][20] = { "All", "Spin Free Only", "Spin Dependent Only" };
+    char TYPE_4C_APPROXIMATION[5][20] = {"None", "Three Center", "Two Center", "One Center", "Atomic Mean Field" };
+
     out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb Term:"
         << (options.DiracCoulomb ? "On" : "Off") << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+        << TYPE_4C_NAME[static_cast<int>(options.DiracCoulombType)] << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+        << TYPE_4C_APPROXIMATION[static_cast<int>(options.DiracCoulombApproximationType)] << std::endl;
+
     out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb SSSS Term:"
         << (options.DiracCoulombSSSS ? "On" : "Off") << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+        << TYPE_4C_NAME[static_cast<int>(options.SSSSType)] << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+        << TYPE_4C_APPROXIMATION[static_cast<int>(options.SSSSApproximationType)] << std::endl;
+
     out << "  " << std::setw(fieldNameWidth) << "Gaunt Term:"
         << (options.Gaunt ? "On" : "Off") << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+        << TYPE_4C_NAME[static_cast<int>(options.GauntType)] << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+        << TYPE_4C_APPROXIMATION[static_cast<int>(options.GauntApproximationType)] << std::endl;
+
     out << "  " << std::setw(fieldNameWidth) << "Gauge Term:"
         << (options.Gauge ? "On" : "Off") << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+        << TYPE_4C_NAME[static_cast<int>(options.GaugeType)] << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+        << TYPE_4C_APPROXIMATION[static_cast<int>(options.GaugeApproximationType)] << std::endl;
 
 
     out << std::endl << BannerEnd << std::endl;
