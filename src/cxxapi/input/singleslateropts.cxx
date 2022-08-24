@@ -585,10 +585,26 @@ namespace ChronusQ {
     }
 
 
+    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
+    //OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
+    //OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
+    //OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
+    //OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS.GAUNT") )
+    //try{
+    //  if ( input.getData<bool>("INTS.BREIT") ) {
+    //    hamiltonianOptions.DiracCoulomb = true;
+    //    hamiltonianOptions.DiracCoulombSSSS = true;
+    //    hamiltonianOptions.Gaunt = true;
+    //    hamiltonianOptions.Gauge = true;
+    //  }
+    //} catch(...) {}
+
+
     // Parse 4C options
+    // Dirac-Coulomb
     try { 
       std::string DCOptions = "FALSE";
-      DCOptions = input.getData<std::string>("INTS.DC");
+      DCOptions = input.getData<std::string>("INTS.DIRACCOULOMB");
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
@@ -637,23 +653,240 @@ namespace ChronusQ {
   
     } catch(...) {}
 
-    OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
-    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
-    OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
-    OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS.GAUNT") )
-
     // by default, DC includes SSSS unless "false" is set upon input
     if(hamiltonianOptions.DiracCoulomb) hamiltonianOptions.DiracCoulombSSSS = true;
-    OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
+    
+    // SSSS
+    try { 
+      std::string SSSSOptions = "FALSE";
+      SSSSOptions = input.getData<std::string>("INTS.SSSS");
+      auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
+      auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
+      auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
+      auto const regexSF = std::regex("sf|spinfree",std::regex_constants::icase);
+      auto const regexSD = std::regex("sd|spindependent",std::regex_constants::icase);
+      auto const regex3C = std::regex("3c|3center|threecenter",std::regex_constants::icase);
+      auto const regex2C = std::regex("2c|2center|twocenter",std::regex_constants::icase);
+      auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
+      auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
 
-    try{
-      if ( input.getData<bool>("INTS.BREIT") ) {
-        hamiltonianOptions.DiracCoulomb = true;
+      if( std::regex_search(SSSSOptions, regexTRUE) ) {
         hamiltonianOptions.DiracCoulombSSSS = true;
-        hamiltonianOptions.Gaunt = true;
-        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.SSSSType = TYPE_4C::All;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(SSSSOptions, regexFALSE) ){
+        hamiltonianOptions.DiracCoulombSSSS = false;
       }
+
+      if( std::regex_search(SSSSOptions, regexALL) ){
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSType = TYPE_4C::All;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(SSSSOptions, regexSF) ) {
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSType = TYPE_4C::SpinFree;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(SSSSOptions, regexSD) ) {
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::None;
+      }
+
+      if( std::regex_search(SSSSOptions, regex3C) ){
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+      } else if ( std::regex_search(SSSSOptions, regex2C) ) {
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+      } else if ( std::regex_search(SSSSOptions, regex1C) ) {
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+      } else if ( std::regex_search(SSSSOptions, regexAMF) ) {
+        hamiltonianOptions.DiracCoulombSSSS = true;
+        hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+      }
+  
     } catch(...) {}
+
+    // Gaunt
+    try { 
+      std::string GauntOptions = "FALSE";
+      GauntOptions = input.getData<std::string>("INTS.GAUNT");
+      auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
+      auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
+      auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
+      auto const regexSF = std::regex("sf|spinfree",std::regex_constants::icase);
+      auto const regexSD = std::regex("sd|spindependent",std::regex_constants::icase);
+      auto const regex3C = std::regex("3c|3center|threecenter",std::regex_constants::icase);
+      auto const regex2C = std::regex("2c|2center|twocenter",std::regex_constants::icase);
+      auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
+      auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
+
+      if( std::regex_search(GauntOptions, regexTRUE) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GauntOptions, regexFALSE) ){
+        hamiltonianOptions.Gaunt = false;
+      }
+
+      if( std::regex_search(GauntOptions, regexALL) ){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GauntOptions, regexSF) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::SpinFree;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GauntOptions, regexSD) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+      }
+
+      if( std::regex_search(GauntOptions, regex3C) ){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+      } else if ( std::regex_search(GauntOptions, regex2C) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+      } else if ( std::regex_search(GauntOptions, regex1C) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+      } else if ( std::regex_search(GauntOptions, regexAMF) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+      }
+  
+    } catch(...) {}
+
+
+    // Gauge
+    try { 
+      std::string GaugeOptions = "FALSE";
+      GaugeOptions = input.getData<std::string>("INTS.GAUGE");
+      auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
+      auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
+      auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
+      auto const regexSF = std::regex("sf|spinfree",std::regex_constants::icase);
+      auto const regexSD = std::regex("sd|spindependent",std::regex_constants::icase);
+      auto const regex3C = std::regex("3c|3center|threecenter",std::regex_constants::icase);
+      auto const regex2C = std::regex("2c|2center|twocenter",std::regex_constants::icase);
+      auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
+      auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
+
+      if( std::regex_search(GaugeOptions, regexTRUE) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GaugeOptions, regexFALSE) ){
+        hamiltonianOptions.Gauge = false;
+      }
+
+      if( std::regex_search(GaugeOptions, regexALL) ){
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GaugeOptions, regexSF) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::SpinFree;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GaugeOptions, regexSD) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      }
+
+      if( std::regex_search(GaugeOptions, regex3C) ){
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+      } else if ( std::regex_search(GaugeOptions, regex2C) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+      } else if ( std::regex_search(GaugeOptions, regex1C) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+      } else if ( std::regex_search(GaugeOptions, regexAMF) ) {
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+      }
+  
+    } catch(...) {}
+
+    // Breit = 1/2 Gaunt + gauge
+    try { 
+      std::string BreitOptions = "FALSE";
+      BreitOptions = input.getData<std::string>("INTS.BREIT");
+      auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
+      auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
+      auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
+      auto const regexSF = std::regex("sf|spinfree",std::regex_constants::icase);
+      auto const regexSD = std::regex("sd|spindependent",std::regex_constants::icase);
+      auto const regex3C = std::regex("3c|3center|threecenter",std::regex_constants::icase);
+      auto const regex2C = std::regex("2c|2center|twocenter",std::regex_constants::icase);
+      auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
+      auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
+
+      if( std::regex_search(BreitOptions, regexTRUE) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(BreitOptions, regexFALSE) ){
+        hamiltonianOptions.Gaunt = false;
+        hamiltonianOptions.Gauge = false;
+      }
+
+      if( std::regex_search(BreitOptions, regexALL) ){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(BreitOptions, regexSF) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::SpinFree;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::SpinFree;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(BreitOptions, regexSD) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::SpinDependent;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      }
+
+      if( std::regex_search(BreitOptions, regex3C) ){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::ThreeCenter;
+      } else if ( std::regex_search(BreitOptions, regex2C) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::TwoCenter;
+      } else if ( std::regex_search(BreitOptions, regex1C) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::OneCenter;
+      } else if ( std::regex_search(BreitOptions, regexAMF) ) {
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
+      }
+  
+    } catch(...) {}
+
+
 
     if (refOptions.refType != isFourCRef
         and hamiltonianOptions.x2cType != X2C_TYPE::FOCK) {
