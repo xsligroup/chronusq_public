@@ -557,19 +557,18 @@ namespace ChronusQ {
 #endif
 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+          //if(not (bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) 
+          //if(not (bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) 
             {nSkipLL[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(not( (bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4))
-               or (bas(ATOM_OF, s1)==bas(ATOM_OF, s3) and bas(ATOM_OF, s2)==bas(ATOM_OF, s4))
-               or (bas(ATOM_OF, s1)==bas(ATOM_OF, s4) and bas(ATOM_OF, s2)==bas(ATOM_OF, s3))) )
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipLL[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipLL[thread_id]++; continue;}
  
           auto nQuad = n1*n2*n3*n4;
@@ -669,11 +668,6 @@ namespace ChronusQ {
             auto kmn2 = k + mn2;
 
           for(l = 3*maxShellSize, bf4 = bf4_s; l < 3*maxShellSize + n4; ++l, bf4++) {
-  
-
-            // Deneneracy factor for s1,s2 pair
-            double s12_deg = (bf1_s == bf2_s) ? 1.0 : 2.0;
-            double s34_deg = (bf3_s == bf4_s) ? 1.0 : 2.0;
 
             //auto MNKL = m + n*NB + k*NB2 + l*NB3;
             auto MNKL = mnNBkNB2 + l*NB3;
@@ -697,7 +691,9 @@ namespace ChronusQ {
             auto DotPrdMNKL = MNKL;
             auto DotPrdKLMN = KLMN;
   
-  
+            // Deneneracy factor for s1,s2 pair
+            double s12_deg = (bf1_s == bf2_s) ? 1.0 : 2.0;
+            double s34_deg = (bf3_s == bf4_s) ? 1.0 : 2.0;
 
             /*++++++++++++++++++++++++++++++++++++++++++++*/
             /* Start of Dirac-Coulomb (LL|LL) Contraction */
@@ -707,8 +703,6 @@ namespace ChronusQ {
   
             // KLMN
             // Equation (C6) in Xiaosong's note
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) ) 
             if(bf3 >= bf4) 
               ADCLLMS[bf34] +=  s12_deg*ERIBuffCD[DotPrdKLMN]*DCSSMS[bf21].real();
            
@@ -727,8 +721,6 @@ namespace ChronusQ {
             // MNKL 
             // Equations (C13) and (C14) in Xiaosong's note
             // Complex i for the X, Y, Z components is multiplied at the end
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) ) 
             if (bf1 >= bf2) 
               ADCSSMS[bf12] += s34_deg*ERIBuffAB[DotPrdMNKL]*DCLLMS[bf43].real();
   
@@ -745,19 +737,14 @@ namespace ChronusQ {
 #if 1
             //KLMN 3412
             // Equation (C7-C10) in Xiaosong's note
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s3)==bas(ATOM_OF, s2) and bas(ATOM_OF, s1)==bas(ATOM_OF, s4) ) {
             ADXLSMS[bf32]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf41];
             ADXLSMX[bf32]+= -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf41];
             ADXLSMY[bf32]+= -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf41];
             ADXLSMZ[bf32]+= -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf41];
-            }
   
             // KLMN 3421
             // Since the derivative is on 21, the sign of the cross product will
             // change when the indices of 21 swap.
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s3)==bas(ATOM_OF, s1) and bas(ATOM_OF, s2)==bas(ATOM_OF, s4) )
             if(bf2_s!=bf1_s) {
               ADXLSMS[bf31]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf42];
               ADXLSMX[bf31]+= -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf42];
@@ -766,16 +753,12 @@ namespace ChronusQ {
             }
   
             //LKMN 4312
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s3)==bas(ATOM_OF, s1) and bas(ATOM_OF, s2)==bas(ATOM_OF, s4) ) 
             if(bf3_s!=bf4_s){
               ADXLSMS[bf42]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf31];
               ADXLSMX[bf42]+= -ERIBuffCD[DotPrdKLMN]*DXLSMX[bf31];
               ADXLSMY[bf42]+= -ERIBuffCD[DotPrdKLMN]*DXLSMY[bf31];
               ADXLSMZ[bf42]+= -ERIBuffCD[DotPrdKLMN]*DXLSMZ[bf31];
   
-            if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-            if(bas(ATOM_OF, s3)==bas(ATOM_OF, s2) and bas(ATOM_OF, s1)==bas(ATOM_OF, s4) )
               if(bf1_s!=bf2_s) {
                 //LKNM 4321
                 ADXLSMS[bf41]+= -ERIBuffCD[DotPrdKLMN]*DXLSMS[bf32];
@@ -1104,17 +1087,16 @@ namespace ChronusQ {
 
  
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipSSSS[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipSSSS[thread_id]++; continue;}
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipSSSS[thread_id]++; continue;}
 
           auto nQuad = n1*n2*n3*n4;
@@ -1681,17 +1663,16 @@ namespace ChronusQ {
 #endif
 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGaunt[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGaunt[thread_id]++; continue;}
   
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGaunt[thread_id]++; continue;}
   
           shls[0] = int(s2);
@@ -2318,17 +2299,16 @@ namespace ChronusQ {
 
   
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGauge[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGauge[thread_id]++; continue;}
   
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGauge[thread_id]++; continue;}
 
           shls[0] = int(s1);
