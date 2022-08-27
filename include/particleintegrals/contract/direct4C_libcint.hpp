@@ -1818,6 +1818,7 @@ namespace ChronusQ {
           if((shMax*SchwarzSSSS[s1+s2*nShell]*SchwarzSSSS[s3 + s4*nShell]) <
              eri.threshSchwarz()) { nSkipSSSS[thread_id]++; continue; }
 #endif
+
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
           if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipSSSS[thread_id]++; continue;}
@@ -2764,21 +2765,21 @@ namespace ChronusQ {
           if((shMax*SchwarzGaunt[s3+s4*nShell]*SchwarzGaunt[s2 + s1*nShell]) <
              eri.threshSchwarz()) { nSkipGaunt[thread_id]++; continue; }
 #endif
-  
+
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGaunt[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGaunt[thread_id]++; continue;}
-  
+ 
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGaunt[thread_id]++; continue;}
 
+ 
           shls[0] = int(s2);
           shls[1] = int(s1);
           shls[2] = int(s3);
@@ -3729,17 +3730,16 @@ namespace ChronusQ {
 #endif
   
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) and bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGauge[thread_id]++; continue;}
 
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4) ) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             {nSkipGauge[thread_id]++; continue;}
-  
+ 
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
-          if(   bas(ATOM_OF, s1)!=bas(ATOM_OF, s2) or bas(ATOM_OF, s1)!=bas(ATOM_OF, s3) 
-             or bas(ATOM_OF, s1)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s2)!=bas(ATOM_OF, s3)
-             or bas(ATOM_OF, s2)!=bas(ATOM_OF, s4) or bas(ATOM_OF, s3)!=bas(ATOM_OF, s4)) 
+          if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGauge[thread_id]++; continue;}
 
           shls[0] = int(s1);

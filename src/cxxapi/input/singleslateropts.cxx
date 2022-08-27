@@ -1455,38 +1455,42 @@ namespace ChronusQ {
 
     out << "  " << std::setw(fieldNameWidth) << "Four-Component Options:" << std::endl;
     out << bannerMid << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "Bare Coulomb Term:"
+    out << "  " << std::setw(fieldNameWidth) << "Bare Coulomb (LLLL) Term:"
         << (options.BareCoulomb ? "On" : "Off") << std::endl;
 
     char TYPE_4C_NAME[3][20] = { "All", "Spin Free Only", "Spin Dependent Only" };
     char TYPE_4C_APPROXIMATION[5][20] = {"None", "Three Center", "Two Center", "One Center", "Atomic Mean Field" };
 
-    out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb Term:"
+    out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb (w/o SSSS) Term --- "
         << (options.DiracCoulomb ? "On" : "Off") << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+    if(options.DiracCoulomb)
+    out << "  " << std::setw(fieldNameWidth) << "Contribution:"
         << TYPE_4C_NAME[static_cast<int>(options.DiracCoulombType)] << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+    out << "  " << std::setw(fieldNameWidth) << "Approximation:"
         << TYPE_4C_APPROXIMATION[static_cast<int>(options.DiracCoulombApproximationType)] << std::endl;
 
-    out << "  " << std::setw(fieldNameWidth) << "Dirac Coulomb SSSS Term:"
+    out << "  " << std::setw(fieldNameWidth) << "SSSS Term --- "
         << (options.DiracCoulombSSSS ? "On" : "Off") << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+    if(options.DiracCoulombSSSS)
+    out << "  " << std::setw(fieldNameWidth) << "Contribution:"
         << TYPE_4C_NAME[static_cast<int>(options.SSSSType)] << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+    out << "  " << std::setw(fieldNameWidth) << "Approximation:"
         << TYPE_4C_APPROXIMATION[static_cast<int>(options.SSSSApproximationType)] << std::endl;
 
-    out << "  " << std::setw(fieldNameWidth) << "Gaunt Term:"
+    out << "  " << std::setw(fieldNameWidth) << "Gaunt Term --- "
         << (options.Gaunt ? "On" : "Off") << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+    if(options.Gaunt)
+    out << "  " << std::setw(fieldNameWidth) << "Contribution:"
         << TYPE_4C_NAME[static_cast<int>(options.GauntType)] << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+    out << "  " << std::setw(fieldNameWidth) << "Approximation:"
         << TYPE_4C_APPROXIMATION[static_cast<int>(options.GauntApproximationType)] << std::endl;
 
-    out << "  " << std::setw(fieldNameWidth) << "Gauge Term:"
+    out << "  " << std::setw(fieldNameWidth) << "Gauge Term --- "
         << (options.Gauge ? "On" : "Off") << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Contribution:"
+    if(options.Gauge)
+    out << "  " << std::setw(fieldNameWidth) << "Contribution:"
         << TYPE_4C_NAME[static_cast<int>(options.GaugeType)] << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "  Approximation:"
+    out << "  " << std::setw(fieldNameWidth) << "Approximation:"
         << TYPE_4C_APPROXIMATION[static_cast<int>(options.GaugeApproximationType)] << std::endl;
 
 
