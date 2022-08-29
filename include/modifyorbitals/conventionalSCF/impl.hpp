@@ -36,14 +36,13 @@ template<typename MatsT>
 void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT>& mo,
                                             VecEPtr& eps) {
 
+  this->modOrbOpt.formDensity();
+
   // Form the Fock matrix D(k) -> F(k)
   ProgramTimer::timeOp("Form Fock", [&]() { this->modOrbOpt.formFock(pert); });
 
   // Transform AO fock into the orthonormal basis (on root MPI process)
   ao2orthoFock();
-
-  // Compute the orbital gradient for convergence tests and DIIS
-  computeOrbGradient(orbGrad);
 
   // Modify fock matrix if requested (on root MPI process)
   if( this->scfControls.doExtrap ) modifyFock(pert);
@@ -53,7 +52,8 @@ void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT
 
   ortho2aoMOs(mo);
 
-  this->modOrbOpt.formDensity();
+  // Compute the orbital gradient for convergence tests and DIIS
+  computeOrbGradient(orbGrad);
 
 };   // NewtonRaphsonSCF<MatsT,IntsT>::getNewOrbitals
 
