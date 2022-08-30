@@ -1680,8 +1680,8 @@ namespace ChronusQ {
           shls[2] = int(s3);
           shls[3] = int(s4);
 
-          if(int2e_ip1ip2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
-          //if(int2e_ps1ps2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
+          //if(int2e_ip1ip2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
+          if(int2e_gaunt_ps1ps2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
  
           auto nQuad = n1*n2*n3*n4;
 
@@ -2127,8 +2127,8 @@ namespace ChronusQ {
           //int2e_gauge_r2_sps1sps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
 	  
           //∇B∇D
-          skiperi1 = int2e_gauge_r1_ssp1ssp2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          skiperi2 = int2e_gauge_r2_ssp1ssp2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi1 = int2e_gauge_r1_sp1ps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi2 = int2e_gauge_r2_sp1ps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
 
           if(skiperi1==0 and skiperi2==0) continue;
 
@@ -2317,10 +2317,10 @@ namespace ChronusQ {
           shls[3] = int(s4);
 
           //∇B∇C
-          skiperi1 = int2e_gauge_r1_ssp1sps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          skiperi2 = int2e_gauge_r2_ssp1sps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          //skiperi1 = int2e_gauge_r1_sp1ps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
-          //skiperi2 = int2e_gauge_r2_sp1ps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          //skiperi1 = int2e_gauge_r1_ssp1sps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          //skiperi2 = int2e_gauge_r2_ssp1sps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi1 = int2e_gauge_r1_sp1ps2_sph(buffr1, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
+          skiperi2 = int2e_gauge_r2_sp1ps2_sph(buffr2, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache);
 
           if(skiperi1==0 and skiperi2==0) continue;
 

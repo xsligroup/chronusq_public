@@ -1109,5 +1109,25 @@ CQ_CINT_INT2E_WRAPPER(int3c1e_iprinv_cart);
 CQ_CINT_INT2E_WRAPPER(int3c1e_iprinv_sph);
 CQ_CINT_INT2E_WRAPPER(int3c1e_iprinv_spinor);
 
+/* spin-free Gaunt */
+CQ_INT_WRAPPER(int2e_gaunt_ps1ps2_cart);
+CQ_INT_WRAPPER(int2e_gaunt_ps1ps2_sph);
+CQ_INT_WRAPPER(int2e_gaunt_ps1ps2_spinor);
+
+/* spin-free Gauge */
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1sp2_cart);
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1sp2_sph);
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1sp2_spinor);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1sp2_cart);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1sp2_sph);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1sp2_spinor);
+
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1ps2_cart);
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1ps2_sph);
+CQ_INT_WRAPPER(int2e_gauge_r1_sp1ps2_spinor);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1ps2_cart);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1ps2_sph);
+CQ_INT_WRAPPER(int2e_gauge_r2_sp1ps2_spinor);
+
 
 }  // extern C
