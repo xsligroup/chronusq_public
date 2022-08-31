@@ -73,6 +73,8 @@ void OptimizeOrbitals<MatsT>::runModifyOrbitals(EMPerturbation& pert, VecMORef<M
     //   C/D(k) -> C/D(k + 1)
     this->getNewOrbitals(pert, mo, eps);
 
+    this->modOrbOpt.formDensity();
+
     // Evaluate convergence
     isConverged = evalProgress(pert);
 
@@ -255,21 +257,20 @@ bool OptimizeOrbitals<MatsT>::evalProgress(EMPerturbation& pert) {
   // Compute all SCF convergence information on root process
   if( MPIRank(this->comm) == 0 ) {
 
-    // Compute new energy (with new Density)
-    this->modOrbOpt.computeProperties(pert);
     this->scfConv.deltaEnergy = this->modOrbOpt.getTotalEnergy() - prevEnergy;
     prevEnergy = this->modOrbOpt.getTotalEnergy();
 
+    // Check energy convergence
     bool energyConv = std::abs(this->scfConv.deltaEnergy) < scfControls.eneConvTol;
+
+    // Check FP convergence
+    this->scfConv.maxFDC = computeFDCConv();
+    bool FDCConv = this->scfConv.maxFDC < scfControls.FDCConvTol;
 
     // Check density convergence
     this->scfConv.RMSDen = computeDensityConv();
 
     bool denConv = this->scfConv.RMSDen < scfControls.denConvTol;
-
-    // Check FP convergence
-    this->scfConv.maxFDC = computeFDCConv();
-    bool FDCConv = this->scfConv.maxFDC < scfControls.FDCConvTol;
 
     isConverged = FDCConv and energyConv and denConv;
 
