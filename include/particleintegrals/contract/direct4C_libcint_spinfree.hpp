@@ -1200,7 +1200,7 @@ namespace ChronusQ {
       std::cout << "Dirac-Coulomb-C(2) Screened " << nIntSkipLL << std::endl;
 
       auto durDirectLL = tock(topDirectLL);
-      std::cout << "Dirac-Coulomb-C(2) AO Direct Contraction took " <<  durDirectLL << " s\n"; 
+      std::cout << "Fake Spin-Free Dirac-Coulomb-C(2) AO Direct Contraction took " <<  durDirectLL << " s\n"; 
 
       std::cout << std::endl;
 #endif
