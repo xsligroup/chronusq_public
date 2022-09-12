@@ -110,7 +110,7 @@ void OptimizeOrbitals<MatsT>::runModifyOrbitals(EMPerturbation& pert, VecMORef<M
   this->modOrbOpt.saveCurrentState();
 
   // Compute initial properties
-  this->modOrbOpt.computeProperties(pert);
+  //this->modOrbOpt.computeProperties(pert);
 
   // printSCFFooter(isConverged);
   if( not isConverged )
