@@ -490,15 +490,16 @@ namespace ChronusQ {
        
       auto & ORSettings = mcscfSettings->ORSettings;
       
-      std::string scfALG = "AQ2nd";
+      std::string scfALG = "AQ2ND";
       
       OPTOPT( scfALG = input.getData<std::string>("MCSCF.SCFALG");)
        
-      if( not scfALG.compare("AQ2nd") ) {
+      if( not scfALG.compare("AQ2ND") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER;
-      } else if( not scfALG.compare("Q2nd") ) {
+      } else if( not scfALG.compare("Q2ND") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_QUASI_2ND_ORDER;
-      } else if( not scfALG.compare("2nd") ) {
+        CErr("Quasi Second Order method is not implemented yet");
+      } else if( not scfALG.compare("2ND") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_2ND_ORDER;
         CErr("Second Order method is not implemented yet");
       } else {
