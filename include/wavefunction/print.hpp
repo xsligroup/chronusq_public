@@ -483,11 +483,12 @@ namespace ChronusQ {
       if (this->nC == 1 and not this->iCS) MO2 = this->mo[1].pointer();
       else MO2 =  this->mo[0].pointer() + (this->nC/2)*NB;
     }
-    else if( this->nC >= 2 ) {
+    else if( this->nC >= 2 )
       out << "\n *** NOTICE: Alpha and Beta Analysis refer to the SAME "
-        << "Canonical MOs ***";
-      out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha)";
-    }
+        << "Canonical MOs ***\n";
+
+    out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha)";
+
     if( this->nC == 4 ) out << " for Large component";
     analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(), this->mo[0].pointer(),
             NOrb, molecule(), basisSet(), this->memManager, groupAtm, MO2);
