@@ -219,7 +219,6 @@ namespace ChronusQ {
 
     std::vector<size_t> nOrbs;
     std::vector<char> orbIdentifiers;
-    size_t totalElecMO = MOPartition.nElecMO;
     
     if (referenceWaveFunction().nC == 4) {
       nOrbs.push_back(MOPartition.nNegMO);
@@ -258,7 +257,7 @@ namespace ChronusQ {
         }
         scan_start = scan_end;
       }
-    } else if (orbIndices.size() == totalElecMO) {
+    } else if (orbIndices.size() == MOPartition.nMO) {
       
       // generating swapping pairs if necessary 
       std::vector<std::vector<std::pair<size_t, size_t>>> moPairs;
@@ -271,7 +270,7 @@ namespace ChronusQ {
         for (size_t j = scan_start; j < scan_end; j++) {
           if (orbIndices[j] != scan_id) { 
             bool found = false;
-            for (size_t k = scan_end; k < totalElecMO; k++) {
+            for (size_t k = scan_end; k < MOPartition.nMO; k++) {
               if (orbIndices[k] == scan_id) {
                 found = true;
                 moPairs[0].push_back({j+1, k+1});
