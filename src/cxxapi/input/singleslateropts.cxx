@@ -586,6 +586,7 @@ namespace ChronusQ {
 
 
     OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
+    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.LLLL") )
     //OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
     //OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
     //OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
@@ -599,6 +600,10 @@ namespace ChronusQ {
     //  }
     //} catch(...) {}
 
+    hamiltonianOptions.DiracCoulomb = false;
+    hamiltonianOptions.DiracCoulombSSSS = false;
+    hamiltonianOptions.Gaunt = false;
+    hamiltonianOptions.Gauge = false;
 
     // Parse 4C options
     // Dirac-Coulomb
@@ -655,7 +660,7 @@ namespace ChronusQ {
 
     // by default, DC includes SSSS unless "false" is set upon input
     if(hamiltonianOptions.DiracCoulomb) hamiltonianOptions.DiracCoulombSSSS = true;
-    
+   
     // SSSS
     try { 
       std::string SSSSOptions = "FALSE";

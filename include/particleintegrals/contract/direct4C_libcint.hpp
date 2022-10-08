@@ -639,7 +639,7 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),0);
+      size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),size_t(0));
       std::cout << "Bare-Coulomb-Exchange Libcint Screened " << nIntSkip << std::endl;
   
       auto durDirect = tock(topDirect);
@@ -1196,7 +1196,7 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),0);
+      size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),size_t(0));
       std::cout << "Dirac-Coulomb-C(2) Screened " << nIntSkipLL << std::endl;
 
       auto durDirectLL = tock(topDirectLL);
@@ -1573,7 +1573,7 @@ namespace ChronusQ {
 #endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipLS = std::accumulate(nSkipLS.begin(),nSkipLS.end(),0);
+      size_t nIntSkipLS = std::accumulate(nSkipLS.begin(),nSkipLS.end(),size_t(0));
       std::cout << "Dirac-Coulomb-LS Screened " << nIntSkipLS << std::endl;
   
       auto durDirectLS = tock(topDirectLS);
@@ -2466,7 +2466,7 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipSSSS = std::accumulate(nSkipSSSS.begin(),nSkipSSSS.end(),0);
+      size_t nIntSkipSSSS = std::accumulate(nSkipSSSS.begin(),nSkipSSSS.end(),size_t(0));
       std::cout << "Dirac-Coulomb-SSSS Screened " << nIntSkipSSSS << std::endl;
   
       auto durDirectSSSS = tock(topDirectSSSS);
@@ -3407,7 +3407,7 @@ namespace ChronusQ {
 #endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipGaunt = std::accumulate(nSkipGaunt.begin(),nSkipGaunt.end(),0);
+      size_t nIntSkipGaunt = std::accumulate(nSkipGaunt.begin(),nSkipGaunt.end(),size_t(0));
       std::cout << "Gaunt Screened " << nIntSkipGaunt << std::endl;
   
       auto durDirectGaunt = tock(topDirectGaunt);
@@ -4498,7 +4498,7 @@ namespace ChronusQ {
 #endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipGauge = std::accumulate(nSkipGauge.begin(),nSkipGauge.end(),0);
+      size_t nIntSkipGauge = std::accumulate(nSkipGauge.begin(),nSkipGauge.end(),size_t(0));
       std::cout << "Gauge Screened " << nIntSkipGauge << std::endl;
   
       auto durDirectGauge = tock(topDirectGauge);
