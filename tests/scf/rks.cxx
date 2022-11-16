@@ -65,7 +65,7 @@ TEST( RKS, PAR_Water_ccpVTZ_BLYP ) {
 // SMP LSDA / cc-pVTZ
 TEST( RKS, PAR_Water_ccpVTZ_LSDA ) {
 
-  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref" );
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref", 2e-8 );
 
 }
 

@@ -271,6 +271,27 @@ namespace ChronusQ {
   template SquareMatrix<dcomplex> SquareMatrix<dcomplex>::T(char TRANS);
 
 
+  template <typename MatsT>
+  void SquareMatrix<MatsT>::setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, MatsT diagValue) {
+    switch (upLo) {
+    case blas::Uplo::Upper:
+      for (size_t j = 1; j < N_; j++)
+        for (size_t i = 0; i < j; i++)
+          operator()(i,j) = value;
+      break;
+    case blas::Uplo::Lower:
+      for (size_t j = 0; j < N_; j++)
+        for (size_t i = j + 1; i < N_; i++)
+          operator()(i,j) = value;
+      break;
+    }
+
+    if (setDiag)
+      for (size_t i = 0; i < N_; i++)
+        operator()(i,i) = diagValue;
+  }
+  template void SquareMatrix<double>::setTriangle(blas::Uplo upLo, double value, bool setDiag, double diagValue);
+  template void SquareMatrix<dcomplex>::setTriangle(blas::Uplo upLo, dcomplex value, bool setDiag, dcomplex diagValue);
 
 
 }; // namespace ChronusQ

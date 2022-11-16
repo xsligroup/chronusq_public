@@ -162,6 +162,8 @@ namespace ChronusQ {
     
     // transform and return the transformed matrix
     SquareMatrix<MatsT> T(char TRANS = 'T');
+
+    void setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, MatsT diagValue = 1.0);
     
     void clear() {
       std::fill_n(ptr_,N_*N_,MatsT(0.));

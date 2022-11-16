@@ -49,7 +49,7 @@ namespace ChronusQ {
   {
 
     JobType elecJob = job;
-    if( job == BOMD or job == EHRENFEST or job == RT ) {
+    if( job == JobType::BOMD or job == JobType::EHRENFEST or job == JobType::RT ) {
       elecJob = CQDynamicsOptions(out, input, job, mol, ss, rt, epints, emPert);
     }
     // add else if job == OPT
@@ -204,7 +204,7 @@ namespace ChronusQ {
     JobType elecJob;
 
 
-    if( job == BOMD or job == EHRENFEST ) {
+    if( job == JobType::BOMD or job == JobType::EHRENFEST ) {
 
       if( not input.containsSection("DYNAMICS") )
         CErr("Dynamics Section must be specified for BOMD/EHRENFEST/RT job",out);
@@ -229,7 +229,7 @@ namespace ChronusQ {
       OPTOPT( molOpt.nElectronicSteps = input.getData<size_t>("DYNAMICS.NELECPNUC"); )
 
       // TODO: we need to have a separate GUESS section for MD
-      if( job == BOMD )
+      if( job == JobType::BOMD )
         molOpt.nMidpointFockSteps = 0;
 
       auto md = std::make_shared<MolecularDynamics>(molOpt, mol);
@@ -239,11 +239,11 @@ namespace ChronusQ {
       createGradientIntegrals(input, mol, ss, epints);
 
       // Set gradient computation methods
-      if( job == BOMD ) {
+      if( job == JobType::BOMD ) {
         md->gradientGetter = [&, ss](){ return ss->getGrad(emPert,false,false); };
-        elecJob = SCF;
+        elecJob = JobType::SCF;
       }
-      else if( job == EHRENFEST ) {
+      else if( job == JobType::EHRENFEST ) {
 
         rt = CQRealTimeOptions(out,input,ss,emPert);
         rt->savFile = ss->savFile;
@@ -303,11 +303,11 @@ namespace ChronusQ {
           };
         }
 
-        elecJob = RT;
+        elecJob = JobType::RT;
       }
 
     }
-    else if( job == RT ) {
+    else if( job == JobType::RT ) {
 
       rt = CQRealTimeOptions(out,input,ss,emPert);
 
@@ -316,7 +316,7 @@ namespace ChronusQ {
       // Single point job
       MolecularOptions molOpt(0.0, 0.0);
       mol.geometryModifier = std::make_shared<SinglePoint>(molOpt);
-      elecJob = RT;
+      elecJob = JobType::RT;
 
     }
 

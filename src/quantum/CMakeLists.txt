@@ -20,17 +20,4 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(quantum STATIC impl.cxx)
-target_link_libraries ( quantum PUBLIC ChronusQ::DepHeaders )
-
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK quantum)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if( TARGET tiledarray )
-  add_dependencies( quantum tiledarray ) 
-endif()
-
-if(CQEX_DEP)
-  add_dependencies(quantum ${CQEX_DEP})
-endif()
+target_sources(cq PRIVATE impl.cxx)

@@ -27,11 +27,9 @@
 // GTest header
 #include <gtest/gtest.h>
 
-
 // Global test root and output directories
 #define TEST_ROOT "@PROJECT_SOURCE_DIR@/tests/"
 #define TEST_OUT "@PROJECT_BINARY_DIR@/tests/"
-
 
 //#define _CQ_GENERATE_TESTS
 #define _CQ_NTHREADS_PARTEST 2
@@ -41,7 +39,6 @@
 #if !defined(_CQ_GENERATE_TESTS) && defined(_CQ_NTHREADS_PARTEST)
   #define _CQ_DO_PARTESTS
 #endif
-
 
 #include <chronusq_sys.hpp>
 #include <util/threads.hpp>
@@ -66,9 +63,5 @@ struct ParallelJob {
 
 #endif
 
-
 // Disable MPI tests
 #define _CQ_NO_MPI if(MPISize() > 1) return;
-
-
-

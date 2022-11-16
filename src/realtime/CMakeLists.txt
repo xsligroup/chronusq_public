@@ -20,13 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(realtime STATIC fields.cxx impl.cxx)
-target_link_libraries( realtime PUBLIC ChronusQ::DepHeaders )
+target_sources(cq PRIVATE fields.cxx impl.cxx)
 
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK realtime)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(realtime ${CQEX_DEP})
-endif()

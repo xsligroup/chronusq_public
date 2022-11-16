@@ -20,13 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(mcwavefunction STATIC impl.cxx)
-target_link_libraries( mcwavefunction PUBLIC ChronusQ::DepHeaders)
 
-# Append multistate executable link
-list(APPEND CQEX_LINK mcwavefunction)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(mcwavefunction ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE impl.cxx)

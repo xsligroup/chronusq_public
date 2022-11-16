@@ -23,14 +23,11 @@
  */
 
 #include <cxxapi/options.hpp>
-#include <cerr.hpp>
-#include <typeinfo>
-#include <stdlib.h>
 
 namespace ChronusQ {
   /**
    *
-   *  Check valid keywords in the section.
+   *  Check valid keywords in the CC section.
    *
   */
  void CQCC_VALID( std::ostream& out, CQInputFile& input){
@@ -41,53 +38,83 @@ namespace ChronusQ {
       "NDIIS",
       "ETOL",
       "TTOL",
-      "MAXITER"
+      "MAXITER",
+      "TABLKSIZE",
+      "NEVARIATION"
     };
       // Specified keywords
-    std::vector<std::string> ccKeywords = input.getDataInSection("CC"); 
+    std::vector<std::string> ccKeywords = input.getDataInSection("CC");
      // Make sure all of basisKeywords in allowedKeywords
     for( auto &keyword : ccKeywords ) {
     auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-    if( ipos == allowedKeywords.end() ) 
+    if( ipos == allowedKeywords.end() )
       CErr("Keyword CC." + keyword + " is not recognized",std::cout);// Error
     }
   // Check for disallowed combinations (if any)
   }
 
+  /**
+   *
+   *  Check valid keywords in the EOMCC section.
+   *
+  */
+  void CQEOMCC_VALID( std::ostream& out, CQInputFile& input){
+    //Allowed keywords
+    std::vector<std::string> allowedKeywords = {
+        "NROOTS",
+        "HBARTYPE",
+        "DIAGMETHOD",
+        "CVSCORE",
+        "CVSCONTINUUM",
+        "FROZENOCCUPIED",
+        "FROZENVIRTUAL",
+        "DAVIDSONWHENSC",
+        "DAVIDSONMAXMACROITER",
+        "DAVIDSONMAXMICROITER",
+        "DAVIDSONRCHECKESIDUAL",
+        "DAVIDSONCHECKEVEC",
+        "DAVIDSONCHECKEVAL",
+        "DAVIDSONRESIDUALCONV",
+        "DAVIDSONEVECCONV",
+        "DAVIDSONEVALCONV",
+        "DAVIDSONCONVONGRAMSCHMIDT",
+        "DAVIDSONSUBSPACEMULTIPLIER",
+        "DAVIDSONGUESSMULTIPLIER",
+        "DAVIDSONSPECIFYENERGY",
+        "DAVIDSONPRECONDSMALL",
+        "DAVIDSONSORTBYDISTANCE",
+        "DAVIDSONBIORTHO",
+        "GRAMSCHMIDTREPEAT",
+        "GRAMSCHMIDTEPS",
+        "OSCILLATORSTRENGTH",
+        "SAVEHAMILTONIAN"
+
+    };
+    // Specified keywords
+    std::vector<std::string> eomccKeywords = input.getDataInSection("EOMCC");
+    // Make sure all of basisKeywords in allowedKeywords
+    for( auto &keyword : eomccKeywords ) {
+      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
+      if( ipos == allowedKeywords.end() )
+        CErr("Keyword EOMCC." + keyword + " is not recognized",std::cout);// Error
+    }
+    // Check for disallowed combinations (if any)
+  }
+
 #ifdef CQ_HAS_TA
-  //Construct a CCBase object from input file
-  std::shared_ptr<CCBase> CQCCOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase>& ss) {
-     
+  //Construct a CoupledClusterSettings object from input file
+  CoupledClusterSettings CQCCOptions(std::ostream &out, CQInputFile &input) {
+
     if( not input.containsSection("CC") )
       CErr("CC Section must be specified for CC job",out);
-    //check if ALG is set to INCORE. If not, abort.
-    std::string ALG;
-    OPTOPT( ALG = input.getData<std::string>("INTS.ALG"); )
-    trim(ALG);
-    if(  ALG.compare("INCORE") ) {
-      CErr("To use CCSD code, you must set ALG=INCORE in the [INTS] section.");
-    }
-        
-    out << "\n  *** Parsing CC options ***\n";
 
-    std::shared_ptr<CCBase> cc;
+    out << "\n  *** Parsing CC options ***\n";
 
 
     // Determine  reference and construct CC object
 
     bool isCCSD = false;
-    bool found = false;
-    #define CONSTRUCT_CC(_MBTYPE,_TYPEMATST,_TYPEINTST,_CLASS) \
-      if(not found) try { \
-      cc = std::dynamic_pointer_cast<CCBase>(\
-          std::make_shared<_MBTYPE<_TYPEMATST,_TYPEINTST>>(\
-            dynamic_cast<_CLASS<_TYPEMATST,_TYPEINTST>&>(*ss)\
-          )\
-        );\
-        found = true; \
-      } catch(...) { }
-      
+
     OPTOPT(
       std::string ccopts = input.getData<std::string>("CC.TYPE");
 
@@ -96,38 +123,207 @@ namespace ChronusQ {
 
     );
 
+    CoupledClusterSettings ccSettings;
+
     if (isCCSD){
-      CONSTRUCT_CC(CCSD, dcomplex, double, HartreeFock);
       if(input.containsData("CC.USEDIIS")){
-        OPTOPT(cc->useDIIS = input.getData<bool>("CC.USEDIIS");)
+        OPTOPT(ccSettings.useDIIS = input.getData<bool>("CC.USEDIIS");)
       }
 
       if(input.containsData("CC.NDIIS")){
-        if(not cc->useDIIS){
+        if(not ccSettings.useDIIS){
           std::cout << "You must enable DIIS to specify nDIIS. " << std::endl;
         }
         else{
-          OPTOPT(cc->nDIIS = input.getData<size_t>("CC.NDIIS");)
+          OPTOPT(ccSettings.nDIIS = input.getData<size_t>("CC.NDIIS");)
         }  
       }
 
       if(input.containsData("CC.ETOL")){
-        OPTOPT(cc->ccSettings.eConv = input.getData<double>("CC.ETOL");)
+        OPTOPT(ccSettings.eConv = input.getData<double>("CC.ETOL");)
       }
 
       if(input.containsData("CC.TTOL")){
-        OPTOPT(cc->ccSettings.tConv = input.getData<double>("CC.TTOL");)
+        OPTOPT(ccSettings.tConv = input.getData<double>("CC.TTOL");)
       }
 
       if(input.containsData("CC.MAXITER")){
-        OPTOPT(cc->ccSettings.maxiter = input.getData<int>("CC.MAXITER");)
+        OPTOPT(ccSettings.maxiter = input.getData<int>("CC.MAXITER");)
+      }
+
+      if(input.containsData("CC.TABLKSIZE")){
+        OPTOPT(ccSettings.blksize = input.getData<int>("CC.TABLKSIZE");)
+      }
+
+      if(input.containsData("CC.NEVARIATION")){
+        OPTOPT(ccSettings.nEvariation = input.getData<int>("CC.NEVARIATION");)
       }
     }
     else {
       CErr("NYI");
     }
 
-    return cc;
+    return ccSettings;
+  }
+
+
+  std::vector<size_t> parseOrbitalSelectionInput(std::string input_str);
+
+
+  //Construct a EOMCCSettings object from input file
+  EOMSettings CQEOMCCOptions(std::ostream &out, CQInputFile &input) {
+
+    if( not input.containsSection("EOMCC") )
+      CErr("EOMCC Section must be specified for EOMCC job",out);
+
+    out << "\n  *** Parsing EOMCC options ***\n";
+
+    EOMSettings eomSettings;
+
+    if(input.containsData("EOMCC.NROOTS")){
+      OPTOPT(eomSettings.nroots = input.getData<std::size_t>("EOMCC.NROOTS"););
+    }
+
+    if(input.containsData("EOMCC.HBARTYPE")){
+      std::string hbar_type_str = input.getData<std::string>("EOMCC.HBARTYPE");
+      if( not hbar_type_str.compare("EXPLICIT") )
+        eomSettings.hbar_type = EOM_HBAR_TYPE::EXPLICIT;
+      else if( not hbar_type_str.compare("IMPLICIT") )
+        eomSettings.hbar_type = EOM_HBAR_TYPE::IMPLICIT;
+      else if( not hbar_type_str.compare("DEBUG") )
+        eomSettings.hbar_type = EOM_HBAR_TYPE::DEBUG;
+      else
+        CErr(hbar_type_str + " NOT RECOGNIZED EOMCC.HBARTYPE");
+    }
+
+    if(input.containsData("EOMCC.DIAGMETHOD")){
+      std::string diag_method_str = input.getData<std::string>("EOMCC.DIAGMETHOD");
+      if( not diag_method_str.compare("FULL") )
+        eomSettings.diag_method = EOM_DIAG_METHOD::FULL;
+      else if( not diag_method_str.compare("DAVIDSON") )
+        eomSettings.diag_method = EOM_DIAG_METHOD::DAVIDSON;
+      else if( not diag_method_str.compare("GPLHR") ) {
+        eomSettings.diag_method = EOM_DIAG_METHOD::GPLHR;
+        CErr("GPLHR-EOMCC NYI");
+      } else
+        CErr(diag_method_str + " NOT RECOGNIZED EOMCC.DIAGMETHOD");
+    }
+
+    if(input.containsData("EOMCC.CVSCORE")){
+      std::string cvs_core_str;
+      OPTOPT(cvs_core_str = input.getData<std::string>("EOMCC.CVSCORE"););
+      eomSettings.cvs_core = parseOrbitalSelectionInput(cvs_core_str);
+    }
+
+    if(input.containsData("EOMCC.CVSCONTINUUM")){
+      std::string cvs_vir_str;
+      OPTOPT(cvs_vir_str = input.getData<std::string>("EOMCC.CVSCONTINUUM"););
+      eomSettings.cvs_virtual = parseOrbitalSelectionInput(cvs_vir_str);
+    }
+
+    if(input.containsData("EOMCC.FROZENOCCUPIED")){
+      std::string frozen_occ_str;
+      OPTOPT(frozen_occ_str = input.getData<std::string>("EOMCC.FROZENOCCUPIED"););
+      eomSettings.frozen_occupied = parseOrbitalSelectionInput(frozen_occ_str);
+    }
+
+    if(input.containsData("EOMCC.FROZENVIRTUAL")){
+      std::string frozen_vir_str;
+      OPTOPT(frozen_vir_str = input.getData<std::string>("EOMCC.FROZENVIRTUAL"););
+      eomSettings.frozen_virtual = parseOrbitalSelectionInput(frozen_vir_str);
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONWHENSC")){
+      OPTOPT(eomSettings.davidson_whenSc = input.getData<int>("EOMCC.DAVIDSONWHENSC");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONMAXMACROITER")){
+      OPTOPT(eomSettings.davidson_max_macro_iter = input.getData<int>("EOMCC.DAVIDSONMAXMACROITER");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONMAXMICROITER")){
+      OPTOPT(eomSettings.davidson_max_micro_iter = input.getData<int>("EOMCC.DAVIDSONMAXMICROITER");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONRESIDUALCONV")){
+      OPTOPT(eomSettings.davidson_residual_conv = input.getData<double>("EOMCC.DAVIDSONRESIDUALCONV");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONEVECCONV")){
+      OPTOPT(eomSettings.davidson_eigen_vector_conv = input.getData<double>("EOMCC.DAVIDSONEVECCONV");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONEVALCONV")){
+      OPTOPT(eomSettings.davidson_eigen_value_conv = input.getData<double>("EOMCC.DAVIDSONEVALCONV");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONRCHECKESIDUAL")){
+      OPTOPT(eomSettings.davidson_check_residual = input.getData<bool>("EOMCC.DAVIDSONRCHECKESIDUAL");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONCHECKEVEC")){
+      OPTOPT(eomSettings.davidson_check_eigen_vector = input.getData<bool>("EOMCC.DAVIDSONCHECKEVEC");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONCHECKEVAL")){
+      OPTOPT(eomSettings.davidson_check_eigen_value = input.getData<bool>("EOMCC.DAVIDSONCHECKEVAL");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONCONVONGRAMSCHMIDT")){
+      OPTOPT(eomSettings.davidson_conv_on_GramSchmidt = input.getData<bool>("EOMCC.DAVIDSONCONVONGRAMSCHMIDT");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONSUBSPACEMULTIPLIER")){
+      OPTOPT(eomSettings.davidson_subspace_multiplier = input.getData<int>("EOMCC.DAVIDSONSUBSPACEMULTIPLIER");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONGUESSMULTIPLIER")){
+      OPTOPT(eomSettings.davidson_guess_multiplier = input.getData<int>("EOMCC.DAVIDSONGUESSMULTIPLIER");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONSPECIFYENERGY")){
+      OPTOPT(eomSettings.davidson_Eref = input.getData<double>("EOMCC.DAVIDSONSPECIFYENERGY");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONPRECONDSMALL")){
+      OPTOPT(eomSettings.davidson_preCond_small = input.getData<double>("EOMCC.DAVIDSONPRECONDSMALL");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONSORTBYDISTANCE")){
+      OPTOPT(eomSettings.davidson_sort_by_distance = input.getData<bool>("EOMCC.DAVIDSONSORTBYDISTANCE");)
+    }
+
+    if(input.containsData("EOMCC.DAVIDSONBIORTHO")){
+      OPTOPT(eomSettings.davidson_biortho = input.getData<bool>("EOMCC.DAVIDSONBIORTHO");)
+    }
+
+    if(input.containsData("EOMCC.GRAMSCHMIDTREPEAT")){
+      OPTOPT(eomSettings.GramSchmidt_NRe = input.getData<int>("EOMCC.GRAMSCHMIDTREPEAT");)
+    }
+
+    if(input.containsData("EOMCC.GRAMSCHMIDTEPS")){
+      OPTOPT(eomSettings.GramSchmidt_eps = input.getData<double>("EOMCC.GRAMSCHMIDTEPS");)
+    }
+
+    if(input.containsData("EOMCC.OSCILLATORSTRENGTH")){
+      OPTOPT(eomSettings.oscillator_strength = input.getData<bool>("EOMCC.OSCILLATORSTRENGTH");)
+    }
+
+    if(input.containsData("EOMCC.SAVEHAMILTONIAN")){
+      OPTOPT(eomSettings.save_hamiltonian = input.getData<bool>("EOMCC.SAVEHAMILTONIAN");)
+    }
+
+    if (eomSettings.doCVS()) {
+      if (eomSettings.hbar_type != EOM_HBAR_TYPE::EXPLICIT
+          or eomSettings.diag_method != EOM_DIAG_METHOD::FULL) {
+        eomSettings.hbar_type = EOM_HBAR_TYPE::EXPLICIT;
+        eomSettings.diag_method = EOM_DIAG_METHOD::FULL;
+        std::cout << "CVS-EOMCC only implemented with full diagonalization of explicit Hbar."
+                     "Settings changed accordingly." << std::endl;
+      }
+    }
+
+    return eomSettings;
   }
 #endif
 };

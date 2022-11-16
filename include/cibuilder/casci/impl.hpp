@@ -66,7 +66,7 @@ namespace ChronusQ {
 
     // Allocate SCR
     size_t nSCR = std::max(nStr_a, nStr_b);
-    size_t nThreads = GetLAThreads();
+    size_t nThreads = GetNumThreads();
     MatsT * SCR  = mcwfn.memManager.template malloc<MatsT>(nSCR * nThreads);
      
     // empty CI Hamiltonian
@@ -383,7 +383,7 @@ namespace ChronusQ {
     
     // Allocate SCR
     size_t nSCR = std::max(nStr_a, nStr_b);
-    size_t nThreads = GetLAThreads();
+    size_t nThreads = GetNumThreads();
     MatsT * SCR  = mcwfn.memManager.template malloc<MatsT>(nSCR * nThreads);
 
     // empty Sigma
@@ -581,7 +581,7 @@ namespace ChronusQ {
     CASCI_LOOP_INIT(); // check top for variable definitions
     
     
-    size_t nThreads = GetLAThreads();
+    size_t nThreads = GetNumThreads();
     std::vector<InCore4indexTPI<MatsT>> SCR;
     auto nDim  = twoRDM.nBasis();
     for (auto i = 0ul; i < nThreads; i++)
@@ -676,7 +676,7 @@ namespace ChronusQ {
 
     CASCI_LOOP_INIT(); // check top for variable definitions
 
-    size_t nThreads = GetLAThreads();
+    size_t nThreads = GetNumThreads();
     std::vector<SquareMatrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++)
       SCR.emplace_back(mcwfn.memManager, TDM.dimension());

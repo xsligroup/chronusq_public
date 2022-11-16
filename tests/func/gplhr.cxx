@@ -75,18 +75,19 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 
   MPIBCast(N, 0, MPI_COMM_WORLD);
 
-  CB_INT MLoc = N, NLoc = N;
+  int64_t MLoc = N, NLoc = N;
 
 #ifdef CQ_ENABLE_MPI
-  std::shared_ptr<CXXBLACS::BlacsGrid> grid = nullptr;
-  CXXBLACS::ScaLAPACK_Desc_t descA;
+  std::shared_ptr<scalapackpp::BlockCyclicDist2D> grid = nullptr;
+  scalapackpp::scalapack_desc descA;
 
   if( isMPI ) {
-    grid = std::make_shared<CXXBLACS::BlacsGrid>(MPI_COMM_WORLD,
+    grid = std::make_shared<scalapackpp::BlockCyclicDist2D>(
+        blacspp::Grid::square_grid(MPI_COMM_WORLD),
         block_size, block_size);
 
-    std::tie(MLoc,NLoc) = grid->getLocalDims(N,N);
-    descA = grid->descInit(N,N,0,0,MLoc);
+    std::tie(MLoc,NLoc) = grid->get_local_dims(N,N);
+    descA = grid->descinit_noerror(N,N,MLoc);
   }
 #endif
 
@@ -111,7 +112,7 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 
 
 #ifdef CQ_ENABLE_MPI
-  if( isMPI ) grid->Scatter(N,N,AREAD,N,A,MLoc,0,0);
+  if( isMPI ) grid->scatter(N,N,AREAD,N,A,MLoc,0,0);
 #endif
 
 
@@ -142,9 +143,9 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 #ifdef CQ_ENABLE_MPI
     if( isMPI ) {
 
-      CB_INT MLoc_V = N, NLoc_V = nVec;
-      std::tie(MLoc_V, NLoc_V) = grid->getLocalDims(N,nVec);
-      auto descV = grid->descInit(N,nVec,0,0,MLoc_V);
+      int64_t MLoc_V = N, NLoc_V = nVec;
+      std::tie(MLoc_V, NLoc_V) = grid->get_local_dims(N,nVec);
+      auto descV = grid->descinit_noerror(N,nVec,MLoc_V);
 
       bool alloc = MLoc_V and NLoc_V;
 
@@ -158,12 +159,12 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
       }
 
-      grid->Scatter(N,nVec,V.getPtr(),N,VLOC,MLoc_V,0,0);
+      grid->scatter(N,nVec,V.getPtr(),N,VLOC,MLoc_V,0,0);
 
       Gemm_MPI('N','N',N,nVec,N,EigT(1.),ALOC,1,1,descA,VLOC,1,1,descV,
           EigT(0.),AVLOC,1,1,descV);
 
-      grid->Gather(N,nVec,AV.getPtr(),N,AVLOC,MLoc_V,0,0);
+      grid->gather(N,nVec,AV.getPtr(),N,AVLOC,MLoc_V,0,0);
 
     } else 
 #endif

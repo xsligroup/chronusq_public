@@ -71,10 +71,6 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::formCoreH(EMPerturbation& emPert, bool save) {
 
-    ROOT_ONLY(comm);
-
-    ProgramTimer::tick("Form Core H");
-
     size_t NB = basisSet().nBasis;
     if( nC == 4 ) NB = 2 * NB;
 
@@ -91,6 +87,10 @@ namespace ChronusQ {
         coreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager, NB, false, false);
 
     }
+
+    if (MPIRank(comm) == 0) {
+
+    ProgramTimer::tick("Form Core H");
 
 
     // Make a copy of HamiltonianOptions
@@ -144,6 +144,16 @@ namespace ChronusQ {
     }
 
     ProgramTimer::tock("Form Core H");
+    } // End building CoreH on root
+
+#ifdef CQ_ENABLE_MPI
+    // BCast core Hamiltonian to all MPI processes
+    if( MPISize(comm) > 1 ) {
+      std::cerr  << "  *** Scattering the core Hamiltonian ***\n";
+      for(auto mat : coreH->SZYXPointers())
+        MPIBCast(mat,NB*NB,0,comm);
+    }
+#endif
 
   }; // SingleSlater<MatsT,IntsT>::computeCoreH
 

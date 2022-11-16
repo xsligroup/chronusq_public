@@ -20,17 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(basisset STATIC reference.cxx basisset.cxx basisset_eval.cxx)
-target_link_libraries ( basisset PUBLIC ChronusQ::DepHeaders )
 
-if(TARGET libint)
-  add_dependencies(basisset libint)
-endif()
-
-# Append basisset to executable link
-list(APPEND CQEX_LINK basisset)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(basisset ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE reference.cxx basisset.cxx basisset_eval.cxx )

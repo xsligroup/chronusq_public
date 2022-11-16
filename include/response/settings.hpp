@@ -52,7 +52,7 @@ namespace ChronusQ {
 #endif
 
 #ifdef CQ_ENABLE_MPI
-    CB_INT MB = 2; ///< BLACS distribution factor
+    int64_t MB = 2; ///< BLACS distribution factor
 #endif
 
     // Matrix Properties

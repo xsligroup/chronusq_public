@@ -20,7 +20,7 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(particleintegrals STATIC
+target_sources(cq PRIVATE
 transform.cxx
 spatialtospinor.cxx
 aointegrals/aointegrals_onee_drivers.cxx
@@ -36,17 +36,3 @@ aointegrals/giaointegrals_onee_inhouse.cxx
 aointegrals/giaointegrals_twoe_inhouse.cxx
 impl.cxx)
 
-target_link_libraries( particleintegrals PUBLIC ChronusQ::DepHeaders )
-
-if(TARGET libint)
-  add_dependencies(particleintegrals libint)
-endif()
-
-# Append particleintegrals to executable link
-list(APPEND CQEX_LINK particleintegrals)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-
-if(CQEX_DEP)
-  add_dependencies(particleintegrals ${CQEX_DEP})
-endif()

@@ -44,11 +44,12 @@
 namespace ChronusQ {
 
   // Type of Job
-  enum JobType {
+  enum class JobType {
     SCF,
     RT,
     RESP,
     CC,
+    EOMCC,
     MR,
     BOMD,
     EHRENFEST
@@ -58,25 +59,28 @@ namespace ChronusQ {
   inline JobType parseJob(std::string jobStr) {
     JobType job;
     if( jobStr == "SCF" ) {
-      job = SCF;
+      job = JobType::SCF;
     }
     else if( jobStr == "RT" ) {
-      job = RT;
+      job = JobType::RT;
     }
     else if( jobStr == "RESP" ) {
-      job = RESP;
+      job = JobType::RESP;
     }
     else if( jobStr == "CC" ) {
-      job = CC;
+      job = JobType::CC;
+    }
+    else if( jobStr == "EOMCC" ) {
+      job = JobType::EOMCC;
     }
     else if( jobStr == "BOMD" ) {
-      job = BOMD;
+      job = JobType::BOMD;
     }
     else if( jobStr == "EHRENFEST" ) {
-      job = EHRENFEST;
+      job = JobType::EHRENFEST;
     }
     else if( jobStr == "MCSCF" ) {
-      job = MR;
+      job = JobType::MR;
     }
     else {
       jobStr = "Unrecognized job type \"" + jobStr + "\"!";
@@ -166,10 +170,11 @@ namespace ChronusQ {
 
   // Parse CC options
 #ifdef CQ_HAS_TA
-  std::shared_ptr<CCBase> CQCCOptions(std::ostream &, 
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &);
-#endif  
+  CoupledClusterSettings CQCCOptions(std::ostream &, CQInputFile &);
+  EOMSettings CQEOMCCOptions(std::ostream &, CQInputFile &);
+#endif
   void CQCC_VALID(std::ostream &, CQInputFile &);
+  void CQEOMCC_VALID(std::ostream &, CQInputFile &);
 
   // Parse geometry modifier options
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, 
@@ -212,6 +217,7 @@ namespace ChronusQ {
     CQCC_VALID(out,input);
     CQDYNAMICS_VALID(out,input);
     CQMCSCF_VALID(out,input);
+    CQEOMCC_VALID(out,input);
 
   }
 

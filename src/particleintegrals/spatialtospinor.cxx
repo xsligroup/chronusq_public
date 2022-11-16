@@ -250,6 +250,7 @@ namespace ChronusQ {
   template <>
   InCore4indexRelERI<double>  InCore4indexRelERI<double>::spatialToSpinBlock() const { 
     CErr("It's not valid to have double for relativitic 2C spinor");
+    abort();
   };
 
   template InCore4indexRelERI<dcomplex> InCore4indexRelERI<double>::spatialToSpinBlock() const;

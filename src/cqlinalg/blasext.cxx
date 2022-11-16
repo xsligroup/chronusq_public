@@ -26,7 +26,75 @@
 
 #include <util/matout.hpp>
 
-//#include <cblas.h>
+extern "C" {
+
+#define mkl_domatcopy MKL_Domatcopy
+void MKL_Domatcopy(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const double alpha,
+    const double * A, size_t lda,
+    double * B, size_t ldb);
+
+#define mkl_zomatcopy MKL_Zomatcopy
+void MKL_Zomatcopy(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    const dcomplex * A, size_t lda,
+    dcomplex * B, size_t ldb);
+
+#define mkl_domatcopy2 MKL_Domatcopy2
+void MKL_Domatcopy2(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const double alpha,
+    const double * A, size_t lda, size_t stridea,
+    double * B, size_t ldb, size_t strideb);
+
+#define mkl_zomatcopy2 MKL_Zomatcopy2
+void MKL_Zomatcopy2(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    const dcomplex * A, size_t lda, size_t stridea,
+    dcomplex * B, size_t ldb, size_t strideb);
+
+#define mkl_domatadd MKL_Domatadd
+void MKL_Domatadd(
+    char ordering, char transa, char transb,
+    size_t rows, size_t cols,
+    const double alpha,
+    const double * A, size_t lda,
+    const double beta,
+    const double * B, size_t ldb,
+    double * C, size_t ldc);
+
+#define mkl_zomatadd MKL_Zomatadd
+void MKL_Zomatadd(
+    char ordering, char transa, char transb,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    const dcomplex * A, size_t lda,
+    const dcomplex beta,
+    const dcomplex * B, size_t ldb,
+    dcomplex * C, size_t ldc);
+
+#define mkl_dimatcopy MKL_Dimatcopy
+void MKL_Dimatcopy(
+    const char ordering, const char trans,
+    size_t rows, size_t cols,
+    const double alpha,
+    double * AB, size_t lda, size_t ldb);
+
+#define mkl_zimatcopy MKL_Zimatcopy
+void MKL_Zimatcopy(
+    const char ordering, const char trans,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    dcomplex * AB, size_t lda, size_t ldb);
+}
+
 
 namespace ChronusQ {
 

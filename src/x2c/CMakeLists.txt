@@ -20,15 +20,4 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(x2c STATIC impl.cxx x2c.cxx atomic.cxx)
-
-target_link_libraries( x2c PUBLIC ChronusQ::DepHeaders )
-
-# Append x2c to executable link
-list(APPEND CQEX_LINK x2c)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-
-if(CQEX_DEP)
-  add_dependencies(x2c ${CQEX_DEP})
-endif()
+target_sources(cq PRIVATE impl.cxx x2c.cxx atomic.cxx)

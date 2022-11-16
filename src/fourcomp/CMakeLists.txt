@@ -20,14 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(fourcomp STATIC fourcomp.cxx impl.cxx)
 
-target_link_libraries( fourcomp PUBLIC ChronusQ::DepHeaders )
-
-# Append fourcomp to executable link
-list(APPEND CQEX_LINK fourcomp)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(fourcomp ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE fourcomp.cxx impl.cxx)
