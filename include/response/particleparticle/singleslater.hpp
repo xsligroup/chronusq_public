@@ -417,16 +417,16 @@ namespace ChronusQ {
 
 
     // (Local) Dims
-    CB_INT MLoc(N) , NLoc(N);
+    int64_t MLoc(N) , NLoc(N);
 
 #ifdef CQ_ENABLE_MPI
     if( isDist )
-      std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(MLoc,NLoc);
+      std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(MLoc,NLoc);
 
 
     // ScaLAPACK DESC
-    CXXBLACS::ScaLAPACK_Desc_t descMem;
-    if( isDist ) descMem = this->fullMatGrid_->descInit(N,N,0,0,MLoc);
+    scalapackpp::scalapack_desc descMem;
+    if( isDist ) descMem = this->fullMatGrid_->descinit_noerror(N,N,MLoc);
 #endif
 
     
@@ -456,7 +456,7 @@ namespace ChronusQ {
       auto *AX    = mat.AX;
 
 #ifdef CQ_ENABLE_MPI
-      CXXBLACS::ScaLAPACK_Desc_t DescAX = mat.DescAX;
+      scalapackpp::scalapack_desc DescAX = mat.DescAX;
 #endif
 
 #ifdef CQ_ENABLE_MPI
@@ -535,7 +535,7 @@ namespace ChronusQ {
 
 
 #ifdef CQ_ENABLE_MPI
-    std::shared_ptr<CXXBLACS::BlacsGrid> formGrid;
+    std::shared_ptr<scalapackpp::BlockCyclicDist2D> formGrid;
     // Divide up the work if forming the matrix distributed
     if( this->genSettings.formMatDist ) { 
 
@@ -549,9 +549,10 @@ namespace ChronusQ {
 
       // Create a temorary grid to form the matrix in
       // columns
-      formGrid = std::make_shared<CXXBLACS::BlacsGrid>(
-          this->comm_,N,nForm / MPISize(this->comm_), 0, 0, "linear");
-      std::tie(N,nForm) = formGrid->getLocalDims(N,nForm);
+      formGrid = std::make_shared<scalapackpp::BlockCyclicDist2D>(
+          blacspp::Grid(this->comm_, 1, MPISize(this->comm_)),
+          N, nForm / MPISize(this->comm_));
+      std::tie(N,nForm) = formGrid->get_local_dims(N,nForm);
       nStore = nForm;
 
     }
@@ -587,9 +588,7 @@ namespace ChronusQ {
       size_t j = 0;
       for(auto i = 0ul; i < nFormP; i++){ 
 
-        auto lc = formGrid->localFromGlobal(0,i);
-        if( lc.procRowOwn == formGrid->iProcRow() and
-            lc.procColOwn == formGrid->iProcCol() ) {
+        if( formGrid->i_own(0,i) ) {
           V[i + j*N] = 1.0; 
           j++;
         }
@@ -643,23 +642,24 @@ namespace ChronusQ {
     if( isDist ) {
 
       // Create the grid
-      CB_INT MB = this->genSettings.MB;
+      int64_t MB = this->genSettings.MB;
       this->fullMatGrid_ = 
-        std::make_shared<CXXBLACS::BlacsGrid>(this->comm_,MB,MB);
+        std::make_shared<scalapackpp::BlockCyclicDist2D>(
+          blacspp::Grid::square_grid(this->comm_),MB,MB);
 
       // Get local dims
-      CB_INT MLoc, NLoc;
-      std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(N,nStoreP);
+      int64_t MLoc, NLoc;
+      std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(N,nStoreP);
 
       // Set to ScaLAPACK descriptors
       this->descFullMat_ = 
-        this->fullMatGrid_->descInit(N,nStoreP,0,0,MLoc);
+        this->fullMatGrid_->descinit_noerror(N,nStoreP,MLoc);
 
 
       if( isRoot ) {
 
-        CB_INT NPROCROW = this->fullMatGrid_->nProcRow();
-        CB_INT NPROCCOL = this->fullMatGrid_->nProcCol();
+        int64_t NPROCROW = this->fullMatGrid_->grid().npr();
+        int64_t NPROCCOL = this->fullMatGrid_->grid().npc();
         size_t NLOCAL = MLoc*NLoc*sizeof(MatsT);
 
         std::cout << "  * DISTRIBUTING FULL MATRIX TO BLACS GRID\n";
@@ -678,11 +678,11 @@ namespace ChronusQ {
         this->fullMatrix_ = this->memManager_.template malloc<MatsT>(MLoc*NLoc);
 
       if( this->genSettings.distMatFromRoot )
-        this->fullMatGrid_->Scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
+        this->fullMatGrid_->scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
       else {
 
         // Get the array descriptiors on the form Grid
-        auto curDesc = formGrid->descInit(N,nFormP,0,0,N);
+        auto curDesc = formGrid->descinit_noerror(N,nFormP,N);
 
         // Scale / conjugate if necessary Conj(B) -> -Conj(B); C -> -C
        if( not this->genSettings.doTDA )
@@ -691,8 +691,8 @@ namespace ChronusQ {
          SetMat('N',cDim_,nForm,MatsT(-1.),HV,N,HV,N);
 
         // Redistribute
-        CXXBLACS::PGEMR2D(N,nFormP,HV,1,1,curDesc,this->fullMatrix_,1,1,
-          this->descFullMat_,this->fullMatGrid_->iContxt());
+        scalapackpp::wrappers::pgemr2d(N,nFormP,HV,1,1,curDesc,this->fullMatrix_,1,1,
+          this->descFullMat_,this->fullMatGrid_->grid().context());
 
       }
 

@@ -1,0 +1,37 @@
+
+#
+[Molecule]
+charge = 1
+mult = 1
+geom:
+ Na 0.0 0.0 0.0
+#
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+TABLKSIZE = 5
+
+[EOMCC]
+NROOTS = 8
+GRAMSCHMIDTREPEAT = 20
+OSCILLATORSTRENGTH = True
+DAVIDSONGUESSMULTIPLIER = 6
+
+[BASIS]
+basis = sto-3g
+
+[SCF]
+INCFOCK = off
+
+[MISC]
+MEM = 256 MB
+NSMP = 4
+
+[INTS]
+ALG = INCORE
+libcint = true

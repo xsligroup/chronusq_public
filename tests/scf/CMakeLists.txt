@@ -36,12 +36,8 @@ add_executable(scftest ../ut.cxx
 
 target_include_directories(scftest PUBLIC ${SCF_TEST_SOURCE_ROOT}
   ${TEST_BINARY_ROOT})
-target_link_libraries(scftest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
-target_link_libraries(scftest PUBLIC ChronusQ::gtest)
-
-if(CQEX_DEP)
-  add_dependencies(scftest ${CQEX_DEP})
-endif()
+target_link_libraries(scftest PUBLIC cq)
+target_link_libraries(scftest PUBLIC gtest)
 
 # Generate directories
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/rhf)
@@ -147,6 +143,3 @@ if( CQ_ENABLE_MPI )
   #add_cq_mpi_test( NEO_RKS_MPI          2    scftest "NEO_RKS.*"  )
   #add_cq_mpi_test( NEO_RHF_MPI          2    scftest "NEO_RHF.*"  )
 endif()
-
-
-

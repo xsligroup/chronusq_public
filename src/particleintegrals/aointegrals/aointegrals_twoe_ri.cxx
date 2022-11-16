@@ -158,7 +158,7 @@ namespace ChronusQ {
       std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NB));
     }
 
-    memManager().free<double>(ijK);
+    memManager().free(ijK);
 
     auto durCopy = tock(topCopy);
     std::cout << "  RI-ERI3-Transformation-Copy duration     = " << durCopy << " s " << std::endl;

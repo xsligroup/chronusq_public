@@ -156,6 +156,66 @@ namespace ChronusQ {
   }
 
   /**
+   *
+   * \brief Parse an orbital selection string of comma-separated indices or ranges
+   * \example An input "1, 3-5, 7" will return a vector of [0,2,3,4,6]
+   *
+   * \param [in] input_str Input string to be parsed
+   *
+   * \return A vector of 0-based orbital indices
+   *
+   */
+  std::vector<size_t> parseOrbitalSelectionInput(std::string input_str) {
+    std::vector<size_t> orbitals;
+    std::vector<std::string> moTokens;
+    split(moTokens, input_str, ", ");
+    for (auto & mo: moTokens)  {
+      std::vector<std::string> mo2;
+      split(mo2, mo, "-");
+      if (mo2.size() == 1) {
+        orbitals.push_back(std::stoul(mo2[0])-1);
+      } else if (mo2.size() == 2) {
+        for (size_t i = std::stoul(mo2[0]), iEnd = std::stoul(mo2[1]); i <= iEnd; i++)
+          orbitals.push_back(i-1);
+      } else CErr("Unrecogonized pattern in orbital selection");
+    }
+    std::sort(orbitals.begin(), orbitals.end());
+    orbitals.erase(std::unique(orbitals.begin(), orbitals.end()), orbitals.end());
+    return orbitals;
+  }
+
+  /**
+   *
+   * \brief Parse an orbital selection vector to a string of comma-separated indices or ranges
+   * \example An input vector of [0,2,3,4,6] will return a "1, 3-5, 7" string
+   *
+   * \param [in] orbitals Input string to be parsed
+   *
+   * \return A string of 1-based comma-separated indices or ranges
+   *
+   */
+  std::string orbitalSelectionToString(std::vector<size_t> orbitals) {
+    if (orbitals.empty()) return "";
+
+    size_t rangeStart = orbitals[0];
+    std::string s = std::to_string(rangeStart + 1);
+
+    for (size_t i = 1; i < orbitals.size(); i++)  {
+      if (orbitals[i] - 1 != orbitals[i-1]) {
+        if (orbitals[i-1] != rangeStart)
+          s += "-" + std::to_string(orbitals[i-1] + 1);
+        rangeStart = orbitals[i];
+        s += "," + std::to_string(rangeStart + 1);
+      }
+    }
+
+    if (orbitals.back() != rangeStart)
+      s += "-" + std::to_string(orbitals.back() + 1);
+
+    return s;
+  }
+
+  /**
    *  \brief Construct a MCSCF object using the input 
    *  file.
    *
@@ -338,20 +398,6 @@ namespace ChronusQ {
     OPTOPT( rasMOStrings[2] = input.getData<std::string>("MCSCF.RAS3ORBITAL"));
     OPTOPT( fcMOStrings     = input.getData<std::string>("MCSCF.INORBITAL"));
     OPTOPT( fvMOStrings     = input.getData<std::string>("MCSCF.FVORBITAL"));
-
-    #define SET_ORBITAL_INDEX(ORBINDEX, INPUTSTRING, C) \
-      if (not ORBINDEX.empty()) { \
-        std::vector<std::string> moTokens; \
-        split(moTokens, INPUTSTRING, ", "); \
-        for (auto & mo: moTokens)  { \
-          std::vector<std::string> mo2; \
-          split(mo2, mo, "-"); \
-          if (mo2.size() == 1) { \
-            ORBINDEX[std::stoul(mo2[0])-1] = C; \
-          } else if (mo2.size() == 2) { \
-            for (auto i = std::stoul(mo2[0]); i <= std::stoul(mo2[1]); i++) \
-              ORBINDEX[i-1] = C; \
-          } else CErr("Unrecogonized pattern in orbital selection"); }}
     
     #define FILL_DEFAULT_INDEX(ORBINDEX, ITER, C, N) \
       { for (auto i = 0ul; i < N; i++) { \
@@ -379,14 +425,18 @@ namespace ChronusQ {
       std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');
       
       // parse input
-      SET_ORBITAL_INDEX(inputOrbIndices, fcMOStrings, 'I');
-      SET_ORBITAL_INDEX(inputOrbIndices, fvMOStrings, 'S');
+      for (size_t i : parseOrbitalSelectionInput(fcMOStrings))
+        inputOrbIndices[i] = 'I';
+      for (size_t i : parseOrbitalSelectionInput(fvMOStrings))
+        inputOrbIndices[i] = 'S';
       if (isCASJob or isDMRGJob) {
-        SET_ORBITAL_INDEX(inputOrbIndices, casMOStrings, 'A');
+        for (size_t i : parseOrbitalSelectionInput(casMOStrings))
+          inputOrbIndices[i] = 'A';
       } else if (isRASJob) {
         for (auto i = 0; i < 3; i++) {
           char i_char = '1' + i;
-          SET_ORBITAL_INDEX(inputOrbIndices, rasMOStrings[i], i_char);
+          for (size_t i : parseOrbitalSelectionInput(rasMOStrings[i]))
+            inputOrbIndices[i] = i_char;
         }
       }
       

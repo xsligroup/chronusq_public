@@ -29,20 +29,15 @@
 #include <cxxapi/procedural.hpp>
 
 #include <util/files.hpp>
-#include <util/matout.hpp>
 #include <util/mpi.hpp>
 #include <util/threads.hpp>
 #include <util/timer.hpp>
 
-#include <memmanager.hpp>
 #include <cerr.hpp>
 #include <molecule.hpp>
 #include <basisset.hpp>
 #include <integrals.hpp>
 #include <singleslater.hpp>
-#include <response.hpp>
-#include <realtime.hpp>
-#include <itersolver.hpp>
 #include <coupledcluster.hpp>
 #include <mcwavefunction.hpp>
 #include <mcscf.hpp>
@@ -55,7 +50,6 @@
 #include <particleintegrals/gradints/direct.hpp>
 
 #include <cqlinalg/blasext.hpp>
-#include <cqlinalg/eig.hpp>
 
 #include <geometrymodifier.hpp>
 #include <geometrymodifier/moleculardynamics.hpp>
@@ -67,6 +61,15 @@
 #include <fockbuilder/matrixfock.hpp>
 
 #include <fockbuilder/neofock.hpp>
+#include <itersolver.hpp>
+
+#include <unistd.h>
+#include <limits.h>
+
+#include <coupledcluster/TAManager.hpp>
+
+//#include <TiledArray/util/bug.h>
+
 
 //#include <cubegen.hpp>
 
@@ -116,8 +119,30 @@ namespace ChronusQ {
       rankfile = std::make_shared<std::ofstream>(rankFileName);
       std::cerr.rdbuf(rankfile->rdbuf());
 
-      std::cerr << "Hello from RANK = " << rank << " / SIZE = " << size 
-                << "\n\n";
+      std::cerr << "Hello from RANK = " << rank << " / SIZE = " << size << std::endl;
+
+#ifndef HOST_NAME_MAX // not defined on MacOS or other BSDs
+#define HOST_NAME_MAX 1024
+#endif
+      char hostname[HOST_NAME_MAX];
+      gethostname(hostname, HOST_NAME_MAX);
+      std::cerr << "HostName = " << hostname << std::endl << std::endl;
+
+      if (rank != 0) {
+        std::cout.rdbuf(rankfile->rdbuf());
+      }
+
+      int i = 0;
+
+#ifndef NDEBUG
+//      while (i == 0) {
+//        sleep(10);
+//      }
+#endif
+
+//      TA::launch_lldb_xterm();
+
+      MPI_Barrier(MPI_COMM_WORLD);
 
     }
 
@@ -164,8 +189,8 @@ namespace ChronusQ {
 
     // Break into sequence of individual jobs
     std::vector<JobType> jobs;
-    if( jobType != SCF ) {
-      jobs.push_back(SCF);
+    if( jobType != JobType::SCF ) {
+      jobs.push_back(JobType::SCF);
     }
     jobs.push_back(jobType);
 
@@ -262,6 +287,8 @@ namespace ChronusQ {
       neoss->setSubSetup();
     }
 
+
+
     // Done setting up
     //
     // START OF REAL PROCEDURAL SECTION
@@ -313,7 +340,7 @@ namespace ChronusQ {
         guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
 
         // Run SCF job
-        if( elecJob == SCF ) {
+        if( elecJob == JobType::SCF ) {
 
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
             compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
@@ -328,7 +355,7 @@ namespace ChronusQ {
         }
 
         // Run RT job
-        if( elecJob == RT ) {
+        if( elecJob == JobType::RT ) {
 
           // Initialize core hamiltonian
           rt->formCoreH(emPert);
@@ -346,7 +373,7 @@ namespace ChronusQ {
         }
 
 
-        if( elecJob == RESP ) {
+        if( elecJob == JobType::RESP ) {
 
 
           if( ss->scfControls.scfAlg == _SKIP_SCF and ss->scfControls.guess == READDEN )
@@ -361,22 +388,25 @@ namespace ChronusQ {
 
         }
 
-        
-        if( elecJob == CC ){
+
+        if( elecJob == JobType::CC or elecJob == JobType::EOMCC ){
 
           // FIXME: Need to implement NEO-CC
           if (doNEO)
             CErr("NEO-CC NYI!",output);
 
-          #ifdef CQ_HAS_TA
-            auto cc = CQCCOptions(output, input, ss);
-            cc->run(); 
-          #else
-            CErr("TiledArray must be compiled to use Coupled-Cluster code!");
-          #endif
+#ifdef CQ_HAS_TA
+
+          runCoupledCluster(jobType, mol, ss, aoints, *memManager, rstFile, input, output);
+          TAManager::get().discard_cache();
+          std::cout << TAManager::get() << std::endl;
+
+#else
+          CErr("TiledArray must be compiled to use Coupled-Cluster code!");
+#endif
         }
 
-        if ( elecJob == MR ) {
+        if ( elecJob == JobType::MR ) {
 
           if (doNEO)
             CErr("NEO-MCSCF NYI!",output);
@@ -399,8 +429,12 @@ namespace ChronusQ {
     CQOutputFooter(output);
 
     // Reset std::cout and std::cerr
-    if(outfile)  std::cout.rdbuf(coutbuf);
-    if(rankfile) std::cerr.rdbuf(cerrbuf);
+    if (rank == 0) {
+      if (outfile) std::cout.rdbuf(coutbuf);
+    } else {
+      if (rankfile) std::cout.rdbuf(coutbuf);
+    }
+    if (rankfile) std::cerr.rdbuf(cerrbuf);
 
   }; // RunChronusQ
 

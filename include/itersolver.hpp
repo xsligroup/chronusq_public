@@ -23,421 +23,16 @@
  */
 #pragma once
 
-#include <chronusq_sys.hpp>
 #include <memmanager.hpp>
-#include <cqlinalg/blas1.hpp>
-#include <cqlinalg/solve.hpp>
+#include <cqlinalg.hpp>
 #include <cerr.hpp>
 
 #include <util/mpi.hpp>
 #include <util/math.hpp>
-#include <util/matout.hpp>
 
-#include <iostream>
+#include <itersolver/solvervectors.hpp>
 
 namespace ChronusQ {
-
-
-  template <typename _F>
-  class SolverVectors {
-
-  public:
-    // Length of each vector
-    virtual size_t length() const = 0;
-    // Number of vectors in container
-    virtual size_t size() const = 0;
-    // Get raw pointer of vectors, only works for RawVectors
-    virtual _F* getPtr(size_t i = 0) const = 0;
-    // Get element
-    virtual _F get(size_t i, size_t j) const = 0;
-    // Set element
-    virtual void set(size_t i, size_t j, _F value) = 0;
-    // Clear elements
-    void clear(size_t shift = 0) {
-      clear(shift, size() - shift);
-    }
-    virtual void clear(size_t shift, size_t nVec) = 0;
-    // Print elements
-    void print(std::ostream& out, std::string str, size_t shift = 0) const {
-      print(out, str, shift, size() - shift);
-    }
-    virtual void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const = 0;
-    // Get underlying type
-    virtual const std::type_info& underlyingType() const {
-      return typeid(*this);
-    }
-
-    /**
-     * C = alpha * this * op(B) + beta * C
-     * A wrapper for
-     * blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,transB,
-     *            length(), n, k, alpha, getPtr(), length(),
-     *            B, ldb, beta, C_ptr, C.length());
-     * Use to linear combine the vectors in this
-     * @param shiftA The beginning vector in this
-     * @param transB specifies op(B)
-     * @param n      Number of vector after linear combination
-     * @param k      Number of vector for linear combination in this
-     * @param alpha  Scalar factor for this * op(B)
-     * @param B      Linear transformation matrix
-     * @param ldb    Leading dimension of B
-     * @param beta   Scalar factor for C
-     * @param C      Result vectors
-     * @param shiftC The beginning vector in C
-     */
-    virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
-                                 _F alpha, _F const *B, int64_t ldb,
-                                 _F beta, SolverVectors<_F> &C, size_t shiftC) const = 0;
-
-    /**
-     * C = conj(this) * B
-     * A wrapper for
-     * blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
-     *            m,n,length(),_F(1.),getPtr(),length(),
-     *            B_ptr,length(),_F(0.),C,ldc);
-     * @param shiftA The beginning vector in this
-     * @param B      Another set of vectors
-     * @param shiftB The beginning vector in B
-     * @param m      Number of vectors for dot product in this
-     * @param n      Number of vectors for dot product in B
-     * @param C      Result matrix
-     * @param ldc    Leading dimension of C
-     */
-    virtual void dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
-                             int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA = true) const = 0;
-
-    /**
-     * this[shiftA : shiftA+nVec] = B[shiftB : shiftB+nVec]
-     * Copy nVec number of vectors beginning from the shiftB-th vector in B to
-     * this beginning from shiftA
-     * @param shiftA Beginning vector index to write in this
-     * @param nVec   Number of vectors to copy
-     * @param B      Source vectors
-     * @param shiftB Beginning vector index to copy from in B
-     */
-    virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) = 0;
-
-    /**
-     * this[shiftA : shiftA+nVec] *= scalar
-     * A wrapper for
-     * blas::scal(length()*nVec,scalar,getPtr(shiftA),1);
-     * @param shiftA Beginning vector index to scale in this
-     * @param nVec   Number of vectors to scale
-     * @param scalar Scalar factor
-     */
-    void scale(_F scalar, size_t shift = 0) {
-      scale(scalar, shift, size() - shift);
-    }
-    virtual void scale(_F scalar, size_t shift, size_t nVec) = 0;
-
-    /**
-     * this[shiftA : shiftA+nVec] = conj(this[shiftA : shiftA+nVec])
-     * @param shiftA Beginning vector index to conjugate in this
-     * @param nVec   Number of vectors to conjugate
-     */
-    void conjugate(size_t shift = 0) {
-      conjugate(shift, size() - shift);
-    }
-    virtual void conjugate(size_t shift, size_t nVec) = 0;
-
-    /**
-     * this[shiftY : shiftY+nVec] += alpha * X[shiftX : shiftX+nVec]
-     * A wrapper for
-     * blas::axpy(length() * nVec, alpha, X_ptr, 1, getPtr(shiftY), 1);
-     * @param shiftY Beginning vector index to add in this
-     * @param nVec   Number of vectors to add
-     * @param alpha  Scalar factor for X[shiftX : shiftX+nVec]
-     * @param X      Vectors to add
-     * @param shiftX Beginning vector index to add in X
-     */
-    virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) = 0;
-
-    /**
-     * GramSchmidt orthogonalization of vectors
-     * @param shift Beginning vector index
-     * @param Mold  Number of vectors that are already orthonormal
-     * @param Mnew  Number of vectors to be orthonormalize
-     * @param mem   MemManager referece
-     * @param NRe   Number of repeats of projection
-     * @param eps   Threshold for linear dependency
-     * @return
-     */
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
-                               size_t NRe = 0, double eps = 1e-12);
-
-    /**
-     * Solve trangular linear system  X * A = alpha * B
-     * A wrapper for
-     * blas::trsm(blas::Layout::ColMajor,blas::Side::Right,blas::Uplo::Upper,blas::Op::NoTrans,blas::Diag::NonUnit,
-     *            length(), n, alpha, A, lda, getPtr(), length());
-     * @param shift Beginning vector index
-     * @param n     Number of vectors
-     * @param alpha Scalar for rhs
-     * @param A     Triangular matrix
-     * @param lda   Leading dimension of A
-     */
-    virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) = 0;
-
-    /**
-     * QR factorization
-     * A wrapper for
-     * ChronusQ::QR(length(), nVec, getPtr(), length(), R, LDR, mem);
-     * @param shift Beginning vector index
-     * @param nVec  Number of vectors
-     * @param mem   Reference to CQMemManager
-     * @param R     returns R
-     * @param LDR   Leading dimension of R
-     * @return      Lapack information
-     */
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) = 0;
-
-    /**
-     * 2-norm of vector this[shift] or F-norm of matrix this[shift : shift+nVec]
-     * A wrapper for
-     * blas::nrm2(length() * nVec,getPtr(shift),1);
-     * @param shift Beginning vector index to compute norm in this
-     * @param nVec  Number of vectors to compute norm
-     * @return      2(F)-Norm of vector(s)
-     */
-    double norm2F(size_t shift) const {
-      return norm2F(shift, size() - shift);
-    }
-    virtual double norm2F(size_t shift, size_t nVec) const = 0;
-
-    /**
-     * The norm of the element with the greatest norm in vector(s)
-     * For vector, this is the inf-norm
-     * @param shift Beginning vector index to find
-     * @param nVec  Number of vectors to find
-     * @return      The norm of the element with the greatest norm
-     */
-    double maxNormElement(size_t shift) const {
-      return maxNormElement(shift, size() - shift);
-    }
-    virtual double maxNormElement(size_t shift, size_t nVec) const = 0;
-
-    virtual ~SolverVectors() {}
-
-  };
-
-
-  template <typename _F>
-  class RawVectors : public SolverVectors<_F> {
-
-  protected:
-
-    MPI_Comm      comm_;
-    CQMemManager &memManager_;
-    _F* data_ = nullptr;
-    size_t len_;
-    size_t size_ = 0;
-
-  public:
-    RawVectors(MPI_Comm c, CQMemManager &mem, size_t len, size_t size)
-        : comm_(c), memManager_(mem), len_(len), size_(size) {
-      if (MPIRank(comm_) == 0 and size > 0)
-        data_ = memManager_.malloc<_F>(len_ * size_);
-    }
-    RawVectors(const RawVectors<_F> &other)
-        : comm_(other.comm_), memManager_(other.memManager_),
-          len_(other.len_), size_(other.size_) {
-      if (MPIRank(comm_) == 0 and size_ > 0 and other.data_ != nullptr) {
-        data_ = memManager_.malloc<_F>(len_ * size_);
-        std::copy_n(other.data_, len_ * size_, data_);
-      }
-    }
-    RawVectors(RawVectors<_F> &&other)
-        : comm_(other.comm_), memManager_(other.memManager_),
-          data_(other.data_), len_(other.len_), size_(other.size_) {
-      other.data_ = nullptr;
-    }
-
-    MPI_Comm getMPIcomm() const { return comm_; }
-    CQMemManager& getMem() const { return memManager_; }
-
-    virtual size_t length() const override { return len_; }
-    virtual size_t size() const override { return size_; }
-    virtual _F* getPtr(size_t i = 0) const override {
-#ifdef CQ_ENABLE_MPI
-      if (MPIRank(comm_) != 0 or size() == 0)
-        return nullptr;
-#endif
-      if (i >= size())
-        CErr("Requesting invalid pointer in RawVectors object.");
-      return data_ + i * len_;
-    }
-    // Get element
-    virtual _F get(size_t i, size_t j) const override {
-#ifdef CQ_ENABLE_MPI
-      _F v;
-      if (MPIRank(comm_) == 0)
-        v = getPtr(j)[i];
-      if (MPISize(comm_) > 1)
-        MPIBCast(v, 0, comm_);
-      return v;
-#else
-      return getPtr(j)[i];
-#endif
-    }
-    // Set element
-    virtual void set(size_t i, size_t j, _F value) override {
-      ROOT_ONLY(comm_);
-      getPtr(j)[i] = value;
-    }
-
-    using SolverVectors<_F>::clear;
-    void clear(size_t shift, size_t nVec) override {
-      ROOT_ONLY(comm_);
-      if (nVec == std::numeric_limits<size_t>::max()) {
-        getPtr(shift);
-        nVec = size() - shift;
-      } else
-        getPtr(shift + nVec - 1);
-      std::fill_n(getPtr(shift), nVec*length(), 0.);
-    }
-
-    using SolverVectors<_F>::print;
-    void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
-      ROOT_ONLY(comm_);
-      if (nVec == std::numeric_limits<size_t>::max()) {
-        getPtr(shift);
-        nVec = size() - shift;
-      } else
-        getPtr(shift + nVec - 1);
-      prettyPrintSmart(out, str, getPtr(shift), length(), nVec, length());
-    }
-
-    virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
-                                 _F alpha, _F const *B, int64_t ldb,
-                                 _F beta, SolverVectors<_F> &C, size_t shiftC) const override;
-
-    virtual void dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
-                             int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA = true) const override;
-
-    virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) override;
-
-    using SolverVectors<_F>::scale;
-    virtual void scale(_F scalar, size_t shift, size_t nVec) override;
-
-    using SolverVectors<_F>::conjugate;
-    virtual void conjugate(size_t shift, size_t nVec) override;
-
-    virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
-
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
-                               size_t NRe = 0, double eps = 1e-12) override;
-
-    virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
-
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
-
-    using SolverVectors<_F>::norm2F;
-    virtual double norm2F(size_t shift, size_t nVec) const override;
-
-    using SolverVectors<_F>::maxNormElement;
-    virtual double maxNormElement(size_t shift, size_t nVec) const override;
-
-    virtual ~RawVectors() {
-      if (data_)
-        memManager_.free(data_);
-    }
-
-  };
-
-
-  template <typename _F>
-  class SolverVectorsView : public SolverVectors<_F> {
-
-  protected:
-
-    SolverVectors<_F> &vecs_;
-    size_t shift_;
-
-  public:
-    SolverVectorsView(SolverVectors<_F> &vecs, size_t shift = 0)
-        : vecs_(vecs), shift_(shift) {
-      if (shift_ >= vecs_.size())
-        CErr("Creating a view out of the vectors' capacity.");
-    }
-    SolverVectorsView(SolverVectorsView<_F> &view, size_t shift = 0)
-        : vecs_(view.vecs_), shift_(shift + view.shift_) {
-      if (shift_ >= vecs_.size())
-        CErr("Creating a view out of the vectors' capacity.");
-    }
-
-    size_t shift() const { return shift_; }
-    virtual size_t length() const override { return vecs_.length(); }
-    virtual size_t size() const override { return vecs_.size() - shift(); }
-
-    SolverVectors<_F>& getVecs() {
-      return vecs_;
-    }
-    const SolverVectors<_F>& getVecs() const {
-      return vecs_;
-    }
-
-    virtual _F* getPtr(size_t i = 0) const override {
-      return vecs_.getPtr(shift() + i);
-    }
-    // Get element
-    virtual _F get(size_t i, size_t j) const override {
-      return vecs_.get(i, shift() + j);
-    }
-    // Set element
-    virtual void set(size_t i, size_t j, _F value) override {
-      vecs_.set(i, shift() + j, value);
-    }
-
-    using SolverVectors<_F>::clear;
-    void clear(size_t shift, size_t nVec) override {
-      vecs_.clear(this->shift() + shift, nVec);
-    }
-
-    using SolverVectors<_F>::print;
-    void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
-      out << "Printing a SolverVectorsView object with shift: " << this->shift() << std::endl;
-      vecs_.print(out, str, shift + this->shift(), nVec);
-    }
-
-    // Get underlying type
-    virtual const std::type_info& underlyingType() const override{
-      return typeid(vecs_);
-    }
-
-    virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
-                                 _F alpha, _F const *B, int64_t ldb,
-                                 _F beta, SolverVectors<_F> &C, size_t shiftC) const override;
-
-    virtual void dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
-                             int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA = true) const override;
-
-    virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) override;
-
-    using SolverVectors<_F>::scale;
-    virtual void scale(_F scalar, size_t shift, size_t nVec) override;
-
-    using SolverVectors<_F>::conjugate;
-    virtual void conjugate(size_t shift, size_t nVec) override;
-
-    virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
-
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
-                               size_t NRe = 0, double eps = 1e-12) override;
-
-    virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
-
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
-
-    using SolverVectors<_F>::norm2F;
-    virtual double norm2F(size_t shift, size_t nVec) const override;
-
-    using SolverVectors<_F>::maxNormElement;
-    virtual double maxNormElement(size_t shift, size_t nVec) const override;
-
-    virtual ~SolverVectorsView() {}
-
-  };
-
 
   template <typename _F>
   class IterSolver {
@@ -458,6 +53,7 @@ namespace ChronusQ {
 
 
     double convCrit_; ///< Convergence criteria
+    bool converged_ = false; ///< Iteration has converged
 
     VecsGen_t vecGen_; ///< Vector generator
 
@@ -482,7 +78,7 @@ namespace ChronusQ {
     inline void defaultPreCondShift_(size_t nVec, _F shift, SolverVectors<_F> &V, SolverVectors<_F> &AV) {
 
       preCondNoShift_(nVec,V,AV);
-      if(std::abs(std::abs(shift)) > 1e-15) shiftVec_(nVec,-1./shift,V,AV);
+      if(std::abs(shift) > 1e-15) shiftVec_(nVec,-1./shift,V,AV);
 
     };
 
@@ -553,7 +149,7 @@ namespace ChronusQ {
 
     }
 
-
+    bool hasConverged() const { return converged_; }
 
   };
 
@@ -662,6 +258,34 @@ namespace ChronusQ {
 
 
 
+  struct IterDiagConvStatus {
+    bool residual = false;
+    bool eigenValue = false;
+    bool eigenVector = false;
+    double residual_norm = 0.0;
+    double diff_eigen_value = 0.0;
+    double diff_eigen_vector = 0.0;
+    int prev_index = -1;
+
+    bool hasConverged(bool checkEVector = true, bool checkEValue = true, bool checkResidual = true) const {
+      return (checkResidual ? residual : true)
+          and (checkEValue ? eigenValue : true)
+          and (checkEVector ? eigenVector : true);
+    }
+
+    void clear() {
+      residual = false;
+      eigenValue = false;
+      eigenVector = false;
+      residual_norm = 0.0;
+      diff_eigen_value = 0.0;
+      diff_eigen_vector = 0.0;
+      prev_index = -1;
+    }
+  };
+
+
+
   template <typename _F>
   class IterDiagonalizer : public IterSolver<_F> {
 
@@ -742,7 +366,7 @@ namespace ChronusQ {
 
     virtual void alloc() {
 
-      VR_     = this->vecGen_(this->mSS_);
+      VR_     = this->vecGen_(this->nRoots_);
 
       // NO MPI
       // ROOT_ONLY(this->comm_);
@@ -756,7 +380,7 @@ namespace ChronusQ {
     }
 
 
-    const dcomplex* eigVal() const { return eigVal_; }
+    dcomplex* eigVal() const { return eigVal_; }
     std::shared_ptr<SolverVectors<_F>> VR() const { return VR_; }
 
 
@@ -933,6 +557,14 @@ namespace ChronusQ {
     size_t GramSchmidt_NRe = 1;
     double GramSchmidt_eps = 1e-12;
 
+    // Convergence options
+    bool checkEigenValueConv = true;
+    bool checkEigenVectorConv = true;
+    bool checkResidueConv = false;
+    bool convOnGramSchmidt = true;
+    double eigenValueCrit = 1e-7;
+    double eigenVectorCrit = 1e-5;
+
     // Energy specific options
     bool EnergySpecific = false;
     size_t nHighERoots  = 0;
@@ -942,6 +574,9 @@ namespace ChronusQ {
 
     double   *RelRes  = nullptr;
     std::shared_ptr<SolverVectors<_F>> Guess = nullptr;
+    std::shared_ptr<SolverVectors<_F>> vecs  = nullptr;
+    std::shared_ptr<SolverVectors<_F>> sigmaVecs = nullptr;
+    std::shared_ptr<SolverVectors<_F>> R   = nullptr, S = nullptr; // Scratch space for residue and perturbed vector
     dcomplex *EigForT = nullptr; // Eigenvalues can be used for preconditioner
 
     // creating double(dcomplex) operator to accomodate the
@@ -973,7 +608,10 @@ namespace ChronusQ {
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()):
       IterDiagonalizer<_F>(c,mem,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
-                           linearTrans,preNoShift,vecGen,shiftVec){ }
+                           linearTrans,preNoShift,vecGen,shiftVec){
+      eigenVectorCrit = conv;
+      eigenValueCrit = 1e-2 * conv;
+    }
 
     ~Davidson() {
 
@@ -997,12 +635,55 @@ namespace ChronusQ {
 
     void setGramSchmidtEps(double eps) { GramSchmidt_eps = eps;}
 
+    void setConvOnGramSchmidt(bool flag) { convOnGramSchmidt = flag; }
+
+    void setEigenVectorConvCheck(bool flag) { checkEigenVectorConv = flag;}
+
+    void setEigenValueConvCheck(bool flag) { checkEigenValueConv = flag;}
+
+    void setResidueConvCheck(bool flag) { checkResidueConv = flag;}
+
+    void setEigenVectorConvCriteria(double crit) { eigenVectorCrit = crit;}
+
+    void setEigenValueConvCriteria(double crit) { eigenValueCrit = crit;}
+
     void setEigForT(dcomplex * _Eig) {
 
       if( this->memManager_.getSize(_Eig) < this->nGuess_ )
         CErr("Davison EigForT requires a memory block with size at least nGuess ",std::cout);
 
       EigForT = _Eig;
+    }
+
+    std::shared_ptr<SolverVectors<_F>> getGuessScratch() const {
+      return Guess;
+    }
+    std::shared_ptr<SolverVectors<_F>> getSubspaceScratch() const {
+      return vecs;
+    }
+    std::shared_ptr<SolverVectors<_F>> getSigmaVecScratch() const {
+      return sigmaVecs;
+    }
+    std::shared_ptr<SolverVectors<_F>> getScratchR() const {
+      return R;
+    }
+    std::shared_ptr<SolverVectors<_F>> getScratchS() const {
+      return S;
+    }
+    void setGuessScratch(std::shared_ptr<SolverVectors<_F>> scr) {
+      Guess = scr;
+    }
+    void setSubspaceScratch(std::shared_ptr<SolverVectors<_F>> scr) {
+      vecs = scr;
+    }
+    void setSigmaVecScratch(std::shared_ptr<SolverVectors<_F>> scr) {
+      sigmaVecs = scr;
+    }
+    void setScratchR(std::shared_ptr<SolverVectors<_F>> scr) {
+      R = scr;
+    }
+    void setScratchS(std::shared_ptr<SolverVectors<_F>> scr) {
+      S = scr;
     }
 
     void alloc() {
@@ -1047,13 +728,22 @@ namespace ChronusQ {
       if( nGuess != this->nGuess_ )
         CErr("Davison Requires nGuess = nGuess_",std::cout);
 
-      Guess = this->vecGen_(nGuess);
+      if (not Guess or Guess->size() < this->nGuess_)
+        Guess = this->vecGen_(nGuess);
 
       // NO MPI
       // ROOT_ONLY(this->comm_);
 
       func(nGuess, *Guess, this->N_);
 
+    }
+
+    void clear_scratch() {
+      Guess     = nullptr;
+      vecs      = nullptr;
+      sigmaVecs = nullptr;
+      R         = nullptr;
+      S         = nullptr;
     }
 
 

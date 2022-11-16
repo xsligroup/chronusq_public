@@ -1,0 +1,47 @@
+#
+#  Molecule Specification 
+#
+[Molecule]
+charge = 1
+mult = 1 
+geom:
+ Na 0.0 0.0 0.0 
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+TABLKSIZE = 4
+USEDIIS = true
+ETOL = 1e-12
+TTOL = 1e-10
+NEVARIATION = 1
+
+[EOMCC]
+NROOTS = 7
+OscillatorStrength = True
+HBARTYPE = EXPLICIT
+DIAGMETHOD = FULL
+FROZENOCCUPIED = 1-2
+CVSCORE = 11
+#CVSCONTINUUM = 12-18
+FROZENVIRTUAL = 19-26
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+INCFOCK = off 
+
+[MISC]
+MEM = 256 MB
+nsmp = 1
+
+[INTS]
+ALG = INCORE
+Libcint = false
+

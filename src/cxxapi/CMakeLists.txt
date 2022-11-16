@@ -29,21 +29,10 @@ set(OPT_SRC input/molopts.cxx input/basisopts.cxx
     input/coupledclusteropts.cxx input/geomopts.cxx input/mcscfopts.cxx
     procedural.cxx output.cxx)
 
-add_library(cxxcq STATIC ${INPUT_SRC} ${OPT_SRC})
-target_link_libraries( cxxcq PUBLIC ChronusQ::DepHeaders )
-
-list(INSERT CQEX_LINK 0 cxxcq)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
+target_sources(cq PRIVATE ${INPUT_SRC} ${OPT_SRC})
 
 add_executable(chronusq chronusq.cxx)
-target_link_libraries(chronusq PUBLIC ${CQEX_LINK} ChronusQ::Dependencies )
-
-if(CQEX_DEP)
-  add_dependencies(chronusq ${CQEX_DEP})
-  add_dependencies(cxxcq ${CQEX_DEP})
-endif()
-
+target_link_libraries(chronusq PUBLIC cq)
 
 add_custom_target(linkexe ALL
   ${CMAKE_COMMAND} -E create_symlink ${PROJECT_BINARY_DIR}/src/cxxapi/chronusq ${PROJECT_BINARY_DIR}/chronusq )

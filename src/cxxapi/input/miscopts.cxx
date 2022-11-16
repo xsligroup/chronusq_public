@@ -27,6 +27,7 @@
 #include <util/mpi.hpp>
 #include <util/threads.hpp>
 #include <util/timer.hpp>
+#include <util/print.hpp>
 
 namespace ChronusQ {
 
@@ -123,19 +124,13 @@ namespace ChronusQ {
 
     OPTOPT(blkSize = input.getData<size_t>("MISC.MEMBLK");)
 
-    std::string postfixes = " KMGT";
-    size_t indx = std::floor(std::log10(mem))/3;
-    char postfix = postfixes.c_str()[indx];
-
-    size_t memPrint = (postfix == 'K') ? (mem / 1e3) : 
-                      (postfix == 'M') ? (mem / 1e6) : 
-                      (postfix == 'G') ? (mem / 1e9) : mem;
-
 
 
     out << "\n\n";
 
-    out << "  *** Allocating " << memPrint << " " << postfix << "B *** \n";
+    std::pair<double, char> mem_postfix = memSize(mem);
+    out << "  *** Allocating " << std::fixed << std::setprecision(1)
+        << mem_postfix.first << " " << mem_postfix.second << "B *** \n";
     out << "  *** ChronusQ will use " << GetNumThreads() 
         << " OpenMP threads ***\n";
     out << "  *** ChronusQ will use " << MPISize() 
@@ -148,6 +143,18 @@ namespace ChronusQ {
     return memManager;
 
   }; // CQMiscOptions
+
+  std::pair<double, char> memSize(size_t mem) {
+
+    std::string postfixes = " KMGT";
+    size_t indx = std::floor(std::log10(mem))/3;
+    if (mem == 0) indx = 0;
+    else if (indx > 4) indx = 4;
+    char postfix = postfixes.c_str()[indx];
+
+    return std::make_pair(static_cast<double>(mem) / std::pow(1e3, indx), postfix);
+
+  }
 
 
 }; // namespace ChronusQ

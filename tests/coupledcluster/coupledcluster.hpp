@@ -36,7 +36,14 @@ using namespace ChronusQ;
 
 
 
-static void CQCCTEST( std::string in, std::string ref ) {
+static void CQCCTEST( std::string in, std::string ref,
+                      bool checkExcitedEnergy = false,
+                      bool checkOsc = false,
+                      double etol = 1e-7,
+                      double osctol = 1e-5
+                    ) {
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef _CQ_GENERATE_TESTS
 
@@ -48,25 +55,58 @@ static void CQCCTEST( std::string in, std::string ref ) {
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
     TEST_OUT + in + ".bin",TEST_OUT + in + ".scr");
 
+  if(MPIRank(MPI_COMM_WORLD) != 0) return;
 
+          
   SafeFile refFile(CC_TEST_REF + ref,true);
   SafeFile resFile(TEST_OUT + in + ".bin",true);
 
-  double xDummy, yDummy;
+  double testE, refE;
+  std::cout << " * PERFORMING CC ENERGY CHECK " << std::endl;
+  std::cout << "CC_TEST_REF=" << CC_TEST_REF <<std::endl;
 
-  resFile.readData("/CC/CORRELATION_ENERGY",&xDummy);
-  refFile.readData("/CC/CORRELATION_ENERGY",&yDummy);
+  resFile.readData("/CC/CORRELATION_ENERGY", &testE);
+  refFile.readData("/CC/CORRELATION_ENERGY", &refE);
 
-  EXPECT_NEAR( xDummy, yDummy, 1e-8 ) <<
-    "CORRELATION ENERGY TEST FAILED "; 
+  EXPECT_NEAR( testE, refE, etol ) << "CC CORRELATION ENERGY TEST FAILED";
 
-  double xDummy1, yDummy1;
+  std::vector<double> xDummy, yDummy;
 
-  resFile.readData("/CC/T_NORM",&xDummy1);
-  refFile.readData("/CC/T_NORM",&yDummy1);
+  if (checkExcitedEnergy){
+    // Check eigenvalues
+    std::cerr << "PERFORMING EXCITATION ENERGY TEST\n";
 
-  EXPECT_NEAR( xDummy1, yDummy1, 1e-6 ) <<
-    "CORRELATION ENERGY NORM TEST FAILED "; 
+    auto evDim     = resFile.getDims("/CC/EXCITATION_ENERGIES");
+    auto evDim_ref = refFile.getDims("/CC/EXCITATION_ENERGIES");
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(evDim[0]); yDummy.resize(evDim_ref[0]);
+
+
+    resFile.readData("/CC/EXCITATION_ENERGIES",&xDummy[0]);
+    refFile.readData("/CC/EXCITATION_ENERGIES",&yDummy[0]);
+
+    for(auto i = 0; i < evDim[0]; i++)
+      EXPECT_NEAR( xDummy[i], yDummy[i], etol ) << "EXCITATION ENERGY TEST FAILED IN STATE = " << i;
+  }
+
+  if (checkOsc){
+    // Check Osc Strength
+    std::cerr << "PERFORMING OSC STRENGTH TEST\n";
+
+    auto oscDim     = resFile.getDims("/CC/OSCILLATOR_STRENGTHS");
+    auto oscDim_ref = refFile.getDims("/CC/OSCILLATOR_STRENGTHS");
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(oscDim[0]); yDummy.resize(oscDim_ref[0]);
+
+    resFile.readData("/CC/OSCILLATOR_STRENGTHS",&xDummy[0]);
+    refFile.readData("/CC/OSCILLATOR_STRENGTHS",&yDummy[0]);
+
+    for(auto i = 0; i < oscDim[0]; i++)
+      EXPECT_NEAR( xDummy[i], yDummy[i], osctol ) << "OSC STRENGTH TEST FAILED IN STATE = " << i;
+  }
+
 
 #endif
 

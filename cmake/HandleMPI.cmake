@@ -20,7 +20,7 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 
-include(ExternalProject)
+include(FetchContent)
 
 if(CQ_ENABLE_MPI)
 
@@ -28,8 +28,7 @@ if(CQ_ENABLE_MPI)
   
   # FindMPI
   find_package(MPI REQUIRED)
-  target_link_libraries( ChronusQ::Dependencies INTERFACE MPI::MPI_CXX )
-  copy_header_properties( MPI::MPI_CXX ChronusQ::DepHeaders )
+  target_link_libraries( cq PUBLIC MPI::MPI_CXX )
   
   message( "" )
   
@@ -38,35 +37,19 @@ if(CQ_ENABLE_MPI)
   message( STATUS "MPIEXEC_NUMPROC_FLAG found to be: ${MPIEXEC_NUMPROC_FLAG}" )
   message( STATUS "MPI_INCLUDE_PATH found to be: ${MPI_INCLUDE_PATH}" )
   
-  
   message( "" )
   
-  
   # MXX
-  
   message( STATUS "Adding CMake Target for MXX" )
-  set( MXX_PREFIX     ${PROJECT_SOURCE_DIR}/external/mxx )
-  set( MXX_INCLUDEDIR ${MXX_PREFIX}/src/mxx/include )
-  
-  ExternalProject_Add(mxx
-    PREFIX ${MXX_PREFIX}
-    GIT_REPOSITORY https://github.com/wavefunction91/mxx.git
-    CONFIGURE_COMMAND echo 'No MXX Configure'
-    UPDATE_COMMAND echo 'No ScaLAPACK MXX Command'
-    BUILD_COMMAND echo 'No MXX Build'
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND echo 'No MXX Install'
-  )
-  
-  list(APPEND CQEX_DEP mxx)
-  
-  # MXX Includes
-  file( MAKE_DIRECTORY ${MXX_INCLUDEDIR} )
-  set_property( TARGET ChronusQ::Dependencies APPEND PROPERTY
-    INTERFACE_INCLUDE_DIRECTORIES ${MXX_INCLUDEDIR}
-  )
-  set_property( TARGET ChronusQ::DepHeaders APPEND PROPERTY
-    INTERFACE_INCLUDE_DIRECTORIES ${MXX_INCLUDEDIR}
-  )
+  FetchContent_Declare(
+    mxx
+    GIT_REPOSITORY https://github.com/patflick/mxx.git 
+    GIT_TAG e1f4acd8f5dc91da4945b5f6b6e7828991afeb0a
+    PATCH_COMMAND git apply "${PROJECT_SOURCE_DIR}/cmake/mxx_complex_datatype.patch"
+  )  
 
+  FetchContent_MakeAvailable ( mxx )
+  target_include_directories(cq PUBLIC "${mxx_SOURCE_DIR}/include")
+  
+  message( "" )
 endif()

@@ -22,6 +22,9 @@
  *  
  */
 #pragma once
+#include <utility>
+#include <string>
+#include <cmath>
 
 namespace ChronusQ {
 
@@ -38,5 +41,7 @@ namespace ChronusQ {
   void FormattedLine(std::ostream &out, std::string s, T v, U u) {
     out << std::setw(45) << "  " + s << v << u << std::endl;
   }
+
+  std::pair<double, char> memSize(size_t mem);
  
 }; // namespace ChronusQ

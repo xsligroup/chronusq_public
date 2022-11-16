@@ -41,7 +41,7 @@ namespace ChronusQ {
     if( Mold == 0 ) {
       // Normalize the first vector
       F inner = vecNorm(V);
-      if(std::abs(inner) < eps) CErr("Zero inner product incurred!");
+      if(std::abs(inner) < std::sqrt(N)*eps) CErr("Zero inner product incurred!");
       blas::scal(N, 1./inner, V, 1);
     }
 
@@ -63,7 +63,7 @@ namespace ChronusQ {
       // Normalize the new vector
       F inner = vecNorm(V_p);
       std::cout << k << " " << inner << std::endl;
-      if(std::abs(inner) < N*eps) { 
+      if(std::abs(inner) < std::sqrt(N)*eps) {
         std::cout << "Zero inner product incurred! " << k << "\n";
         blas::scal(N,F(0.),V_p,1);
       } else {

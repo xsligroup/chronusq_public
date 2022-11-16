@@ -63,7 +63,7 @@ namespace ChronusQ {
     size_t localDimM = N, localDimN = N;
 #ifdef CQ_ENABLE_MPI
     if( isDist ) 
-      std::tie(localDimM,localDimN) = fullMatGrid_->getLocalDims(N,N);
+      std::tie(localDimM,localDimN) = fullMatGrid_->get_local_dims(N,N);
 #endif
     
 
@@ -76,19 +76,19 @@ namespace ChronusQ {
 
 
     U* distSOL = nullptr;
-    CB_INT localRHS;
+    int64_t localRHS;
 #ifdef CQ_ENABLE_MPI
-    CXXBLACS::ScaLAPACK_Desc_t DescA, DescB;
+    scalapackpp::scalapack_desc DescA, DescB;
     if( isDist ) {
 
       // Allocate space for distributed RHS / Solution
-      std::tie(localDimM, localRHS) = fullMatGrid_->getLocalDims(N,nRHS);
+      std::tie(localDimM, localRHS) = fullMatGrid_->get_local_dims(N,nRHS);
       if( localDimM and localRHS)
         distSOL = memManager_.template malloc<U>(localDimM*localRHS);
 
 
-      DescB = fullMatGrid_->descInit(N,nRHS,0,0,localDimM);
-      DescA = fullMatGrid_->descInit(N,N,0,0,localDimM);
+      DescB = fullMatGrid_->descinit_noerror(N,nRHS,localDimM);
+      DescA = fullMatGrid_->descinit_noerror(N,N,localDimM);
 
     }
 #endif
@@ -115,7 +115,7 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
       if( isDist ) 
-        fullMatGrid_->Scatter(N,nRHS,SOL,N,distSOL,localDimM,0,0);
+        fullMatGrid_->scatter(N,nRHS,SOL,N,distSOL,localDimM,0,0);
 #endif
 
       // Copy over the full matrix and shift
@@ -126,8 +126,8 @@ namespace ChronusQ {
         for(auto j = 0ul; j < localDimN; j++) 
         for(auto i = 0ul; i < localDimM; i++) {
 
-          CB_INT I,J;
-          std::tie(I,J) = fullMatGrid_->globalFromLocal(i,j);
+          int64_t I,J;
+          std::tie(I,J) = fullMatGrid_->global_idx(i,j);
           if(I == J)
             shiftedMat[i + j*localDimM] -= omega;
 
@@ -168,7 +168,7 @@ namespace ChronusQ {
       // Gather solution to root process
 #ifdef CQ_ENABLE_MPI
       if( isDist )
-        fullMatGrid_->Gather(N,nRHS,SOL,N,distSOL,localDimM,0,0);
+        fullMatGrid_->gather(N,nRHS,SOL,N,distSOL,localDimM,0,0);
 #endif
 
     //prettyPrintSmart(std::cout,"SOL " + std::to_string(iOmega),SOL,

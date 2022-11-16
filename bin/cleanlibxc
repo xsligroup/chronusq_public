@@ -1,8 +1,0 @@
-#!/bin/sh
-
-
-rm -fr external/libxc/include
-rm -fr external/libxc/lib
-rm -fr external/libxc/bin
-rm -fr external/libxc/src
-rm -fr external/libxc/tmp

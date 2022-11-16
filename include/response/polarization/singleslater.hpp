@@ -31,6 +31,10 @@
 #include <util/threads.hpp>
 #include <util/timer.hpp>
 
+#ifdef CQ_ENABLE_MPI
+#include <scalapackpp/lascl.hpp>
+#endif
+
 namespace ChronusQ {
 
 
@@ -657,7 +661,7 @@ namespace ChronusQ {
 
 
     // (Local) Dims
-    CB_INT MLoc,NLoc;
+    int64_t MLoc,NLoc;
     if( this->doReduced ) {
       MLoc = 2*N; NLoc = N;
     } else if(this->doAPB_AMB) {
@@ -668,7 +672,7 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
     if( isDist )
-      std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(MLoc,NLoc);
+      std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(MLoc,NLoc);
 #endif
 
 
@@ -678,7 +682,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
       if( isDist )
         std::tie(SCRMLoc,nVecLoc) = 
-          this->fullMatGrid_->getLocalDims(SCRMLoc,nVecLoc);
+          this->fullMatGrid_->get_local_dims(SCRMLoc,nVecLoc);
 #endif
     }
 
@@ -691,18 +695,18 @@ namespace ChronusQ {
 
     // ScaLAPACK DESC
 #ifdef CQ_ENABLE_MPI
-    CXXBLACS::ScaLAPACK_Desc_t descMem, descSCR;
+    scalapackpp::scalapack_desc descMem, descSCR;
     if( isDist ) {
 
       if( this->doReduced )
-        descMem = this->fullMatGrid_->descInit(2*N,N,0,0,MLoc);
+        descMem = this->fullMatGrid_->descinit_noerror(2*N,N,MLoc);
       else if( this->doAPB_AMB )
-        descMem = this->fullMatGrid_->descInit(N,N/2,0,0,MLoc);
+        descMem = this->fullMatGrid_->descinit_noerror(N,N/2,MLoc);
       else
-        descMem = this->fullMatGrid_->descInit(N,N,0,0,MLoc);
+        descMem = this->fullMatGrid_->descinit_noerror(N,N,MLoc);
 
       if( mkContract or kmContract ) 
-        descSCR = this->fullMatGrid_->descInit(N,maxNVec,0,0,SCRMLoc);
+        descSCR = this->fullMatGrid_->descinit_noerror(N,maxNVec,SCRMLoc);
 
     }
 #endif
@@ -732,7 +736,7 @@ namespace ChronusQ {
       auto *AX    = SCR ? SCR : mat.AX;
 
 #ifdef CQ_ENABLE_MPI
-      CXXBLACS::ScaLAPACK_Desc_t DescAX = SCR ? descSCR : mat.DescAX;
+      scalapackpp::scalapack_desc DescAX = SCR ? descSCR : mat.DescAX;
 #endif
 
       if( this->doReduced ) {
@@ -818,7 +822,7 @@ namespace ChronusQ {
         if( not this->genSettings.matIsHer and not this->incMet ) {
 #ifdef CQ_ENABLE_MPI
           if( isDist )
-            CXXBLACS::PLASCL('F',-1.,1.,N/2,nVec,AX,N/2+1,1,DescAX);
+            scalapackpp::plascl(scalapackpp::MatrixType::Full,-1.,1.,N/2,nVec,AX,N/2+1,1,DescAX);
           else
 #endif
             SetMat('N',N/2,nVec,U(-1.),AX + N/2,N,AX + N/2,N);
@@ -893,7 +897,7 @@ namespace ChronusQ {
 
 
 #ifdef CQ_ENABLE_MPI
-    std::shared_ptr<CXXBLACS::BlacsGrid> formGrid;
+    std::shared_ptr<scalapackpp::BlockCyclicDist2D> formGrid;
     // Divide up the work if forming the matrix distributed
     if( this->genSettings.formMatDist ) { 
 
@@ -907,9 +911,10 @@ namespace ChronusQ {
 
       // Create a temorary grid to form the matrix in
       // columns
-      formGrid = std::make_shared<CXXBLACS::BlacsGrid>(
-          this->comm_,N,nForm / MPISize(this->comm_), 0, 0, "linear");
-      std::tie(N,nForm) = formGrid->getLocalDims(N,nForm);
+      formGrid = std::make_shared<scalapackpp::BlockCyclicDist2D>(
+          blacspp::Grid(this->comm_, 1, MPISize(this->comm_)),
+          N, nForm / MPISize(this->comm_));
+      std::tie(N,nForm) = formGrid->get_local_dims(N,nForm);
       nStore = nForm;
 
     }
@@ -945,9 +950,8 @@ namespace ChronusQ {
       size_t j = 0;
       for(auto i = 0ul; i < nFormP; i++){ 
 
-        auto lc = formGrid->localFromGlobal(0,i);
-        if( lc.procRowOwn == formGrid->iProcRow() and
-            lc.procColOwn == formGrid->iProcCol() ) {
+        //auto lc = formGrid->localFromGlobal(0,i);
+        if( formGrid->i_own(0,i) ) {
           V[i + j*N] = 1.0; 
           j++;
         }
@@ -1014,23 +1018,24 @@ namespace ChronusQ {
     if( isDist ) {
 
       // Create the grid
-      CB_INT MB = this->genSettings.MB;
+      int64_t MB = this->genSettings.MB;
       this->fullMatGrid_ = 
-        std::make_shared<CXXBLACS::BlacsGrid>(this->comm_,MB,MB);
+        std::make_shared<scalapackpp::BlockCyclicDist2D>(
+          blacspp::Grid::square_grid(this->comm_),MB,MB);
 
       // Get local dims
-      CB_INT MLoc, NLoc;
-      std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(N,nStoreP);
+      int64_t MLoc, NLoc;
+      std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(N,nStoreP);
 
       // Set to ScaLAPACK descriptors
       this->descFullMat_ = 
-        this->fullMatGrid_->descInit(N,nStoreP,0,0,MLoc);
+        this->fullMatGrid_->descinit_noerror(N,nStoreP,MLoc);
 
 
       if( isRoot ) {
 
-        CB_INT NPROCROW = this->fullMatGrid_->nProcRow();
-        CB_INT NPROCCOL = this->fullMatGrid_->nProcCol();
+        int64_t NPROCROW = this->fullMatGrid_->grid().npr();
+        int64_t NPROCCOL = this->fullMatGrid_->grid().npc();
         size_t NLOCAL = MLoc*NLoc*sizeof(MatsT);
 
         std::cout << "  * DISTRIBUTING FULL MATRIX TO BLACS GRID\n";
@@ -1049,19 +1054,19 @@ namespace ChronusQ {
         this->fullMatrix_ = this->memManager_.template malloc<MatsT>(MLoc*NLoc);
 
       if( this->genSettings.distMatFromRoot )
-        this->fullMatGrid_->Scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
+        this->fullMatGrid_->scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
       else {
 
         // Get the array descriptiors on the form Grid
-        auto curDesc = formGrid->descInit(N,nFormP,0,0,N);
+        auto curDesc = formGrid->descinit_noerror(N,nFormP,N);
 
         // Scale / conjugate if necessary Conj(B) -> -Conj(B)
       //if( not this->doAPB_AMB )
       //  SetMat('N',N/2,nForm,MatsT(-1.),HV + (N/2),N,HV + (N/2),N);
 
         // Redistribute
-        CXXBLACS::PGEMR2D(N,nFormP,HV,1,1,curDesc,this->fullMatrix_,1,1,
-          this->descFullMat_,this->fullMatGrid_->iContxt());
+        scalapackpp::wrappers::pgemr2d(N,nFormP,HV,1,1,curDesc,this->fullMatrix_,1,1,
+          this->descFullMat_,this->fullMatGrid_->grid().context());
 
         // Place other blocks if need be
         if( not this->doAPB_AMB ) {
@@ -1070,14 +1075,14 @@ namespace ChronusQ {
           SetMat('R',N,nForm,MatsT(-1.),HV,N,HV,N);
 
           // Lower right A
-          CXXBLACS::PGEMR2D(N/2,N/2,HV,1,1,curDesc,
+          scalapackpp::wrappers::pgemr2d(N/2,N/2,HV,1,1,curDesc,
             this->fullMatrix_,N/2+1,N/2+1, this->descFullMat_,
-            this->fullMatGrid_->iContxt());
+            this->fullMatGrid_->grid().context());
 
           // Upper right B
-          CXXBLACS::PGEMR2D(N/2,N/2,HV,N/2+1,1,curDesc,
+          scalapackpp::wrappers::pgemr2d(N/2,N/2,HV,N/2+1,1,curDesc,
             this->fullMatrix_,1,N/2+1, this->descFullMat_,
-            this->fullMatGrid_->iContxt());
+            this->fullMatGrid_->grid().context());
 
         }
 
@@ -1173,11 +1178,11 @@ namespace ChronusQ {
 
 
       size_t N = this->nSingleDim_;
-      CB_INT NLoc = N, MLoc = N;
+      int64_t NLoc = N, MLoc = N;
 
 #ifdef CQ_ENABLE_MPI
       if( isDist )
-        std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(N,N);
+        std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(N,N);
 #endif
 
 
@@ -1189,19 +1194,19 @@ namespace ChronusQ {
 
       // ScaLAPACK offsets
       MatsT* FM = this->fullMatrix_;
-      CB_INT IM = 1  , JM = 1;
-      CB_INT IK = N+1, JK = 1;
+      int64_t IM = 1  , JM = 1;
+      int64_t IK = N+1, JK = 1;
 
 #ifdef CQ_ENABLE_MPI
       // ScaLAPACK DESC
-      CXXBLACS::ScaLAPACK_Desc_t descMem, descFull;
+      scalapackpp::scalapack_desc descMem, descFull;
       if( isDist ) {
 
-        CB_INT NLocMem, MLocMem;
-        std::tie(MLocMem,NLocMem) = this->fullMatGrid_->getLocalDims(2*N,N);
+        int64_t NLocMem, MLocMem;
+        std::tie(MLocMem,NLocMem) = this->fullMatGrid_->get_local_dims(2*N,N);
 
-        descMem  = this->fullMatGrid_->descInit(2*N,N,0,0,MLocMem);
-        descFull = this->fullMatGrid_->descInit(N,N  ,0,0,MLoc   );
+        descMem  = this->fullMatGrid_->descinit_noerror(2*N,N,MLocMem);
+        descFull = this->fullMatGrid_->descinit_noerror(N,N  ,MLoc   );
 
       }
 #endif
@@ -1249,10 +1254,10 @@ namespace ChronusQ {
     } else if( doAPB_AMB ) {
 
 
-      CB_INT NLoc = this->nSingleDim_, MLoc = NLoc;
+      int64_t NLoc = this->nSingleDim_, MLoc = NLoc;
 #ifdef CQ_ENABLE_MPI
       if( isDist )
-        std::tie(MLoc,NLoc) = this->fullMatGrid_->getLocalDims(NLoc,NLoc);
+        std::tie(MLoc,NLoc) = this->fullMatGrid_->get_local_dims(NLoc,NLoc);
 #endif
 
 
@@ -1265,17 +1270,17 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
         size_t N = this->nSingleDim_;
-        CB_INT ICTXT = this->fullMatGrid_->iContxt();
+        int64_t ICTXT = this->fullMatGrid_->grid().context();
 
-        CB_INT NLocMem, MLocMem;
-        std::tie(MLocMem,NLocMem) = this->fullMatGrid_->getLocalDims(N,N/2);
+        int64_t NLocMem, MLocMem;
+        std::tie(MLocMem,NLocMem) = this->fullMatGrid_->get_local_dims(N,N/2);
 
-        auto descMem  = this->fullMatGrid_->descInit(N,N/2,0,0,MLocMem);
-        auto descFull = this->fullMatGrid_->descInit(N,N  ,0,0,MLoc   );
+        auto descMem  = this->fullMatGrid_->descinit_noerror(N,N/2,MLocMem);
+        auto descFull = this->fullMatGrid_->descinit_noerror(N,N  ,MLoc   );
 
-        CXXBLACS::PGEMR2D(N/2,N/2,this->fullMatrix_,1,1,descMem,
+        scalapackpp::wrappers::pgemr2d(N/2,N/2,this->fullMatrix_,1,1,descMem,
           full,(N/2)+1,1,descFull,ICTXT);
-        CXXBLACS::PGEMR2D(N/2,N/2,this->fullMatrix_,(N/2)+1,1,descMem,
+        scalapackpp::wrappers::pgemr2d(N/2,N/2,this->fullMatrix_,(N/2)+1,1,descMem,
           full,1,(N/2)+1,descFull,ICTXT);
 #endif
 
@@ -1686,22 +1691,22 @@ namespace ChronusQ {
       RHSa = this->memManager_.template malloc<MatsT>(this->fdrSettings.nRHS * N);
 
     // Space for distributed RHS and property gradient
-    CB_INT NLoc = N, NRHSLoc = this->fdrSettings.nRHS;
+    int64_t NLoc = N, NRHSLoc = this->fdrSettings.nRHS;
 
 
     MatsT* distRHS = nullptr;
     MatsT* distG   = nullptr;
 #ifdef CQ_ENABLE_MPI
-    CXXBLACS::ScaLAPACK_Desc_t DescRHS, DescG;
+    scalapackpp::scalapack_desc DescRHS, DescG;
     if( isDist ) {
 
-      std::tie(NLoc,NRHSLoc) = this->fullMatGrid_->getLocalDims(NLoc,NRHSLoc);
+      std::tie(NLoc,NRHSLoc) = this->fullMatGrid_->get_local_dims(NLoc,NRHSLoc);
 
       if( NLoc and NRHSLoc )
         distRHS = this->memManager_.template malloc<MatsT>(NLoc * NRHSLoc);
 
       DescRHS = 
-        this->fullMatGrid_->descInit(N,this->fdrSettings.nRHS,0,0,NLoc);
+        this->fullMatGrid_->descinit_noerror(N,this->fdrSettings.nRHS,NLoc);
     }
 #endif
 
@@ -1711,20 +1716,20 @@ namespace ChronusQ {
 
       if( isRoot ) std::tie(nProp,g) = this->formPropGrad(op);    
 
-      CB_INT NPropLoc = nProp;
+      int64_t NPropLoc = nProp;
 #ifdef CQ_ENABLE_MPI
       if( isDist ) {
 
         // Distribute property gradient
         MPIBCast(nProp,0,this->comm_);
-        std::tie(NLoc,NPropLoc) = this->fullMatGrid_->getLocalDims(N,nProp);
+        std::tie(NLoc,NPropLoc) = this->fullMatGrid_->get_local_dims(N,nProp);
 
         if( NLoc and NPropLoc )
           distG = this->memManager_.template malloc<MatsT>(NLoc*NPropLoc);
         
-        DescG = this->fullMatGrid_->descInit(N,nProp,0,0,NLoc);
+        DescG = this->fullMatGrid_->descinit_noerror(N,nProp,NLoc);
 
-        this->fullMatGrid_->Scatter(N,nProp,g,N,distG,NLoc,0,0);
+        this->fullMatGrid_->scatter(N,nProp,g,N,distG,NLoc,0,0);
 
       } 
 #endif
@@ -1778,7 +1783,7 @@ namespace ChronusQ {
       if( isDist ) {
 
         // Gather the RHS to root process
-        this->fullMatGrid_->Gather(N,nProp,RHS,N,distRHS,NLoc,0,0);
+        this->fullMatGrid_->gather(N,nProp,RHS,N,distRHS,NLoc,0,0);
 
       }
 #endif

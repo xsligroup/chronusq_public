@@ -20,14 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(itersolver STATIC impl.cxx)
-target_link_libraries ( itersolver PUBLIC ChronusQ::DepHeaders )
 
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK itersolver)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-
-if(CQEX_DEP)
-  add_dependencies(itersolver ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE impl.cxx)

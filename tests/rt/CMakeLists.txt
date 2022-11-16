@@ -25,18 +25,13 @@
 set(RT_TEST_SOURCE_ROOT "${TEST_ROOT}/rt" )
 set(RT_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/rt" )
   
-
 # Set up compilation of RT test exe
 add_executable(rttest ../ut.cxx rrt.cxx urt.cxx grt.cxx)
 
 target_include_directories(rttest PUBLIC ${RT_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
-target_link_libraries(rttest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
-target_link_libraries(rttest PUBLIC ChronusQ::gtest)
-
-if(CQEX_DEP)
-  add_dependencies(rttest ${CQEX_DEP})
-endif()
+target_link_libraries(rttest PUBLIC cq)
+target_link_libraries(rttest PUBLIC gtest)
 
 # Generate directories
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/rrt)
@@ -46,7 +41,6 @@ file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/grt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/urt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/grt)
-
 
 include( CQTestGeneration )
 
@@ -58,5 +52,3 @@ add_cq_test( RKS_RT   rttest "RKS_RT.*"   )
 add_cq_test( UKS_RT   rttest "UKS_RT.*"   )
 
 add_cq_test( RESTART_RT rttest "RESTART_RT.*" )
-
-
