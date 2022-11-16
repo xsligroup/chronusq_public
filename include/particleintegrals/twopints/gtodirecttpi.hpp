@@ -80,6 +80,9 @@ namespace ChronusQ {
     BasisSet& basisSet() { return basisSet_; }
     BasisSet& basisSet2() { return basisSet2_; }
     Molecule& molecule() { return molecule_; }
+    const BasisSet& basisSet() const { return basisSet_; }
+    const BasisSet& basisSet2() const { return basisSet2_; }
+    const Molecule& molecule() const { return molecule_; }
     double threshSchwarz() const { return threshSchwarz_; }
     double*& schwarz()  { return schwarz_; }
     double*& schwarz2() { return schwarz2_; }

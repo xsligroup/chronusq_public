@@ -20,13 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(findiff STATIC geomgrad.cxx)
-target_link_libraries( findiff PUBLIC ChronusQ::DepHeaders )
 
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK findiff)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(findiff ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE geomgrad.cxx)

@@ -20,18 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(wavefunction STATIC impl.cxx)
-target_link_libraries( wavefunction PUBLIC ChronusQ::DepHeaders )
+target_sources(cq PRIVATE impl.cxx)
 
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK wavefunction)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-
-if( TARGET tiledarray )
-  add_dependencies( wavefunction tiledarray ) 
-endif()
-
-if(CQEX_DEP)
-  add_dependencies(wavefunction ${CQEX_DEP})
-endif()

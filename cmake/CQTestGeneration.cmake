@@ -21,7 +21,6 @@
 #   E-Mail: xsli@uw.edu
 #
 
-
 # Add a regular test
 function( add_cq_test _test_name _test_exe _filter )
 

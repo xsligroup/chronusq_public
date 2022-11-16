@@ -1,0 +1,53 @@
+#
+#  Molecule Specification 
+#
+[Molecule]
+charge = 0 
+mult = 2 
+geom:
+ Na 0.0 0.0 0.0 
+# 
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+TABLKSIZE = 8
+USEDIIS = true
+NDIIS = 4
+ETOL = 1e-12
+TTOL = 1e-10
+
+[EOMCC]
+NROOTS = 7
+#DavidsonSpecifyEnergy = 0.1
+#DavidsonSortByDistance = False
+#DavidsonGuessMultiplier = 5
+#DavidsonSubspaceMultiplier = 5
+OscillatorStrength = True
+#DAVIDSONMAXMACROITER = 1
+#HBARTYPE = explicit
+#DIAGMETHOD = full
+#GRAMSCHMIDTREPEAT = 2
+#FROZENOCCUPIED = 1-10
+#CVSCORE = 11
+#CVSCONTINUUM = 12-26
+#FROZENVRITUAL = 19-26
+#DAVIDSONRCHECKESIDUAL = false
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+INCFOCK = off 
+
+[MISC]
+MEM = 256 MB
+nsmp = 1
+
+[INTS]
+ALG = INCORE
+

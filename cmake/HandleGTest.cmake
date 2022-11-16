@@ -20,33 +20,12 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
+include( FetchContent ) 
 
-# CQ GTest TARGET
-add_library( ChronusQ::gtest INTERFACE IMPORTED )
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY      https://github.com/google/googletest.git
+  GIT_TAG             main
+)
 
-# Try to find GTest
-find_package( GTest QUIET )
-
-if( GTEST_FOUND )
-  
-  message(STATUS "Found GTest!" )
-  target_link_libraries( ChronusQ::gtest INTERFACE GTest::GTest )
-
-else()
-
-  # Pull GTest
-  message(STATUS "Could not find GTest! Building..." )
-
-  include( DownloadProject ) 
-  download_project(
-    PROJ                googletest
-    GIT_REPOSITORY      https://github.com/google/googletest.git
-    GIT_TAG             main
-    UPDATE_DISCONNECTED 1
-  )
-
-  add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-
-  target_link_libraries( ChronusQ::gtest INTERFACE gtest )
-
-endif()
+FetchContent_MakeAvailable(googletest)

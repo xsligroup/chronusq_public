@@ -21,40 +21,37 @@
 #   E-Mail: xsli@uw.edu
 #
 
-include(ExternalProject)
-set( LIBXC_PREFIX ${PROJECT_SOURCE_DIR}/external/libxc )
-set( LIBXC_INCLUDEDIR ${LIBXC_PREFIX}/include )
-set( LIBXC_LIBDIR ${LIBXC_PREFIX}/lib )
+include(FetchContent)
 
-if( NOT EXISTS "${LIBXC_PREFIX}/include/xc.h" )
+FetchContent_Declare(
+  libxc
+  GIT_REPOSITORY https://gitlab.com/eduard1/libxc.git
+  GIT_TAG        v5.0.0-plus-prs-324-351
+)
+set( Libxc_VERSION 5.0.0 )
 
-  ExternalProject_Add(libxc
-    PREFIX ${LIBXC_PREFIX}
-    URL "${LIBXC_PREFIX}/libxc-4.0.4.tar.gz"
-    CONFIGURE_COMMAND ./configure 
-      --prefix=${LIBXC_PREFIX} 
-      #CC=gcc
-      #CFLAGS=${CMAKE_C_FLAGS} 
-      #FC=gfortran
-    BUILD_COMMAND make
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND make install
-  )
+set( OLD_BUILD_TESTING ${BUILD_TESTING} )
+set( BUILD_TESTING OFF CACHE BOOL "" FORCE )
 
-  list(APPEND CQEX_DEP libxc)
-  file( MAKE_DIRECTORY ${LIBXC_INCLUDEDIR} )
-  message( STATUS "Opting to build a copy of LibXC" )
-else()
-  message( STATUS "Found LibXC installation!" )
+FetchContent_MakeAvailable( libxc )
+if( TARGET xc ) 
+  message( "XC IS A TARGET!" )
+endif()
+add_library( Libxc::xc ALIAS xc )
+target_include_directories( xc 
+  PUBLIC 
+    $<BUILD_INTERFACE:${libxc_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${libxc_BINARY_DIR}/src>
+    $<BUILD_INTERFACE:${libxc_BINARY_DIR}>
+    $<BUILD_INTERFACE:${libxc_BINARY_DIR}/gen_funcidx>
+)
+
+# disable unity builds for libxc
+if (CMAKE_UNITY_BUILD)
+  set_target_properties(xc PROPERTIES UNITY_BUILD OFF)
+  message(STATUS "Will disable unity-build for Libxc::xc")
 endif()
 
-set_property( TARGET ChronusQ::Dependencies APPEND PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES ${LIBXC_INCLUDEDIR}
-)
-set_property( TARGET ChronusQ::DepHeaders APPEND PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES ${LIBXC_INCLUDEDIR}
-)
+set( BUILD_TESTING ${OLD_BUILD_TESTING} CACHE BOOL "" FORCE )
 
-set_property( TARGET ChronusQ::Dependencies APPEND PROPERTY
-  INTERFACE_LINK_LIBRARIES ${LIBXC_LIBDIR}/libxc.a
-)
+target_link_libraries( cq PUBLIC Libxc::xc )

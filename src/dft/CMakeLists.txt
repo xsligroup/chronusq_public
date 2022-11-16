@@ -21,13 +21,4 @@
 #   E-Mail: xsli@uw.edu
 #
 
-add_library(dft STATIC epc.cxx util.cxx )
-target_link_libraries( dft PUBLIC ChronusQ::DepHeaders )
-
-# Append grid to executable link
-list(APPEND CQEX_LINK dft )
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(dft ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE epc.cxx util.cxx )

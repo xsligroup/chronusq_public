@@ -21,26 +21,19 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-
-
 #include <cxxapi/boilerplate.hpp>
 // Workaround to intel compiler bug that breaks libint ERIs
 #if !LIBINT2_CONSTEXPR_STATICS
   #include <libint2/statics_definition.h>
 #endif
 
-
 // GTest header
 #include <gtest/gtest.h>
-
 
 // UT Headers
 #ifdef CQ_FUNC_TEST
   #include <func.hpp>
 #endif
-
-
-
 
 int main(int argc, char **argv) {
 
@@ -62,8 +55,6 @@ int main(int argc, char **argv) {
   }
 #endif
 
-
-
   // Init GT and run tests
   ::testing::InitGoogleTest(&argc, argv);
   auto gt_return = RUN_ALL_TESTS();
@@ -72,5 +63,4 @@ int main(int argc, char **argv) {
   ChronusQ::finalize();
 
   return gt_return; // return GT result
-
 }

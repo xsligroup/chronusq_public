@@ -42,8 +42,6 @@ namespace ChronusQ {
     bool isRoot = MPIRank(this->comm_) == 0;
     this->mSS_ = std::min(this->mSS_,this->N_);
     this->nGuess_ = std::min(this->nGuess_,this->N_);
-     
-    alloc(); // Allocate Scratch space
     
     if( isRoot ) {
       std::cout << "\n  * IterDiagonalizer will solve for " << nRoots_ 
@@ -67,11 +65,13 @@ namespace ChronusQ {
       std::cout << "\n\n" << std::endl;
     }
 
+    alloc(); // Allocate Scratch space
+
     // Macro iterations UNFINISHED
     for(auto iMacro = 0; iMacro < this->maxMacroIter_; iMacro++) {
 
-      bool converged = runMicro();
-      if( converged ) break;
+      this->converged_ = runMicro();
+      if( this->converged_ ) break;
 
       restart();
     }

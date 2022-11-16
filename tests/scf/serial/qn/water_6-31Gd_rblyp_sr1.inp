@@ -22,6 +22,7 @@ job = SCF
 [SCF]
 Alg = NR
 NRApprox = SR1
+nKeep = 15
 
 [BASIS]
 basis = 6-31G(d) 

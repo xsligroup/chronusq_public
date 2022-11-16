@@ -1,0 +1,35 @@
+diff --git a/include/mxx/datatypes.hpp b/include/mxx/datatypes.hpp
+index 9472cf9..6ca9531 100644
+--- a/include/mxx/datatypes.hpp
++++ b/include/mxx/datatypes.hpp
+@@ -37,6 +37,8 @@
+ #include <typeinfo>
+ #include <unordered_map>
+ #include <iostream>
++#include <complex>
++#include <stdbool.h>
+ 
+ #include "common.hpp"
+ #include "type_traits.hpp"
+@@ -251,6 +253,9 @@ template <> class is_builtin_type<ctype> : public std::true_type {};        \
+ // calls the given macro on each pair of builtin type and corresponding
+ // MPI_Datatype
+ #define MXX_FOR_ALL_BUILTIN(BUILTIN_TYPE)                                      \
++/* bool */                                                                     \
++BUILTIN_TYPE(bool, MPI_C_BOOL);                                                \
++                                                                               \
+ /* char */                                                                     \
+ BUILTIN_TYPE(char, MPI_CHAR)                                                   \
+ BUILTIN_TYPE(unsigned char, MPI_UNSIGNED_CHAR)                                 \
+@@ -276,6 +281,11 @@ BUILTIN_TYPE(long long, MPI_LONG_LONG)                                         \
+ BUILTIN_TYPE(float, MPI_FLOAT)                                                 \
+ BUILTIN_TYPE(double, MPI_DOUBLE)                                               \
+ BUILTIN_TYPE(long double, MPI_LONG_DOUBLE)                                     \
++                                                                               \
++/* complex */                                                                  \
++BUILTIN_TYPE(std::complex<float>, MPI_C_FLOAT_COMPLEX);                        \
++BUILTIN_TYPE(std::complex<double>, MPI_C_DOUBLE_COMPLEX);                      \
++BUILTIN_TYPE(std::complex<long double>, MPI_C_LONG_DOUBLE_COMPLEX);            \
+ 
+ 
+ MXX_FOR_ALL_BUILTIN(MXX_DATATYPE_MPI_BUILTIN)

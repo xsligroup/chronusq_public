@@ -24,7 +24,6 @@
 # Directories for RESP tests
 set(RESP_TEST_SOURCE_ROOT "${TEST_ROOT}/resp" )
 set(RESP_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/resp" )
-  
 
 # Set up compilation of RESP test exe
 add_executable(resptest ../ut.cxx rres.cxx rfdr.cxx rmor.cxx
@@ -37,12 +36,8 @@ add_executable(resptest ../ut.cxx rres.cxx rfdr.cxx rmor.cxx
 
 target_include_directories(resptest PUBLIC ${RESP_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
-target_link_libraries(resptest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
-target_link_libraries(resptest PUBLIC ChronusQ::gtest)
-
-if(CQEX_DEP)
-  add_dependencies(resptest ${CQEX_DEP})
-endif()
+target_link_libraries(resptest PUBLIC cq)
+target_link_libraries(resptest PUBLIC gtest)
 
 # Generate directories
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/rresp)
@@ -105,8 +100,6 @@ add_cq_test( RHF_MOR           resptest "RHF_MOR.*"          )
 add_cq_test( MISC_RESP         resptest "MISC_RESP.*"        )
 add_cq_test( NEOHF_RESIDUE     resptest "NEOHF_RESIDUE.*"    )
 
-
-
 if( CQ_ENABLE_MPI )
 
   add_cq_mpi_test( RHF_RESIDUE_MPI  2  resptest "RHF_RESIDUE.*" )
@@ -118,7 +111,6 @@ if( CQ_ENABLE_MPI )
   add_cq_mpi_test( RHF_MOR_MPI  2  resptest "RHF_MOR.*"  )
 
 endif()
-
 
 #if( CQ_ENABLE_MPI )
 #

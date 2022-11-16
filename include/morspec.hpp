@@ -949,12 +949,12 @@ namespace ChronusQ {
 
 
       // If distributed full matrix, allocate some scratch space
-      CB_INT MLoc, NLoc;
+      int64_t MLoc, NLoc;
 #ifdef CQ_ENABLE_MPI
       if( respFactory_.genSettings.isDist() ) {
 
         auto * grid = respFactory_.fullMatGrid();
-        std::tie(MLoc,NLoc) = grid->getLocalDims(N,nModel);
+        std::tie(MLoc,NLoc) = grid->get_local_dims(N,nModel);
 
         if( MLoc and NLoc ) {
 
@@ -968,11 +968,11 @@ namespace ChronusQ {
 
         }
 
-        cList.back().DescX  = grid->descInit(N,nModel,0,0,MLoc);
+        cList.back().DescX  = grid->descinit_noerror(N,nModel,MLoc);
         cList.back().DescAX = cList.back().DescX;
 
         // Scatter modelBasis1_ to the BLACS grid
-        grid->Scatter(N,nModel,modelBasis1_,N,cList.back().X,MLoc,0,0);
+        grid->scatter(N,nModel,modelBasis1_,N,cList.back().X,MLoc,0,0);
 
       }
 #endif
@@ -991,7 +991,7 @@ namespace ChronusQ {
         auto * grid = respFactory_.fullMatGrid();
 
         // Gather results to root process modelBasis1_LT
-        grid->Gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
+        grid->gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
 
         // Dealloc memory if need be
         //if( cList.back().X )  this->memManager_.free(cList.back().X );
@@ -1035,7 +1035,7 @@ namespace ChronusQ {
         auto * grid = respFactory_.fullMatGrid();
 
         // Scatter modelBasis1_LT_ to the BLACS grid
-        grid->Scatter(N,nModel,modelBasis1_LT_,N,cList.back().X,MLoc,0,0);
+        grid->scatter(N,nModel,modelBasis1_LT_,N,cList.back().X,MLoc,0,0);
 #endif
 
 
@@ -1056,7 +1056,7 @@ namespace ChronusQ {
         auto * grid = respFactory_.fullMatGrid();
 
         // Gather results to root process modelBasis1_LT
-        grid->Gather(N,nModel,KV,N,cList.back().AX,MLoc,0,0);
+        grid->gather(N,nModel,KV,N,cList.back().AX,MLoc,0,0);
 
         // Dealloc memory if need be
         if( cList.back().X )  this->memManager_.free(cList.back().X );
@@ -1407,13 +1407,13 @@ namespace ChronusQ {
     cList.back().X      = modelBasis1_;
     cList.back().AX     = modelBasis1_LT_;
 
-    CB_INT MLoc, NLoc;
+    int64_t MLoc, NLoc;
 
 #ifdef CQ_ENABLE_MPI
     if( respFactory_.genSettings.isDist() ) {
 
       auto * grid = respFactory_.fullMatGrid();
-      std::tie(MLoc,NLoc) = grid->getLocalDims(N,nModel);
+      std::tie(MLoc,NLoc) = grid->get_local_dims(N,nModel);
 
       if( MLoc and NLoc ) {
 
@@ -1427,10 +1427,10 @@ namespace ChronusQ {
 
       }
 
-      cList.back().DescX  = grid->descInit(N,nModel,0,0,MLoc);
+      cList.back().DescX  = grid->descinit_noerror(N,nModel,MLoc);
       cList.back().DescAX = cList.back().DescX;
 
-      grid->Scatter(N,nModel,modelBasis1_,N,cList.back().X,MLoc,0,0);
+      grid->scatter(N,nModel,modelBasis1_,N,cList.back().X,MLoc,0,0);
 
     }
 #endif
@@ -1444,7 +1444,7 @@ namespace ChronusQ {
     if( respFactory_.genSettings.isDist() ) {
 
       auto * grid = respFactory_.fullMatGrid();
-      grid->Gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
+      grid->gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
 
       if( cList.back().X )  this->memManager_.free(cList.back().X );
       if( cList.back().AX ) this->memManager_.free(cList.back().AX);

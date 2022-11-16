@@ -23,19 +23,27 @@
  */
 #pragma once
 
+
 #include <cqlinalg/cqlinalg_config.hpp>
+
+#ifdef CQ_ENABLE_MPI
+#include <scalapackpp/pblas/gemm.hpp>
+#include <scalapackpp/util/type_conversions.hpp>
+#endif
 
 namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
 
   template <typename _F>
-  void Gemm_MPI(char TRANSA, char TRANSB, CB_INT M, CB_INT N, CB_INT K, _F ALPHA,
-    _F *A, CB_INT IA, CB_INT JA, CXXBLACS::ScaLAPACK_Desc_t DESCA, 
-    _F *B, CB_INT IB, CB_INT JB, CXXBLACS::ScaLAPACK_Desc_t DESCB, 
-    _F BETA, _F *C, CB_INT IC, CB_INT JC, CXXBLACS::ScaLAPACK_Desc_t DESCC) {
+  void Gemm_MPI(char TRANSA, char TRANSB, int64_t M, int64_t N, int64_t K, _F ALPHA,
+    _F *A, int64_t IA, int64_t JA, scalapackpp::scalapack_desc DESCA, 
+    _F *B, int64_t IB, int64_t JB, scalapackpp::scalapack_desc DESCB, 
+    _F BETA, _F *C, int64_t IC, int64_t JC, scalapackpp::scalapack_desc DESCC) {
 
-    CXXBLACS::PGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,IA,JA,DESCA,B,IB,JB,DESCB,
+    auto opa = scalapackpp::detail::to_op(TRANSA);
+    auto opb = scalapackpp::detail::to_op(TRANSB);
+    scalapackpp::pgemm(opa,opb,M,N,K,ALPHA,A,IA,JA,DESCA,B,IB,JB,DESCB,
       BETA,C,IC,JC,DESCC);
 
   }

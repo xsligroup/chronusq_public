@@ -323,7 +323,7 @@ namespace ChronusQ {
         A[i*(nvec+1)+i] = sum;
       }
     }else {
-      // At later iterations, don't build the whote matrix.
+      // At later iterations, don't build the whole matrix.
       // Just replace one row/column.
     
       // Which row/column will be replaced?

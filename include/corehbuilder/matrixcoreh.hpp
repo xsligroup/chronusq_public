@@ -76,6 +76,7 @@ namespace ChronusQ {
     virtual std::vector<double> getGrad(EMPerturbation&,
       SingleSlater<MatsT,IntsT>&) {
       CErr("Matrix CoreH gradient NYI",std::cout);
+      abort();
     }
 
   };

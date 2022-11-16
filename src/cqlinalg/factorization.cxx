@@ -24,6 +24,7 @@
 #include <cqlinalg/factorization.hpp>
 #include <cqlinalg/util.hpp>
 #include <lapack.hh>
+#include <lapack/fortran.h>
 
 #include <cerr.hpp>
 #include <util/matout.hpp>

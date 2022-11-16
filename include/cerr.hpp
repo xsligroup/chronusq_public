@@ -25,15 +25,14 @@
 
 #include <chronusq_sys.hpp>
 #include <libint2/cxxapi.h>
-//#include <cxxapi/boilerplate.hpp>
-#include <util/mpi.hpp>
+#include <cxxapi/boilerplate.hpp>
 
 #define __CERR_RUNTIMEERR__ // Throw a runtime error on CErr
 
 namespace ChronusQ {
 
   /**
-   *  Standardized error handelling.
+   *  Standardized error handling.
    *
    *  Prints a message and properly cleans up the ChronusQ runtime
    */ 
@@ -51,10 +50,7 @@ namespace ChronusQ {
 #ifdef __CERR_RUNTIMEERR__
     throw std::runtime_error("FATAL");
 #else
-    libint2::finalize();
-  #ifdef CQ_ENABLE_MPI
-    MPI_Finalize();
-  #endif
+    finalize();
     exit(EXIT_FAILURE);
 #endif
   };

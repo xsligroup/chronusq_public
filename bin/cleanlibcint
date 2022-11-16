@@ -1,6 +1,0 @@
-#!/bin/bash
-
-cd external
-rm -rf libcint-*
-rm -rf libcint/src
-rm -rf libcint/tmp
