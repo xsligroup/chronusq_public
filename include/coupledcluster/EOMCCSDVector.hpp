@@ -147,6 +147,11 @@ namespace ChronusQ {
 
     virtual size_t size() const override { return vecs_.size(); }
 
+    using SolverVectors<MatsT>::getPtr;
+    virtual MatsT* getPtr(size_t i = 0) override {
+      CErr("Requesting pointer in EOMCCSDVectorSet object is invalid.");
+      return nullptr;
+    }
     // Get element
     virtual MatsT get(size_t i, size_t j) const override {
       CErr("Get element in EOMCCSDVectorSet object is invalid.");
@@ -273,6 +278,10 @@ namespace ChronusQ {
     virtual size_t length() const override { return eomccSet_.length(); }
     virtual size_t size() const override { return eomccSet_.size(); }
 
+    using SolverVectors<MatsT>::getPtr;
+    virtual MatsT* getPtr(size_t i = 0) override {
+      return eomccSet_.getPtr(i);
+    }
     // Get element
     virtual MatsT get(size_t i, size_t j) const override {
       return eomccSet_.get(i, j);
