@@ -167,6 +167,7 @@ namespace ChronusQ {
     virtual std::vector<double> getGDGrad(SingleSlater<MatsT,IntsT>&,
       EMPerturbation&, double xHFX = 1.) {
         CErr("Gradients of NEOKohnShamBuilder NYI!");
+        abort();
     }
   };
 

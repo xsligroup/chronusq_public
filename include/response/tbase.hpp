@@ -33,6 +33,12 @@
 #include <util/timer.hpp>
 #include <itersolver.hpp>
 
+#ifdef CQ_ENABLE_MPI
+#include <scalapackpp/block_cyclic.hpp>
+#include <scalapackpp/types.hpp>
+#include <scalapackpp/information.hpp>
+#endif
+
 
 namespace ChronusQ {
 
@@ -47,8 +53,8 @@ namespace ChronusQ {
     T* AX;
 
 #ifdef CQ_ENABLE_MPI
-    CXXBLACS::ScaLAPACK_Desc_t DescX;
-    CXXBLACS::ScaLAPACK_Desc_t DescAX;
+    scalapackpp::scalapack_desc DescX;
+    scalapackpp::scalapack_desc DescAX;
 #endif
 
   };
@@ -96,8 +102,8 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
 
-    std::shared_ptr<CXXBLACS::BlacsGrid> fullMatGrid_;
-    CXXBLACS::ScaLAPACK_Desc_t           descFullMat_;
+    std::shared_ptr<scalapackpp::BlockCyclicDist2D> fullMatGrid_;
+    scalapackpp::scalapack_desc    descFullMat_;
 
 #endif
 
@@ -545,7 +551,7 @@ namespace ChronusQ {
     T*                    fullMatrix()  const { return fullMatrix_; }
 
 #ifdef CQ_ENABLE_MPI
-    CXXBLACS::BlacsGrid * fullMatGrid() const { return fullMatGrid_.get(); }
+    auto* fullMatGrid() const { return fullMatGrid_.get(); }
 #endif
 
 
@@ -590,9 +596,10 @@ namespace ChronusQ {
     cList.back().AX   = AV.getPtr();
 
 #ifdef CQ_ENABLE_MPI
-    CB_INT MLoc, NLoc;
+    int64_t MLoc, NLoc;
     if( genSettings.isDist() ) {
-      std::tie(MLoc,NLoc) = fullMatGrid_->getLocalDims(nSingleDim_,nVec);
+      //std::tie(MLoc,NLoc) = fullMatGrid_->getLocalDims(nSingleDim_,nVec);
+      std::tie(MLoc,NLoc) = fullMatGrid_->get_local_dims(nSingleDim_, nVec);
       if( MLoc and NLoc ) {
 
         cList.back().X  = this->memManager_.template malloc<U>(MLoc*NLoc);
@@ -605,10 +612,10 @@ namespace ChronusQ {
 
       }
 
-      cList.back().DescX  = fullMatGrid_->descInit(nSingleDim_,nVec,0,0,MLoc);
+      cList.back().DescX  = fullMatGrid_->descinit_noerror(nSingleDim_,nVec,MLoc);
       cList.back().DescAX = cList.back().DescX;
 
-      fullMatGrid_->Scatter(nSingleDim_,nVec,V.getPtr(),nSingleDim_,cList.back().X,
+      fullMatGrid_->scatter(nSingleDim_,nVec,V.getPtr(),nSingleDim_,cList.back().X,
         MLoc,0,0);
     }
 #endif
@@ -618,7 +625,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
     if( genSettings.isDist() ) {
 
-      fullMatGrid_->Gather(nSingleDim_,nVec,AV.getPtr(),nSingleDim_,cList.back().AX,
+      fullMatGrid_->gather(nSingleDim_,nVec,AV.getPtr(),nSingleDim_,cList.back().AX,
         MLoc,0,0);
 
       if( cList.back().X  ) this->memManager_.free(cList.back().X );

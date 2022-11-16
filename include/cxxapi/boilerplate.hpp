@@ -26,16 +26,29 @@
 
 #include <chronusq_sys.hpp>
 #include <libint2/cxxapi.h>
-#include <particleintegrals.hpp>
-
+#include <basisset/basisset_def.hpp>
 #include <util/threads.hpp>
 #include <H5Cpp.h>
+
+#include <util/mpi.hpp>
 
 #ifdef CQ_HAS_TA
   #include <tiledarray.h>
 #endif
 
 namespace ChronusQ {
+
+  namespace detail {
+    inline bool& initialized_mpi_accessor() { static bool value = false; return value; }
+    inline bool& initialized_tiledarray_accessor() { static bool value = false; return value; }
+    inline bool& initialized_libint_accessor() { static bool value = false; return value; }
+  }
+  inline bool initialized_mpi() { return detail::initialized_mpi_accessor(); }
+  inline void initialized_mpi(bool im) { detail::initialized_mpi_accessor() = im; }
+  inline bool initialized_tiledarray() { return detail::initialized_tiledarray_accessor(); }
+  inline void initialized_tiledarray(bool it) { detail::initialized_tiledarray_accessor() = it; }
+  inline bool initialized_libint() { return detail::initialized_libint_accessor(); }
+  inline void initialized_libint(bool it) { detail::initialized_libint_accessor() = it; }
 
   void generateFmTTable();
 
@@ -50,7 +63,10 @@ namespace ChronusQ {
   inline void initialize() {
 
     // Bootstrap libint2 env
-    libint2::initialize();
+    if (!libint2::initialized()) {
+      libint2::initialize();
+      initialized_libint(true);
+    }
 
     // SS start
     pop_cart_ang_list();  // populate cartesian angular momentum list  
@@ -64,14 +80,19 @@ namespace ChronusQ {
     SetNumThreads(1);
 
     // MPI
-#ifdef CQ_ENABLE_MPI
-  #ifdef _OPENMP
-    int mpi_th_support;
-    MPI_Init_thread(NULL,NULL,MPI_THREAD_MULTIPLE,&mpi_th_support);
-    assert(mpi_th_support == MPI_THREAD_MULTIPLE);
-  #else
-    MPI_Init(NULL,NULL);
-  #endif
+#if defined(CQ_ENABLE_MPI)
+    int mpi_already_initialized;
+    MPI_Initialized(&mpi_already_initialized);
+    if (!mpi_already_initialized) {
+#ifdef _OPENMP
+      int mpi_th_support;
+      MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpi_th_support);
+      assert(mpi_th_support == MPI_THREAD_MULTIPLE);
+#else
+      MPI_Init(NULL, NULL);
+#endif
+      initialized_mpi(true);
+    }
 #endif
 
     
@@ -92,9 +113,25 @@ namespace ChronusQ {
     libint2::finalize();
 
     // MPI
-#ifdef CQ_ENABLE_MPI
-    MPI_Finalize();
+#if defined(CQ_HAS_TA)
+    if (initialized_tiledarray()) {
+      // Finalize TA
+      TA::finalize();
+      madness::finalize();
+      initialized_tiledarray(false);
+    }
 #endif
+#if defined(CQ_ENABLE_MPI)
+    if (initialized_mpi()) {
+      MPI_Finalize();
+      initialized_mpi(false);
+    }
+#endif
+
+    if (initialized_libint()) {
+      libint2::finalize();
+      initialized_libint(false);
+    }
 
   }; // finalize
 

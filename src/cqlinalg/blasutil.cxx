@@ -27,6 +27,41 @@
 
 #include <util/matout.hpp>
 
+extern "C" {
+
+#define mkl_domatcopy MKL_Domatcopy
+void MKL_Domatcopy(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const double alpha,
+    const double * A, size_t lda,
+    double * B, size_t ldb);
+
+#define mkl_zomatcopy MKL_Zomatcopy
+void MKL_Zomatcopy(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    const dcomplex * A, size_t lda,
+    dcomplex * B, size_t ldb);
+
+#define mkl_domatcopy2 MKL_Domatcopy2
+void MKL_Domatcopy2(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const double alpha,
+    const double * A, size_t lda, size_t stridea,
+    double * B, size_t ldb, size_t strideb);
+
+#define mkl_zomatcopy2 MKL_Zomatcopy2
+void MKL_Zomatcopy2(
+    char ordering, char trans,
+    size_t rows, size_t cols,
+    const dcomplex alpha,
+    const dcomplex * A, size_t lda, size_t stridea,
+    dcomplex * B, size_t ldb, size_t strideb);
+}
+
 namespace ChronusQ {
 
   template <typename T> T ComplexScale();
@@ -915,6 +950,11 @@ namespace ChronusQ {
     char TRANSA, const dcomplex * A, size_t NI, size_t NJ, size_t NM, 
     char TRANSB, dcomplex * B, size_t NK, size_t NL, dcomplex * ASCR, dcomplex * SCR, bool increment);
 
+extern "C" {
+void openblas_set_num_threads_(int*) { }
+void openblas_get_num_threads_(int*) { }
+int openblas_get_num_threads() { return 1; }
+}
 }; // namespace ChronusQ
 
 

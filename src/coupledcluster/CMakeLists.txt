@@ -21,16 +21,5 @@
 #   E-Mail: xsli@uw.edu
 #
 if(CQ_HAS_TA)
-  add_library(coupledcluster STATIC impl.cxx) 
-  target_link_libraries( coupledcluster PUBLIC ChronusQ::DepHeaders )
-  
-  # Append coupledcluster to executable link
-  list(APPEND CQEX_LINK coupledcluster)
-  set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-  
-  if(CQEX_DEP)
-    add_dependencies(coupledcluster ${CQEX_DEP})
-  endif()
+  target_sources( cq PRIVATE TAManager.cxx impl.cxx)
 endif()
-
- 

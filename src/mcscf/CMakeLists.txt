@@ -20,13 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(mcscf STATIC impl.cxx)
-target_link_libraries( mcscf PUBLIC ChronusQ::DepHeaders)
 
-# Append mcscf to executable link
-list(APPEND CQEX_LINK mcscf)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
-
-if(CQEX_DEP)
-  add_dependencies(mcscf ${CQEX_DEP})
-endif()
+target_sources( cq PRIVATE impl.cxx)

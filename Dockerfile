@@ -36,17 +36,30 @@ WORKDIR /opt/
 RUN git clone https://urania.chem.washington.edu/chronusq/libint-cq.git && \ 
     cd /opt/libint-cq/ && \
     git checkout 2.7.0-beta.6 && \
-    mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_PATH .. && \ 
+    mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_PATH -DCMAKE_UNITY_BUILD=ON .. && \ 
     cmake --build . --target install -j 5 && \
     cd /opt/ && rm -rf libint-cq 
+
+# Compile openblas
+WORKDIR /opt/
+RUN git clone https://github.com/xianyi/OpenBLAS.git && \
+    cd /opt/OpenBLAS/ && \
+    git checkout v0.3.21 && \
+    make -j 5 CFLAGS="-Wno-error=implicit-function-declaration ${CFLAGS}" && \
+    make install $PACKAGE_INSTALL_PATH
 
 # Compile chronusq
 COPY . /opt/chronusq_public/
 WORKDIR /opt/chronusq_public/
-RUN ./bin/buildblas 5 $PACKAGE_INSTALL_PATH
-RUN mkdir build && cd build && cmake -DOPENBLAS_DYNAMIC_ARCH=ON -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_PATH .. && \
+RUN mkdir build && cd build && \
+    cmake -DOPENBLAS_DYNAMIC_ARCH=ON \
+          -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_PATH \
+          -DCMAKE_CXX_FLAGS='-O3' \
+          -DCMAKE_C_FLAGS='-O3' \
+          -DCMAKE_Fortran_FLAGS='-O3' \
+          .. && \
     cmake --build . --target install -j 5 && \
-    cd /opt/chronusq_public/ && rm -rf build && rm -rf external
+    cd /opt/chronusq_public/ && rm -rf build 
 
 # Copy chornusq to a lighter container
 FROM alpine:3.12
@@ -56,7 +69,6 @@ COPY --from=compile_stage /usr/local/lib/libhdf5* /lib64/
 COPY --from=compile_stage /usr/local/lib/libopenblas* /lib64/
 COPY --from=compile_stage /usr/local/bin/chronusq /usr/bin/
 COPY --from=compile_stage /usr/local/lib64/* /lib64/
-
 
 
 WORKDIR /home/chronusq/

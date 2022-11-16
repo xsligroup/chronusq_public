@@ -2881,12 +2881,14 @@ namespace ChronusQ {
   size_t GTODirectRelERIContraction<double,double>::directRelScaffoldLibcintSCRSize(
     const TWOBODY_CONTRACTION_TYPE & contType, const bool computeExchange) const {
     CErr("Dirac-Coulomb + Real is an invalid option",std::cout);  
+    abort();
   }
 
   template <>
   size_t GTODirectRelERIContraction<dcomplex,dcomplex>::directRelScaffoldLibcintSCRSize(
     const TWOBODY_CONTRACTION_TYPE & contType, const bool computeExchange) const {
     CErr("Complex  is an invalid option",std::cout);  
+    abort();
   }
 
 }; // namespace ChronusQ

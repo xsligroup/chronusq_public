@@ -28,7 +28,7 @@ build_intel:
         - source /home/ci_software/intel-21.1.1.sh
         - mkdir build
         - cd build
-        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/intel/21/1/1 -DCMAKE_CXX_FLAGS='-O3' -DCMAKE_C_FLAGS='-O3' -DCMAKE_Fortran_FLAGS='-O3'  ..
+        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/intel/21/1/1 -DCMAKE_BUILD_TYPE=Release  ..
         - make -j4
         - ctest
 
@@ -43,7 +43,7 @@ build_gcc:
         - source /home/ci_software/gcc-10.2.0.sh
         - mkdir build
         - cd build
-        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc/10/2/0 -DCMAKE_CXX_FLAGS='-O3' -DCMAKE_C_FLAGS='-O3' -DCMAKE_Fortran_FLAGS='-O3' ..
+        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc/10/2/0 -DCMAKE_BUILD_TYPE=Release ..
         - make -j4
         - ctest
 
@@ -55,9 +55,9 @@ build_mpi_gcc:
             - build/Testing/Temporary/LastTest.log
         name: "$CI_JOB_ID-$CI_JOB_NAME"
     script:
-        - source /home/ci_software/gcc-8.2.0_mpich-3.2.1.sh
+        - source /home/ci_software/gcc-10.2.0_mpich-3.2.1-with-boost.sh
         - mkdir build
         - cd build
-        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc/8/2/0 -DCMAKE_CXX_FLAGS='-O3' -DCMAKE_C_FLAGS='-O3' -DCMAKE_Fortran_FLAGS='-O3' -DCQ_ENABLE_MPI=ON  -DCQ_SCALAPACK_LIBRARIES="$SCALAPACK_LIBRARY_DIR/libscalapack.a" -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release ..
+        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc-mpich-boost -DFETCHCONTENT_SOURCE_DIR_SCALAPACKPP=/sw/scalapackpp -DCQ_ENABLE_MPI=ON -DCQ_ENABLE_TA=ON -DBUILD_TESTING=OFF -DBTAS_BUILD_DEPS_FROM_SOURCE=ON -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release ..
         - make -j4
         - make test

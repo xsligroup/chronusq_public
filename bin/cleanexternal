@@ -1,5 +1,0 @@
-bin/cleanblas
-bin/cleanlibcint
-bin/cleanlibint
-bin/cleanlibxc
-rm -rf external/*-*

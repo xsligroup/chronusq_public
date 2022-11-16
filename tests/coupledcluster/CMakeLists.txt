@@ -27,26 +27,25 @@ set(CC_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/coupledcluster" )
 
 
 # Set up compilation of Coupled-Cluster test exe
-add_executable(cctest ../ut.cxx x2c_cc.cxx)
-
+add_executable(cctest ../ut.cxx ccsd.cxx eom-ccsd.cxx)
 
 target_include_directories(cctest PUBLIC ${CC_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
-target_link_libraries(cctest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
-target_link_libraries(cctest PUBLIC ChronusQ::gtest)
+target_link_libraries(cctest PUBLIC cq)
+target_link_libraries(cctest PUBLIC gtest)
 
-
-if(CQEX_DEP)
-  add_dependencies(cctest ${CQEX_DEP})
-endif()
-
-
-file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/ccsd)
-
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/eom-ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/eom-ccsd)
 include( CQTestGeneration )
 
+add_cq_test( CCSD cctest "CCSD.*" )
+add_cq_test( EOM_CCSD cctest "EOM_CCSD.*" )
 
-add_cq_test( X2C_CCSD cctest "X2C_CCSD*" )
-add_cq_test( GHF_CCSD cctest "GHF_CCSD*" )
+  if( CQ_ENABLE_MPI )
+#    add_cq_mpi_test( CCSD_MPI          2   cctest "CCSD.*" )
+#    add_cq_mpi_test( EOM_CCSD_MPI      2   cctest "EOM_CCSD.*" )
+  endif()
 endif()
 

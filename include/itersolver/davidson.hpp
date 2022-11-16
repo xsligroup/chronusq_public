@@ -35,6 +35,7 @@
 #include <cerr.hpp>
 
 // #define DEBUG_DAVIDSON
+//#define DAVIDSON_PRINT_TIMING
 
 
 namespace ChronusQ {
@@ -42,63 +43,90 @@ namespace ChronusQ {
 
   template <typename _F>
   bool Davidson<_F>::runMicro() {
+
+    std::shared_ptr<SolverVectors<_F>> &VR = vecs;
+    std::shared_ptr<SolverVectors<_F>> &AVR = sigmaVecs;
     
     bool isRoot = MPIRank(this->comm_) == 0;
     bool isConverged = false;
     
     if( isRoot ) {
-      std::cout  << "\n\n";
-      std::cout  << "  * Davidson Settings:\n";
-      std::cout  << "    * Right Eigenvector is Requested. \n";
+      std::cout << std::setprecision(3) << std::scientific;
+      std::cout << std::endl << std::endl;
+      std::cout << "  * Davidson Settings:" << std::endl;
+      std::cout << "    * Right Eigenvector is Requested.";
+      auto printCheckCrit = [](bool check, double crit) {
+        if (check)
+          std::cout << crit;
+        else
+          std::cout << "N/A";
+      };
+      std::cout << std::endl << "    * Residual convergence    : ";
+      printCheckCrit(checkResidueConv, this->convCrit_);
+      std::cout << std::endl << "    * Eigenvalue convergence  : ";
+      printCheckCrit(checkEigenValueConv, eigenValueCrit);
+      std::cout << std::endl << "    * Eigenvector convergence : ";
+      printCheckCrit(checkEigenVectorConv, eigenVectorCrit);
+      std::cout << std::endl;
       
       if(this->DoLeftEigVec) {
-        std::cout  << "    * Left Eigenvector is Requested.\n";
+        std::cout  << "    * Left Eigenvector is Requested." << std::endl;
         CErr("Do Left Eig Vec is not implemented yet");
       }
       
-      if (this->EnergySpecific) {          
-        std::cout<< "    * Use Energy Specific:           " << (this->EnergySpecific ? "True" : "False") << "\n"
-                 << "      * Number of Low  Energy Roots = " << this->nHighERoots    << "\n"
-                 << "      * Number of High Energy Roots = " << this-> nLowERoots    << "\n";
+      if (this->EnergySpecific) {
+        std::cout << std::setprecision(10) << std::scientific;
+        std::cout<< "    * Use Energy Specific:           " << (this->EnergySpecific ? "True" : "False") << std::endl
+                 << "      * Number of Low  Energy Roots = " << this->nHighERoots    << std::endl
+                 << "      * Number of High Energy Roots = " << this-> nLowERoots    << std::endl;
         if(this->adaptiveERef) {
-          std::cout<< "      * Use Ground State Energy in each iteration as Reference \n";
+          std::cout<< "      * Use Ground State Energy in each iteration as Reference" << std::endl;
         } else {
-          std::cout<< "      * Energy Referene  = " << this->EnergyRef    << "\n";
+          std::cout<< "      * Energy Referene  = " << this->EnergyRef << std::endl;
         }
       }          
-      std::cout << "\n\n" << std::endl;
+      std::cout << std::endl << std::endl;
     }
     
     std::cout << std::setprecision(10) << std::scientific;
-    
-    const size_t N   = this->N_;
+
     const size_t MSS = this->mSS_;
     const size_t nR  = this->nRoots_;
     
     const size_t MSS2 = MSS * MSS;
-    const size_t NMSS = N * MSS;
-    const size_t NNR  = N * nR;
     
     const size_t nG  = this->nGuess_;
-    const size_t NNG = N * nG;  
+
+    // variables during iteration
+    size_t iter   = 0;
+    size_t nDo    = nG < MSS ? nG : MSS;
+    size_t nExam  = (whenSc > 1 ? nDo : nR);
+    size_t nVPrev = 0;     // number of vectors at previous iteration
+    size_t nVCur  = nDo;    // number of vectors at current iteration
+    const char   JOBVL  = this->DoLeftEigVec ? 'V': 'N';
+    const double VecNear = 0.1;  // criterion to determine if two vector are similar by their overlap
+    const double VecConv = eigenVectorCrit;
+    const double EConv   = eigenValueCrit;
+    std::vector<IterDiagConvStatus> SiConv(nExam); // state_i converged?
     
     // Initialize pointers
-    std::shared_ptr<SolverVectors<_F>> VR  = nullptr;
     _F *XR  = nullptr, *XRPrev = nullptr;
     std::shared_ptr<SolverVectors<_F>> VL  = nullptr;
     _F *XL  = nullptr; // for left search space
-    std::shared_ptr<SolverVectors<_F>> AVR = nullptr;
     _F *Ovlp = nullptr; // overlap is using right eigenvectors
-    std::shared_ptr<SolverVectors<_F>> R   = nullptr, S = nullptr; // Scratch space for residue and perturbed vector
     _F *SubA = nullptr;
     _F *SCR = nullptr;
 
     dcomplex *Eig = nullptr, *EPrev = nullptr;
 
-    VR     = this->vecGen_(MSS);
-    AVR    = this->vecGen_(MSS);
-    R      = this->vecGen_(nG);
-    S      = this->vecGen_(nG);
+    if (not VR or VR->size() < MSS)
+      VR   = this->vecGen_(MSS);
+    if (not AVR or AVR->size() < MSS)
+      AVR  = this->vecGen_(MSS);
+    if (not R or R->size() < nExam)
+      R    = this->vecGen_(nExam);
+    if (not S or S->size() < nExam)
+      S    = this->vecGen_(nExam);
     SubA   = this->memManager_.template malloc<_F>(MSS2);
     if(this->DoLeftEigVec) {
       VL   = this->vecGen_(MSS);
@@ -115,34 +143,22 @@ namespace ChronusQ {
       XL   = this->memManager_.template malloc<_F>(MSS2);
     }
 
-    // variables during iteration
-    std::vector<bool> SiConv(nG); // state_i converged?
-    size_t iter   = 0;
-    size_t nDo    = nG;
-    size_t nExam  = nG;
-    size_t nVPrev = 0;     // number of vectors at previous iteration
-    size_t nVCur  = nG;    // number of vectors at current iteration
-    char   JOBVL  = this->DoLeftEigVec ? 'V': 'N';
-    double VecNear = 0.1;  // criterion to determine if two vector are similar by their overlap
-    double VecConv = this->convCrit_;
-    double EConv   = VecConv * 0.01;
-
     // generate guess
     // Initailize VR as Guess, if no Guess set,
     if( Guess ) {
-      VR->set_data(0, nG, *Guess, 0);
+      VR->set_data(0, nDo, *Guess, 0, true);
 
 #ifndef DEBUG_DAVIDSON
       std::cout.setstate(std::ios_base::failbit);
 #endif
-      nVCur = VR->GramSchmidt(0,0,nG,this->memManager_,GramSchmidt_NRe,GramSchmidt_eps);
+      nVCur = VR->GramSchmidt(0,0,nDo,this->memManager_,GramSchmidt_NRe,GramSchmidt_eps);
 #ifndef DEBUG_DAVIDSON
       std::cout.clear();
 #endif
     } else {
       std::cout << "  * use unit vector guess" << std::endl;
       VR->clear();
-      for(auto i = 0ul; i < nG; i++) VR->set(i, i, 1.0);
+      for(auto i = 0ul; i < nDo; i++) VR->set(i, i, 1.0);
     } // right vector guess
 
     // left vector guess
@@ -164,7 +180,8 @@ namespace ChronusQ {
       
       if( isRoot ) {
         std::cout << "\n    DavidsonIter " << std::setw(5) << iter+1  
-                  << ": Number of new vectors = " << std::setw(5) << nDo << std::endl;
+                  << ": Number of new vectors = " << std::setw(5) << nDo
+                  << ", Subspace dimension = " << std::setw(5) << nVCur << std::endl;
       } // Root Only
 
       auto LTst = tick();
@@ -173,9 +190,19 @@ namespace ChronusQ {
 //      if (isRoot) {
         SolverVectorsView<_F> VRSend(*VR, nVPrev), AVRRecv(*AVR, nVPrev);
         this->linearTrans_(nDo, VRSend, AVRRecv);
+#ifdef DEBUG_DAVIDSON
+        std::cout << "HH Davidson Norm of AVR: " << AVR->norm2F(nVPrev, nDo) << std::endl;
+#endif
 //      }
       
       double LTdur = tock(LTst);
+
+#ifdef DAVIDSON_PRINT_TIMING
+      if( isRoot ) {
+        std::cout << "      Linear transformation took "
+        << std::fixed << std::setprecision(6) << LTdur << " s." << std::endl;
+      } // Root Only
+#endif
 
 #ifdef DEBUG_DAVIDSON
       VR->print(std::cout, "VR");
@@ -187,24 +214,56 @@ namespace ChronusQ {
       //SubA <- VL * AVR
         CErr("Do Left Eig Vec is not implemented yet");
       } else {
+#ifdef DAVIDSON_PRINT_TIMING
+        auto DOTst = tick();
+#endif
       // SubA <- VR_\dagger * AVR
-        VR->dot_product(0, *AVR, 0, nVCur,nVCur,SubA,nVCur);
+//        VR->dot_product(0, *AVR, 0, nVCur,nVCur,SubA,MSS);
+        VR->dot_product(nVPrev, *AVR, 0, nDo, nVCur, SubA + nVPrev, MSS);
+        VR->dot_product(0, *AVR, nVPrev, nVPrev, nDo, SubA + nVPrev * MSS,MSS);
+
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "      Dot production took "
+          << std::fixed << std::setprecision(6) << tock(DOTst) << " s." << std::endl;
+        } // Root Only
+#endif
       }
 
-//      if( isRoot ) {
+#ifdef CQ_HAS_TA
+      if (TA::initialized())
+        TA::get_default_world().gop.fence();
+#endif
     
 #ifdef DEBUG_DAVIDSON
-        prettyPrintSmart(std::cout,"HH Davidson SubMatix ",SubA,nVCur,nVCur,nVCur);
+      prettyPrintSmart(std::cout,"HH Davidson SubMatix ",SubA,nVCur,nVCur,MSS);
 #endif 
 
-        // Diagonalize SubA 
-        GeneralEigen(JOBVL, 'V', nVCur, SubA, nVCur, Eig, XL, nVCur, XR, nVCur);
+        // Diagonalize SubA
+        if( isRoot ) {
+          SetMat('N', nVCur, nVCur, 1.0, SubA, MSS, SCR, nVCur);
+#ifdef DAVIDSON_PRINT_TIMING
+          auto EIGst = tick();
+#endif
+          GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);
+#ifdef DEBUG_DAVIDSON
+          prettyPrintSmart(std::cout,"HH Davidson XR",XR,nVCur,nVCur,nVCur);
+#endif
+
+#ifdef DAVIDSON_PRINT_TIMING
+          std::cout << "      Subspace eigen took "
+          << std::fixed << std::setprecision(6) << tock(EIGst) << " s." << std::endl;
+#endif
+        } // Root Only
+        MPIBCast(Eig, nVCur, 0, this->comm_);
+        MPIBCast(XR, nVCur * nVCur, 0, this->comm_);
 
         // swap high energy roots for energy specific
         if(this->EnergySpecific) {
 
-          if(this->adaptiveERef)
-            this->EnergyRef = std::real(Eig[0]);
+#ifdef DAVIDSON_PRINT_TIMING
+          auto SWAPst = tick();
+#endif
 
           std::vector<size_t> indx(nVCur,0);
           std::iota(indx.begin(), indx.end(), 0);
@@ -247,6 +306,9 @@ namespace ChronusQ {
             }
           }
 
+#ifdef DEBUG_DAVIDSON
+          prettyPrintSmart(std::cout,"HH Davidson XR after swap",XR,nVCur,nExam,nVCur);
+#endif
 //          REMOVING LINEAR DEPENDENCY?
 //          for (auto i = 0ul; i < nVCur; i++){
 //            if (std::abs(Eig[i]) < 1e-8) {
@@ -257,66 +319,100 @@ namespace ChronusQ {
 //            }
 //          }
 //          if (nVCur == 0) CErr("Not enough eigenpairs to proceed! ");
+#ifdef DAVIDSON_PRINT_TIMING
+          if( isRoot ) {
+            std::cout << "      Swap high energy roots took "
+            << std::fixed << std::setprecision(6) << tock(SWAPst) << " s." << std::endl;
+          } // Root Only
+#endif
         }   
 
         // print eigenvalues at current iteration
         std::cout << "      - Eigenvalues at the current iteration:" << std::endl;
         for(auto i = 0; i < nExam; i++) {
           std::cout << "        Root " << std::setw(5) << std::right << i << ":"
-                    << std::right << std::setw(20) << std::real(Eig[i]);
+              << std::right << std::scientific << std::setprecision(10) << std::setw(20) << std::real(Eig[i]);
               
           if( std::is_same<dcomplex,_F>::value ) {
-            std::cout << " + " << std::setw(20) << std::imag(Eig[i]) << " i";
+            std::cout << " + " << std::right << std::scientific << std::setprecision(10)
+                << std::setw(20) << std::imag(Eig[i]) << " i";
           }
               
           std::cout << std::endl;
         }
           
         // Exam Eigenvalues and eigenvectors and do mapping if iter > 0
-        std::fill_n(SiConv.begin(),nExam,false);
+        // R and S as scratch space to hold full vector old and new repectively
+#ifdef DAVIDSON_PRINT_TIMING
+        auto MMst = tick();
+#endif
+        VR->multiply_matrix(0, blas::Op::NoTrans,nExam,nVCur,_F(1.),XR,nVCur,_F(0.),*S, 0);
+#ifdef DEBUG_DAVIDSON
+        std::cout << "HH Davidson Norm of S: " << S->norm2F(0, nExam) << std::endl;
+#endif
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "      Multiply matrix took "
+          << std::fixed << std::setprecision(6) << tock(MMst) << " s." << std::endl;
+        } // Root Only
+#endif
+
+        for (size_t i = 0; i < nExam; i++) SiConv[i].clear();
         if( iter > 0) {
-            
-          // overlap = (VR XR)_old ^\dagger * (VR XR)_new
-          std::fill_n(Ovlp, nVCur*nVPrev, _F(0.)); 
-              for(auto i = 0ul; i < nVCur; i++) Ovlp[i + i*nVPrev] = _F(1.); 
-              
-          blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nExam,nVCur,nVPrev,_F(1.),XRPrev,nVPrev,Ovlp,nVPrev,_F(0.),SCR,nExam);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nExam,nExam,nVCur ,_F(1.),SCR,nExam,XR,nVCur,_F(0.),Ovlp,nExam);
-          
+
+#ifdef DAVIDSON_PRINT_TIMING
+          auto EXAMst = tick();
+#endif
           // mapping old vector to new vectors based on overlap
           std::vector<int> StMap(nExam);
-          std::fill_n(StMap.begin(),nExam,-1);
-          std::copy_n(Ovlp,nExam*nExam,SCR);
-              
           // i -> new state, j -> old state
           int i = 0, j = 0;
-          for(i = 0; i < nExam; i++) {
+
+#ifdef CQ_HAS_TA
+          if (TA::initialized())
+            TA::get_default_world().gop.fence();
+#endif
+        if (isRoot) {
+          // overlap = (VR XR)_old ^\dagger * (VR XR)_new
+          std::fill_n(Ovlp, nVCur*nVPrev, _F(0.));
+          for(size_t i = 0ul; i < nVCur; i++) Ovlp[i + i*nVPrev] = _F(1.);
+
+          blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nExam,nVCur,nVPrev,_F(1.),XRPrev,nVPrev,Ovlp,nVPrev,_F(0.),SCR,nExam);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nExam,nExam,nVCur ,_F(1.),SCR,nExam,XR,nVCur,_F(0.),Ovlp,nExam);
+
+          std::fill_n(StMap.begin(),nExam,-1);
+          std::copy_n(Ovlp,nExam*nExam,SCR);
+
+          for(size_t i = 0; i < nExam; i++) {
             auto iO = Ovlp + i*nExam;
-            j = std::distance(iO, std::max_element(iO, iO+nExam, 
-                  [&] (_F A, _F B) {return std::norm(A) < std::norm(B); 
-                                  }));
+            j = std::distance(iO, std::max_element(iO, iO+nExam,
+                  [&] (_F A, _F B) {return std::norm(A) < std::norm(B);
+            }));
             if( std::abs(iO[j]) > VecNear) {
               StMap[i] = j;
               for (auto k = i+1; k < nExam; k++) Ovlp[j + k*nExam] = _F(0.);
             }
           }
-        
+
           std::copy_n(SCR,nExam*nExam,Ovlp);
+        }
+        MPIBCast(StMap.data(), nExam, 0, this->comm_);
+        MPIBCast(Ovlp, nExam * nExam, 0, this->comm_);
           
 #ifdef DEBUG_DAVIDSON
           prettyPrintSmart(std::cout,"HH Davidson States Overlap",Ovlp,nExam,nExam,nExam);
 #endif 
       
-          std::cout << "\n      - Comparison to the previous iteration: " << std::endl;  
-          // exam eigenvectors
-          // R and S as scratch space to hold full vector old and new repectively
-          VR->multiply_matrix(0, blas::Op::NoTrans,nExam,nVPrev,_F(1.),XRPrev,nVPrev,_F(0.),*R, 0);
-          VR->multiply_matrix(0, blas::Op::NoTrans,nExam,nVCur,_F(1.),XR,nVCur,_F(0.),*S, 0);
-              
+          std::cout << "\n      - Comparison to the previous iteration: " << std::endl;
+
+#ifdef DAVIDSON_PRINT_TIMING
+          auto DIFFst = tick();
+#endif
           _F phase;
           double maxDel;  // maximum differece in vectors
           for(i = 0; i < nExam; i++) {
             j = StMap[i];
+            SiConv[i].prev_index = j;
             if(j < 0) {
               std::cout << "          New root" << std::setw(5) << i << " is brand new" << std::endl;
               continue; 
@@ -328,101 +424,228 @@ namespace ChronusQ {
             phase = Ovlp[j + i*nExam];
             phase /= std::abs(phase);
 
-            std::shared_ptr<SolverVectors<_F>> iNew = std::make_shared<SolverVectorsView<_F>>(*S, i);
-            std::shared_ptr<SolverVectors<_F>> jOld = std::make_shared<SolverVectorsView<_F>>(*R, j);
+            R->scale(-phase, j, 1);
+            R->axpy(j, 1, _F(1.), *S, i);
+            maxDel = R->maxNormElement(j, 1);
 
-            jOld->scale(-phase, 0, 1);
-            jOld->axpy(0, 1, _F(1.), *iNew, 0);
-            maxDel = jOld->maxNormElement(0, 1);
- 
-            SiConv[i] = maxDel < VecConv;
-            if(SiConv[i]) std::cout << "        Root "   << std::setw(5) << std::right << i
-                                    << " has converged"  << std::endl;
-            else std::cout << "        Root " <<  std::right << std::setw(5) << i
-                           << " has not converged, maximum delta is"<<  std::right  
-                           << std::setw(20) << maxDel << std::endl;
+            SiConv[i].diff_eigen_vector = maxDel;
+            SiConv[i].eigenVector = maxDel < VecConv;
+            std::cout << "        Root " <<  std::right << std::setw(5) << i
+                      << " maximum delta is"<<  std::right
+                      << std::setw(20) << maxDel << std::endl;
           }
+#ifdef DAVIDSON_PRINT_TIMING
+          if( isRoot ) {
+            std::cout << "        Compute difference took "
+            << std::fixed << std::setprecision(6) << tock(DIFFst) << " s." << std::endl;
+          } // Root Only
+#endif
 
           // exam eigenvalues
           dcomplex EDiff;
           for(i = 0; i < nExam; i++) {
             j = StMap[i];
+            if(j < 0)
+              continue;
             EDiff = Eig[i] - EPrev[j];
-            SiConv[i] = SiConv[i] and (std::abs(EDiff) < EConv);  
-          } 
+            SiConv[i].diff_eigen_value = std::abs(EDiff);
+            SiConv[i].eigenValue = std::abs(EDiff) < EConv;
+          }
+#ifdef DAVIDSON_PRINT_TIMING
+          if( isRoot ) {
+            std::cout << "      Exam eigen took "
+            << std::fixed << std::setprecision(6) << tock(EXAMst) << " s." << std::endl;
+          } // Root Only
+#endif
         }   // Exam eigenvales and eigenvectors
-          
-        isConverged = std::all_of(SiConv.begin(), SiConv.begin()+nExam, [&] (bool i) { return i; });
-        if(isConverged or nVCur >= MSS) {
-        
-          double DavidsonDur = tock(DavidsonSt);
-          double perLT = LTdur * 100 / DavidsonDur;
-        
-          std::cout << "\n      - DURATION = " << std::setprecision(8) << DavidsonDur 
-            << " s  ( " << perLT << " % LT )" << std::endl;
-          break;
-        }
 
         // Form residue vectors only for unconverged vectors
-        std::vector<int> unConvS(nExam);
-        nDo = 0ul;
-        std::fill_n(unConvS.begin(),nExam,-1);
+#ifdef DAVIDSON_PRINT_TIMING
+        auto RESIDUEst = tick();
+#endif
+        std::vector<int> residualStates(nExam);
+        size_t nRes = 0ul;
+        std::fill_n(residualStates.begin(), nExam, -1);
         std::fill_n(SCR,nVCur*nExam,_F(0.));
         for (auto i = 0ul; i < nExam; i++) {
-          if(not SiConv[i]) {
-            unConvS[nDo] = i;
-            std::copy_n(XR + i*nVCur,nVCur,SCR + nDo*nVCur);
-            nDo++;
+          if(checkResidueConv or not SiConv[i].hasConverged(checkEigenVectorConv, checkEigenValueConv, false)) {
+            residualStates[nRes] = i;
+            std::copy_n(XR + i*nVCur,nVCur,SCR + nRes*nVCur);
+            nRes++;
           }
         }
 
-        if(nVCur+nDo > MSS)  nDo = MSS - nVCur;
-        
-        // R <- AVR * XR
-        AVR->multiply_matrix(0, blas::Op::NoTrans,nDo,nVCur,_F(1.),SCR,nVCur,_F(0.),*R, 0);
+#ifdef DEBUG_DAVIDSON
+        prettyPrintSmart(std::cout,"HH Davidson Unconverge Transform",SCR,nVCur,nRes,nVCur);
+#endif
 
-        // S as scratch space, <- eig_i * (VR * XR_i)
-        VR->multiply_matrix(0, blas::Op::NoTrans,nDo,nVCur,_F(1.),SCR,nVCur,_F(0.),*S, 0);
-            
-        for (auto i = 0ul; i < nDo; i++)
-          S->scale(this->dcomplexTo_F(Eig[unConvS[i]]), i, 1);
+#ifdef DAVIDSON_PRINT_TIMING
+        MMst = tick();
+#endif
+        // R <- AVR * XR
+        AVR->multiply_matrix(0, blas::Op::NoTrans,nRes,nVCur,_F(1.),SCR,nVCur,_F(0.),*R, 0);
+#ifdef DEBUG_DAVIDSON
+        std::cout << "HH Davidson Norm of R: " << R->norm2F(0, nRes) << std::endl;
+#endif
+
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "        Multiply matrix took "
+          << std::fixed << std::setprecision(6) << tock(MMst) << " s." << std::endl;
+        } // Root Only
+#endif
             
         // Compute the residue norm and generate perturbbed vectors
-        S->scale(_F(-1.), 0, nDo);
-        S->axpy(0, nDo, _F(1.), *R, 0);
-        std::cout << "\n      - Residues of non-converged roots: " << std::endl;  
+#ifdef DAVIDSON_PRINT_TIMING
+        auto AXPYst = tick();
+#endif
+        // R <- AVR * XR - eig_i * (VR * XR_i)
+        for (auto i = 0ul; i < nRes; i++) {
+          R->axpy(i, 1, -dcomplexTo_F(Eig[residualStates[i]]), *S, residualStates[i]);
+        }
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "        Axpy took "
+          << std::fixed << std::setprecision(6) << tock(AXPYst) << " s." << std::endl;
+        } // Root Only
+#endif
+        std::cout << "\n      - Residues of roots: " << std::endl;
         
-        if(EigForT) std::fill_n(EigForT,nG,dcomplex(0.));
-        std::fill_n(RelRes, nG, 0.);
-        for (auto i = 0ul; i < nDo; i++) {
-          auto j = unConvS[i];
-          RelRes[i] = S->norm2F(i, 1);
-          std::cout << "        Root " << std::setw(5) << std::right << j+1 
+        if(EigForT) std::fill_n(EigForT,nRes,dcomplex(0.));
+        std::fill_n(RelRes, nRes, 0.);
+        for (auto i = 0ul; i < nRes; i++) {
+          auto j = residualStates[i];
+          RelRes[i] = R->norm2F(i, 1);
+          SiConv[j].residual_norm = RelRes[i];
+          SiConv[j].residual = RelRes[i] < this->convCrit_;
+          std::cout << "        Root " << std::setw(5) << std::right << j
                     << " 2nd order lowering " << std::right << std::setw(20) << RelRes[i]*RelRes[i] 
                     << " norm " << std::right << std::setw(20) << RelRes[i] << std::endl;
               
           if(EigForT) this->EigForT[i] = Eig[j];
         }
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "      Residue took "
+          << std::fixed << std::setprecision(6) << tock(RESIDUEst) << " s." << std::endl;
+        } // Root Only
+#endif
+
+
+        std::cout << std::endl << "    Convergence check:" << std::endl;
+        std::cout << "    " << BannerMid << std::endl;
+
+        std::cout << "    " << std::setw(5) << std::left <<  " Root" << "  ";
+        std::cout << std::setw(34) << std::left << "Eigenvalue";
+        std::cout << std::setw(4) << std::left << "Prev" << "  ";
+        std::cout << std::setw(10) << std::left << "|\u0394Eval|";
+        std::cout << std::setw(10) << std::left << "max(\u0394Evec)";
+        std::cout << std::setw(10) << std::left << "  |res.|";
+        std::cout << std::setw(4) << std::right << "Conv";
+        std::cout << std::endl;
+        std::cout << "    " << std::setw(5) << std::left <<  " ----" << "  ";
+        std::cout << std::setw(34) << std::left << "-----------------";
+        std::cout << std::setw(4) << std::left <<  "----" << "  ";
+        std::cout << std::setw(10) << std::left << "--------";
+        std::cout << std::setw(10) << std::left << "--------";
+        std::cout << std::setw(10) << std::left << "--------";
+        std::cout << std::setw(3) << std::left << "---";
+        std::cout << std::endl;
+
+        for (size_t i = 0; i < nR ; i++){
+
+          std::cout << std::setprecision(12) << std::fixed;
+          std::cout << "    " << std::setw(5) << std::right << i << "  ";
+          std::cout << std::setw(34) << std::left << std::fixed << Eig[i];
+          std::cout << std::setprecision(2) << std::scientific;
+          if (SiConv[i].prev_index < 0) {
+            std::cout << std::setw(4) << std::right << "new" << "  ";
+            std::cout << std::setw(10) << std::left << "   -";
+            std::cout << std::setw(10) << std::left << "   -";
+          } else {
+            std::cout << std::setw(4) << std::right << SiConv[i].prev_index << "  ";
+            std::cout << std::setw(10) << std::left << SiConv[i].diff_eigen_value;
+            std::cout << std::setw(10) << std::left << SiConv[i].diff_eigen_vector;
+          }
+          if(checkResidueConv or not SiConv[i].hasConverged(checkEigenVectorConv, checkEigenValueConv, false)) {
+            std::cout << std::setw(10) << std::left << SiConv[i].residual_norm;
+          } else {
+            std::cout << std::setw(10) << std::left << "   -";
+          }
+          std::cout << std::setw(3) << std::left
+          << (SiConv[i].hasConverged(checkEigenVectorConv, checkEigenValueConv, checkResidueConv) ? "YES" : "NO");
+          std::cout << std::endl;
+
+        }
+        std::cout << "    " << BannerMid << std::endl;
+
+        isConverged = std::all_of(SiConv.begin(), SiConv.begin()+nR, [&] (const IterDiagConvStatus &i) {
+          return i.hasConverged(checkEigenVectorConv, checkEigenValueConv, checkResidueConv); });
+        if(isConverged or nVCur >= MSS) {
+
+          double DavidsonDur = tock(DavidsonSt);
+          double perLT = LTdur * 100 / DavidsonDur;
+
+          std::cout << "\n      - DURATION = " << std::setprecision(8) << DavidsonDur
+          << " s  ( " << perLT << " % LT )" << std::endl;
+          break;
+        }
+
+        nDo = 0;
+        for (size_t i = 0ul; i < nRes; i++) {
+          if(not SiConv[residualStates[i]].hasConverged(checkEigenVectorConv, checkEigenValueConv, checkResidueConv)) {
+            if (nDo < i) {
+              R->set_data(nDo, 1, *R, i, true);
+              if(EigForT) EigForT[nDo] = EigForT[i];
+            }
+            nDo++;
+          }
+        }
+
+        if(nVCur+nDo > MSS)  nDo = MSS - nVCur;
 
 #ifdef DEBUG_DAVIDSON
         S->print(std::cout, "S before preCond");
 #endif
-        this->preCondNoShift_(nDo,*S,*S);
+#ifdef DAVIDSON_PRINT_TIMING
+        auto PRECONDst = tick();
+#endif
+        this->preCondNoShift_(nDo,*R,*R);
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "      Precondition took "
+          << std::fixed << std::setprecision(6) << tock(PRECONDst) << " s." << std::endl;
+        } // Root Only
+#endif
 
 #ifdef DEBUG_DAVIDSON
         S->print(std::cout, "S after preCond");
 #endif
         // Append the new vectors to VR and orthogoalize against existing ones 
         // Also update the dimensions and save the XRPrev
-        VR->set_data(nVCur, nDo, *S, 0);
+#ifdef DAVIDSON_PRINT_TIMING
+        auto COPYst = tick();
+#endif
+        VR->set_data(nVCur, nDo, *R, 0, true);
+        std::swap(R,S);
         std::copy_n(XR,nVCur*nVCur,XRPrev);
         std::copy_n(Eig,nVCur,EPrev);
         nVPrev = nVCur;
+#ifdef DAVIDSON_PRINT_TIMING
+        if( isRoot ) {
+          std::cout << "      Copy residue took "
+          << std::fixed << std::setprecision(6) << tock(COPYst) << " s." << std::endl;
+        } // Root Only
+#endif
         if(this->DoLeftEigVec) {
           CErr("Do Left Eig Vec is not implemented yet");
         } else {
           // disable printing from GramSchmidt
-          
+
+#ifdef DAVIDSON_PRINT_TIMING
+          auto GramSchmidtSt = tick();
+#endif
+
 #ifndef DEBUG_DAVIDSON
           std::cout.setstate(std::ios_base::failbit);
 #endif
@@ -437,6 +660,13 @@ namespace ChronusQ {
           
 #ifndef DEBUG_DAVIDSON
           std::cout.clear();
+#endif
+
+#ifdef DAVIDSON_PRINT_TIMING
+          if( isRoot ) {
+            std::cout << "      Gram-Schmidt took "
+            << std::fixed << std::setprecision(6) << tock(GramSchmidtSt) << " s." << std::endl;
+          } // Root Only
 #endif
           
           nDo   = nVCur - nVPrev;
@@ -455,7 +685,8 @@ namespace ChronusQ {
           << " s  ( " << perLT << " % LT )" << std::endl;
     
         if(nDo == 0) {
-          isConverged = true;
+          std::cout << "  * All new vectors in GramSchmidt are linear dependent of existing vectors!" << std::endl;
+          isConverged = convOnGramSchmidt;
           break;
         }
 //      } // Root Only
@@ -466,7 +697,16 @@ namespace ChronusQ {
 
       // move data before exit runMicro      
       std::copy_n(Eig,nR,this->eigVal_);
+#ifdef DAVIDSON_PRINT_TIMING
+      auto FINALst = tick();
+#endif
       VR->multiply_matrix(0, blas::Op::NoTrans,nR,nVCur,_F(1.),XR,nVCur,_F(0.),*this->VR_, 0);
+#ifdef DAVIDSON_PRINT_TIMING
+      if( isRoot ) {
+        std::cout << "      Final linear combination took "
+        << std::fixed << std::setprecision(6) << tock(FINALst) << " s." << std::endl;
+      } // Root Only
+#endif
       //size_t nVSave = isConverged ? nR: nG;  
       //std::copy_n(Eig,nVSave,this->eigVal_);
       //blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nVSave,nVCur,_F(1.),VR,N,XR,nVCur,_F(0.),this->VR_,N);
@@ -474,15 +714,14 @@ namespace ChronusQ {
     if( isRoot ) {
       std::cout << "\n  * ";
       if( isConverged and nDo !=0)
-        std::cout << "Davidson Converged in " << iter+1 << " Iterations" 
-                  << std::endl;
-      else if (nDo ==0) {
+        std::cout << "Davidson converged in " << iter+1 << " iterations." << std::endl;
+      else if (isConverged) {
         double maxResDel = *std::max_element(RelRes, RelRes+nR);
-        std::cout << "Davidson expansion finished, and wavefunction converged "
-          << "below " << std::setw(20) << std::right << maxResDel << std::endl;
+        std::cout << "Davidson converged in " << iter+1 << " iterations "
+                  << "by the criteria of GramSchmidt threshold. Residual converge below "
+                  << std::setw(20) << std::right << maxResDel << std::endl;
       } else
-        std::cout << "Davidson Failed to Converged in " << iter+1 << " Iterations" 
-                  << std::endl;
+        std::cout << "Davidson Failed to Converged in " << iter+1 << " Iterations." << std::endl;
     } // Root Only 
 
     // Free Scratch space
@@ -511,11 +750,12 @@ namespace ChronusQ {
     this->whenSc  = 1;
     this->nGuess_ = this->nRoots_;
 
-    Guess = this->vecGen_(this->nGuess_);
+    if (not Guess or Guess->size() < this->nGuess_)
+      Guess = this->vecGen_(this->nGuess_);
 
     // NO MPI
     // ROOT_ONLY(this->comm_);
-    this->Guess->set_data(0, this->nGuess_, *this->VR_, 0);
+    this->Guess->set_data(0, this->nGuess_, *this->VR_, 0, true);
   } // Davidson::restart
   
 }; // namespace ChronusQ

@@ -84,6 +84,7 @@ namespace ChronusQ {
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&, SingleSlater<MatsT,IntsT>&) {
       CErr("4C CoreH gradient NYI",std::cout);
+      abort();
     }
 
   };

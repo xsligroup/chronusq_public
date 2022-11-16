@@ -31,12 +31,8 @@ add_executable(mcscftest ../ut.cxx ras.cxx cas.cxx)
 
 target_include_directories(mcscftest PUBLIC ${MCSCF_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
-target_link_libraries(mcscftest PUBLIC ChronusQ::Dependencies ${CQEX_LINK})
-target_link_libraries(mcscftest PUBLIC ChronusQ::gtest)
-
-if(CQEX_DEP)
-  add_dependencies(mcscftest ${CQEX_DEP})
-endif()
+target_link_libraries(mcscftest PUBLIC cq)
+target_link_libraries(mcscftest PUBLIC gtest)
 
 # Generate directories
 file(MAKE_DIRECTORY ${MCSCF_TEST_BINARY_ROOT}/serial/cas)

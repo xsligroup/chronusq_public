@@ -25,6 +25,14 @@
 
 #include <chronusq_sys.hpp>
 #include <cqlinalg/cqlinalg_config.hpp>
+#ifdef __has_include
+#  if __has_include(<openblas_config.h>)
+#    define _CQ_OPENBLAS 1
+#  endif  // __has_include(<openblas_config.h>)
+#endif  // defined(__has_include)
+#if !defined(_CQ_MKL) && !defined(_CQ_OPENBLAS)
+#  include <thread>
+#endif
 
 namespace ChronusQ {
 
@@ -32,8 +40,10 @@ namespace ChronusQ {
 #ifdef _CQ_MKL
     mkl_set_num_threads(n);
 #else
+#ifdef _CQ_OPENBLAS
     int N = n;
     openblas_set_num_threads_(&N);
+#endif  // defined(_CQ_OPENBLAS)
 #endif
     Eigen::setNbThreads(n);
   };
@@ -43,7 +53,11 @@ namespace ChronusQ {
 #ifdef _CQ_MKL
     return mkl_get_max_threads();
 #else
+#ifdef _CQ_OPENBLAS
     return openblas_get_num_threads();
+#else
+    return std::thread::hardware_concurrency();
+#endif  // defined(_CQ_OPENBLAS)
 #endif
   };
 

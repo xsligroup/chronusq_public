@@ -20,13 +20,6 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_library(orthogonalization STATIC impl.cxx)
-target_link_libraries( orthogonalization PUBLIC ChronusQ::DepHeaders )
 
-# Append aointegrals to executable link
-list(APPEND CQEX_LINK orthogonalization)
-set(CQEX_LINK ${CQEX_LINK} PARENT_SCOPE)
+target_sources(cq PRIVATE impl.cxx)
 
-if(CQEX_DEP)
-  add_dependencies(orthogonalization ${CQEX_DEP})
-endif()

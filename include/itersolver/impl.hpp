@@ -102,27 +102,52 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void RawVectors<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) {
+  void RawVectors<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable) {
+    if (nVec == 0) return;
     ROOT_ONLY(comm_);
 
     if (length() != B.length())
       CErr("Lengths of vectors does not match for set_data.");
 
     getPtr(shiftA + nVec - 1);
+    B.getPtr(shiftB + nVec - 1);
 
     std::copy_n(B.getPtr(shiftB), length() * nVec, getPtr(shiftA));
 
   }
 
   template <typename _F>
-  void SolverVectorsView<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB) {
+  void SolverVectorsView<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable) {
 
-    vecs_.set_data(shift() + shiftA, nVec, B, shiftB);
+    vecs_.set_data(shift() + shiftA, nVec, B, shiftB, moveable);
+
+  }
+
+  template <typename _F>
+  void RawVectors<_F>::swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) {
+    if (nVec == 0) return;
+    ROOT_ONLY(comm_);
+
+    if (length() != B.length())
+      CErr("Lengths of vectors does not match for swap_data.");
+
+    getPtr(shiftA + nVec - 1);
+    B.getPtr(shiftB + nVec - 1);
+
+    blas::swap(length() * nVec, getPtr(shiftA), 1, B.getPtr(shiftB), 1);
+
+  }
+
+  template <typename _F>
+  void SolverVectorsView<_F>::swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) {
+
+    vecs_.swap_data(shift() + shiftA, nVec, B, shiftB);
 
   }
 
   template <typename _F>
   void RawVectors<_F>::scale(_F scalar, size_t shiftA, size_t nVec) {
+    if (nVec == 0) return;
     ROOT_ONLY(comm_);
 
     getPtr(shiftA + nVec - 1);
@@ -144,6 +169,7 @@ namespace ChronusQ {
     ROOT_ONLY(comm_);
 
     if (std::is_same<_F, double>::value) return;
+    if (nVec == 0) return;
 
     getPtr(shiftA + nVec - 1);
 
@@ -162,6 +188,7 @@ namespace ChronusQ {
 
   template <typename _F>
   void RawVectors<_F>::axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) {
+    if (nVec == 0) return;
     ROOT_ONLY(comm_);
 
     if (length() != X.length())
@@ -183,21 +210,22 @@ namespace ChronusQ {
   template <typename _F>
   size_t SolverVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
                                      size_t NRe, double eps) {
+    if (Mnew == 0) return Mold;
 
     _F * SCR = mem.template malloc<_F>(Mold + Mnew);
 
     if( Mold == 0 ) {
       // Normalize the first vector
       double inner = norm2F(shift, 1);
-      if(std::abs(inner) < eps) CErr("Zero inner product incurred!");
+      if(std::abs(inner) < std::sqrt(length())*eps) CErr("Zero inner product incurred!");
       scale(1.0/inner, shift, 1);
     }
 
     // Orthonormalize the rest of the matrix using GS
-    size_t iOrtho = (Mold == 0) ? Mold + 1: Mold;
+    size_t iOrtho = (Mold == 0) ? 1: Mold;
     for(auto k = iOrtho; k < (Mold + Mnew); k++) {
 
-      if( k != iOrtho ) set_data(iOrtho + shift, 1, *this, k + shift);
+      if( k != iOrtho ) swap_data(iOrtho + shift, 1, *this, k + shift);
 
       // Project out the inner products
       for(auto iRe = 0; iRe < (NRe+1); iRe++) {
@@ -208,7 +236,7 @@ namespace ChronusQ {
       // Normalize the new vector
       double inner = norm2F(iOrtho + shift, 1);
       std::cout << k << " " << inner << std::endl;
-      if(std::abs(inner) < length()*eps) {
+      if(std::abs(inner) < std::sqrt(length())*eps) {
         std::cout << "Zero inner product incurred! " << k << "\n";
         scale(0.0, iOrtho + shift, 1);
       } else {
@@ -226,9 +254,9 @@ namespace ChronusQ {
   template <typename _F>
   size_t RawVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
                                      size_t NRe, double eps) {
-    size_t n = 0;
+    size_t n = Mold;
 
-    if (MPIRank(comm_) == 0) {
+    if (MPIRank(comm_) == 0 and Mnew > 0) {
       getPtr(shift + Mold + Mnew - 1);
 
       n = ChronusQ::GramSchmidt(length(), Mold, Mnew, getPtr(shift), length(), mem, NRe, eps);
@@ -255,7 +283,7 @@ namespace ChronusQ {
   void RawVectors<_F>::trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) {
     ROOT_ONLY(comm_);
 
-    getPtr(shift + n - 1);
+    if (n > 0) getPtr(shift + n - 1);
 
     blas::trsm(blas::Layout::ColMajor,blas::Side::Right,blas::Uplo::Upper,blas::Op::NoTrans,blas::Diag::NonUnit,
                length(), n, alpha, A, lda, getPtr(shift), length());
@@ -275,7 +303,7 @@ namespace ChronusQ {
 
     if (MPIRank(comm_) == 0) {
 
-      getPtr(shift + nVec - 1);
+      if (n > 0) getPtr(shift + nVec - 1);
 
       if (R)
         n = ChronusQ::QR(length(), nVec, getPtr(shift), length(), R, LDR, mem);
@@ -301,6 +329,7 @@ namespace ChronusQ {
 
   template <typename _F>
   double RawVectors<_F>::norm2F(size_t shift, size_t nVec) const {
+    if (nVec == 0) return 0.0;
     double v = 0.0;
 
     if (MPIRank(comm_) == 0) {
@@ -328,6 +357,7 @@ namespace ChronusQ {
 
   template <typename _F>
   double RawVectors<_F>::maxNormElement(size_t shift, size_t nVec) const {
+    if (nVec == 0) return 0.0;
     double v = 0.0;
 
     if (MPIRank(comm_) == 0) {

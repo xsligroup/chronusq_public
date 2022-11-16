@@ -25,30 +25,34 @@
 
 #include <cqlinalg/cqlinalg_config.hpp>
 
+#ifdef CQ_ENABLE_MPI
+#include <scalapackpp/linear_systems/gesv.hpp>
+#endif
+
 namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
 
 
   template <typename _F>
-  inline CB_INT LinSolve(const CB_INT N, const CB_INT NRHS, _F *A, 
-    const CB_INT IA, const CB_INT JA, const CXXBLACS::ScaLAPACK_Desc_t DESCA, 
-    _F *B, const CB_INT IB, const CB_INT JB,
-    const CXXBLACS::ScaLAPACK_Desc_t DESCB, CB_INT *IPIV) {
+  inline int64_t LinSolve(const int64_t N, const int64_t NRHS, _F *A, 
+    const int64_t IA, const int64_t JA, const scalapackpp::scalapack_desc DESCA, 
+    _F *B, const int64_t IB, const int64_t JB,
+    const scalapackpp::scalapack_desc DESCB, int64_t *IPIV) {
 
-    return CXXBLACS::PGESV(N,NRHS,A,IA,JA,DESCA,IPIV,B,IB,JB,DESCB);
+    return scalapackpp::pgesv(N,NRHS,A,IA,JA,DESCA,IPIV,B,IB,JB,DESCB);
 
   }
 
   template <typename _F>
-  inline CB_INT LinSolve(const CB_INT N, const CB_INT NRHS, _F *A, 
-    const CB_INT IA, const CB_INT JA, const CXXBLACS::ScaLAPACK_Desc_t DESCA, 
-    _F *B, const CB_INT IB, const CB_INT JB,
-    const CXXBLACS::ScaLAPACK_Desc_t DESCB, CQMemManager &mem) {
+  inline int64_t LinSolve(const int64_t N, const int64_t NRHS, _F *A, 
+    const int64_t IA, const int64_t JA, const scalapackpp::scalapack_desc DESCA, 
+    _F *B, const int64_t IB, const int64_t JB,
+    const scalapackpp::scalapack_desc DESCB, CQMemManager &mem) {
 
-    CB_INT* iPIV = mem.malloc<CB_INT>(DESCA[8] + DESCA[4]); // LLD + MB
+    int64_t* iPIV = mem.malloc<int64_t>(DESCA[8] + DESCA[4]); // LLD + MB
 
-    CB_INT INFO = LinSolve(N,NRHS,A,IA,JA,DESCA,B,IB,JB,DESCB,iPIV);
+    int64_t INFO = LinSolve(N,NRHS,A,IA,JA,DESCA,B,IB,JB,DESCB,iPIV);
 
     mem.free(iPIV);
 
@@ -56,12 +60,12 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  inline CB_INT LinSolve(const CB_INT N, const CB_INT NRHS, _F *A, 
-    const CB_INT IA, const CB_INT JA, const CXXBLACS::ScaLAPACK_Desc_t DESCA, 
-    _F *B, const CB_INT IB, const CB_INT JB,
-    const CXXBLACS::ScaLAPACK_Desc_t DESCB) {
+  inline int64_t LinSolve(const int64_t N, const int64_t NRHS, _F *A, 
+    const int64_t IA, const int64_t JA, const scalapackpp::scalapack_desc DESCA, 
+    _F *B, const int64_t IB, const int64_t JB,
+    const scalapackpp::scalapack_desc DESCB) {
 
-    std::vector<CB_INT> iPIV(DESCA[8] + DESCA[4],0); // LLD + MB
+    std::vector<int64_t> iPIV(DESCA[8] + DESCA[4],0); // LLD + MB
     return LinSolve(N,NRHS,A,IA,JA,DESCA,B,IB,JB,DESCB,&iPIV[0]);
 
   }

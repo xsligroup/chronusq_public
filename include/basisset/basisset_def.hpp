@@ -26,13 +26,14 @@
 #include <chronusq_sys.hpp>
 #include <util/typedefs.hpp>
 #include <memmanager.hpp>
-#include <molecule.hpp>
 
 #include <libint2/shell.h>
 
 #include <unordered_map>
 
 namespace ChronusQ {
+
+  struct Molecule;
 
   enum BASIS_FUNCTION_TYPE {
     REAL_GTO,
