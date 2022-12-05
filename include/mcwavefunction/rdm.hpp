@@ -80,7 +80,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCWaveFunction<MatsT,IntsT>::rdm2pdm(SquareMatrix<MatsT> & rdm, double scale) {
 
-    // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq} C^*_{qv}
+    // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq}^* C^*_{qv}
     auto  &mem = memManager;
     size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t fourCompOffset = (reference().nC == 4) ? reference().nAlphaOrbital() * 2: 0;
@@ -96,7 +96,7 @@ namespace ChronusQ {
     for(auto i = fourCompOffset; i < nI+fourCompOffset; i++) tmpPDM(i,i) = fc1C;
 
     // Active
-    SetMat('N', nCorrO, nCorrO, scale, rdm.pointer(), nCorrO,
+    SetMat('R', nCorrO, nCorrO, scale, rdm.pointer(), nCorrO,
             tmpPDM.pointer() + (fourCompOffset+nI)*(nAO+1), nAO);
 
     tmpPDM = tmpPDM.transform('C', reference().mo[0].pointer(), nAO, nAO);
