@@ -94,7 +94,7 @@ namespace ChronusQ {
     std::vector<size_t> nDras(3, 0);
     std::vector<size_t> elecPos(nCorrE, 0);
     int_matrix empty = {{}};
-    
+
     // Alpha Part for 1C or the whole build for 2C and 4C
     size_t iCatJ = 0;
     for (auto iEJ = 0ul; iEJ <= mxElec; iEJ++)
@@ -221,13 +221,13 @@ namespace ChronusQ {
         if (nDetSub > mindSCR) mindSCR = nDetSub;
       }
     }    
-    std::cout<<"maxdim: "<<maxdim<<std::endl;
-    std::cout<<"nNZatMD: "<<nNZatMD<<", nDetatMD: "<<nDetatMD<<std::endl;
-    std::cout<<"maxdSCR: "<<maxdSCR<<", mindSCR: "<<mindSCR<<std::endl;
+//    std::cout<<"maxdim: "<<maxdim<<std::endl;
+//    std::cout<<"nNZatMD: "<<nNZatMD<<", nDetatMD: "<<nDetatMD<<std::endl;
+//    std::cout<<"maxdSCR: "<<maxdSCR<<", mindSCR: "<<mindSCR<<std::endl;
 
     for (auto iCatL = 0ul; iCatL < nCat; iCatL++)
     if (LCat[iCatL][3] > maxDetCat) maxDetCat = LCat[iCatL][3];
-    std::cout<<"maxDetCat: "<<maxDetCat<<std::endl;
+//    std::cout<<"maxDetCat: "<<maxDetCat<<std::endl;
 
     bool DoBatch = false;
     MatsT* Ci = C;
@@ -281,7 +281,7 @@ namespace ChronusQ {
       Gscr = mem.template malloc<MatsT>(ndSCR*nthreads);
       // to determine maxdimD and maxdimG
       maxAvlMem = mem.template max_avail_allocatable<MatsT>();
-      std::cout<<"maxAvlMem: "<<maxAvlMem<<std::endl;
+//      std::cout<<"maxAvlMem: "<<maxAvlMem<<std::endl;
       if (maxAvlMem < 2 * maxDetCat) CErr("Not enough memory for RAS sigma.");
       nNZAvl = maxAvlMem / nDetatMD;
       nBatch = nNZatMD / nNZAvl;
@@ -583,6 +583,13 @@ namespace ChronusQ {
     RASCI_LOOP_INIT(); // check top for variable definitions
     TDM.clear();
 
+    size_t nThreads = GetNumThreads();
+    std::vector<SquareMatrix<MatsT>> SCR;
+    for (auto i = 0ul; i < nThreads; i++) {
+      SCR.emplace_back(mcwfn.memManager, TDM.dimension());
+      SCR.back().clear();
+    }
+
     // 2C or 1C alpha part
     std::shared_ptr<const ExcitationList> LrsList;
     size_t iCatJ, iCatL, r, s, l, l1, l2, j, j1, j2, j3, j23off, iNZ;
@@ -616,13 +623,14 @@ namespace ChronusQ {
           for (j3 = 0; j3 < nDetAlt[2]; j3++)
           for (j2 = 0; j2 < nDetAlt[1]; j2++)
           for (j1 = 0; j1 < nDetAlt[0]; j1++) {
+            auto iThread = GetThreadID();
             j23off = j3 * LCatAlt[2] + j2 * LCatAlt[1];
             j = j1 * LCatAlt[0] + j23off;
             const int * exList_j1 = LrsList->pointerAtDet(j1);
             for (iNZ = 0; iNZ < LrsList->nNonZero(); iNZ++, exList_j1+=4) {
               UNPACK_EXCITATIONLIST_4(exList_j1, r, s, l1, sign);
               l = l1 * LCatAlt[0] + j23off; // <L|rs|J>
-              TDM(r+rsoff, s+rsoff) += SmartConj(Cm[l+fCat[iCatL]]) * sign * Cn[j+fCat[iCatJ]];
+              SCR[iThread](r+rsoff, s+rsoff) += SmartConj(Cm[l+fCat[iCatL]]) * sign * Cn[j+fCat[iCatJ]];
             }
           } // End openMP
         } else { // off-diagonal
@@ -637,19 +645,22 @@ namespace ChronusQ {
           for (j3 = 0; j3 < nDetAlt[2]; j3++)
           for (j1 = 0; j1 < nDetAlt[0]; j1++)
           for (j2 = 0; j2 < nDetAlt[1]; j2++) {
+            auto iThread = GetThreadID();
             j = j1*LCatAlt[0] + j2*LCatAlt[1] + j3*LCatAlt[2];
             const int * exList_j = LrsList->pointerAtDet(j1, j2);
             for (iNZ = 0; iNZ < LrsList->nNonZero(); iNZ++, exList_j+=5) {
               UNPACK_EXCITATIONLIST_5(exList_j, r, s, l1, l2, sign);
               l = l1*LCatAlt2[0] + l2*LCatAlt2[1] + j3*LCatAlt2[2];
-              TDM(r+roff, s+soff) += SmartConj(Cm[l+fCat[iCatL]]) * sign * Cn[j+fCat[iCatJ]];
+              SCR[iThread](r+roff, s+soff) += SmartConj(Cm[l+fCat[iCatL]]) * sign * Cn[j+fCat[iCatJ]];
             }
           } // End openMP
         }
       }
     }
+
+    for (auto i = 0ul; i < nThreads; i++) TDM += SCR[i];
     size_t nO = mcwfn.MOPartition.nCorrO;
-    prettyPrintSmart(std::cout,"LL RAS TDM -- ", TDM.pointer(), nO, nO, nO);
+//    prettyPrintSmart(std::cout,"LL RAS TDM -- ", TDM.pointer(), nO, nO, nO);
 
     return;
 
