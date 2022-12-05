@@ -166,8 +166,8 @@ namespace ChronusQ {
 
     // dipole strength D = Tr(TDM \dot MOdiple) Tr(TDM^* \dot MOdipole)
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-      D += blas::dot(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ].pointer(),1)
-          *blas::dot(nCorrO*nCorrO,tmpTDM2.pointer(),1,(*MOdipole)[iXYZ].pointer(),1);
+      D += blas::dotu(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ].pointer(),1)
+          *blas::dotu(nCorrO*nCorrO,tmpTDM2.pointer(),1,(*MOdipole)[iXYZ].pointer(),1);
     }
 
     // oscillator strength f = 2/3 (E2 - E1) D.
@@ -179,7 +179,7 @@ namespace ChronusQ {
     std::cout << std::setw(15) << std::right << "E(Eh) = "
               << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);
     std::cout << std::setw(15) << std::right << "f = "
-              << std::setprecision(6) << std::fixed << f << std::endl;
+              << std::setprecision(12) << std::fixed << f << std::endl;
 
     tmpTDM1.clear();
     tmpTDM2.clear();
