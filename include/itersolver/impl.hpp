@@ -388,4 +388,3 @@ namespace ChronusQ {
 };
 
 
->>>>>>> New cmake system and coupled cluster

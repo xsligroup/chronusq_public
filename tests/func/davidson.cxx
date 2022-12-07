@@ -279,7 +279,6 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   typename Davidson<EigT>::LinearTrans_t func = 
       [&]( size_t nVec, SolverVectors<EigT> &V,
         SolverVectors<EigT> &AV) {
-
         // copy the V out
         EigT* VRaw = mem.malloc<EigT>(N*nVec);
         EigT* AVRaw = mem.malloc<EigT>(N*nVec);
@@ -325,7 +324,6 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
               }
           );              
         }
-
       };
    
   std::function<std::shared_ptr<SolverVectors<EigT>>(size_t)> distributedVecsGenerator = 

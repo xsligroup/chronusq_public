@@ -267,17 +267,11 @@ namespace ChronusQ {
     virtual size_t length() const override { return len_; }
     virtual size_t size() const override { return size_; }
 
-<<<<<<< HEAD
     _F* getPtr(size_t i = 0) {
-=======
-    using SolverVectors<_F>::getPtr;
-    virtual _F* getPtr(size_t i = 0) override {
->>>>>>> New cmake system and coupled cluster
 #ifdef CQ_ENABLE_MPI
       if (MPIRank(comm_) != 0 or size() == 0)
         return nullptr;
 #endif
-<<<<<<< HEAD
       this->sizeCheck(i, "RawVectors<_F>::getPtr");
       return data_ + i * len_;
     }
@@ -286,12 +280,6 @@ namespace ChronusQ {
       return const_cast<RawVectors*>(this)->getPtr(i);
     }
 
-=======
-      if (i >= size())
-        CErr("Requesting invalid pointer in RawVectors object.");
-      return data_ + i * len_;
-    }
->>>>>>> New cmake system and coupled cluster
     // Get element
     virtual _F get(size_t i, size_t j) const override {
 #ifdef CQ_ENABLE_MPI
@@ -315,11 +303,7 @@ namespace ChronusQ {
     void clear(size_t shift, size_t nVec) override {
       if (nVec == 0) return;
       ROOT_ONLY(comm_);
-<<<<<<< HEAD
       this->sizeCheck(shift + nVec, "RawVectors<_F>::clear");
-=======
-      getPtr(shift + nVec - 1);
->>>>>>> New cmake system and coupled cluster
       std::fill_n(getPtr(shift), nVec*length(), 0.);
     }
 
@@ -330,11 +314,7 @@ namespace ChronusQ {
         out << std::endl << str + ": " << std::endl;
         return;
       }
-<<<<<<< HEAD
       this->sizeCheck(shift + nVec, "RawVectors<_F>::print");
-=======
-      getPtr(shift + nVec - 1);
->>>>>>> New cmake system and coupled cluster
       prettyPrintSmart(out, str, getPtr(shift), length(), nVec, length());
     }
 
@@ -377,7 +357,6 @@ namespace ChronusQ {
 
   }; // class RawVectors
 
-<<<<<<< HEAD
    /*
     * \brief DistributedVectors
     * 
@@ -663,8 +642,6 @@ namespace ChronusQ {
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
   
   }; // class DistributedVectors
-=======
->>>>>>> New cmake system and coupled cluster
 
   template <typename _F>
   class SolverVectorsView : public SolverVectors<_F> {
@@ -695,13 +672,10 @@ namespace ChronusQ {
       return vecs_;
     }
 
-<<<<<<< HEAD
-=======
     using SolverVectors<_F>::getPtr;
     virtual _F* getPtr(size_t i = 0) override {
       return vecs_.getPtr(shift() + i);
     }
->>>>>>> New cmake system and coupled cluster
     // Get element
     virtual _F get(size_t i, size_t j) const override {
       return vecs_.get(i, shift() + j);
@@ -763,7 +737,6 @@ namespace ChronusQ {
 
   }; // class SolverVectorsView
 
-<<<<<<< HEAD
   template <typename T, typename _F, typename Operation>
   void tryDowncastReferenceTo(SolverVectors<_F>& vecs, Operation op) {
     try {
@@ -817,6 +790,3 @@ namespace ChronusQ {
   }
 
 } // namespace ChronusQ
-=======
-}; // namespace
->>>>>>> New cmake system and coupled cluster
