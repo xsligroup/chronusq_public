@@ -35,7 +35,7 @@
 #include <cerr.hpp>
 
 // #define DEBUG_DAVIDSON
-//#define DAVIDSON_PRINT_TIMING
+// #define DAVIDSON_PRINT_TIMING
 
 
 namespace ChronusQ {

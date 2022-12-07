@@ -839,40 +839,43 @@ namespace ChronusQ {
     size_t NS = this->nSingleDim_;
 
     bool isRaw = V.underlyingType() == typeid(RawVectors<U>)
-        and AV.underlyingType() == typeid(RawVectors<U>);
-    if (isRaw and MPIRank(this->comm_) == 0)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
+            and AV.underlyingType() == typeid(RawVectors<U>);
+    
+    if (isRaw and MPIRank(this->comm_) == 0) {
+      U * V_ptr = tryGetRawVectorsPointer(V);
+      U * AV_ptr = tryGetRawVectorsPointer(AV);
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
 
-      auto * AVk = AV.getPtr() + iVec * NS;
-      auto * Vk  = V.getPtr()  + iVec * NS;
+        auto * AVk = AV_ptr + iVec * NS;
+        auto * Vk  = V_ptr  + iVec * NS;
 
-      for(auto a = 0ul, ab = 0ul; a < NV;      a++      )
-      for(auto b = 0ul;           b < bmax(a); b++, ab++)
-        AVk[ab] = Vk[ab] / (eps1[a + NO] + eps2[b + NO2] - 2.*mu);
+        for(auto a = 0ul, ab = 0ul; a < NV;      a++      )
+        for(auto b = 0ul;           b < bmax(a); b++, ab++)
+          AVk[ab] = Vk[ab] / (eps1[a + NO] + eps2[b + NO2] - 2.*mu);
 
-      if( doOcc_ )
-      for(auto i = 0ul, ij = hhSt; i < NO;      i++      )
-      for(auto j = 0ul;            j < jmax(i); j++, ij++)
-        AVk[ij] = - Vk[ij] / (eps1[i] + eps2[j]- 2.*mu);
-
-
-    } // loop over vectors
-    else if (not isRaw)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
-
-
-      for(auto a = 0ul, ab = 0ul; a < NV;      a++      )
-      for(auto b = 0ul;           b < bmax(a); b++, ab++)
-        AV.set(ab, iVec, V.get(ab, iVec) / (eps1[a + NO] + eps2[b + NO2] - 2.*mu));
-
-      if( doOcc_ )
-      for(auto i = 0ul, ij = hhSt; i < NO;      i++      )
+        if( doOcc_ )
+        for(auto i = 0ul, ij = hhSt; i < NO;      i++      )
         for(auto j = 0ul;            j < jmax(i); j++, ij++)
-          AV.set(ij, iVec, - V.get(ij, iVec) / (eps1[i] + eps2[j]- 2.*mu));
+          AVk[ij] = - Vk[ij] / (eps1[i] + eps2[j]- 2.*mu);
 
 
-    } // loop over vectors
+      } // loop over vectors
+    } else if (not isRaw) {
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
 
+
+        for(auto a = 0ul, ab = 0ul; a < NV;      a++      )
+        for(auto b = 0ul;           b < bmax(a); b++, ab++)
+          AV.set(ab, iVec, V.get(ab, iVec) / (eps1[a + NO] + eps2[b + NO2] - 2.*mu));
+
+        if( doOcc_ )
+        for(auto i = 0ul, ij = hhSt; i < NO;      i++      )
+          for(auto j = 0ul;            j < jmax(i); j++, ij++)
+            AV.set(ij, iVec, - V.get(ij, iVec) / (eps1[i] + eps2[j]- 2.*mu));
+
+
+      } // loop over vectors
+    }
 
   };
 

@@ -592,8 +592,8 @@ namespace ChronusQ {
     std::vector<RESPONSE_CONTRACTION<U>> cList(1);
     cList.back().nVec = nVec;
     cList.back().N    = nSingleDim_;
-    cList.back().X    = V.getPtr();
-    cList.back().AX   = AV.getPtr();
+    cList.back().X    = tryGetRawVectorsPointer(V);
+    cList.back().AX   = tryGetRawVectorsPointer(AV);
 
 #ifdef CQ_ENABLE_MPI
     int64_t MLoc, NLoc;
@@ -615,7 +615,7 @@ namespace ChronusQ {
       cList.back().DescX  = fullMatGrid_->descinit_noerror(nSingleDim_,nVec,MLoc);
       cList.back().DescAX = cList.back().DescX;
 
-      fullMatGrid_->scatter(nSingleDim_,nVec,V.getPtr(),nSingleDim_,cList.back().X,
+      fullMatGrid_->scatter(nSingleDim_,nVec,tryGetRawVectorsPointer(V),nSingleDim_,cList.back().X,
         MLoc,0,0);
     }
 #endif
@@ -625,7 +625,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
     if( genSettings.isDist() ) {
 
-      fullMatGrid_->gather(nSingleDim_,nVec,AV.getPtr(),nSingleDim_,cList.back().AX,
+      fullMatGrid_->gather(nSingleDim_,nVec,tryGetRawVectorsPointer(AV),nSingleDim_,cList.back().AX,
         MLoc,0,0);
 
       if( cList.back().X  ) this->memManager_.free(cList.back().X );

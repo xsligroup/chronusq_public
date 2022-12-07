@@ -1332,50 +1332,25 @@ namespace ChronusQ {
 
     size_t NS = this->nSingleDim_;
     size_t hNS = NS / 2;
-
+    
     bool isRaw = V.underlyingType() == typeid(RawVectors<U>)
-        and AV.underlyingType() == typeid(RawVectors<U>);
-    if (isRaw and MPIRank(this->comm_) == 0)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      auto * AVk = AV.getPtr() + iVec * NS;
-      auto * Vk  = V.getPtr()  + iVec * NS;
-      for(auto k = 0ul; k < N; k++) {
+            and AV.underlyingType() == typeid(RawVectors<U>);
 
-        size_t i = k / NV;
-        size_t a = (k % NV) + NO;
-
-        AVk[k]       = Vk[k]       / diag(eps[a],eps[i]);
-
-      } // X update
-
-
-      if( not doReduced )
-      for(auto k = 0ul; k < N; k++) {
-
-        size_t i = k / NV;
-        size_t a = (k % NV) + NO;
-
-        AVk[k + hNS] = Vk[k + hNS] / diag(eps[a],eps[i]);
-
-      } // Y update
-
-
-      if( ss.nC == 1 ) {
-
-        eps = ss.iCS ? eps : ss.eps2;
-
-        N  = nOBVB;
-        NV = ss.nVB;
-        NO = ss.nOB;
-
+    if (isRaw and MPIRank(this->comm_) == 0) {
+      U * V_ptr = tryGetRawVectorsPointer(V);
+      U * AV_ptr = tryGetRawVectorsPointer(AV);
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
+        auto * AVk = AV_ptr + iVec * NS;
+        auto * Vk  = V_ptr  + iVec * NS;
         for(auto k = 0ul; k < N; k++) {
 
           size_t i = k / NV;
           size_t a = (k % NV) + NO;
 
-          AVk[k + nOAVA]       = Vk[k + nOAVA]       / diag(eps[a],eps[i]);
+          AVk[k] = Vk[k] / diag(eps[a],eps[i]);
 
         } // X update
+
 
         if( not doReduced )
         for(auto k = 0ul; k < N; k++) {
@@ -1383,36 +1358,64 @@ namespace ChronusQ {
           size_t i = k / NV;
           size_t a = (k % NV) + NO;
 
-          AVk[k + nOAVA + hNS] = Vk[k + nOAVA + hNS] / diag(eps[a],eps[i]);
+          AVk[k + hNS] = Vk[k + hNS] / diag(eps[a],eps[i]);
 
         } // Y update
 
-      } // Beta update
+
+        if( ss.nC == 1 ) {
+
+          eps = ss.iCS ? eps : ss.eps2;
+
+          N  = nOBVB;
+          NV = ss.nVB;
+          NO = ss.nOB;
+
+          for(auto k = 0ul; k < N; k++) {
+
+            size_t i = k / NV;
+            size_t a = (k % NV) + NO;
+
+            AVk[k + nOAVA] = Vk[k + nOAVA] / diag(eps[a],eps[i]);
+
+          } // X update
+
+          if( not doReduced )
+          for(auto k = 0ul; k < N; k++) {
+
+            size_t i = k / NV;
+            size_t a = (k % NV) + NO;
+
+            AVk[k + nOAVA + hNS] = Vk[k + nOAVA + hNS] / diag(eps[a],eps[i]);
+
+          } // Y update
+
+        } // Beta update
 
 
-    } // loop over vectors
+      } // loop over vectors
 
-    else if (not isRaw)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      for(auto k = 0ul; k < N; k++) {
-
-        size_t i = k / NV;
-        size_t a = (k % NV) + NO;
-
-        AV.set(k, iVec, V.get(k, iVec) / diag(eps[a],eps[i]));
-
-      } // X update
-
-
-      if( not doReduced )
+    } else if (not isRaw) {
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
         for(auto k = 0ul; k < N; k++) {
 
           size_t i = k / NV;
           size_t a = (k % NV) + NO;
 
-          AV.set(k + hNS, iVec, V.get(k + hNS, iVec) / diag(eps[a],eps[i]));
+          AV.set(k, iVec, V.get(k, iVec) / diag(eps[a],eps[i]));
 
-        } // Y update
+        } // X update
+
+
+        if( not doReduced )
+          for(auto k = 0ul; k < N; k++) {
+
+            size_t i = k / NV;
+            size_t a = (k % NV) + NO;
+
+            AV.set(k + hNS, iVec, V.get(k + hNS, iVec) / diag(eps[a],eps[i]));
+
+          } // Y update
 
 
         if( ss.nC == 1 ) {
@@ -1444,8 +1447,8 @@ namespace ChronusQ {
 
         } // Beta update
 
-
-    } // loop over vectors
+      } // loop over vectors
+    }
   };
 
 

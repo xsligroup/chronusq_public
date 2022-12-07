@@ -126,16 +126,126 @@ namespace ChronusQ {
     bcastCounter++;
 #endif
     mxx::bcast(msg,count,root,c);
-    MPI_Barrier(c);
 #endif
 
   }
 
   template <typename T>
   static inline void MPIBCast(T& msg, int root, MPI_Comm c) {
-
     MPIBCast(&msg,1,root,c);
+  }
 
+  template <typename T, typename Func>
+  static inline void MPIReduce(const T* in, size_t n, T* out, int root, Func func, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    mxx::reduce(in, n, out, root, std::forward<Func>(func), c);
+#else
+   std::copy_n(in, n, out);
+#endif
+  }
+  
+  template <typename T>
+  static inline void MPIReduce(const T* in, size_t n, T* out, int root, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    mxx::reduce(in, n, out, root, std::plus<T>(), c);
+#else
+   std::copy_n(in, n, out);
+#endif
+  }
+  
+  template <typename T, typename Func>
+  static inline T MPIReduce(const T& x, int root, Func func, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    return mxx::reduce(x, root, std::forward<Func>(func), c);
+#else
+    return x;
+#endif
+  }
+  
+  template <typename T>
+  static inline T MPIReduce(const T& x, int root, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    return mxx::reduce(x, root, std::plus<T>(), c);
+#else
+    return x;
+#endif
+  }
+  
+  template <typename T, typename Func>
+  static inline void MPIAllReduce(const T* in, size_t n, T* out, Func func, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    mxx::allreduce(in, n, out, std::forward<Func>(func), c);
+#else
+   std::copy_n(in, n, out);
+#endif
+  }
+  
+  template <typename T>
+  static inline void MPIAllReduce(const T* in, size_t n, T* out, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    mxx::allreduce(in, n, out, std::plus<T>(), c);
+#else
+   std::copy_n(in, n, out);
+#endif
+  }
+  
+  template <typename T, typename Func>
+  static inline T MPIAllReduce(const T& x, Func func, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    return mxx::allreduce(x, std::forward<Func>(func), c);
+#else
+    return x;
+#endif
+  }
+  
+  template <typename T>
+  static inline T MPIAllReduce(const T& x, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    return mxx::allreduce(x, std::plus<T>(), c);
+#else
+    return x;
+#endif
+  }
+
+  template <typename T>
+  static inline void MPIScatterV(const T* x, 
+      const std::vector<size_t>& sizes,
+      T* out,
+      size_t recv_size,
+      int root,
+      MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+   mxx::scatterv(x, sizes, out, recv_size, root, c);
+#else
+   std::copy_n(x, recv_size, out);
+#endif
+  }
+
+  template <typename T>
+  static inline void MPIGatherV(const T* x,
+      size_t size,
+      T* out,
+      const std::vector<size_t>& recv_sizes,
+      int root,
+      MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+   mxx::gatherv(x, size, out, recv_sizes, root, c);
+#else
+   std::copy_n(x, size, out);
+#endif
+  }
+
+  template <typename T>
+  static inline void MPIAllGatherV(const T* x,
+      size_t size,
+      T* out,
+      const std::vector<size_t>& recv_sizes,
+      MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+   mxx::allgatherv(x, size, out, recv_sizes, c);
+#else
+   std::copy_n(x, size, out);
+#endif
   }
 
 #define ROOT_ONLY(comm) if(MPIRank(comm) != 0) return;

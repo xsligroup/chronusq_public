@@ -41,11 +41,11 @@ namespace ChronusQ {
     virtual size_t length() const = 0;
     // Number of vectors in container
     virtual size_t size() const = 0;
-    // Get raw pointer of vectors, only works for RawVectors
-    virtual _F* getPtr(size_t i = 0) = 0;
-    const _F* getPtr(size_t i = 0) const {
-      return const_cast<SolverVectors<_F>*>(this)->getPtr(i);
+    
+    void sizeCheck(size_t i, const std::string& str = "SolverVectors") const {
+      if (i > size()) CErr("Doesn't have enough vectors in" + str);
     }
+    
     // Get element
     virtual _F get(size_t i, size_t j) const = 0;
     // Set element
@@ -267,16 +267,19 @@ namespace ChronusQ {
     virtual size_t length() const override { return len_; }
     virtual size_t size() const override { return size_; }
 
-    using SolverVectors<_F>::getPtr;
-    virtual _F* getPtr(size_t i = 0) override {
+    _F* getPtr(size_t i = 0) {
 #ifdef CQ_ENABLE_MPI
       if (MPIRank(comm_) != 0 or size() == 0)
         return nullptr;
 #endif
-      if (i >= size())
-        CErr("Requesting invalid pointer in RawVectors object.");
+      this->sizeCheck(i, "RawVectors<_F>::getPtr");
       return data_ + i * len_;
     }
+    
+    const _F* getPtr(size_t i = 0) const {
+      return const_cast<RawVectors*>(this)->getPtr(i);
+    }
+
     // Get element
     virtual _F get(size_t i, size_t j) const override {
 #ifdef CQ_ENABLE_MPI
@@ -300,7 +303,7 @@ namespace ChronusQ {
     void clear(size_t shift, size_t nVec) override {
       if (nVec == 0) return;
       ROOT_ONLY(comm_);
-      getPtr(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "RawVectors<_F>::clear");
       std::fill_n(getPtr(shift), nVec*length(), 0.);
     }
 
@@ -311,7 +314,7 @@ namespace ChronusQ {
         out << std::endl << str + ": " << std::endl;
         return;
       }
-      getPtr(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "RawVectors<_F>::print");
       prettyPrintSmart(out, str, getPtr(shift), length(), nVec, length());
     }
 
@@ -354,6 +357,291 @@ namespace ChronusQ {
 
   }; // class RawVectors
 
+   /*
+    * \brief DisctributedVectors
+    * 
+    * The actual storage of the data is devided into blocks
+    *   across different nodes.
+    *
+    *   Default is split evenly, but can be intilized with input
+    *
+    */
+  template <typename _F>
+  class DisctributedVectors : public SolverVectors<_F> {
+
+  protected:
+
+    MPI_Comm comm_;
+    CQMemManager &memManager_;
+    size_t len_;
+    size_t size_ = 0;
+    
+    // lens accross all nodes 
+    std::vector<size_t> lens_;
+    std::vector<size_t> accLens_;
+    
+    // local data storage 
+    _F* data_ = nullptr;
+    size_t localLen_;
+    size_t localOffset_;
+
+  public:
+    
+    // dividing the vector evenly 
+    explicit DisctributedVectors(MPI_Comm c, CQMemManager& mem,
+        size_t len, size_t size) :
+        comm_(c), memManager_(mem), len_(len), size_(size) {
+      
+      size_t nNodes = MPISize(comm_);
+      
+      size_t blockLen = std::ceil( double(len_) / nNodes);  
+      lens_ = {blockLen};
+      accLens_ = {blockLen};
+      
+      for (auto i = 1ul; i < nNodes; ++i) {
+        lens_.push_back(std::min(blockLen + accLens_.back(), len_) - accLens_.back()); 
+        accLens_.push_back(accLens_.back() + lens_.back());
+      }
+      localLen_ = lens_[MPIRank(comm_)];
+      localOffset_ = MPIRank(comm_) == 0 ? 0ul : accLens_[MPIRank(comm_) - 1];
+
+      alloc();
+    }
+     
+    // dividing the vector with inputs
+    explicit DisctributedVectors(MPI_Comm c, CQMemManager& mem, 
+        const std::vector<size_t>& lens, size_t size):
+        comm_(c), memManager_(mem), lens_(lens), size_(size) {
+      
+      size_t nNodes = MPISize(comm_);
+
+      while (lens_.size() < nNodes) {
+        lens_.push_back(0ul);
+      }
+
+      if (lens_.size() > nNodes ) {
+        CErr("Can't distribute data to blocks more than number of nodes");
+      }
+      
+      accLens_.resize(nNodes);
+      accLens_[0] = lens[0];
+      for (auto i = 1ul; i < nNodes; ++i) {
+        accLens_[i] = accLens_[i - 1] + lens_[i];
+      }
+      len_ = accLens_.back(); 
+      localLen_ = lens_[MPIRank(comm_)];
+      localOffset_ = MPIRank(comm_) == 0 ? 0ul : accLens_[MPIRank(comm_) - 1];
+      
+      alloc();
+    }
+    
+    // scatter data from root
+    void scatter(size_t shift, size_t nVec, const _F* A, size_t LDA, int root) {
+      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::scatter");
+      if (LDA < length()) {
+        CErr("Can't scatter from a matrix with leading dimension smaller than the BlockVector length");
+      }
+      std::cout << "in Scatter" << std::endl;
+      for (auto iVec = 0ul; iVec < nVec; ++iVec) {
+        MPIScatterV(A + iVec * LDA, lens_, getLocalPtr(iVec + shift), localLen_, root, comm_);
+      }
+    }
+
+    // gather data to root
+    void gather(size_t shift, size_t nVec, _F* A, size_t LDA, int root) const {
+      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::gather");
+      if (LDA < length()) {
+        CErr("Can't gather to a matrix with leading dimension smaller than the BlockVector length");
+      }
+      for (auto iVec = 0ul; iVec < nVec; ++iVec) {
+        MPIGatherV(getLocalPtr(iVec + shift), localLen_, A + iVec * LDA, lens_, root, comm_);
+      }
+    }
+    
+    // gather data to all process
+    void allGather(size_t shift, size_t nVec, _F* A, size_t LDA) const {
+      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::allGather");
+      if (LDA < length()) {
+        CErr("Can't gather to a matrix with leading dimension smaller than the BlockVector length");
+      }
+      for (auto iVec = 0ul; iVec < nVec; ++iVec) {
+        MPIAllGatherV(getLocalPtr(iVec + shift), localLen_, A + iVec * LDA,lens_, comm_);
+      }
+    }
+
+    // set data from RawVectors
+    void fromRawVectors(size_t shiftA, const RawVectors<_F>& vecs, size_t shiftB, size_t nVec) {
+      vecs.sizeCheck(nVec + shiftB, "B during DisctributedVectors<_F>::fromRawVectors");
+      this->sizeCheck(nVec + shiftA, "A during DisctributedVectors<_F>::fromRawVectors");
+      scatter(shiftA, nVec, vecs.getPtr(shiftB), vecs.length(), 0);
+    }
+
+    explicit DisctributedVectors(const RawVectors<_F>& vecs, size_t shift, size_t nVec):
+        DisctributedVectors(vecs.getMPIcomm(), vecs.getMem(), vecs.length(), nVec) {
+      fromRawVectors(0ul, vecs, shift, nVec); 
+    }
+   
+    explicit DisctributedVectors(const RawVectors<_F>& vecs):
+        DisctributedVectors(vecs, 0ul, vecs.size()) { }
+     
+    RawVectors<_F> toRawVectors(size_t shift, size_t nVec) const {
+      RawVectors<_F> vecs(comm_, memManager_, length(), nVec);
+      setRawVectors(0ul, vecs, shift, nVec);
+      return vecs;
+    }
+    
+    void setRawVectors(size_t shiftA, RawVectors<_F>& vecs, size_t shiftB, size_t nVec) const {
+      vecs.sizeCheck(nVec + shiftB, "B during DisctributedVectors<_F>::setRawVectors");
+      this->sizeCheck(nVec + shiftA, "A during DisctributedVectors<_F>::setRawVectors");
+      gather(shiftA, nVec, vecs.getPtr(shiftB), vecs.length(), 0);
+    }
+    
+    RawVectors<_F> toRawVectors() const {
+      return toRawVectors(0ul, size());
+    }
+
+    DisctributedVectors(const DisctributedVectors<_F> &other): 
+        DisctributedVectors(other.comm_, other.memManager_, other.lens_, other.size_) {
+      std::cout << "len_ =  " << length() << ", other.len_ = " << other.length() << std::endl;
+      set_data(0, size_, other, 0ul, false);
+    }
+
+    DisctributedVectors(DisctributedVectors<_F> &&other): 
+        comm_(other.comm_), memManager_(other.memManager_),
+        data_(std::move(other.data_)), len_(other.len_), lens_(other.lens_), 
+        accLens_(other.accLens_), size_(other.size_) { }
+
+    virtual ~DisctributedVectors() { dealloc(); }
+
+    MPI_Comm getMPIcomm() const { return comm_; }
+    CQMemManager& getMem() const { return memManager_; }
+
+    void dealloc() {
+      if (data_) memManager_.free(data_);
+    }
+    
+    void alloc() {
+      dealloc();
+      //std::cout << "Allocating local data, with localLen_ = " << localLen_ << std::endl;
+      data_ = memManager_.malloc<_F>(localLength() * size_);
+    }
+    
+    virtual size_t length() const override { return len_; }
+    virtual size_t size() const override { return size_; }
+    
+    size_t localLength() const { return localLen_; }
+    size_t localOffset() const { return localOffset_; }
+    
+    _F* getLocalPtr(size_t i) {
+      this->sizeCheck(i, "DisctributedVectors<_F>::getPtr");
+      return data_ + i * localLength();
+    }
+
+    const _F* getLocalPtr(size_t i) const {
+      return const_cast<DisctributedVectors*>(this)->getLocalPtr(i);
+    }
+    
+    // Get element
+    virtual _F get(size_t i, size_t j) const override {
+      if (i >= length() or j >= size()) {
+        CErr("Geting invalid place in DisctributedVectors object.");
+      }
+
+      // find where it's stored
+      size_t nodeId = std::distance(accLens_.begin(),
+          std::upper_bound(accLens_.begin(), accLens_.end(), i));
+      
+      _F result = _F(0);
+
+      if (MPIRank(comm_) == nodeId) {
+        result =  getLocalPtr(j)[i - localOffset_];
+      }
+      MPIBCast(result, nodeId, comm_);
+      
+      return result;
+    }
+
+    // Set element
+    virtual void set(size_t i, size_t j, _F value) override {
+      if (i >= length() or j >= size()) {
+        CErr("Seting invalid place in DisctributedVectors object.");
+      }
+
+      if (i >= localOffset_ and i < accLens_[MPIRank(comm_)]) {
+        getLocalPtr(j)[i - localOffset_] = value;
+      }
+    }
+
+    using SolverVectors<_F>::clear;
+    void clear(size_t shift, size_t nVec) override {
+      if (nVec == 0) return;
+      
+      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::clear");
+      
+      std::fill_n(getLocalPtr(shift), nVec * localLength(), 0.);
+    }
+     
+    DisctributedVectors<_F> copy(size_t shift, size_t nVec) const {
+      
+      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::copy");
+      
+      DisctributedVectors<_F> vecs(comm_, memManager_, lens_, nVec);
+      std::copy_n(getLocalPtr(shift), localLength() * nVec, vecs.getLocalPtr(0ul));
+      
+      return vecs;
+    }
+
+    // printfull on root 
+    // but only blocks allocated in place for other nodes
+    using SolverVectors<_F>::print;
+    void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
+     
+      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::print");
+      std::string output_str = "";
+      if (str != "") {
+        output_str = "[" + str + "]";
+      } else {
+        output_str = "[DisctributedVectors]";
+      }
+      
+      output_str += " Block " + std::to_string(MPIRank(comm_)) + ", with offset = " + 
+          std::to_string(localOffset_);
+      prettyPrintSmart(out, output_str, getLocalPtr(shift), localLength(), nVec, localLength());
+    }
+    
+    virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
+                                 _F alpha, _F const *B, int64_t ldb,
+                                 _F beta, SolverVectors<_F> &C, size_t shiftC) const override;
+
+    virtual void dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
+                             int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA = true) const override;
+
+    virtual void swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) override;
+    
+    virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable = false) override;
+
+    using SolverVectors<_F>::scale;
+    virtual void scale(_F scalar, size_t shift, size_t nVec) override;
+
+    using SolverVectors<_F>::conjugate;
+    virtual void conjugate(size_t shift, size_t nVec) override;
+
+    virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
+
+    // virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    //                           size_t NRe = 0, double eps = 1e-12) override;
+
+    virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
+
+    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
+
+    using SolverVectors<_F>::norm2F;
+    virtual double norm2F(size_t shift, size_t nVec) const override;
+
+    using SolverVectors<_F>::maxNormElement;
+    virtual double maxNormElement(size_t shift, size_t nVec) const override;
+  
+  }; // class DisctributedVectors
 
   template <typename _F>
   class SolverVectorsView : public SolverVectors<_F> {
@@ -384,10 +672,6 @@ namespace ChronusQ {
       return vecs_;
     }
 
-    using SolverVectors<_F>::getPtr;
-    virtual _F* getPtr(size_t i = 0) override {
-      return vecs_.getPtr(shift() + i);
-    }
     // Get element
     virtual _F get(size_t i, size_t j) const override {
       return vecs_.get(i, shift() + j);
@@ -449,4 +733,56 @@ namespace ChronusQ {
 
   }; // class SolverVectorsView
 
-}; // namespace
+  template <typename T, typename _F, typename Operation>
+  void tryDowncastReferenceTo(SolverVectors<_F>& vecs, Operation op) {
+    try {
+      try {
+        op(dynamic_cast<T&>(vecs), 0ul); 
+      } catch(const std::bad_cast& e) {
+        SolverVectorsView<_F>& vecs_view = dynamic_cast<SolverVectorsView<_F>&>(vecs);
+        op(dynamic_cast<T&>(vecs_view.getVecs()), vecs_view.shift());
+      }
+    } catch (const std::bad_cast& e) {
+      CErr("SolverVectors Downcast failed!"); 
+    }
+  }    
+  
+  template <typename T, typename _F, typename Operation>
+  void tryDowncastReferenceTo(const SolverVectors<_F> & vecs, Operation op) {
+    try {
+      try {
+        op(dynamic_cast<const T&>(vecs), 0ul); 
+      } catch(const std::bad_cast& e) {
+        const SolverVectorsView<_F>& vecs_view = dynamic_cast<const SolverVectorsView<_F>&>(vecs);
+        op(dynamic_cast<const T&>(vecs_view.getVecs()), vecs_view.shift());
+      }
+    } catch (const std::bad_cast& e) {
+      CErr("const SolverVectors Downcast failed!"); 
+    }
+  }
+  
+  template <typename _F>
+  _F* tryGetRawVectorsPointer(SolverVectors<_F>& vecs, size_t shift = 0) {
+    _F* pointer = nullptr;
+    tryDowncastReferenceTo<RawVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+          pointer = vecsRef.getPtr(shift);
+        }
+    );
+    return pointer;
+  }
+
+  template <typename _F>
+  const _F* tryGetRawVectorsPointer(const SolverVectors<_F>& vecs, size_t shift = 0) {
+    const _F* pointer = nullptr;
+    tryDowncastReferenceTo<RawVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+          pointer = vecsRef.getPtr(shift);
+        }
+    );
+    return pointer;
+  }
+
+} // namespace ChronusQ
