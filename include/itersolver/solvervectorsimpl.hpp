@@ -48,16 +48,16 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
-                                       _F alpha, _F const *B, int64_t ldb,
-                                       _F beta, SolverVectors<_F> &C, size_t shiftC) const {
+  void DistributedVectors<_F>::multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
+                                               _F alpha, _F const *B, int64_t ldb,
+                                               _F beta, SolverVectors<_F> &C, size_t shiftC) const {
     
-    this->sizeCheck(shiftA + n, "A during DisctributedVectors<_F>::multiply_matrix");
-    C.sizeCheck(shiftC + n, "C during DisctributedVectors<_F>::multiply_matrix");
+    this->sizeCheck(shiftA + n, "A during DistributedVectors<_F>::multiply_matrix");
+    C.sizeCheck(shiftC + n, "C during DistributedVectors<_F>::multiply_matrix");
 
     // downcasting C
-    tryDowncastReferenceTo<DisctributedVectors<_F>>(C, 
-        [&](auto& CRef, size_t extraShiftC) { 
+    tryDowncastReferenceTo<DistributedVectors<_F>>(C,
+                                                   [&](auto& CRef, size_t extraShiftC) {
           if (localLength() != CRef.localLength()) {
             CErr("C Doesn't have same local length as A in multiply_matrix"); 
           }
@@ -82,6 +82,7 @@ namespace ChronusQ {
   template <typename _F>
   void RawVectors<_F>::dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
                                    int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA) const {
+    if (m * n == 0) return;
 
     if (MPIRank(comm_) == 0) {
       this->sizeCheck(shiftA + m, "A during RawVectors<_F>::dot_product");
@@ -120,11 +121,12 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
-                                   int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA) const {
-  
-    this->sizeCheck(shiftA + m, "A during DisctributedVectors<_F>::dot_product");
-    B.sizeCheck(shiftB + n, "B during DisctributedVectors<_F>::dot_product");
+  void DistributedVectors<_F>::dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
+                                           int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA) const {
+    if (m * n == 0) return;
+
+    this->sizeCheck(shiftA + m, "A during DistributedVectors<_F>::dot_product");
+    B.sizeCheck(shiftB + n, "B during DistributedVectors<_F>::dot_product");
 
     if (length() != B.length())
       CErr("Lengths of vectors does not match for dot product.");
@@ -133,8 +135,8 @@ namespace ChronusQ {
     _F* CRes = memManager_.template malloc<_F>(m * n);
 #endif
 
-    tryDowncastReferenceTo<DisctributedVectors<_F>>(B, 
-        [&](auto& BRef, size_t extraShiftB) {
+    tryDowncastReferenceTo<DistributedVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
           if (localLength() != BRef.localLength()) {
             CErr("B Doesn't have same local length as A in dot product"); 
           }
@@ -200,17 +202,17 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable) {
+  void DistributedVectors<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable) {
     
     // check more length
     if (length() != B.length())
       CErr("Lengths of vectors does not match for set_data.");
     
-    this->sizeCheck(shiftA + nVec, "A during DisctributedVectors<_F>::set_data");
-    B.sizeCheck(shiftB + nVec, "B during DisctributedVectors<_F>::set_data");
+    this->sizeCheck(shiftA + nVec, "A during DistributedVectors<_F>::set_data");
+    B.sizeCheck(shiftB + nVec, "B during DistributedVectors<_F>::set_data");
     
-    tryDowncastReferenceTo<DisctributedVectors<_F>>(B, 
-        [&](auto& BRef, size_t extraShiftB) {
+    tryDowncastReferenceTo<DistributedVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
           if (BRef.localLength() != localLength() ) { 
             CErr("A and B don't have matching size locally to perform set data");
           }
@@ -247,17 +249,17 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) {
+  void DistributedVectors<_F>::swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) {
      
     // check more length
     if (length() != B.length())
       CErr("Lengths of vectors does not match for set_data.");
     
-    this->sizeCheck(shiftA + nVec, "A during DisctributedVectors<_F>::swap_data");
-    B.sizeCheck(shiftB + nVec, "B during DisctributedVectors<_F>::swap_data");
+    this->sizeCheck(shiftA + nVec, "A during DistributedVectors<_F>::swap_data");
+    B.sizeCheck(shiftB + nVec, "B during DistributedVectors<_F>::swap_data");
     
-    tryDowncastReferenceTo<DisctributedVectors<_F>>(B, 
-        [&](auto& BRef, size_t extraShiftB) {
+    tryDowncastReferenceTo<DistributedVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
           if (BRef.localLength() != localLength() ) { 
             CErr("A and B don't have matching size locally to perform swapping data");
           }
@@ -286,10 +288,10 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::scale(_F scalar, size_t shiftA, size_t nVec) {
+  void DistributedVectors<_F>::scale(_F scalar, size_t shiftA, size_t nVec) {
     if (nVec == 0) return;
 
-    this->sizeCheck(shiftA + nVec, "A during DisctributedVectors<_F>::scale");
+    this->sizeCheck(shiftA + nVec, "A during DistributedVectors<_F>::scale");
     blas::scal(localLength() * nVec, scalar ,getLocalPtr(shiftA), 1);
   }
   
@@ -317,12 +319,12 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::conjugate(size_t shiftA, size_t nVec) {
+  void DistributedVectors<_F>::conjugate(size_t shiftA, size_t nVec) {
     
     if (std::is_same<_F, double>::value) return;
     if (nVec == 0) return;
 
-    this->sizeCheck(shiftA + nVec, "A during DisctributedVectors<_F>::conjugate");
+    this->sizeCheck(shiftA + nVec, "A during DistributedVectors<_F>::conjugate");
 
     std::for_each(getLocalPtr(shiftA), getLocalPtr(shiftA) + localLength() * nVec,
         [] (_F &v) { v = SmartConj(v);} );
@@ -355,16 +357,16 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) {
+  void DistributedVectors<_F>::axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) {
     
     if (length() != X.length())
       CErr("Lengths of vectors does not match for axpy.");
     
-    this->sizeCheck(shiftY + nVec, "Y during DisctributedVectors<_F>::axpy");
-    X.sizeCheck(shiftX + nVec, "X during DisctributedVectors<_F>::axpy");
+    this->sizeCheck(shiftY + nVec, "Y during DistributedVectors<_F>::axpy");
+    X.sizeCheck(shiftX + nVec, "X during DistributedVectors<_F>::axpy");
     
-    tryDowncastReferenceTo<DisctributedVectors<_F>>(X, 
-        [&](auto& XRef, size_t extraShiftX) {
+    tryDowncastReferenceTo<DistributedVectors<_F>>(X,
+                                                   [&](auto& XRef, size_t extraShiftX) {
           if (XRef.localLength() != localLength() ) { 
             CErr("X and Y don't have matching size locally to perform axpy");
           }
@@ -464,8 +466,8 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  void DisctributedVectors<_F>::trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) {
-    CErr("trsm NYI for DisctributedVectors");
+  void DistributedVectors<_F>::trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) {
+    CErr("trsm NYI for DistributedVectors");
   }
   
   template <typename _F>
@@ -498,8 +500,8 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  int DisctributedVectors<_F>::QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R, int LDR) {
-    CErr("QR NYI for DisctributedVectors");
+  int DistributedVectors<_F>::QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R, int LDR) {
+    CErr("QR NYI for DistributedVectors");
     return 0;
   }
   
@@ -532,9 +534,9 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  double DisctributedVectors<_F>::norm2F(size_t shift, size_t nVec) const {
+  double DistributedVectors<_F>::norm2F(size_t shift, size_t nVec) const {
     
-    this->sizeCheck(shift + nVec, "in DisctributedVectors<_F>::norm2F");
+    this->sizeCheck(shift + nVec, "in DistributedVectors<_F>::norm2F");
     
     double sqrtv = blas::nrm2(localLength() * nVec, getLocalPtr(shift), 1);
     double v = sqrtv * sqrtv;
@@ -572,9 +574,9 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  double DisctributedVectors<_F>::maxNormElement(size_t shift, size_t nVec) const {
+  double DistributedVectors<_F>::maxNormElement(size_t shift, size_t nVec) const {
     // TODO: need to sync the vectors across different nodes before calling this
-    this->sizeCheck(shift + nVec, "in DisctributedVectors<_F>::maxNormElement");
+    this->sizeCheck(shift + nVec, "in DistributedVectors<_F>::maxNormElement");
     double v = 0.0;
     if (nVec == 0) return v;
     

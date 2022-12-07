@@ -279,43 +279,44 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   typename Davidson<EigT>::LinearTrans_t func = 
       [&]( size_t nVec, SolverVectors<EigT> &V,
         SolverVectors<EigT> &AV) {
-        
+
         // copy the V out
         EigT* VRaw = mem.malloc<EigT>(N*nVec);
         EigT* AVRaw = mem.malloc<EigT>(N*nVec);
         
-        tryDowncastReferenceTo<DisctributedVectors<EigT>>(V,
-            [&] (auto& VRef, size_t shiftV) {
+        tryDowncastReferenceTo<DistributedVectors<EigT>>(V,
+                                                         [&] (auto& VRef, size_t shiftV) {
               VRef.gather(shiftV, nVec, VRaw, N, 0);
             }
         );
         
         if (isRoot) {
-          prettyPrintSmart(std::cout, "VRaw", VRaw, N, nVec, N);
+          // prettyPrintSmart(std::cout, "VRaw", VRaw, N, nVec, N);
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
               N,nVec,N,EigT(1.),A,N,VRaw,N,EigT(0.),AVRaw,N);
-          prettyPrintSmart(std::cout, "VRaw", AVRaw, N, nVec, N);
+          // prettyPrintSmart(std::cout, "AVRaw", AVRaw, N, nVec, N);
         }
         
         MPI_Barrier(comm);
         
         // scatter AVRaw Back 
-        tryDowncastReferenceTo<DisctributedVectors<EigT>>(AV,
-            [&] (auto& AVRef, size_t shiftAV) {
+        tryDowncastReferenceTo<DistributedVectors<EigT>>(AV,
+                                                         [&] (auto& AVRef, size_t shiftAV) {
               AVRef.scatter(shiftAV, nVec, AVRaw, N, 0); 
             }
          );
+
       };
 
   typename Davidson<EigT>::LinearTrans_t PC = 
       [&](size_t nVec, SolverVectors<EigT> &V,
         SolverVectors<EigT> &AV) {
-        
+
         AV.set_data(0, nVec, V, 0);
         
         if( doPre ) {
-          tryDowncastReferenceTo<DisctributedVectors<EigT>>(AV,
-              [&] (auto& AVRef, size_t shiftAV) {
+          tryDowncastReferenceTo<DistributedVectors<EigT>>(AV,
+                                                           [&] (auto& AVRef, size_t shiftAV) {
                 const EigT* ADIAG_ptr = ADIAG + AVRef.localOffset();
                 auto AV_ptr = AVRef.getLocalPtr(shiftAV);
                 for (auto i = 0ul; i < AVRef.localLength(); ++i, ++ADIAG_ptr, ++AV_ptr) {
@@ -324,11 +325,12 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
               }
           );              
         }
+
       };
    
   std::function<std::shared_ptr<SolverVectors<EigT>>(size_t)> distributedVecsGenerator = 
       [&] (size_t nVec) {
-         return std::make_shared<DisctributedVectors<EigT>>(comm, mem, N, nVec);
+         return std::make_shared<DistributedVectors<EigT>>(comm, mem, N, nVec);
       };
   
   size_t nThreads = omp_get_num_threads();
