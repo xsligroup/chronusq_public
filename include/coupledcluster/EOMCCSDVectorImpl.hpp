@@ -508,48 +508,36 @@ namespace ChronusQ{
       CErr("Transpose of B matrix NYI in EOMCCSDVectorSet::multiply_matrix");
 
     C.scale(beta, shiftC, n);
-
-    EOMCCSDVectorSet<MatsT> *C_ptr = nullptr;
-
-    try {
-      C_ptr = &dynamic_cast<EOMCCSDVectorSet<MatsT>&>(C);
-    } catch(const std::bad_cast& e) {
-      SolverVectorsView<MatsT>& C_view = dynamic_cast<SolverVectorsView<MatsT>&>(C);
-      C_ptr = &dynamic_cast<EOMCCSDVectorSet<MatsT>&>(C_view.getVecs());
-      shiftC += C_view.shift();
-    }
-
-    for (size_t j = 0; j < n; j++) {
-      EOMCCSDVector<MatsT> &C_vec = C_ptr->get(j + shiftC);
-      for (size_t i = 0; i < k; i++) {
-        C_vec.axpy(alpha * B[i + j * ldb], get(i + shiftA));
-      }
-    }
-
+    
+    tryDowncastReferenceTo<EOMCCSDVectorSet<MatsT>>(C,
+        [&] (auto& CRef, size_t extraShiftC) {
+          shiftC += extraShiftC;
+          for (size_t j = 0; j < n; j++) {
+            EOMCCSDVector<MatsT> &C_vec = CRef.get(j + shiftC);
+            for (size_t i = 0; i < k; i++) {
+              C_vec.axpy(alpha * B[i + j * ldb], get(i + shiftA));
+            }
+          }
+        }
+    );
   }
 
   template <typename MatsT>
   void EOMCCSDVectorSet<MatsT>::dot_product(size_t shiftA, const SolverVectors<MatsT> &B, size_t shiftB,
                                             int64_t m, int64_t n, MatsT *C, int64_t ldc, bool conjA) const {
 
-    const EOMCCSDVectorSet<MatsT> *B_ptr = nullptr;
-
-    try {
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& B_view = dynamic_cast<const SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-
-    for (size_t i = 0; i < m; i++) {
-      const EOMCCSDVector<MatsT> &A_vec = get(i + shiftA);
-      for (size_t j = 0; j < n; j++) {
-        const EOMCCSDVector<MatsT> &B_vec = B_ptr->get(j + shiftB);
-        C[i + j * ldc] = A_vec.dot(B_vec, conjA);
-      }
-    }
-
+    tryDowncastReferenceTo<EOMCCSDVectorSet<MatsT>>(B,
+        [&] (auto& BRef, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          for (size_t i = 0; i < m; i++) {
+            const EOMCCSDVector<MatsT> &A_vec = get(i + shiftA);
+            for (size_t j = 0; j < n; j++) {
+              const EOMCCSDVector<MatsT> &B_vec = BRef.get(j + shiftB);
+              C[i + j * ldc] = A_vec.dot(B_vec, conjA);
+            }
+          }
+        }
+    );
   }
 
   template <typename MatsT>
@@ -559,46 +547,34 @@ namespace ChronusQ{
       return;
     }
 
-    const EOMCCSDVectorSet<MatsT> *B_ptr = nullptr;
-
-    try {
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& B_view = dynamic_cast<const SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-
-    for (size_t i = 0; i < nVec; i++) {
-      get(i + shiftA) = B_ptr->get(i + shiftB);
-    }
-
+    tryDowncastReferenceTo<EOMCCSDVectorSet<MatsT>>(B,
+        [&] (auto& BRef, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          for (size_t i = 0; i < nVec; i++) {
+            get(i + shiftA) = BRef.get(i + shiftB);
+          }
+        }
+    );
   }
 
   template <typename MatsT>
   void EOMCCSDVectorSet<MatsT>::swap_data(size_t shiftA, size_t nVec, SolverVectors<MatsT> &B, size_t shiftB) {
 
-    EOMCCSDVectorSet<MatsT> *B_ptr = nullptr;
-
-    try {
-      B_ptr = &dynamic_cast<EOMCCSDVectorSet<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      SolverVectorsView<MatsT>& B_view = dynamic_cast<SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<EOMCCSDVectorSet<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-
-    for (size_t i = 0; i < nVec; i++) {
-      get(i + shiftA).swap(B_ptr->get(i + shiftB));
-    }
-
+    tryDowncastReferenceTo<EOMCCSDVectorSet<MatsT>>(B,
+        [&] (auto& BRef, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          for (size_t i = 0; i < nVec; i++) {
+            get(i + shiftA).swap(BRef.get(i + shiftB));
+          }
+        }
+    );
   }
 
   template <typename MatsT>
   void EOMCCSDVectorSet<MatsT>::scale(MatsT scalar, size_t shiftA, size_t nVec) {
     if (nVec == 0) return;
 
-    checkIndexWithInBound(shiftA + nVec - 1);
+    this->sizeCheck(shiftA + nVec, "EOMCCSDVectorSet<MatsT>::scale");
 
     for (size_t i = 0; i < nVec; i++) {
       get(i + shiftA).scale(scalar);
@@ -610,7 +586,7 @@ namespace ChronusQ{
     if (std::is_same<MatsT, double>::value) return;
     if (nVec == 0) return;
 
-    checkIndexWithInBound(shiftA + nVec - 1);
+    this->sizeCheck(shiftA + nVec, "EOMCCSDVectorSet<MatsT>::conjugate");
 
     for (size_t i = 0; i < nVec; i++) {
       get(i + shiftA).conjugate();
@@ -620,19 +596,14 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCSDVectorSet<MatsT>::axpy(size_t shiftY, size_t nVec, MatsT alpha, const SolverVectors<MatsT> &X, size_t shiftX) {
 
-    const EOMCCSDVectorSet<MatsT> *X_ptr = nullptr;
-
-    try {
-      X_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(X);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& X_view = dynamic_cast<const SolverVectorsView<MatsT>&>(X);
-      X_ptr = &dynamic_cast<const EOMCCSDVectorSet<MatsT>&>(X_view.getVecs());
-      shiftX += X_view.shift();
-    }
-
-    for (size_t i = 0; i < nVec; i++) {
-      get(i + shiftY).axpy(alpha, X_ptr->get(i + shiftX));
-    }
+    tryDowncastReferenceTo<EOMCCSDVectorSet<MatsT>>(X,
+        [&] (auto& XRef, size_t extraShiftX) {
+          shiftX += extraShiftX;
+          for (size_t i = 0; i < nVec; i++) {
+            get(i + shiftY).axpy(alpha, XRef.get(i + shiftX));
+          }
+        }
+    );
   }
 
   template <typename MatsT>
@@ -651,7 +622,7 @@ namespace ChronusQ{
   double EOMCCSDVectorSet<MatsT>::norm2F(size_t shift, size_t nVec) const {
     if (nVec == 0) return 0.0;
 
-    checkIndexWithInBound(shift + nVec - 1);
+    this->sizeCheck(shift + nVec, "EOMCCSDVectorSet<MatsT>::norm2F");
 
     double norm = 0.0;
 
@@ -667,7 +638,7 @@ namespace ChronusQ{
   double EOMCCSDVectorSet<MatsT>::maxNormElement(size_t shift, size_t nVec) const {
     if (nVec == 0) return 0.0;
 
-    checkIndexWithInBound(shift + nVec - 1);
+    this->sizeCheck(shift + nVec, "EOMCCSDVectorSet<MatsT>::maxNormElement");
 
     double absmax = 0.0;
 
@@ -685,10 +656,10 @@ namespace ChronusQ{
     if (nVec == 0) return RawVectors<MatsT>(c, mem, length(includeZeroBody), nVec);
 
     if (nVec == std::numeric_limits<size_t>::max()) {
-      checkIndexWithInBound(shift);
+      this->sizeCheck(shift, "EOMCCSDVectorSet<MatsT>::toRaw");
       nVec = size() - shift;
     } else
-      checkIndexWithInBound(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "EOMCCSDVectorSet<MatsT>::toRaw");
 
 //    print(std::cout, "EOMCCSDVectorSet::toRaw::EOM", shift, nVec);
 
@@ -717,10 +688,10 @@ namespace ChronusQ{
     if (nVec == 0) return RawVectors<MatsT>(c, mem, length(eom, includeZeroBody), nVec);
 
     if (nVec == std::numeric_limits<size_t>::max()) {
-      checkIndexWithInBound(shift);
+      this->sizeCheck(shift, "EOMCCSDVectorSet<MatsT>::toRaw");
       nVec = size() - shift;
     } else
-      checkIndexWithInBound(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "EOMCCSDVectorSet<MatsT>::toRaw");
 
 //    print(std::cout, "EOMCCSDVectorSet::toRaw::EOM", shift, nVec);
 
@@ -749,12 +720,12 @@ namespace ChronusQ{
     if (nVec == 0) return;
 
     if (nVec == std::numeric_limits<size_t>::max()) {
-      checkIndexWithInBound(shiftThis);
-      raw.getPtr(shiftRaw);
+      this->sizeCheck(shiftThis, "EOMCCSDVectorSet<MatsT>::fromRaw");
+      raw.sizeCheck(shiftRaw, "EOMCCSDVectorSet<MatsT>::fromRaw");
       nVec = std::min(size() - shiftThis, raw.size() - shiftRaw);
     } else {
-      checkIndexWithInBound(shiftThis + nVec - 1);
-      raw.getPtr(shiftRaw + nVec - 1);
+      this->sizeCheck(shiftThis + nVec, "EOMCCSDVectorSet<MatsT>::fromRaw");
+      raw.sizeCheck(shiftRaw + nVec, "EOMCCSDVectorSet<MatsT>::fromRaw");
     }
 
 //    raw.print(std::cout, "EOMCCSDVectorSet::fromRaw::Raw", shiftRaw, nVec);
@@ -781,12 +752,12 @@ namespace ChronusQ{
     if (nVec == 0) return;
 
     if (nVec == std::numeric_limits<size_t>::max()) {
-      checkIndexWithInBound(shiftThis);
-      raw.getPtr(shiftRaw);
+      this->sizeCheck(shiftThis, "EOMCCSDVectorSet<MatsT>::fromRaw");
+      raw.sizeCheck(shiftRaw, "EOMCCSDVectorSet<MatsT>::fromRaw");
       nVec = std::min(size() - shiftThis, raw.size() - shiftRaw);
     } else {
-      checkIndexWithInBound(shiftThis + nVec - 1);
-      raw.getPtr(shiftRaw + nVec - 1);
+      this->sizeCheck(shiftThis + nVec, "EOMCCSDVectorSet<MatsT>::fromRaw");
+      raw.sizeCheck(shiftRaw + nVec, "EOMCCSDVectorSet<MatsT>::fromRaw");
     }
 
     //    raw.print(std::cout, "EOMCCSDVectorSet::fromRaw::Raw", shiftRaw, nVec);
@@ -812,12 +783,12 @@ namespace ChronusQ{
     if (nVec == 0) return 0.0;
 
     if (nVec == std::numeric_limits<size_t>::max()) {
-      eomccSet_.checkIndexWithInBound(shift);
-      rawSet_.getPtr(shift);
+      eomccSet_.sizeCheck(shift, "EOMCCSDVectorSetDebug<MatsT>::compareDebug");
+      rawSet_.sizeCheck(shift, "EOMCCSDVectorSetDebug<MatsT>::compareDebug");
       nVec = size() - shift;
     } else {
-      eomccSet_.checkIndexWithInBound(shift + nVec - 1);
-      rawSet_.getPtr(shift + nVec - 1);
+      eomccSet_.sizeCheck(shift + nVec, "EOMCCSDVectorSetDebug<MatsT>::compareDebug");
+      rawSet_.sizeCheck(shift + nVec, "EOMCCSDVectorSetDebug<MatsT>::compareDebug");
     }
 
     RawVectors<MatsT> raw = eomccSet_.toRaw(rawSet_.getMPIcomm(), rawSet_.getMem(), false, shift, nVec);
@@ -832,57 +803,44 @@ namespace ChronusQ{
                                                 MatsT alpha, MatsT const *B, int64_t ldb,
                                                 MatsT beta, SolverVectors<MatsT> &C, size_t shiftC) const {
 
-    EOMCCSDVectorSetDebug<MatsT> *C_ptr = nullptr;
+    tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(C,
+        [&] (auto& C_debug, size_t extraShiftC) {
+          shiftC += extraShiftC;
+          eomccSet_.multiply_matrix(shiftA, transB, n, k, alpha, B, ldb, beta, C_debug.getEOMCCSet(), shiftC);
 
-    try {
-      C_ptr = &dynamic_cast<EOMCCSDVectorSetDebug<MatsT>&>(C);
-    } catch(const std::bad_cast& e) {
-      SolverVectorsView<MatsT>& C_view = dynamic_cast<SolverVectorsView<MatsT>&>(C);
-      C_ptr = &dynamic_cast<EOMCCSDVectorSetDebug<MatsT>&>(C_view.getVecs());
-      shiftC += C_view.shift();
-    }
-    EOMCCSDVectorSetDebug<MatsT> &C_debug = *C_ptr;
+          TA::get_default_world().gop.fence();
+          rawSet_.multiply_matrix(shiftA, transB, n, k, alpha, B, ldb, beta, C_debug.getRawSet(), shiftC);
 
-    eomccSet_.multiply_matrix(shiftA, transB, n, k, alpha, B, ldb, beta, C_debug.getEOMCCSet(), shiftC);
-
-    TA::get_default_world().gop.fence();
-    rawSet_.multiply_matrix(shiftA, transB, n, k, alpha, B, ldb, beta, C_debug.getRawSet(), shiftC);
-
-    std::cout << "EOMCCSDVectorSetDebug::multiply_matrix error = "
-              << C_debug.compareDebug(shiftC, n) << std::endl;
+          std::cout << "EOMCCSDVectorSetDebug::multiply_matrix error = "
+                    << C_debug.compareDebug(shiftC, n) << std::endl;
+        }
+    );
   }
 
   template <typename MatsT>
   void EOMCCSDVectorSetDebug<MatsT>::dot_product(size_t shiftA, const SolverVectors<MatsT> &B, size_t shiftB,
                                                  int64_t m, int64_t n, MatsT *C, int64_t ldc, bool conjA) const {
 
-    const EOMCCSDVectorSetDebug<MatsT> *B_ptr = nullptr;
+    tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(B,
+        [&] (auto& B_debug, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          eomccSet_.dot_product(shiftA, B_debug.eomccSet_, shiftB, m, n, C, ldc, conjA);
 
-    try {
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& B_view = dynamic_cast<const SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-    const EOMCCSDVectorSetDebug<MatsT> &B_debug = *B_ptr;
+          MatsT *C_ref = B_debug.rawSet_.getMem().template malloc<MatsT>(m * n);
 
-    eomccSet_.dot_product(shiftA, B_debug.eomccSet_, shiftB, m, n, C, ldc, conjA);
+          TA::get_default_world().gop.fence();
+          rawSet_.dot_product(shiftA, B_debug.rawSet_, shiftB, m, n, C_ref, m, conjA);
 
-    MatsT *C_ref = B_debug.rawSet_.getMem().template malloc<MatsT>(m * n);
+          if (ldc == m)
+            blas::axpy(m * n, -1.0, C, 1, C_ref, 1);
+          else
+            for (size_t i = 0; i < n; i++)
+              blas::axpy(m, -1.0, C + i * ldc, 1, C_ref + i * m, 1);
 
-    TA::get_default_world().gop.fence();
-    rawSet_.dot_product(shiftA, B_debug.rawSet_, shiftB, m, n, C_ref, m, conjA);
-
-    if (ldc == m)
-      blas::axpy(m * n, -1.0, C, 1, C_ref, 1);
-    else
-      for (size_t i = 0; i < n; i++)
-        blas::axpy(m, -1.0, C + i * ldc, 1, C_ref + i * m, 1);
-
-    std::cout << "EOMCCSDVectorSetDebug::dot_product error = "
-              << blas::nrm2(m * n, C_ref, 1) << std::endl;
-
+          std::cout << "EOMCCSDVectorSetDebug::dot_product error = "
+                    << blas::nrm2(m * n, C_ref, 1) << std::endl;
+        }
+    );
   }
 
   template <typename MatsT>
@@ -892,49 +850,36 @@ namespace ChronusQ{
       return;
     }
 
-    const EOMCCSDVectorSetDebug<MatsT> *B_ptr = nullptr;
+    tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(B,
+        [&] (auto& B_debug, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          eomccSet_.set_data(shiftA, nVec, B_debug.eomccSet_, shiftB);
 
-    try {
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& B_view = dynamic_cast<const SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-    const EOMCCSDVectorSetDebug<MatsT> &B_debug = *B_ptr;
+          TA::get_default_world().gop.fence();
+          rawSet_.set_data(shiftA, nVec, B_debug.rawSet_, shiftB);
 
-    eomccSet_.set_data(shiftA, nVec, B_debug.eomccSet_, shiftB);
-
-    TA::get_default_world().gop.fence();
-    rawSet_.set_data(shiftA, nVec, B_debug.rawSet_, shiftB);
-
-    std::cout << "EOMCCSDVectorSetDebug::set_data error = "
-              << compareDebug(shiftA, nVec) << std::endl;
-
+          std::cout << "EOMCCSDVectorSetDebug::set_data error = "
+                    << compareDebug(shiftA, nVec) << std::endl;
+        }
+    );
   }
 
   template <typename MatsT>
   void EOMCCSDVectorSetDebug<MatsT>::swap_data(size_t shiftA, size_t nVec, SolverVectors<MatsT> &B, size_t shiftB) {
 
-    EOMCCSDVectorSetDebug<MatsT> *B_ptr = nullptr;
+    tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(B,
+        [&] (auto& B_debug, size_t extraShiftB) {
+          shiftB += extraShiftB;
+          
+          eomccSet_.swap_data(shiftA, nVec, B_debug.eomccSet_, shiftB);
 
-    try {
-      B_ptr = &dynamic_cast<EOMCCSDVectorSetDebug<MatsT>&>(B);
-    } catch(const std::bad_cast& e) {
-      SolverVectorsView<MatsT>& B_view = dynamic_cast<SolverVectorsView<MatsT>&>(B);
-      B_ptr = &dynamic_cast<EOMCCSDVectorSetDebug<MatsT>&>(B_view.getVecs());
-      shiftB += B_view.shift();
-    }
-    EOMCCSDVectorSetDebug<MatsT> &B_debug = *B_ptr;
+          TA::get_default_world().gop.fence();
+          rawSet_.swap_data(shiftA, nVec, B_debug.rawSet_, shiftB);
 
-    eomccSet_.swap_data(shiftA, nVec, B_debug.eomccSet_, shiftB);
-
-    TA::get_default_world().gop.fence();
-    rawSet_.swap_data(shiftA, nVec, B_debug.rawSet_, shiftB);
-
-    std::cout << "EOMCCSDVectorSetDebug::swap error = "
-    << compareDebug(shiftA, nVec) << std::endl;
-
+          std::cout << "EOMCCSDVectorSetDebug::swap error = "
+          << compareDebug(shiftA, nVec) << std::endl;
+        }
+    );
   }
 
   template <typename MatsT>
@@ -964,24 +909,18 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCSDVectorSetDebug<MatsT>::axpy(size_t shiftY, size_t nVec, MatsT alpha, const SolverVectors<MatsT> &X, size_t shiftX) {
 
-    const EOMCCSDVectorSetDebug<MatsT> *X_ptr = nullptr;
+    tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(X,
+        [&] (auto& X_debug, size_t extraShiftX) {
+          shiftX += extraShiftX;
+          eomccSet_.axpy(shiftY, nVec, alpha, X_debug.eomccSet_, shiftX);
 
-    try {
-      X_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(X);
-    } catch(const std::bad_cast& e) {
-      const SolverVectorsView<MatsT>& X_view = dynamic_cast<const SolverVectorsView<MatsT>&>(X);
-      X_ptr = &dynamic_cast<const EOMCCSDVectorSetDebug<MatsT>&>(X_view.getVecs());
-      shiftX += X_view.shift();
-    }
-    const EOMCCSDVectorSetDebug<MatsT> &X_debug = *X_ptr;
+          TA::get_default_world().gop.fence();
+          rawSet_.axpy(shiftY, nVec, alpha, X_debug.rawSet_, shiftX);
 
-    eomccSet_.axpy(shiftY, nVec, alpha, X_debug.eomccSet_, shiftX);
-
-    TA::get_default_world().gop.fence();
-    rawSet_.axpy(shiftY, nVec, alpha, X_debug.rawSet_, shiftX);
-
-    std::cout << "EOMCCSDVectorSetDebug::axpy error = "
-              << compareDebug(shiftY, nVec) << std::endl;
+          std::cout << "EOMCCSDVectorSetDebug::axpy error = "
+                    << compareDebug(shiftY, nVec) << std::endl;
+        }
+    );
   }
 
   template <typename MatsT>

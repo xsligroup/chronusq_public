@@ -232,7 +232,7 @@ namespace ChronusQ {
     gmres.run();
 
     if( isRoot )
-      std::copy_n(gmres.getSol()->getPtr(),
+      std::copy_n(tryGetRawVectorsPointer(*gmres.getSol()),
                   fdrSettings.nRHS * results.shifts.size() * nSingleDim_,
                   results.SOL);
 

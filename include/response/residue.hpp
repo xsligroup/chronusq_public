@@ -138,7 +138,7 @@ namespace ChronusQ {
       [&](size_t nVec, T shift, SolverVectors<T> &V, SolverVectors<T> &AV) {
 
       //if( not this->fullMatrix_ ) CErr();
-
+      std::cout << "in PC of GPLHR" << std::endl;
       AV.set_data(0, nVec, V, 0);
     };
 
@@ -168,7 +168,7 @@ namespace ChronusQ {
       for(auto k = 0; k < resSettings.nRoots; k++)
         resResults.W[k] = std::real(gplhr.eigVal()[k]);
 
-      std::copy_n(gplhr.VR()->getPtr(),
+      std::copy_n(tryGetRawVectorsPointer(*gplhr.VR()),
                   this->nSingleDim_ * resSettings.nRoots,
                   resResults.VR);
 
