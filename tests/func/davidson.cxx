@@ -324,6 +324,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
               }
           );              
         }
+
       };
    
   std::function<std::shared_ptr<SolverVectors<EigT>>(size_t)> distributedVecsGenerator = 
