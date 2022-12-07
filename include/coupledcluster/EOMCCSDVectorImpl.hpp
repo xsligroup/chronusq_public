@@ -820,6 +820,7 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCSDVectorSetDebug<MatsT>::dot_product(size_t shiftA, const SolverVectors<MatsT> &B, size_t shiftB,
                                                  int64_t m, int64_t n, MatsT *C, int64_t ldc, bool conjA) const {
+    if (m * n == 0) return;
 
     tryDowncastReferenceTo<EOMCCSDVectorSetDebug<MatsT>>(B,
         [&] (auto& B_debug, size_t extraShiftB) {

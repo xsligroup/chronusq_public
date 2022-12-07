@@ -358,7 +358,7 @@ namespace ChronusQ {
   }; // class RawVectors
 
    /*
-    * \brief DisctributedVectors
+    * \brief DistributedVectors
     * 
     * The actual storage of the data is devided into blocks
     *   across different nodes.
@@ -367,7 +367,7 @@ namespace ChronusQ {
     *
     */
   template <typename _F>
-  class DisctributedVectors : public SolverVectors<_F> {
+  class DistributedVectors : public SolverVectors<_F> {
 
   protected:
 
@@ -388,8 +388,8 @@ namespace ChronusQ {
   public:
     
     // dividing the vector evenly 
-    explicit DisctributedVectors(MPI_Comm c, CQMemManager& mem,
-        size_t len, size_t size) :
+    explicit DistributedVectors(MPI_Comm c, CQMemManager& mem,
+                                size_t len, size_t size) :
         comm_(c), memManager_(mem), len_(len), size_(size) {
       
       size_t nNodes = MPISize(comm_);
@@ -409,8 +409,8 @@ namespace ChronusQ {
     }
      
     // dividing the vector with inputs
-    explicit DisctributedVectors(MPI_Comm c, CQMemManager& mem, 
-        const std::vector<size_t>& lens, size_t size):
+    explicit DistributedVectors(MPI_Comm c, CQMemManager& mem,
+                                const std::vector<size_t>& lens, size_t size):
         comm_(c), memManager_(mem), lens_(lens), size_(size) {
       
       size_t nNodes = MPISize(comm_);
@@ -437,11 +437,11 @@ namespace ChronusQ {
     
     // scatter data from root
     void scatter(size_t shift, size_t nVec, const _F* A, size_t LDA, int root) {
-      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::scatter");
+      this->sizeCheck(nVec + shift, "DistributedVectors<_F>::scatter");
       if (LDA < length()) {
         CErr("Can't scatter from a matrix with leading dimension smaller than the BlockVector length");
       }
-      std::cout << "in Scatter" << std::endl;
+
       for (auto iVec = 0ul; iVec < nVec; ++iVec) {
         MPIScatterV(A + iVec * LDA, lens_, getLocalPtr(iVec + shift), localLen_, root, comm_);
       }
@@ -449,7 +449,7 @@ namespace ChronusQ {
 
     // gather data to root
     void gather(size_t shift, size_t nVec, _F* A, size_t LDA, int root) const {
-      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::gather");
+      this->sizeCheck(nVec + shift, "DistributedVectors<_F>::gather");
       if (LDA < length()) {
         CErr("Can't gather to a matrix with leading dimension smaller than the BlockVector length");
       }
@@ -460,7 +460,7 @@ namespace ChronusQ {
     
     // gather data to all process
     void allGather(size_t shift, size_t nVec, _F* A, size_t LDA) const {
-      this->sizeCheck(nVec + shift, "DisctributedVectors<_F>::allGather");
+      this->sizeCheck(nVec + shift, "DistributedVectors<_F>::allGather");
       if (LDA < length()) {
         CErr("Can't gather to a matrix with leading dimension smaller than the BlockVector length");
       }
@@ -471,18 +471,18 @@ namespace ChronusQ {
 
     // set data from RawVectors
     void fromRawVectors(size_t shiftA, const RawVectors<_F>& vecs, size_t shiftB, size_t nVec) {
-      vecs.sizeCheck(nVec + shiftB, "B during DisctributedVectors<_F>::fromRawVectors");
-      this->sizeCheck(nVec + shiftA, "A during DisctributedVectors<_F>::fromRawVectors");
+      vecs.sizeCheck(nVec + shiftB, "B during DistributedVectors<_F>::fromRawVectors");
+      this->sizeCheck(nVec + shiftA, "A during DistributedVectors<_F>::fromRawVectors");
       scatter(shiftA, nVec, vecs.getPtr(shiftB), vecs.length(), 0);
     }
 
-    explicit DisctributedVectors(const RawVectors<_F>& vecs, size_t shift, size_t nVec):
-        DisctributedVectors(vecs.getMPIcomm(), vecs.getMem(), vecs.length(), nVec) {
+    explicit DistributedVectors(const RawVectors<_F>& vecs, size_t shift, size_t nVec):
+        DistributedVectors(vecs.getMPIcomm(), vecs.getMem(), vecs.length(), nVec) {
       fromRawVectors(0ul, vecs, shift, nVec); 
     }
    
-    explicit DisctributedVectors(const RawVectors<_F>& vecs):
-        DisctributedVectors(vecs, 0ul, vecs.size()) { }
+    explicit DistributedVectors(const RawVectors<_F>& vecs):
+        DistributedVectors(vecs, 0ul, vecs.size()) { }
      
     RawVectors<_F> toRawVectors(size_t shift, size_t nVec) const {
       RawVectors<_F> vecs(comm_, memManager_, length(), nVec);
@@ -491,8 +491,8 @@ namespace ChronusQ {
     }
     
     void setRawVectors(size_t shiftA, RawVectors<_F>& vecs, size_t shiftB, size_t nVec) const {
-      vecs.sizeCheck(nVec + shiftB, "B during DisctributedVectors<_F>::setRawVectors");
-      this->sizeCheck(nVec + shiftA, "A during DisctributedVectors<_F>::setRawVectors");
+      vecs.sizeCheck(nVec + shiftB, "B during DistributedVectors<_F>::setRawVectors");
+      this->sizeCheck(nVec + shiftA, "A during DistributedVectors<_F>::setRawVectors");
       gather(shiftA, nVec, vecs.getPtr(shiftB), vecs.length(), 0);
     }
     
@@ -500,18 +500,18 @@ namespace ChronusQ {
       return toRawVectors(0ul, size());
     }
 
-    DisctributedVectors(const DisctributedVectors<_F> &other): 
-        DisctributedVectors(other.comm_, other.memManager_, other.lens_, other.size_) {
+    DistributedVectors(const DistributedVectors<_F> &other):
+        DistributedVectors(other.comm_, other.memManager_, other.lens_, other.size_) {
       std::cout << "len_ =  " << length() << ", other.len_ = " << other.length() << std::endl;
       set_data(0, size_, other, 0ul, false);
     }
 
-    DisctributedVectors(DisctributedVectors<_F> &&other): 
+    DistributedVectors(DistributedVectors<_F> &&other):
         comm_(other.comm_), memManager_(other.memManager_),
         data_(std::move(other.data_)), len_(other.len_), lens_(other.lens_), 
         accLens_(other.accLens_), size_(other.size_) { }
 
-    virtual ~DisctributedVectors() { dealloc(); }
+    virtual ~DistributedVectors() { dealloc(); }
 
     MPI_Comm getMPIcomm() const { return comm_; }
     CQMemManager& getMem() const { return memManager_; }
@@ -533,18 +533,18 @@ namespace ChronusQ {
     size_t localOffset() const { return localOffset_; }
     
     _F* getLocalPtr(size_t i) {
-      this->sizeCheck(i, "DisctributedVectors<_F>::getPtr");
+      this->sizeCheck(i, "DistributedVectors<_F>::getPtr");
       return data_ + i * localLength();
     }
 
     const _F* getLocalPtr(size_t i) const {
-      return const_cast<DisctributedVectors*>(this)->getLocalPtr(i);
+      return const_cast<DistributedVectors*>(this)->getLocalPtr(i);
     }
     
     // Get element
     virtual _F get(size_t i, size_t j) const override {
       if (i >= length() or j >= size()) {
-        CErr("Geting invalid place in DisctributedVectors object.");
+        CErr("Geting invalid place in DistributedVectors object.");
       }
 
       // find where it's stored
@@ -564,7 +564,7 @@ namespace ChronusQ {
     // Set element
     virtual void set(size_t i, size_t j, _F value) override {
       if (i >= length() or j >= size()) {
-        CErr("Seting invalid place in DisctributedVectors object.");
+        CErr("Seting invalid place in DistributedVectors object.");
       }
 
       if (i >= localOffset_ and i < accLens_[MPIRank(comm_)]) {
@@ -576,16 +576,16 @@ namespace ChronusQ {
     void clear(size_t shift, size_t nVec) override {
       if (nVec == 0) return;
       
-      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::clear");
+      this->sizeCheck(shift + nVec, "DistributedVectors<_F>::clear");
       
       std::fill_n(getLocalPtr(shift), nVec * localLength(), 0.);
     }
      
-    DisctributedVectors<_F> copy(size_t shift, size_t nVec) const {
+    DistributedVectors<_F> copy(size_t shift, size_t nVec) const {
       
-      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::copy");
+      this->sizeCheck(shift + nVec, "DistributedVectors<_F>::copy");
       
-      DisctributedVectors<_F> vecs(comm_, memManager_, lens_, nVec);
+      DistributedVectors<_F> vecs(comm_, memManager_, lens_, nVec);
       std::copy_n(getLocalPtr(shift), localLength() * nVec, vecs.getLocalPtr(0ul));
       
       return vecs;
@@ -596,12 +596,12 @@ namespace ChronusQ {
     using SolverVectors<_F>::print;
     void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
      
-      this->sizeCheck(shift + nVec, "DisctributedVectors<_F>::print");
+      this->sizeCheck(shift + nVec, "DistributedVectors<_F>::print");
       std::string output_str = "";
       if (str != "") {
         output_str = "[" + str + "]";
       } else {
-        output_str = "[DisctributedVectors]";
+        output_str = "[DistributedVectors]";
       }
       
       output_str += " Block " + std::to_string(MPIRank(comm_)) + ", with offset = " + 
@@ -641,7 +641,7 @@ namespace ChronusQ {
     using SolverVectors<_F>::maxNormElement;
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
   
-  }; // class DisctributedVectors
+  }; // class DistributedVectors
 
   template <typename _F>
   class SolverVectorsView : public SolverVectors<_F> {
