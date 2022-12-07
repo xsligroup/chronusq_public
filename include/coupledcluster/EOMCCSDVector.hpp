@@ -131,17 +131,6 @@ namespace ChronusQ {
       initialize(nVec);
     }
 
-    bool checkIndexWithInBound(size_t i, bool throwExcept = true) const {
-      if (i < vecs_.size()) {
-        return true;
-      } else {
-        if (throwExcept) {
-          CErr("Requesting vector index out of bound.");
-        }
-        return false;
-      }
-    }
-
     virtual size_t length() const override {
       TAManager &TAmanager = TAManager::get();
       size_t nV = TAmanager.getRange(vLabel_).extent();
@@ -158,11 +147,6 @@ namespace ChronusQ {
 
     virtual size_t size() const override { return vecs_.size(); }
 
-    using SolverVectors<MatsT>::getPtr;
-    virtual MatsT* getPtr(size_t i = 0) override {
-      CErr("Requesting pointer in EOMCCSDVectorSet object is invalid.");
-      return nullptr;
-    }
     // Get element
     virtual MatsT get(size_t i, size_t j) const override {
       CErr("Get element in EOMCCSDVectorSet object is invalid.");
@@ -175,11 +159,11 @@ namespace ChronusQ {
 
     // Get EOMCCSDVector
     EOMCCSDVector<MatsT>& get(size_t i) {
-      checkIndexWithInBound(i);
+      this->sizeCheck(i, "in EOMCCSDVectorSet<MatsT>::get");
       return vecs_[i];
     }
     const EOMCCSDVector<MatsT>& get(size_t i) const {
-      checkIndexWithInBound(i);
+      this->sizeCheck(i, "in EOMCCSDVectorSet<MatsT>::get");
       return vecs_[i];
     }
     // Set EOMCCSDVector
@@ -190,7 +174,7 @@ namespace ChronusQ {
     using SolverVectors<MatsT>::clear;
     void clear(size_t shift, size_t nVec) override {
       if (nVec == 0) return;
-      checkIndexWithInBound(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "in EOMCCSDVectorSet<MatsT>::clear");
       for (size_t i = shift; i < vecs_.size(); i++)
         vecs_[i].scale(0.0);
     }
@@ -201,7 +185,7 @@ namespace ChronusQ {
         out << std::endl << str + ": " << std::endl;
         return;
       }
-      checkIndexWithInBound(shift + nVec - 1);
+      this->sizeCheck(shift + nVec, "in EOMCCSDVectorSet<MatsT>::print");
       for (size_t i = 0; i < nVec; i++) {
         get(i + shift).print(out, str + "(" + std::to_string(i) + ")");
       }
@@ -289,10 +273,6 @@ namespace ChronusQ {
     virtual size_t length() const override { return eomccSet_.length(); }
     virtual size_t size() const override { return eomccSet_.size(); }
 
-    using SolverVectors<MatsT>::getPtr;
-    virtual MatsT* getPtr(size_t i = 0) override {
-      return eomccSet_.getPtr(i);
-    }
     // Get element
     virtual MatsT get(size_t i, size_t j) const override {
       return eomccSet_.get(i, j);

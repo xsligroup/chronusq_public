@@ -705,16 +705,18 @@ namespace ChronusQ {
           ROOT_ONLY(MPI_COMM_WORLD);
 
           size_t N = Hbar_dim;
+          auto V_ptr = tryGetRawVectorsPointer(V);
+          auto AV_ptr = tryGetRawVectorsPointer(AV);
 
           switch(eigenVecType) {
             case EOMCCEigenVecType::RIGHT:
               blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-                         N,nVec,N,dcomplex(1.),fullMat->pointer(),N,V.getPtr(),N,dcomplex(0.),AV.getPtr(),N);
+                         N,nVec,N,dcomplex(1.),fullMat->pointer(),N,V_ptr,N,dcomplex(0.),AV_ptr,N);
               break;
             case EOMCCEigenVecType::LEFT:
               blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                         nVec,N,N,dcomplex(1.),V.getPtr(),N,fullMat->pointer(),N,dcomplex(0.),AV.getPtr(),nVec);
-              IMatCopy('T', nVec, N, 1.0, AV.getPtr(),nVec, N);
+                         nVec,N,N,dcomplex(1.),V_ptr,N,fullMat->pointer(),N,dcomplex(0.),AV_ptr,nVec);
+              IMatCopy('T', nVec, N, 1.0, AV_ptr,nVec, N);
               break;
           }
 
@@ -728,8 +730,8 @@ namespace ChronusQ {
           //            prettyPrintSmart(std::cout, "eomDiag", eomDiag, Hbar_dim, 1, Hbar_dim);
 
           dcomplex nom = 0.0, denom = 0.0;
-          const dcomplex *Vptr = V.getPtr();
-          dcomplex *AVptr = AV.getPtr();
+          const dcomplex *Vptr = tryGetRawVectorsPointer(V);
+          dcomplex *AVptr = tryGetRawVectorsPointer(AV);
 
           // Scale by inverse diagonals
           for (size_t i = 0; i < nVec; i++) {

@@ -140,6 +140,8 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT> &V,
     SolverVectors<EigT> &AV) {
 
+    auto V_ptr = tryGetRawVectorsPointer(V);
+    auto AV_ptr = tryGetRawVectorsPointer(AV);
 #ifdef CQ_ENABLE_MPI
     if( isMPI ) {
 
@@ -159,17 +161,17 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
       }
 
-      grid->scatter(N,nVec,V.getPtr(),N,VLOC,MLoc_V,0,0);
+      grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
       Gemm_MPI('N','N',N,nVec,N,EigT(1.),ALOC,1,1,descA,VLOC,1,1,descV,
           EigT(0.),AVLOC,1,1,descV);
 
-      grid->gather(N,nVec,AV.getPtr(),N,AVLOC,MLoc_V,0,0);
+      grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
 
     } else 
 #endif
   blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-      N,nVec,N,EigT(1.),A,N,V.getPtr(),N,EigT(0.),AV.getPtr(),N);
+      N,nVec,N,EigT(1.),A,N,V_ptr,N,EigT(0.),AV_ptr,N);
 
   };
 
@@ -177,14 +179,16 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
       SolverVectors<EigT> &AV) {
 
     ROOT_ONLY(MPI_COMM_WORLD);
+    auto V_ptr = tryGetRawVectorsPointer(V);
+    auto AV_ptr = tryGetRawVectorsPointer(AV);
 
-    if( V.getPtr() != AV.getPtr() )
+    if( V_ptr != AV_ptr )
       AV.set_data(0, nVec, V, 0);
 
     if( doPre )
     // Scale by inverse diagonals
     for( auto k = 0ul; k < N; k++ ) 
-      blas::scal(nVec, EigT(1.) / DIAG[k], AV.getPtr() + k, N);
+      blas::scal(nVec, EigT(1.) / DIAG[k], AV_ptr + k, N);
   };
 
 

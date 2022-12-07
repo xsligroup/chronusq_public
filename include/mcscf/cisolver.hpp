@@ -123,7 +123,8 @@ namespace ChronusQ {
 #endif
         
         ProgramTimer::tick("Sigma");
-	    mcwfn.ciBuilder->buildSigma(mcwfn, nVec, V.getPtr(), AV.getPtr());
+	    mcwfn.ciBuilder->buildSigma(mcwfn, nVec, tryGetRawVectorsPointer(V), tryGetRawVectorsPointer(AV));
+
         ProgramTimer::tock("Sigma");
       
       }; 
@@ -135,7 +136,7 @@ namespace ChronusQ {
 	    // disable MPI for now
 	    ROOT_ONLY(mcwfn.comm);
 #endif
-	    this->davidsonPC(nVec, NDet, S.getPtr(), R.getPtr(), diagH, curEig);
+	    this->davidsonPC(nVec, NDet, tryGetRawVectorsPointer(S), tryGetRawVectorsPointer(R), diagH, curEig);
       }; 
       
       std::cout << "  Use Davidson Diagonalization ... \n" << std::endl;
@@ -147,14 +148,14 @@ namespace ChronusQ {
       davidson.setkG(kG);
       davidson.setEigForT(curEig);
       davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
-        this->davidsonGS(nGuess, N, diagH, Guess.getPtr());
+          this->davidsonGS(nGuess, N, diagH, tryGetRawVectorsPointer(Guess));
       });
 
       davidson.run();
       
       // copy over eigenvalues and eigenvectors
       auto davidsonEig = davidson.eigVal();
-      auto davidsonVec = davidson.VR()->getPtr();
+      auto davidsonVec = tryGetRawVectorsPointer(*davidson.VR());
 	  for (auto i = 0ul; i < nR; i++) {
 		StateEnergy[i] = std::real(davidsonEig[i]);
         std::copy_n(davidsonVec+i*NDet, NDet, CIVecs[i]);
