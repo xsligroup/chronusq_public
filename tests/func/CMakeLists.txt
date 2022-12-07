@@ -44,6 +44,7 @@ add_cq_test( CQMEMMANAGER       functest "CQMEM.*" )
 
 if( CQ_ENABLE_MPI )
   add_cq_mpi_test( GPLHR_MPI 2 functest "GPLHR.*" )
+  add_cq_mpi_test( DAVIDSON_MPI 2 functest "DAVIDSON.*" )
 endif()
 
 

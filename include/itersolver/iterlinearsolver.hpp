@@ -36,22 +36,24 @@ namespace ChronusQ {
 
   template <typename _F>
   template <typename T >
-  void IterLinearSolver<_F>::setRHS(size_t nRHS, T*RHS, size_t LDRHS) {
-
+  void IterLinearSolver<_F>::setRHS(size_t nRHS, T* RHS, size_t LDRHS) {
 
     // Copy RHS
     nRHS_ = nRHS;
     RHS_ = this->vecGen_(nRHS);
 
-
     // NO MPI
 //    ROOT_ONLY(this->comm_);
-    if( MPIRank(this->comm_) == 0 )
-      if( LDRHS == this->N_ )
-        std::copy_n(RHS, nRHS*this->N_, RHS_->getPtr());
-      else
-        for(auto iRHS = 0ul; iRHS < nRHS; iRHS++)
-          std::copy_n(RHS + iRHS*LDRHS, this->N_, RHS_->getPtr(iRHS));
+    
+    // TODO: try to make it work for other solver vectors
+    if( MPIRank(this->comm_) == 0 ) {
+      tryDowncastReferenceTo<RawVectors<_F>>(*RHS_,
+          [&](auto& RHS_Ref, size_t RHS_shift) {
+            SetMat('N', this->N_, nRHS, _F(1.), RHS, LDRHS,
+                RHS_Ref.getPtr(RHS_shift), this->N_);
+          }
+      );
+    }
 
     // Compute norms of RHS
     for(auto iRHS = 0; iRHS < nRHS; iRHS++)
@@ -68,13 +70,6 @@ namespace ChronusQ {
                 << rhsNorm_[iRHS] << "\n";
 
   };
-
-
-
-
-
-
-
 
   template <typename _F>
   template <typename T >
@@ -93,16 +88,6 @@ namespace ChronusQ {
                 << shifts_[iShift] << "\n";
 
   };
-
-
-
-
-
-
-
-
-
-
 
 
   template <typename _F>

@@ -421,7 +421,6 @@ namespace ChronusQ {
       } // Loop over geometries
     } // Loop over different jobs
 
-    
     ProgramTimer::tock("Chronus Quantum");
     printTimerSummary(std::cout);
      

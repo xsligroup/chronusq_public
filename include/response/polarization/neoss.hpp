@@ -252,132 +252,136 @@ namespace ChronusQ {
     }
 
     bool isRaw = V.underlyingType() == typeid(RawVectors<U>)
-        and AV.underlyingType() == typeid(RawVectors<U>);
-    if (isRaw and MPIRank(this->comm_) == 0)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      U* AVk = AV.getPtr() + iVec * NS;
-      U* Vk  = V.getPtr()  + iVec * NS;
-      size_t off = 0;
-      for(const auto& ss: subsystems) {
-        double* eps = ss->eps1;
+            and AV.underlyingType() == typeid(RawVectors<U>);
+    
+    if (isRaw and MPIRank(this->comm_) == 0) {
+      U * V_ptr = tryGetRawVectorsPointer(V);
+      U * AV_ptr = tryGetRawVectorsPointer(AV);
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
+        U* AVk = AV_ptr + iVec * NS;
+        U* Vk  = V_ptr  + iVec * NS;
+        size_t off = 0;
+        for(const auto& ss: subsystems) {
+          double* eps = ss->eps1;
 
-        size_t nOAVA = ss->nOA * ss->nVA;
-        size_t nOBVB = ss->nOB * ss->nVB;
-        size_t nOV = ss->nO * ss->nV;
+          size_t nOAVA = ss->nOA * ss->nVA;
+          size_t nOBVB = ss->nOB * ss->nVB;
+          size_t nOV = ss->nO * ss->nV;
 
-        size_t N  = (ss->nC == 1) ? nOAVA  : nOV;
-        size_t NV = (ss->nC == 1) ? ss->nVA : ss->nV;
-        size_t NO = (ss->nC == 1) ? ss->nOA : ss->nO;
+          size_t N  = (ss->nC == 1) ? nOAVA  : nOV;
+          size_t NV = (ss->nC == 1) ? ss->nVA : ss->nV;
+          size_t NO = (ss->nC == 1) ? ss->nOA : ss->nO;
 
-        size_t NNext = (ss->nC == 1) ? nOAVA + nOBVB : nOV;
+          size_t NNext = (ss->nC == 1) ? nOAVA + nOBVB : nOV;
 
-        const bool doBeta = ss->nC == 1;
+          const bool doBeta = ss->nC == 1;
 
-        // TODO: Profile; are the if blocks in the hot loop significant?
-        // Alpha / full
-        for(auto k = 0; k < N; k++) {
-          size_t i = k / NV;
-          size_t a = (k % NV) + NO;
-          U scale = diagonals.size() != 0 ? 
-                      diag(diagonals[k+off]) :
-                      diag(eps[a]-eps[i]);
-
-          // X update
-          AVk[k] = Vk[k] / scale;
-          // Y update
-          if( not this->doReduced )
-            AVk[k + hNS] = Vk[k + hNS] / scale;
-        }
-
-        // Beta
-        if( doBeta ) {
-
-          eps = ss->iCS ? eps : ss->eps2;
-          N  = nOBVB;
-          NV = ss->nVB;
-          NO = ss->nOB;
-
+          // TODO: Profile; are the if blocks in the hot loop significant?
+          // Alpha / full
           for(auto k = 0; k < N; k++) {
             size_t i = k / NV;
             size_t a = (k % NV) + NO;
             U scale = diagonals.size() != 0 ? 
-                        diag(diagonals[k+off+nOAVA]) :
+                        diag(diagonals[k+off]) :
                         diag(eps[a]-eps[i]);
 
-            AVk[k + nOAVA] = Vk[k + nOAVA] / scale;
+            // X update
+            AVk[k] = Vk[k] / scale;
+            // Y update
             if( not this->doReduced )
-              AVk[k + hNS + nOAVA] = Vk[k + hNS + nOAVA] / scale;
+              AVk[k + hNS] = Vk[k + hNS] / scale;
           }
-        }
 
-        // Update subblocks
-        AVk += NNext;
-        Vk += NNext;
-        off += NNext;
+          // Beta
+          if( doBeta ) {
 
-      } // Subsytem loop
-    } // Vector loop
+            eps = ss->iCS ? eps : ss->eps2;
+            N  = nOBVB;
+            NV = ss->nVB;
+            NO = ss->nOB;
 
-    else if (not isRaw)
-    for(auto iVec = 0ul; iVec < nVec; iVec++) {
-      size_t off = 0;
-      for(const auto& ss: subsystems) {
-        double* eps = ss->eps1;
+            for(auto k = 0; k < N; k++) {
+              size_t i = k / NV;
+              size_t a = (k % NV) + NO;
+              U scale = diagonals.size() != 0 ? 
+                          diag(diagonals[k+off+nOAVA]) :
+                          diag(eps[a]-eps[i]);
 
-        size_t nOAVA = ss->nOA * ss->nVA;
-        size_t nOBVB = ss->nOB * ss->nVB;
-        size_t nOV = ss->nO * ss->nV;
+              AVk[k + nOAVA] = Vk[k + nOAVA] / scale;
+              if( not this->doReduced )
+                AVk[k + hNS + nOAVA] = Vk[k + hNS + nOAVA] / scale;
+            }
+          }
 
-        size_t N  = (ss->nC == 1) ? nOAVA  : nOV;
-        size_t NV = (ss->nC == 1) ? ss->nVA : ss->nV;
-        size_t NO = (ss->nC == 1) ? ss->nOA : ss->nO;
+          // Update subblocks
+          AVk += NNext;
+          Vk += NNext;
+          off += NNext;
 
-        size_t NNext = (ss->nC == 1) ? nOAVA + nOBVB : nOV;
+        } // Subsytem loop
+      } // Vector loop
 
-        const bool doBeta = ss->nC == 1;
+    } else if (not isRaw) {
+      for(auto iVec = 0ul; iVec < nVec; iVec++) {
+        size_t off = 0;
+        for(const auto& ss: subsystems) {
+          double* eps = ss->eps1;
 
-        // TODO: Profile; are the if blocks in the hot loop significant?
-        // Alpha / full
-        for(auto k = 0; k < N; k++) {
-          size_t i = k / NV;
-          size_t a = (k % NV) + NO;
-          U scale = diagonals.size() != 0 ?
-              diag(diagonals[k+off]) :
-              diag(eps[a]-eps[i]);
+          size_t nOAVA = ss->nOA * ss->nVA;
+          size_t nOBVB = ss->nOB * ss->nVB;
+          size_t nOV = ss->nO * ss->nV;
 
-          // X update
-          AV.set(k + off, iVec, V.get(k + off, iVec) / scale);
-          // Y update
-          if( not this->doReduced )
-            AV.set(k + off + hNS, iVec, V.get(k + off + hNS, iVec) / scale);
-        }
+          size_t N  = (ss->nC == 1) ? nOAVA  : nOV;
+          size_t NV = (ss->nC == 1) ? ss->nVA : ss->nV;
+          size_t NO = (ss->nC == 1) ? ss->nOA : ss->nO;
 
-        // Beta
-        if( doBeta ) {
+          size_t NNext = (ss->nC == 1) ? nOAVA + nOBVB : nOV;
 
-          eps = ss->iCS ? eps : ss->eps2;
-          N  = nOBVB;
-          NV = ss->nVB;
-          NO = ss->nOB;
+          const bool doBeta = ss->nC == 1;
 
+          // TODO: Profile; are the if blocks in the hot loop significant?
+          // Alpha / full
           for(auto k = 0; k < N; k++) {
             size_t i = k / NV;
             size_t a = (k % NV) + NO;
             U scale = diagonals.size() != 0 ?
-                diag(diagonals[k+off+nOAVA]) :
+                diag(diagonals[k+off]) :
                 diag(eps[a]-eps[i]);
 
-            AV.set(k + off + nOAVA, iVec, V.get(k + off + nOAVA, iVec) / scale);
+            // X update
+            AV.set(k + off, iVec, V.get(k + off, iVec) / scale);
+            // Y update
             if( not this->doReduced )
-              AV.set(k + off + hNS + nOAVA, iVec, V.get(k + off + hNS + nOAVA, iVec) / scale);
+              AV.set(k + off + hNS, iVec, V.get(k + off + hNS, iVec) / scale);
           }
-        }
 
-        // Update subblocks
-        off += NNext;
+          // Beta
+          if( doBeta ) {
 
-      } // Subsytem loop
-    } // Vector loop
+            eps = ss->iCS ? eps : ss->eps2;
+            N  = nOBVB;
+            NV = ss->nVB;
+            NO = ss->nOB;
+
+            for(auto k = 0; k < N; k++) {
+              size_t i = k / NV;
+              size_t a = (k % NV) + NO;
+              U scale = diagonals.size() != 0 ?
+                  diag(diagonals[k+off+nOAVA]) :
+                  diag(eps[a]-eps[i]);
+
+              AV.set(k + off + nOAVA, iVec, V.get(k + off + nOAVA, iVec) / scale);
+              if( not this->doReduced )
+                AV.set(k + off + hNS + nOAVA, iVec, V.get(k + off + hNS + nOAVA, iVec) / scale);
+            }
+          }
+
+          // Update subblocks
+          off += NNext;
+
+        } // Subsytem loop
+      } // Vector loop
+    }
   }
 
   template <typename MatsT, typename IntsT>

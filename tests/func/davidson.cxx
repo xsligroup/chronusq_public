@@ -26,6 +26,7 @@
 #include <cerr.hpp>
 #include <memmanager.hpp>
 #include <itersolver.hpp>
+#include <itersolver/solvervectorsimpl.hpp>
 #include <util/files.hpp>
 #include <util/timer.hpp>
 
@@ -38,7 +39,7 @@ using namespace ChronusQ;
 
 
 template <typename ReadT, typename EigT>
-void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
+void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   std::string fname, bool doPre = false, double conver = 1e-10, 
   double etol = 8e-8, size_t block_size = 128) {
   
@@ -49,22 +50,27 @@ void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
   bool isRoot = MPIRank(MPI_COMM_WORLD) == 0;
   bool isMPI  = MPISize(MPI_COMM_WORLD) > 1;
 
-  std::cout << "DAVIDSON_TEST with file:" << refName << std::endl;
   
-  if( isRoot ) std::cout << "  * Will use " << MPISize(MPI_COMM_WORLD) << 
-    " MPI Processes" << std::endl;
+  if( isRoot ) {
+    std::cout << "  * Will use " << MPISize(MPI_COMM_WORLD) << 
+      " MPI Processes" << std::endl;
+    std::cout << "DAVIDSON_RAWVECTORS_TEST with file:" << refName << std::endl;
+  }
 
   SafeFile matFile(refName,true);
 
   CQMemManager mem(2e9,256);
   
-  auto dims = matFile.getDims("/matrix");
-  // Dummy checks on
   
-  EXPECT_TRUE( dims.size() == 2   );
-  EXPECT_TRUE( dims[0] == dims[1] );
-
-  size_t N = dims[0];
+  size_t N = 0;
+  if (isRoot) { 
+    // Dummy checks on
+    auto dims = matFile.getDims("/matrix");
+    EXPECT_TRUE( dims.size() == 2 ) << "dims.size() = " << dims.size();
+    EXPECT_TRUE( dims[0] == dims[1] ) << " dims[0] = " << dims[0] <<", dims[1] =" << dims[1];
+    N = dims[0];
+  }
+  MPIBCast(N, 0, MPI_COMM_WORLD);
 
   int64_t MLoc = N, NLoc = N;
 
@@ -125,6 +131,9 @@ void DAVIDSON_TEST(size_t nRoots, size_t m, size_t kG,
 typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT> &V,
     SolverVectors<EigT> &AV) {
 
+    auto V_ptr = tryGetRawVectorsPointer(V);
+    auto AV_ptr = tryGetRawVectorsPointer(AV);
+
 #ifdef CQ_ENABLE_MPI
     if( isMPI ) {
 
@@ -133,7 +142,6 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
       auto descV = grid->descinit_noerror(N,nVec,MLoc_V);
 
       bool alloc = MLoc_V and NLoc_V;
-
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
@@ -144,17 +152,17 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
 
       }
 
-      grid->scatter(N,nVec,V.getPtr(),N,VLOC,MLoc_V,0,0);
+      grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
       Gemm_MPI('N','N',N,nVec,N,EigT(1.),ALOC,1,1,descA,VLOC,1,1,descV,
           EigT(0.),AVLOC,1,1,descV);
 
-      grid->gather(N,nVec,AV.getPtr(),N,AVLOC,MLoc_V,0,0);
+      grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
 
     } else 
 #endif
   blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-      N,nVec,N,EigT(1.),A,N,V.getPtr(),N,EigT(0.),AV.getPtr(),N);
+      N,nVec,N,EigT(1.),A,N,V_ptr,N,EigT(0.),AV_ptr,N);
 
   };
 
@@ -163,13 +171,16 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
 
     ROOT_ONLY(MPI_COMM_WORLD);
 
-    if( V.getPtr() != AV.getPtr() )
+    auto V_ptr = tryGetRawVectorsPointer(V);
+    auto AV_ptr = tryGetRawVectorsPointer(AV);
+    
+    if( V_ptr != AV_ptr )
       AV.set_data(0, nVec, V, 0);
 
     if( doPre )
     // Scale by inverse diagonals
     for( auto k = 0ul; k < N; k++ ) 
-      blas::scal(nVec, EigT(1.) / DIAG[k], AV.getPtr() + k, N);
+      blas::scal(nVec, EigT(1.) / DIAG[k], AV_ptr + k, N);
   };
 
 #ifndef _CQ_GENERATE_TESTS
@@ -215,20 +226,157 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
 
 }
 
+template <typename ReadT, typename EigT>
+void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
+  std::string fname, bool doPre = false, double conver = 1e-10, 
+  double etol = 8e-8) {
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::string refName( FUNC_REFERENCE + fname );
+
+  bool isRoot = MPIRank(MPI_COMM_WORLD) == 0;
+  bool isMPI  = MPISize(MPI_COMM_WORLD) > 1;
+
+
+  if( isRoot ) {
+    std::cout << "DAVIDSON_DISTRIBUTEDVECTORS_TEST with file:" << refName 
+             << ", doPre = " << doPre << std::endl;
+    std::cout << "  * Will use " << MPISize(MPI_COMM_WORLD) << 
+    " MPI Processes" << std::endl;
+  }
+
+  SafeFile matFile(refName,true);
+
+  CQMemManager mem(2e9,256);
+  MPI_Comm comm(MPI_COMM_WORLD);
+
+  size_t N = 0;
+  if (isRoot) {
+    // Dummy checks on
+    auto dims = matFile.getDims("/matrix");
+    EXPECT_TRUE( dims.size() == 2 ) << "dims.size() = " << dims.size();
+    EXPECT_TRUE( dims[0] == dims[1] ) << " dims[0] = " << dims[0] <<", dims[1] =" << dims[1];
+    N = dims[0];
+  }
+  MPIBCast(N, 0, comm);
+
+  size_t N2 = N * N;
+
+  ReadT* AREAD = nullptr;
+  EigT* ADIAG = mem.malloc<EigT>(N);
+  
+  if (isRoot) {
+    AREAD = mem.malloc<ReadT>(N2);
+    matFile.readData("/matrix", AREAD);
+    
+    for( size_t k = 0; k < N; k++ ) ADIAG[k] = AREAD[k*(N+1)];
+  }
+
+  MPIBCast(ADIAG, N, 0, comm);
+
+  EigT* A = reinterpret_cast<EigT*>(AREAD); 
+  
+  typename Davidson<EigT>::LinearTrans_t func = 
+      [&]( size_t nVec, SolverVectors<EigT> &V,
+        SolverVectors<EigT> &AV) {
+        
+        // copy the V out
+        EigT* VRaw = mem.malloc<EigT>(N*nVec);
+        EigT* AVRaw = mem.malloc<EigT>(N*nVec);
+        
+        tryDowncastReferenceTo<DisctributedVectors<EigT>>(V,
+            [&] (auto& VRef, size_t shiftV) {
+              VRef.gather(shiftV, nVec, VRaw, N, 0);
+            }
+        );
+        
+        if (isRoot) {
+          prettyPrintSmart(std::cout, "VRaw", VRaw, N, nVec, N);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+              N,nVec,N,EigT(1.),A,N,VRaw,N,EigT(0.),AVRaw,N);
+          prettyPrintSmart(std::cout, "VRaw", AVRaw, N, nVec, N);
+        }
+        
+        MPI_Barrier(comm);
+        
+        // scatter AVRaw Back 
+        tryDowncastReferenceTo<DisctributedVectors<EigT>>(AV,
+            [&] (auto& AVRef, size_t shiftAV) {
+              AVRef.scatter(shiftAV, nVec, AVRaw, N, 0); 
+            }
+         );
+      };
+
+  typename Davidson<EigT>::LinearTrans_t PC = 
+      [&](size_t nVec, SolverVectors<EigT> &V,
+        SolverVectors<EigT> &AV) {
+        
+        AV.set_data(0, nVec, V, 0);
+        
+        if( doPre ) {
+          tryDowncastReferenceTo<DisctributedVectors<EigT>>(AV,
+              [&] (auto& AVRef, size_t shiftAV) {
+                const EigT* ADIAG_ptr = ADIAG + AVRef.localOffset();
+                auto AV_ptr = AVRef.getLocalPtr(shiftAV);
+                for (auto i = 0ul; i < AVRef.localLength(); ++i, ++ADIAG_ptr, ++AV_ptr) {
+                  blas::scal(nVec, EigT(1.) / (*ADIAG_ptr), AV_ptr, AVRef.localLength()); 
+                }
+              }
+          );              
+        }
+      };
+   
+  std::function<std::shared_ptr<SolverVectors<EigT>>(size_t)> distributedVecsGenerator = 
+      [&] (size_t nVec) {
+         return std::make_shared<DisctributedVectors<EigT>>(comm, mem, N, nVec);
+      };
+  
+  size_t nThreads = omp_get_num_threads();
+  ProgramTimer::initialize("Davidson test", nThreads);
+  Davidson<EigT> davidson(MPI_COMM_WORLD,mem,N,5,128,conver,nRoots,
+    func,PC, distributedVecsGenerator);
+
+  davidson.setM(m);
+  davidson.setkG(kG);
+  
+  davidson.run();
+  
+  ROOT_ONLY(MPI_COMM_WORLD);
+
+  dcomplex *refW = mem.malloc<dcomplex>(N);
+  matFile.readData("/W",refW);
+
+  const dcomplex *W = davidson.eigVal();
+
+  for(auto k = 0ul; k < nRoots; k++) {
+    double diff1 = std::abs((W[k] - refW[k])/refW[k]);
+    double diff2 = std::abs((W[k] - std::conj(refW[k]))/refW[k]);
+    EXPECT_TRUE( diff1 < etol or diff2 < etol) <<
+      "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
+  }
+
+  if (AREAD) mem.free(AREAD);
+  if (ADIAG) mem.free(ADIAG);
+}
+
 // 
 // Hermittian Davidson
 //
 TEST(DAVIDSON, DAVIDSON_REAL_HERMITIAN) {
   
-  DAVIDSON_TEST<double,double>(3,50,3,"real_Hermitian.hdf5");
-  DAVIDSON_TEST<double,double>(3,50,3,"real_Hermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5");
+  DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5");
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5",true);
 
 }
 
 TEST(DAVIDSON, DAVIDSON_COMPLEX_HERMITIAN) {
   
-  DAVIDSON_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5");
-  DAVIDSON_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5");
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5");
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5",true);
 
 }
 
@@ -237,15 +385,19 @@ TEST(DAVIDSON, DAVIDSON_COMPLEX_HERMITIAN) {
 //
 TEST(DAVIDSON, DAVIDSON_REAL_NONHERMITIAN) {
   
-  DAVIDSON_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5");
-  DAVIDSON_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5");
+  DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5");
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5",true);
 
 }
 
 TEST(DAVIDSON, DAVIDSON_COMPLEX_NONHERMITIAN) {
   
-  DAVIDSON_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5");
-  DAVIDSON_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5");
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5");
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5",true);
 
 }
 
