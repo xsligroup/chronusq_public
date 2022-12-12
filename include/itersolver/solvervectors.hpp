@@ -672,10 +672,6 @@ namespace ChronusQ {
       return vecs_;
     }
 
-    using SolverVectors<_F>::getPtr;
-    virtual _F* getPtr(size_t i = 0) override {
-      return vecs_.getPtr(shift() + i);
-    }
     // Get element
     virtual _F get(size_t i, size_t j) const override {
       return vecs_.get(i, shift() + j);
