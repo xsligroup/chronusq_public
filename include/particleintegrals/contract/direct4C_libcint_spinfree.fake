@@ -2642,6 +2642,12 @@ namespace ChronusQ {
 
             if(bf1_s >= bf4_s) {
 
+#define _NO_SCALAR_SPIN_SPIN_
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLLMS[bf14] += DXSSMS[bf23]*BC[MNKL];
+
+#else
               // Equation (44) in the paper, Equation (D5) in Xiaosong's note
               ADXLLMS[bf14] += 3.0*( DXSSMS[bf23]*BC[MNKL] 
                                 -iS*(DXSSMX[bf23]*BC[MNKL+crossx] 
@@ -2665,11 +2671,17 @@ namespace ChronusQ {
                              -iS*DXSSMS[bf23]*BC[MNKL+crossy] 
                                 -DXSSMX[bf23]*BC[MNKL+xypyx] 
                                 -DXSSMZ[bf23]*BC[MNKL+yzpzy];
+#endif
    
             } 
 
             if(bf1_s < bf4_s or (bf1_s==bf4_s and bf2_s!=bf3_s)) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLLMS[bf41] += DXSSMS[bf32]*BC[LKNM];
+
+#else
               ADXLLMS[bf41] += 3.0*( DXSSMS[bf32]*BC[LKNM] 
                                 -iS*(DXSSMX[bf32]*BC[LKNM+crossx] 
                                     +DXSSMY[bf32]*BC[LKNM+crossy] 
@@ -2689,7 +2701,7 @@ namespace ChronusQ {
                              -iS*DXSSMS[bf32]*BC[LKNM+crossy] 
                                 -DXSSMX[bf32]*BC[LKNM+xypyx] 
                                 -DXSSMZ[bf32]*BC[LKNM+yzpzy];
-
+#endif
             } 
 
 
@@ -2701,6 +2713,10 @@ namespace ChronusQ {
             if(bf2_s >= bf3_s) {
 
               // Equation (48) in the paper, Equation (D9) in Xiaosong's note
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXSSMS[bf23]+=  DXLLMS[bf14]*BC[LKNM];
+#else
               ADXSSMS[bf23]+=  3.0*DXLLMS[bf14]*BC[LKNM]    
                              -iS*( DXLLMX[bf14]*BC[LKNM+crossx] 
                                   +DXLLMY[bf14]*BC[LKNM+crossy] 
@@ -2723,10 +2739,16 @@ namespace ChronusQ {
                             -3.0*iS*DXLLMS[bf14]*BC[LKNM+crossy] 
                                    -DXLLMX[bf14]*BC[LKNM+xypyx] 
                                    -DXLLMZ[bf14]*BC[LKNM+yzpzy];
+#endif
             } 
 
             if(bf1_s!=bf4_s and bf2_s==bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXSSMS[bf32]+=  DXLLMS[bf41]*BC[MNKL];
+
+#else
               ADXSSMS[bf32]+=  3.0*DXLLMS[bf41]*BC[MNKL]
                              -iS*( DXLLMX[bf41]*BC[MNKL+crossx]
                                   +DXLLMY[bf41]*BC[MNKL+crossy]
@@ -2746,6 +2768,7 @@ namespace ChronusQ {
                             -3.0*iS*DXLLMS[bf41]*BC[MNKL+crossy] 
                                    -DXLLMX[bf41]*BC[MNKL+xypyx] 
                                    -DXLLMZ[bf41]*BC[MNKL+yzpzy];
+#endif
               
             }
 
@@ -2757,11 +2780,16 @@ namespace ChronusQ {
             // MNKL
             // TRANSKL
 	    // Equation (52) Coulomb in the paper, Equation (D13) in Xiaosong's note
+
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+            ADCLSMS[bf12]+=     (-DCLSMS[bf43] +DCSLMS[bf34])*BC[MNKL];
+
+#else
             ADCLSMS[bf12]+=     (-DCLSMS[bf43] +DCSLMS[bf34])*BC[MNKL] 
                           + iS*( (DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+crossx] 
                                 +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+crossy] 
                                 +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+crossz]);
-            
 	    // Equation (53) Coulomb in the paper, Equation (D14) in Xiaosong's note
             ADCLSMZ[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+crossz]
                               -(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL] 
@@ -2782,11 +2810,16 @@ namespace ChronusQ {
                               +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+xy] 
                               +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+yy] 
                               +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+zy];
-            
+#endif            
             // LKNM
             // Coulomb //TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADCLSMS[bf43]+=     (-DCLSMS[bf12] +DCSLMS[bf21])*BC[LKNM];
+
+#else
               ADCLSMS[bf43]+=     (-DCLSMS[bf12] +DCSLMS[bf21])*BC[LKNM] 
                             + iS*( (DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+crossx] 
                                   +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+crossy] 
@@ -2809,12 +2842,21 @@ namespace ChronusQ {
                                 +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+xy] 
                                 +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+yy] 
                                 +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+zy];
-
+#endif
             }
             
             
             // TRANSKL
 	    // Equation (52) Exchange in the paper, Equation (D17) in Xiaosong's note
+
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+            ADXLSMS[bf13]+= -DXSLMS[bf24]*BC[MNKL];
+            ADXLSMZ[bf13]+= -DXSLMZ[bf24]*BC[MNKL];
+            ADXLSMX[bf13]+= -DXSLMX[bf24]*BC[MNKL];
+            ADXLSMY[bf13]+= -DXSLMY[bf24]*BC[MNKL];
+
+#else
             ADXLSMS[bf13]+=     DXSLMS[bf24]*BC[MNKL] 
                           -iS*( DXSLMX[bf24]*BC[MNKL+crossx] 
                                +DXSLMY[bf24]*BC[MNKL+crossy] 
@@ -2846,11 +2888,18 @@ namespace ChronusQ {
                                   -DXSLMY[bf24]*BC[MNKL+mxxpyymzz] 
                                   -DXSLMX[bf24]*BC[MNKL+xypyx] 
                                   -DXSLMZ[bf24]*BC[MNKL+yzpzy];
-            
+#endif            
             
             // TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLSMS[bf42]+= -DXSLMS[bf31]*BC[LKNM]; 
+              ADXLSMZ[bf42]+= -DXSLMZ[bf31]*BC[LKNM]; 
+              ADXLSMX[bf42]+= -DXSLMX[bf31]*BC[LKNM]; 
+              ADXLSMY[bf42]+= -DXSLMY[bf31]*BC[LKNM];
+#else
               ADXLSMS[bf42]+=     DXSLMS[bf31]*BC[LKNM] 
                             -iS*( DXSLMX[bf31]*BC[LKNM+crossx] 
                                  +DXSLMY[bf31]*BC[LKNM+crossy] 
@@ -2879,6 +2928,7 @@ namespace ChronusQ {
                                     -DXSLMY[bf31]*BC[LKNM+mxxpyymzz] 
                                     -DXSLMX[bf31]*BC[LKNM+xypyx] 
                                     -DXSLMZ[bf31]*BC[LKNM+yzpzy];
+#endif
 
             }
 
@@ -3398,15 +3448,15 @@ namespace ChronusQ {
             BC[NB4_6+LKNM] = 0.0;
             
             // (σ∙σ)
-            BC[NB4_7+MNKL] =-(buffr1[mnkl] - buffr2[mnkl])
-                            -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                            -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_7+LKNM] =-(buffr1[mnkl] - buffr2[mnkl])
-                            -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                            -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            //BC[NB4_7+MNKL] =-(buffr1[mnkl] - buffr2[mnkl])
+            //                -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
+            //                -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            //BC[NB4_7+LKNM] =-(buffr1[mnkl] - buffr2[mnkl])
+            //                -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
+            //                -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
 
-            //BC[NB4_7+MNKL] = 0.0;
-            //BC[NB4_7+LKNM] = 0.0;
+            BC[NB4_7+MNKL] = 0.0;
+            BC[NB4_7+LKNM] = 0.0;
             
             // (σxσ)_x = σ_y*σ_z - σ_z*σ_y
             BC[NB4_8+MNKL] = 0.0;
