@@ -36,11 +36,8 @@ template<typename MatsT>
 void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT>& mo,
                                             VecEPtr& eps) {
 
-
   // Form the Fock matrix D(k) -> F(k)
   ProgramTimer::timeOp("Form Fock", [&]() { this->modOrbOpt.formFock(pert); });
-
-  this->modOrbOpt.computeProperties(pert);
 
   // Transform AO fock into the orthonormal basis (on root MPI process)
   ao2orthoFock();
@@ -55,6 +52,8 @@ void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT
   diagOrthoFock(mo, eps);
 
   ortho2aoMOs(mo);
+
+  this->modOrbOpt.formDensity();
 
 };   // NewtonRaphsonSCF<MatsT,IntsT>::getNewOrbitals
 
