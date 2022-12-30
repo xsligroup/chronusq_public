@@ -609,7 +609,11 @@ namespace ChronusQ {
     // Dirac-Coulomb
     try { 
       std::string DCOptions = "FALSE";
-      DCOptions = input.getData<std::string>("INTS.DIRACCOULOMB");
+      try {
+        DCOptions = input.getData<std::string>("INTS.DIRACCOULOMB");
+      } catch (...) {
+        DCOptions = input.getData<std::string>("INTS.DC");
+      }
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);

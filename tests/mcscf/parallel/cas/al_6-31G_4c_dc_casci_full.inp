@@ -32,5 +32,6 @@ NRoots = 6
 [INTS]
 alg = incore
 DC = true
+SSSS = false
 libcint = true
 

@@ -33,7 +33,7 @@ CIDiagAlg = Davidson
 [INTS]
 alg = incore
 DC = true
-SSSS = ture
+SSSS = false
 Gaunt = true
 Gauge = true
 libcint = true
