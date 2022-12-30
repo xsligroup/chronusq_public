@@ -61,10 +61,18 @@ namespace ChronusQ {
         const bool screen,
         std::vector<TwoBodyContraction<MatsT>> &list,
         EMPerturbation&,
-        const bool computeExchange = true) const {
+        const bool computeExchange = true, 
+        const TYPE_4C type4C = TYPE_4C::All,
+        const APPROXIMATION_TYPE_4C approximate4C = APPROXIMATION_TYPE_4C::None) 
+        const {
       
-      if (computeExchange) directScaffoldLibcint(comm, screen, list); 
-      else CErr("twoBodyContract with Coulomb Only is deprecated "); 
+      if (type4C==TYPE_4C::All) 
+        directScaffoldLibcint(comm, screen, list, computeExchange, approximate4C); 
+      else if (type4C==TYPE_4C::SpinFree) 
+        directScaffoldLibcintSpinFree(comm, screen, list, computeExchange, approximate4C); 
+      else if (type4C==TYPE_4C::SpinDependent) 
+        directScaffoldLibcintSpinDependent(comm, screen, list, computeExchange, approximate4C); 
+      //else CErr("twoBodyContract with Coulomb Only is deprecated "); 
      // directScaffold(comm, screen, list);
 //      twoBodyContract3Index(comm, list);
     }
@@ -89,7 +97,23 @@ namespace ChronusQ {
     void directScaffoldLibcint(
         MPI_Comm,
         const bool,
-        std::vector<TwoBodyContraction<MatsT>>&) const;
+        std::vector<TwoBodyContraction<MatsT>>&,
+        const bool,
+        const APPROXIMATION_TYPE_4C) const;
+
+    void directScaffoldLibcintSpinFree(
+        MPI_Comm,
+        const bool,
+        std::vector<TwoBodyContraction<MatsT>>&,
+        const bool,
+        const APPROXIMATION_TYPE_4C) const;
+
+    void directScaffoldLibcintSpinDependent(
+        MPI_Comm,
+        const bool,
+        std::vector<TwoBodyContraction<MatsT>>&,
+        const bool,
+        const APPROXIMATION_TYPE_4C) const;
 
     void directRelScaffoldLibcintCoulombOnly(
         MPI_Comm,

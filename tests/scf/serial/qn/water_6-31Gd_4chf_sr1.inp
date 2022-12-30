@@ -19,6 +19,10 @@ geom:
 reference = Complex 4CHF
 job = SCF
 
+[INTS]
+DIRACCOULOMB = true
+SSSS = false
+
 [SCF]
 guess = core
 Alg = NR

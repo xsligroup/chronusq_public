@@ -20,6 +20,8 @@ damp = false
 alg = direct
 libcint = true
 FiniteNuclei = true
+DIRACCOULOMB = on
+SSSS = off
 
 [MISC]
 nsmp = 2

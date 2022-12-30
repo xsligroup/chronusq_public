@@ -60,15 +60,18 @@ namespace ChronusQ {
       "RIGENCONTR",   // True or False
       "RIBUILD4INDEX",// True or False
       "FINITENUCLEI", // True or False
+      "LIBCINT",      // Ture or False
+
       "BARECOULOMB",  // True or False
-      "DC",           // True or False
+      "LLLL",         // True or False
+      "DC",           // True or False, SF, SD, 3C, 2C, 1C, AMF
       "DIRACCOULOMB", // True or False
       "BREIT",        // True or False
       "GAUNT",        // True or False
       "SSSS",         // True or False
       "GAUGE",        // True or False
-      "LIBCINT"       // Ture or False
-    };
+
+   };
 
     // Specified keywords
     std::vector<std::string> intsKeywords = input.getDataInSection("INTS");

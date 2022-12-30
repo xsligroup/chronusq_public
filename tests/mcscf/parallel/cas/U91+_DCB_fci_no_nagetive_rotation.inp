@@ -20,7 +20,8 @@ MaxIter = 2000
 [INTS]
 alg = incore
 libcint = true
-FiniteNuclei = false 
+FiniteNuclei = false
+DIRACCOULOMB = True
 SSSS = True 
 Gaunt = True
 Gauge = True
