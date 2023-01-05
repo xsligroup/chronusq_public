@@ -77,8 +77,7 @@ namespace ChronusQ {
     if (not matList[0].HER) 
       CErr("Non-Hermitian Density in 4C Contraction (Couloumb + Exchange) is NYI");
     
-    DirectTPI<IntsT> &originalERI =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();

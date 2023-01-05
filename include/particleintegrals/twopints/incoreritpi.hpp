@@ -484,7 +484,7 @@ namespace ChronusQ {
     // Constructors
 
     InCoreRITPIContraction() = delete;
-    InCoreRITPIContraction(TwoPInts<IntsT> &tpi):
+    InCoreRITPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
       InCore4indexTPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>

@@ -3654,7 +3654,7 @@ namespace ChronusQ {
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
 
-    BasisSet &basisSet_ = dynamic_cast<DirectTPI<double>&>(ints()).basisSet();
+    BasisSet &basisSet_ = std::dynamic_pointer_cast<DirectTPI<double>>(ints())->basisSet();
 
     // Create a vector of libint2::Engines for possible threading
     std::vector<libint2::Engine> engines(nthreads);
@@ -3739,14 +3739,14 @@ namespace ChronusQ {
     size_t nERI3 = 37;
 
     if(ERI4DCB!=nullptr)
-      ints().memManager().free(ERI4DCB);
+      ints()->memManager().free(ERI4DCB);
 
-    try { ERI4DCB = ints().memManager().malloc<double>(nERI3*NB3*n1); }
+    try { ERI4DCB = ints()->memManager().malloc<double>(nERI3*NB3*n1); }
     catch(...) {
       std::cout << std::fixed;
       std::cout << "Insufficient memory for the full ERI Dirac-Coulomb-Gaunt tensor ("
                 << (nERI3*NB3*n1/1e9) * sizeof(double) << " GB)" << std::endl;
-      std::cout << std::endl << ints().memManager() << std::endl;
+      std::cout << std::endl << ints()->memManager() << std::endl;
       CErr();
     }
     memset(ERI4DCB, 0.,nERI3*NB3*n1*sizeof(double));

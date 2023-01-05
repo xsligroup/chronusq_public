@@ -64,20 +64,16 @@ namespace ChronusQ {
     ROOT_ONLY(comm);
 
     if (typeid(*this) == typeid(InCore4indexRelERIContraction<MatsT,IntsT>)
-        and typeid(this->ints_) != typeid(InCore4indexRelERI<IntsT>))
+        and typeid( *(this->ints_)) != typeid(InCore4indexRelERI<IntsT>))
       CErr("InCore4indexRelTPIContraction expect a InCore4indexRelTPI reference.");
 
     if (typeid(*this) == typeid(InCore4indexTPIContraction<MatsT,IntsT>))
-      try {
-        dynamic_cast<InCore4indexTPI<IntsT>&>(this->ints_);
-      } catch (const std::bad_cast&) {
+      if ( std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->ints_) == nullptr){
         CErr("InCore4indexTPIContraction expect a InCore4indexTPI reference.");
       }
 
     if (typeid(*this) == typeid(InCoreRITPIContraction<MatsT,IntsT>))
-      try {
-        dynamic_cast<InCoreRITPI<IntsT>&>(this->ints_);
-      } catch (const std::bad_cast&) {
+      if ( std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_) == nullptr){
         CErr("InCoreRITPIContraction expect a InCoreRITPI reference.");
       }
 
@@ -113,8 +109,7 @@ namespace ChronusQ {
 
     ProgramTimer::tick("J Contract");
 
-    InCore4indexTPI<IntsT> &tpi4I =
-        dynamic_cast<InCore4indexTPI<IntsT>&>(this->ints_);
+    InCore4indexTPI<IntsT> &tpi4I = *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = tpi4I.memManager();
     size_t NB   = tpi4I.nBasis();
     size_t NB2  = NB*NB;
@@ -219,8 +214,7 @@ namespace ChronusQ {
 
     ProgramTimer::tick("K Contract");
  
-    InCore4indexTPI<IntsT> &tpi4I =
-        dynamic_cast<InCore4indexTPI<IntsT>&>(this->ints_);
+    InCore4indexTPI<IntsT> &tpi4I = *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->ints_);
     // check to see whether the two basis sets are different
     size_t NB = tpi4I.nBasis();
     size_t NB2 = NB*NB;
@@ -265,8 +259,7 @@ namespace ChronusQ {
   void InCore4indexRelERIContraction<MatsT, IntsT>::JContract(
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
-    InCore4indexRelERI<IntsT> &tpi4I =
-        dynamic_cast<InCore4indexRelERI<IntsT>&>(this->ints_);
+    InCore4indexRelERI<IntsT> &tpi4I = *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(this->ints_);
     size_t NB = tpi4I.nBasis();
     size_t NB2 = NB * NB;
     size_t NB3 = NB * NB2;
@@ -350,8 +343,7 @@ namespace ChronusQ {
   void InCore4indexRelERIContraction<MatsT, IntsT>::KContract(
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
-    InCore4indexRelERI<IntsT> &tpi4I =
-        dynamic_cast<InCore4indexRelERI<IntsT>&>(this->ints_);
+    InCore4indexRelERI<IntsT> &tpi4I = *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(this->ints_);
     size_t NB = tpi4I.nBasis();
     size_t NB2 = NB * NB;
     size_t NB3 = NB * NB2;
@@ -423,8 +415,7 @@ namespace ChronusQ {
   void InCoreRITPIContraction<MatsT, IntsT>::JContract(
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
-    InCoreRITPI<IntsT> &eri3j =
-        dynamic_cast<InCoreRITPI<IntsT>&>(this->ints_);
+    InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NB2 = NB*NB;
@@ -492,8 +483,7 @@ namespace ChronusQ {
   void InCoreRITPIContraction<MatsT, IntsT>::KContract(
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
-    InCoreRITPI<IntsT> &eri3j =
-        dynamic_cast<InCoreRITPI<IntsT>&>(this->ints_);
+    InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
@@ -535,8 +525,7 @@ namespace ChronusQ {
       MPI_Comm comm, size_t NO, MatsT *C, MatsT *AX) const {
     ROOT_ONLY(comm);
 
-    InCoreRITPI<IntsT> &eri3j =
-        dynamic_cast<InCoreRITPI<IntsT>&>(this->ints_);
+    InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
@@ -574,8 +563,7 @@ namespace ChronusQ {
       MPI_Comm comm, size_t NO, dcomplex *C, dcomplex *AX) const {
     ROOT_ONLY(comm);
 
-    InCoreRITPI<double> &eri3j =
-        dynamic_cast<InCoreRITPI<double>&>(this->ints_);
+    InCoreRITPI<double> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<double>>(this->ints_);
     CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
@@ -629,7 +617,7 @@ namespace ChronusQ {
 
     for (auto i = 0; i < nGrad; i++) {
       auto casted = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->grad_[i]);
-      InCore4indexTPIContraction<MatsT,IntsT> contraction(*casted);
+      InCore4indexTPIContraction<MatsT,IntsT> contraction(casted);
       contraction.contractSecond = this->contractSecond;
       contraction.twoBodyContract(comm, screen, list[i], pert);
     }

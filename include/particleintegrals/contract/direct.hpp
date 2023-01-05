@@ -108,8 +108,7 @@ namespace ChronusQ {
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<MatsT>> &list,EMPerturbation&) const {
 
-    DirectTPI<IntsT> &eri =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &eri = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
 
@@ -902,8 +901,7 @@ namespace ChronusQ {
       MPI_Comm comm, const bool screen,
       std::vector<TwoBodyContraction<dcomplex>> &list, EMPerturbation &pert) const {
 
-    DirectTPI<dcomplex> &eri =
-        dynamic_cast<DirectTPI<dcomplex>&>(this->ints_);
+    DirectTPI<dcomplex> &eri = *std::dynamic_pointer_cast<DirectTPI<dcomplex>>(this->ints_);
     CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
      
@@ -1406,8 +1404,7 @@ namespace ChronusQ {
 //    parentId = ProgramTimer::tick("Contract Total");
 //    callLevel = ProgramTimer::getCallLevel();
 
-    DirectTPI<IntsT> &tpi =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &tpi = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
@@ -2118,7 +2115,7 @@ namespace ChronusQ {
     size_t generalSCRSize = 0ul; 
     
     // SCR needed for integrals
-    DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &tpi = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
     
@@ -2196,8 +2193,7 @@ namespace ChronusQ {
     // TODO: MPI is also likely broken for this
     //
 
-    DirectTPI<IntsT> &tpi =
-        dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
+    DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
     CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();

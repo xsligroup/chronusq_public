@@ -42,10 +42,10 @@ namespace ChronusQ {
     // Constructors
 
     GTODirectRelERIContraction() = delete;
-    GTODirectRelERIContraction(TwoPInts<IntsT> &tpi):
+    GTODirectRelERIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
       GTODirectTPIContraction<MatsT,IntsT>(tpi) {
 
-      if (typeid(tpi) != typeid(DirectTPI<IntsT>))
+      if (typeid(*tpi) != typeid(DirectTPI<IntsT>))
         CErr("GTODirectRelERIContraction expect a DirectTPI<IntsT> reference.");
 
     }
