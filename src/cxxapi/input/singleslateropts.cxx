@@ -1276,11 +1276,11 @@ namespace ChronusQ {
 
           TPI = std::make_shared<InCore4indexRelERI<double>>(mem,basis.nBasis,nERI4DCB);
 
-          p->TPI = std::make_shared<InCore4indexRelERIContraction<double,double>>(*TPI);
+          p->TPI = std::make_shared<InCore4indexRelERIContraction<double,double>>(TPI);
 
         } else if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
-          p->TPI = std::make_shared<GTODirectRelERIContraction<double,double>>(*tpi_typed);
+          p->TPI = std::make_shared<GTODirectRelERIContraction<double,double>>(tpi_typed);
 
         } else if (TPI) {
           CErr("Invalid TPInts type for Four-component Wavefunction<double,double>",std::cout);
@@ -1295,11 +1295,11 @@ namespace ChronusQ {
 
           TPI = std::make_shared<InCore4indexRelERI<double>>(mem,basis.nBasis,nERI4DCB);
 
-          p->TPI = std::make_shared<InCore4indexRelERIContraction<dcomplex,double>>(*TPI);
+          p->TPI = std::make_shared<InCore4indexRelERIContraction<dcomplex,double>>(TPI);
 
         } else if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
-          p->TPI = std::make_shared<GTODirectRelERIContraction<dcomplex,double>>(*tpi_typed);
+          p->TPI = std::make_shared<GTODirectRelERIContraction<dcomplex,double>>(tpi_typed);
 
         } else if (TPI) {
           CErr("Invalid TPInts type for Four-component Wavefunction<dcomplex,double>",std::cout);
@@ -1321,15 +1321,15 @@ namespace ChronusQ {
 
       if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<GTODirectTPIContraction<double,double>>(*tpi_typed);
+        p->TPI = std::make_shared<GTODirectTPIContraction<double,double>>(tpi_typed);
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCoreRITPIContraction<double,double>>(*tpi_typed);
+        p->TPI = std::make_shared<InCoreRITPIContraction<double,double>>(tpi_typed);
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCore4indexTPIContraction<double,double>>(*tpi_typed);
+        p->TPI = std::make_shared<InCore4indexTPIContraction<double,double>>(tpi_typed);
 
       } else {
 
@@ -1343,15 +1343,15 @@ namespace ChronusQ {
 
       if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<GTODirectTPIContraction<dcomplex,double>>(*tpi_typed);
+        p->TPI = std::make_shared<GTODirectTPIContraction<dcomplex,double>>(tpi_typed);
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCoreRITPIContraction<dcomplex,double>>(*tpi_typed);
+        p->TPI = std::make_shared<InCoreRITPIContraction<dcomplex,double>>(tpi_typed);
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCore4indexTPIContraction<dcomplex,double>>(*tpi_typed);
+        p->TPI = std::make_shared<InCore4indexTPIContraction<dcomplex,double>>(tpi_typed);
 
       } else {
 
@@ -1365,11 +1365,11 @@ namespace ChronusQ {
 
       if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<dcomplex>>(TPI)) {
 
-        p->TPI = std::make_shared<InCore4indexTPIContraction<dcomplex,dcomplex>>(*tpi_typed);
+        p->TPI = std::make_shared<InCore4indexTPIContraction<dcomplex,dcomplex>>(tpi_typed);
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<dcomplex>>(TPI)) {
 
-        p->TPI = std::make_shared<GIAODirectERIContraction>(*tpi_typed);
+        p->TPI = std::make_shared<GIAODirectERIContraction>(tpi_typed);
 
       } else {
 

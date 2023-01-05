@@ -80,8 +80,7 @@ namespace ChronusQ {
     const size_t nMat = matList.size();
     const size_t nBatch = nMat / mMat;
 
-    DirectTPI<IntsT> &originalERI =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();
@@ -2780,8 +2779,7 @@ namespace ChronusQ {
     size_t threadSCRSize  = 0ul;
     size_t generalSCRSize = 0ul;
   
-    DirectTPI<IntsT> &originalERI =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();
