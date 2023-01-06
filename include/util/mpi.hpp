@@ -24,6 +24,9 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
+#ifdef CQ_ENABLE_MPI 
+#include <mpi.h>
+#endif
 
 namespace ChronusQ {
 
@@ -65,6 +68,20 @@ namespace ChronusQ {
 #define MPI_UNDEFINED 1
 
   static inline void MPI_Barrier(MPI_Comm c) { };
+
+
+#else // MPI is enabled
+  template <typename T> MPI_Datatype mpi_data_type();
+  #define REGISTER_MPI_TYPE(CXXTYPE, MPITYPE) \
+  template <> inline MPI_Datatype mpi_data_type<CXXTYPE>() { return MPITYPE; }
+
+  REGISTER_MPI_TYPE(double, MPI_DOUBLE)
+  REGISTER_MPI_TYPE(int,    MPI_INT   )
+  REGISTER_MPI_TYPE(int64_t,MPI_INT64_T)
+  REGISTER_MPI_TYPE(size_t, MPI_UINT64_T)
+  REGISTER_MPI_TYPE(std::complex<double>, MPI_C_DOUBLE_COMPLEX)
+
+  #undef REGISTER_MPI_TYPE
 #endif
 
 
@@ -125,7 +142,7 @@ namespace ChronusQ {
 #ifdef ENABLE_BCAST_COUNTER
     bcastCounter++;
 #endif
-    mxx::bcast(msg,count,root,c);
+    MPI_Bcast(msg, count, mpi_data_type<T>(), root, c);
 #endif
 
   }
@@ -135,73 +152,49 @@ namespace ChronusQ {
     MPIBCast(&msg,1,root,c);
   }
 
-  template <typename T, typename Func>
-  static inline void MPIReduce(const T* in, size_t n, T* out, int root, Func func, MPI_Comm c) {
-#ifdef CQ_ENABLE_MPI
-    mxx::reduce(in, n, out, root, std::forward<Func>(func), c);
-#else
-   std::copy_n(in, n, out);
-#endif
+  template <>
+  inline void MPIBCast(bool& msg, int root, MPI_Comm c) {
+    int i = msg;
+    MPIBCast(i, root, c);
+    msg = bool(i);
   }
+
   
   template <typename T>
   static inline void MPIReduce(const T* in, size_t n, T* out, int root, MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-    mxx::reduce(in, n, out, root, std::plus<T>(), c);
+    MPI_Reduce(in, out, n, mpi_data_type<T>(), MPI_SUM, root, c);
 #else
-   std::copy_n(in, n, out);
-#endif
-  }
-  
-  template <typename T, typename Func>
-  static inline T MPIReduce(const T& x, int root, Func func, MPI_Comm c) {
-#ifdef CQ_ENABLE_MPI
-    return mxx::reduce(x, root, std::forward<Func>(func), c);
-#else
-    return x;
+    std::copy_n(in, n, out);
 #endif
   }
   
   template <typename T>
   static inline T MPIReduce(const T& x, int root, MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-    return mxx::reduce(x, root, std::plus<T>(), c);
+    T out; MPIReduce(&x, 1, &out, root, c); 
+    return out;
 #else
     return x;
-#endif
-  }
-  
-  template <typename T, typename Func>
-  static inline void MPIAllReduce(const T* in, size_t n, T* out, Func func, MPI_Comm c) {
-#ifdef CQ_ENABLE_MPI
-    mxx::allreduce(in, n, out, std::forward<Func>(func), c);
-#else
-   std::copy_n(in, n, out);
 #endif
   }
   
   template <typename T>
   static inline void MPIAllReduce(const T* in, size_t n, T* out, MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-    mxx::allreduce(in, n, out, std::plus<T>(), c);
+    MPI_Allreduce(in, out, n, mpi_data_type<T>(), MPI_SUM, c);
 #else
-   std::copy_n(in, n, out);
+    std::copy_n(in, n, out);
 #endif
   }
   
-  template <typename T, typename Func>
-  static inline T MPIAllReduce(const T& x, Func func, MPI_Comm c) {
-#ifdef CQ_ENABLE_MPI
-    return mxx::allreduce(x, std::forward<Func>(func), c);
-#else
-    return x;
-#endif
-  }
   
   template <typename T>
   static inline T MPIAllReduce(const T& x, MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-    return mxx::allreduce(x, std::plus<T>(), c);
+    T out;
+    MPIAllReduce(&x, 1, &out, c);
+    return out;
 #else
     return x;
 #endif
@@ -215,7 +208,11 @@ namespace ChronusQ {
       int root,
       MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-   mxx::scatterv(x, sizes, out, recv_size, root, c);
+   std::vector<int> _sizes(sizes.begin(), sizes.end());
+   std::vector<int> _displs(sizes.size());
+   std::exclusive_scan(_sizes.begin(), _sizes.end(), _displs.begin(), 0);
+   MPI_Scatterv(x, _sizes.data(), _displs.data(), mpi_data_type<T>(),
+     out, recv_size, mpi_data_type<T>(), root, c);
 #else
    std::copy_n(x, recv_size, out);
 #endif
@@ -229,7 +226,11 @@ namespace ChronusQ {
       int root,
       MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-   mxx::gatherv(x, size, out, recv_sizes, root, c);
+   std::vector<int> _sizes(recv_sizes.begin(), recv_sizes.end());
+   std::vector<int> _displs(_sizes.size());
+   std::exclusive_scan(_sizes.begin(), _sizes.end(), _displs.begin(), 0);
+   MPI_Gatherv(x, size, mpi_data_type<T>(), out, _sizes.data(), 
+     _displs.data(), mpi_data_type<T>(), root, c);
 #else
    std::copy_n(x, size, out);
 #endif
@@ -242,9 +243,23 @@ namespace ChronusQ {
       const std::vector<size_t>& recv_sizes,
       MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-   mxx::allgatherv(x, size, out, recv_sizes, c);
+   std::vector<int> _sizes(recv_sizes.begin(), recv_sizes.end());
+   std::vector<int> _displs(_sizes.size());
+   std::exclusive_scan(_sizes.begin(), _sizes.end(), _displs.begin(), 0);
+   MPI_Allgatherv(x, size, mpi_data_type<T>(), _sizes.data(),
+     _displs.data(), out, mpi_data_type<T>(), c);
 #else
    std::copy_n(x, size, out);
+#endif
+  }
+
+  static inline bool MPIAnyOf(bool x, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    int i = x ? 1 : 0;
+    i = MPIAllReduce(i, c);
+    return bool(i);
+#else
+    return x;
 #endif
   }
 

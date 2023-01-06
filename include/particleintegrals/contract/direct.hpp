@@ -853,7 +853,7 @@ namespace ChronusQ {
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
 
-        mxx::reduce( C.AX, NB*NB, mpiScr, 0, std::plus<MatsT>(), comm );
+        MPIReduce( C.AX, NB*NB, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,C.AX);
@@ -1352,7 +1352,7 @@ namespace ChronusQ {
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
 
-        mxx::reduce( C.AX, NB*NB, mpiScr, 0, std::plus<dcomplex>(), comm );
+        MPIReduce( C.AX, NB*NB, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,C.AX);
@@ -2081,7 +2081,7 @@ namespace ChronusQ {
       for( auto &C : matList ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,nBasis,nBasis,nBasis);
 
-        mxx::reduce( C.AX, nBasis*nBasis, mpiScr, 0, std::plus<MatsT>(), comm );
+        MPIReduce( C.AX, nBasis*nBasis, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,nBasis*nBasis,C.AX);
