@@ -1199,13 +1199,15 @@ namespace ChronusQ {
 
       if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
-        p->fockBuilder = std::make_shared<FockBuilder<dcomplex,double>>(hamiltonianOptions);
+        if(refOptions.refType == isRORef) p->fockBuilder = std::make_shared<ROFock<dcomplex,double>>(hamiltonianOptions);
+        else p->fockBuilder = std::make_shared<FockBuilder<dcomplex,double>>(hamiltonianOptions);
 
       } else if(auto p = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
 
         if (not hamiltonianOptions.OneESpinOrbit) {
 
-          p->fockBuilder = std::make_shared<FockBuilder<double,double>>(hamiltonianOptions);
+          if(refOptions.refType == isRORef) p->fockBuilder = std::make_shared<ROFock<double,double>>(hamiltonianOptions);
+          else p->fockBuilder = std::make_shared<FockBuilder<double,double>>(hamiltonianOptions);
 
         } else
 
