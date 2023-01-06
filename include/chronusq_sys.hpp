@@ -57,9 +57,6 @@
   #include <omp.h>
 #endif
 
-#ifdef CQ_ENABLE_MPI
-  #include <mxx/collective.hpp>
-#endif
 
 // Standard typedefs
 typedef std::complex<double> dcomplex;

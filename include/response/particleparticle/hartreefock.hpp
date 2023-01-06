@@ -108,7 +108,7 @@ namespace ChronusQ {
 
         bool scatter = not bool(X.X);
 #ifdef CQ_ENABLE_MPI
-        scatter = mxx::any_of(scatter,c);
+        scatter = MPIAnyOf(scatter,c);
 #endif
 
         // Transform pp vector MO -> AO

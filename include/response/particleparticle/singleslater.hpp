@@ -400,7 +400,7 @@ namespace ChronusQ {
     // calling this function
     bool needFullMat = not bool(this->fullMatrix_);
 #ifdef CQ_ENABLE_MPI
-    if( this->genSettings.isDist() ) MPIBCast(&needFullMat,1,0,this->comm_);
+    if( this->genSettings.isDist() ) MPIBCast(needFullMat,0,this->comm_);
 #endif
     if(needFullMat) formFullMatrix(); 
     */
@@ -769,7 +769,7 @@ namespace ChronusQ {
     // calling this function
     bool needFullMat = not bool(this->fullMatrix_);
 #ifdef CQ_ENABLE_MPI
-    if( this->genSettings.isDist() ) MPIBCast(&needFullMat,1,0,this->comm_);
+    if( this->genSettings.isDist() ) MPIBCast(needFullMat,0,this->comm_);
 #endif
     if(needFullMat) this->formFullMatrix(); 
 

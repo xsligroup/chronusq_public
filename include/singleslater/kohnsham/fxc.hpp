@@ -1895,7 +1895,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
         // Add MPI Contributions together
         if( MPISize(intComm) > 1 )
-          mxx::reduce(GxcT[0][iT][iS],NB2,mpiScr,0,std::plus<U>(),intComm);
+          MPIReduce(GxcT[0][iT][iS],NB2,mpiScr,0,intComm);
 
         if( MPIRank(intComm) == 0 and MPISize(intComm) > 1 )
           std::copy_n(mpiScr,NB2,GxcT[0][iT][iS]);
