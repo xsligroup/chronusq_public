@@ -50,7 +50,7 @@ namespace ChronusQ {
         basisSet_(basis), basisSet2_(basis2),molecule_(mol),
         threshSchwarz_(threshSchwarz) {}
     DirectTPI( const DirectTPI &other ):
-        DirectTPI(other.memManager(), other.nBasis(), other.nBasis2(), other.threshSchwarz_) {
+        DirectTPI(other.memManager(), other.basisSet(), other.basisSet2(), other.molecule(), other.threshSchwarz_) {
       std::copy_n(other.schwarz_, basisSet_.nShell*basisSet_.nShell, schwarz_);
       std::copy_n(other.schwarz2_, basisSet2_.nShell*basisSet2_.nShell, schwarz2_);
     }
@@ -151,10 +151,10 @@ namespace ChronusQ {
     // Constructors
 
     GTODirectTPIContraction() = delete;
-    GTODirectTPIContraction(TwoPInts<IntsT> &tpi):
+    GTODirectTPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
       TPIContractions<MatsT,IntsT>(tpi) {
 
-      if (typeid(tpi) != typeid(DirectTPI<IntsT>))
+      if (typeid(*tpi) != typeid(DirectTPI<IntsT>))
         CErr("GTODirectTPIContraction expect a DirectTPI reference.");
 
     }

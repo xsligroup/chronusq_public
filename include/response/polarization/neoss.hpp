@@ -43,10 +43,10 @@ namespace ChronusQ {
       // Reversed because l1 corresponds to X and l2 corresponds to AX
       std::pair<bool,std::shared_ptr<TwoPInts<IntsT>>> ssTPItuple = neoss.getCrossTPIs(l2,l1);
       if (auto tpi_t = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ssTPItuple.second) ) {
-        ssTPI = std::make_unique<InCore4indexTPIContraction<MatsT,IntsT>>(*tpi_t);
+        ssTPI = std::make_unique<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
       }
       else if (auto tpi_t = std::dynamic_pointer_cast<DirectTPI<IntsT>>(ssTPItuple.second) ) {
-        ssTPI = std::make_unique<GTODirectTPIContraction<MatsT, IntsT>>(*tpi_t);
+        ssTPI = std::make_unique<GTODirectTPIContraction<MatsT, IntsT>>(tpi_t);
       }
       ssTPI->contractSecond = ssTPItuple.first;
     }
@@ -151,7 +151,7 @@ namespace ChronusQ {
 
             bool scatter = not bool(X.X);
 #ifdef CQ_ENABLE_MPI
-            scatter = mxx::any_of(scatter,c);
+            scatter = MPIAnyOf(scatter,c);
 #endif
 
             // Transform ph vector MO -> AO

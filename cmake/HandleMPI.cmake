@@ -38,18 +38,4 @@ if(CQ_ENABLE_MPI)
   message( STATUS "MPI_INCLUDE_PATH found to be: ${MPI_INCLUDE_PATH}" )
   
   message( "" )
-  
-  # MXX
-  message( STATUS "Adding CMake Target for MXX" )
-  FetchContent_Declare(
-    mxx
-    GIT_REPOSITORY https://github.com/patflick/mxx.git 
-    GIT_TAG e1f4acd8f5dc91da4945b5f6b6e7828991afeb0a
-    PATCH_COMMAND git apply "${PROJECT_SOURCE_DIR}/cmake/mxx_complex_datatype.patch"
-  )  
-
-  FetchContent_MakeAvailable ( mxx )
-  target_include_directories(cq PUBLIC "${mxx_SOURCE_DIR}/include")
-  
-  message( "" )
 endif()

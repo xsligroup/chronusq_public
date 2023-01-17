@@ -20,6 +20,8 @@ guess = readden
 alg = incore
 libcint = true
 FiniteNuclei = false
+DIRACCOULOMB = on
+SSSS = off
 
 [MISC]
 nsmp = 1

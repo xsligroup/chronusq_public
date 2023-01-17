@@ -585,7 +585,14 @@ namespace ChronusQ {
         [] (_F A, _F B) { return std::norm(A) < std::norm(B); })));
     
     // all reduce
-    return MPIAllReduce(v, [](double x, double y) { return std::max(x, y);}, comm_);
+#ifdef CQ_ENABLE_MPI
+    //return MPIAllReduce(v, [](double x, double y) { return std::max(x, y);}, comm_);
+    double m;
+    MPI_Allreduce(&v, &m, 1, MPI_DOUBLE, MPI_MAX, comm_);
+    return m;
+#else
+    return v;
+#endif
   }
   
   template <typename _F>

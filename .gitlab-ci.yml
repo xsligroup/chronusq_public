@@ -58,6 +58,6 @@ build_mpi_gcc:
         - source /home/ci_software/gcc-10.2.0_mpich-3.2.1-with-boost.sh
         - mkdir build
         - cd build
-        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc-mpich-boost -DFETCHCONTENT_SOURCE_DIR_SCALAPACKPP=/sw/scalapackpp -DCQ_ENABLE_MPI=ON -DCQ_ENABLE_TA=ON -DBUILD_TESTING=OFF -DBTAS_BUILD_DEPS_FROM_SOURCE=ON -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release ..
+        - cmake -DLibint2_ROOT=/sw/libint/2/7/0/beta.6/gcc-mpich-boost -DCQ_ENABLE_MPI=ON -DCQ_ENABLE_TA=ON -DBUILD_TESTING=OFF -DBTAS_BUILD_DEPS_FROM_SOURCE=ON -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_BUILD_TYPE=Release ..
         - make -j4
         - make test

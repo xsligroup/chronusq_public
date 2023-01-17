@@ -30,6 +30,10 @@ namespace ChronusQ {
 
   enum KineticBalance {RKBPauli, RKBSpinor, UKBScalar};
 
+  enum class TYPE_4C {All, SpinFree, SpinDependent};
+
+  enum class APPROXIMATION_TYPE_4C {None, ThreeCenter, TwoCenter, OneCenter, AtomicMeanField};
+
   enum class X2C_TYPE {OFF, ONEE, TWOE, FOCK};
 
   struct ATOMIC_X2C_TYPE {
@@ -91,9 +95,18 @@ namespace ChronusQ {
     KineticBalance kineticBalance = RKBPauli; // Choose the kinetic-balance condition; currently, only RKBPauli is implemented
     bool BareCoulomb = true; // Do bare Coulomb only in Restricted-Kinetic balance (RKB)
     bool DiracCoulomb = true; // Dirac-Coulomb without SSSS
-    bool DiracCoulombSSSS = false; // SSSS to Dirac-Coulomb
+    bool DiracCoulombSSSS = true; // SSSS to Dirac-Coulomb
     bool Gaunt = false; // Gaunt
     bool Gauge = false; // Gauge
+    TYPE_4C DiracCoulombType = TYPE_4C::All; // Type of Dirac-Coulomb - All, Spin Free, Spin Dependent
+    TYPE_4C SSSSType = TYPE_4C::All;         // Type of SSSS - All, Spin Free, Spin Dependent
+    TYPE_4C GauntType = TYPE_4C::All;        // Type of Gaunt - All, Spin Free, Spin Dependent
+    TYPE_4C GaugeType = TYPE_4C::All;        // Type of Gauge - All, Spin Free, Spin Dependent
+                               
+    APPROXIMATION_TYPE_4C DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::None; // Type of Dirac-Coulomb approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
+    APPROXIMATION_TYPE_4C SSSSApproximationType = APPROXIMATION_TYPE_4C::None;         // Type of SSSS approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
+    APPROXIMATION_TYPE_4C GauntApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gaunt approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
+    APPROXIMATION_TYPE_4C GaugeApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gauge approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
 
   }; // struct HamiltonianOptions
 
