@@ -248,7 +248,7 @@ namespace ChronusQ {
     // Constructors
 
     InCore4indexRelERIContraction() = delete;
-    InCore4indexRelERIContraction(TwoPInts<IntsT> &tpi):
+    InCore4indexRelERIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
       InCore4indexTPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>

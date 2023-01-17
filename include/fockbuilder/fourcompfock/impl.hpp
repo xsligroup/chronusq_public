@@ -3933,8 +3933,9 @@ namespace ChronusQ {
           SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMY, NB1C, ss.exchangeMatrix->Y().pointer(), NB2C);
           SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMZ, NB1C, ss.exchangeMatrix->Z().pointer(), NB2C);
         }
+
       } else {
-  
+        // using Libint  
         std::vector<TwoBodyContraction<MatsT>> contractLL =
           { {contract1PDMLL.S().pointer(), CScrLLMS, HerDen, COULOMB} };
     
@@ -4005,12 +4006,12 @@ namespace ChronusQ {
     if(this->hamiltonianOptions_.DiracCoulomb) { // DIRAC_COULOMB
 
   
-      /*++++++++++++++++++++++++++++++++++++++++++++*/
-      /* Start of Dirac-Coulomb (LL|LL) Contraction */
-      /*++++++++++++++++++++++++++++++++++++++++++++*/
+      /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
+      /* Start of Dirac-Coulomb (C^-2 order) Contraction */
+      /*+++++++++++++++++++++++++++++++++++++++++++++++++*/
   
       std::vector<TwoBodyContraction<MatsT>> contractDCLL =
-        { {contract1PDMLL.S().pointer(), CScrLLMS, HerDen, LLLL},
+        { {contract1PDMLL.S().pointer(), CScrLLMS, HerDen, LLSS},
           {contract1PDMLL.S().pointer(), XScrLLMS},
           {contract1PDMLL.X().pointer(), XScrLLMX},
           {contract1PDMLL.Y().pointer(), XScrLLMY},
@@ -4029,7 +4030,10 @@ namespace ChronusQ {
           {contract1PDMLS.Z().pointer(), XScrLSMZ} };
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-      relERICon.twoBodyContract(ss.comm, true, contractDCLL, pert, computeExchange);
+      relERICon.twoBodyContract(ss.comm, true, contractDCLL, pert, 
+        computeExchange,
+        this->hamiltonianOptions_.DiracCoulombType,
+        this->hamiltonianOptions_.DiracCoulombApproximationType);
 
       // Add Dirac-Coulomb contributions to the LLLL block
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLLMS, NB1C, MatsT(1.0), 
@@ -4050,10 +4054,23 @@ namespace ChronusQ {
                       ss.twoeH->Z().pointer()+SS, NB2C,
                       ss.twoeH->Z().pointer()+SS, NB2C);
 
+      // Add Dirac-Coulomb contributions to the LLSS block
+      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMS, NB1C, MatsT(1.0), 
+		      ss.exchangeMatrix->S().pointer()+LS, NB2C,
+		      ss.exchangeMatrix->S().pointer()+LS, NB2C);
+      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMX, NB1C, MatsT(1.0), 
+		      ss.exchangeMatrix->X().pointer()+LS, NB2C,
+		      ss.exchangeMatrix->X().pointer()+LS, NB2C);
+      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMY, NB1C, MatsT(1.0), 
+		      ss.exchangeMatrix->Y().pointer()+LS, NB2C,
+		      ss.exchangeMatrix->Y().pointer()+LS, NB2C);
+      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMZ, NB1C, MatsT(1.0), 
+		      ss.exchangeMatrix->Z().pointer()+LS, NB2C,
+		      ss.exchangeMatrix->Z().pointer()+LS, NB2C);
 
 #ifdef _PRINT_MATRICES
 
-      std::cout<<"After LLLL"<<std::endl;
+      std::cout<<"After LLSS"<<std::endl;
       prettyPrintSmart(std::cout, "COULOMB-S",           ss.twoeH->S().pointer(), NB2C, NB2C, NB2C);
       prettyPrintSmart(std::cout, "COULOMB-X",           ss.twoeH->X().pointer(), NB2C, NB2C, NB2C);
       prettyPrintSmart(std::cout, "COULOMB-Y",           ss.twoeH->Y().pointer(), NB2C, NB2C, NB2C);
@@ -4066,8 +4083,8 @@ namespace ChronusQ {
 #endif
 
 
+#if 0 // LLSS contribution is included in the Dirac-Coulomb term
       if(computeExchange) {
-#if 1 
       std::vector<TwoBodyContraction<MatsT>> contractDCLS =
         { {contract1PDMLL.S().pointer(), CScrLLMS, HerDen, LLSS},
           {contract1PDMLL.S().pointer(), XScrLLMS},
@@ -4103,7 +4120,6 @@ namespace ChronusQ {
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMZ, NB1C, MatsT(1.0), 
 		      ss.exchangeMatrix->Z().pointer()+LS, NB2C,
 		      ss.exchangeMatrix->Z().pointer()+LS, NB2C);
-#endif
 
 
 #ifdef _PRINT_MATRICES
@@ -4121,6 +4137,8 @@ namespace ChronusQ {
 #endif //_PRINT_MATRICES
       } 
     
+#endif
+
     } //_DIRAC_COULOMB
 
 
@@ -4159,7 +4177,10 @@ namespace ChronusQ {
           {contract1PDMLS.Z().pointer(), XScrLSMZ} };
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-      relERICon.twoBodyContract(ss.comm, true, contractDCSS, pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCSS, pert, 
+        computeExchange,
+        this->hamiltonianOptions_.SSSSType,
+        this->hamiltonianOptions_.SSSSApproximationType);
 
       // Add (SS|SS) Coulomb contributions to the SSSS block
       MatAdd('N','N', NB1C, NB1C, 2.0*C4, CScrSSMS, NB1C, MatsT(1.0), 
@@ -4256,7 +4277,10 @@ namespace ChronusQ {
 	};
 
       // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGaunt,pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCGaunt, pert, 
+        computeExchange,
+        this->hamiltonianOptions_.GauntType,
+        this->hamiltonianOptions_.GauntApproximationType);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
@@ -4380,7 +4404,10 @@ namespace ChronusQ {
         };
 
       // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGauge,pert);
+      relERICon.twoBodyContract(ss.comm, true, contractDCGauge, pert,
+        computeExchange,
+        this->hamiltonianOptions_.GaugeType,
+        this->hamiltonianOptions_.GaugeApproximationType);
 
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
@@ -4481,8 +4508,6 @@ namespace ChronusQ {
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Y().pointer()+LS, NB2C, ss.twoeH->Y().pointer()+SL, NB2C);
     // Copy LS to SL part of the twoeH[MZ]
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Z().pointer()+LS, NB2C, ss.twoeH->Z().pointer()+SL, NB2C);
-    if (false) {
-    }
 
     // Form GD: G[D] = 2.0*J[D] - K[D]
     if(computeExchange) *ss.twoeH -= xHFX * *ss.exchangeMatrix;

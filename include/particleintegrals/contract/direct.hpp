@@ -108,8 +108,7 @@ namespace ChronusQ {
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<MatsT>> &list,EMPerturbation&) const {
 
-    DirectTPI<IntsT> &eri =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &eri = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
 
@@ -854,7 +853,7 @@ namespace ChronusQ {
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
 
-        mxx::reduce( C.AX, NB*NB, mpiScr, 0, std::plus<MatsT>(), comm );
+        MPIReduce( C.AX, NB*NB, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,C.AX);
@@ -902,8 +901,7 @@ namespace ChronusQ {
       MPI_Comm comm, const bool screen,
       std::vector<TwoBodyContraction<dcomplex>> &list, EMPerturbation &pert) const {
 
-    DirectTPI<dcomplex> &eri =
-        dynamic_cast<DirectTPI<dcomplex>&>(this->ints_);
+    DirectTPI<dcomplex> &eri = *std::dynamic_pointer_cast<DirectTPI<dcomplex>>(this->ints_);
     CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
      
@@ -1354,7 +1352,7 @@ namespace ChronusQ {
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
 
-        mxx::reduce( C.AX, NB*NB, mpiScr, 0, std::plus<dcomplex>(), comm );
+        MPIReduce( C.AX, NB*NB, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,C.AX);
@@ -1406,8 +1404,7 @@ namespace ChronusQ {
 //    parentId = ProgramTimer::tick("Contract Total");
 //    callLevel = ProgramTimer::getCallLevel();
 
-    DirectTPI<IntsT> &tpi =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &tpi = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
@@ -2084,7 +2081,7 @@ namespace ChronusQ {
       for( auto &C : matList ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,nBasis,nBasis,nBasis);
 
-        mxx::reduce( C.AX, nBasis*nBasis, mpiScr, 0, std::plus<MatsT>(), comm );
+        MPIReduce( C.AX, nBasis*nBasis, mpiScr, 0, comm );
 
         // Copy over the output buffer on root
         if( mpiRank == 0 ) std::copy_n(mpiScr,nBasis*nBasis,C.AX);
@@ -2118,7 +2115,7 @@ namespace ChronusQ {
     size_t generalSCRSize = 0ul; 
     
     // SCR needed for integrals
-    DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &tpi = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
     
@@ -2196,8 +2193,7 @@ namespace ChronusQ {
     // TODO: MPI is also likely broken for this
     //
 
-    DirectTPI<IntsT> &tpi =
-        dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
+    DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
     CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();

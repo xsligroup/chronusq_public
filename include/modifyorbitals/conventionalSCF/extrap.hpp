@@ -46,7 +46,7 @@ void ConventionalSCF<MatsT>::modifyFock(EMPerturbation& pert) {
   // Prepare for DIIS
   VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
   VecShrdPtrMat<MatsT> den  = this->modOrbOpt.getOnePDM();
-  size_t iDIIS                                           = this->scfConv.nSCFIter % this->scfControls.nKeep;
+  size_t iDIIS = this->scfConv.nSCFIter % this->scfControls.nKeep;
   for( size_t i = 0; i < fock.size(); i++ ) {
     diisFock[iDIIS][i]   = *fock[i];
     diisOnePDM[iDIIS][i] = *den[i];

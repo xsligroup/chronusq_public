@@ -44,7 +44,7 @@
 
 #define _PRECOMPUTE_SHELL_PAIRS
 
-//#define _SHZ_SCREEN_4C
+#define _SHZ_SCREEN_4C
 
 
 #define _CONTRACTION_
@@ -67,8 +67,7 @@ namespace ChronusQ {
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<MatsT>> &matList) const {
 
-    DirectTPI<IntsT> &eri =
-        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
+    DirectTPI<IntsT> &eri = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
     CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
 

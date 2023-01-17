@@ -49,7 +49,9 @@ class OptimizeOrbitals : public ModifyOrbitals<MatsT> {
     double prevEnergy;                             ///< Previous Energy to test convergence
 
   public:
-    const SCFControls scfControls;
+//xslis
+    SCFControls scfControls;
+//xslie
     SCFConvergence scfConv;
     bool doingDamp;                                ///< Whether damping is currently on or off (only used for printing)
 

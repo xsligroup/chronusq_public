@@ -68,7 +68,7 @@ namespace ChronusQ {
   //
  
   template <typename MatsT, typename IntsT>
-  void GTODirectRelERIContraction<MatsT,IntsT>::directScaffoldLibcint(
+  void GTODirectRelERIContraction<MatsT,IntsT>::directScaffoldLibcintSpinFree(
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<MatsT>> &matList,
     const bool computeExchange,
@@ -77,7 +77,8 @@ namespace ChronusQ {
     if (not matList[0].HER) 
       CErr("Non-Hermitian Density in 4C Contraction (Couloumb + Exchange) is NYI");
     
-    DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
+    DirectTPI<IntsT> &originalERI =
+        dynamic_cast<DirectTPI<IntsT>&>(this->ints_);
     CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();
@@ -638,7 +639,7 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),size_t(0));
+      size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),0);
       std::cout << "Bare-Coulomb-Exchange Libcint Screened " << nIntSkip << std::endl;
   
       auto durDirect = tock(topDirect);
@@ -852,9 +853,9 @@ namespace ChronusQ {
             // ∇A∙∇B(mn|kl)
             auto dAdotdB = buff[AxBx*nQuad+mnkl] + buff[AyBy*nQuad+mnkl] + buff[AzBz*nQuad+mnkl];
             // ∇Ax∇B(mn|kl)
-            auto dAcrossdB_x =  buff[AyBz*nQuad+mnkl] - buff[AzBy*nQuad+mnkl];
-            auto dAcrossdB_y = -buff[AxBz*nQuad+mnkl] + buff[AzBx*nQuad+mnkl];
-            auto dAcrossdB_z =  buff[AxBy*nQuad+mnkl] - buff[AyBx*nQuad+mnkl];
+            auto dAcrossdB_x =  0.0;
+            auto dAcrossdB_y =  0.0;
+            auto dAcrossdB_z =  0.0;
   
             //auto MNKL = m + n*NB + k*NB2 + l*NB3;
             auto MNKL = m + nNBkNB2lNB3;
@@ -1195,11 +1196,11 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),size_t(0));
+      size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),0);
       std::cout << "Dirac-Coulomb-C(2) Screened " << nIntSkipLL << std::endl;
 
       auto durDirectLL = tock(topDirectLL);
-      std::cout << "Dirac-Coulomb-C(2) AO Direct Contraction took " <<  durDirectLL << " s\n"; 
+      std::cout << "Fake Spin-Free Dirac-Coulomb-C(2) AO Direct Contraction took " <<  durDirectLL << " s\n"; 
 
       std::cout << std::endl;
 #endif
@@ -1212,386 +1213,6 @@ namespace ChronusQ {
     /*   End of Dirac-Coulomb C(2)  */
     /*                              */
     /********************************/
-
-
-
-
-
-#if 0 // LLSS block is now included in the Dirac-Coulomb contraction above
-
-    /***************************/
-    /*                         */
-    /* Start of (LLSS)/(SSLL)  */
-    /*                         */
-    /***************************/
-
-    if( matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLSS ) {
-
-
-#ifdef _REPORT_INTEGRAL_TIMINGS
-      auto topDirectLS = tick();
-#endif
-
-#ifdef _SHZ_SCREEN_4C_LIBCINT
-      // Compute shell block norms (∞-norm) of matList.X
-      // XLSMS, XLSMX, XLSMY, XLSMZ Densitry matrices
-      int mMat = 4;
-      double *ShBlkNorms_raw = memManager_.malloc<double>(mMat*nShell*nShell);
-      std::vector<double*> ShBlkNorms;
-  
-      auto iOff = 0;
-      ShellBlockNorm(basisSet_.shells,matList[XLSMS].X,nBasis,ShBlkNorms_raw + iOff);
-      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
-  
-      iOff += nShell*nShell;
-      ShellBlockNorm(basisSet_.shells,matList[XLSMX].X,nBasis,ShBlkNorms_raw + iOff);
-      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
-  
-      iOff += nShell*nShell;
-      ShellBlockNorm(basisSet_.shells,matList[XLSMY].X,nBasis,ShBlkNorms_raw + iOff);
-      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
-  
-      iOff += nShell*nShell;
-      ShellBlockNorm(basisSet_.shells,matList[XLSMZ].X,nBasis,ShBlkNorms_raw + iOff);
-      ShBlkNorms.emplace_back(ShBlkNorms_raw + iOff);
-  
-      // Get the max over all the matricies for the shell block ∞-norms
-      for(auto k = 0; k < nShell*nShell; k++) {
-  
-        double mx = std::abs(ShBlkNorms[0][k]);
-        for(auto iMat = 0; iMat < mMat; iMat++)
-          mx = std::max(mx,std::abs(ShBlkNorms[iMat][k]));
-        ShBlkNorms[0][k] = mx;
-   
-      }
-#endif
-
-      nERI = 9;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      ERIBuffer = memManager_.malloc<double>(2*4*NB4*nThreads);
-      memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
-      std::vector<size_t> nSkipLS(nThreads,0);
-  
-      #pragma omp parallel
-      {
-  
-        dcomplex iscale = dcomplex(0.0, 1.0);
-  
-        size_t thread_id = GetThreadID();
-  
-        auto &AX_loc = AXthreads[thread_id];
-  
-        double *ERIBuffAB   = &ERIBuffer[thread_id*4*NB4];
-        double *ERIBuffCD   = &ERIBuffer[nThreads*4*NB4 + thread_id*4*NB4];
-  
-        size_t n1,n2,n3,n4,m,n,k,l,mnkl,bf1,bf2,bf3,bf4;
-        size_t s4_max;
-  
-        int shls[4];
-        double *buff = &buffAll[nERI*buffN4*thread_id];
-        double *cache = cacheAll+cache_size*thread_id;
-  
-        for(size_t s1(0), bf1_s(0), s1234(0); s1 < nShell; bf1_s+=n1, s1++) { 
-  
-          n1 = basisSet_.shells[s1].size(); // Size of Shell 1
-  
-        for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++) {
-  
-          n2 = basisSet_.shells[s2].size(); // Size of Shell 2
-  
-#ifdef _SHZ_SCREEN_4C_LIBCINT
-          double shMax12 = ShBlkNorms[0][s1 + s2*nShell];
-#endif
-  
-        for(size_t s3(0), bf3_s(0); s3 < nShell; bf3_s+=n3, s3++) {
-  
-          n3 = basisSet_.shells[s3].size(); // Size of Shell 3
-          s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
-  
-#ifdef _SHZ_SCREEN_4C_LIBCINT
-          double shMax123 = std::max(ShBlkNorms[0][s1 + s3*nShell], ShBlkNorms[0][s2 + s3*nShell]);
-          shMax123 = std::max(shMax123,shMax12);
-#endif
-   
-  
-        for(size_t s4(0), bf4_s(0); s4 <= s3; bf4_s+=n4, s4++, s1234++) {
-  
-          n4 = basisSet_.shells[s4].size(); // Size of Shell 4
-  
-          // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
-          #endif
-  
-#ifdef _SHZ_SCREEN_4C_LIBCINT
-          double shMax = std::max(ShBlkNorms[0][s1 + s4*nShell],
-                                  std::max(ShBlkNorms[0][s2 + s4*nShell],
-                                           ShBlkNorms[0][s3 + s4*nShell]));
-  
-          shMax = std::max(shMax,shMax123);
-
-          if((shMax*SchwarzSSSS[s3+s4*nShell]*SchwarzERI[s1+s2*nShell]) <
-             eri.threshSchwarz()) { nSkipLS[thread_id]++; continue; }
-#endif
-  
-          auto nQuad = n1*n2*n3*n4;
-  
-          shls[0] = int(s3);
-          shls[1] = int(s4);
-          shls[2] = int(s1);
-          shls[3] = int(s2);
-  
-          if(int2e_ipvip1_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
-  
-          for(n =   maxShellSize, mnkl = 0ul; n <   maxShellSize + n2; ++n) 
-          for(m = 0                         ; m <                  n1; ++m) 
-          for(l = 3*maxShellSize            ; l < 3*maxShellSize + n4; ++l)
-          for(k = 2*maxShellSize            ; k < 2*maxShellSize + n3; ++k, ++mnkl) {
-   
-            auto MNKL = m + n*NB + k*NB2 + l*NB3;
-            auto KLMN = k + l*NB + m*NB2 + n*NB3;
-  
-            /* Dirac-Coulomb */
-            // ∇C∙∇D(mn|kl)
-            auto dCdotdD = buff[AxBx*nQuad+mnkl] + buff[AyBy*nQuad+mnkl] + buff[AzBz*nQuad+mnkl];
-            // ∇Cx∇D(mn|kl)
-            auto dCcrossdD_x =  buff[AyBz*nQuad+mnkl] - buff[AzBy*nQuad+mnkl];
-            auto dCcrossdD_y = -buff[AxBz*nQuad+mnkl] + buff[AzBx*nQuad+mnkl];
-            auto dCcrossdD_z =  buff[AxBy*nQuad+mnkl] - buff[AyBx*nQuad+mnkl];
-  
-  
-            // ∇A∙∇B(kl|mn) followed by ∇Ax∇B(kl|mn) X, Y, and Z
-            // (kl|mn)
-            ERIBuffAB[      KLMN] =  dCdotdD;
-            ERIBuffAB[  NB4+KLMN] =  dCcrossdD_x;
-            ERIBuffAB[NB4_2+KLMN] =  dCcrossdD_y;
-            ERIBuffAB[NB4_3+KLMN] =  dCcrossdD_z;
-  
-            // ∇C∙∇D(mn|kl) followed by ∇Cx∇D(mn|kl) X, Y, and Z
-            // (mn|kl)
-            ERIBuffCD[      MNKL] =  dCdotdD;
-            ERIBuffCD[  NB4+MNKL] =  dCcrossdD_x;
-            ERIBuffCD[NB4_2+MNKL] =  dCcrossdD_y;
-            ERIBuffCD[NB4_3+MNKL] =  dCcrossdD_z;
-  
-        } // ∇C∙∇D integral preparation loop
-  
-  
-  
-  
-#ifdef _CONTRACTION_ // Contraction
-
-          auto ADXLSMS  = AX_loc[XLSMS];
-          auto ADXLSMX  = AX_loc[XLSMX];
-          auto ADXLSMY  = AX_loc[XLSMY];
-          auto ADXLSMZ  = AX_loc[XLSMZ];
-
-          auto DXLSMS = matList[XLSMS].X;
-          auto DXLSMX = matList[XLSMX].X;
-          auto DXLSMY = matList[XLSMY].X;
-          auto DXLSMZ = matList[XLSMZ].X;
- 
-          for(m = 0ul,            bf1 = bf1_s; m <                  n1; ++m, bf1++) {
-          for(n =   maxShellSize, bf2 = bf2_s; n <   maxShellSize + n2; ++n, bf2++) {
-            auto mn1 = m + n*NB;
-            auto mn2 = m*NB2 + n*NB3;
-            auto bf1nB = bf1*nBasis;
-            auto bf2nB = bf2*nBasis;
-
-          for(k = 2*maxShellSize, bf3 = bf3_s; k < 2*maxShellSize + n3; ++k, bf3++) {
-            auto bf3nB = bf3*nBasis;
-            auto kmn1 = mn1 + k*NB2;
-            auto kmn2 = k + mn2;
-
-          for(l = 3*maxShellSize, bf4 = bf4_s; l < 3*maxShellSize + n4; ++l, bf4++) {
-            auto MNKL = kmn1 + l*NB3;
-            auto KLMN = kmn2 + l*NB;
-
-            auto bf4nB= bf4*nBasis;  
-
-            auto bf14 = bf1 + bf4nB;
-            auto bf24 = bf2 + bf4nB;
-            auto bf23 = bf2 + bf3nB;
-            auto bf13 = bf1 + bf3nB;
-            auto bf41 = bf4 + bf1nB;
-            auto bf31 = bf3 + bf1nB;
-            auto bf32 = bf3 + bf2nB;
-            auto bf42 = bf4 + bf2nB;
-  
-            auto DotPrdMNKL = MNKL;
-            auto CrossXMNKL = MNKL+NB4;
-            auto CrossYMNKL = MNKL+NB4_2;
-            auto CrossZMNKL = MNKL+NB4_3;
-  
-            auto DotPrdKLMN = KLMN;
-            auto CrossXKLMN = KLMN+NB4;
-            auto CrossYKLMN = KLMN+NB4_2;
-            auto CrossZKLMN = KLMN+NB4_3;
-  
-  
-            /*++++++++++++++++++++++++++++++++++++++++++*/
-            /* Start of Dirac-Coulomb (LL|SS) / (SS|LL) */
-            /*++++++++++++++++++++++++++++++++++++++++++*/
-  
-  
- 
-            //MNKL
-            ADXLSMS[bf14]+= -ERIBuffCD[DotPrdMNKL]*DXLSMS[bf23]
-                            -( ERIBuffCD[CrossZMNKL]*DXLSMZ[bf23]
-                              +ERIBuffCD[CrossXMNKL]*DXLSMX[bf23]
-                              +ERIBuffCD[CrossYMNKL]*DXLSMY[bf23])*iscale;
-  
-            ADXLSMX[bf14]+= -ERIBuffCD[CrossXMNKL]*DXLSMS[bf23]*iscale
-                            -ERIBuffCD[CrossYMNKL]*DXLSMZ[bf23]
-                            -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf23]
-                            +ERIBuffCD[CrossZMNKL]*DXLSMY[bf23];
-
-            ADXLSMY[bf14]+= -ERIBuffCD[CrossYMNKL]*DXLSMS[bf23]*iscale
-                            +ERIBuffCD[CrossXMNKL]*DXLSMZ[bf23]
-                            -ERIBuffCD[DotPrdMNKL]*DXLSMY[bf23]
-                            -ERIBuffCD[CrossZMNKL]*DXLSMX[bf23];
-  
-            ADXLSMZ[bf14]+= -ERIBuffCD[CrossZMNKL]*DXLSMS[bf23]*iscale
-                            -ERIBuffCD[DotPrdMNKL]*DXLSMZ[bf23]
-                            +ERIBuffCD[CrossYMNKL]*DXLSMX[bf23]
-                            -ERIBuffCD[CrossXMNKL]*DXLSMY[bf23];
-  
-            //MNLK
-            if(bf3_s!=bf4_s) {
-  
-              ADXLSMS[bf13]+= -ERIBuffCD[DotPrdMNKL]*DXLSMS[bf24]
-                              +( ERIBuffCD[CrossZMNKL]*DXLSMZ[bf24]
-                                +ERIBuffCD[CrossXMNKL]*DXLSMX[bf24]
-                                +ERIBuffCD[CrossYMNKL]*DXLSMY[bf24])*iscale;
-  
-              ADXLSMX[bf13]+=  ERIBuffCD[CrossXMNKL]*DXLSMS[bf24]*iscale
-                              +ERIBuffCD[CrossYMNKL]*DXLSMZ[bf24]
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf24]
-                              -ERIBuffCD[CrossZMNKL]*DXLSMY[bf24];
-
-              ADXLSMY[bf13]+=  ERIBuffCD[CrossYMNKL]*DXLSMS[bf24]*iscale
-                              -ERIBuffCD[CrossXMNKL]*DXLSMZ[bf24]
-                              +ERIBuffCD[CrossZMNKL]*DXLSMX[bf24]
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMY[bf24];
-  
-              ADXLSMZ[bf13]+=  ERIBuffCD[CrossZMNKL]*DXLSMS[bf24]*iscale
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMZ[bf24]
-                              -ERIBuffCD[CrossYMNKL]*DXLSMX[bf24]
-                              +ERIBuffCD[CrossXMNKL]*DXLSMY[bf24];
-  
-            }
-  
-            //NMKL
-            if(bf1_s!=bf2_s){
-              ADXLSMS[bf24]+= -ERIBuffCD[DotPrdMNKL]*DXLSMS[bf13]
-                              -( ERIBuffCD[CrossZMNKL]*DXLSMZ[bf13]
-                                +ERIBuffCD[CrossXMNKL]*DXLSMX[bf13]
-                                +ERIBuffCD[CrossYMNKL]*DXLSMY[bf13])*iscale;
-  
-              ADXLSMX[bf24]+= -ERIBuffCD[CrossXMNKL]*DXLSMS[bf13]*iscale
-                              -ERIBuffCD[CrossYMNKL]*DXLSMZ[bf13]
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf13]
-                              +ERIBuffCD[CrossZMNKL]*DXLSMY[bf13];
-
-              ADXLSMY[bf24]+= -ERIBuffCD[CrossYMNKL]*DXLSMS[bf13]*iscale
-                              +ERIBuffCD[CrossXMNKL]*DXLSMZ[bf13]
-                              -ERIBuffCD[CrossZMNKL]*DXLSMX[bf13]
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMY[bf13];
-  
-              ADXLSMZ[bf24]+= -ERIBuffCD[CrossZMNKL]*DXLSMS[bf13]*iscale
-                              -ERIBuffCD[DotPrdMNKL]*DXLSMZ[bf13]
-                              +ERIBuffCD[CrossYMNKL]*DXLSMX[bf13]
-                              -ERIBuffCD[CrossXMNKL]*DXLSMY[bf13];
-  
-              if(bf3_s!=bf4_s) {
-  
-                ADXLSMS[bf23]+= -ERIBuffCD[DotPrdMNKL]*DXLSMS[bf14]
-                                +( ERIBuffCD[CrossZMNKL]*DXLSMZ[bf14]
-                                  +ERIBuffCD[CrossXMNKL]*DXLSMX[bf14]
-                                  +ERIBuffCD[CrossYMNKL]*DXLSMY[bf14])*iscale;
-  
-                ADXLSMX[bf23]+= +ERIBuffCD[CrossXMNKL]*DXLSMS[bf14]*iscale
-                                +ERIBuffCD[CrossYMNKL]*DXLSMZ[bf14]
-                                -ERIBuffCD[DotPrdMNKL]*DXLSMX[bf14]
-                                -ERIBuffCD[CrossZMNKL]*DXLSMY[bf14];
-
-                ADXLSMY[bf23]+= +ERIBuffCD[CrossYMNKL]*DXLSMS[bf14]*iscale
-                                -ERIBuffCD[CrossXMNKL]*DXLSMZ[bf14]
-                                +ERIBuffCD[CrossZMNKL]*DXLSMX[bf14]
-                                -ERIBuffCD[DotPrdMNKL]*DXLSMY[bf14];
-  
-                ADXLSMZ[bf23]+= +ERIBuffCD[CrossZMNKL]*DXLSMS[bf14]*iscale
-                                -ERIBuffCD[DotPrdMNKL]*DXLSMZ[bf14]
-                                -ERIBuffCD[CrossYMNKL]*DXLSMX[bf14]
-                                +ERIBuffCD[CrossXMNKL]*DXLSMY[bf14];
-  
-              }
-            }
-  
-            /*------------------------------------------*/
-            /*   End of Dirac-Coulomb (LL|SS) / (SS|LL) */
-            /*------------------------------------------*/
-          }
-          }
-          }  
-          } // contraction loop
-  
-#endif // Contraction
-  
-  
-        }; // loop s4
-        }; // loop s3
-        }; // loop s2
-        }; // loop s1
-  
-  
-      } // OpenMP context
-  
-  
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
-   
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMS],nBasis,MatsT(1.0),
-           matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
-
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMX],nBasis,MatsT(1.0),
-           matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
-
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMY],nBasis,MatsT(1.0),
-           matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
-
-        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMZ],nBasis,MatsT(1.0),
-           matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
-  
-      };
-   
-      memManager_.free(ERIBuffer);
-      memManager_.free(buffAll, cacheAll);
-#ifdef _SHZ_SCREEN_4C_LIBCINT
-      if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
-#endif
-  
-#ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipLS = std::accumulate(nSkipLS.begin(),nSkipLS.end(),size_t(0));
-      std::cout << "Dirac-Coulomb-LS Screened " << nIntSkipLS << std::endl;
-  
-      auto durDirectLS = tock(topDirectLS);
-      std::cout << "Dirac-Coulomb-LS AO Direct Contraction took " <<  durDirectLS << " s\n"; 
-  
-      std::cout << std::endl;
-#endif
-
-    } // if(LLSS)
-
-    /***************************/
-    /*                         */
-    /*   End of (LLSS)/(SSLL)  */
-    /*                         */
-    /***************************/
-
-#endif
-
-
 
 
 
@@ -1851,59 +1472,25 @@ namespace ChronusQ {
                                  + buff[AzBzCxDx*nQuad+mnkl] + buff[AzBzCyDy*nQuad+mnkl] + buff[AzBzCzDz*nQuad+mnkl];
   
             // (∇Ax∇B)(∇C∙∇D)(mnkl)
-            auto dAcrossdB_xdCdotdD =  buff[AyBzCxDx*nQuad+mnkl] - buff[AzByCxDx*nQuad+mnkl]
-                                     + buff[AyBzCyDy*nQuad+mnkl] - buff[AzByCyDy*nQuad+mnkl]
-                                     + buff[AyBzCzDz*nQuad+mnkl] - buff[AzByCzDz*nQuad+mnkl];
-  
-            auto dAcrossdB_ydCdotdD = -buff[AxBzCxDx*nQuad+mnkl] + buff[AzBxCxDx*nQuad+mnkl]
-                                      -buff[AxBzCyDy*nQuad+mnkl] + buff[AzBxCyDy*nQuad+mnkl]
-                                      -buff[AxBzCzDz*nQuad+mnkl] + buff[AzBxCzDz*nQuad+mnkl];
-                                      
-            auto dAcrossdB_zdCdotdD =  buff[AxByCxDx*nQuad+mnkl] - buff[AyBxCxDx*nQuad+mnkl]
-                                     + buff[AxByCyDy*nQuad+mnkl] - buff[AyBxCyDy*nQuad+mnkl]
-                                     + buff[AxByCzDz*nQuad+mnkl] - buff[AyBxCzDz*nQuad+mnkl];
+            auto dAcrossdB_xdCdotdD =  0.0;
+            auto dAcrossdB_ydCdotdD =  0.0;
+            auto dAcrossdB_zdCdotdD =  0.0;
     
             // (∇A∙∇B)(∇Cx∇D)(mnkl)
-            auto dAdotdBdCcrossdD_x =  buff[AxBxCyDz*nQuad+mnkl] - buff[AxBxCzDy*nQuad+mnkl]
-                                     + buff[AyByCyDz*nQuad+mnkl] - buff[AyByCzDy*nQuad+mnkl]
-                                     + buff[AzBzCyDz*nQuad+mnkl] - buff[AzBzCzDy*nQuad+mnkl];
-  
-            auto dAdotdBdCcrossdD_y = -buff[AxBxCxDz*nQuad+mnkl] + buff[AxBxCzDx*nQuad+mnkl]
-                                      -buff[AyByCxDz*nQuad+mnkl] + buff[AyByCzDx*nQuad+mnkl]
-                                      -buff[AzBzCxDz*nQuad+mnkl] + buff[AzBzCzDx*nQuad+mnkl];
-                                      
-            auto dAdotdBdCcrossdD_z =  buff[AxBxCxDy*nQuad+mnkl] - buff[AxBxCyDx*nQuad+mnkl]
-                                     + buff[AyByCxDy*nQuad+mnkl] - buff[AyByCyDx*nQuad+mnkl]
-                                     + buff[AzBzCxDy*nQuad+mnkl] - buff[AzBzCyDx*nQuad+mnkl];
-  
+            auto dAdotdBdCcrossdD_x =  0.0;
+            auto dAdotdBdCcrossdD_y =  0.0;
+            auto dAdotdBdCcrossdD_z =  0.0;
+
             // (∇Ax∇B)(∇Cx∇D)(mnkl)
-            auto dAcrossdB_xdCcrossdD_x =  buff[AyBzCyDz*nQuad+mnkl] - buff[AzByCyDz*nQuad+mnkl]
-                                         - buff[AyBzCzDy*nQuad+mnkl] + buff[AzByCzDy*nQuad+mnkl];
-  
-            auto dAcrossdB_xdCcrossdD_y =  buff[AyBzCzDx*nQuad+mnkl] - buff[AzByCzDx*nQuad+mnkl]
-                                         - buff[AyBzCxDz*nQuad+mnkl] + buff[AzByCxDz*nQuad+mnkl];
-  
-            auto dAcrossdB_xdCcrossdD_z =  buff[AyBzCxDy*nQuad+mnkl] - buff[AzByCxDy*nQuad+mnkl]
-                                         - buff[AyBzCyDx*nQuad+mnkl] + buff[AzByCyDx*nQuad+mnkl];
-  
-            auto dAcrossdB_ydCcrossdD_x =  buff[AzBxCyDz*nQuad+mnkl] - buff[AxBzCyDz*nQuad+mnkl]
-                                         - buff[AzBxCzDy*nQuad+mnkl] + buff[AxBzCzDy*nQuad+mnkl];
-  
-            auto dAcrossdB_ydCcrossdD_y =  buff[AzBxCzDx*nQuad+mnkl] - buff[AxBzCzDx*nQuad+mnkl]
-                                         - buff[AzBxCxDz*nQuad+mnkl] + buff[AxBzCxDz*nQuad+mnkl];
-  
-            auto dAcrossdB_ydCcrossdD_z =  buff[AzBxCxDy*nQuad+mnkl] - buff[AxBzCxDy*nQuad+mnkl]
-                                         - buff[AzBxCyDx*nQuad+mnkl] + buff[AxBzCyDx*nQuad+mnkl];
-  
-            auto dAcrossdB_zdCcrossdD_x =  buff[AxByCyDz*nQuad+mnkl] - buff[AyBxCyDz*nQuad+mnkl]
-                                         - buff[AxByCzDy*nQuad+mnkl] + buff[AyBxCzDy*nQuad+mnkl];
-  
-            auto dAcrossdB_zdCcrossdD_y =  buff[AxByCzDx*nQuad+mnkl] - buff[AyBxCzDx*nQuad+mnkl]
-                                         - buff[AxByCxDz*nQuad+mnkl] + buff[AyBxCxDz*nQuad+mnkl];
-  
-            auto dAcrossdB_zdCcrossdD_z =  buff[AxByCxDy*nQuad+mnkl] - buff[AyBxCxDy*nQuad+mnkl]
-                                         - buff[AxByCyDx*nQuad+mnkl] + buff[AyBxCyDx*nQuad+mnkl];
-  
+            auto dAcrossdB_xdCcrossdD_x =  0.0;
+            auto dAcrossdB_xdCcrossdD_y =  0.0;
+            auto dAcrossdB_xdCcrossdD_z =  0.0;
+            auto dAcrossdB_ydCcrossdD_x =  0.0;
+            auto dAcrossdB_ydCcrossdD_y =  0.0;
+            auto dAcrossdB_ydCcrossdD_z =  0.0;
+            auto dAcrossdB_zdCcrossdD_x =  0.0;
+            auto dAcrossdB_zdCcrossdD_y =  0.0;
+            auto dAcrossdB_zdCcrossdD_z =  0.0;
   
             auto MNKL = m + n*NB + k*NB2 + l*NB3;
             auto KLMN = k + l*NB + m*NB2 + n*NB3;
@@ -2465,11 +2052,11 @@ namespace ChronusQ {
 #endif
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipSSSS = std::accumulate(nSkipSSSS.begin(),nSkipSSSS.end(),size_t(0));
+      size_t nIntSkipSSSS = std::accumulate(nSkipSSSS.begin(),nSkipSSSS.end(),0);
       std::cout << "Dirac-Coulomb-SSSS Screened " << nIntSkipSSSS << std::endl;
   
       auto durDirectSSSS = tock(topDirectSSSS);
-      std::cout << "Dirac-Coulomb-SSSS AO Direct Contraction took " <<  durDirectSSSS << " s\n"; 
+      std::cout << "Fake Spin-Free Dirac-Coulomb-SSSS AO Direct Contraction took " <<  durDirectSSSS << " s\n"; 
   
       std::cout << std::endl;
 #endif
@@ -2798,9 +2385,9 @@ namespace ChronusQ {
             // ∇A∙∇C(mn|kl)
             auto dAdotdC = buff[AxCx*nQuad+mnkl] + buff[AyCy*nQuad+mnkl] + buff[AzCz*nQuad+mnkl];
             // ∇Ax∇C(mn|kl)
-            auto dAcrossdC_x =  buff[AyCz*nQuad+mnkl] - buff[AzCy*nQuad+mnkl];
-            auto dAcrossdC_y = -buff[AxCz*nQuad+mnkl] + buff[AzCx*nQuad+mnkl];
-            auto dAcrossdC_z =  buff[AxCy*nQuad+mnkl] - buff[AyCx*nQuad+mnkl];
+            auto dAcrossdC_x =  0.0;
+            auto dAcrossdC_y =  0.0;
+            auto dAcrossdC_z =  0.0;
 
 
             // Change the index so that we do ∇B∙∇C(ij|kl) using the ∇B∇C engine
@@ -2823,107 +2410,107 @@ namespace ChronusQ {
 
             // ∇B_x∇C_y(mn|kl) + ∇B_y∇C_x(mn|kl)
             // (mn|kl)
-            BC[NB4_4+MNKL] = buff[BxCy*nQuad+mnkl] + buff[ByCx*nQuad+mnkl];
+            BC[NB4_4+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_4+LKNM] = buff[BxCy*nQuad+mnkl] + buff[ByCx*nQuad+mnkl];
+            BC[NB4_4+LKNM] = 0.0;
   
   
             // ∇B_y∇C_x(mn|kl)
             // (mn|kl)
-            BC[NB4_5+MNKL] = buff[ByCx*nQuad+mnkl];
+            BC[NB4_5+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_5+LKNM] = buff[BxCy*nQuad+mnkl];
+            BC[NB4_5+LKNM] = 0.0;
   
   
             // ∇B_x∇C_z(mn|kl) + ∇B_z∇C_x(mn|kl)
             // (mn|kl)
-            BC[NB4_6+MNKL] = buff[BxCz*nQuad+mnkl] + buff[BzCx*nQuad+mnkl];
+            BC[NB4_6+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_6+LKNM] = buff[BxCz*nQuad+mnkl] + buff[BzCx*nQuad+mnkl];
+            BC[NB4_6+LKNM] = 0.0;
   
   
             // ∇B_z∇C_x(mn|kl)
             // (mn|kl)
-            BC[NB4_7+MNKL] = buff[BzCx*nQuad+mnkl];
+            BC[NB4_7+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_7+LKNM] = buff[BxCz*nQuad+mnkl];
+            BC[NB4_7+LKNM] = 0.0;
   
   
             // ∇B_y∇C_z(mn|kl) + ∇B_z∇C_y(mn|kl)
             // (mn|kl)
-            BC[NB4_8+MNKL] = buff[ByCz*nQuad+mnkl] + buff[BzCy*nQuad+mnkl];
+            BC[NB4_8+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_8+LKNM] = buff[ByCz*nQuad+mnkl] + buff[BzCy*nQuad+mnkl];
+            BC[NB4_8+LKNM] = 0.0;
   
   
             // ∇B_z∇C_y(mn|kl)
             // (mn|kl)
-            BC[NB4_9+MNKL] = buff[BzCy*nQuad+mnkl];
+            BC[NB4_9+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_9+LKNM] = buff[ByCz*nQuad+mnkl];
+            BC[NB4_9+LKNM] = 0.0;
   
   
             // - ∇B_x∇C_x(mn|kl) - ∇B_y∇C_y(mn|kl) + ∇B_z∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_10+MNKL] = - buff[BxCx*nQuad+mnkl] - buff[ByCy*nQuad+mnkl] + buff[BzCz*nQuad+mnkl];
+            BC[NB4_10+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_10+LKNM] = - buff[BxCx*nQuad+mnkl] - buff[ByCy*nQuad+mnkl] + buff[BzCz*nQuad+mnkl];
+            BC[NB4_10+LKNM] = 0.0;
   
   
             // ∇B_x∇C_x(mn|kl) - ∇B_y∇C_y(mn|kl) - ∇B_z∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_11+MNKL] = buff[BxCx*nQuad+mnkl] - buff[ByCy*nQuad+mnkl] - buff[BzCz*nQuad+mnkl];
+            BC[NB4_11+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_11+LKNM] = buff[BxCx*nQuad+mnkl] - buff[ByCy*nQuad+mnkl] - buff[BzCz*nQuad+mnkl];
+            BC[NB4_11+LKNM] = 0.0;
   
   
             // - ∇B_x∇C_x(mn|kl) + ∇B_y∇C_y(mn|kl) - ∇B_z∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_12+MNKL] = - buff[BxCx*nQuad+mnkl] + buff[ByCy*nQuad+mnkl] - buff[BzCz*nQuad+mnkl];
+            BC[NB4_12+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_12+LKNM] = - buff[BxCx*nQuad+mnkl] + buff[ByCy*nQuad+mnkl] - buff[BzCz*nQuad+mnkl];
+            BC[NB4_12+LKNM] = 0.0;
   
   
             // ∇B_x∇C_x(mn|kl)
             // (mn|kl)
-            BC[NB4_13+MNKL] = buff[BxCx*nQuad+mnkl];
+            BC[NB4_13+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_13+LKNM] = buff[BxCx*nQuad+mnkl];
+            BC[NB4_13+LKNM] = 0.0;
   
   
             // ∇B_x∇C_y(mn|kl)
             // (mn|kl)
-            BC[NB4_14+MNKL] = buff[BxCy*nQuad+mnkl];
+            BC[NB4_14+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_14+LKNM] = buff[ByCx*nQuad+mnkl];
+            BC[NB4_14+LKNM] = 0.0;
   
   
             // ∇B_x∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_15+MNKL] = buff[BxCz*nQuad+mnkl];
+            BC[NB4_15+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_15+LKNM] = buff[BzCx*nQuad+mnkl];
+            BC[NB4_15+LKNM] = 0.0;
   
 
             // ∇B_y∇C_y(mn|kl)
             // (mn|kl)
-            BC[NB4_16+MNKL] = buff[ByCy*nQuad+mnkl];
+            BC[NB4_16+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_16+LKNM] = buff[ByCy*nQuad+mnkl];
+            BC[NB4_16+LKNM] = 0.0;
   
 
             // ∇B_y∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_17+MNKL] = buff[ByCz*nQuad+mnkl];
+            BC[NB4_17+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_17+LKNM] = buff[BzCy*nQuad+mnkl];
+            BC[NB4_17+LKNM] = 0.0;
   
   
             // ∇B_z∇C_z(mn|kl)
             // (mn|kl)
-            BC[NB4_18+MNKL] = buff[BzCz*nQuad+mnkl];
+            BC[NB4_18+MNKL] = 0.0;
             // (lk|nm)
-            BC[NB4_18+LKNM] = buff[BzCz*nQuad+mnkl];
+            BC[NB4_18+LKNM] = 0.0;
   
           } // ∇C∙∇D integral preparation loop
   
@@ -3055,6 +2642,12 @@ namespace ChronusQ {
 
             if(bf1_s >= bf4_s) {
 
+#define _NO_SCALAR_SPIN_SPIN_
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLLMS[bf14] += DXSSMS[bf23]*BC[MNKL];
+
+#else
               // Equation (44) in the paper, Equation (D5) in Xiaosong's note
               ADXLLMS[bf14] += 3.0*( DXSSMS[bf23]*BC[MNKL] 
                                 -iS*(DXSSMX[bf23]*BC[MNKL+crossx] 
@@ -3078,11 +2671,17 @@ namespace ChronusQ {
                              -iS*DXSSMS[bf23]*BC[MNKL+crossy] 
                                 -DXSSMX[bf23]*BC[MNKL+xypyx] 
                                 -DXSSMZ[bf23]*BC[MNKL+yzpzy];
+#endif
    
             } 
 
             if(bf1_s < bf4_s or (bf1_s==bf4_s and bf2_s!=bf3_s)) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLLMS[bf41] += DXSSMS[bf32]*BC[LKNM];
+
+#else
               ADXLLMS[bf41] += 3.0*( DXSSMS[bf32]*BC[LKNM] 
                                 -iS*(DXSSMX[bf32]*BC[LKNM+crossx] 
                                     +DXSSMY[bf32]*BC[LKNM+crossy] 
@@ -3102,7 +2701,7 @@ namespace ChronusQ {
                              -iS*DXSSMS[bf32]*BC[LKNM+crossy] 
                                 -DXSSMX[bf32]*BC[LKNM+xypyx] 
                                 -DXSSMZ[bf32]*BC[LKNM+yzpzy];
-
+#endif
             } 
 
 
@@ -3114,6 +2713,10 @@ namespace ChronusQ {
             if(bf2_s >= bf3_s) {
 
               // Equation (48) in the paper, Equation (D9) in Xiaosong's note
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXSSMS[bf23]+=  DXLLMS[bf14]*BC[LKNM];
+#else
               ADXSSMS[bf23]+=  3.0*DXLLMS[bf14]*BC[LKNM]    
                              -iS*( DXLLMX[bf14]*BC[LKNM+crossx] 
                                   +DXLLMY[bf14]*BC[LKNM+crossy] 
@@ -3136,10 +2739,16 @@ namespace ChronusQ {
                             -3.0*iS*DXLLMS[bf14]*BC[LKNM+crossy] 
                                    -DXLLMX[bf14]*BC[LKNM+xypyx] 
                                    -DXLLMZ[bf14]*BC[LKNM+yzpzy];
+#endif
             } 
 
             if(bf1_s!=bf4_s and bf2_s==bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXSSMS[bf32]+=  DXLLMS[bf41]*BC[MNKL];
+
+#else
               ADXSSMS[bf32]+=  3.0*DXLLMS[bf41]*BC[MNKL]
                              -iS*( DXLLMX[bf41]*BC[MNKL+crossx]
                                   +DXLLMY[bf41]*BC[MNKL+crossy]
@@ -3159,6 +2768,7 @@ namespace ChronusQ {
                             -3.0*iS*DXLLMS[bf41]*BC[MNKL+crossy] 
                                    -DXLLMX[bf41]*BC[MNKL+xypyx] 
                                    -DXLLMZ[bf41]*BC[MNKL+yzpzy];
+#endif
               
             }
 
@@ -3170,11 +2780,16 @@ namespace ChronusQ {
             // MNKL
             // TRANSKL
 	    // Equation (52) Coulomb in the paper, Equation (D13) in Xiaosong's note
+
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+            ADCLSMS[bf12]+=     (-DCLSMS[bf43] +DCSLMS[bf34])*BC[MNKL];
+
+#else
             ADCLSMS[bf12]+=     (-DCLSMS[bf43] +DCSLMS[bf34])*BC[MNKL] 
                           + iS*( (DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+crossx] 
                                 +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+crossy] 
                                 +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+crossz]);
-            
 	    // Equation (53) Coulomb in the paper, Equation (D14) in Xiaosong's note
             ADCLSMZ[bf12]+= iS*(DCLSMS[bf43] -DCSLMS[bf34])*BC[MNKL+crossz]
                               -(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL] 
@@ -3195,11 +2810,16 @@ namespace ChronusQ {
                               +(DCLSMX[bf43] +DCSLMX[bf34])*BC[MNKL+xy] 
                               +(DCLSMY[bf43] +DCSLMY[bf34])*BC[MNKL+yy] 
                               +(DCLSMZ[bf43] +DCSLMZ[bf34])*BC[MNKL+zy];
-            
+#endif            
             // LKNM
             // Coulomb //TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADCLSMS[bf43]+=     (-DCLSMS[bf12] +DCSLMS[bf21])*BC[LKNM];
+
+#else
               ADCLSMS[bf43]+=     (-DCLSMS[bf12] +DCSLMS[bf21])*BC[LKNM] 
                             + iS*( (DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+crossx] 
                                   +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+crossy] 
@@ -3222,12 +2842,21 @@ namespace ChronusQ {
                                 +(DCLSMX[bf12] +DCSLMX[bf21])*BC[LKNM+xy] 
                                 +(DCLSMY[bf12] +DCSLMY[bf21])*BC[LKNM+yy] 
                                 +(DCLSMZ[bf12] +DCSLMZ[bf21])*BC[LKNM+zy];
-
+#endif
             }
             
             
             // TRANSKL
 	    // Equation (52) Exchange in the paper, Equation (D17) in Xiaosong's note
+
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+            ADXLSMS[bf13]+= -DXSLMS[bf24]*BC[MNKL];
+            ADXLSMZ[bf13]+= -DXSLMZ[bf24]*BC[MNKL];
+            ADXLSMX[bf13]+= -DXSLMX[bf24]*BC[MNKL];
+            ADXLSMY[bf13]+= -DXSLMY[bf24]*BC[MNKL];
+
+#else
             ADXLSMS[bf13]+=     DXSLMS[bf24]*BC[MNKL] 
                           -iS*( DXSLMX[bf24]*BC[MNKL+crossx] 
                                +DXSLMY[bf24]*BC[MNKL+crossy] 
@@ -3259,11 +2888,18 @@ namespace ChronusQ {
                                   -DXSLMY[bf24]*BC[MNKL+mxxpyymzz] 
                                   -DXSLMX[bf24]*BC[MNKL+xypyx] 
                                   -DXSLMZ[bf24]*BC[MNKL+yzpzy];
-            
+#endif            
             
             // TRANSKL
             if(bf1_s!=bf4_s or bf2_s!=bf3_s) {
 
+#ifdef _NO_SCALAR_SPIN_SPIN_
+
+              ADXLSMS[bf42]+= -DXSLMS[bf31]*BC[LKNM]; 
+              ADXLSMZ[bf42]+= -DXSLMZ[bf31]*BC[LKNM]; 
+              ADXLSMX[bf42]+= -DXSLMX[bf31]*BC[LKNM]; 
+              ADXLSMY[bf42]+= -DXSLMY[bf31]*BC[LKNM];
+#else
               ADXLSMS[bf42]+=     DXSLMS[bf31]*BC[LKNM] 
                             -iS*( DXSLMX[bf31]*BC[LKNM+crossx] 
                                  +DXSLMY[bf31]*BC[LKNM+crossy] 
@@ -3292,6 +2928,7 @@ namespace ChronusQ {
                                     -DXSLMY[bf31]*BC[LKNM+mxxpyymzz] 
                                     -DXSLMX[bf31]*BC[LKNM+xypyx] 
                                     -DXSLMZ[bf31]*BC[LKNM+yzpzy];
+#endif
 
             }
 
@@ -3406,11 +3043,11 @@ namespace ChronusQ {
 #endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipGaunt = std::accumulate(nSkipGaunt.begin(),nSkipGaunt.end(),size_t(0));
+      size_t nIntSkipGaunt = std::accumulate(nSkipGaunt.begin(),nSkipGaunt.end(),0);
       std::cout << "Gaunt Screened " << nIntSkipGaunt << std::endl;
   
       auto durDirectGaunt = tock(topDirectGaunt);
-      std::cout << "Gaunt AO Direct Contraction took " <<  durDirectGaunt << " s\n"; 
+      std::cout << "Fake Spin-Free Gaunt AO Direct Contraction took " <<  durDirectGaunt << " s\n"; 
   
       std::cout << std::endl;
 #endif
@@ -3787,132 +3424,111 @@ namespace ChronusQ {
             BC[LKNM] = buffr1[15*nQuad+mnkl] - buffr2[15*nQuad+mnkl];
             
             // (sσ)_x
-            BC[NB4+MNKL] = buffr1[3*nQuad+mnkl] - buffr2[3*nQuad+mnkl];
-            BC[NB4+LKNM] = buffr2[12*nQuad+mnkl] - buffr1[12*nQuad+mnkl];
+            BC[NB4+MNKL] = 0.0;
+            BC[NB4+LKNM] = 0.0;
             
             // (sσ)_y
-            BC[NB4_2+MNKL] = buffr1[7*nQuad+mnkl] - buffr2[7*nQuad+mnkl];
-            BC[NB4_2+LKNM] = buffr2[13*nQuad+mnkl] - buffr1[13*nQuad+mnkl];
+            BC[NB4_2+MNKL] = 0.0;
+            BC[NB4_2+LKNM] = 0.0;
             
             // (sσ)_z
-            BC[NB4_3+MNKL] = buffr1[11*nQuad+mnkl] - buffr2[11*nQuad+mnkl];
-            BC[NB4_3+LKNM] = buffr2[14*nQuad+mnkl] - buffr1[14*nQuad+mnkl];
+            BC[NB4_3+MNKL] = 0.0;
+            BC[NB4_3+LKNM] = 0.0;
             
             // (σs)_x
-            BC[NB4_4+MNKL] = buffr1[12*nQuad+mnkl] - buffr2[12*nQuad+mnkl];
-            BC[NB4_4+LKNM] = buffr2[3*nQuad+mnkl] - buffr1[3*nQuad+mnkl];
+            BC[NB4_4+MNKL] = 0.0;
+            BC[NB4_4+LKNM] = 0.0;
             
             // (σs)_y
-            BC[NB4_5+MNKL] = buffr1[13*nQuad+mnkl] - buffr2[13*nQuad+mnkl];
-            BC[NB4_5+LKNM] = buffr2[7*nQuad+mnkl] - buffr1[7*nQuad+mnkl];
+            BC[NB4_5+MNKL] = 0.0;
+            BC[NB4_5+LKNM] = 0.0;
             
             // (σs)_z
-            BC[NB4_6+MNKL] = buffr1[14*nQuad+mnkl] - buffr2[14*nQuad+mnkl];
-            BC[NB4_6+LKNM] = buffr2[11*nQuad+mnkl] - buffr1[11*nQuad+mnkl];
+            BC[NB4_6+MNKL] = 0.0;
+            BC[NB4_6+LKNM] = 0.0;
             
             // (σ∙σ)
-            BC[NB4_7+MNKL] =-(buffr1[mnkl] - buffr2[mnkl])
-                            -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                            -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_7+LKNM] =-(buffr1[mnkl] - buffr2[mnkl])
-                            -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                            -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            //BC[NB4_7+MNKL] =-(buffr1[mnkl] - buffr2[mnkl])
+            //                -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
+            //                -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            //BC[NB4_7+LKNM] =-(buffr1[mnkl] - buffr2[mnkl])
+            //                -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
+            //                -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+
+            BC[NB4_7+MNKL] = 0.0;
+            BC[NB4_7+LKNM] = 0.0;
             
             // (σxσ)_x = σ_y*σ_z - σ_z*σ_y
-            BC[NB4_8+MNKL] =-(buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl])
-                            +(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
-            BC[NB4_8+LKNM] = (buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl])
-                            -(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
+            BC[NB4_8+MNKL] = 0.0;
+            BC[NB4_8+LKNM] = 0.0;
             
             // (σxσ)_y = σ_z*σ_x - σ_x*σ_z
-            BC[NB4_9+MNKL] =-(buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl])
-                            +(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
-            BC[NB4_9+LKNM] = (buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl])
-                            -(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
+            BC[NB4_9+MNKL] = 0.0;
+            BC[NB4_9+LKNM] = 0.0;
             
             // (σxσ)_z = σ_x*σ_y - σ_y*σ_x
-            BC[NB4_10+MNKL] =-(buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl])
-                             +(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
-            BC[NB4_10+LKNM] = (buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl])
-                             -(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
+            BC[NB4_10+MNKL] = 0.0;
+            BC[NB4_10+LKNM] = 0.0;
             
             // (σσ) (xx - yy - zz)
-            BC[NB4_11+MNKL] =-(buffr1[mnkl] - buffr2[mnkl])
-                             +(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             +(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_11+LKNM] =-(buffr1[mnkl] - buffr2[mnkl])
-                             +(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             +(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            BC[NB4_11+MNKL] = 0.0;
+            BC[NB4_11+LKNM] = 0.0;
             
             // (σσ) (-xx + yy - zz)
-            BC[NB4_12+MNKL] = (buffr1[mnkl] - buffr2[mnkl])
-                             -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             +(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_12+LKNM] = (buffr1[mnkl] - buffr2[mnkl])
-                             -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             +(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            BC[NB4_12+MNKL] = 0.0;
+            BC[NB4_12+LKNM] = 0.0;
             
             // (σσ) (-xx - yy + zz)
-            BC[NB4_13+MNKL] = (buffr1[mnkl] - buffr2[mnkl])
-                             +(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_13+LKNM] = (buffr1[mnkl] - buffr2[mnkl])
-                             +(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl])
-                             -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            BC[NB4_13+MNKL] = 0.0;
+            BC[NB4_13+LKNM] = 0.0;
             
             //  σ_x*σ_y + σ_y*σ_x
-            BC[NB4_14+MNKL] =-(buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl])
-                             -(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
-            BC[NB4_14+LKNM] =-(buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl])
-                             -(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
+            BC[NB4_14+MNKL] = 0.0;
+            BC[NB4_14+LKNM] = 0.0;
             
             //  σ_z*σ_x + σ_x*σ_z
-            BC[NB4_15+MNKL] =-(buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl])
-                             -(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
-            BC[NB4_15+LKNM] =-(buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl])
-                             -(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
+            BC[NB4_15+MNKL] = 0.0;
+            BC[NB4_15+LKNM] = 0.0;
             
             //  σ_y*σ_z + σ_z*σ_y
-            BC[NB4_16+MNKL] =-(buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl])
-                             -(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
-            BC[NB4_16+LKNM] =-(buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl])
-                             -(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
+            BC[NB4_16+MNKL] = 0.0;
+            BC[NB4_16+LKNM] = 0.0;
             
             // σ_x*σ_x
-            BC[NB4_17+MNKL] = -(buffr1[mnkl] - buffr2[mnkl]);
-            BC[NB4_17+LKNM] = -(buffr1[mnkl] - buffr2[mnkl]);
+            BC[NB4_17+MNKL] = 0.0;
+            BC[NB4_17+LKNM] = 0.0;
             
             // σ_x*σ_y
-            BC[NB4_18+MNKL] = -(buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl]);
-            BC[NB4_18+LKNM] = -(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
-            
+            BC[NB4_18+MNKL] = 0.0;
+            BC[NB4_18+LKNM] = 0.0;
+           
             // σ_x*σ_z
-            BC[NB4_19+MNKL] = -(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
-            BC[NB4_19+LKNM] = -(buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl]);
+            BC[NB4_19+MNKL] = 0.0; 
+            BC[NB4_19+LKNM] = 0.0; 
             
             // σ_y*σ_x
-            BC[NB4_20+MNKL] = -(buffr1[1*nQuad+mnkl] - buffr2[1*nQuad+mnkl]);
-            BC[NB4_20+LKNM] = -(buffr1[4*nQuad+mnkl] - buffr2[4*nQuad+mnkl]);
+            BC[NB4_20+MNKL] = 0.0; 
+            BC[NB4_20+LKNM] = 0.0; 
             
             // σ_y*σ_y
-            BC[NB4_21+MNKL] = -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl]);
-            BC[NB4_21+LKNM] = -(buffr1[5*nQuad+mnkl] - buffr2[5*nQuad+mnkl]);
+            BC[NB4_21+MNKL] = 0.0;
+            BC[NB4_21+LKNM] = 0.0;
             
             // σ_y*σ_z
-            BC[NB4_22+MNKL] = -(buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl]);
-            BC[NB4_22+LKNM] = -(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
+            BC[NB4_22+MNKL] = 0.0;
+            BC[NB4_22+LKNM] = 0.0;
             
             // σ_z*σ_x
-            BC[NB4_23+MNKL] = -(buffr1[2*nQuad+mnkl] - buffr2[2*nQuad+mnkl]);
-            BC[NB4_23+LKNM] = -(buffr1[8*nQuad+mnkl] - buffr2[8*nQuad+mnkl]);
+            BC[NB4_23+MNKL] = 0.0;
+            BC[NB4_23+LKNM] = 0.0;
             
             // σ_z*σ_y
-            BC[NB4_24+MNKL] = -(buffr1[6*nQuad+mnkl] - buffr2[6*nQuad+mnkl]);
-            BC[NB4_24+LKNM] = -(buffr1[9*nQuad+mnkl] - buffr2[9*nQuad+mnkl]);
+            BC[NB4_24+MNKL] = 0.0;
+            BC[NB4_24+LKNM] = 0.0;
             
             // σ_z*σ_z
-            BC[NB4_25+MNKL] = -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
-            BC[NB4_25+LKNM] = -(buffr1[10*nQuad+mnkl] - buffr2[10*nQuad+mnkl]);
+            BC[NB4_25+MNKL] = 0.0;
+            BC[NB4_25+LKNM] = 0.0;
             
             
             mnkl++;
@@ -4497,11 +4113,11 @@ namespace ChronusQ {
 #endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
-      size_t nIntSkipGauge = std::accumulate(nSkipGauge.begin(),nSkipGauge.end(),size_t(0));
+      size_t nIntSkipGauge = std::accumulate(nSkipGauge.begin(),nSkipGauge.end(),0);
       std::cout << "Gauge Screened " << nIntSkipGauge << std::endl;
   
       auto durDirectGauge = tock(topDirectGauge);
-      std::cout << "Gauge AO Direct Contraction took " <<  durDirectGauge << " s\n"; 
+      std::cout << "Fake Spin-Free Gauge AO Direct Contraction took " <<  durDirectGauge << " s\n"; 
   
       std::cout << std::endl;
 #endif
@@ -4537,7 +4153,7 @@ namespace ChronusQ {
   }
 
   template <>
-  void GTODirectRelERIContraction<double,double>::directScaffoldLibcint(
+  void GTODirectRelERIContraction<double,double>::directScaffoldLibcintSpinFree(
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<double>> &matList,
     const bool computeExchange,
@@ -4546,13 +4162,14 @@ namespace ChronusQ {
   }
 
   template <>
-  void GTODirectRelERIContraction<dcomplex,dcomplex>::directScaffoldLibcint(
+  void GTODirectRelERIContraction<dcomplex,dcomplex>::directScaffoldLibcintSpinFree(
     MPI_Comm comm, const bool screen,
     std::vector<TwoBodyContraction<dcomplex>> &matList,
     const bool computeExchange,
     const APPROXIMATION_TYPE_4C approximate4C) const {
     CErr("Complex integral is is an invalid option",std::cout);  
   }
+
 
 }; // namespace ChronusQ
 
