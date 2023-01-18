@@ -20,6 +20,8 @@ damp = false
 alg = incore
 libcint = true
 FiniteNuclei = false
+DIRACCOULOMB = on
+SSSS = off
 Gaunt = true
 
 [MISC]

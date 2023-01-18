@@ -33,5 +33,6 @@ CIDiagAlg = Davidson
 [INTS]
 alg = incore
 DC = true
+SSSS = false
 libcint = true
 

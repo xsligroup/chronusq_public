@@ -65,6 +65,8 @@ namespace ChronusQ {
       return typeid(*this);
     }
 
+    virtual bool isView() const { return false; }
+
     /**
      * C = alpha * this * op(B) + beta * C
      * A wrapper for
@@ -697,6 +699,8 @@ namespace ChronusQ {
       return typeid(vecs_);
     }
 
+    virtual bool isView() const override { return true; }
+
     virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
                                  _F alpha, _F const *B, int64_t ldb,
                                  _F beta, SolverVectors<_F> &C, size_t shiftC) const override;
@@ -736,9 +740,9 @@ namespace ChronusQ {
   template <typename T, typename _F, typename Operation>
   void tryDowncastReferenceTo(SolverVectors<_F>& vecs, Operation op) {
     try {
-      try {
-        op(dynamic_cast<T&>(vecs), 0ul); 
-      } catch(const std::bad_cast& e) {
+      if (not vecs.isView()) {
+        op(dynamic_cast<T&>(vecs), 0ul);
+      } else {
         SolverVectorsView<_F>& vecs_view = dynamic_cast<SolverVectorsView<_F>&>(vecs);
         op(dynamic_cast<T&>(vecs_view.getVecs()), vecs_view.shift());
       }
@@ -750,9 +754,9 @@ namespace ChronusQ {
   template <typename T, typename _F, typename Operation>
   void tryDowncastReferenceTo(const SolverVectors<_F> & vecs, Operation op) {
     try {
-      try {
-        op(dynamic_cast<const T&>(vecs), 0ul); 
-      } catch(const std::bad_cast& e) {
+      if (not vecs.isView()) {
+        op(dynamic_cast<const T&>(vecs), 0ul);
+      } else {
         const SolverVectorsView<_F>& vecs_view = dynamic_cast<const SolverVectorsView<_F>&>(vecs);
         op(dynamic_cast<const T&>(vecs_view.getVecs()), vecs_view.shift());
       }

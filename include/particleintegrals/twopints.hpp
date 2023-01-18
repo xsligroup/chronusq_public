@@ -176,14 +176,14 @@ namespace ChronusQ {
     friend class TPIContractions;
 
   protected:
-    TwoPInts<IntsT> &ints_;
+    std::shared_ptr<TwoPInts<IntsT>> ints_;
 
   public:
 
     // Constructors
 
     TPIContractions() = delete;
-    TPIContractions(TwoPInts<IntsT> &tpi): ints_(tpi) {}
+    TPIContractions(std::shared_ptr<TwoPInts<IntsT>> tpi): ints_(tpi) {}
     template <typename MatsU>
     TPIContractions( const TPIContractions<MatsU,IntsT> &other, int dummy = 0 ):
       TPIContractions(other.ints_) {
@@ -204,8 +204,7 @@ namespace ChronusQ {
       contractSecond = other.contractSecond;
     }
 
-    TwoPInts<IntsT>& ints() { return ints_; }
-    const TwoPInts<IntsT>& ints() const { return ints_; }
+    std::shared_ptr<TwoPInts<IntsT>> ints() const { return ints_; }
 
     // Computation interfaces
 

@@ -696,7 +696,7 @@ namespace ChronusQ {
 
       for(auto &V : VXC_SZYX) {
 
-        mxx::reduce(V,NB*NB,mpiScr,0,std::plus<double>(),intComm);
+        MPIReduce(V,NB*NB,mpiScr,0,intComm);
 
         if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,V);
 
@@ -704,7 +704,7 @@ namespace ChronusQ {
 
       if( mpiRank == 0 ) this->memManager.free(mpiScr);
 
-      XCEnergy = mxx::reduce(XCEnergy,0,std::plus<double>(),intComm);
+      XCEnergy = MPIReduce(XCEnergy,0,intComm);
 
 #endif
 

@@ -21,6 +21,8 @@ damp = false
 [INTS]
 alg = incore
 libcint = true
+DIRACCOULOMB = on
+SSSS = off
 Gaunt = true
 
 [MISC]

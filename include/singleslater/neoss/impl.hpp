@@ -185,12 +185,12 @@ namespace ChronusQ {
       std::shared_ptr<TPIContractions<MatsT,IntsT>> this_cont;
       std::shared_ptr<TPIContractions<MatsT,IntsT>> other_cont;
       if( auto tpi_t = std::dynamic_pointer_cast<DirectTPI<IntsT>>(tpi) ) {
-        this_cont = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(*tpi_t);
-        other_cont = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(*tpi_t);
+        this_cont = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(tpi_t);
+        other_cont = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(tpi_t);
       }
       else if( auto tpi_t = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(tpi) ) {
-        this_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(*tpi_t);
-        other_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(*tpi_t);
+        this_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
+        other_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
       }
       else {
         CErr("Invalid TwoPInts type for NEO!");

@@ -21,6 +21,8 @@ nkeep = 20
 [INTS]
 alg = incore
 libcint = true
+DIRACCOULOMB = true
+SSSS = false
 Gaunt = true
 
 [MISC]

@@ -33,6 +33,7 @@ StateAverage = true
 [INTS]
 alg = incore
 tpitransalg = N6
-DC = true 
+DC = true
+SSSS = false
 libcint = true
 

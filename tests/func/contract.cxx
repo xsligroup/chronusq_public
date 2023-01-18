@@ -155,7 +155,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
   refFile.safeWriteData(storage + "/X",Rand,{NB,NB});
   
   // Perform incore ERI contraction and write result to disk
-  GTODirectTPIContraction<FIELD,double> TPI(*aoints.TPI);
+  GTODirectTPIContraction<FIELD,double> TPI(aoints.TPI);
   TPI.twoBodyContract(MPI_COMM_WORLD,true,cont,pert);
   refFile.safeWriteData(storage + "/AX",SX,{NB,NB});
 
@@ -166,7 +166,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
   refFile.readData(storage + "/AX",SX2);
   
   // Form G[X] directly
-  GTODirectTPIContraction<FIELD,double> TPI(*aoints.TPI);
+  GTODirectTPIContraction<FIELD,double> TPI(aoints.TPI);
   TPI.twoBodyContract(MPI_COMM_WORLD,true,cont,pert);
   
   // Compare with reference result

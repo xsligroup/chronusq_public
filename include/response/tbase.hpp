@@ -204,7 +204,7 @@ namespace ChronusQ {
       // calling this function
       bool needFullMat = not bool(fullMatrix_);
 #ifdef CQ_ENABLE_MPI
-      if( genSettings.isDist() ) MPIBCast(&needFullMat,1,0,comm_);
+      if( genSettings.isDist() ) MPIBCast(needFullMat,0,comm_);
 #endif
       if(needFullMat) formFullMatrix(); 
       return fullMatrix_;
@@ -253,7 +253,7 @@ namespace ChronusQ {
 
       bool rootHasFullMat = (MPIRank(comm_) == 0) and fullMatrix_;
 #ifdef CQ_ENABLE_MPI
-      MPIBCast(&rootHasFullMat,1,0,comm_);
+      MPIBCast(rootHasFullMat,0,comm_);
 #endif
 
       writeMeta();

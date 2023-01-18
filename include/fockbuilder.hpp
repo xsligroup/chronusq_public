@@ -38,9 +38,9 @@ namespace ChronusQ {
     friend class FockBuilder;
 
   protected:
-    HamiltonianOptions hamiltonianOptions_; ///< One electron terms to be computed
 
   public:
+    HamiltonianOptions hamiltonianOptions_; ///< One electron terms to be computed
 
     // Constructors
     FockBuilder() = delete;

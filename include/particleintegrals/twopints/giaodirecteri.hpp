@@ -35,10 +35,10 @@ namespace ChronusQ {
     // Constructors
 
     GIAODirectERIContraction() = delete;
-    GIAODirectERIContraction(TwoPInts<dcomplex> &eri):
+    GIAODirectERIContraction(std::shared_ptr<TwoPInts<dcomplex>> eri):
       GTODirectTPIContraction<dcomplex,dcomplex>(eri) {
 
-      if (typeid(eri) != typeid(DirectTPI<dcomplex>))
+      if (typeid(*eri) != typeid(DirectTPI<dcomplex>))
         CErr("GIAODirectERIContraction expect a DirectERI<dcomplex> reference.");
 
     }

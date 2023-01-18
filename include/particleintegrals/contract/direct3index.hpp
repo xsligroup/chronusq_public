@@ -87,7 +87,7 @@ namespace ChronusQ {
   void GTODirectRelERIContraction<MatsT,IntsT>::JContract3Index(
       MPI_Comm comm, TwoBodyContraction<MatsT> &C) const {
 
-    size_t NB  = this->ints().nBasis();
+    size_t NB  = this->ints()->nBasis();
     size_t NB2 = NB*NB;
     size_t NB3 = NB*NB2;
 
@@ -158,7 +158,7 @@ namespace ChronusQ {
   void GTODirectRelERIContraction<MatsT,IntsT>::KContract3Index(
       MPI_Comm comm, TwoBodyContraction<MatsT> &C) const {
 
-    size_t NB  = this->ints().nBasis();
+    size_t NB  = this->ints()->nBasis();
     size_t NB2 = NB*NB;
     size_t NB3 = NB*NB2;
 
