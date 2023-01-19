@@ -1,0 +1,26 @@
+name: Chronus Quantum Continuous Integration - Test One
+
+on: 
+        push:
+                branches: [master]
+
+jobs: 
+        Test_1:
+                runs-on: self-hosted
+
+
+                steps:
+                        - name: Checkout Current CQ Branch
+                          uses: actions/checkout@v3
+
+
+                        - name: Test One
+                          run: |
+                               ls
+                               echo "Test One Complete"
+                                                                 
+
+
+
+                          
+
