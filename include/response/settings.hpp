@@ -95,6 +95,7 @@ namespace ChronusQ {
     // GPLHR specific settings
     size_t gplhr_m     = 3;
     double gplhr_sigma = 0.;
+    bool useGDiag = true;
   };
 
 

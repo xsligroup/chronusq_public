@@ -410,6 +410,8 @@ namespace ChronusQ {
               input.getData<size_t>("RESPONSE.GPLHR_M") );
     OPTOPT( resp->resSettings.gplhr_sigma =
               input.getData<double>("RESPONSE.GPLHR_SIGMA") );
+    OPTOPT( resp->resSettings.useGDiag =
+              input.getData<bool>("RESPONSE.USEGDIAG") );
 
 
 
