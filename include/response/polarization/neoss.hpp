@@ -433,8 +433,8 @@ namespace ChronusQ {
         size_t i = k / NV;
         size_t a = (k % NV) + NO;
         size_t idx = k + offset;
-        MatsT ediff = (eps[a] - eps[i]) + 
-          this->getGDiag(i, a, false, *ss, XSCR, AXSCR);
+        MatsT ediff = (eps[a] - eps[i]); 
+        if(this->resSettings.useGDiag) ediff += this->getGDiag(i, a, false, *ss, XSCR, AXSCR);
         diagonals.push_back(ediff);
         ediff = std::abs(ediff - deMin);
 
