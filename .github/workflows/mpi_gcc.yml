@@ -1,4 +1,4 @@
-name: Chronus Quantum Continuous Integration - MPI GCC Build
+name: CQ CI - MPI GCC Build
 
 on: 
         pull_request:

@@ -1,4 +1,4 @@
-name: Chronus Quantum Continuous Integration - GCC  Build
+name: CQ CI - GCC  Build
 
 on: 
         pull_request:
