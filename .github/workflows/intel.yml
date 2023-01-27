@@ -1,4 +1,4 @@
-name: Chronus Quantum Continuous Integration - Intel Build
+name: CQ CI - Intel Build
 
 on: 
         pull_request:
