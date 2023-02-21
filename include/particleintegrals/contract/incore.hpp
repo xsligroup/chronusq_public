@@ -31,6 +31,7 @@
 #include <cqlinalg/blasext.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
+#include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/gradints/incore.hpp>
 
@@ -75,6 +76,11 @@ namespace ChronusQ {
     if (typeid(*this) == typeid(InCoreRITPIContraction<MatsT,IntsT>))
       if ( std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_) == nullptr){
         CErr("InCoreRITPIContraction expect a InCoreRITPI reference.");
+      }
+
+    if (typeid(*this) == typeid(InCoreAsymmRITPIContraction<MatsT,IntsT>))
+      if ( std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(this->ints_) == nullptr){
+        CErr("InCoreAsymmRITPIContraction expect a InCoreAsymmRITPI reference.");
       }
 
     ProgramTimer::timeOp("Contraction Total", [&](){
@@ -624,5 +630,132 @@ namespace ChronusQ {
 
   }; // InCore4indexGradContraction::gradTwoBodyContract
 
+
+  /**
+   *  \brief Perform a Coulomb-type (34,12) RI-ERI contraction for Asymmtric ERi, using aux basis
+   * 
+   * Dimension: 
+   *  - If we're calculating J^{ep} = \sum (ee|pp)P^{pp}, then density dimension is NB_Prot * NB_prot, 
+   *    output dimension is NB_elec * NB_elec. No need to modify integrals
+   * 
+   *  - If we're calculating J^{pe} = \sum (pp|ee)P^{ee}, then density dimension is NB_elec * NB_elec,
+   *    output dimension is NB_prot * NB_prot. Need to modify integrals to transpose. The flag contract second
+   *    in base class TPIContration will be set to True.
+   */   
+  template <typename MatsT, typename IntsT>
+  void InCoreAsymmRITPIContraction<MatsT, IntsT>::JContract(
+      MPI_Comm, TwoBodyContraction<MatsT> &C) const {
+
+    // Obtain info from original (ee|pp) ints
+    InCoreAsymmRITPI<IntsT> &asymmInts = *std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(this->ints_);
+    CQMemManager& memManager_ = asymmInts.memManager();
+    size_t NB = asymmInts.nBasis(); 
+    size_t snNB = asymmInts.snBasis();
+    std::shared_ptr<InCoreRITPI<IntsT>> aux1 = asymmInts.getAux1();
+    std::shared_ptr<InCoreRITPI<IntsT>> aux2 = asymmInts.getAux2();
+    if(not aux1 and not aux2) CErr("No aux available in IncoreAsymmRITPIContration::JContract");
+
+    // If contractSecond set to true, need to modify order to create (pp|ee) ints
+    if(this->contractSecond){
+      std::swap(NB, snNB);
+      std::swap(aux1, aux2);
+    }
+
+    // If one aux basis is used, then aux dimension is in NBRI 
+    // If both aux basis are used, then snNBRI stores the second aux dimension
+    size_t NBRI, snNBRI = 0;
+
+    // Define pointers for 3-index tensors to use in contraction
+    IntsT* L3J = nullptr;
+    IntsT* R3J = nullptr;
+    IntsT* M2J = nullptr; 
+
+    if(aux1){
+      // if only use aux basis for 1st basis
+      L3J = aux1->pointer();
+      R3J = asymmInts.pointer();
+      NBRI = aux1->nRIBasis();
+    }
+
+    if(aux2){
+      R3J = aux2->pointer();
+      if(not aux1){
+        // if only use aux basis for 2nd basis
+        L3J = asymmInts.pointer();
+        NBRI = aux2->nRIBasis();
+      }else{
+        // if use both aux basis  
+        M2J = asymmInts.pointer();
+        snNBRI = NBRI;
+        NBRI = aux2->nRIBasis();
+      }
+    }
+
+    // X stores density
+    IntsT *X  = reinterpret_cast<IntsT*>(C.X);
+    // AX stores output matrix
+    IntsT *AX = reinterpret_cast<IntsT*>(C.AX);
+
+    // Extract the real part of X if X is Hermetian and if the ints are real
+    const bool extractRealPartX = 
+      C.HER and std::is_same<IntsT,double>::value and 
+      std::is_same<MatsT,dcomplex>::value;
+    
+    // Allocate scratch if IntsT and MatsT are different
+    const bool allocAXScratch = not std::is_same<IntsT,MatsT>::value;
+
+    if( extractRealPartX ) {
+      X = memManager_.malloc<IntsT>(snNB*snNB);
+      for(auto k = 0ul; k < snNB*snNB; k++) X[k] = std::real(C.X[k]);
+    }
+
+    if( allocAXScratch ) {
+      AX = memManager_.malloc<IntsT>(NB*NB);
+      std::fill_n(AX,NB*NB,0.);
+    }
+
+    auto Jtemp = memManager_.malloc<IntsT>( NBRI );
+    
+    // R3J (NBRI by snNB^2) contracting with density (sbNB^2 by 1), generates a vector of length NBRI. 
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBRI,1,snNB*snNB,IntsT(1.),R3J,NBRI,X,snNB*snNB,IntsT(0.),Jtemp,NBRI);
+    
+    if( !M2J ){
+      // Left multiply by L3J.T (NB^2 by NBRI), to give output matrix (NB^2 by 1). 
+      blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,NBRI,IntsT(1.),L3J,NBRI,Jtemp,NBRI,IntsT(0.),AX,NB*NB);
+    } else{
+      auto Jtemp1 = memManager_.malloc<IntsT>( snNBRI );
+      // Left multiply by M2J (snNBRI by NBRI), to give temp vector (snNBRI by 1)
+      if(this->contractSecond){
+        blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,snNBRI,1,NBRI,IntsT(1.),M2J,NBRI,Jtemp,NBRI,IntsT(0.),Jtemp1,snNBRI);
+      }else{
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,snNBRI,1,NBRI,IntsT(1.),M2J,snNBRI,Jtemp,NBRI,IntsT(0.),Jtemp1,snNBRI);
+      }
+      // Left multiply by L3J.T (NB^2 by snNBRI), to give output matrix (NB^2 by 1). 
+      blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,snNBRI,IntsT(1.),L3J,snNBRI,Jtemp1,snNBRI,IntsT(0.),AX,NB*NB);
+      memManager_.free(Jtemp1);
+    }
+    memManager_.free(Jtemp);
+
+    // if Complex ints + Hermitian, conjugate
+//    if( std::is_same<IntsT,dcomplex>::value and C.HER )
+//      IMatCopy('R',NB,NB,IntsT(1.),AX,NB,NB);
+
+    // If non-hermetian, transpose
+//    if( not C.HER )  {
+
+//      IMatCopy('T',NB,NB,IntsT(1.),AX,NB,NB);
+
+//    }
+
+    // Cleanup temporaries
+    if( extractRealPartX ) memManager_.free(X);
+    if( allocAXScratch ) {
+
+      std::copy_n(AX,NB*NB,C.AX);
+      memManager_.free(AX);
+
+    }
+
+  }; // InCoreRIERIContraction::JContract
 
 }; // namespace ChronusQ

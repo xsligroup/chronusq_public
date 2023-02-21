@@ -257,8 +257,10 @@ bool OptimizeOrbitals<MatsT>::evalProgress(EMPerturbation& pert) {
 
     // Compute new energy (with new Density)
     this->modOrbOpt.computeProperties(pert);
-    this->scfConv.deltaEnergy = this->modOrbOpt.getTotalEnergy() - prevEnergy;
-    prevEnergy = this->modOrbOpt.getTotalEnergy();
+    double curEnergy = this->modOrbOpt.getTotalEnergy();
+    this->scfConv.deltaEnergy = curEnergy - prevEnergy;
+    prevEnergy = curEnergy;
+
 
     bool energyConv = std::abs(this->scfConv.deltaEnergy) < scfControls.eneConvTol;
 

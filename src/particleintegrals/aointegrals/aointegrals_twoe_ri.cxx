@@ -28,8 +28,10 @@
 #include <util/matout.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
+#include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/onepints.hpp>
+#include <integrals.hpp>
 
 #include <util/threads.hpp>
 #include <chrono>
@@ -380,16 +382,15 @@ namespace ChronusQ {
 
     compute3CenterERI(basisSet, *auxBasisSet_);
 
-    auto ERI2PQ = memManager().malloc<double>(NBRI*NBRI);
+    twocenterERI_ = std::make_shared<SquareMatrix<double>>(memManager(), NBRI);
 
-    compute2CenterERI(*auxBasisSet_, ERI2PQ);
+    compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
 
-    this->contract2CenterERI(ERI2PQ);
+    this->contract2CenterERI(twocenterERI_->pointer());
 
     auto durLibintRI = tock(topLibintRI);
     std::cout << "  Libint-RI duration   = " << durLibintRI << " s " << std::endl;
 
-    memManager().free<double>(ERI2PQ);
   }; // InCoreAuxBasisRIERI<double>::computeAOInts
 
 
@@ -1280,6 +1281,9 @@ namespace ChronusQ {
       NBRI++;
     }
 
+    if (NBRI == 0)
+      CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
+
     auto durCholesky = tock(topCholesky);
     std::cout << "  Cholesky-RI-Pivots-ERI count    = " << c1ERI << std::endl;
     std::cout << "  Cholesky-RI-Pivots-ERI duration = " << t1ERI << " s " << std::endl;
@@ -1860,6 +1864,9 @@ namespace ChronusQ {
         D.push_back(pq);
     }
 
+    if (D.empty())
+      CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
+
     mem.free(diagCompound);
 
     std::sort(D.begin(), D.end(),
@@ -2290,6 +2297,9 @@ namespace ChronusQ {
       if (diag[pq] >= tau_)
         D.push_back(pq);
     }
+
+    if (D.empty())
+      CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
 
     mem.free(diagCompound);
 
@@ -2859,6 +2869,9 @@ namespace ChronusQ {
       if (diag[pq] >= tau_)
         D.push_back(pq);
     }
+
+    if (D.empty())
+      CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
 
     mem.free(diagCompound);
 
@@ -4035,6 +4048,9 @@ namespace ChronusQ {
         D.push_back(compoundToSquare(pq, NB));
     }
 
+    if (D.empty())
+      CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
+
 #ifdef __DEBUGERI__
     std::cout << "Raw Diag: [ " << std::endl;
     for (size_t Q = 0; Q < NB; Q++)
@@ -4856,7 +4872,9 @@ namespace ChronusQ {
 
     auto topLibintPivot2Index = tick();
 
-    double *S = mem.malloc<double>(NBRI*NBRI);
+    twocenterERI_ = std::make_shared<SquareMatrix<double>>(mem, NBRI);
+    double *S = twocenterERI_->pointer();
+
 
     // Only build Upper triangular part of S for Cholesky decomposition
     #pragma omp parallel for
@@ -4883,8 +4901,6 @@ namespace ChronusQ {
 #endif
 
     contract2CenterERI(S);
-
-    mem.free(S);
 
     auto durLibintPivotRI = tock(topLibintPivotRI);
     std::cout << "  Cholesky-RI-PivotRI duration = " << durLibintPivotRI << " s " << std::endl;
@@ -4925,7 +4941,7 @@ namespace ChronusQ {
 
     std::cout << "Parameters and options:" << std::endl;
     std::cout << bannerMid << std::endl;
-    const int fieldNameWidth(22);
+    const int fieldNameWidth(40);
     std::cout << "  " << std::setw(fieldNameWidth) << "Algorithm:";
     switch (alg_) {
     case CHOLESKY_ALG::TRADITIONAL:
@@ -4951,8 +4967,10 @@ namespace ChronusQ {
         << (libcint_ ? "Libcint" : "Libint2") << std::endl;
     std::cout << "  " << std::setw(fieldNameWidth) << "General contraction:"
         << (generalContraction_ ? "True" : "False") << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "Build 4-index ERI:"
+    std::cout << "  " << std::setw(fieldNameWidth) << "Have already computed 4-index ERI:"
         << (eri4I_ ? "True" : "False") << std::endl;
+    std::cout << "  " << std::setw(fieldNameWidth) << "Build 4-index ERI:"
+        << (build4I_ ? "True" : "False") << std::endl;
     switch (alg_) {
     case CHOLESKY_ALG::DYNAMIC_ALL:
       std::cout << "  " << std::setw(fieldNameWidth) << "Min shrink cycle:"
@@ -4972,11 +4990,12 @@ namespace ChronusQ {
     std::cout << std::endl;
 
 
-    if (eri4I_) {
+    if (build4I_ and not eri4I_) {
       std::cout << "Building 4-index ERI:" << std::endl;
       std::cout << bannerMid << std::endl;
       auto top4I = tick();
 
+      eri4I_ = std::make_shared<InCore4indexTPI<double>>(memManager_, NB);
       eri4I_->computeAOInts(basisSet, mol, emPert, op, options);
 
       auto dur4I = tock(top4I);

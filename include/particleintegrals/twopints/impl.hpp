@@ -28,7 +28,7 @@
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/twopints/giaodirecteri.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
-
+#include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <typeinfo>
 #include <memory>
 

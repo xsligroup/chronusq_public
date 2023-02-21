@@ -25,7 +25,6 @@
 
 #include <cxxapi/input.hpp>
 #include <cxxapi/procedural.hpp>
-
 #include <molecule.hpp>
 #include <basisset.hpp>
 #include <integrals.hpp>
@@ -119,6 +118,7 @@ namespace ChronusQ {
     Molecule &, std::string);
 
   void CQBASIS_VALID(std::ostream&, CQInputFile &, std::string);
+
 
   // Parse the options relating to the SingleSlaterOptions
   SingleSlaterOptions CQSingleSlaterOptions(

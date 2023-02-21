@@ -170,19 +170,33 @@ namespace ChronusQ {
       fockBuilder->formFock(*this, emPert, false, 0.0);
       getNewOrbitals();
 
-    } else {
-
-      if( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) {
-        CoreGuess();
-      } else if( scfControls.guess == CORE ) CoreGuess();
-      else if( scfControls.guess == TIGHT ) TightGuess();
-      else if( scfControls.guess == SAD ) SADGuess(ssOptions);
-      else if( scfControls.guess == RANDOM ) RandomGuess();
+    } else if( scfControls.guess == RANDOM ) RandomGuess();
       else if( scfControls.guess == READMO ) ReadGuessMO();
       else if( scfControls.guess == READDEN ) ReadGuess1PDM();
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
+      else if (this->particle.charge > 0){
+      // For NEO, it is observed that using a tight guess (where each quantum proton occupy the tightest orbital on them) 
+      // leads to better behavior. 
+
+      // FIXME: Protonic guess needs to be cleaned up
+        size_t numProt = this->nOA, NB = this->basisSet().nBasis, NB_per_prot = NB / numProt;
+        this->onePDM->S().clear();
+        this->mo[0].clear();
+        this->mo[1].clear();
+        for(int i = 0; i < numProt; i++) {
+          this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = 1;
+          this->mo[0](i*NB_per_prot, i) = 1;
+        }
+        this->onePDM->Z() = this->onePDM->S();
+
+        std::cout << "      Each quantum proton occupies the tightest orbital. " << std::endl;
+        std::cout << std::endl;
+      } else if ( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) {
+        CoreGuess();
+      } else if ( scfControls.guess == CORE ) CoreGuess();
+      else if( scfControls.guess == TIGHT ) TightGuess();
+      else if( scfControls.guess == SAD ) SADGuess(ssOptions);
       else CErr("Unknown choice for SCF.GUESS",std::cout);
-    }
 
     // If RANDOM guess, scale the densites appropriately
     // *** Replicates on all MPI processes ***

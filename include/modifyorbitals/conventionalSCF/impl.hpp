@@ -55,7 +55,7 @@ void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT
 
   this->modOrbOpt.formDensity();
 
-};   // NewtonRaphsonSCF<MatsT,IntsT>::getNewOrbitals
+};    //ConventionalSCF<MatsT>::getNewOrbitals
 
 template<typename MatsT>
 void ConventionalSCF<MatsT>::ao2orthoFock(VecShrdPtrMat<MatsT> fock) {

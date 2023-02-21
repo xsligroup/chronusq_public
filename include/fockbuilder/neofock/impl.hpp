@@ -63,7 +63,11 @@ namespace ChronusQ {
       { {contract1PDM.S().pointer(), this->outMat->pointer(), true, COULOMB} };
 
     EMPerturbation pert;
+
+    //auto beginEPJContract = tick();
     contraction->twoBodyContract(ss.comm, contract, pert);
+    //double durEPJContract = tock(beginEPJContract);
+    //std::cout<< "  Cholesky-Asymm-Contraction duration = " << durEPJContract << " s " << std::endl;
   }
 
   template <typename MatsT, typename IntsT>

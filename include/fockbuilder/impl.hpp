@@ -148,7 +148,8 @@ namespace ChronusQ {
 
     // Determine how many (if any) exchange terms to calculate
     if( std::abs(xHFX) > 1e-12 and not increment and ss.nC == 1 and
-//        (ss.scfControls.guess != SAD or ss.modifyOrbitals->scfConv.nSCFIter != 0) and
+        (ss.scfControls.guess != SAD or 
+        (ss.modifyOrbitals and std::dynamic_pointer_cast<OptimizeOrbitals<MatsT>>(ss.modifyOrbitals)->scfConv.nSCFIter != 0) ) and
         std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI)) {
       ROOT_ONLY(ss.comm);
       auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
@@ -162,7 +163,11 @@ namespace ChronusQ {
       
       } else {
         SquareMatrix<MatsT> BBblock(exchangeMatrices[0]->memManager(), NB);
-        ritpi->KCoefContract(ss.comm, ss.nOB, ss.mo[1].pointer(), BBblock.pointer());
+        if (ss.nOB > 0){
+          ritpi->KCoefContract(ss.comm, ss.nOB, ss.mo[1].pointer(), BBblock.pointer());
+        } else {
+          BBblock.clear();
+        }
         
         for (auto i = 0ul; i < nBatch; i++) 
           *exchangeMatrices[i] = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);

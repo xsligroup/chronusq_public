@@ -192,6 +192,10 @@ namespace ChronusQ {
         this_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
         other_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
       }
+      else if( auto tpi_t = std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(tpi)) {
+        this_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        other_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+      }
       else {
         CErr("Invalid TwoPInts type for NEO!");
       }
@@ -391,6 +395,37 @@ namespace ChronusQ {
       this->modifyOrbitals       = std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(
           std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
     }
+
+  }
+
+  template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::setSubSSTPIContraction(std::shared_ptr<TwoPInts<double>> tpi){
+
+      if( auto tpi_t = std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(tpi)){
+
+        std::shared_ptr<InCoreAsymmRITPIContraction<MatsT,IntsT>> elec_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        std::shared_ptr<InCoreAsymmRITPIContraction<MatsT,IntsT>> prot_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+
+        elec_cont->contractSecond = false;
+        prot_cont->contractSecond = true;
+
+        if(auto elec_fock = std::dynamic_pointer_cast<NEOFockBuilder<MatsT,IntsT>>(this->fockBuilders["Electronic"].back()) ){
+          elec_fock->setContraction(elec_cont);
+          if(auto prot_fock = std::dynamic_pointer_cast<NEOFockBuilder<MatsT,IntsT>>(this->fockBuilders["Protonic"].back()) ){
+            prot_fock->setContraction(prot_cont);
+          }else{
+            CErr("Back of prot fockbuilders is NOT a NEOFockBuildber object");
+          }
+        }else{
+          CErr("Back of elec fockbuilders is NOT a NEOFockBuildber object");
+        }
+        
+        
+
+      }else{
+        CErr("Expecting an asymmetric ERI in NEOSS<MatsT,IntsT>::setsetSubSSTPI");
+      }
+
 
   }
 

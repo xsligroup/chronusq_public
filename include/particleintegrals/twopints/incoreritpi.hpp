@@ -61,6 +61,7 @@ namespace ChronusQ {
   protected:
     size_t NBRI, NBNBRI;
     IntsT* ERI3J = nullptr; ///< Electron-Electron repulsion integrals (3 index)
+    std::shared_ptr<SquareMatrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)
 
   public:
 
@@ -141,6 +142,10 @@ namespace ChronusQ {
     IntsT* pointer() { return ERI3J; }
     const IntsT* pointer() const { return ERI3J; }
 
+    // 2-index ERI
+    std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() { return twocenterERI_; } // returns L=(P|Q)
+    const std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() const { return twocenterERI_; } // returns L=(P|Q)
+
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) {
@@ -204,7 +209,9 @@ namespace ChronusQ {
     }
 
     InCore4indexTPI<IntsT> to4indexERI() {
+
       InCore4indexTPI<IntsT> eri4i(this->memManager(), this->nBasis());
+      
       size_t NB2 = this->nBasis() * this->nBasis();
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2,NB2,NBRI,IntsT(1.),pointer(),NBRI,
            pointer(),NBRI,IntsT(0.),eri4i.pointer(),NB2);
@@ -336,10 +343,12 @@ namespace ChronusQ {
     size_t maxQual_; // Max qualified candidates per span
     size_t minShrinkCycle_; // Mininum # of iterations between shrinks
     bool generalContraction_; // Uncontract basis then run
+    bool build4I_ = false; // Explicitly build four-index TPI
+    std::shared_ptr<InCore4indexTPI<IntsT>> eri4I_ = nullptr; // Four-index TPI
     std::vector<size_t> pivots_; // List of selected pivots
-    std::shared_ptr<InCore4indexTPI<IntsT>> eri4I_ = nullptr; // Four-index ERI
     std::vector<std::vector<libint2::Shell>> shellPrims_; // Mappings from primitives to CGTOs
     std::vector<IntsT*> coefBlocks_; // Mappings from primitives to CGTOs
+
 
     // Libint
     size_t maxNcontrAMSize_ = 1, maxNprimAMSize_ = 1, maxAMSize_ = 1;
@@ -367,18 +376,18 @@ namespace ChronusQ {
         bool build4I = false):
         InCoreRITPI<IntsT>(mem, nb), alg_(alg), tau_(tau),
         sigma_(sigma), maxQual_(maxQual), minShrinkCycle_(minShrink),
-        generalContraction_(genContr) {
-      if (build4I)
-        eri4I_ = std::make_shared<InCore4indexTPI<IntsT>>(mem, nb);
-    }
+        generalContraction_(genContr), build4I_(build4I) {}
+
     InCoreCholeskyRIERI( const InCoreCholeskyRIERI& ) = default;
     template <typename IntsU>
     InCoreCholeskyRIERI( const InCoreCholeskyRIERI<IntsU> &other, int = 0 ):
         InCoreRITPI<IntsT>(other), alg_(other.alg_), tau_(other.tau_),
         sigma_(other.sigma_), maxQual_(other.maxQual_),
         minShrinkCycle_(other.minShrinkCycle_),
-        generalContraction_(other.generalContraction_), pivots_(other.pivots_),
-        eri4I_(std::make_shared<InCore4indexTPI<IntsT>>(*other.eri4I_)){}
+        generalContraction_(other.generalContraction_),
+        build4I_(other.build4I_),
+        eri4I_(std::make_shared<InCore4indexTPI<IntsT>>(*other.eri4I_)),
+        pivots_(other.pivots_){}
     InCoreCholeskyRIERI( InCoreCholeskyRIERI &&other ) = default;
 
     InCoreCholeskyRIERI& operator=( const InCoreCholeskyRIERI& ) = default;
@@ -388,7 +397,19 @@ namespace ChronusQ {
     double tau() const { return tau_; }
     const std::vector<size_t>& getPivots() const { return pivots_; }
 
+    // 4-index ERI direct access
+    void setFourIndexERI(std::shared_ptr<InCore4indexTPI<IntsT>> eri4I) {
+      eri4I_ = eri4I;
+    }
+    std::shared_ptr<InCore4indexTPI<IntsT>> fourIndexERI() { return eri4I_; }
+    const std::shared_ptr<InCore4indexTPI<IntsT>> fourIndexERI() const { return eri4I_; }
+
+
+    //std::vector<size_t> pivots() { return pivots_; }// List of selected pivots
+    const std::vector<size_t>& pivots() const { return pivots_; }// List of selected pivots
+
     // Computation interfaces
+
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
                                OPERATOR, const HamiltonianOptions&);
 

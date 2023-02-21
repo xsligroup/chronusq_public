@@ -239,6 +239,7 @@ namespace ChronusQ {
     {  "DEF2-SVP"                  , "def2-svp.gbs"                  },
     {  "DEF2-SVPD"                 , "def2-svpd.gbs"                 },
     {  "DEF2-TZVP"                 , "def2-tzvp.gbs"                 },
+    {  "DEF2-QZVP"                 , "def2-qzvp.gbs"                 },
     {  "SAPPORO-DKH3-DZP-2012-ALL" , "sapporo-dkh3-dzp-2012_all.gbs" },
     {  "SAPPORO-DKH3-DZP-2012-NO"  , "sapporo-dkh3-dzp-2012_no.gbs"  },
     {  "SAPPORO-DKH3-DZP-2012-SP"  , "sapporo-dkh3-dzp-2012_sp.gbs"  },

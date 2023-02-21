@@ -30,6 +30,8 @@
 #include <particleintegrals/onepints.hpp>
 #include <particleintegrals/twopints.hpp>
 #include <particleintegrals/multipoleints.hpp>
+#include <particleintegrals/twopints/incoreritpi.hpp>
+#include <particleintegrals/twopints/incoreasymmritpi.hpp>
 
 namespace ChronusQ {
 
@@ -39,6 +41,13 @@ namespace ChronusQ {
       INCORE_N5 = 2,
       DIRECT_N5 = 3, // NYI
   };
+
+  enum CONTRACTION_ALGORITHM {
+    DIRECT,
+    INCORE,
+    DENFIT
+  }; ///< 2-e Integral Contraction Algorithm
+
 
   /**
    *  \brief class to store a collection of integrals 
@@ -210,5 +219,57 @@ namespace ChronusQ {
 
   }; // class Integrals
 
+
+  // A struct that stores basic integral options, common for incore/direct/RI/CD)
+  struct BasicIntsOptions {
+    std::string ALG = "DIRECT";  ///< Parse integral algorithm
+    std::string TPITRANSALG = "N6"; ///< TPI AO to MO transformation algorithm
+    CONTRACTION_ALGORITHM contrAlg = CONTRACTION_ALGORITHM::DIRECT; ///< Alg for 2-body contraction
+    double threshSchwarz = 1e-12; ///< Schwarz screening threshold
+    std::string RI = "FALSE"; ///< RI algorithm
+  };
+
+
+  // A struct that stores integral options that are specific for RI/CD)
+  struct CDRIIntsOptions {
+    CHOLESKY_ALG CDalg = CHOLESKY_ALG::DYNAMIC_ERI; ///< Cholesky algorithm
+    double CDRI_thresh = 1e-4; ///< Cholesky RI threshold
+    double CDRI_sigma = 1e-2; ///< Cholesky RI sigma for span factor algorithm
+    bool CDRI_genContr = true; ///< Cholesky RI uncontract basis functions to primitives
+    size_t CDRI_max_qual = 1000; ///< Cholesky RI max # of qualified candidates per iteration for span-factor algorithm
+    size_t CDRI_minShrinkCycle = 10; ///< Cholesky RI min # of iterations between shrinks for dynamic-all algorithm
+    bool CDRI_build4I = false; ///< Cholesky RI explicitly build 4-index
+    NEO_CD_ALG NEOCDalg = NEO_CD_ALG::AUTO; ///< NEO Cholesky algorithm for approximating (ee|pp) integral
+    bool CDRI_printError = false; /// < Whether to report the error of approximate (ee|pp) comparing with exact 4-index (ee|pp) 
+  };
+
+
+  struct IntegralOptions {
+    BasicIntsOptions basicintsoptions;
+    CDRIIntsOptions cdriintsoptions;
+    
+    // Set TPITRANSALG for the integral object
+    void setTPITransAlg(std::shared_ptr<IntegralsBase> ints) const;
+    
+    // Build either an symmetric IntegralBase object ( either (ee|ee) or a (pp|pp) )
+    std::shared_ptr<IntegralsBase> buildSymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  
+        std::shared_ptr<BasisSet> dfbasis, std::string s) const;
+
+    // Build either an asymmetric IntegralBase object ( (ee|pp) )
+    std::shared_ptr<IntegralsBase> buildAsymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  
+        std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, 
+        std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi) const;
+    
+    // Build all (ee|ee), (pp|pp), (ee|pp) objects (if needed), and return them in a tuple
+    static std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> buildAllIntegrals(
+        std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
+        std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, IntegralOptions epopts);
+  };
+
+
+  // Declear function to parse the user-specific integral options
+  IntegralOptions getIntegralOptions(std::ostream &, CQInputFile &, 
+      std::shared_ptr<BasisSet>,  std::shared_ptr<BasisSet>, 
+      std::shared_ptr<BasisSet>, std::string);
 
 }; // namespace ChronusQ

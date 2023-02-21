@@ -132,6 +132,8 @@ namespace ChronusQ {
       void addGradientIntegrals(std::string label1, std::string label2,
         std::shared_ptr<GradInts<TwoPInts,IntsT>> ints, bool contractSecond);
 
+      void setSubSSTPIContraction(std::shared_ptr<TwoPInts<double>> tpi);
+
       void setOrder(std::vector<std::string> labels) {
         order_ = labels;
       }
@@ -230,8 +232,11 @@ namespace ChronusQ {
 
         this->totalEnergy = 0.;
         applyToEach([&](SubSSPtr& ss){
+
           ss->computeEnergy(); 
+
           this->totalEnergy += ss->totalEnergy - this->molecule().nucRepEnergy;
+
         });
 
         // If we're doing EPC, we've double counted the energy, so subtract it

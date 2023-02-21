@@ -62,6 +62,7 @@ namespace ChronusQ {
   template DirectTPI<dcomplex>::DirectTPI(const DirectTPI<double>&, int);
   template InCore4indexTPI<dcomplex>::InCore4indexTPI(const InCore4indexTPI<double>&, int);
   template InCoreRITPI<dcomplex>::InCoreRITPI(const InCoreRITPI<double>&, int);
+  template InCoreAsymmRITPI<dcomplex>::InCoreAsymmRITPI(const InCoreAsymmRITPI<double>&, int);
   template InCoreAuxBasisRIERI<dcomplex>::InCoreAuxBasisRIERI(const InCoreAuxBasisRIERI<double>&, int);
 
   template class InCore4indexTPIContraction<double, double>;
@@ -71,6 +72,10 @@ namespace ChronusQ {
   template class InCoreRITPIContraction<double, double>;
   template class InCoreRITPIContraction<dcomplex, double>;
   template class InCoreRITPIContraction<dcomplex, dcomplex>;
+
+  template class InCoreAsymmRITPIContraction<double, double>;
+  template class InCoreAsymmRITPIContraction<dcomplex, double>;
+  template class InCoreAsymmRITPIContraction<dcomplex, dcomplex>;
 
   template class GTODirectTPIContraction<double, double>;
   template class GTODirectTPIContraction<dcomplex, double>;

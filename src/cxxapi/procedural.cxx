@@ -208,19 +208,23 @@ namespace ChronusQ {
     // Create Molecule and BasisSet objects
     Molecule mol(std::move(CQMoleculeOptions(output,input,scrFileName)));
 
-    // Create BasisSet objects
+    // Create BasisSet object
     std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS");
+    // Create BasisSet object for DFBasis if defined
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS");
-
-    auto aoints = CQIntsOptions(output,input,*memManager,mol,basis,dfbasis,nullptr);
-
-    // Create BasisSet and integral objects for nuclear orbitals 
+    // Create BasisSet object for nuclear orbitals if it's a NEO calculation
     std::shared_ptr<BasisSet> prot_basis = 
       doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr;
-    auto prot_aoints = 
-      doNEO ? CQIntsOptions(output,input,*memManager,mol,prot_basis,dfbasis,nullptr,"PINTS"): nullptr;
-    auto ep_aoints   = 
-      doNEO? CQIntsOptions(output,input,*memManager,mol,basis,dfbasis,prot_basis,"EPINTS") : nullptr;
+
+    // Parse Integral options from input file
+    IntegralOptions aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"INTS");
+    IntegralOptions prot_aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"PINTS");
+    IntegralOptions ep_aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"EPINTS");
+    
+    // Build all integral objects. Each is in a shared pointer of IntegralBase
+    auto [aoints, prot_aoints, ep_aoints] = 
+        IntegralOptions::buildAllIntegrals(output, *memManager, mol, basis, dfbasis, prot_basis,
+        aoints_options, prot_aoints_options, ep_aoints_options);
 
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
@@ -324,14 +328,17 @@ namespace ChronusQ {
         aoints->computeAOTwoE(*basis, mol, emPert);
 
         if (doNEO) { 
-          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(prot_aoints))
+          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(prot_aoints)){
             prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
-          else
+          }else{
             CErr("NEO with complex integrals NYI!",output);
-          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints))
+          }
+          
+          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints)){
             ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
+          }  
         }
-
+        
         // Note, these guessSSOptions does not apply to NEO guess
         SingleSlaterOptions guessSSOptions(ssOptions);
         guessSSOptions.refOptions.isKSRef = false;
