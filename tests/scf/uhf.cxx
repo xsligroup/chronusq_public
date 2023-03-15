@@ -79,6 +79,84 @@ TEST( UHF, B_swap_UHF_sto3G ) {
 
 };
 
+// Water UHF/cc-pVDZ with RHF guess (READDEN)
+TEST( UHF, Water_ccpVDZ_UHF_RHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READDEN",
+    "water_cc-pVDZ_UHF_RHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with RHF guess (READMO)
+TEST( UHF, Water_ccpVDZ_UHF_RHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READMO",
+    "water_cc-pVDZ_UHF_RHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with ROHF guess (READDEN)
+TEST( UHF, Water_ccpVDZ_UHF_ROHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READDEN",
+    "water_cc-pVDZ_UHF_ROHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with ROHF guess (READMO)
+TEST( UHF, Water_ccpVDZ_UHF_ROHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READMO",
+    "water_cc-pVDZ_UHF_ROHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with UHF guess (READDEN from scratch)
+TEST( UHF, Water_ccpVDZ_UHF_UHFGuess_READDEN_scratch ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READDEN",
+    "water_cc-pVDZ_UHF_UHFGuess_READDEN_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with UHF guess (READMO from scratch)
+TEST( UHF, Water_ccpVDZ_UHF_UHFGuess_READMO_scratch ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READMO",
+    "water_cc-pVDZ_UHF_UHFGuess_READMO_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water UHF/cc-pVDZ with UHF guess (READDEN from restart)
+TEST( UHF, Water_ccpVDZ_UHF_UHFGuess_READDEN_restart ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READDEN",
+    "water_cc-pVDZ_UHF_UHFGuess_READDEN_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
+// Water UHF/cc-pVDZ with UHF guess (READMO from restart)
+TEST( UHF, Water_ccpVDZ_UHF_UHFGuess_READMO_restart ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_READMO",
+    "water_cc-pVDZ_UHF_UHFGuess_READMO_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 // SMP O2 6-31G(d) test

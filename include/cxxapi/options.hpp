@@ -195,6 +195,9 @@ namespace ChronusQ {
   
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
 
+  // Save reference info
+  void saveRefs(SingleSlaterOptions &, std::shared_ptr<SingleSlaterBase> &);
+
   std::shared_ptr<CQMemManager> CQMiscOptions(std::ostream &,
     CQInputFile &);
 

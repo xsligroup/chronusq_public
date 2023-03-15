@@ -47,19 +47,6 @@ TEST( FOURCHF, UPu_184_plus_P_DC_pointnuc ) {
 
 };
 
-/*
- * FIXME: Different compilers/LA libraries give different solutions to this
- *        test
-// Two electron U-Pu 184+ test Dirac-Couloumb with X2CHF guess (readden)
-TEST( FOURCHF, UPu_184_plus_P_DC_X2CGuess_pointnuc ) {
-
-  CQSCFTEST( "scf/serial/fourcomp/UPu_184+_P_DC_X2CGuess_pointnuc",
-    "UPu_184+_P_DC_X2CGuess_pointnuc.bin.ref",1e-8,
-    false, false, false, false, false, true, false, "UPu_184+_X2C_pointnuc.scr.bin" );
-
-};
-*/
-
 #ifndef _CQ_GENERATE_TESTS
 // Two electron U-Pu 184+ test Dirac-Couloumb with readmo
 TEST( FOURCHF, UPu_184_plus_P_DC_pointnuc_readmo ) {
@@ -152,7 +139,123 @@ TEST( FOURCHF, Ag_sapporoDZ_DCG ) {
 
 };
 
+// Water DC-HF/cc-pVDZ with RHF guess (READDEN)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_RHFGuess_READDEN ) {
 
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_RHFGuess_READDEN.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with RHF guess (READMO)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_RHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_RHFGuess_READMO.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with ROHF guess (READDEN)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_ROHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_ROHFGuess_READDEN.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with ROHF guess (READMO)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_ROHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_ROHFGuess_READMO.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with UHF guess (READDEN)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_UHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_UHFGuess_READDEN.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with UHF guess (READMO)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_UHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_UHFGuess_READMO.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with X2C guess (READDEN)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_X2CGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_X2CGuess_READDEN.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_X2C.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with X2C guess (READMO)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_X2CGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_X2CGuess_READMO.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_X2C.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with DC-HF guess (READDEN from scratch)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_DCHFGuess_READDEN_scratch ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_DCHFGuess_READDEN_scratch.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_DCHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with DC-HF guess (READMO from scratch)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_DCHFGuess_READMO_scratch ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_DCHFGuess_READMO_scratch.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_DCHF.scr.bin" );
+
+};
+
+// Water DC-HF/cc-pVDZ with DC-HF guess (READDEN from restart)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_DCHFGuess_READDEN_restart ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READDEN",
+    "water_cc-pVDZ_DC-HF_DCHFGuess_READDEN_restart.bin.ref",1e-6,
+    false, false, false, false, false, true, true );
+
+};
+
+// Water DC-HF/cc-pVDZ with DC-HF guess (READMO from restart)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_DCHFGuess_READMO_restart ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_DCHFGuess_READMO_restart.bin.ref",1e-6,
+    false, false, false, false, false, true, true );
+
+};
 
 #ifdef _CQ_DO_PARTESTS
 

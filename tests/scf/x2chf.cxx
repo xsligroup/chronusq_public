@@ -65,16 +65,6 @@ TEST( X2CHF, Cd_SAP_DZP_DKH3_2012_SP  ) {
  
 };
 
-// Cd SAPPORO DZP DKH_2012 SP with real UHF guess
-TEST( X2CHF, Cd_SAP_DZP_DKH3_2012_SP_UHFGuess  ) {
-
-  CQSCFTEST( "scf/serial/x2c/cd_sap_dz_dkh3_2012_sp_UHFGuess",
-    "cd_sap_dz_dkh3_2012_sp_UHFGuess.bin.ref",1e-6,
-    true, true, true, true, true, true, false,
-    "cd_sap_dz_dkh3_2012_sp_UHF.scr.bin" );
-
-};
-
 // Ag2 sto-3g ALH X2C
 TEST( X2CHF, Ag2_sto3g_ALH_X2C ) {
 
@@ -120,6 +110,104 @@ TEST( X2CHF, UPu_183plus_DCGGS_fockX2C ) {
   CQSCFTEST( "scf/serial/x2c/UPu_183+_P_DCGGS_fockX2C",
              "UPu_183+_P_DCGGS_fockX2C.bin.ref",1e-8,
              false, false, false, false, false, true );
+
+};
+
+// Water X2CHF/cc-pVDZ with RHF guess (READDEN)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_RHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READDEN",
+    "water_cc-pVDZ_X2CHF_RHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with RHF guess (READMO)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_RHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READMO",
+    "water_cc-pVDZ_X2CHF_RHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with ROHF guess (READDEN)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_ROHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READDEN",
+    "water_cc-pVDZ_X2CHF_ROHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with ROHF guess (READMO)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_ROHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READMO",
+    "water_cc-pVDZ_X2CHF_ROHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with UHF guess (READDEN)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_UHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READDEN",
+    "water_cc-pVDZ_X2CHF_UHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with UHF guess (READMO)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_UHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READMO",
+    "water_cc-pVDZ_X2CHF_UHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_UHF.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with X2CHF guess (READDEN from scratch)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_X2CHFGuess_READDEN_scratch ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READDEN",
+    "water_cc-pVDZ_X2CHF_X2CHFGuess_READDEN_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_X2C.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with X2CHF guess (READMO from scratch)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_X2CHFGuess_READMO_scratch ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READMO",
+    "water_cc-pVDZ_X2CHF_X2CHFGuess_READMO_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_X2C.scr.bin" );
+
+};
+
+// Water X2CHF/cc-pVDZ with X2CHF guess (READDEN from restart)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_X2CHFGuess_READDEN_restart ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READDEN",
+    "water_cc-pVDZ_X2CHF_X2CHFGuess_READDEN_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
+// Water X2CHF/cc-pVDZ with X2CHF guess (READMO from restart)
+TEST( X2CHF, Water_ccpVDZ_X2CHF_X2CHFGuess_READMO_restart ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_cc-pVDZ_X2CHF_READMO",
+    "water_cc-pVDZ_X2CHF_X2CHFGuess_READMO_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
 
 };
 

@@ -263,8 +263,10 @@ namespace ChronusQ {
          ss->scfControls.prot_guess == READDEN)
         and scrFileName.empty())
       rstExists = true;
-    else if( (ss->scfControls.guess == READDEN or
-              ss->scfControls.prot_guess == READDEN)
+    else if( (ss->scfControls.guess == READMO or
+             ss->scfControls.guess == READDEN or
+             ss->scfControls.prot_guess == READMO or
+             ss->scfControls.prot_guess == READDEN)
              and not scrFileName.empty() )
       ss->scrBinFileName = scrFileName;
     else if( ss->scfControls.guess == FCHKMO or
@@ -285,6 +287,9 @@ namespace ChronusQ {
         ep_aoints->savFile   = rstFile;
       }
     }
+
+    // Save reference info to bin file
+    saveRefs( ssOptions, ss );
 
     // If doing NEO, propagate setup to subsystems
     if(auto neoss = std::dynamic_pointer_cast<NEOBase>(ss)) {

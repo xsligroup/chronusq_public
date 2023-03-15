@@ -40,6 +40,64 @@ TEST( ROHF, O2_631Gd ) {
 
 };
 
+// Water ROHF/cc-pVDZ with RHF guess (READDEN)
+TEST( ROHF, Water_ccpVDZ_ROHF_RHFGuess_READDEN ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READDEN",
+    "water_cc-pVDZ_ROHF_RHFGuess_READDEN.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water ROHF/cc-pVDZ with RHF guess (READMO)
+TEST( ROHF, Water_ccpVDZ_ROHF_RHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READMO",
+    "water_cc-pVDZ_ROHF_RHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water ROHF/cc-pVDZ with ROHF guess (READDEN from scratch)
+TEST( ROHF, Water_ccpVDZ_ROHF_ROHFGuess_READDEN_scratch ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READDEN",
+    "water_cc-pVDZ_ROHF_ROHFGuess_READDEN_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water ROHF/cc-pVDZ with ROHF guess (READMO from scratch)
+TEST( ROHF, Water_ccpVDZ_ROHF_ROHFGuess_READMO_scratch ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READMO",
+    "water_cc-pVDZ_ROHF_ROHFGuess_READMO_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_ROHF.scr.bin" );
+
+};
+
+// Water ROHF/cc-pVDZ with ROHF guess (READDEN from restart)
+TEST( ROHF, Water_ccpVDZ_ROHF_ROHFGuess_READDEN_restart ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READDEN",
+    "water_cc-pVDZ_ROHF_ROHFGuess_READDEN_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
+// Water ROHF/cc-pVDZ with ROHF guess (READMO from restart)
+TEST( ROHF, Water_ccpVDZ_ROHF_ROHFGuess_READMO_restart ) {
+
+  CQSCFTEST( "scf/serial/rohf/water_cc-pVDZ_ROHF_READMO",
+    "water_cc-pVDZ_ROHF_ROHFGuess_READMO_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 // SMP Li 6-31G(d) test

@@ -69,6 +69,44 @@ TEST( RHF, H2S_ccpvdz_libcint ) {
 
 };
 
+// Water RHF/cc-pVDZ with RHF guess (READDEN from scratch)
+TEST( RHF, Water_ccpVDZ_RHF_RHFGuess_READDEN_scratch ) {
+
+  CQSCFTEST( "scf/serial/rhf/water_cc-pVDZ_RHF_READDEN",
+    "water_cc-pVDZ_RHF_RHFGuess_READDEN_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water RHF/cc-pVDZ with RHF guess (READMO from scratch)
+TEST( RHF, Water_ccpVDZ_RHF_RHFGuess_READMO_scratch ) {
+
+  CQSCFTEST( "scf/serial/rhf/water_cc-pVDZ_RHF_READMO",
+    "water_cc-pVDZ_RHF_RHFGuess_READMO_scratch.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_RHF.scr.bin" );
+
+};
+
+// Water RHF/cc-pVDZ with RHF guess (READDEN from restart)
+TEST( RHF, Water_ccpVDZ_RHF_RHFGuess_READDEN_restart ) {
+
+  CQSCFTEST( "scf/serial/rhf/water_cc-pVDZ_RHF_READDEN",
+    "water_cc-pVDZ_RHF_RHFGuess_READDEN_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
+// Water RHF/cc-pVDZ with RHF guess (READMO from restart)
+TEST( RHF, Water_ccpVDZ_RHF_RHFGuess_READMO_restart ) {
+
+  CQSCFTEST( "scf/serial/rhf/water_cc-pVDZ_RHF_READMO",
+    "water_cc-pVDZ_RHF_RHFGuess_READMO_restart.bin.ref",1e-8,
+    false, false, false, false, false, true, true );
+
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 // SMP Water 6-31G(d) test

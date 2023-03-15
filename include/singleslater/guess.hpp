@@ -24,6 +24,7 @@
 #pragma once
 
 #include <singleslater.hpp>
+#include <singleslater/base.hpp>
 #include <cqlinalg.hpp>
 #include <util/matout.hpp>
 #include <fockbuilder/matrixfock.hpp>
@@ -139,6 +140,19 @@ namespace ChronusQ {
       { 97 , 6 }, // Bk
       { 98 , 5 }, // Cf
       { 99 , 4 }, // Es
+    }
+  );
+
+  // Printing out reference types
+  static std::unordered_map<int,std::string> refMap(
+    {
+      { 1    ,  "1-Component Restricted"            },
+      { 2    ,  "1-Component Unrestricted"          },
+      { 3    ,  "1-Component Restricted Open Shell" },
+      { 4    ,  "2-Component Unrestricted"          },
+      { 5    ,  "2-Component Unrestricted"          },
+      { 6    ,  "2-Component Unrestricted"          },
+      { 7    ,  "4-Component Unrestricted"          },
     }
   );
 
@@ -577,6 +591,20 @@ namespace ChronusQ {
 
     }
 
+    // dimension of 1PDM
+    auto NB = basisSet().nBasis;
+    if( this->nC == 4 ) NB=2*NB;
+    auto NB2 = NB*NB;
+
+#ifdef CQ_ENABLE_MPI
+    // BCast onePDM to all MPI processes
+    if( MPISize(comm) > 1 ) {
+      std::cerr  << "  *** Scattering the onePDM ***\n";
+      for(auto mat : this->onePDM->SZYXPointers())
+        MPIBCast(mat,NB2,0,comm);
+    }
+#endif
+
     ao2orthoDen();
     computeNaturalOrbitals(); // Compute the natural orbitals so RI has an initial set of orbitals
 
@@ -590,209 +618,211 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::readSameTypeDenBin() {
 
-    size_t t_hash = std::is_same<MatsT,double>::value ? 1 : 2;
-    size_t d_hash = 1;
-    size_t c_hash = 2;
+    if( MPIRank(comm) == 0 ) {
 
-    size_t savHash;
-    std::string prefix = "/SCF/";
-    if (this->particle.charge == 1.0)
-      prefix = "/PROT_SCF/";
+      size_t t_hash = std::is_same<MatsT,double>::value ? 1 : 2;
+      size_t d_hash = 1;
+      size_t c_hash = 2;
 
-   try{
-      savFile.readData(prefix + "FIELD_TYPE", &savHash);
-    } catch (...) {
-      CErr("Cannot find " + prefix + "FIELD_TYPE on rstFile!",std::cout);
-    }
+      size_t savHash;
+      std::string prefix = "/SCF/";
+      if (this->particle.charge == 1.0)
+        prefix = "/PROT_SCF/";
 
-
-
-    if( t_hash != savHash ) {
-
-      bool t_is_double  = t_hash == d_hash;
-      bool t_is_complex = t_hash == c_hash;
-
-      bool s_is_double  = savHash == d_hash;
-      bool s_is_complex = savHash == c_hash;
-
-      std::string t_field = t_is_double ? "REAL" : "COMPLEX";
-      std::string s_field = s_is_double ? "REAL" : "COMPLEX";
-
-      std::string message = prefix + "FIELD_TYPE on disk (" + s_field +
-        ") is incompatible with current FIELD_TYPE (" + t_field + ")";
-
-      CErr(message,std::cout);
-    }
+      try{
+        savFile.readData(prefix + "FIELD_TYPE", &savHash);
+      } catch (...) {
+        CErr("Cannot find " + prefix + "FIELD_TYPE on rstFile!",std::cout);
+      }
 
 
+      if( t_hash != savHash ) {
 
-    // dimension of 1PDM
-    auto NB = basisSet().nBasis;
-    if( this->nC == 4 ) NB=2*NB;
-    auto NB2 = NB*NB;
+        bool t_is_double  = t_hash == d_hash;
+        bool t_is_complex = t_hash == c_hash;
 
-    auto DSdims = savFile.getDims( prefix + "1PDM_SCALAR" );
-    auto DZdims = savFile.getDims( prefix + "1PDM_MZ" );
-    auto DYdims = savFile.getDims( prefix + "1PDM_MY" );
-    auto DXdims = savFile.getDims( prefix + "1PDM_MX" ); 
+        bool s_is_double  = savHash == d_hash;
+        bool s_is_complex = savHash == c_hash;
+
+        std::string t_field = t_is_double ? "REAL" : "COMPLEX";
+        std::string s_field = s_is_double ? "REAL" : "COMPLEX";
+
+        std::string message = prefix + "FIELD_TYPE on disk (" + s_field +
+          ") is incompatible with current FIELD_TYPE (" + t_field + ")";
+
+        CErr(message,std::cout);
+      }
+
+
+      // dimension of 1PDM
+      auto NB = basisSet().nBasis;
+      if( this->nC == 4 ) NB=2*NB;
+      auto NB2 = NB*NB;
+
+      auto DSdims = savFile.getDims( prefix + "1PDM_SCALAR" );
+      auto DZdims = savFile.getDims( prefix + "1PDM_MZ" );
+      auto DYdims = savFile.getDims( prefix + "1PDM_MY" );
+      auto DXdims = savFile.getDims( prefix + "1PDM_MX" );
   
-    bool hasDS = DSdims.size() != 0;
-    bool hasDZ = DZdims.size() != 0;
-    bool hasDY = DYdims.size() != 0;
-    bool hasDX = DXdims.size() != 0;
+      bool hasDS = DSdims.size() != 0;
+      bool hasDZ = DZdims.size() != 0;
+      bool hasDY = DYdims.size() != 0;
+      bool hasDX = DXdims.size() != 0;
 
-    bool r2DS = DSdims.size() == 2;
-    bool r2DZ = DZdims.size() == 2;
-    bool r2DY = DYdims.size() == 2;
-    bool r2DX = DXdims.size() == 2;
-
-
-    // Errors in 1PDM SCALAR
-    if( not hasDS )
-      CErr(prefix+"1PDM_SCALAR does not exist in " + savFile.fName(), std::cout); 
-
-    else if( not r2DS ) 
-      CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " + 
-          savFile.fName(), std::cout); 
-
-    else if( DSdims[0] != NB or DSdims[1] != NB ) {
-
-      std::cout << "    * Incompatible " + prefix + "1PDM_SCALAR:";
-      std::cout << "  Recieved (" << DSdims[0] << "," << DSdims[1] << ")"
-        << " :";
-      std::cout << "  Expected (" << NB << "," << NB << ")";
-      CErr("Wrong dimension of 1PDM SCALAR!",std::cout);
-
-    }
-
-    // Read in 1PDM SCALAR
-    std::cout << "    * Found " + prefix + "1PDM_SCALAR !" << std::endl;
-    savFile.readData(prefix + "1PDM_SCALAR",this->onePDM->S().pointer());
+      bool r2DS = DSdims.size() == 2;
+      bool r2DZ = DZdims.size() == 2;
+      bool r2DY = DYdims.size() == 2;
+      bool r2DX = DXdims.size() == 2;
 
 
-    // Oddities in Restricted
-    if( this->nC == 1 and this->iCS ) {
+      // Errors in 1PDM SCALAR
+      if( not hasDS )
+        CErr(prefix+"1PDM_SCALAR does not exist in " + savFile.fName(), std::cout);
 
-      if( hasDZ )
-        std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
-          << "restricted guess but " << savFile.fName() 
-          << " contains " + prefix + "1PDM_MZ" << std::endl;
+      else if( not r2DS )
+        CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " +
+            savFile.fName(), std::cout);
 
-      if( hasDY )
-        std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
-          << "restricted guess but " << savFile.fName() 
-          << " contains SCF/1PDM_MY" << std::endl;
+      else if( DSdims[0] != NB or DSdims[1] != NB ) {
 
-      if( hasDX )
-        std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
-          << "restricted guess but " << savFile.fName() 
-          << " contains SCF/1PDM_MX" << std::endl;
-
-    }
-
-
-    // MZ
-    if( this->nC == 2 or not this->iCS ) {
-
-      if( not hasDZ ) {
-
-        std::cout <<  "    * WARNING: " + prefix + "1PDM_MZ does not exist in "
-          << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MZ" << std::endl;
-
-        this->onePDM->Z().clear();
-
-
-      } else if( not r2DZ ) 
-        CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " + 
-            savFile.fName(), std::cout); 
-
-      else if( DZdims[0] != NB or DZdims[1] != NB ) {
-
-        std::cout << "    * Incompatible " + prefix + "1PDM_MZ:";
-        std::cout << "  Recieved (" << DZdims[0] << "," << DZdims[1] << ")"
+        std::cout << "    * Incompatible " + prefix + "1PDM_SCALAR:";
+        std::cout << "  Recieved (" << DSdims[0] << "," << DSdims[1] << ")"
           << " :";
         std::cout << "  Expected (" << NB << "," << NB << ")";
-        CErr("Wrong dimension of 1PDM MZ!",std::cout);
-
-      } else {
-
-        std::cout << "    * Found " + prefix + "1PDM_MZ !" << std::endl;
-        savFile.readData(prefix + "1PDM_MZ",this->onePDM->Z().pointer());
+        CErr("Wrong dimension of 1PDM SCALAR!",std::cout);
 
       }
 
-      // Oddities in Unrestricted
-      if( this->nC == 2 ) {
+      // Read in 1PDM SCALAR
+      std::cout << "    * Found " + prefix + "1PDM_SCALAR !" << std::endl;
+      savFile.readData(prefix + "1PDM_SCALAR",this->onePDM->S().pointer());
+
+
+      // Oddities in Restricted
+      if( this->nC == 1 and this->iCS ) {
+
+        if( hasDZ )
+          std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
+            << "restricted guess but " << savFile.fName()
+            << " contains " + prefix + "1PDM_MZ" << std::endl;
 
         if( hasDY )
-          std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
-            << "unrestricted guess but " << savFile.fName() 
-            << " contains " + prefix + "1PDM_MY" << std::endl;
+          std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
+            << "restricted guess but " << savFile.fName()
+            << " contains SCF/1PDM_MY" << std::endl;
 
         if( hasDX )
-          std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
-            << "unrestricted guess but " << savFile.fName() 
-            << " contains " + prefix + "1PDM_MX" << std::endl;
-
-      }
-
-    }
-
-
-    if( this->nC == 2 or this->nC == 4 ) {
-
-      if( not hasDY ) {
-
-        std::cout <<  "    * WARNING: " + prefix + "1PDM_MY does not exist in "
-          << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MY" << std::endl;
-
-        this->onePDM->Y().clear();
-
-
-      } else if( not r2DY ) 
-        CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " + 
-            savFile.fName(), std::cout); 
-
-      else if( DYdims[0] != NB or DYdims[1] != NB ) {
-
-        std::cout << "    * Incompatible " + prefix + "1PDM_MY:";
-        std::cout << "  Recieved (" << DYdims[0] << "," << DYdims[1] << ")"
-          << " :";
-        std::cout << "  Expected (" << NB << "," << NB << ")";
-        CErr("Wrong dimension of 1PDM MY!",std::cout);
-
-      } else {
-
-        std::cout << "    * Found " + prefix + "1PDM_MY !" << std::endl;
-        savFile.readData(prefix + "1PDM_MY",this->onePDM->Y().pointer());
+          std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
+            << "restricted guess but " << savFile.fName()
+            << " contains SCF/1PDM_MX" << std::endl;
 
       }
 
 
-      if( not hasDX ) {
+      // MZ
+      if( this->nC == 2 or not this->iCS ) {
 
-        std::cout <<  "    * WARNING: " + prefix + "1PDM_MX does not exist in "
-          << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MX" << std::endl;
+        if( not hasDZ ) {
 
-        this->onePDM->X().clear();
+          std::cout <<  "    * WARNING: " + prefix + "1PDM_MZ does not exist in "
+            << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MZ" << std::endl;
+
+          this->onePDM->Z().clear();
 
 
-      } else if( not r2DX ) 
-        CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " + 
-            savFile.fName(), std::cout); 
+        } else if( not r2DZ )
+          CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " +
+              savFile.fName(), std::cout);
 
-      else if( DXdims[0] != NB or DXdims[1] != NB ) {
+        else if( DZdims[0] != NB or DZdims[1] != NB ) {
 
-        std::cout << "    * Incompatible " + prefix + "1PDM_MX:";
-        std::cout << "  Recieved (" << DXdims[0] << "," << DXdims[1] << ")"
-          << " :";
-        std::cout << "  Expected (" << NB << "," << NB << ")";
-        CErr("Wrong dimension of 1PDM MX!",std::cout);
+          std::cout << "    * Incompatible " + prefix + "1PDM_MZ:";
+          std::cout << "  Recieved (" << DZdims[0] << "," << DZdims[1] << ")"
+            << " :";
+          std::cout << "  Expected (" << NB << "," << NB << ")";
+          CErr("Wrong dimension of 1PDM MZ!",std::cout);
 
-      } else {
+        } else {
 
-        std::cout << "    * Found " + prefix + "1PDM_MX !" << std::endl;
-        savFile.readData(prefix + "1PDM_MX",this->onePDM->X().pointer());
+          std::cout << "    * Found " + prefix + "1PDM_MZ !" << std::endl;
+          savFile.readData(prefix + "1PDM_MZ",this->onePDM->Z().pointer());
+
+        }
+
+        // Oddities in Unrestricted
+        if( this->nC == 2 ) {
+
+          if( hasDY )
+            std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
+              << "unrestricted guess but " << savFile.fName()
+              << " contains " + prefix + "1PDM_MY" << std::endl;
+
+          if( hasDX )
+            std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
+              << "unrestricted guess but " << savFile.fName()
+              << " contains " + prefix + "1PDM_MX" << std::endl;
+
+        }
+
+      }
+
+
+      if( this->nC == 2 or this->nC == 4 ) {
+
+        if( not hasDY ) {
+
+          std::cout <<  "    * WARNING: " + prefix + "1PDM_MY does not exist in "
+            << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MY" << std::endl;
+
+          this->onePDM->Y().clear();
+
+
+        } else if( not r2DY )
+          CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " +
+              savFile.fName(), std::cout);
+
+        else if( DYdims[0] != NB or DYdims[1] != NB ) {
+
+          std::cout << "    * Incompatible " + prefix + "1PDM_MY:";
+          std::cout << "  Recieved (" << DYdims[0] << "," << DYdims[1] << ")"
+            << " :";
+          std::cout << "  Expected (" << NB << "," << NB << ")";
+          CErr("Wrong dimension of 1PDM MY!",std::cout);
+
+        } else {
+
+          std::cout << "    * Found " + prefix + "1PDM_MY !" << std::endl;
+          savFile.readData(prefix + "1PDM_MY",this->onePDM->Y().pointer());
+
+        }
+
+
+        if( not hasDX ) {
+
+          std::cout <<  "    * WARNING: " + prefix + "1PDM_MX does not exist in "
+            << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MX" << std::endl;
+
+          this->onePDM->X().clear();
+
+
+        } else if( not r2DX )
+          CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " +
+              savFile.fName(), std::cout);
+
+        else if( DXdims[0] != NB or DXdims[1] != NB ) {
+
+          std::cout << "    * Incompatible " + prefix + "1PDM_MX:";
+          std::cout << "  Recieved (" << DXdims[0] << "," << DXdims[1] << ")"
+            << " :";
+          std::cout << "  Expected (" << NB << "," << NB << ")";
+          CErr("Wrong dimension of 1PDM MX!",std::cout);
+
+        } else {
+
+          std::cout << "    * Found " + prefix + "1PDM_MX !" << std::endl;
+          savFile.readData(prefix + "1PDM_MX",this->onePDM->X().pointer());
+
+        }
 
       }
 
@@ -810,88 +840,101 @@ namespace ChronusQ {
   template <typename ScrMatsT>
   void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin) {
 
-    // dimension of 1PDM
-    auto NB = basisSet().nBasis;
-    if( this->nC == 4 ) NB=2*NB;
-    auto NB2 = NB*NB;
+    if( MPIRank(comm) == 0 ) {
 
-    auto DSdims = scrBin.getDims( "SCF/1PDM_SCALAR" );
-    auto DZdims = scrBin.getDims( "SCF/1PDM_MZ" );
-    auto DYdims = scrBin.getDims( "SCF/1PDM_MY" );
-    auto DXdims = scrBin.getDims( "SCF/1PDM_MX" );
+      // dimension of 1PDM
+      auto NB = basisSet().nBasis;
+      if( this->nC == 4 ) NB=2*NB;
+      auto NB2 = NB*NB;
 
-    bool hasDS = DSdims.size() != 0;
-    bool hasDZ = DZdims.size() != 0;
-    bool hasDY = DYdims.size() != 0;
-    bool hasDX = DXdims.size() != 0;
+      auto DSdims = scrBin.getDims( "SCF/1PDM_SCALAR" );
+      auto DZdims = scrBin.getDims( "SCF/1PDM_MZ" );
+      auto DYdims = scrBin.getDims( "SCF/1PDM_MY" );
+      auto DXdims = scrBin.getDims( "SCF/1PDM_MX" );
 
-    bool r2DS = DSdims.size() == 2;
-    bool r2DZ = DZdims.size() == 2;
-    bool r2DY = DYdims.size() == 2;
-    bool r2DX = DXdims.size() == 2;
+      bool hasDS = DSdims.size() != 0;
+      bool hasDZ = DZdims.size() != 0;
+      bool hasDY = DYdims.size() != 0;
+      bool hasDX = DXdims.size() != 0;
 
-    // onePDM on scr bin file
-    // assume square and same dimension between S,X,Y,Z
-    std::shared_ptr<PauliSpinorSquareMatrices<ScrMatsT>> onePDMtmp;
-    onePDMtmp = std::make_shared<PauliSpinorSquareMatrices<ScrMatsT>>(memManager,DSdims[0],hasDY,hasDZ);
+      bool r2DS = DSdims.size() == 2;
+      bool r2DZ = DZdims.size() == 2;
+      bool r2DY = DYdims.size() == 2;
+      bool r2DX = DXdims.size() == 2;
 
-    // Errors in 1PDM SCALAR
-    if( not hasDS )
-      CErr("SCF/1PDM_SCALAR does not exist in " + scrBin.fName(), std::cout);
+      int scrRefType, binRefType;
+      scrBin.readData("REF/REFTYPE",&scrRefType);
+      savFile.readData("REF/REFTYPE",&binRefType);
 
-    else if( not r2DS )
-      CErr("SCF/1PDM_SCALAR not saved as a rank-2 tensor in " +
-          scrBin.fName(), std::cout);
+      std::cout << "    * Converting from " << refMap[scrRefType] << " to "
+        << refMap[binRefType] << std::endl;
 
-    // Read in 1PDM SCALAR
-    std::cout << "    * Looking for SCF/1PDM_SCALAR !" << std::endl;
-    scrBin.readData("/SCF/1PDM_SCALAR",onePDMtmp->S().pointer());
+      // onePDM on scr bin file
+      // assume square and same dimension between S,X,Y,Z
+      std::shared_ptr<PauliSpinorSquareMatrices<ScrMatsT>> onePDMtmp;
+      onePDMtmp = std::make_shared<PauliSpinorSquareMatrices<ScrMatsT>>(memManager,DSdims[0],hasDY,hasDZ);
 
-    // MZ
-    if( onePDMtmp->hasZ() ){
+      // Errors in 1PDM SCALAR
+      if( not hasDS )
+        CErr("SCF/1PDM_SCALAR does not exist in " + scrBin.fName(), std::cout);
 
-      std::cout << "    * Looking for SCF/1PDM_MZ !" << std::endl;
-      if( not r2DZ )
-        CErr("SCF/1PDM_MZ not saved as a rank-2 tensor in " +
-          scrBin.fName(), std::cout);
-      scrBin.readData("SCF/1PDM_MZ",onePDMtmp->Z().pointer());
+      else if( not r2DS )
+        CErr("SCF/1PDM_SCALAR not saved as a rank-2 tensor in " +
+            scrBin.fName(), std::cout);
 
-    }
+      // Read in 1PDM SCALAR
+      std::cout << "    * Looking for SCF/1PDM_SCALAR !" << std::endl;
+      scrBin.readData("/SCF/1PDM_SCALAR",onePDMtmp->S().pointer());
 
-    // MY
-    if( onePDMtmp->hasXY() ){
+      // MZ
+      if( onePDMtmp->hasZ() ){
 
-      std::cout << "    * Looking for SCF/1PDM_MX !" << std::endl;
-      if( not r2DX )
-        CErr("SCF/1PDM_MX not saved as a rank-2 tensor in " +
-          scrBin.fName(), std::cout);
-      scrBin.readData("SCF/1PDM_MX",onePDMtmp->X().pointer());
+        std::cout << "    * Looking for SCF/1PDM_MZ !" << std::endl;
+        if( not r2DZ )
+          CErr("SCF/1PDM_MZ not saved as a rank-2 tensor in " +
+            scrBin.fName(), std::cout);
+        scrBin.readData("SCF/1PDM_MZ",onePDMtmp->Z().pointer());
 
-      std::cout << "    * Looking for SCF/1PDM_MY !" << std::endl;
-      if( not r2DY )
-        CErr("SCF/1PDM_MY not saved as a rank-2 tensor in " +
-          scrBin.fName(), std::cout);
-      scrBin.readData("SCF/1PDM_MY",onePDMtmp->Y().pointer());
-
-    }
-
-    std::cout << "\n" << std::endl;
-    // Initialize onePDM
-    auto scr1PDMSize = onePDMtmp->dimension();
-    // Guess 1PDM same size as calculation 1PDM
-    if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;
-    // Guess 1PDM smaller than 1PDM
-    else if( scr1PDMSize < NB ){
-      auto p1Comps = this->onePDM->SZYXPointers();
-      auto p2Comps = onePDMtmp->SZYXPointers();
-      auto nComp = p1Comps.size();
-      for( auto iComp=0; iComp<nComp; iComp++ ){
-        SetMat('N',scr1PDMSize,scr1PDMSize,MatsT(1.),
-             p2Comps[iComp],scr1PDMSize,p1Comps[iComp],NB);
       }
-    } else CErr("Cannot use a guess of larger size.");
 
-    onePDMtmp = nullptr;
+      // MY
+      if( onePDMtmp->hasXY() ){
+
+        std::cout << "    * Looking for SCF/1PDM_MX !" << std::endl;
+        if( not r2DX )
+          CErr("SCF/1PDM_MX not saved as a rank-2 tensor in " +
+            scrBin.fName(), std::cout);
+        scrBin.readData("SCF/1PDM_MX",onePDMtmp->X().pointer());
+
+        std::cout << "    * Looking for SCF/1PDM_MY !" << std::endl;
+        if( not r2DY )
+          CErr("SCF/1PDM_MY not saved as a rank-2 tensor in " +
+            scrBin.fName(), std::cout);
+        scrBin.readData("SCF/1PDM_MY",onePDMtmp->Y().pointer());
+
+      }
+
+      // Initialize onePDM
+      auto scr1PDMSize = onePDMtmp->dimension();
+      // Guess 1PDM same size as calculation 1PDM
+      if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;
+      // Guess 1PDM smaller than 1PDM
+      else if( scr1PDMSize < NB ){
+        auto p1Comps = this->onePDM->SZYXPointers();
+        auto p2Comps = onePDMtmp->SZYXPointers();
+        auto nComp = p1Comps.size();
+        auto n2Comp = p2Comps.size();
+        for( auto iComp=0; iComp<nComp; iComp++ ){
+          if( iComp < n2Comp )
+            SetMat('N',scr1PDMSize,scr1PDMSize,MatsT(1.),
+               p2Comps[iComp],scr1PDMSize,p1Comps[iComp],NB);
+        }
+      } else CErr("Cannot use a guess of larger size.");
+
+      std::cout << "\n" << std::endl;
+      onePDMtmp = nullptr;
+
+    }
 
   } // SingleSlater<T>::getScr1PDM()
 
@@ -919,57 +962,55 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::readDiffTypeDenBin(std::string binName) {
 
-    bool scrBinExists;
-    SafeFile binFile(binName, scrBinExists);
+    if( MPIRank(comm) == 0 ) {
 
-    size_t t_hash = std::is_same<MatsT,double>::value ? 1 : 2;
-    size_t d_hash = 1;
-    size_t c_hash = 2;
-    size_t savHash; 
+      bool scrBinExists;
+      SafeFile binFile(binName, scrBinExists);
 
-    std::string prefix = "/SCF/";
-    if (this->particle.charge == 1.0)
-      prefix = "/PROT_SCF/";
+      size_t t_hash = std::is_same<MatsT,double>::value ? 1 : 2;
+      size_t d_hash = 1;
+      size_t c_hash = 2;
+      size_t savHash;
 
-    try{
-      binFile.readData("/SCF/FIELD_TYPE", &savHash);
-    } catch (...) {
-      CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+      std::string prefix = "/SCF/";
+      if (this->particle.charge == 1.0)
+        prefix = "/PROT_SCF/";
+
+      try{
+        binFile.readData("/SCF/FIELD_TYPE", &savHash);
+      } catch (...) {
+        CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+      }
+
+      // type of 1PDM
+      bool t_is_double  = t_hash == d_hash;
+      bool t_is_complex = t_hash == c_hash;
+
+      bool s_is_double  = savHash == d_hash;
+      bool s_is_complex = savHash == c_hash;
+
+      std::string t_field = t_is_double ? "REAL" : "COMPLEX";
+      std::string s_field = s_is_double ? "REAL" : "COMPLEX";
+
+      std::string message = "    * Going from /SCF/FIELD_TYPE on disk (" + s_field +
+        ") to current FIELD_TYPE (" + t_field + ")";
+
+      std::cout << message << std::endl;
+
+      // Determine storage of 1PDM on scr bin file
+      // Assumes scalar 1PDM is same size as MX, MY, MZ
+      // Assumes square 1PDM
+      if( s_is_double ){
+
+        getScr1PDM<double>(binFile);
+
+      } else if( s_is_complex ){
+
+        getScr1PDM<dcomplex>(binFile);
+
+      } else CErr("Could not determine type of scratch bin file");
+
     }
-
-    // type of 1PDM
-    bool t_is_double  = t_hash == d_hash;
-    bool t_is_complex = t_hash == c_hash;
-
-    bool s_is_double  = savHash == d_hash;
-    bool s_is_complex = savHash == c_hash;
-
-    std::string t_field = t_is_double ? "REAL" : "COMPLEX";
-    std::string s_field = s_is_double ? "REAL" : "COMPLEX";
-
-    std::string message = "Going from /SCF/FIELD_TYPE on disk (" + s_field +
-      ") to current FIELD_TYPE (" + t_field + ")";
-
-    std::cout << message << std::endl;
-
-    // dimension of 1PDM
-    auto NB = basisSet().nBasis;
-    if( this->nC == 4 ) NB=2*NB;
-    auto NB2 = NB*NB;
-
-    // Determine storage of 1PDM on scr bin file
-    // Assumes scalar 1PDM is same size as MX, MY, MZ
-    // Assumes square 1PDM
-    if( s_is_double ){
-
-      getScr1PDM<double>(binFile);
-
-    } else if( s_is_complex ){
-
-      getScr1PDM<dcomplex>(binFile);
-
-    } else CErr("Could not determine type of scratch bin file");
-
 
   } // SingleSlater<T>::readDiffTypeDenBin()
 
@@ -981,9 +1022,47 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::ReadGuessMO() {
 
-    if( printLevel > 0 )
-      std::cout << "    * Reading in guess orbitals from file "
-        << savFile.fName() << "\n";
+    //Check if MOs come from save file or scratch file
+    if( MPIRank(comm) == 0 ) {
+
+      if( scrBinFileName.empty() ){
+
+        if( printLevel > 0 )
+          std::cout << "    * Reading in guess MOs (restart file) from file "
+            << savFile.fName() << "\n";
+
+        readSameTypeMOBin();
+
+      } else {
+
+        if( printLevel > 0 )
+          std::cout << "    * Reading in guess MOs (scratch file) from file "
+            << scrBinFileName << "\n";
+
+        readDiffTypeMOBin(scrBinFileName);
+
+      }
+
+    }
+
+    // MO coefficients from AO to othonormalized basis
+    orthoAOMO();
+
+    // MO swapping if requested
+    if( this->moPairs[0].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isAlpha);
+    if( this->moPairs[1].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isBeta);
+
+    // Form density from MOs
+    formDensity();
+
+  }
+
+  /**
+   *  \brief Reads in MOs from bin file.
+   *
+   **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::readSameTypeMOBin() {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -1095,17 +1174,312 @@ namespace ChronusQ {
 
     }
 
-    // MO coefficients from AO to othonormalized basis
-    orthoAOMO();
+  } // SingleSlater<T>::readSameTypeMOBin()
 
-    // MO swapping if requested
-    if( this->moPairs[0].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isAlpha);
-    if( this->moPairs[1].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isBeta);
+  /**
+   *  \brief Reads in MO from bin file
+   *  of different type as calculation
+   *  and uses it as initial guess.
+   *
+   **/
+  template <typename MatsT, typename IntsT>
+  template <typename ScrMatsT>
+  void SingleSlater<MatsT,IntsT>::getScrMO(SafeFile& scrBin) {
 
-    // Form density from MOs
-    formDensity();
+    // dimension of mo1 and mo2
+    auto NB = this->nC * this->nAlphaOrbital();
+    auto NB2 = NB*NB;
 
-  } // SingleSlater<T>::ReadGuessMO()
+    std::string prefix = "/SCF/";
+
+    auto MO1dims = scrBin.getDims( prefix + "MO1" );
+    auto MO2dims = scrBin.getDims( prefix + "MO2" );
+
+    int scrRefType, binRefType;
+    scrBin.readData("REF/REFTYPE",&scrRefType);
+    savFile.readData("REF/REFTYPE",&binRefType);
+
+    std::cout << "    * Converting from " << refMap[scrRefType] << " to "
+      << refMap[binRefType] << std::endl;
+
+    // Find errors in MO1
+    if( MO1dims.size() == 0 )
+      CErr(prefix + "MO1 does not exist in " + scrBin.fName(), std::cout);
+
+    if( MO1dims.size() != 2 )
+      CErr(prefix + "MO1 not saved as a rank-2 tensor in " + scrBin.fName(),
+          std::cout);
+
+    // MOs on scr bin file
+    std::vector<SquareMatrix<ScrMatsT>> motmp;
+    motmp.emplace_back(memManager, MO1dims[0]);
+    if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) motmp.emplace_back(memManager, MO2dims[0]);
+
+    // Read in MO1
+    std::cout << "    * Found SCF/MO1 !" << std::endl;
+    scrBin.readData(prefix + "MO1",motmp[0].pointer());
+
+    // Unrestricted calculations
+    if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) {
+
+      if( MO2dims.size() == 0 )
+        std::cout << "    * WARNING: SCF/MO2 does not exist in "
+          << scrBin.fName() << " -- Copying SCF/MO1 -> SCF/MO2 " << std::endl;
+
+      if( MO2dims.size() > 2  )
+
+        CErr("SCF/MO2 not saved as a rank-2 tensor in " + scrBin.fName(),
+            std::cout);
+
+      // Read in MO2
+      std::cout << "    * Found SCF/MO2 !" << std::endl;
+      scrBin.readData(prefix + "MO2",motmp[1].pointer());
+
+    }
+
+    // Handle motmp->mo
+    // motmp size (assumes alpha and beta same size)
+    auto scrMOSize = motmp[0].dimension();
+
+    // Guess mo same size as calculation mo
+    if( scrMOSize == NB ){
+
+      // Same size and same type
+      if( scrRefType == binRefType ){
+
+        SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
+        if( binRefType == RefType::isRORef or binRefType == RefType::isURef )
+          SetMat('N',NB,NB,MatsT(1.),motmp[1].pointer(),NB,this->mo[1].pointer(),NB);
+
+      // ROHF guesses
+      }else if( binRefType == RefType::isRORef ){
+
+        // RHF->ROHF
+        if( scrRefType == RefType::isRRef ){
+
+          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
+          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[1].pointer(),NB);
+
+        } else {
+          CErr("Same size guess conversion for ROHF failed.");
+        }
+
+      // UHF guesses
+      }else if( binRefType == RefType::isURef ){
+
+        // RHF/ROHF->UHF
+        if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+
+          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
+          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[1].pointer(),NB);
+
+        } else {
+          CErr("Same size guess conversion for UHF failed.");
+        }
+
+      } else {
+        CErr("This case for guesses from different calcs of same size NYI.");
+      }
+
+    // Guess mo different size as calculation mo
+    } else if( scrMOSize < NB ){
+
+      // 2c guesses
+      if( binRefType == RefType::isTwoCRef or binRefType == RefType::isGRef or binRefType == RefType::isX2CRef ){
+
+        // RHF/ROHF->2c
+        if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+
+          size_t smallMO=0; // RHF/ROHF index
+
+          for( size_t iMO=0; iMO<NB; iMO++ ){
+
+            smallMO = iMO%2==0 ? iMO/2 : (iMO-1)/2;
+
+            // alpha spinor is even and beta is odd
+            if( iMO%2 == 0 )
+              SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO,NB);
+            else if( iMO%2 != 0 )
+              SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO+NB/this->nC,NB);
+
+          }
+
+        // UHF->2c
+        } else if( scrRefType == RefType::isURef ){
+
+          size_t smallMO=0; // UHF index
+
+          for( size_t iMO=0; iMO<NB; iMO++ ){
+
+            smallMO = iMO%2==0 ? iMO/2 : (iMO-1)/2;
+
+            // alpha spinor is even and beta is odd
+            if( iMO%2 == 0 )
+              SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO,NB);
+            else if( iMO%2 != 0 )
+              SetMat('N',scrMOSize,1,MatsT(1.),motmp[1].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO+NB/this->nC,NB);
+
+          }
+
+        } else {
+          CErr("Initial Guess MO Conversion for 2c Failed");
+        } // end 2c guesses
+
+      // 4c guesses
+      } else if( binRefType == RefType::isFourCRef ){
+
+        // 4c MOs stored as alpha-large, alpha-small, beta-large, beta-small
+        // Negative MOs come before positive MOs
+
+        // TODO: Improve negative-energy spinor guess
+        std::cout << "    * WARNING: Four-component guesses only tested for HF" << std::endl;
+
+        // RHF/ROHF->4c
+        if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+
+          size_t smallMO=0; // RHF/ROHF index
+
+          // start from negative energy spinors for now
+          for( size_t iMO=0; iMO<NB; iMO++ ){
+
+            // negative spinors
+            if( iMO < NB/2 ){
+              //skip for now
+            } else {  // positive spinors
+
+              smallMO = iMO%2==0 ? (iMO-NB/2)/2 : (iMO-NB/2-1)/2;
+
+              // alpha spinor is even and beta is odd
+              if( iMO%2 == 0 )
+                SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO,NB);
+              else if( iMO%2 != 0 )
+                SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO+NB/2,NB);
+
+            }
+
+          }
+
+        }else if( scrRefType == RefType::isURef ){ // UHF->4c
+
+          size_t smallMO=0; // UHF index
+
+          // start from negative energy spinors for now
+          for( size_t iMO=0; iMO<NB; iMO++ ){
+
+            // negative spinors
+            if( iMO < NB/2 ){
+              //skip for now
+            } else {  // positive spinors
+
+              smallMO = iMO%2==0 ? (iMO-NB/2)/2 : (iMO-NB/2-1)/2;
+
+              // alpha spinor is even and beta is odd
+              if( iMO%2 == 0 )
+                SetMat('N',scrMOSize,1,MatsT(1.),motmp[0].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO,NB);
+              else if( iMO%2 != 0 )
+                SetMat('N',scrMOSize,1,MatsT(1.),motmp[1].pointer()+scrMOSize*smallMO,scrMOSize,this->mo[0].pointer()+NB*iMO+NB/2,NB);
+
+            }
+
+          }
+
+        // 2c->4c
+        }else if( scrRefType == RefType::isTwoCRef or scrRefType == RefType::isGRef or scrRefType == RefType::isX2CRef ){
+
+          // 2c for plus large alpha
+          SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),motmp[0].pointer(),scrMOSize,this->mo[0].pointer()+NB2/2,NB);
+          // 2c for plus large beta
+          SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),motmp[0].pointer()+scrMOSize/2,scrMOSize,this->mo[0].pointer()+NB2/2+NB/2,NB);
+
+        } else {
+          CErr("Initial Guess MO Conversion for 4c Failed");
+        } // end 4c guesses
+
+      } else { // end check on all types of guesses
+        CErr("Initial Guess MO Conversion NYI");
+      }
+
+    } else CErr("Cannot use a guess of larger size.");
+
+    std::cout << "\n" << std::endl;
+
+    motmp.clear();
+
+  } // SingleSlater<T>::getScrMO()
+
+  template <>
+  template <>
+  void SingleSlater<double,double>::getScrMO<dcomplex>(SafeFile& scrBin) {
+
+    CErr("Cannot do complex guess MOs for real calculation.");
+
+  }
+
+  template <>
+  template <>
+  void SingleSlater<double,dcomplex>::getScrMO<dcomplex>(SafeFile& scrBin) {
+
+    CErr("Cannot do complex guess MOs for real calculation.");
+
+  }
+
+  /**
+   *  \brief Reads in MOs from bin file.
+   *
+   **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName) {
+
+    if( MPIRank(comm) == 0 ) {
+
+      bool scrBinExists;
+      SafeFile binFile(binName, scrBinExists);
+
+      size_t t_hash = std::is_same<MatsT,double>::value ? 1 : 2;
+      size_t d_hash = 1;
+      size_t c_hash = 2;
+
+      size_t savHash;
+
+      std::string prefix = "/SCF/";
+      if (this->particle.charge == 1.0)
+        prefix = "/PROT_SCF/";
+
+      try{
+        binFile.readData(prefix + "FIELD_TYPE", &savHash);
+      } catch (...) {
+        CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+      }
+
+      // type of MO
+      bool t_is_double  = t_hash == d_hash;
+      bool t_is_complex = t_hash == c_hash;
+
+      bool s_is_double  = savHash == d_hash;
+      bool s_is_complex = savHash == c_hash;
+
+      std::string t_field = t_is_double ? "REAL" : "COMPLEX";
+      std::string s_field = s_is_double ? "REAL" : "COMPLEX";
+
+      std::string message = "    * Going from /SCF/FIELD_TYPE on disk (" + s_field +
+        ") to current FIELD_TYPE (" + t_field + ")";
+
+      std::cout << message << std::endl;
+
+      // Determine storage of MOs on scr bin file
+      if( s_is_double ){
+
+        getScrMO<double>(binFile);
+
+      } else if( s_is_complex ){
+
+        getScrMO<dcomplex>(binFile);
+
+      } else CErr("Could not determine type of scratch bin file");
+
+    }
+
+  }
 
   /**
    *  \brief Reads in MOs from fchk file.
