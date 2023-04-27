@@ -190,8 +190,9 @@ namespace ChronusQ {
       }
 
       // Check if alpha or beta block ended
-      if ( tokens.size() == 5 ){
-        if ( tokens[0] == "Orthonormal" and tokens[1] == "basis" ){
+      if ( tokens.size() > 4 ){
+        if ( (tokens[0] == "Orthonormal" and tokens[1] == "basis") or
+             (tokens[0] == "Total" and tokens[1] == "SCF")){
           if( this-> nC == 1){
             if( isBeta ) readBeta = false;
             else readAlpha = false;

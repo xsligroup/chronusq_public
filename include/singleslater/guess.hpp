@@ -1491,6 +1491,7 @@ namespace ChronusQ {
     if( printLevel > 0 ){
       std::cout << "    * Reading in guess orbitals from file " << fchkFileName << "\n";
       std::cout << "      Please check that IOp(3/60=-1) was included in your Gaussian calculation." << "\n";
+      std::cout << "      This functionality works best when the number of primitives is the same." << "\n";
     }
 
     if( this->nC == 4 ) CErr("FCHKMO NYI for 4c",std::cout);
