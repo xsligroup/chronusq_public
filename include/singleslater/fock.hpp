@@ -137,9 +137,14 @@ namespace ChronusQ {
         { "SCALAR", "MZ", "MY", "MX" };
 
       std::vector<MatsT*> CH(coreH->SZYXPointers());
-      for(auto i = 0; i < CH.size(); i++)
-        savFile.safeWriteData("INTS/CORE_HAMILTONIAN_" +
-          spinLabel[i], CH[i], {NB,NB});
+      for(auto i = 0; i < CH.size(); i++){
+
+        try{ savFile.safeWriteData("INTS/CORE_HAMILTONIAN_" +
+          spinLabel[i], CH[i], {NB,NB}); }
+        catch(...){ CErr("Error saving core Hamiltonian. Please use -s. See Running ChronusQ section of wiki.");
+        }
+
+      }
 
     }
 
