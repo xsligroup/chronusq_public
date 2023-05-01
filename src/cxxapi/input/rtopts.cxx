@@ -47,7 +47,8 @@ namespace ChronusQ {
       "RESTART",
       "SCFFIELD",
       "PRINTLEVEL",
-      "ORBITALPOPULATION"
+      "ORBITALPOPULATION",
+      "PRINTDEN"
     };
 
     // Specified keywords
@@ -298,6 +299,11 @@ namespace ChronusQ {
     // Amount of printing in the RT calc
     OPTOPT(
       rt->orbitalPopFreq = input.getData<size_t>("RT.ORBITALPOPULATION");
+    )
+
+    // Whether to print time-dependent density
+    OPTOPT(
+      rt->printDen = input.getData<bool>("RT.PRINTDEN");
     )
 
     return rt;

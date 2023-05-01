@@ -105,6 +105,7 @@ namespace ChronusQ {
     IntegrationData     data;      ///< Data collection
 
     int printLevel = 1; ///< Amount of printing in RT calc
+    bool printDen = false; ///< Print density to out file
     size_t orbitalPopFreq = 0; ///< Amount of printing in RT calc
     
     bool restart   = false; ///< Restarting calc from bin file

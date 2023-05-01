@@ -184,6 +184,8 @@ namespace ChronusQ {
         }
       }
 
+      // Printing out real-time density
+      if( printDen ) propagator_.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(curState.xTime), true);
 
       // Print progress line in the output file
       printRTStep();
