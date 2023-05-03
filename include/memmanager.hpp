@@ -348,6 +348,20 @@ namespace ChronusQ {
 
     }; // CQMemManager operator<<
 
+    /**
+     *  Prints the CQMemManager high-water mark to a specified output
+     *  device.
+     *
+     *  \param [in] out Output device to print the table
+     */
+    void printHighWaterMark(std::ostream &out) const {
+      out << std::endl << "MemManager high-water mark: "
+          << std::fixed << std::setprecision(3)
+          << alloc_span() / 1e9
+          << " GB." << std::endl;
+
+    }; // CQMemManager::printAllocTable
+
   }; // class CQMemManager
 
 }; // namespace ChronusQ

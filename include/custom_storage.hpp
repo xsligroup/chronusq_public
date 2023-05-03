@@ -35,6 +35,8 @@ namespace ChronusQ {
   class CustomMemManager {
     
     void * top;  ///< Pointer to the top of the free list
+    void * origin = nullptr;  ///< Pointer to the historic origin of the free list
+    void * bottom = nullptr;  ///< Pointer to the historic bottom of the allocated memory
     size_t align_size; 
       ///< Size to which added and allocated blocks are aligned
     std::unordered_map<void*,size_t> alloc_blocks;
@@ -228,7 +230,9 @@ namespace ChronusQ {
       // Throw if no block large enough
       if (!ptr)
         throw std::bad_alloc();
-    
+
+      void * new_free = static_cast<void*>(static_cast<char*>(ptr) + req_size);
+      bottom = std::max(bottom, new_free);
       if (req_size == block_size) {
         // Link prev to next if the found block is exactly large enough
         if ( prev ){
@@ -243,7 +247,6 @@ namespace ChronusQ {
       }
       else {
         // Link prev to remaining memory in current block
-        void * new_free = static_cast<void*>(static_cast<char*>(ptr) + req_size);
         get_next(new_free) = get_next(ptr);
         get_size(new_free) = get_size(ptr) - req_size;
         if (top == ptr) {
@@ -349,6 +352,7 @@ namespace ChronusQ {
      */
     void add_ordered_block(void * const block,
       const size_t nsz, const size_t dummy) {
+      origin = block;
       add_block(block, nsz);
     };
 
@@ -373,6 +377,13 @@ namespace ChronusQ {
     void ordered_free_n(void * const chunks, const size_t dummy1,
       const size_t dummy2) {
       free(chunks);
+    };
+
+    /**
+     *  Return the span of the allocated memory
+     */
+    size_t alloc_span() const {
+      return static_cast<char*>(bottom) - static_cast<char*>(origin);
     };
   
   }; // MemManager

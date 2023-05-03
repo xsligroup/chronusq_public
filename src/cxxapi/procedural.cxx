@@ -466,6 +466,8 @@ namespace ChronusQ {
       } // Loop over geometries
     } // Loop over different jobs
 
+    memManager->printHighWaterMark(output);
+
     ProgramTimer::tock("Chronus Quantum");
     printTimerSummary(std::cout);
      
