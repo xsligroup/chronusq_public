@@ -382,10 +382,10 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
 
 
     // MO1 inner product
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,this->nC*NB,NB,T(1.),this->aoints.overlap,NB,
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,this->nC*NB,NB,T(1.),this->aoints_->overlap,NB,
       this->mo[0].pointer(),this->nC*NB,T(0.),SCR2,this->nC*NB);
     if(this->nC == 2)
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,this->nC*NB,NB,T(1.),this->aoints.overlap,NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,this->nC*NB,NB,T(1.),this->aoints_->overlap,NB,
         this->mo[0].pointer()+NB,this->nC*NB,T(0.),SCR2+NB,this->nC*NB);
    
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,this->nC*NB,this->nC*NB,this->nC*NB,T(1.),this->mo[0].pointer(),
@@ -402,7 +402,7 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
 
 
     if(this->nC == 1 and not this->iCS) {
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->aoints.overlap,NB,this->mo[1].pointer(),NB,T(0.),SCR2,NB);
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->aoints_->overlap,NB,this->mo[1].pointer(),NB,T(0.),SCR2,NB);
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->mo[1].pointer(),NB,SCR2,NB,T(0.),SCR3,NB);
 
       for(auto i = 0; i < this->nC*NB; i++)
@@ -679,7 +679,7 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
       
       std::cout << " - Time (N6) for transforming " << moType  <<  " = " << timeDur << " s\n"; 
 
-      if (this->aoints.TPITransAlg == TPI_TRANSFORMATION_ALG::INCORE_N6) {
+      if (this->aoints_->TPITransAlg == TPI_TRANSFORMATION_ALG::INCORE_N6) {
         auto timeIdN5 = tick();
         N5TF.transformTPI(pert, N5MOERI.pointer(), moType, true, false);
         auto timeDur = tock(timeIdN5);
@@ -709,7 +709,7 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
   template <typename MatsT, typename IntsT>
   std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> 
     SingleSlater<MatsT, IntsT>::generateMOIntsTransformer() {
-      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(memManager, *this, this->aoints.TPITransAlg);
+      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(memManager, *this, this->aoints_->TPITransAlg);
   }
 
 /**

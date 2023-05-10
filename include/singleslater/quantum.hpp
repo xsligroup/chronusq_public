@@ -223,7 +223,7 @@ namespace ChronusQ {
     ROOT_ONLY(comm);
     // Compute elecric contribution to the dipoles
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) 
-      this->elecDipole[iXYZ] = -this->template computeOBProperty<SCALAR>((*this->aoints.lenElectric)[iXYZ].pointer());
+      this->elecDipole[iXYZ] = -this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iXYZ].pointer());
 
 
     // Nuclear contributions to the dipoles
@@ -237,7 +237,7 @@ namespace ChronusQ {
     for(size_t jXYZ = iXYZ     ; jXYZ < 3; jXYZ++, iX++){
 
       this->elecQuadrupole[iXYZ][jXYZ] = -
-        this->template computeOBProperty<SCALAR>((*this->aoints.lenElectric)[iX+3].pointer());
+        this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iX+3].pointer());
       
       this->elecQuadrupole[jXYZ][iXYZ] = this->elecQuadrupole[iXYZ][jXYZ]; 
     }
@@ -259,7 +259,7 @@ namespace ChronusQ {
 
       this->elecOctupole[iXYZ][jXYZ][kXYZ] = -
         this->template computeOBProperty<SCALAR>(
-          (*this->aoints.lenElectric)[iX+9].pointer());
+          (*this->aoints_->lenElectric)[iX+9].pointer());
 
       this->elecOctupole[iXYZ][kXYZ][jXYZ] = this->elecOctupole[iXYZ][jXYZ][kXYZ]; 
 
@@ -293,11 +293,11 @@ namespace ChronusQ {
     ROOT_ONLY(comm);
 
     this->SExpect[0] = 0.5 * this->template computeOBProperty<MX>(
-      this->aoints.overlap->pointer());
+      this->aoints_->overlap->pointer());
     this->SExpect[1] = 0.5 * this->template computeOBProperty<MY>(
-      this->aoints.overlap->pointer());
+      this->aoints_->overlap->pointer());
     this->SExpect[2] = 0.5 * this->template computeOBProperty<MZ>(
-      this->aoints.overlap->pointer());
+      this->aoints_->overlap->pointer());
 
     if( not this->onePDM->hasZ() ) this->SSq = 0;
     else {
@@ -308,13 +308,13 @@ namespace ChronusQ {
 
       // SCR2 = S * D(S) * S
 /*      
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),aoints.overlap,NB,this->onePDM[SCALAR],NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),aoints_->overlap,NB,this->onePDM[SCALAR],NB,
         T(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),SCR,NB,aoints.overlap,NB,T(0.),SCR2,NB);
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),SCR,NB,aoints_->overlap,NB,T(0.),SCR2,NB);
 */
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->S().pointer(),NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            SCR,NB,MatsT(0.),SCR2,NB);
 
       
@@ -323,9 +323,9 @@ namespace ChronusQ {
   
 
       // SCR2 = D(Z) * S * D(Z)
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->Z().pointer(),NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            SCR,NB,MatsT(0.),SCR2,NB);
       
       this->SSq += 0.5 * this->template computeOBProperty<MZ>(SCR2);
@@ -333,18 +333,18 @@ namespace ChronusQ {
       if( this->onePDM->hasXY() ) {
   
         // SCR2 = D(Y) * S * D(Y)
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
              this->onePDM->Y().pointer(),NB,MatsT(0.),SCR,NB);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
              SCR,NB,MatsT(0.),SCR2,NB);
         
         this->SSq += 0.5 * this->template computeOBProperty<MY>(SCR2);
 
 
         // SCR2 = D(X) * S * D(X)
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
              this->onePDM->X().pointer(),NB,MatsT(0.),SCR,NB);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
              SCR,NB,MatsT(0.),SCR2,NB);
         
         this->SSq += 0.5 * this->template computeOBProperty<MX>(SCR2);

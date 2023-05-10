@@ -84,7 +84,10 @@ namespace ChronusQ {
     RANDOM,
     READMO,
     READDEN,
-    FCHKMO
+    FCHKMO,
+    // Specific Guess Options For NEO
+    NEOTightProton,
+    NEOConvergeClassical
   };
   /**
    *  The types of steps for the SCF
@@ -137,7 +140,7 @@ namespace ChronusQ {
 
     // Guess Settings
     SS_GUESS guess = SAD;
-    SS_GUESS prot_guess = CORE;
+    SS_GUESS prot_guess = NEOTightProton;
 
     // DIIS settings 
     DIIS_ALG diisAlg = CEDIIS; ///< Type of DIIS extrapolation 

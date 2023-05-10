@@ -54,7 +54,7 @@ namespace ChronusQ {
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
-	  "NRLEVELSHIFT"
+	    "NRLEVELSHIFT"
     };
 
     // Specified keywords
@@ -178,69 +178,75 @@ namespace ChronusQ {
 
 
     // Guess
-    OPTOPT(
-      std::string guessString = input.getData<std::string>("SCF.GUESS");
+    std::string guessString = "SAD";
+    OPTOPT( guessString = input.getData<std::string>("SCF.GUESS"); )
+    trim(guessString);
+    if( not guessString.compare("CORE") )
+      scfControls.guess = CORE;
+    else if( not guessString.compare("SAD") )
+      scfControls.guess = SAD;
+    else if( not guessString.compare("TIGHT") )
+      scfControls.guess = TIGHT;
+    else if( not guessString.compare("RANDOM") )
+      scfControls.guess = RANDOM;
+    else if( not guessString.compare("READMO") )
+      scfControls.guess = READMO;
+    else if( not guessString.compare("READDEN") )
+      scfControls.guess = READDEN;
+    else if( not guessString.compare("FCHKMO") )
+      scfControls.guess = FCHKMO;
+    else if( not guessString.compare("CLASSICAL") )
+      scfControls.guess = NEOConvergeClassical;
+    else
+      CErr("Unrecognized entry for SCF.GUESS");
+    
 
-      if( not guessString.compare("CORE") )
-        scfControls.guess = CORE;
-      else if( not guessString.compare("SAD") )
-        scfControls.guess = SAD;
-      else if( not guessString.compare("TIGHT") )
-        scfControls.guess = TIGHT;
-      else if( not guessString.compare("RANDOM") )
-        scfControls.guess = RANDOM;
-      else if( not guessString.compare("READMO") )
-        scfControls.guess = READMO;
-      else if( not guessString.compare("READDEN") )
-        scfControls.guess = READDEN;
-      else if( not guessString.compare("FCHKMO") )
-        scfControls.guess = FCHKMO;
-      else
-        CErr("Unrecognized entry for SCF.GUESS");
-    )
-
-    OPTOPT(
-      std::string guessString = input.getData<std::string>("SCF.PROT_GUESS");
-
-      if( not guessString.compare("CORE") )
-        scfControls.prot_guess = CORE;
-      else if( not guessString.compare("RANDOM") )
-        scfControls.prot_guess = RANDOM;
-      else if( not guessString.compare("READMO") )
-        scfControls.prot_guess = READMO;
-      else if( not guessString.compare("READDEN") )
-        scfControls.prot_guess = READDEN;
-      else
-        CErr("Unrecognized entry for SCF.PROT_GUESS");
-    )
+    // Proton Guess For NEO Calculations
+    std::string prot_guessString = "TIGHT";
+    OPTOPT( prot_guessString = input.getData<std::string>("SCF.PROT_GUESS"); )
+    trim(prot_guessString);
+    std::cout << prot_guessString << std::endl;
+    if( not prot_guessString.compare("CORE") )
+      scfControls.prot_guess = CORE;
+    else if( not prot_guessString.compare("RANDOM") )
+      scfControls.prot_guess = RANDOM;
+    else if( not prot_guessString.compare("READMO") )
+      scfControls.prot_guess = READMO;
+    else if( not prot_guessString.compare("READDEN") )
+      scfControls.prot_guess = READDEN;
+    else if( not prot_guessString.compare("TIGHT") )
+      scfControls.prot_guess = NEOTightProton;
+    else
+      CErr("Unrecognized entry for SCF.PROT_GUESS");
+    
 
     // ALGORITHM
-    OPTOPT(
+    std::string algString = "CONVENTIONAL";
+    OPTOPT( algString = input.getData<std::string>("SCF.ALG"); )
+    if( not algString.compare("CONVENTIONAL") )
+      scfControls.scfAlg = _CONVENTIONAL_SCF;
+    else if( not algString.compare("NR") )
+      scfControls.scfAlg = _NEWTON_RAPHSON_SCF;
+    else if( not algString.compare("SKIP") )
+      scfControls.scfAlg = _SKIP_SCF;
+    else 
+      CErr("Unrecognized entry for SCF.ALG!");
 
-        std::string algString = input.getData<std::string>("SCF.ALG");
-        if( not algString.compare("CONVENTIONAL") )
-          scfControls.scfAlg = _CONVENTIONAL_SCF;
-        else if( not algString.compare("NR") )
-          scfControls.scfAlg = _NEWTON_RAPHSON_SCF;
-        else if( not algString.compare("SKIP") )
-          scfControls.scfAlg = _SKIP_SCF;
-        else CErr("Unrecognized entry for SCF.ALG!");
-
-    )
 
     // Newton-Raphson SCF Approximation
-    OPTOPT(
-      std::string algString = input.getData<std::string>("SCF.NRAPPROX");
-      if( not algString.compare("FULL") )
-        scfControls.nrAlg = FULL_NR;
-      else if( not algString.compare("BFGS") )
-        scfControls.nrAlg = QUASI_BFGS;
-      else if( not algString.compare("SR1") )
-        scfControls.nrAlg = QUASI_SR1;
-      else if( not algString.compare("GRADDESCENT") )
-        scfControls.nrAlg = GRAD_DESCENT;
-      else CErr("Unrecognized entry for SCF.NRAPPROX");
-    )
+    std::string nrAlgString = "BFGS";
+    OPTOPT( nrAlgString = input.getData<std::string>("SCF.NRAPPROX"); )
+    if( not nrAlgString.compare("FULL") )
+      scfControls.nrAlg = FULL_NR;
+    else if( not nrAlgString.compare("BFGS") )
+      scfControls.nrAlg = QUASI_BFGS;
+    else if( not nrAlgString.compare("SR1") )
+      scfControls.nrAlg = QUASI_SR1;
+    else if( not nrAlgString.compare("GRADDESCENT") )
+      scfControls.nrAlg = GRAD_DESCENT;
+    else 
+      CErr("Unrecognized entry for SCF.NRAPPROX");
+
 
     // Newton-Raphson SCF Initial trust region and level-shift
     OPTOPT(
@@ -262,25 +268,17 @@ namespace ChronusQ {
     )
 
     // Handle DIIS options
-    OPTOPT(
-      std::string diisAlg = input.getData<std::string>("SCF.DIISALG");
-      if( diisAlg == "CDIIS")
-      {
-        scfControls.diisAlg = CDIIS;
-      }
-      else if( diisAlg == "EDIIS" )
-      {
-        scfControls.diisAlg = EDIIS;
-      }
-      else if( diisAlg == "CEDIIS" )
-      {
-        scfControls.diisAlg = CEDIIS;
-      }
-      else
-      {
-        scfControls.diisAlg = CDIIS;
-      }
-    )
+    std::string diisAlgString = "CEDIIS"; 
+    OPTOPT( diisAlgString = input.getData<std::string>("SCF.DIISALG"); )
+    if( not diisAlgString.compare("CEDIIS"))
+      scfControls.diisAlg = CEDIIS;
+    else if( not diisAlgString.compare("CDIIS"))
+      scfControls.diisAlg = CDIIS;
+    else if( not diisAlgString.compare("EDIIS"))
+      scfControls.diisAlg = EDIIS;
+    else
+        CErr("Unrecognized entry for SCF.DIISALG!");
+
 
     // Check if it specifically says DIIS=FALSE
     OPTOPT(

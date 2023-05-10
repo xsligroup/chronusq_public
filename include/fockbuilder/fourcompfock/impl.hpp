@@ -58,7 +58,7 @@ namespace ChronusQ {
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen) {
 
     InCore4indexRelERI<IntsT> &relERI =
-        *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss.aoints.TPI);
+        *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss.aoints_->TPI);
     CQMemManager &mem = ss.memManager;
 
     bool computeExchange = std::abs(xHFX) >= 1e-12; 

@@ -43,16 +43,16 @@ namespace ChronusQ {
       if (not AOTPI) { 
         if(ss_.nC == 1) {
           AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(
-                    *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints.TPI)); 
+                    *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints_->TPI)); 
         } else if (ss_.nC == 2) {
           std::cout << "  * Using bare Coulomb Operator for 2e Integrals" << std::endl;
           AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(
-            std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints.TPI)
+            std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints_->TPI)
               ->template spatialToSpinBlock<MatsT>()); 
         } else if (ss_.nC == 4) {
           AOTPI = std::dynamic_pointer_cast<InCore4indexTPI<MatsT>>(
             std::make_shared<InCore4indexRelERI<MatsT>>(
-              std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss_.aoints.TPI)
+              std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss_.aoints_->TPI)
                 ->template spatialToSpinBlock<MatsT>()));
         }
 

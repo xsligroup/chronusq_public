@@ -59,14 +59,14 @@ namespace ChronusQ {
     //overlap matrix
     tmp = 0.5 * (ss.onePDM->S() - ss.onePDM->Z());
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),tmp.pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints.overlap->matrix()).pointer(),NB,
+         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),pc,NB);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),ss.onePDM->Z().pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints.overlap->matrix()).pointer(),NB,
+         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),po,NB);
     tmp = 0.5 * (ss.onePDM->S() + ss.onePDM->Z());
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(-1.),tmp.pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints.overlap->matrix()).pointer(),NB,
+         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),pv,NB);
     for(auto j = 0; j < NB; j++) pv[j*NB+j] = MatsT(1.) + pv[j*NB+j];
     /*

@@ -487,7 +487,7 @@ namespace ChronusQ {
     for (auto label:labels){  
       auto ssbase =  neoss.getSubSSBase(label);
       SingleSlater<MatsT, IntsT>& ss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*ssbase));
-      Integrals<IntsT>& aoi = ss.aoints;
+      Integrals<IntsT>& aoi = *(ss.aoints_);
       std::vector<IntsT*> opS;
       std::vector<MatsT*> opT;
       bool needTrans = true;

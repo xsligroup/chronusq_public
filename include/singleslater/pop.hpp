@@ -42,13 +42,13 @@ namespace ChronusQ {
     // Mulliken population analysis
     mullikenCharges.clear();
     if (nC != 4) {
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->S().pointer(),NB,MatsT(0.),SCR,NB);
     }
     else {
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.kinetic->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->S().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints.overlap->pointer(),NB,
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->S().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR,NB);
     }
 
@@ -72,9 +72,9 @@ namespace ChronusQ {
     lowdinCharges.clear();
 
 /*
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->aoints.ortho1,NB,this->onePDM[SCALAR],NB,
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->aoints_->ortho1,NB,this->onePDM[SCALAR],NB,
       T(0.),SCR2,NB);
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),this->aoints.ortho1,NB,SCR2,NB,T(0.),SCR,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),this->aoints_->ortho1,NB,SCR2,NB,T(0.),SCR,NB);
 */
 
     for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {

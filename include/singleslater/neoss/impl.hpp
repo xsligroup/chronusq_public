@@ -161,8 +161,8 @@ namespace ChronusQ {
       // Add a new coulomb matrix to the other system
       interCoulomb.at(x.first).insert({label, SquareMatrix<MatsT>(ss->memManager, other_NB)});
 
-      HamiltonianOptions this_options = ss->aoints.options_;
-      HamiltonianOptions other_options = x.second->aoints.options_;
+      HamiltonianOptions this_options = ss->aoints_->options_;
+      HamiltonianOptions other_options = x.second->aoints_->options_;
 
       // New fock builders
       auto this_newFock = std::make_shared<NEOFockBuilder<MatsT,IntsT>>(this_options);

@@ -119,7 +119,7 @@ namespace ChronusQ {
       hamiltonianOptions.OneESpinOrbit = false;
     }
 
-    this->aoints.computeAOOneP(memManager,this->molecule(),
+    this->aoints_->computeAOOneP(memManager,this->molecule(),
         this->basisSet(),emPert, ops, hamiltonianOptions); // compute the necessary 1e ints
 
     // Compute core Hamiltonian
@@ -182,7 +182,7 @@ namespace ChronusQ {
     // Total gradient
     std::vector<double> gradient(nGrad, 0.);
 
-    HamiltonianOptions opts = this->aoints.options_;
+    HamiltonianOptions opts = this->aoints_->options_;
 
     auto printGrad = [&](std::string name, std::vector<double>& vecgrad) {
       std::cout << name << std::endl;
@@ -199,7 +199,7 @@ namespace ChronusQ {
 
 
     // Core H contribution
-    this->aoints.computeGradInts(memManager, this->molecule_, basisSet_, pert,
+    this->aoints_->computeGradInts(memManager, this->molecule_, basisSet_, pert,
       {{OVERLAP, 1},
        {KINETIC, 1},
        {NUCLEAR_POTENTIAL, 1}
@@ -213,7 +213,7 @@ namespace ChronusQ {
 
 
     // 2e contribution
-    this->aoints.computeGradInts(memManager, this->molecule_, basisSet_, pert,
+    this->aoints_->computeGradInts(memManager, this->molecule_, basisSet_, pert,
       {{ELECTRON_REPULSION, 1}},
       opts
     );
@@ -243,7 +243,7 @@ namespace ChronusQ {
       std::vector<SquareMatrix<MatsT>> gradOverlap;
       gradOverlap.reserve(nGrad);
       for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-        gradOverlap.emplace_back((*this->aoints.gradOverlap)[iGrad]->matrix());
+        gradOverlap.emplace_back((*this->aoints_->gradOverlap)[iGrad]->matrix());
       }
 
       // Calculate dV
@@ -337,14 +337,14 @@ namespace ChronusQ {
 
     // Copy the overlap over to scratch space
     if ( nC != 4 ) {
-      std::copy_n(this->aoints.overlap->pointer(),nSQ,overlapSpinor.pointer());
+      std::copy_n(this->aoints_->overlap->pointer(),nSQ,overlapSpinor.pointer());
     } else if( nC == 4 ) {
       // HBL 4C May need a Ints type check (SetMat) to capture GIAO.
       SetMatRE('N',NB/2,NB/2,1.,
-               reinterpret_cast<double*>(this->aoints.overlap->pointer()),NB/2,
+               reinterpret_cast<double*>(this->aoints_->overlap->pointer()),NB/2,
                overlapSpinor.pointer(),NB);
       SetMatRE('N',NB/2,NB/2,1./(2*SpeedOfLight*SpeedOfLight),
-               reinterpret_cast<double*>(this->aoints.kinetic->pointer()),NB/2,
+               reinterpret_cast<double*>(this->aoints_->kinetic->pointer()),NB/2,
                overlapSpinor.pointer()+NB*NB/2+NB/2,NB);
       //prettyPrintSmart(std::cout,"S Metric",SCR1,NB,NB,NB);
     }

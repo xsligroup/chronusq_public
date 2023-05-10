@@ -79,7 +79,7 @@ namespace ChronusQ {
       std::vector<std::shared_ptr<DFTFunctional>> funclist,
       MPI_Comm c, IntegrationParam ip,
       CQMemManager &mem, Molecule &mol, BasisSet &basis,
-      Integrals<IntsT> &aoi, Args... args) : 
+      std::shared_ptr<Integrals<IntsT>> aoi, Args... args) : 
       SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
       WaveFunctionBase(c,mem,mol,basis,args...),
       QuantumBase(c,mem,args...), isGGA_(false),
@@ -116,7 +116,7 @@ namespace ChronusQ {
       std::vector<std::shared_ptr<DFTFunctional>> funclist,
       MPI_Comm c, IntegrationParam ip, 
       CQMemManager &mem, Molecule &mol, BasisSet &basis,
-      Integrals<IntsT> &aoi, Args... args) : 
+      std::shared_ptr<Integrals<IntsT>> aoi, Args... args) : 
       SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
       WaveFunctionBase(c,mem,mol,basis,args...),
       QuantumBase(c,mem,args...), isGGA_(false),

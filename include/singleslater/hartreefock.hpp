@@ -46,7 +46,7 @@ namespace ChronusQ {
 
     template <typename... Args>
     HartreeFock(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
-                Integrals<IntsT> &aoi, Args... args) :
+                std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
       SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
       WaveFunctionBase(c,mem,mol,basis,args...),
       QuantumBase(c,mem,args...) {
@@ -71,7 +71,7 @@ namespace ChronusQ {
     template <typename... Args>
     HartreeFock(std::string rL, std::string rS, MPI_Comm c,
                 CQMemManager &mem, Molecule &mol, BasisSet &basis,
-                Integrals<IntsT> &aoi, Args... args) :
+                std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
       SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
       WaveFunctionBase(c,mem,mol,basis,args...),
       QuantumBase(c,mem,args...) {

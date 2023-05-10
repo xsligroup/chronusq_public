@@ -590,7 +590,7 @@ namespace ChronusQ {
 
     // Compute 4C core Hamiltonian
     fourCompSS.formCoreH(emPert, true);
-    uncontractedInts_ = fourCompSS.aoints;
+    uncontractedInts_ = *(fourCompSS.aoints_);
 
     if (ssOptions_.hamiltonianOptions.x2cType == X2C_TYPE::ONEE) {
 
@@ -602,7 +602,7 @@ namespace ChronusQ {
 
     } else if (ssOptions_.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
 
-      fourCompSS.aoints.computeAOTwoE(uncontractedBasis_, molecule_, emPert);
+      fourCompSS.aoints_->computeAOTwoE(uncontractedBasis_, molecule_, emPert);
 
       // For Fock X2C, solve four-component SCF
       fourCompSS.formGuess(fourCoptions);
@@ -830,7 +830,7 @@ namespace ChronusQ {
     if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
 
       std::shared_ptr<DirectTPI<IntsT>> tpi =
-          std::dynamic_pointer_cast<DirectTPI<IntsT>>(ref.aoints.TPI);
+          std::dynamic_pointer_cast<DirectTPI<IntsT>>(ref.aoints_->TPI);
       double threshSchwarz = 0.0;
       bool incore = tpi == nullptr;
 

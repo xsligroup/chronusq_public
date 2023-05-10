@@ -67,13 +67,13 @@ namespace ChronusQ {
     IntegralsBase* ints = nullptr;
 
     if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) ) {
-      ints = &ss_t->aoints;
+      ints = ss_t->aoints_.get();
     }
     else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) ) {
-      ints = &ss_t->aoints;
+      ints = ss_t->aoints_.get();
     }
     else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) ) {
-      ints = &ss_t->aoints;
+      ints = ss_t->aoints_.get();
     }
 
     return ints;

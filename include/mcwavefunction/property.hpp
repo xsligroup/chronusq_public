@@ -151,9 +151,9 @@ namespace ChronusQ {
 
       for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
         if (referenceWaveFunction().nC == 1)
-                 (*AOdipole)[iXYZ] = (*reference().aoints.lenElectric)[iXYZ];
+                 (*AOdipole)[iXYZ] = (*reference().aoints_->lenElectric)[iXYZ];
         else if (referenceWaveFunction().nC == 2)
-          (*AOdipole)[iXYZ] = (*reference().aoints.lenElectric)[iXYZ]
+          (*AOdipole)[iXYZ] = (*reference().aoints_->lenElectric)[iXYZ]
                                 .template spatialToSpinBlock<IntsT>();
         (*AOdipole)[iXYZ].subsetTransform('N',reference().mo[0].pointer(),
                 nAO, active, (*MOdipole_scr)[iXYZ].pointer(), false);

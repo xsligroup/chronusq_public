@@ -129,7 +129,7 @@ namespace ChronusQ {
      */ 
     template <typename... Args>
     SingleSlater(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
-                 Integrals<IntsT> &aoi, Args... args) :
+                 std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
       SingleSlaterBase(c,mem,mol,basis,args...),
       WaveFunctionBase(c,mem,mol,basis,args...),
       QuantumBase(c,mem,args...),
@@ -222,6 +222,8 @@ namespace ChronusQ {
     void ReadGuessMO();
     void ReadGuess1PDM();
     void FchkGuessMO();
+    void NEOTightProtonGuess();
+    void NEOConvergeClassicalGuess(const SingleSlaterOptions&);
     void computeNaturalOrbitals();
     void getNewOrbitals();
 

@@ -1072,10 +1072,10 @@ namespace ChronusQ {
       CErr("Proton Kohn Sham references require EPC functionals");
 
   #define KS_LIST(T) \
-    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mem,mol,basis,dynamic_cast<Integrals<T>&>(*aoints),refOptions.nC,refOptions.iCS,p
+    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mem,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
 
   #define HF_LIST(T) \
-    MPI_COMM_WORLD,mem,mol,basis,dynamic_cast<Integrals<T>&>(*aoints),refOptions.nC,refOptions.iCS,p
+    MPI_COMM_WORLD,mem,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
 
     // Construct the SS object
     std::shared_ptr<SingleSlaterBase> ss;
@@ -1534,7 +1534,7 @@ namespace ChronusQ {
 
     Particle p{-1., 1.};
 #define NEO_LIST(T) \
-    MPI_COMM_WORLD,mem,mol,ebasis,dynamic_cast<Integrals<T>&>(*epaoints),1,false,p
+    MPI_COMM_WORLD,mem,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
 
     auto essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
     auto pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., ProtMassPerE}, "PROTQM");

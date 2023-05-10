@@ -281,7 +281,7 @@ namespace ChronusQ {
 
       for(auto i = 0;    i < 3;     i++)
         ss.fockMatrix->S() -=
-          2. * dipAmp[i] * (*ss.aoints.lenElectric)[i].matrix();
+          2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i].matrix();
 
     }
 
@@ -353,10 +353,10 @@ namespace ChronusQ {
     bool hasXY = ss.exchangeMatrix->hasXY();
     bool hasZ = ss.exchangeMatrix->hasZ();
 
-    if( not ss.aoints.gradERI )
+    if( not ss.aoints_->gradERI )
       CErr("Gradient ERI missing in FockBuilder::getGDGrad!");
 
-    GradInts<TwoPInts,IntsT>& gradERI = *ss.aoints.gradERI;
+    GradInts<TwoPInts,IntsT>& gradERI = *ss.aoints_->gradERI;
 
     // Form contraction
     // TODO: There's gotta be a better way to do this...

@@ -490,17 +490,17 @@ namespace ChronusQ {
     out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha)";
 
     if( this->nC == 4 ) out << " for Large component";
-    analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(), this->mo[0].pointer(),
+    analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(), this->mo[0].pointer(),
             NOrb, molecule(), basisSet(), this->memManager, groupAtm, MO2);
 
     if( not groupAB and (this->nC >= 2 or not this->iCS) ) {
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta)";
       if( this->nC == 4 ) out << " for Large component";
       if( this->nC == 1 )
-        analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(),
               this->mo[1].pointer(), NOrb, molecule(), basisSet(), this->memManager, groupAtm);
       else
-        analyzeMOPrint(out, NB, NOrb, aoints.overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(),
               this->mo[0].pointer() + (this->nC/2)*NB, NOrb, molecule(), basisSet(),
               this->memManager, groupAtm);
 
@@ -508,7 +508,7 @@ namespace ChronusQ {
 
     if( this->nC == 4 ) {
       IntsT* ssOverlap = this->memManager.template malloc<IntsT>(NB*NB);
-      SetMat('N',NB,NB,1./(2*SpeedOfLight*SpeedOfLight),this->aoints.kinetic->pointer(),
+      SetMat('N',NB,NB,1./(2*SpeedOfLight*SpeedOfLight),this->aoints_->kinetic->pointer(),
                 NB,ssOverlap,NB);
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha) for Small component";
       analyzeMOPrint(out, NB, NOrb, ssOverlap, this->mo[0].pointer() + NB,

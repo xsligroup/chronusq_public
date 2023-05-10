@@ -60,7 +60,7 @@ namespace ChronusQ {
 
   public:
 
-    Integrals<IntsT> &aoints; ///< AOIntegrals for the storage of integrals
+    std::shared_ptr<Integrals<IntsT>> aoints_; ///< AOIntegrals for the storage of integrals
 
     // Operator storage
 
@@ -86,12 +86,12 @@ namespace ChronusQ {
      *  \param [in] iCS  Whether or not to treat as closed shell
      */ 
     WaveFunction(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
-                 Integrals<IntsT> &aoi, size_t _nC, bool iCS, Particle p = {-1.0,1.0}) :
+                 std::shared_ptr<Integrals<IntsT>> aoi, size_t _nC, bool iCS, Particle p = {-1.0,1.0}) :
       QuantumBase(c, mem,_nC,iCS,p),
       WaveFunctionBase(c, mem, mol, basis,_nC,iCS,p),
       Quantum<MatsT>(c, mem,_nC,iCS,p,basis.nBasis),
       //molecule_(mol), basisSet_(basis), 
-      eps1(nullptr), eps2(nullptr), aoints(aoi) {
+      eps1(nullptr), eps2(nullptr), aoints_(aoi) {
 
       // Compute meta data
       size_t nBasis = basis.nBasis;

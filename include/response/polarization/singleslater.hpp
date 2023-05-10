@@ -1459,7 +1459,7 @@ namespace ChronusQ {
     std::vector<IntsT*> opS;
     std::vector<MatsT*>      opT;
 
-    Integrals<IntsT> &aoi    = this->ref_->aoints;
+    Integrals<IntsT> &aoi    = *(this->ref_->aoints_);
     SingleSlater<MatsT, IntsT>& ss = dynamic_cast<SingleSlater<MatsT, IntsT>&>(*this->ref_);
 
     bool needTrans = true;

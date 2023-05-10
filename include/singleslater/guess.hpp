@@ -188,26 +188,10 @@ namespace ChronusQ {
       else if( scfControls.guess == READMO ) ReadGuessMO();
       else if( scfControls.guess == READDEN ) ReadGuess1PDM();
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
-      else if (this->particle.charge > 0){
-      // For NEO, it is observed that using a tight guess (where each quantum proton occupy the tightest orbital on them) 
-      // leads to better behavior. 
-
-      // FIXME: Protonic guess needs to be cleaned up
-        size_t numProt = this->nOA, NB = this->basisSet().nBasis, NB_per_prot = NB / numProt;
-        this->onePDM->S().clear();
-        this->mo[0].clear();
-        this->mo[1].clear();
-        for(int i = 0; i < numProt; i++) {
-          this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = 1;
-          this->mo[0](i*NB_per_prot, i) = 1;
-        }
-        this->onePDM->Z() = this->onePDM->S();
-
-        std::cout << "      Each quantum proton occupies the tightest orbital. " << std::endl;
-        std::cout << std::endl;
-      } else if ( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) {
-        CoreGuess();
-      } else if ( scfControls.guess == CORE ) CoreGuess();
+      else if( scfControls.guess == NEOTightProton ) NEOTightProtonGuess();
+      else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(ssOptions);
+      else if( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) CoreGuess();
+      else if( scfControls.guess == CORE ) CoreGuess();
       else if( scfControls.guess == TIGHT ) TightGuess();
       else if( scfControls.guess == SAD ) SADGuess(ssOptions);
       else CErr("Unknown choice for SCF.GUESS",std::cout);
@@ -219,14 +203,14 @@ namespace ChronusQ {
       size_t NB = this->basisSet().nBasis;
 
       double TS =
-        this->template computeOBProperty<SCALAR>(this->aoints.overlap->pointer());
+        this->template computeOBProperty<SCALAR>(this->aoints_->overlap->pointer());
 
       double TZ =
-        this->template computeOBProperty<MZ>(this->aoints.overlap->pointer());
+        this->template computeOBProperty<MZ>(this->aoints_->overlap->pointer());
       double TY =
-        this->template computeOBProperty<MY>(this->aoints.overlap->pointer());
+        this->template computeOBProperty<MY>(this->aoints_->overlap->pointer());
       double TX =
-        this->template computeOBProperty<MX>(this->aoints.overlap->pointer());
+        this->template computeOBProperty<MX>(this->aoints_->overlap->pointer());
 
       double magNorm = std::sqrt(TZ*TZ + TY*TY + TX*TX);
 
@@ -1530,6 +1514,91 @@ namespace ChronusQ {
     formDensity();
 
   } // SingleSlater<T>::FchkGuessMO()
+
+  /**
+   *  \brief For NEO Protons Only: 
+   *         Occupy the tightest orbital for each quantum pron
+   **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::NEOTightProtonGuess(){
+    
+    if(this->particle.charge<0)
+      CErr("NEOTightProtonGuess Doesn't Apply to Electronic Wavefunction");
+
+    size_t numProt = this->nOA, NB = this->basisSet().nBasis, NB_per_prot = NB / numProt;
+    
+    this->onePDM->S().clear();
+    this->mo[0].clear();
+    this->mo[1].clear();
+    for(int i = 0; i < numProt; i++) {
+      this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = 1;
+      this->mo[0](i*NB_per_prot, i) = 1;
+    }
+    this->onePDM->Z() = this->onePDM->S();
+
+    std::cout << "      Each quantum proton occupies the tightest orbital. " << std::endl;
+    std::cout << std::endl;
+
+  } // SingleSlater<MatsT,IntsT>::NEOTightProtonGuess()
+
+  /**
+   *  \brief For NEO Electronic Wavefunction Only: 
+   *         Converge a classical SCF, then use converged density as guess for NEO electronic subsystem
+   **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::NEOConvergeClassicalGuess(const SingleSlaterOptions &ssOptions){
+
+
+    std::cout << "    * Converging a classical SCF calculation " << std::endl;
+    std::cout << "      The converged density will be used as the guess the electronic subsystem " << "\n" << std::endl;
+
+    size_t NB = this->basisSet().nBasis;
+    EMPerturbation pert;
+
+    // Zero out the densities (For all MPI processes)
+    this->onePDM->clear();
+
+    SingleSlaterOptions classicalSSOptions(ssOptions);
+
+    // Create a temporary molecule and set quantum atoms to be classical
+    Molecule tempMol(this->molecule());
+    for ( Atom& atom : tempMol.atoms ) if (atom.quantum) atom.quantum = false;
+    tempMol.update();
+
+    // Grab the pointer of the pre-built and computed aoints 
+    std::shared_ptr<Integrals<IntsT>> tempaoints = this->aoints_;
+
+    // Create temporary singleslater object to converge a classical calculation
+    std::shared_ptr<SingleSlater<MatsT,IntsT>> classicalSS =
+        std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(
+            classicalSSOptions.buildSingleSlater(std::cout, memManager, tempMol, 
+                this->basisSet(), tempaoints));
+
+    classicalSS->printLevel = 1;
+    classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;
+    classicalSS->scfControls.guess =   SAD; 
+    classicalSS->buildModifyOrbitals();
+
+    classicalSS->formCoreH(pert, false);
+    classicalSS->formGuess(classicalSSOptions);
+    classicalSS->formFock(pert, false);
+    classicalSS->runModifyOrbitals(pert);
+
+    std::cout << "\nClassical SCF Calculation Converged!" << std::endl;
+    std::cout << "\nWill use this converged density as the guess density\n"  
+        << "for the electronic subsystem in subsequent NEO calculation\n" << std::endl;
+
+    // Place the converged SCF densities into the guess density
+    // *** This only places it into root MPI process ***
+    SetMat('N',NB,NB,MatsT(1.),classicalSS->onePDM->S().pointer(),NB,
+      this->onePDM->S().pointer(),NB);
+
+    if( this->onePDM->hasZ() ) 
+      this->onePDM->Z() = (MatsT(this->nOA - this->nOB) / MatsT(this->nO)) * this->onePDM->S();
+
+    ao2orthoDen();
+
+  } // SingleSlater<MatsT,IntsT>::NEOConvergeClassicalGuess
 
   /*
    * Brief: Computes the Natural orbitals from the orthogonal

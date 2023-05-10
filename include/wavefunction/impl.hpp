@@ -49,7 +49,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   template <typename MatsU> 
   WaveFunction<MatsT,IntsT>::WaveFunction(const WaveFunction<MatsU,IntsT> &other,int dummy) :
-    aoints(other.aoints),
+    aoints_(other.aoints_),
     QuantumBase(dynamic_cast<const QuantumBase &>(other)),
     WaveFunctionBase(dynamic_cast<const WaveFunctionBase &>(other)),
     Quantum<MatsT>(dynamic_cast<const Quantum<MatsU>&>(other)) {
@@ -81,7 +81,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   template <typename MatsU> 
   WaveFunction<MatsT,IntsT>::WaveFunction(WaveFunction<MatsU,IntsT> &&other, int dummy) : 
-    aoints(other.aoints),
+    aoints_(other.aoints_),
     QuantumBase(dynamic_cast<QuantumBase &&>(std::move(other))),
     WaveFunctionBase(dynamic_cast<WaveFunctionBase &&>(std::move(other))),
     Quantum<MatsT>(dynamic_cast<Quantum<MatsU>&&>(std::move(other))) {
