@@ -28,7 +28,7 @@
 //NEO-DFT with minimal basis set, using epc17 functional
 TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc17) {
 
-  CQSCFTEST( "scf/serial/neo_rks/water_sto-3g_prot-sp_rb3lyp_uepc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref" );
+  CQNEOSCFTEST( "scf/serial/neo_rks/water_sto-3g_prot-sp_rb3lyp_uepc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref" );
  
 }
 
@@ -36,7 +36,7 @@ TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc17) {
 //NEO-DFT with minimal basis set, using epc19 functional
 TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc19) {
 
-  CQSCFTEST( "scf/serial/neo_rks/water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
+  CQNEOSCFTEST( "scf/serial/neo_rks/water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
  
 }
 
@@ -46,7 +46,7 @@ TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc19) {
 //NEO-DFT with minimal basis set, using epc17 functional, parallel job
 TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc17) {
 
-  CQSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref" );
+  CQNEOSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref" );
  
 }
 
@@ -56,7 +56,7 @@ TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc17) {
 // //NEO-DFT with minimal basis set, using epc19 functional, parallel job
 // TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc19) {
 // 
-//   CQSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
+//   CQNEOSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
 //  
 // }
 

@@ -183,9 +183,34 @@ namespace ChronusQ {
         return order_;
       }
 
-      // Pass-through to each functions
       void saveCurrentState() {
+        // Pass-through to each subsystems 
         applyToEach([](SubSSPtr& ss){ ss->saveCurrentState(); });
+        ROOT_ONLY(this->comm);
+
+        // Save total energy
+        if( this->savFile.exists() ) {
+
+          size_t t_hash = std::is_same<MatsT, double>::value ? 1 : 2;
+
+          // Save Field type
+          std::string prefix = "NEO/";
+
+          // Save Energies
+          this->savFile.safeWriteData(prefix + "ELEC_ENERGY", &(subsystems["Electronic"]->totalEnergy), {1});
+          this->savFile.safeWriteData(prefix + "PROT_ENERGY", &(subsystems["Protonic"]->totalEnergy), {1});
+          this->savFile.safeWriteData(prefix + "NUC_REP_ENERGY", &this->molecule().nucRepEnergy, {1});
+          this->savFile.safeWriteData(prefix + "TOTAL_ENERGY", &this->totalEnergy, {1});
+
+          // Save Multipoles
+          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_DIPOLE", &this->elecDipole[0], {3});
+          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_QUADRUPOLE", &this->elecQuadrupole[0][0], {3, 3});
+          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_OCTUPOLE", &this->elecOctupole[0][0][0], {3, 3, 3});
+
+        } else {
+          CErr("savFile does not exist!");
+        }
+
       }
 
       void formGuess(const SingleSlaterOptions& ssopt) {

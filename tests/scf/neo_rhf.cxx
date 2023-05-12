@@ -28,7 +28,7 @@
 // HF NEO-Test with minimal basis set
 TEST( NEO_RHF, water_sto3g_protsp ) {
 
-  CQSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf", "water_sto-3g_prot-sp_rhf.bin.ref" );
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf", "water_sto-3g_prot-sp_rhf.bin.ref" );
  
 };
 
@@ -38,7 +38,7 @@ TEST( NEO_RHF, water_sto3g_protsp ) {
 // HF NEO-Test with minimal basis set, parallel job
 TEST( NEO_RHF, par_water_sto3g_protsp ) {
 
-  CQSCFTEST( "scf/parallel/neo_rhf/water_sto-3g_prot-sp_rhf", "water_sto-3g_prot-sp_rhf.bin.ref" );
+  CQNEOSCFTEST( "scf/parallel/neo_rhf/water_sto-3g_prot-sp_rhf", "water_sto-3g_prot-sp_rhf.bin.ref" );
  
 };
 #endif
