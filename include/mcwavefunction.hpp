@@ -136,6 +136,7 @@ namespace ChronusQ {
       this->reference().swapMOs(moPairs,sp);
     };
     
+    void ReadGuessCIVector(std::vector<std::string>);
     virtual void saveCurrentStates(bool);
     void setMORanges();
     void transformInts(EMPerturbation &);

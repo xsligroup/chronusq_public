@@ -23,6 +23,8 @@
  */
 #include <cxxapi/options.hpp>
 #include <cerr.hpp>
+#include <regex>
+#include <physcon.hpp>
 #include <mcwavefunction/base.hpp>
 #include <mcscf.hpp>
 #include <fockbuilder/rofock.hpp>
@@ -44,11 +46,13 @@ namespace ChronusQ {
       "NACTE",
       "RAS1MAXHOLE",
       "RAS3MAXELEC",
+      "READCI",
       "CIDIAGALG",
       "CICONV",
       "MAXCIITER",
       "MAXSCFITER",
       "STATEAVERAGE",
+      "SAWEIGHTS",
       "SCFENECONV",
       "SCFGRADCONV",
       "SCFALG",
@@ -82,6 +86,82 @@ namespace ChronusQ {
     }
     // Check for disallowed combinations (if any)
   }
+
+  size_t HandleNRootsInput(std::string nroots,
+                    std::vector<std::pair<double, size_t>> &energyRefs) {
+
+    size_t nRoots = 0;
+    bool lowRoots = false;
+    std::vector<std::string> nRTokens;
+    std::istringstream nRStream(nroots);
+    for( std::string line; std::getline(nRStream, line); ) {
+      std::cout<<line<<std::endl;
+      split(nRTokens, line, " \t,");
+
+      if( nRTokens.size() == 0) continue;
+      else if ( nRTokens.size() == 1) {
+        // only allow one entry of the number of low energy roots
+        if (!lowRoots) {
+          nRoots += std::stoul(nRTokens[0]);
+          lowRoots = true;
+          continue;
+        }
+        else CErr("Too many input for number of low energy roots.");
+      }
+      else if ( nRTokens.size() > 2 ) CErr("Too many parameters for Energy Specific Settings in one line.");
+
+      // default energy unit is a.u.
+      std::regex EThreshold("([+-]?[0-9]+([.][0-9]*)?|[.][0-9]+)");
+      std::smatch ethres;
+      std::regex_search(nRTokens[0], ethres, EThreshold);
+      double Ethres;
+      if (ethres.str(1).size()>0) {
+        Ethres = std::stod(ethres.str(1));
+      }
+
+      auto const regexAU = std::regex("a.u.|au|Hartree",std::regex_constants::icase);
+      auto const regexEV = std::regex("ev|electronvolt",std::regex_constants::icase);
+      auto const regexNM = std::regex("nm|nanometer",std::regex_constants::icase);
+      double unit = 1.;
+      if ( std::regex_search(nRTokens[0], regexAU) ) unit = 1.;
+      else if ( std::regex_search(nRTokens[0], regexEV) ) unit = EVPerHartree;
+      else if ( std::regex_search(nRTokens[0], regexNM) ) unit = NMPerHartree;
+
+      energyRefs.emplace_back(Ethres / unit, std::stoul(nRTokens[1]));
+      nRoots += std::stoul(nRTokens[1]);
+    }
+
+    return nRoots;
+
+  } // HandleNRootsInput
+
+  std::vector<double> HandleSAWeightsInput(CQInputFile &input,
+    size_t nR) {
+
+    std::string sSAWeights;
+    std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
+
+    OPTOPT( sSAWeights = input.getData<std::string>("MCSCF.SAWEIGHTS"); )
+    if (!sSAWeights.empty()) {
+      std::cout << "  * Manual State Average Weights Detected: " << std::endl;
+      //Parse SAWeights string
+      std::vector<std::string> saTokens;
+      split(saTokens, sSAWeights, " ,;");
+      if (saTokens.size() != nR) CErr("Number of Input State Average Weights does not match number of roots.");
+      for (auto i=0; i < nR; i++)
+        SAWeights[i] = std::stod(saTokens[i]);
+    }
+
+    // post process
+    double sum = std::accumulate(SAWeights.begin(), SAWeights.end(), 0.);
+    if (sum != 1) {
+      std::cout << "   Rescale State Average Weights Sum to 1." << std::endl;
+      for (auto i = 0ul; i < SAWeights.size(); i++)
+        SAWeights[i] = SAWeights[i]/sum;
+    }
+    return SAWeights;
+
+  } // HandleSAWeightsInput
 
   void HandleRDMPrinting(std::ostream &out, CQInputFile &input,
     std::shared_ptr<MCWaveFunctionBase> &mcwf) {
@@ -307,11 +387,12 @@ namespace ChronusQ {
     MCSCFSettings * mcscfSettings;   
     
     // parse number of roots
-    size_t nR; 
-	try {
-      nR = input.getData<int>("MCSCF.NROOTS"); 
-    } catch (...) {
-      nR = 1;
+    size_t nR = 1;
+    std::string nRoots;
+    std::vector<std::pair<double, size_t>> EnergyRefs;
+    OPTOPT(nRoots = input.getData<std::string>("MCSCF.NROOTS");)
+    if ( not nRoots.empty() ) {
+      nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
     
     // Construct MCSCF object
@@ -485,7 +566,9 @@ namespace ChronusQ {
       mcscf->MOPartition.orbIndices = inputOrbIndices;
       mcscf->setActiveSpaceAndReOrder();
     }    
-        
+
+    OPTOPT( mcscf->readCI = input.getData<bool>("MCSCF.READCI");)
+ 
     // Parse CI Options
     if (isCI or isSCF) {
 
@@ -508,6 +591,7 @@ namespace ChronusQ {
                   input.getData<size_t>("MCSCF.MAXDAVIDSONSPACE");)
         OPTOPT( mcscfSettings->nDavidsonGuess = 
                   input.getData<size_t>("MCSCF.NDAVIDSONGUESS");)
+        if (!EnergyRefs.empty()) mcscfSettings->energyRefs = EnergyRefs;
       } else CErr(ciALG + "is not a valid MCSCF.CIDIAGALG",out);
       
     } // CI Options
@@ -529,8 +613,7 @@ namespace ChronusQ {
       bool StateAverage = false;
       OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
       if(StateAverage) {
-        //TODO: make as input in the future
-        std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
+        std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
         mcscf->turnOnStateAverage(SAWeights);
       }
       

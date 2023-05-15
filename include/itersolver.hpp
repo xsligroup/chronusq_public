@@ -553,7 +553,7 @@ namespace ChronusQ {
   class Davidson : public IterDiagonalizer<_F> {
 
     bool DoLeftEigVec   = false;
-    bool sortByDistance = false;
+//    bool sortByDistance = false;
     size_t GramSchmidt_NRe = 1;
     double GramSchmidt_eps = 1e-12;
 
@@ -566,11 +566,12 @@ namespace ChronusQ {
     double eigenVectorCrit = 1e-5;
 
     // Energy specific options
-    bool EnergySpecific = false;
-    size_t nHighERoots  = 0;
+    std::vector<std::pair<double, size_t>> energyRefs;
+    bool AbsoluteES = false; // use absolute energy threshold or relative energy threshold
+//    size_t nHighERoots  = 0;
     size_t  nLowERoots  = 0;
-    double EnergyRef    = 0.;
-    bool adaptiveERef   = false; // use loweset eigenvalues at current iteration
+//    double EnergyRef    = 0.;
+//    bool adaptiveERef   = false; // use loweset eigenvalues at current iteration
 
     double   *RelRes  = nullptr;
     std::shared_ptr<SolverVectors<_F>> Guess = nullptr;
@@ -588,7 +589,7 @@ namespace ChronusQ {
   public:
 
     size_t m = 50;
-    size_t whenSc = 2;
+    size_t whenSc = 2; // Iteration at which to scale back the number of vectors added, or 0 if no change.
     size_t kG = 3;
 
     using VecsGen_t = typename IterSolver<_F>::VecsGen_t;
@@ -701,26 +702,27 @@ namespace ChronusQ {
 
     void restart();
 
-    void useEnergySpecific(size_t nHER, double energyThd, double ERef) {
-      assert (this->nRoots_ >= nHER);
-//      assert (energyThd > 0);
+    void setEnergySpecific(std::vector<std::pair<double, size_t>> eRefs,
+                           bool AbsoluteES = false, double ABSshift = 0.) {
 
-      this->EnergySpecific = true;
-      this->nHighERoots    = nHER;
-      this->nLowERoots     = this->nRoots_ - nHER;
-      this->EnergyRef      = ERef;
-    }
+      this->AbsoluteES = AbsoluteES;
+      // double check nRoots is not smaller than total number of high energy roots
+      size_t nHighR = 0;
+      for (auto & pair: eRefs) {
+        nHighR += pair.second;
+        if (AbsoluteES) pair.first = pair.first - ABSshift;
+      }
+      if (this->nRoots_ < nHighR) CErr("Total #Roots required by energy specific is more than nRoots.");
+      this->nLowERoots     = this->nRoots_ - nHighR;
+      this->energyRefs = eRefs;
 
-    void useEnergySpecific(size_t nHER, double energyThd) {
-      this->adaptiveERef = true;
-      this->useEnergySpecific(nHER, energyThd, 0.);
     }
 
     void doLeftEigenvector() {this->DoLeftEigVec = true; }
 
-    void setSortByDistance(){
-      this->sortByDistance = true;
-    }
+//    void setSortByDistance(){
+//      this->sortByDistance = true;
+//    }
 
     virtual void setGuess(size_t nGuess,
         std::function<void(size_t, SolverVectors<_F> &, size_t)> func) override {

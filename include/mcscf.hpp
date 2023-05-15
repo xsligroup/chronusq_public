@@ -51,6 +51,7 @@ namespace ChronusQ {
      double ciVectorConv     = 1.0e-6;    
      size_t maxDavidsonSpace = 50;
      size_t nDavidsonGuess   = 3;
+     std::vector<std::pair<double, size_t>> energyRefs;
 
      // SCF Settings 
      bool doSCF           = false;
@@ -68,7 +69,7 @@ namespace ChronusQ {
      MCSCFSettings(const MCSCFSettings &) = default;
      MCSCFSettings(MCSCFSettings &&) = default;
 
-     void print(bool);
+     void print(bool, size_t);
   }; // struct MCSCFSettings 
   
   template <typename MatsT, typename IntsT>
@@ -83,6 +84,7 @@ namespace ChronusQ {
     double vectorConv_ = 1.0e-6;    /// < Convergence criteria in terms of vector residue norm
     size_t maxDavidsonSpace_ = 50;  /// < Max davidson space in terms of n times of NRoots  
     size_t nDavidsonGuess_ = 3;     /// < number of guess in the intial davidson first a few iterations 
+    std::vector<std::pair<double, size_t>> energyRefs_;
 
     void davidsonGS(size_t, size_t, MatsT *, MatsT *);
     void davidsonPC(size_t, size_t, MatsT *, MatsT *, MatsT *, dcomplex *);
@@ -92,8 +94,9 @@ namespace ChronusQ {
     // default Constructor
     CISolver() = default;
     CISolver(CIDiagonalizationAlgorithm alg, size_t maxIter = 128,
-      double vectorConv =  1.0e-6, size_t maxDSpace = 50, size_t nDGuess = 3) {
-      switchAlgorithm(alg, maxIter, vectorConv, maxDSpace, nDGuess);
+      double vectorConv =  1.0e-6, size_t maxDSpace = 50, size_t nDGuess = 3,
+      std::vector<std::pair<double, size_t>> eRefs = {}) {
+      switchAlgorithm(alg, maxIter, vectorConv, maxDSpace, nDGuess, eRefs);
     };
 
     // typeconversion
@@ -113,12 +116,14 @@ namespace ChronusQ {
     // switch Algrithm;
     void switchAlgorithm(CIDiagonalizationAlgorithm alg, 
       size_t maxIter = 128, double vectorConv = 1.0e-6, 
-      size_t maxDSpace = 50, size_t nDGuess = 3) {
+      size_t maxDSpace = 50, size_t nDGuess = 3,
+      std::vector<std::pair<double, size_t>> eRefs = {}) {
         alg_ = alg;
         maxIter_ = maxIter;
         vectorConv_ = vectorConv;
         maxDavidsonSpace_ = maxDSpace;
         nDavidsonGuess_ = nDGuess;
+        if (!eRefs.empty()) energyRefs_ = eRefs;
     }
 
     // solve CI

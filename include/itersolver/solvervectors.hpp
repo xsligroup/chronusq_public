@@ -362,7 +362,7 @@ namespace ChronusQ {
    /*
     * \brief DistributedVectors
     * 
-    * The actual storage of the data is devided into blocks
+    * The actual storage of the data is divided into blocks
     *   across different nodes.
     *
     *   Default is split evenly, but can be intilized with input
@@ -379,8 +379,8 @@ namespace ChronusQ {
     size_t size_ = 0;
     
     // lens accross all nodes 
-    std::vector<size_t> lens_;
-    std::vector<size_t> accLens_;
+    std::vector<size_t> lens_; // lens at each node
+    std::vector<size_t> accLens_; // accumulated lens at each node
     
     // local data storage 
     _F* data_ = nullptr;

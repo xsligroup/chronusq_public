@@ -156,7 +156,9 @@ namespace ChronusQ {
     if (detStr)     detStr->computeList();  
     if (detStrBeta) detStrBeta->computeList();  
     std::cout << std::endl;
-  
+
+    if (this->readCI) ReadGuessCIVector({this->savFile.fName()});
+ 
   }; // MCWaveFunction<T>::alloc
 
   /**
@@ -185,14 +187,21 @@ namespace ChronusQ {
     if( savFile.exists() ) {
 
       std::string prefix = "MCWFN/";
+
+      size_t t_hash = std::is_same<MatsT, double>::value ? 1 : 2;
       
       size_t NS = this->NStates;
+      savFile.safeWriteData(prefix + "FIELD_TYPE", &t_hash, {1});
       savFile.safeWriteData(prefix + "NSTATES", &NS, {1});
       savFile.safeWriteData(prefix + "INACT_ENERGY", &(this->InactEnergy), {1});
       savFile.safeWriteData(prefix + "STATE_ENERGY", this->StateEnergy.data(), {NS});
 
       auto & mopart = this->MOPartition;
       savFile.safeWriteData(prefix + "ORB_INDEX", & (mopart.orbIndices[0]),{mopart.nMO});
+
+      // Save CI coefficients
+      for (auto i = 0; i < NS; i++)
+        savFile.safeWriteData(prefix + "CIVec_"+std::to_string(i+1), CIVecs[i], {this->NDet});
 
       // Save properties after SCF
       if( sProp ){
@@ -223,4 +232,5 @@ namespace ChronusQ {
 #include <mcwavefunction/print.hpp>     // print implementaion
 #include <mcwavefunction/property.hpp>  // property implementation
 #include <mcwavefunction/rdm.hpp>       // density matrix
+#include <mcwavefunction/ciguess.hpp>   // Read in CI Vectors
 

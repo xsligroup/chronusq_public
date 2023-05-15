@@ -37,11 +37,44 @@
 
 using namespace ChronusQ;
 
+template <typename EigT>
+std::vector<size_t> sortEnergySpecific(size_t nRoots, EigT * W, size_t N,
+  std::vector<std::pair<double, size_t>> energyRefs, size_t kG = 1) {
+
+  std::vector<size_t> Indices;
+  Indices.reserve(nRoots*kG);
+  std::vector<size_t> indx(N, 0);
+  std::iota(indx.begin(), indx.end(), 0);
+
+  size_t lowGuess = nRoots * kG;
+  for (auto & pair: energyRefs) {
+    lowGuess -= pair.second * kG;
+  }
+  std::vector<size_t>::iterator curIterBegin = indx.begin() + lowGuess;
+  std::copy(indx.begin(), curIterBegin, std::back_inserter(Indices));
+  double Eoffset = std::real(W[0]);
+  for (auto & pair: energyRefs) {
+    double curERef =  pair.first + Eoffset;
+    size_t curNGuess = kG * pair.second;
+    curIterBegin = std::lower_bound(curIterBegin, indx.end(), curERef,
+                   [&W](size_t i, double x){ return std::real(W[i]) < x; });
+    if (curIterBegin <= indx.end() - curNGuess) {
+      std::copy_n(curIterBegin, curNGuess, std::back_inserter(Indices));
+      curIterBegin += curNGuess;
+    } else {
+      CErr("No enough element above the reference energy to select.");
+    }
+  }
+
+  return Indices;
+
+}
 
 template <typename ReadT, typename EigT>
 void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
-  std::string fname, bool doPre = false, double conver = 1e-10, 
-  double etol = 8e-8, size_t block_size = 128) {
+  std::string fname, bool doPre = false,
+  std::vector<std::pair<double, size_t>> energyRefs = {}, 
+  double conver = 1e-10, double etol = 8e-8, size_t block_size = 128) {
   
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -128,7 +161,7 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 #endif
 
 
-typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT> &V,
+  typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT> &V,
     SolverVectors<EigT> &AV) {
 
     auto V_ptr = tryGetRawVectorsPointer(V);
@@ -192,6 +225,32 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
 
   davidson.setM(m);
   davidson.setkG(kG);
+
+  // set energy-specific
+  if (!energyRefs.empty()) {
+    std::cout << "Test Energy-specific Davidson: " << std::endl;
+    std::function< void(size_t, SolverVectors<EigT> &, size_t)> GuessES = [&]( size_t nGuess,
+        SolverVectors<EigT> &Guess, size_t N) {
+
+      ROOT_ONLY(MPI_COMM_WORLD);
+
+      auto G_ptr = tryGetRawVectorsPointer(Guess);
+
+      std::vector<size_t> guessIndices = sortEnergySpecific<EigT>(nRoots, DIAG, N, energyRefs, kG);
+
+      std::cout << "  Form guess vectors based on diagonal elements: " << std::endl;
+      std::fill_n(G_ptr, nGuess*N, EigT(0.));
+      for(auto i = 0ul; i < nGuess; i++) {
+        G_ptr[i*N+guessIndices[i]] = 1.0;
+        std::cout << "    " << std::setw(9) << std::left << guessIndices[i]
+                << std::setw(40) << std::left << DIAG[guessIndices[i]] << std::endl;
+
+      }
+    };      
+
+    davidson.setEnergySpecific(energyRefs);
+    davidson.setGuess(nRoots*kG, GuessES);
+  }
   
   davidson.run();
 
@@ -200,11 +259,26 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
   dcomplex *refW = mem.malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
+  std::vector<size_t> Indices;
+  Indices.reserve(nRoots);
+  
+  if (energyRefs.empty()) {
+
+    std::vector<size_t> indx(nRoots,0);
+    std::iota(indx.begin(), indx.end(), 0);
+    std::copy_n(indx.begin(), nRoots, std::back_inserter(Indices));
+
+  }
+  else {
+
+    Indices = sortEnergySpecific<dcomplex>(nRoots, refW, N, energyRefs);
+  }
+
   const dcomplex *W = davidson.eigVal();
 
   for(auto k = 0ul; k < nRoots; k++) {
-    double diff1 = std::abs((W[k] - refW[k])/refW[k]);
-    double diff2 = std::abs((W[k] - std::conj(refW[k]))/refW[k]);
+    double diff1 = std::abs((W[k] - refW[Indices[k]])/refW[Indices[k]]);
+    double diff2 = std::abs((W[k] - std::conj(refW[Indices[k]]))/refW[Indices[k]]);
     EXPECT_TRUE( diff1 < etol or diff2 < etol) <<
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
@@ -228,8 +302,9 @@ typename Davidson<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<Ei
 
 template <typename ReadT, typename EigT>
 void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
-  std::string fname, bool doPre = false, double conver = 1e-10, 
-  double etol = 8e-8) {
+  std::string fname, bool doPre = false, 
+  std::vector<std::pair<double, size_t>> energyRefs = {},
+  double conver = 1e-10, double etol = 8e-8) {
 
   MPI_Barrier(MPI_COMM_WORLD);
   std::string refName( FUNC_REFERENCE + fname );
@@ -331,7 +406,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       [&] (size_t nVec) {
          return std::make_shared<DistributedVectors<EigT>>(comm, mem, N, nVec);
       };
-  
+
   size_t nThreads = omp_get_num_threads();
   ProgramTimer::initialize("Davidson test", nThreads);
   Davidson<EigT> davidson(MPI_COMM_WORLD,mem,N,5,128,conver,nRoots,
@@ -339,7 +414,48 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   davidson.setM(m);
   davidson.setkG(kG);
-  
+
+  // set energy-specific
+  if (!energyRefs.empty()) {
+    std::cout << "Test Energy-specific Davidson: " << std::endl;
+    std::function< void(size_t, SolverVectors<EigT> &, size_t)> GuessES = [&]( size_t nGuess,
+        SolverVectors<EigT> &Guess, size_t N) {
+
+      EigT* GRaw = mem.malloc<EigT>(N*nGuess);
+
+      tryDowncastReferenceTo<DistributedVectors<EigT>>(Guess,
+                                                         [&] (auto& GRef, size_t shiftG) {
+              GRef.gather(shiftG, nGuess, GRaw, N, 0);
+              std::cout<<"shiftG: "<<shiftG<<std::endl;
+
+            }
+      );
+
+      if (isRoot) {
+        std::vector<size_t> guessIndices = sortEnergySpecific<EigT>(nRoots, ADIAG, N, energyRefs, kG);
+
+        std::cout << "  Form guess vectors based on diagonal elements: " << std::endl;
+        std::fill_n(GRaw, nGuess*N, EigT(0.));
+        for(auto i = 0ul; i < nGuess; i++) {
+          GRaw[i*N+guessIndices[i]] = 1.0;
+          std::cout << "    " << std::setw(9) << std::left << guessIndices[i]
+                << std::setw(40) << std::left << ADIAG[guessIndices[i]] << std::endl;
+
+        }
+      }
+
+      tryDowncastReferenceTo<DistributedVectors<EigT>>(Guess,
+                                                       [&] (auto& GRef, size_t shiftG) {
+            GRef.scatter(shiftG, nGuess, GRaw, N, 0);
+          }
+      );
+
+    };
+
+    davidson.setEnergySpecific(energyRefs);
+    davidson.setGuess(nRoots*kG, GuessES);
+  }
+
   davidson.run();
   
   ROOT_ONLY(MPI_COMM_WORLD);
@@ -347,11 +463,26 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   dcomplex *refW = mem.malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
+  std::vector<size_t> Indices;
+  Indices.reserve(nRoots);
+
+  if (energyRefs.empty()) {
+
+    std::vector<size_t> indx(nRoots,0);
+    std::iota(indx.begin(), indx.end(), 0);
+    std::copy_n(indx.begin(), nRoots, std::back_inserter(Indices));
+
+  }
+  else {
+
+    Indices = sortEnergySpecific<dcomplex>(nRoots, refW, N, energyRefs);
+  }
+
   const dcomplex *W = davidson.eigVal();
 
   for(auto k = 0ul; k < nRoots; k++) {
-    double diff1 = std::abs((W[k] - refW[k])/refW[k]);
-    double diff2 = std::abs((W[k] - std::conj(refW[k]))/refW[k]);
+    double diff1 = std::abs((W[k] - refW[Indices[k]])/refW[Indices[k]]);
+    double diff2 = std::abs((W[k] - std::conj(refW[Indices[k]]))/refW[Indices[k]]);
     EXPECT_TRUE( diff1 < etol or diff2 < etol) <<
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
@@ -365,19 +496,31 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 //
 TEST(DAVIDSON, DAVIDSON_REAL_HERMITIAN) {
   
+  std::vector<std::pair<double, size_t>> energyRefs;
+  energyRefs.emplace_back(20, 3);
+  energyRefs.emplace_back(60, 3); 
+
   DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5");
   DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<double,double>(9,50,3,"real_Hermitian.hdf5",true,energyRefs);
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5");
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_Hermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(9,50,3,"real_Hermitian.hdf5",true,energyRefs);
 
 }
 
 TEST(DAVIDSON, DAVIDSON_COMPLEX_HERMITIAN) {
   
+  std::vector<std::pair<double, size_t>> energyRefs;
+  energyRefs.emplace_back(20, 3);
+  energyRefs.emplace_back(60, 3); 
+
   DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5");
   DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(9,50,3,"complex_Hermitian.hdf5",true,energyRefs);
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5");
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_Hermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(9,50,3,"complex_Hermitian.hdf5",true,energyRefs);
 
 }
 
@@ -385,20 +528,32 @@ TEST(DAVIDSON, DAVIDSON_COMPLEX_HERMITIAN) {
 // Non-Hermittian
 //
 TEST(DAVIDSON, DAVIDSON_REAL_NONHERMITIAN) {
+
+  std::vector<std::pair<double, size_t>> energyRefs;
+  energyRefs.emplace_back(20, 3);
+  energyRefs.emplace_back(60, 3); 
   
   DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5");
   DAVIDSON_RAWVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<double,double>(9,50,3,"real_nonHermitian.hdf5",true,energyRefs);
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5");
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(3,50,3,"real_nonHermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<double,double>(9,50,3,"real_nonHermitian.hdf5",true,energyRefs);
 
 }
 
 TEST(DAVIDSON, DAVIDSON_COMPLEX_NONHERMITIAN) {
-  
+
+  std::vector<std::pair<double, size_t>> energyRefs;
+  energyRefs.emplace_back(20, 3);
+  energyRefs.emplace_back(60, 3); 
+
   DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5");
   DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5",true);
+  DAVIDSON_RAWVECTORS_TEST<dcomplex,dcomplex>(9,50,3,"complex_nonHermitian.hdf5",true,energyRefs);
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5");
   DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(3,50,3,"complex_nonHermitian.hdf5",true);
+  DAVIDSON_DISTRIBUTEDVECTORS_TEST<dcomplex,dcomplex>(9,50,3,"complex_nonHermitian.hdf5",true,energyRefs);
 
 }
 

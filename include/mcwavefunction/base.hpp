@@ -116,6 +116,8 @@ namespace ChronusQ {
     std::vector<cartmat_t> elecQuadrupoles; ///< Electric Quadrupole in the length gauge
     std::vector<cartrk3_t> elecOctupoles;   ///< Electric Octupole in the length gauge
 
+    bool readCI = false; ///< Read CI vectors and state energies from rstfiles
+
     // Print Settings
     size_t printMOCoeffs = 0;
     size_t printRDMs = 0;

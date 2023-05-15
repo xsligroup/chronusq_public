@@ -435,32 +435,39 @@ namespace ChronusQ {
 
 
   std::vector<size_t> getGuessIndices(size_t nGuess, size_t length, const EOMSettings& eomSettings,
-                                      const dcomplex *eomDiag, MPI_Comm comm, bool sortByDistance = false) {
+                                      const dcomplex *eomDiag, MPI_Comm comm) {//, bool sortByDistance = false) {
 
-    std::vector<size_t> guessIndices(nGuess);
+    std::vector<size_t> guessIndices;
+    guessIndices.reserve(nGuess);
     if (MPIRank(comm) == 0) {
       std::vector<size_t> diagSort(length, 0);
       std::iota(diagSort.begin(), diagSort.end(), 0);
-      if (sortByDistance){
-        std::sort(diagSort.begin(), diagSort.end(), [eomDiag, &eomSettings](size_t i , size_t j){
-          return std::abs(std::real(eomDiag[i]) - eomSettings.davidson_Eref)
-          < std::abs(std::real(eomDiag[j]) - eomSettings.davidson_Eref);
-        });
 
-      }
-      else {
-        std::sort(diagSort.begin(), diagSort.end(), [eomDiag, &eomSettings](size_t i , size_t j){
-            if ((std::real(eomDiag[i]) > eomSettings.davidson_Eref  and std::real(eomDiag[j]) > eomSettings.davidson_Eref)
-                or (std::real(eomDiag[i]) < eomSettings.davidson_Eref  and std::real(eomDiag[j]) < eomSettings.davidson_Eref))
-              return std::real(eomDiag[i]) < std::real(eomDiag[j]);
-            else if (std::real(eomDiag[i]) < eomSettings.davidson_Eref  and std::real(eomDiag[j]) > eomSettings.davidson_Eref )
-              return false;
-            else
-              return true;
-        });
+      std::stable_sort(diagSort.begin(), diagSort.end(),
+          [&] (size_t i , size_t j) { return std::real(eomDiag[i]) < std::real(eomDiag[j]); });
 
+      if (eomSettings.davidson_Eref.empty()) {
+        std::copy_n(diagSort.begin(), nGuess, std::back_inserter(guessIndices));
+
+      } else {
+        std::vector<size_t>::iterator curIterBegin = diagSort.begin()
+            + eomSettings.davidson_guess_multiplier * eomSettings.davidson_nLowRoots;
+        std::copy(diagSort.begin(), curIterBegin, std::back_inserter(guessIndices));
+        double Eoffset = eomSettings.davidson_ErefAbs? 0. : std::real(eomDiag[diagSort[0]]);
+
+        for (auto & pair: eomSettings.davidson_Eref) {
+          double curERef = pair.first + Eoffset;
+          size_t curNGuess = eomSettings.davidson_guess_multiplier * pair.second;
+          curIterBegin = std::lower_bound(curIterBegin, diagSort.end(), curERef,
+                                          [&eomDiag](size_t i, double x){ return std::real(eomDiag[i]) < x; });
+          if (curIterBegin <= diagSort.end() - curNGuess) {
+            std::copy_n(curIterBegin, curNGuess, std::back_inserter(guessIndices));
+            curIterBegin += curNGuess;
+          } else {
+            CErr("No enough element above the reference energy to select.");
+          }
+        }
       }
-      std::copy(diagSort.begin(), diagSort.begin() + guessIndices.size(), guessIndices.begin());
     }
     MPIBCast(guessIndices.data(), nGuess, 0, comm);
 
@@ -885,14 +892,17 @@ namespace ChronusQ {
       davidson.setEigenValueConvCriteria(eomSettings.davidson_eigen_value_conv);
       davidson.setEigForT(curEig);
 
-      if (eomSettings.davidson_Eref > 0.0) {
-        davidson.useEnergySpecific(eomSettings.nroots, 0.0, eomSettings.davidson_Eref);
-        if (eomSettings.davidson_sort_by_distance)
-          davidson.setSortByDistance();
-      }
+      if (!eomSettings.davidson_Eref.empty())
+        davidson.setEnergySpecific(eomSettings.davidson_Eref, eomSettings.davidson_ErefAbs);
 
-      bool sortByDistance = eomSettings.davidson_sort_by_distance;
-      std::vector<size_t> guessIndices = getGuessIndices(nGuess, eomcc.getHbarDim(), eomSettings, eomDiag, MPI_COMM_WORLD, sortByDistance);
+//      if (eomSettings.davidson_Eref > 0.0) {
+//        davidson.useEnergySpecific(eomSettings.nroots, 0.0, eomSettings.davidson_Eref);
+//        if (eomSettings.davidson_sort_by_distance)
+//          davidson.setSortByDistance();
+//      }
+
+//      bool sortByDistance = eomSettings.davidson_sort_by_distance;
+      std::vector<size_t> guessIndices = getGuessIndices(nGuess, eomcc.getHbarDim(), eomSettings, eomDiag, MPI_COMM_WORLD);//, sortByDistance);
 
       davidson.setGuess(nGuess, [&guessIndices] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
         guessVec.clear();
@@ -947,11 +957,13 @@ namespace ChronusQ {
 
         davidson.clear_scratch();
 
-        if (eomSettings.davidson_Eref > 0.0) {
-          davidsonLeft.useEnergySpecific(eomSettings.nroots, 0.0, eomSettings.davidson_Eref);
-          if (eomSettings.davidson_sort_by_distance)
-            davidsonLeft.setSortByDistance();
-        }
+        if (!eomSettings.davidson_Eref.empty())
+          davidsonLeft.setEnergySpecific(eomSettings.davidson_Eref, eomSettings.davidson_ErefAbs);
+//        if (eomSettings.davidson_Eref > 0.0) {
+//          davidsonLeft.useEnergySpecific(eomSettings.nroots, 0.0, eomSettings.davidson_Eref);
+//          if (eomSettings.davidson_sort_by_distance)
+//            davidsonLeft.setSortByDistance();
+//        }
 
         davidsonLeft.setGuess(eomSettings.nroots, [&davidson] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
           guessVec.clear();

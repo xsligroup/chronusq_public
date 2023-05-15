@@ -151,6 +151,10 @@ namespace ChronusQ {
           this->davidsonGS(nGuess, N, diagH, tryGetRawVectorsPointer(Guess));
       });
 
+      if (!energyRefs_.empty()) {
+        davidson.setEnergySpecific(energyRefs_);
+      }
+
       davidson.run();
       
       // copy over eigenvalues and eigenvectors
@@ -180,20 +184,52 @@ namespace ChronusQ {
     
     std::cout << "  * use unit vector guess based on diagonal elements:" << std::endl;
      
-    std::vector<int> indx(N);        
-    std::iota(indx.begin(), indx.end(), 0);
-    
+    std::vector<size_t> guessIndices;        
+    guessIndices.reserve(nGuess);
+
+    std::vector<size_t> indx(N, 0);
+    std::iota(indx.begin(), indx.end(), 0);    
+
     std::stable_sort(indx.begin(), indx.end(), 
       [&] (size_t i , size_t j) {
         return std::real(HDiag[i]) < std::real(HDiag[j]);
       }
     );
 
+    // for energy specific Davidson
+    if (energyRefs_.empty()) {
+
+      std::copy_n(indx.begin(), nGuess, std::back_inserter(guessIndices));
+
+    } else {
+
+      size_t lowGuess = nGuess;
+      for (auto & pair: energyRefs_) {
+        lowGuess -= pair.second * nDavidsonGuess_;
+      } 
+      std::vector<size_t>::iterator curIterBegin = indx.begin() + lowGuess;
+      std::copy(indx.begin(), curIterBegin, std::back_inserter(guessIndices)); 
+      double Eoffset = std::real(HDiag[indx[0]]);
+
+      for (auto & pair: energyRefs_) {
+        double curERef =  pair.first + Eoffset;
+        size_t curNGuess = nDavidsonGuess_ * pair.second;
+        curIterBegin = std::lower_bound(curIterBegin, indx.end(), curERef,
+                       [&HDiag](size_t i, double x){ return std::real(HDiag[i]) < x; });
+        if (curIterBegin <= indx.end() - curNGuess) {
+          std::copy_n(curIterBegin, curNGuess, std::back_inserter(guessIndices));
+          curIterBegin += curNGuess;
+        } else {
+          CErr("No enough element above the reference energy to select.");
+        }
+      }
+    }
+
     std::fill_n(Guess, nGuess*N, MatsT(0.));
     for(auto i = 0ul; i < nGuess; i++) { 
-      Guess[i*N+indx[i]] = 1.0;
-      std::cout << "    " << std::setw(9) << std::left << indx[i]
-                << std::setw(40) << std::left << HDiag[indx[i]] << std::endl;
+      Guess[i*N+guessIndices[i]] = 1.0;
+      std::cout << "    " << std::setw(9) << std::left << guessIndices[i]
+                << std::setw(40) << std::left << HDiag[guessIndices[i]] << std::endl;
     }
 
   } // CISolver::davidsonGS

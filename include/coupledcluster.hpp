@@ -75,9 +75,12 @@ namespace ChronusQ {
     bool davidson_conv_on_GramSchmidt = true;
     size_t davidson_subspace_multiplier = 8;
     size_t davidson_guess_multiplier = 3;
-    double davidson_Eref = 0.0;
+//    double davidson_Eref = 0.0;
+    size_t davidson_nLowRoots = 1;
+    std::vector<std::pair<double, size_t>> davidson_Eref;
+    bool davidson_ErefAbs = true;
     double davidson_preCond_small = 1e-12;
-    bool davidson_sort_by_distance = false;
+//    bool davidson_sort_by_distance = false;
     bool davidson_biortho = true;
     size_t GramSchmidt_NRe = 1;
     double GramSchmidt_eps = 1e-12;

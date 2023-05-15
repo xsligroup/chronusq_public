@@ -80,9 +80,9 @@ namespace ChronusQ {
         "DAVIDSONCONVONGRAMSCHMIDT",
         "DAVIDSONSUBSPACEMULTIPLIER",
         "DAVIDSONGUESSMULTIPLIER",
-        "DAVIDSONSPECIFYENERGY",
+        "DAVIDSONENERGYSPECIFICABS",
         "DAVIDSONPRECONDSMALL",
-        "DAVIDSONSORTBYDISTANCE",
+//        "DAVIDSONSORTBYDISTANCE",
         "DAVIDSONBIORTHO",
         "GRAMSCHMIDTREPEAT",
         "GRAMSCHMIDTEPS",
@@ -180,10 +180,6 @@ namespace ChronusQ {
 
     EOMSettings eomSettings;
 
-    if(input.containsData("EOMCC.NROOTS")){
-      OPTOPT(eomSettings.nroots = input.getData<std::size_t>("EOMCC.NROOTS"););
-    }
-
     if(input.containsData("EOMCC.HBARTYPE")){
       std::string hbar_type_str = input.getData<std::string>("EOMCC.HBARTYPE");
       if( not hbar_type_str.compare("EXPLICIT") )
@@ -231,6 +227,18 @@ namespace ChronusQ {
       std::string frozen_vir_str;
       OPTOPT(frozen_vir_str = input.getData<std::string>("EOMCC.FROZENVIRTUAL"););
       eomSettings.frozen_virtual = parseOrbitalSelectionInput(frozen_vir_str);
+    }
+
+    if(input.containsData("EOMCC.NROOTS")){
+
+      std::string nRoots;
+      nRoots = input.getData<std::string>("EOMCC.NROOTS");
+      if ( not nRoots.empty() ) {
+        eomSettings.nroots = HandleNRootsInput(nRoots, eomSettings.davidson_Eref);
+        size_t lowR = eomSettings.nroots;
+        for (auto & pair: eomSettings.davidson_Eref) lowR -= pair.second;
+        eomSettings.davidson_nLowRoots = lowR;
+      }
     }
 
     if(input.containsData("EOMCC.DAVIDSONWHENSC")){
@@ -281,17 +289,17 @@ namespace ChronusQ {
       OPTOPT(eomSettings.davidson_guess_multiplier = input.getData<int>("EOMCC.DAVIDSONGUESSMULTIPLIER");)
     }
 
-    if(input.containsData("EOMCC.DAVIDSONSPECIFYENERGY")){
-      OPTOPT(eomSettings.davidson_Eref = input.getData<double>("EOMCC.DAVIDSONSPECIFYENERGY");)
+    if(input.containsData("EOMCC.DAVIDSONENERGYSPECIFICABS")){
+      OPTOPT(eomSettings.davidson_ErefAbs = input.getData<bool>("EOMCC.DAVIDSONENERGYSPECIFICABS");)
     }
 
     if(input.containsData("EOMCC.DAVIDSONPRECONDSMALL")){
       OPTOPT(eomSettings.davidson_preCond_small = input.getData<double>("EOMCC.DAVIDSONPRECONDSMALL");)
     }
 
-    if(input.containsData("EOMCC.DAVIDSONSORTBYDISTANCE")){
-      OPTOPT(eomSettings.davidson_sort_by_distance = input.getData<bool>("EOMCC.DAVIDSONSORTBYDISTANCE");)
-    }
+//    if(input.containsData("EOMCC.DAVIDSONSORTBYDISTANCE")){
+//      OPTOPT(eomSettings.davidson_sort_by_distance = input.getData<bool>("EOMCC.DAVIDSONSORTBYDISTANCE");)
+//    }
 
     if(input.containsData("EOMCC.DAVIDSONBIORTHO")){
       OPTOPT(eomSettings.davidson_biortho = input.getData<bool>("EOMCC.DAVIDSONBIORTHO");)

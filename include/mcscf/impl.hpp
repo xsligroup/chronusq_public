@@ -53,14 +53,16 @@ namespace ChronusQ {
     ProgramTimer::tick("Solve CI");
     
     ProgramTimer::tick("Integral Trans");
-    MCWaveFunction<MatsT,IntsT>::transformInts(pert);
+    if (!this->readCI or this->settings.doSCF)
+      MCWaveFunction<MatsT,IntsT>::transformInts(pert);
     ProgramTimer::tock("Integral Trans");
     
     std::cout << std::left << std::setprecision(10); 
     FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
 
     ProgramTimer::tick("Diagonalization");
-    this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this));
+    if (!this->readCI)
+      this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this));
     ProgramTimer::tock("Diagonalization");
     
     ProgramTimer::tock("Solve CI");
@@ -200,7 +202,8 @@ namespace ChronusQ {
       this->osc_str = this->memManager.template malloc<double>(this->NosS1*this->NStates);
       for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
-        if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
+//        if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
+        if (s2 <= s1) this->osc_str[s2+s1*this->NStates] = 0.;
         else this->osc_str[s2+s1*this->NStates] = 
                 MCWaveFunction<MatsT,IntsT>::oscillator_strength(s2,s1);
       }
@@ -236,7 +239,8 @@ namespace ChronusQ {
     
     ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(settings.ciAlg, 
       settings.maxCIIter, settings.ciVectorConv,
-      settings.maxDavidsonSpace, settings.nDavidsonGuess);
+      settings.maxDavidsonSpace, settings.nDavidsonGuess,
+      settings.energyRefs);
     
     if (this->settings.doSCF) {
       

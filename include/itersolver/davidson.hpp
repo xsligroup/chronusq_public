@@ -74,16 +74,15 @@ namespace ChronusQ {
         CErr("Do Left Eig Vec is not implemented yet");
       }
       
-      if (this->EnergySpecific) {
-        std::cout << std::setprecision(10) << std::scientific;
-        std::cout<< "    * Use Energy Specific:           " << (this->EnergySpecific ? "True" : "False") << std::endl
-                 << "      * Number of Low  Energy Roots = " << this->nHighERoots    << std::endl
-                 << "      * Number of High Energy Roots = " << this-> nLowERoots    << std::endl;
-        if(this->adaptiveERef) {
-          std::cout<< "      * Use Ground State Energy in each iteration as Reference" << std::endl;
-        } else {
-          std::cout<< "      * Energy Referene  = " << this->EnergyRef << std::endl;
+      if (!this->energyRefs.empty()) {
+        std::cout << "    * Use Energy Specific:           True";
+        if (this-> AbsoluteES) std::cout<< " with absolute energy threshold." << std::endl;
+        else std::cout<< " with relative energy threshold." << std::endl;
+        for (auto & pair: this->energyRefs) {
+          std::cout<< "    * Energy Threshold = " << pair.first << " a.u., Number of Roots = "
+                   << pair.second << std::endl;
         }
+        std::cout<< "    * Number of Low  Energy Roots = " << this-> nLowERoots << std::endl;
       }          
       std::cout << std::endl << std::endl;
     }
@@ -254,12 +253,9 @@ namespace ChronusQ {
           std::cout << "      Subspace eigen took "
           << std::fixed << std::setprecision(6) << tock(EIGst) << " s." << std::endl;
 #endif
-        } // Root Only
-        MPIBCast(Eig, nVCur, 0, this->comm_);
-        MPIBCast(XR, nVCur * nVCur, 0, this->comm_);
 
         // swap high energy roots for energy specific
-        if(this->EnergySpecific) {
+        if(!this->energyRefs.empty()) {
 
 #ifdef DAVIDSON_PRINT_TIMING
           auto SWAPst = tick();
@@ -268,37 +264,73 @@ namespace ChronusQ {
           std::vector<size_t> indx(nVCur,0);
           std::iota(indx.begin(), indx.end(), 0);
 
+          std::vector<size_t> sortedIndices;
+          sortedIndices.reserve(kG * nR);
+
           Eigen::Map<
           Eigen::Matrix<_F,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
           > XRMap(XR,nVCur,nVCur);
 
 
-          if ( this->sortByDistance ){
-            std::stable_sort(indx.begin(), indx.end(),
-                             [&] (size_t i , size_t j) {
-              return std::abs(Eig[i] - this->EnergyRef) < std::abs(Eig[j] - this->EnergyRef);
+          // disable sortByDistance
+//          if ( this->sortByDistance ){
+//            std::stable_sort(indx.begin(), indx.end(),
+//                             [&] (size_t i , size_t j) {
+//              return std::abs(Eig[i] - this->EnergyRef) < std::abs(Eig[j] - this->EnergyRef);
+//            }
+//            );
+//          }
+//          else {
+          double Eoffset = this->AbsoluteES? 0. : std::real(Eig[0]); // the lowest eigenvalue
+
+          std::vector<size_t>::iterator curIterBegin = indx.begin() + kG * this->nLowERoots;
+          std::copy(indx.begin(), curIterBegin, std::back_inserter(sortedIndices));
+          size_t missing = 0;
+
+          for (auto & pair: this->energyRefs) {
+            double curERef = pair.first + Eoffset;
+            size_t curNGuess = kG * pair.second;
+
+            if (not missing) {
+              curIterBegin = std::lower_bound(curIterBegin, indx.end(), curERef,
+                                  [&Eig](size_t i, double x){ return std::real(Eig[i]) < x; });
+              if (curIterBegin <= indx.end() - curNGuess) {
+                std::copy_n(curIterBegin, curNGuess, std::back_inserter(sortedIndices));
+                curIterBegin += curNGuess;
+              } else {
+                std::cout << "Not enough element above the reference energy to select," << std::endl;
+                std::cout << " -- Use the closer ones below it." << std::endl;
+                std::copy(curIterBegin, indx.end(), std::back_inserter(sortedIndices));
+                missing = curNGuess - (indx.end()-curIterBegin);
+              }
             }
-            );
+            else missing += curNGuess;
           }
-          else {
-            std::stable_sort(indx.begin(), indx.end(),
-                             [&] (size_t i , size_t j) {
-              if ((std::real(Eig[i]) > this->EnergyRef  and std::real(Eig[j]) > this->EnergyRef)
-              or (std::real(Eig[i]) < this->EnergyRef  and std::real(Eig[j]) < this->EnergyRef))
-                return std::real(Eig[i]) < std::real(Eig[j]);
-              else if (std::real(Eig[i]) < this->EnergyRef  and std::real(Eig[j]) > this->EnergyRef )
-                return false;
-              else
-                return true;
+
+          while (missing) {
+            for (auto i = kG * this->nLowERoots; i < curIterBegin - indx.begin(); i++) {
+              if (std::find(sortedIndices.begin(),sortedIndices.end(),indx[i-1]) == sortedIndices.end()) {
+                sortedIndices.insert(sortedIndices.end(), indx[i-1]);
+                missing -= 1;
+              }
             }
-            );
           }
 
+          if (kG > 1) {
+            std::vector<size_t>::iterator kGBegin = sortedIndices.begin()+this->nLowERoots;
+            curIterBegin = kGBegin;
+            for(auto & pair: this->energyRefs) {
+              double curERef = pair.first + Eoffset;
+              kGBegin = std::lower_bound(kGBegin, sortedIndices.end(), curERef,
+                                [&Eig](size_t i, double x){ return std::real(Eig[i]) < x; });
+              curIterBegin = std::swap_ranges(kGBegin, kGBegin+pair.second, curIterBegin);
+            }
+            std::stable_sort(sortedIndices.begin()+nR, sortedIndices.end());
+          }
 
-
-          for(auto i = 0ul; i < nVCur - 1; i++){
-            size_t ind = indx[i];
-            while(ind < i) ind = indx[ind];
+          for(auto i = 0ul; i < kG*nR; i++){
+            size_t ind = sortedIndices[i];
+            while(ind < i) ind = sortedIndices[ind];
 
             if (ind > i) {
               std::swap(Eig[i],Eig[ind]);
@@ -320,12 +352,11 @@ namespace ChronusQ {
 //          }
 //          if (nVCur == 0) CErr("Not enough eigenpairs to proceed! ");
 #ifdef DAVIDSON_PRINT_TIMING
-          if( isRoot ) {
-            std::cout << "      Swap high energy roots took "
-            << std::fixed << std::setprecision(6) << tock(SWAPst) << " s." << std::endl;
-          } // Root Only
+          std::cout << "      Swap high energy roots took "
+          << std::fixed << std::setprecision(6) << tock(SWAPst) << " s." << std::endl;
 #endif
         }   
+
 
         // print eigenvalues at current iteration
         std::cout << "      - Eigenvalues at the current iteration:" << std::endl;
@@ -340,6 +371,11 @@ namespace ChronusQ {
               
           std::cout << std::endl;
         }
+
+        } // Root only
+
+        MPIBCast(Eig, nVCur, 0, this->comm_);
+        MPIBCast(XR, nVCur * nVCur, 0, this->comm_);
           
         // Exam Eigenvalues and eigenvectors and do mapping if iter > 0
         // R and S as scratch space to hold full vector old and new repectively
@@ -676,6 +712,7 @@ namespace ChronusQ {
           nExam = nR; 
           nDo   = std::min(nDo, nExam);
           nVCur = nVPrev + nDo;
+          this->kG = 1;
         }
         
         double DavidsonDur = tock(DavidsonSt);

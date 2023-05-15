@@ -31,7 +31,7 @@
 
 namespace ChronusQ {
 
-  void MCSCFSettings::print(bool fourComp) {
+  void MCSCFSettings::print(bool fourComp, size_t nStates) {
     
     std::cout << std::endl;
     FormattedLine(std::cout,"* Computation Parameters:");
@@ -43,6 +43,17 @@ namespace ChronusQ {
       FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
       FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
       FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
+
+      if (!energyRefs.empty()) {
+        FormattedLine(std::cout,"  Energy specific settings:");
+        size_t nLowRoots = nStates;
+        for (auto & pair: energyRefs) {
+          FormattedLine(std::cout, "  Energy threshold:", pair.first, " #Roots:", pair.second);        
+          nLowRoots -= pair.second;
+        }
+        FormattedLine(std::cout,"  Number of low energy roots:", nLowRoots);
+      }
+
     } else CErr("NYI CI Algorithm");
     
     if(this->doSCF) {
@@ -94,7 +105,7 @@ namespace ChronusQ {
     std::cout << std::endl;
     this->printMOSpacePatition();
 
-    settings.print(ref.nC == 4);
+    settings.print(ref.nC == 4, this->NStates);
  
     std::cout << std::endl;
     if(this->settings.doSCF and this->StateAverage) {

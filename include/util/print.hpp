@@ -42,6 +42,11 @@ namespace ChronusQ {
     out << std::setw(45) << "  " + s << v << u << std::endl;
   }
 
+  template <typename T, typename U>
+  void FormattedLine(std::ostream &out, std::string s1, T v, std::string s2, U u) {
+    out << std::setw(45) << "  " + s1 << v << "  " + s2 << u << std::endl;
+  }
+
   std::pair<double, char> memSize(size_t mem);
  
 }; // namespace ChronusQ

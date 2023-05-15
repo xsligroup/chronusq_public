@@ -168,6 +168,11 @@ namespace ChronusQ {
 
   void CQSCF_VALID(std::ostream&, CQInputFile &);
 
+  // Parse Davidson energy specific settings
+  size_t HandleNRootsInput(std::string,
+                  std::vector<std::pair<double, size_t>> &);
+
+
   // Parse CC options
 #ifdef CQ_HAS_TA
   CoupledClusterSettings CQCCOptions(std::ostream &, CQInputFile &);
