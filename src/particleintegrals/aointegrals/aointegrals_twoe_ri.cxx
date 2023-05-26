@@ -83,18 +83,41 @@ namespace ChronusQ {
     return std::make_pair(p,q);
   }
 
+  template <typename IntsT>
+  void InCoreRITPI<IntsT>::saveRawERI3J() {
+    if (not saveRawERI_) return;
+
+    size_t NB3 = NBRI * this->nBasis()*(this->nBasis() + 1) / 2;
+    if (rawERI3J_) {
+      if (this->memManager().getSize(rawERI3J_) == NB3)
+        return;
+      this->memManager().free(rawERI3J_);
+    }
+    try { rawERI3J_ = this->memManager().template malloc<IntsT>(NB3); }
+    catch(...) {
+      std::cout << std::fixed;
+      std::cout << "Insufficient memory for the full RI-ERI tensor ("
+      << (NB3/1e9) * sizeof(double) << " GB)" << std::endl;
+      std::cout << std::endl << this->memManager() << std::endl;
+      CErr();
+    }
+    std::copy_n(ERI3J, NB3, rawERI3J_);
+  }
+
   /**
-   *  \brief Construct L=(P|Q)^{-1/2} and Contract with (Q|ij) to form L(Q|ij)
-   *         Save L(Q|ij) in ERI3J
+   *  \brief Construct L=(P|Q)^{-1/2}
    */
   template <>
-  void InCoreRITPI<dcomplex>::contract2CenterERI(dcomplex*) {
+  void InCoreRITPI<dcomplex>::halfInverse2CenterERI(SquareMatrix<dcomplex> &S) {
     CErr("Only real GTOs are allowed",std::cout);
   };
   template <>
-  void InCoreRITPI<double>::contract2CenterERI(double *S) {
+  void InCoreRITPI<double>::halfInverse2CenterERI(SquareMatrix<double> &twocenterERI) {
 
     auto topERI3Trans = tick();
+
+    double *S = twocenterERI.pointer();
+    size_t NBRI = twocenterERI.dimension();
 
 #ifdef __DEBUGERI__
     prettyPrintSmart(std::cout, "Cholesky S", S, NBRI, NBRI, NBRI);
@@ -125,8 +148,22 @@ namespace ChronusQ {
 
     auto durTriInv = tock(topTriInv);
     std::cout << "  RI-ERI3-Transformation-TriInv duration   = " << durTriInv << " s " << std::endl;
+  }
+
+  /**
+   *  \brief Contract (P|Q)^{-1/2} with (Q|ij) to form L(Q|ij)
+   *         Save L(Q|ij) in ERI3J
+   */
+  template <>
+  void InCoreRITPI<dcomplex>::contract2CenterERI() {
+    CErr("Only real GTOs are allowed",std::cout);
+  };
+  template <>
+  void InCoreRITPI<double>::contract2CenterERI() {
 
     auto topGemm = tick();
+
+    double *S = twocenterERI_->pointer();
 
     size_t NB2   = NB*(NB+1)/2;
     size_t NB3   = NB2*NBRI;
@@ -164,9 +201,6 @@ namespace ChronusQ {
 
     auto durCopy = tock(topCopy);
     std::cout << "  RI-ERI3-Transformation-Copy duration     = " << durCopy << " s " << std::endl;
-
-    auto durERI3Trans = tock(topERI3Trans);
-    std::cout << "  RI-ERI3-Transformation duration = " << durERI3Trans << " s " << std::endl;
 
   } // InCoreRIERI<double>::contract2CenterERI
 
@@ -381,12 +415,20 @@ namespace ChronusQ {
     auto topLibintRI = tick();
 
     compute3CenterERI(basisSet, *auxBasisSet_);
+    saveRawERI3J();
 
     twocenterERI_ = std::make_shared<SquareMatrix<double>>(memManager(), NBRI);
 
     compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
+    if (saveRawERI_)
+      rawERI2C_ = std::make_shared<SquareMatrix<double>>(*twocenterERI_);
 
-    this->contract2CenterERI(twocenterERI_->pointer());
+    auto topERI3Trans = tick();
+    halfInverse2CenterERI(*twocenterERI_);
+    contract2CenterERI();
+
+    auto durERI3Trans = tock(topERI3Trans);
+    std::cout << "  RI-ERI3-Transformation duration = " << durERI3Trans << " s " << std::endl;
 
     auto durLibintRI = tock(topLibintRI);
     std::cout << "  Libint-RI duration   = " << durLibintRI << " s " << std::endl;
@@ -4794,6 +4836,40 @@ namespace ChronusQ {
   }; // InCoreCholeskyRIERI<double>::computePivotRI3indexERILibint
 
 
+  template <>
+  void InCoreCholeskyRIERI<dcomplex>::extractTwoCenterSubsetFrom3indexERI(
+      const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly) {
+    CErr("Only real GTOs are allowed",std::cout);
+  }
+  template <>
+  void InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+      const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly) {
+
+    auto topLibintPivot2Index = tick();
+
+    // Only build Upper triangular part of S for Cholesky decomposition
+    size_t qMax = pivots.size();
+    #pragma omp parallel for
+    for (size_t Q = 0; Q < qMax; Q++) {
+      const double *ptr = eri3J + squareToCompound(pivots[Q],NB) * LD3J;
+      for (size_t P = upperTriOnly ? Q : 0; P < NBRI; P++) {
+
+        S[Q + P*LDS] = ptr[P];
+
+      }
+    }
+
+    #ifdef __DEBUGERI__
+    prettyPrintSmart(std::cout, "S", S, NBRI, NBRI, LDS);
+    #endif
+
+    auto durLibintPivot2Index = tock(topLibintPivot2Index);
+    std::cout << "  Cholesky-RI-PivotRI-2index duration = " << durLibintPivot2Index << " s " << std::endl;
+  }; // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI
+
+
   /**
    *  \brief Allocate, compute and store the Cholesky RI
    *         3-index ERI tensor using Libint2 over the CGTO basis.
@@ -4870,29 +4946,13 @@ namespace ChronusQ {
     std::cout << "  Cholesky-RI-PivotRI-ERI duration    = " << t2ERI << " s " << std::endl;
     std::cout << "  Cholesky-RI-PivotRI-3index duration = " << durLibintPivot3Index << " s " << std::endl;
 
-    auto topLibintPivot2Index = tick();
+    saveRawERI3J();
 
     twocenterERI_ = std::make_shared<SquareMatrix<double>>(mem, NBRI);
     double *S = twocenterERI_->pointer();
-
-
-    // Only build Upper triangular part of S for Cholesky decomposition
-    #pragma omp parallel for
-    for (size_t Q = 0; Q < NBRI; Q++) {
-      double *ptr = &this->pointer()[squareToCompound(pivots_[Q],NB) * NBRI];
-      for (size_t P = Q; P < NBRI; P++) {
-
-        S[Q + P*NBRI] = ptr[P];
-
-      }
-    }
-
-#ifdef __DEBUGERI__
-    prettyPrintSmart(std::cout, "S", S, NBRI, NBRI, NBRI);
-#endif
-
-    auto durLibintPivot2Index = tock(topLibintPivot2Index);
-    std::cout << "  Cholesky-RI-PivotRI-2index duration = " << durLibintPivot2Index << " s " << std::endl;
+    extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI);
+    if (saveRawERI_)
+      rawERI2C_ = std::make_shared<SquareMatrix<double>>(*twocenterERI_);
 
 #ifdef __DEBUGERI__
     std::cout << "Pivots:" << std::endl;
@@ -4900,7 +4960,12 @@ namespace ChronusQ {
       std::cout << pivot << std::endl;
 #endif
 
-    contract2CenterERI(S);
+    auto topERI3Trans = tick();
+    halfInverse2CenterERI(*twocenterERI_);
+    contract2CenterERI();
+
+    auto durERI3Trans = tock(topERI3Trans);
+    std::cout << "  RI-ERI3-Transformation duration = " << durERI3Trans << " s " << std::endl;
 
     auto durLibintPivotRI = tock(topLibintPivotRI);
     std::cout << "  Cholesky-RI-PivotRI duration = " << durLibintPivotRI << " s " << std::endl;

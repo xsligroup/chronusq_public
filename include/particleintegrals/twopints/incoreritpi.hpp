@@ -61,7 +61,12 @@ namespace ChronusQ {
   protected:
     size_t NBRI, NBNBRI;
     IntsT* ERI3J = nullptr; ///< Electron-Electron repulsion integrals (3 index)
-    std::shared_ptr<SquareMatrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)
+    std::shared_ptr<SquareMatrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)^-1/2
+    bool saveRawERI_ = false; ///< Save raw ERI before contraction with (P|Q)^-1/2
+    IntsT* rawERI3J_ = nullptr; ///< raw Electron-Electron repulsion integrals (P|rs), compound rs
+    std::shared_ptr<SquareMatrix<IntsT>> rawERI2C_ = nullptr;// (P|Q)
+
+    void saveRawERI3J();
 
   public:
 
@@ -142,6 +147,13 @@ namespace ChronusQ {
     IntsT* pointer() { return ERI3J; }
     const IntsT* pointer() const { return ERI3J; }
 
+    // Raw ERI access
+    void setSaveRawERI(bool save) { saveRawERI_ = save; }
+    void clearRawERI() { this->memManager().free(rawERI3J_); rawERI2C_ = nullptr; }
+    IntsT* rawERI3J() { return rawERI3J_; }
+    const IntsT* rawERI3J() const { return rawERI3J_; }
+    std::shared_ptr<SquareMatrix<IntsT>> rawERI2C() const { return rawERI2C_; }
+
     // 2-index ERI
     std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() { return twocenterERI_; } // returns L=(P|Q)
     const std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() const { return twocenterERI_; } // returns L=(P|Q)
@@ -157,7 +169,9 @@ namespace ChronusQ {
       CErr("AO integral evaluation with two basis sets is NOT implemented in super class InCoreRITPI.");
     }
 
-    void contract2CenterERI(IntsT *S); ///< forms S^{-1/2}(Q|ij), destroys S
+    static void halfInverse2CenterERI(SquareMatrix<IntsT> &S); ///< forms S^{-1/2}, destroys S
+
+    void contract2CenterERI(); ///< forms S^{-1/2}(Q|ij)
 
     virtual void clear() {
       std::fill_n(ERI3J, this->nBasis()*NBNBRI, IntsT(0.));
@@ -395,7 +409,8 @@ namespace ChronusQ {
 
     void setTau( double tau ) { tau_ = tau; }
     double tau() const { return tau_; }
-    const std::vector<size_t>& getPivots() const { return pivots_; }
+    //std::vector<size_t> pivots() { return pivots_; }// List of selected pivots
+    const std::vector<size_t>& pivots() const { return pivots_; }// List of selected pivots
 
     // 4-index ERI direct access
     void setFourIndexERI(std::shared_ptr<InCore4indexTPI<IntsT>> eri4I) {
@@ -404,9 +419,6 @@ namespace ChronusQ {
     std::shared_ptr<InCore4indexTPI<IntsT>> fourIndexERI() { return eri4I_; }
     const std::shared_ptr<InCore4indexTPI<IntsT>> fourIndexERI() const { return eri4I_; }
 
-
-    //std::vector<size_t> pivots() { return pivots_; }// List of selected pivots
-    const std::vector<size_t>& pivots() const { return pivots_; }// List of selected pivots
 
     // Computation interfaces
 
@@ -463,6 +475,11 @@ namespace ChronusQ {
     void computePivotRI3indexERILibint(BasisSet &basisSet);
 
     void computePivotRI3indexERILibcint(BasisSet &basisSet);
+
+    static void extractTwoCenterSubsetFrom3indexERI(
+        const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+        const double* eri3J, size_t LD3J, double* S, size_t LDS,
+        bool upperTriOnly = true);
 
     static std::map<std::pair<size_t,size_t>, std::vector<size_t>>
     groupPivotsByShell(BasisSet&, const std::vector<size_t> &pivots);

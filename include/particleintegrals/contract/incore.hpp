@@ -688,6 +688,10 @@ namespace ChronusQ {
         M2J = asymmInts.pointer();
         snNBRI = NBRI;
         NBRI = aux2->nRIBasis();
+
+        if (M2J == nullptr and snNBRI != NBRI) {
+          CErr("Missing middle matrix for LML' type asymmetric RI contraction.");
+        }
       }
     }
 
@@ -717,8 +721,12 @@ namespace ChronusQ {
     auto Jtemp = memManager_.malloc<IntsT>( NBRI );
     
     // R3J (NBRI by snNB^2) contracting with density (sbNB^2 by 1), generates a vector of length NBRI. 
+    // auto gemm1Begin = tick();
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBRI,1,snNB*snNB,IntsT(1.),R3J,NBRI,X,snNB*snNB,IntsT(0.),Jtemp,NBRI);
-    
+    // double durGemm1 = tock(gemm1Begin);
+    // std::cout << "  Asymm R3J X Density GEMM duration: " << durGemm1 << " s" << std::endl;
+
+    // auto gemm2Begin = tick();
     if( !M2J ){
       // Left multiply by L3J.T (NB^2 by NBRI), to give output matrix (NB^2 by 1). 
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,NBRI,IntsT(1.),L3J,NBRI,Jtemp,NBRI,IntsT(0.),AX,NB*NB);
@@ -734,6 +742,8 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,snNBRI,IntsT(1.),L3J,snNBRI,Jtemp1,snNBRI,IntsT(0.),AX,NB*NB);
       memManager_.free(Jtemp1);
     }
+    // double durGemm2 = tock(gemm2Begin);
+    // std::cout << "  Asymm L3J X R3JXDensity GEMM duration: " << durGemm2 << " s" << std::endl;
     memManager_.free(Jtemp);
 
     // if Complex ints + Hermitian, conjugate

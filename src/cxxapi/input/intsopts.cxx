@@ -47,20 +47,26 @@ namespace ChronusQ {
       "GRADALG",      // Direct or Incore for gradients?
       "TPITRANSALG",  // N5 or N6
       "SCHWARZ",      // double
+
+      // RI Options
       "RI",           // String, determines which algorithm to use for RI/CD
                       // For INTS/PINTS section: "AUXBASIS" or "TRADITIONAL" or "DYNAMICALL" or "SPANFACTOR" or "DYNAMICERI" or "CHOLESKY" or "SPANFACTOREUSE"
-                      // For EPINTS section:     "ELEC_AUX" or "PROT_AUX" or "ELEC_AND_PROT_AUX" or "AUTO"
+                      // For EPINTS section:     "INT1_AUX" (="ELEC_AUX") or "INT2_AUX" (="PROT_AUX")) or "CONNECTOR" (="ELEC_AND_PROT_AUX") or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
       "RITHRESHOLD",  // double
       "RISIGMA",      // double
       "RIMINSHRINK",  // size_t
       "RIMAXQUAL",    // size_t
       "RIGENCONTR",   // True or False
       "RIBUILD4INDEX",// True or False
-      "RIREPORTERROR",// True of False, keyword only for EPINTS Section and only applies if user chooeses to approximate (ee|pp)
-                      // Determine whether to explicitly build full precision (ee|pp) and calculate RMSD against approximate (ee|pp)
+      "RIREPORTERROR",// True of False, keyword only for EPINTS Section and only applies if the user chooses to approximate (ee|pp)
+                      // Determines whether to explicitly build exact (ee|pp) and calculate RMSD against approximate (ee|pp)
+      "RICOMBINEBASISTRUNCATE", // String, determines for combineAuxBasis algorithm whether to remove linear deps using some threshold
+                                // True or False, if set True, then default is sqrt{tau_e * tau_p}                
+      "RICOMBINEBASISTHRESH",   // Double, determines for combineAuxBasis algorithm what threshold to use for the CD of twoCenterERI
+
+      // Relativistic Options
       "FINITENUCLEI", // True or False
       "LIBCINT",      // Ture or False
-
       "BARECOULOMB",  // True or False
       "LLLL",         // True or False
       "DC",           // True or False, SF, SD, 3C, 2C, 1C, AMF
@@ -155,37 +161,41 @@ namespace ChronusQ {
 
 
     // Parse RI options
-    if(RI.compare("FALSE")) {
-      // If RI keyword anything other than "FALSE", then force contraction alg to be INCORE
-      if (options.basicintsoptions.contrAlg != CONTRACTION_ALGORITHM::INCORE) {
-        options.basicintsoptions.contrAlg = CONTRACTION_ALGORITHM::INCORE;
-        std::cout << "Incore ERI algorithm enforced by RI." << std::endl;
-      }
+    if(options.basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE and 
+        RI.compare("FALSE")) {
 
       // RI Keyword for EPINTS will be decoded differently than INTS/PINTS
       if(not int_sec.compare("EPINTS")){
         // Decode RI keywrod for EPINTS sections
         if (not RI.compare("AUTO")){
-          options.cdriintsoptions.NEOCDalg = NEO_CD_ALG::AUTO;
-        } else if (not RI.compare("ELEC_AUX")){
-          options.cdriintsoptions.NEOCDalg = NEO_CD_ALG::ELEC_AUX;
-        } else if (not RI.compare("PROT_AUX")){
-          options.cdriintsoptions.NEOCDalg = NEO_CD_ALG::PROT_AUX;
-        } else if (not RI.compare("ELEC_AND_PROT_AUX")){
-          options.cdriintsoptions.NEOCDalg = NEO_CD_ALG::ELEC_AND_PROT_AUX;
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::AUTO;
+        } else if (not RI.compare("INT1_AUX") or not RI.compare("ELEC_AUX") ){
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::INT1_AUX;
+        } else if (not RI.compare("INT2_AUX") or not RI.compare("PROT_AUX")){
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::INT2_AUX;
+        } else if (not RI.compare("CONNECTOR") or not RI.compare("ELEC_AND_PROT_AUX")){
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::CONNECTOR;
+        } else if (not RI.compare("COMBINEAUXBASIS")){
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEAUXBASIS;
+          OPTOPT( options.cdriintsoptions.CDRI_combineBasisTruncate = input.getData<bool>(int_sec+".RICOMBINEBASISTRUNCATE");)
+          OPTOPT( options.cdriintsoptions.CDRI_combineBasisThresh = input.getData<double>(int_sec+".RICOMBINEBASISTHRESH");)
+        } else if (not RI.compare("COMBINEMATRIX")){
+          options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEMATRIX;
         } else {
           CErr(RI + " is not a valid "+ int_sec + ".RI keyword",out);
         }
 
-        std::string printError = "FALSE";
-        OPTOPT( printError = input.getData<std::string>(int_sec+".RIPRINTERROR");)
-        if(not printError.compare("FALSE")){
-          options.cdriintsoptions.CDRI_printError = false;
-        } else if(not printError.compare("TRUE")) {
-          options.cdriintsoptions.CDRI_printError = true;
+        std::string reportError = "FALSE";
+        OPTOPT( reportError = input.getData<std::string>(int_sec+".RIREPORTERROR");)
+        if(not reportError.compare("FALSE")){
+          options.cdriintsoptions.CDRI_reportError = false;
+        } else if(not reportError.compare("TRUE")) {
+          options.cdriintsoptions.CDRI_reportError = true;
         } else {
-          CErr(printError + " is not a valid " + int_sec + ".RIPRINTERROR keyword", out);
+          CErr(reportError + " is not a valid " + int_sec + ".RIREPORTERROR keyword", out);
         }
+
+
 
       } else{
         // Decode RI keywrod for INTS / PINTS sections
@@ -344,27 +354,30 @@ namespace ChronusQ {
       out << "Building integral object for the electron-quantum proton Coulomb term:\n\n";
       if(basis->basisType == REAL_GTO and basis2->basisType == REAL_GTO) {
 
+        // If nothing is set for EPINTS, by default (ee|pp) integrals will be evaluated on the fly using direct algorithm
         if(basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::DIRECT) {
           epaoint->TPI = std::make_shared<DirectTPI<double>>(mem,*basis,*basis2,mol,basicintsoptions.threshSchwarz);
         } else {
-          // By Default (if EPINTS.RI is not specified), Incore algorithm uses 4-index for (ee|pp)
+          // If user set EPINTS.RI to be FALSE, incore algorithm uses 4-index for (ee|pp)
           if(not basicintsoptions.RI.compare("FALSE")){
             epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(mem,basis->nBasis,basis2->nBasis);
           } else{
-            // If user specified algorithm an algorithm for NEO CD, then need tocreate corresponding IncoreAsymmRITPI object 
+            // The default EPINTS.RI option is "AUTO", where we dynamically detect what aux basis is avalibale and use corresponding aux basis for asymm approximation 
+            // If the user specified an algorithm for NEO CD, then need to create corresponding IncoreAsymmRITPI object 
             
             // First detect if there are aux basis available:
             std::shared_ptr<InCoreRITPI<double>> aux1 = std::dynamic_pointer_cast<InCoreRITPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(aoi)->TPI));
             std::shared_ptr<InCoreRITPI<double>> aux2 = std::dynamic_pointer_cast<InCoreRITPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(paoi)->TPI));
 
             // If user choose alg to be auto, use flags to determine which to build:
-            bool auto_elec = false, auto_prot = false, auto_elec_and_prot = false, auto_4I = false;
+            bool auto_int1_aux = false, auto_int2_aux = false, auto_two_aux = false, auto_4I = false;
 
             // Execute user-specified algorithm to approximate (ee|pp)
-            if(cdriintsoptions.NEOCDalg != NEO_CD_ALG::AUTO){
+            if(cdriintsoptions.CDRI_asymmCDalg != ASYMM_CD_ALG::AUTO){
               // If user needs to use electronic aux basis, then will check and see if elec aux is available.
               // If not, we build aux from on the fly CD and save in IncoreAsymmRITPI class
-              if(cdriintsoptions.NEOCDalg == NEO_CD_ALG::ELEC_AUX or cdriintsoptions.NEOCDalg == NEO_CD_ALG::ELEC_AND_PROT_AUX){
+              if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
+                  or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
                 out << "   Will use (ee|ee) to approxiamate (ee|pp) " << std::endl;
                 if(aux1){
@@ -382,13 +395,16 @@ namespace ChronusQ {
                   if (auto eri4I = std::dynamic_pointer_cast<InCore4indexTPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(aoi)->TPI)))
                     std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux1)->setFourIndexERI(eri4I);
                 }
+                if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS)
+                  aux1->setSaveRawERI(true);
                 out << bannerMid << "\n" << std::endl;
               }
 
 
               // If user choose to use protnonic aux basis , then will check and see if prot aux is available.
               // If not, we build aux from on the fly CD and save in IncoreAsymmRITPI class
-              if(cdriintsoptions.NEOCDalg == NEO_CD_ALG::PROT_AUX or cdriintsoptions.NEOCDalg == NEO_CD_ALG::ELEC_AND_PROT_AUX){
+              if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
+                  or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
                 std::cout << "   Will use (pp|pp) to approxiamate (ee|pp) " << std::endl;
                 if(aux2){
@@ -406,6 +422,8 @@ namespace ChronusQ {
                   if (auto eri4I = std::dynamic_pointer_cast<InCore4indexTPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(paoi)->TPI)))
                     std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux2)->setFourIndexERI(eri4I);
                 }
+                if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS)
+                  aux2->setSaveRawERI(true);
                 out << bannerMid << "\n" << std::endl;
               }
 
@@ -414,16 +432,16 @@ namespace ChronusQ {
             } else {
               if(aux1){
                 out << "     * Detected existing aux basis from (ee|ee)!" << std::endl;
-                auto_elec = true;
+                auto_int1_aux = true;
                 if(aux2){
                   out << "     * Detected existing aux basis from (pp|pp)!" << std::endl;
-                  auto_elec_and_prot = true;
-                  auto_elec = false;
+                  auto_two_aux = true;
+                  auto_int1_aux = false;
                 } 
               } else {
                 if(aux2){
                   out << "     * Detected existing aux basis from (pp|pp)!" << std::endl;
-                  auto_prot = true;
+                  auto_int2_aux = true;
                 } else{
                   out << "     * Can't find existing aux basis to approximate (ee|pp)" << std::endl; 
                   out << "       Will use incore 4-index" << std::endl;
@@ -432,17 +450,26 @@ namespace ChronusQ {
               } 
             }
 
-            if(cdriintsoptions.NEOCDalg == NEO_CD_ALG::ELEC_AUX or auto_elec){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, basis2->nBasis, cdriintsoptions.CDRI_build4I);
-              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setPrintError(cdriintsoptions.CDRI_printError);
+            if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or auto_int1_aux){
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I);
+              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use electronic aux basis. " << std::endl;
-            } else if (cdriintsoptions.NEOCDalg == NEO_CD_ALG::PROT_AUX or auto_prot){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, basis->nBasis, aux2, cdriintsoptions.CDRI_build4I);
-              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setPrintError(cdriintsoptions.CDRI_printError);
+            } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or auto_int2_aux){
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I);
+              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use protonic aux basis. " << std::endl;
-            } else if (cdriintsoptions.NEOCDalg == NEO_CD_ALG::ELEC_AND_PROT_AUX or auto_elec_and_prot){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, aux2, cdriintsoptions.CDRI_build4I);
-              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setPrintError(cdriintsoptions.CDRI_printError);
+            } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR 
+                  or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS 
+                  or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX
+                  or auto_two_aux){
+              // Unless otherwise specified, set alg to be 'COMBINEAUXBASIS' if two aux bases are available
+              ASYMM_CD_ALG two_aux_alg = auto_two_aux? ASYMM_CD_ALG::COMBINEAUXBASIS : cdriintsoptions.CDRI_asymmCDalg;
+              // If truncate linear dependency for COMBINEAUXBASIS, set default value to be sqrt{tau_e * tau_p}
+              double combineBasisThresh = (cdriintsoptions.CDRI_combineBasisTruncate and cdriintsoptions.CDRI_combineBasisThresh == 0.0) ?
+                  sqrt(eopts.cdriintsoptions.CDRI_thresh * popts.cdriintsoptions.CDRI_thresh) : cdriintsoptions.CDRI_combineBasisThresh;
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, aux2, two_aux_alg, cdriintsoptions.CDRI_build4I,
+                  cdriintsoptions.CDRI_combineBasisTruncate, combineBasisThresh);
+              std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use both electronic and protonic aux basis. " << std::endl;
             } else if (auto_4I) {
               epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(mem, basis->nBasis, basis2->nBasis);

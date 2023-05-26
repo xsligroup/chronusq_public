@@ -231,7 +231,6 @@ TEST( RI_X2CKS, hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
 };
 
 #ifdef _CQ_DO_PARTESTS
-
 // Water RHF/6-31G(d)/cc-pVDZ-rifit test
 TEST( RI_RHF, PAR_water_631Gd_ccpvdzrifit ) {
 
@@ -435,7 +434,95 @@ TEST( RI_X2CKS, PAR_hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
              1e-6 );
 
 };
+#endif
 
+
+
+
+/**********************************/
+// RI_NEO_RHF TESTS, SERIAL
+/**********************************/
+
+// EAUX TEST:
+// do CD for (ee|ee), do incore 4-index for (pp|pp), use elec aux for (ee|pp)
+TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_4I_eaux ) {
+
+  CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_4I_eaux",
+             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6);
+
+};
+
+
+// PAUX TEST:
+// do incore 4-index for (ee|ee), do CD for (pp|pp), use prot aux for (ee|pp)
+TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_4I_cdp_paux ) {
+
+  CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_4I_cdp_paux",
+             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6);
+
+};
+
+
+// EAUX + PAUX TEST, CONNECTOR:
+// do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux CONNECTOR for (ee|pp)
+TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_connector ) {
+
+  CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
+             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6);
+
+};
+
+// EAUX + PAUX TEST, COMBINEAUXBASIS:
+// do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux COMBINEAUXBASIS for (ee|pp)
+TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis ) {
+
+  CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis",
+             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6);
+
+};
+
+#ifdef _CQ_DO_PARTESTS
+/**********************************/
+// RI_NEO_RHF TESTS, PARALLEL
+/**********************************/
+
+// EAUX TEST:
+// do CD for (ee|ee), do incore 4-index for (pp|pp), use elec aux for (ee|pp)
+TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_4I_eaux ) {
+
+  CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_4I_eaux",
+             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6);
+
+};
+
+
+// PAUX TEST:
+// do incore 4-index for (ee|ee), do CD for (pp|pp), use prot aux for (ee|pp)
+TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_4I_cdp_paux ) {
+
+  CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_4I_cdp_paux",
+             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6);
+
+};
+
+
+// EAUX + PAUX TEST, CONNECTOR:
+// do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux CONNECTOR for (ee|pp)
+TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_connector ) {
+
+  CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
+             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6);
+
+};
+
+// EAUX + PAUX TEST, COMBINEAUXBASIS:
+// do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux COMBINEAUXBASIS for (ee|pp)
+TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis ) {
+
+  CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis",
+             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6);
+
+};
 #endif
 
 

@@ -239,8 +239,10 @@ namespace ChronusQ {
     size_t CDRI_max_qual = 1000; ///< Cholesky RI max # of qualified candidates per iteration for span-factor algorithm
     size_t CDRI_minShrinkCycle = 10; ///< Cholesky RI min # of iterations between shrinks for dynamic-all algorithm
     bool CDRI_build4I = false; ///< Cholesky RI explicitly build 4-index
-    NEO_CD_ALG NEOCDalg = NEO_CD_ALG::AUTO; ///< NEO Cholesky algorithm for approximating (ee|pp) integral
-    bool CDRI_printError = false; /// < Whether to report the error of approximate (ee|pp) comparing with exact 4-index (ee|pp) 
+    ASYMM_CD_ALG CDRI_asymmCDalg = ASYMM_CD_ALG::AUTO; ///< NEO Cholesky algorithm for approximating (ee|pp) integral
+    bool CDRI_reportError = false; /// < Whether to report the error of approximate (ee|pp) comparing with exact 4-index (ee|pp) 
+    bool CDRI_combineBasisTruncate = false;
+    double CDRI_combineBasisThresh = 0.0;
   };
 
 

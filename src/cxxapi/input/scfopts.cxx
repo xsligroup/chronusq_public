@@ -205,7 +205,6 @@ namespace ChronusQ {
     std::string prot_guessString = "TIGHT";
     OPTOPT( prot_guessString = input.getData<std::string>("SCF.PROT_GUESS"); )
     trim(prot_guessString);
-    std::cout << prot_guessString << std::endl;
     if( not prot_guessString.compare("CORE") )
       scfControls.prot_guess = CORE;
     else if( not prot_guessString.compare("RANDOM") )

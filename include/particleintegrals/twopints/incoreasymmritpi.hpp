@@ -33,11 +33,16 @@
 
 namespace ChronusQ {
 
-  enum class NEO_CD_ALG {
+  enum class ASYMM_CD_ALG {
     //Note: For the following 3 _AUX options, if there's no corresponding aux basis available, then will build them on the fly
-    ELEC_AUX,              // Will use aux basis from (ee|ee) to approximate (ee|pp)
-    PROT_AUX,              // Will use aux basis from (pp|pp) to approximate (ee|pp)
-    ELEC_AND_PROT_AUX,     // Will use both aux basis from (ee|ee) and (pp|pp) to approximate (ee|pp)
+    INT1_AUX,              // Will use the aux basis from the LHS integral to approximate asymm integrals
+                           //     In the case of NEO, this means using elec aux basis to approximate (ee|pp) integral
+                           //     In the case of 4C,  this means using LL aux basis to approxiate (LL|SS) integral
+    INT2_AUX,              // Will use the aux basis from the RHS integral to approximate asymm integrals
+                           // In the case of NEO, this means using prot Cholesky basis to approximate (ee|pp) integral
+    CONNECTOR,             // Will use both aux basis from (ee|ee) and (pp|pp) to approximate (ee|pp), and use a connector match two reduced spaces
+    COMBINEAUXBASIS,       // Will use both aux basis from (ee|ee) and (pp|pp) to approximate (ee|pp), and append both aux basis
+    COMBINEMATRIX,         // Will do cholesky decomposition on the full (NB_elec+NB_prot) * (NB_elec+NB_prot) ERI matrix to select aux basis 
 
     AUTO,                  // Default option. Will try to use aux basis by detecting what's available. If can't find one, then default to 4-index 
   };
@@ -47,8 +52,8 @@ class InCoreAsymmRITPI :
  This class allows approximation of an asymmetric ERI matrix, by using one or two existing
  auxliary basis.
 
- For example, for NEO, (ee|pp) integral can be approxiamated by substituting in either 
- electronic or protonic auxiliary basis. Both auxiliary basis can also be used together.   
+ For example, for NEO, (ee|pp) integral can be approxiamated using either electronic or protonic auxiliary basis. 
+ Both auxiliary basis can also be used together with different algotithms.   
 */
 
   template <typename IntsT>
@@ -62,9 +67,12 @@ class InCoreAsymmRITPI :
     std::shared_ptr<InCoreRITPI<IntsT>> aux2_ = nullptr;
     IntsT *partialTPI_ = nullptr; /// The missing part that needs to be built, to be used together with existing 3-index tensor 
 
+    ASYMM_CD_ALG asymmCDalg_ = ASYMM_CD_ALG::AUTO;
     bool build4I_ = false; // Explicitly build four-index TPI
-    bool printError_ = false; // Build full precision 4-index TPI, and build approximate 4-index TPI, then report error
+    bool reportError_ = false; // Build full precision 4-index TPI, and build approximate 4-index TPI, then report error
     std::shared_ptr<InCore4indexTPI<IntsT>> eri4I_ = nullptr; // Four-index TPI
+    bool combineBasisTruncate_ = false; // Whether to truncate linear dep after combining elec and prot aux basis, using CD 
+    double combineBasisThresh_ = 0.0;   // Truncating threshold for combineauxbasis  
 
   public:
 
@@ -72,13 +80,13 @@ class InCoreAsymmRITPI :
     // Disable defualt constructor
     // InCoreAsymmRITPI() = delete;
     // Constructor for when one aux basis is given
-    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, bool build4I = false):
-        TwoPInts<IntsT>(mem, aux1->nBasis(), sNB), aux1_(aux1), build4I_(build4I){}
-    InCoreAsymmRITPI(CQMemManager &mem, size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, bool build4I = false):
-        TwoPInts<IntsT>(mem, NB, aux2->nBasis()), aux2_(aux2), build4I_(build4I){}
+    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
+        TwoPInts<IntsT>(mem, aux1->nBasis(), sNB), aux1_(aux1), asymmCDalg_(asymmCDalg), build4I_(build4I){}
+    InCoreAsymmRITPI(CQMemManager &mem, size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
+        TwoPInts<IntsT>(mem, NB, aux2->nBasis()), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I){}
     // Constructor for when two aux basis are given
-    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, bool build4I = false):
-        TwoPInts<IntsT>(mem, aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), build4I_(build4I){}
+    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false, bool combineBasisTruncate = false, double combineBasisThresh=0.0):
+        TwoPInts<IntsT>(mem, aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I),combineBasisTruncate_(combineBasisTruncate),combineBasisThresh_(combineBasisThresh){}
 
 
     // COPY CONSTRUCTOR:
@@ -146,18 +154,26 @@ class InCoreAsymmRITPI :
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) override;
 
+    void prebuilt4Index(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
+        OPERATOR, const HamiltonianOptions&);
 
-    void computeOneCholeskyPartialTPILibint(BasisSet&, BasisSet&);
+    void computeOneCholeskyRawSubTPILibint(BasisSet&, BasisSet&);
 
-    void computeTwoCholeskyPartialTPILibint(BasisSet&, BasisSet&);
+    void computeTwoCholeskyRawSubTPILibint(BasisSet&, BasisSet&);
 
-    void computeOneCholeskyPartialTPIPrebuilt4Index(BasisSet&, BasisSet&);
+    void computeOneCholeskyRawSubTPIPrebuilt4Index();
 
-    void computeTwoCholeskyPartialTPIPrebuilt4Index(BasisSet&, BasisSet&);
+    void computeTwoCholeskyRawSubTPIPrebuilt4Index();
 
+    void computeOneCholeskyPartialTPI();
+
+    void computeTwoCholeskyPartialTPI();
+
+    /*
+      This functions carries out the multiplication of asymm CD tensors 
+      to recover asymm integral in 4-index form (at a truncated accuracy)
+    */
     InCore4indexTPI<IntsT> to4indexERI() {
-
-      if(not partialTPI_) CErr ("Missing PartialTPI. Can't convert to 4-index");
 
       size_t NB1 = this->nBasis();
       size_t NB2 = this->snBasis();
@@ -169,11 +185,19 @@ class InCoreAsymmRITPI :
       if(aux1_){
         size_t NBRI1 = aux1_->nRIBasis();
         if(aux2_){
-          size_t NBRI2 = aux2_->nRIBasis();
-          double *SCR = this->memManager().template malloc<IntsT>(NBRI1 * NB2_Squared);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans, NBRI1, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI1, aux2_->pointer(), NBRI2, IntsT(0.), SCR, NBRI1);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans, NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, SCR, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
-          this->memManager().free(SCR);
+          if (asymmCDalg_ == ASYMM_CD_ALG::CONNECTOR) {
+            size_t NBRI2 = aux2_->nRIBasis();
+            double *SCR = this->memManager().template malloc<IntsT>(NBRI1 * NB2_Squared);
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans, NBRI1, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI1, aux2_->pointer(), NBRI2, IntsT(0.), SCR, NBRI1);
+            blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans, NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, SCR, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
+            this->memManager().free(SCR);
+          } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEAUXBASIS) {
+            blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, aux2_->pointer(), NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
+          } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEMATRIX) {
+            CErr("to4indexERI() for COMBINEMATRIX algorithm NYI");
+          } else{
+            CErr("Invalid Asymm-CD two-aux algorithm in to4indexERI()");
+          }
         } else{
           blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, partialTPI_, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
         }
@@ -182,13 +206,13 @@ class InCoreAsymmRITPI :
           size_t NBRI2 = aux2_->nRIBasis();
           blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI2, aux2_->pointer(), NBRI2, IntsT(0.), eri4i.pointer(), NB1_Squared);
         } else{
-          CErr ("No aux basis found. Can't convert to 4-index");
+          CErr ("No aux basis found. Can't convert to 4-index in to4indexERI()");
         } 
       }
       return eri4i;
     }
     
-    // Determine the size of partialERI
+    // Determine the size of partialTPI_
     size_t getPartialTPISize(){
       size_t sizePartialTPI = 0, NB1 = this->nBasis(), NB2 = this->snBasis();
       if (aux1_){
@@ -199,6 +223,7 @@ class InCoreAsymmRITPI :
       return sizePartialTPI;
     }
 
+    // Allocate memory for partialTPI_
     void malloc() {
 
       size_t sizePartialTPI = getPartialTPISize();
@@ -260,9 +285,18 @@ class InCoreAsymmRITPI :
     IntsT* pointer() { return partialTPI_; }
     const IntsT* pointer() const { return partialTPI_; }
 
-    void setPrintError(bool printError) { printError_ = printError;}
+    void setReportError(bool reportError) { reportError_ = reportError;}
 
-    void printError(BasisSet &basisSet1, BasisSet &basisSet2, Molecule& mol, EMPerturbation& emPert){
+    /*
+      Calculate the error of the approximated asymm integral.
+      
+      This function calls to4Index() to recover the approxiamte 4-index asymm integral (using CD tensors), 
+                    and computes the exact 4-index integrals (using in-core algorithm),
+                    then reports the max element and 2-norm of the different matrix
+
+                    the error in the corresponding symm integral (using the same aux basis) will also be reported
+    */
+    void reportError(BasisSet &basisSet1, BasisSet &basisSet2, Molecule& mol, EMPerturbation& emPert){
 
       std::cout << bannerTop <<  std::endl;
       std::cout << "\nCalculating Error Associated with approximate (ee|pp) Integrals: \n" << std::endl;
@@ -270,18 +304,46 @@ class InCoreAsymmRITPI :
       size_t NB1 = basisSet1.nBasis;
       size_t NB2 = basisSet2.nBasis;
       
+      // If debug flag is set to true, then error of the other symm integral will also be calculated.
+      // For example, if elex aux is used, (ee|ee) and (ee|pp) error will be reported.
+      //              if debug=true, then (pp|pp) error using elec aux basis will also be reported.
+      bool debug = true;
       if(aux1_){
         std::cout<< "     * Error from the approximation of (ee|ee) Integrals" << std::endl;
         size_t lenTPI = NB1*NB1*NB1*NB1;
+        std::cout<< "       - Error of (ee|ee)" << std::endl;        
         calculateDifferece(basisSet1, basisSet1, mol, emPert, {-1., 1.}, ELECTRON_REPULSION, 
             aux1_->to4indexERI().pointer(), lenTPI);
+        
+        if(partialTPI_ and debug){
+          IntsT *SCR = this->memManager().template malloc<IntsT>(NB2*NB2*NB2*NB2);
+          size_t NBRI = aux1_->nRIBasis();
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2*NB2,NB2*NB2,NBRI,IntsT(1.),partialTPI_,NBRI,
+            partialTPI_,NBRI,IntsT(0.),SCR,NB2*NB2);
+          std::cout<< "       - Error of (pp|pp) for debugging" << std::endl;        
+          calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, SCR, NB2*NB2*NB2*NB2);
+          this->memManager().free(SCR);
+        }
+        std::cout << std::endl; 
       }
       
       if(aux2_){
         std::cout<< "     * Error from the approximation of (pp|pp) Integrals" << std::endl;
         size_t lenTPI = NB2*NB2*NB2*NB2;
+        std::cout<< "       - Error of (pp|pp)" << std::endl;        
         calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, 
             aux2_->to4indexERI().pointer(), lenTPI);
+
+        if(partialTPI_ and debug){
+          IntsT *SCR = this->memManager().template malloc<IntsT>(NB1*NB1*NB1*NB1);
+          size_t NBRI = aux2_->nRIBasis();
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1*NB1,NB1*NB1,NBRI,IntsT(1.),partialTPI_,NBRI,
+            partialTPI_,NBRI,IntsT(0.),SCR,NB1*NB1);
+          std::cout<< "       - Error of (ee|ee) for testing" << std::endl;        
+          calculateDifferece(basisSet1, basisSet1, mol, emPert, {-1., 1.}, ELECTRON_REPULSION, SCR, NB1*NB1*NB1*NB1);
+          this->memManager().free(SCR);
+        }
+        std::cout << std::endl; 
       }
       
       std::cout<< "     * Error from the approximation of (ee|pp) Integrals" << std::endl;
@@ -293,6 +355,10 @@ class InCoreAsymmRITPI :
 
     }
 
+
+    // Helpful function to report error
+    // This function builds exact in-core 4-index integrals, from which the approxiate 4-index is subtracted,
+    // and calculates the max element and 2norm of the difference matrix
     void calculateDifferece(BasisSet &basisSet1, BasisSet &basisSet2,  Molecule& mol, EMPerturbation& emPert, 
         Particle P, OPERATOR op, IntsT* approxTPI, size_t lenTPI){
       // Build Exact TPI:
@@ -306,19 +372,27 @@ class InCoreAsymmRITPI :
       std::copy_n(approxTPI,lenTPI,diff);
       blas::axpy(lenTPI, -1.0, exactTPI.pointer(), 1, diff, 1);
 
-      auto minmaxApprox = std::minmax_element(diff, diff+lenTPI);
-      IntsT maxElement = std::max(-*minmaxApprox.first, *minmaxApprox.second);
+      auto minmaxDiff = std::minmax_element(diff, diff+lenTPI);
+      IntsT maxElementDiff = std::max(-*minmaxDiff.first, *minmaxDiff.second);
       IntsT norm = blas::nrm2(lenTPI, diff, 1);
 
-      std::cout << "       Max Element: " << maxElement << std::endl; 
-      std::cout << "       Norm: " << norm << std::endl; 
-      std::cout << std::endl; 
+      auto minmaxExact = std::minmax_element(exactTPI.pointer(), exactTPI.pointer()+lenTPI);
+      IntsT maxElementExact = std::max(-*minmaxExact.first, *minmaxExact.second);
+      
+      auto minmaxApprox = std::minmax_element(approxTPI, approxTPI+lenTPI);
+      IntsT maxElementApprox = std::max(-*minmaxApprox.first, *minmaxApprox.second);
+      
+      std::cout << "       Max Element in Difference Matrix: " << maxElementDiff << std::endl; 
+      std::cout << "       Norm in Difference Matrix:        " << norm << std::endl; 
+      std::cout << "       Max Element in Exact 4-index:     " << maxElementExact << std::endl; 
+      std::cout << "       Max Element in Approx 4-index:    " << maxElementApprox << std::endl; 
 
       this->memManager().free(diff);
     }
 
     
   }; // class InCoreAsymmRITPI
+    
 
   template <typename MatsT, typename IntsT>
   class InCoreAsymmRITPIContraction : public InCore4indexTPIContraction<MatsT,IntsT> {

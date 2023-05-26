@@ -155,7 +155,10 @@ namespace ChronusQ {
       auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
 
       SquareMatrix<MatsT> AAblock(exchangeMatrices[0]->memManager(), NB);
+      // auto riKCoeffBegin = tick();
       ritpi->KCoefContract(ss.comm, ss.nOA, ss.mo[0].pointer(), AAblock.pointer());
+      // double durRiKCoeff = tock(riKCoeffBegin);
+      // std::cout << "  RI KCoeff Contraction duration: " << durRiKCoeff << " s" << std::endl;
       if(ss.iCS) {
         
         for (auto i = 0ul; i < nBatch; i++) 
@@ -193,7 +196,11 @@ namespace ChronusQ {
       }
     }
 
+    // auto beginContract = tick();
     ss.TPI->twoBodyContract(ss.comm, contract, pert);
+    // double durContract = tock(beginContract);
+    // std::cout << "  " << std::string(ss.particle.charge>0? "ProtDensity" : "ElecDensity")
+    //     << " Symm-Contraction duration = " << durContract << " s " << std::endl;
 
     ROOT_ONLY(ss.comm); // Return if not root (J/K only valid on root process)
 

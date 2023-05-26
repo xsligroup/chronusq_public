@@ -328,20 +328,27 @@ namespace ChronusQ {
           prot_basis->updateNuclearCoordinates(mol);
         }
 
-        // Update integrals
+        // Calculate integrals 
+        // For Real-time jobs, since basis functions are frozen, no integrals are not re-calculated.
+        //                     assume we can re-use the same integrals from SCF job
         // TODO: Time dependent field?
-        aoints->computeAOTwoE(*basis, mol, emPert);
+        if (elecJob != JobType::RT){
+          aoints->computeAOTwoE(*basis, mol, emPert);
 
-        if (doNEO) { 
-          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(prot_aoints)){
-            prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
-          }else{
-            CErr("NEO with complex integrals NYI!",output);
+          if (doNEO) { 
+            if(auto p = std::dynamic_pointer_cast<Integrals<double>>(prot_aoints)){
+              prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
+            }else{
+              CErr("NEO with complex integrals NYI!",output);
+            }
+
+            //ep_aoints = ep_aoints_options.buildAsymmIntegral(output, *memManager, mol, basis, dfbasis, prot_basis,
+            //    aoints_options, prot_aoints_options, aoints, prot_aoints);
+
+            if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints)){
+              ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
+            }  
           }
-          
-          if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints)){
-            ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
-          }  
         }
         
         // Note, these guessSSOptions does not apply to NEO guess

@@ -67,7 +67,17 @@ namespace ChronusQ {
     //auto beginEPJContract = tick();
     contraction->twoBodyContract(ss.comm, contract, pert);
     //double durEPJContract = tock(beginEPJContract);
-    //std::cout<< "  Cholesky-Asymm-Contraction duration = " << durEPJContract << " s " << std::endl;
+
+    /***
+    // Print asymm CD contraction total timing (note this is with other density)
+    std::cout << "  " << std::string(ss.particle.charge<0? "ProtDensity" : "ElecDensity")
+        << " Cholesky-Asymm-Contraction duration = " << durEPJContract << " s \n" << std::endl;
+
+    // Get the EPJ Energy (by tracing with own density)
+    double epjEnergy = ss.template computeOBProperty<SCALAR>( this->outMat->pointer());
+    std::cout << "  " << std::string(ss.particle.charge>0? "ProtDensity" : "ElecDensity")
+        << " Contracted EPJ Energy  = " << std::setprecision(12) <<  epjEnergy  << std::endl;
+    ***/
   }
 
   template <typename MatsT, typename IntsT>
@@ -918,7 +928,10 @@ namespace ChronusQ {
     // Call all upstream FockBuilders
     this->upstream->formFock(ss, empert, increment, xHFX);
 
+    // auto vxcBegin = tick();
     formVXC(ss);
+    // double durVxc = tock(vxcBegin);
+    // std::cout << "  VXC duration: " << durVxc << " s\n" << std::endl;
 
     *ss.fockMatrix += *VXC;
   }
