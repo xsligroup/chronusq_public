@@ -210,8 +210,13 @@ namespace ChronusQ {
       out << "  *** Auto-determination of reference: " << refString << " -> ";
       ref.iCS = mol.multip == 1;
 
-      if(ref.iCS) out << "R" << refString;
-      else        out << "U" << refString;
+      if(ref.iCS){
+        out << "R" << refString;
+        ref.refType = isRRef;
+      }else{
+        out << "U" << refString;
+        ref.refType = isURef;
+      }
 
       out << " ***" << std::endl;
       
