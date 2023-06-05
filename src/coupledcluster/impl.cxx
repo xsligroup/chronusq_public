@@ -347,9 +347,8 @@ namespace ChronusQ {
     // Compute diagonal Fock (orbital energies)
     eps.clear();
     eps.resize(nMO, 0.0);
-    for(auto it = std::begin(fockMatrix["oo"]); it != std::end(fockMatrix["oo"]); ++it) {
+    foreach_inplace(fockMatrix["oo"], [&](TA::Tensor<MatsT> &tile){
 
-      auto &tile = it->get();
       const auto& lobound = tile.range().lobound();
       if (lobound[0] == lobound[1]) {
         const auto& upbound = tile.range().upbound();
@@ -360,10 +359,9 @@ namespace ChronusQ {
           eps[x[0]] = std::real(tile[x]);
         }
       }
-    }
-    for(auto it = std::begin(fockMatrix["vv"]); it != std::end(fockMatrix["vv"]); ++it) {
+    });
+    foreach_inplace(fockMatrix["vv"], [&](TA::Tensor<MatsT> &tile){
 
-      auto &tile = it->get();
       const auto& lobound = tile.range().lobound();
       if (lobound[0] == lobound[1]) {
         const auto& upbound = tile.range().upbound();
@@ -374,7 +372,8 @@ namespace ChronusQ {
           eps[nO + x[0]] = std::real(tile[x]);
         }
       }
-    }
+    });
+    TA::get_default_world().gop.fence();
     TA::get_default_world().gop.template reduce(eps.data(), nMO, std::plus<double>());
 
 #ifdef DEBUG_CCSD
