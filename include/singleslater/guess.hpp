@@ -499,7 +499,6 @@ namespace ChronusQ {
                 << "  *** Forming Initial Fock Matrix from SAD Density ***\n\n";
 
     ao2orthoDen();
-    computeNaturalOrbitals();
 
   }; // SingleSlater<T>::SADGuess
 
@@ -590,7 +589,6 @@ namespace ChronusQ {
 #endif
 
     ao2orthoDen();
-    computeNaturalOrbitals(); // Compute the natural orbitals so RI has an initial set of orbitals
 
   } // SingleSlater<T>::ReadGuess1PDM()
 
