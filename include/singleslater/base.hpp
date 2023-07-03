@@ -39,9 +39,7 @@ namespace ChronusQ {
     isRRef,    // RHF/DFT
     isURef,    // UHF/DFT
     isRORef,   // ROHF/DFT
-    isGRef,    // GHF/DFT
     isTwoCRef, // Two-component
-    isX2CRef,  // X2C
     isFourCRef // Four-component
   };
 
@@ -50,10 +48,11 @@ namespace ChronusQ {
 
     std::string RCflag = "REAL"; // Real or Complex
 
-    RefType refType = isRRef;    // R/U/G/2c/X2C/4c
+    RefType refType = isRRef;    // R/U/RO/2c/4c
 
     bool isKSRef = false;        // HF or DFT
     bool isEPCRef = false;       // NEO-KS or not
+    bool isX2CRef = false;       // If user used legacy way to reference X2C
 
     size_t nC = 1;               // number of component
     bool iCS = true;             // closed shell or not

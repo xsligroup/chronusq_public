@@ -163,6 +163,8 @@ namespace ChronusQ {
     // This is the reference string to be parsed
     std::string refString = tokens.back();
    
+    // Boolean for 2cHF specified as GHF in input
+    bool isGHF = false;
 
     // Determine type of reference
     if ( std::find(rawRefs.begin(),rawRefs.end(),refString) != rawRefs.end() )
@@ -173,13 +175,15 @@ namespace ChronusQ {
       ref.refType = isURef;
     else if ( std::find(RORefs.begin(),RORefs.end(),refString) != RORefs.end() )
       ref.refType = isRORef;
-    else if ( std::find(GRefs.begin(),GRefs.end(),refString) != GRefs.end() )
-      ref.refType = isGRef;
-    else if ( std::find(TwoCRefs.begin(),TwoCRefs.end(),refString) != TwoCRefs.end() )
+    else if ( std::find(GRefs.begin(),GRefs.end(),refString) != GRefs.end() ){
       ref.refType = isTwoCRef;
-    else if ( std::find(X2CRefs.begin(),X2CRefs.end(),refString) != X2CRefs.end() )
-      ref.refType = isX2CRef;
-    else if ( std::find(FourCRefs.begin(),FourCRefs.end(),refString) != FourCRefs.end() )
+      isGHF = true;
+    }else if ( std::find(TwoCRefs.begin(),TwoCRefs.end(),refString) != TwoCRefs.end() )
+      ref.refType = isTwoCRef;
+    else if ( std::find(X2CRefs.begin(),X2CRefs.end(),refString) != X2CRefs.end() ){
+      ref.refType = isTwoCRef;
+      ref.isX2CRef = true;
+    }else if ( std::find(FourCRefs.begin(),FourCRefs.end(),refString) != FourCRefs.end() )
       ref.refType = isFourCRef;
     else 
       CErr(refString + " is not a valid QM.REFERENCE",out);
@@ -187,13 +191,12 @@ namespace ChronusQ {
 
     // Cleanup the reference string
     if( ref.refType != isRawRef )
-      if( ref.refType == isX2CRef )                       
+      if( ref.refType == isTwoCRef and ref.isX2CRef )                       
         refString.erase(0,3);
-      else if( ref.refType == isFourCRef or ref.refType == isTwoCRef ) 
+      else if( ref.refType == isFourCRef or ( ref.refType == isTwoCRef and not isGHF ) )
         refString.erase(0,2);
-      else                                                
+      else
         refString.erase(0,1);
-
 
     // Handle KS related queries
     ref.isKSRef = 
@@ -227,7 +230,7 @@ namespace ChronusQ {
         ref.iCS = true;
     else if( ref.refType == isURef or ref.refType == isRORef )
       ref.iCS = false;
-    else if( ref.refType == isGRef or ref.refType == isTwoCRef or ref.refType == isX2CRef ) {
+    else if( ref.refType == isTwoCRef ) {
       ref.iCS = false; ref.nC = 2;
     }
     else if( ref.refType == isFourCRef ) {
@@ -472,7 +475,7 @@ namespace ChronusQ {
       hamiltonianOptions.AtomicMeanField = false;
 
     } else if( not X.compare("ONEE") or not X.compare("ONEELECTRON")
-               or ( not X.compare("DEFAULT") and refOptions.refType == isX2CRef ) ) {
+               or ( not X.compare("DEFAULT") and refOptions.isX2CRef ) ) {
       // Legacy X2C- reference is equilvalent to 2C- reference + OneE-X2C
 
       hamiltonianOptions.x2cType = X2C_TYPE::ONEE;
@@ -487,7 +490,7 @@ namespace ChronusQ {
       CErr(X + " NYI",out);
 
     } else if( not X.compare("OFF")
-               or ( not X.compare("DEFAULT") and refOptions.refType != isX2CRef ) ) {
+               or ( not X.compare("DEFAULT") and not refOptions.isX2CRef ) ) {
 
       if ( refOptions.refType == isFourCRef ) {
 
@@ -1062,7 +1065,7 @@ namespace ChronusQ {
     if( isGIAO and refOptions.isKSRef )
       CErr("KS + GIAO not valid",out);
 
-    if( isGIAO and refOptions.refType == isX2CRef )
+    if( isGIAO and refOptions.isX2CRef )
       CErr("X2C + GIAO not valid",out);
 
 
@@ -1103,7 +1106,7 @@ namespace ChronusQ {
         CErr("GIAO + REAL is not a valid option.",out);
 
     else if( not refOptions.RCflag.compare("COMPLEX") and not isGIAO )
-      if( refOptions.isKSRef and refOptions.refType == isX2CRef)
+      if( refOptions.isKSRef and refOptions.isX2CRef)
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<KohnSham<dcomplex,double>>(
               "Exact Two Component", "X2C-", KS_LIST(double)
@@ -1113,7 +1116,7 @@ namespace ChronusQ {
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<KohnSham<dcomplex,double>>( KS_LIST(double) )
           );
-      else if( refOptions.refType == isX2CRef )
+      else if( refOptions.isX2CRef )
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<HartreeFock<dcomplex,double>>(
               "Exact Two Component Hartree-Fock","X2C-HF",HF_LIST(double)
@@ -1136,7 +1139,7 @@ namespace ChronusQ {
             std::make_shared<HartreeFock<dcomplex,double>>( HF_LIST(double) )
           );
     else
-      if( refOptions.isKSRef and refOptions.refType == isX2CRef )
+      if( refOptions.isKSRef and refOptions.isX2CRef )
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<KohnSham<dcomplex,dcomplex>>(
               "Exact Two Component", "X2C-", KS_LIST(dcomplex)
@@ -1146,7 +1149,7 @@ namespace ChronusQ {
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<KohnSham<dcomplex,dcomplex>>( KS_LIST(dcomplex) )
           );
-      else if( refOptions.refType == isX2CRef )
+      else if( refOptions.isX2CRef )
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<HartreeFock<dcomplex,dcomplex>>(
               "Exact Two Component","X2C-HF",HF_LIST(dcomplex)

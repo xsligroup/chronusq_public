@@ -1267,7 +1267,7 @@ namespace ChronusQ {
     } else if( scrMOSize < NB ){
 
       // 2c guesses
-      if( binRefType == RefType::isTwoCRef or binRefType == RefType::isGRef or binRefType == RefType::isX2CRef ){
+      if( binRefType == RefType::isTwoCRef ){
 
         // RHF/ROHF->2c
         if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
@@ -1366,7 +1366,7 @@ namespace ChronusQ {
           }
 
         // 2c->4c
-        }else if( scrRefType == RefType::isTwoCRef or scrRefType == RefType::isGRef or scrRefType == RefType::isX2CRef ){
+        }else if( scrRefType == RefType::isTwoCRef ){
 
           // 2c for plus large alpha
           SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),motmp[0].pointer(),scrMOSize,this->mo[0].pointer()+NB2/2,NB);
