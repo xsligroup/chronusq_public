@@ -47,10 +47,45 @@
 
 #define _CONTRACTION_
 
+//#define _THREAD_TIMING_
 
 #include <libcint.hpp>
 
 namespace ChronusQ {
+
+#ifdef CQ_ENABLE_MPI
+  template <typename T>
+  inline void MPIAllReduceInPlace(T* inout, size_t n, MPI_Comm c, T* SCR) {
+
+#ifdef _THREAD_TIMING_
+    // Print current time
+    time_t currentClockTime;
+    time(&currentClockTime);
+
+    std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
+#endif
+
+    // FIXME: This should be able to be done with MPI_IN_PLACE for
+    // the root process
+
+    MPIAllReduce( inout, n, SCR, c );
+
+    // Copy over the output buffer on root
+    std::copy_n(SCR, n, inout);
+
+  }
+
+  template <typename T>
+  inline void MPIAllReduceInPlace(T* inout, size_t n, MPI_Comm c, CQMemManager& memManager_) {
+
+    T* mpiScr = memManager_.malloc<T>(n);
+
+    MPIAllReduceInPlace(inout, n, c, mpiScr);
+
+    memManager_.free(mpiScr);
+
+  }
+#endif
 
 
   /************************************/
@@ -86,6 +121,7 @@ namespace ChronusQ {
       CErr("Libcint + cartesian GTO NYI.");
 
     BasisSet basisSet_ = originalBasisSet_.groupGeneralContractionBasis();
+    const size_t nBasis = basisSet_.nBasis;
 
     size_t buffSize = std::max_element(basisSet_.shells.begin(),
                                        basisSet_.shells.end(),
@@ -101,6 +137,18 @@ namespace ChronusQ {
     size_t LAThreads = GetLAThreads();
     SetLAThreads(1); // Turn off parallelism in LA functions
 
+
+    // MPI info
+    size_t mpiRank   = MPIRank(comm);
+    size_t mpiSize   = MPISize(comm);
+    size_t mpi_thread_size = mpiSize * nThreads;
+
+#ifdef CQ_ENABLE_MPI
+    // Broadcast X to all process
+    if( mpiSize > 1 )
+      for( auto &C : matList )
+        MPIBCast( C.X, nBasis*nBasis, 0, comm );
+#endif
 
 
     /****************************/
@@ -193,7 +241,6 @@ namespace ChronusQ {
     size_t NB4_2 = 2*NB4;
     size_t NB4_3 = 3*NB4;
 
-    const size_t nBasis   = basisSet_.nBasis;
     const size_t nMat     = matList.size();
     const size_t nShell   = basisSet_.nShell;
 
@@ -279,6 +326,7 @@ namespace ChronusQ {
       {
   
         size_t thread_id = GetThreadID();
+        size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
   
         int shls[4];
@@ -295,8 +343,8 @@ namespace ChronusQ {
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s12 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s12 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
           shls[0] = int(s1);
@@ -320,6 +368,10 @@ namespace ChronusQ {
       };
 
       memManager_.free(buffAll, cacheAll);
+
+#ifdef CQ_ENABLE_MPI
+      MPIAllReduceInPlace(SchwarzERI, nShell*nShell, comm, memManager_);
+#endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durERIchwarz = tock(topERIchwarz);
@@ -350,6 +402,7 @@ namespace ChronusQ {
   
         double C2 = 1./(4*SpeedOfLight*SpeedOfLight);
         size_t thread_id = GetThreadID();
+        size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
   
         int shls[4];
@@ -366,8 +419,8 @@ namespace ChronusQ {
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s12 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s12 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
           shls[0] = int(s1);
@@ -391,6 +444,10 @@ namespace ChronusQ {
       };
 
       memManager_.free(buffAll, cacheAll);
+
+#ifdef CQ_ENABLE_MPI
+      MPIAllReduceInPlace(SchwarzSSSS, nShell*nShell, comm, memManager_);
+#endif
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durSSSSSchwarz = tock(topSSSSSchwarz);
@@ -464,9 +521,17 @@ namespace ChronusQ {
       cacheAll = memManager_.malloc<double>(cache_size*nThreads);
       memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
 
+#ifdef _THREAD_TIMING_
+      std::vector<double> durThread(nThreads,0);
+#endif
+
       #pragma omp parallel
       {
+#ifdef _THREAD_TIMING_
+        auto bareBegin = tick();
+#endif
         int thread_id = GetThreadID();
+        int mpi_thread_id = mpiRank * nThreads + thread_id;
   
         auto &AX_loc = AXthreads[thread_id];
   
@@ -508,8 +573,8 @@ namespace ChronusQ {
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s1234 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
 #ifdef _SHZ_SCREEN_4C_LIBCINT
@@ -617,16 +682,39 @@ namespace ChronusQ {
         }; // s2
         }; // s1
   
+#ifdef _THREAD_TIMING_
+        durThread[thread_id] = tock(bareBegin);
+#endif
+
       }; // OpenMP context
+
+
+      for( auto iMat = 0; iMat < 5;  iMat++ )
+        for( auto iTh  = 1; iTh < nThreads; iTh++) {
+          MatAdd('N','N',nBasis,nBasis,MatsT(1.), AXthreads[iTh][iMat],nBasis,
+                 MatsT(1.), AXthreads[0][iMat],nBasis,AXthreads[0][iMat],nBasis);
+        }
+
+#ifdef CQ_ENABLE_MPI
+      // Combine all G[X] contributions onto all processes
+      if( mpiSize > 1 ) {
+        MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+
+        for( auto iMat = 0; iMat < 5;  iMat++ )
+          MPIAllReduceInPlace( AXthreads[0][iMat], nBasis*nBasis, comm, mpiScr );
+
+        memManager_.free(mpiScr);
+
+      }
+#endif
   
   
       MatsT* SCR = memManager_.malloc<MatsT>(nBasis * nBasis);
 
       // Take care of the Hermitian symmetry for CLLMS, XLLMS, XLLMX, XLLMY, XLLMZ
-      for( auto iMat = 0; iMat < 5;  iMat++ ) 
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
-        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][iMat],nBasis,MatsT(0.5),
-          AXthreads[iTh][iMat],nBasis,SCR,nBasis);
+      for( auto iMat = 0; iMat < 5;  iMat++ ) {
+        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[0][iMat],nBasis,MatsT(0.5),
+          AXthreads[0][iMat],nBasis,SCR,nBasis);
         MatAdd('N','N',nBasis,nBasis,MatsT(1.), SCR,nBasis, 
           MatsT(1.), matList[iMat].AX,nBasis,matList[iMat].AX,nBasis);
       }
@@ -637,8 +725,21 @@ namespace ChronusQ {
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
+#ifdef _THREAD_TIMING_
+      std::cout << "Bare-Coulomb-Exchange Libcint time on every thread:" << std::endl;
+      for (size_t i = 0; i < nThreads; i++)
+        std::cout << i << "\t:" << durThread[i] << std::endl;
+#endif
+
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkip = std::accumulate(nSkip.begin(),nSkip.end(),size_t(0));
+#ifdef CQ_ENABLE_MPI
+      if (mpiSize > 1) {
+        std::cout << "Bare-Coulomb-Exchange Libcint Screened "
+                  << nIntSkip << " on Rank " << mpiRank <<  std::endl;
+        nIntSkip = MPIAllReduce( nIntSkip, comm );
+      }
+#endif
       std::cout << "Bare-Coulomb-Exchange Libcint Screened " << nIntSkip << std::endl;
   
       auto durDirect = tock(topDirect);
@@ -745,13 +846,20 @@ namespace ChronusQ {
       // Keeping track of number of integrals skipped
       std::vector<size_t> nSkipLL(nThreads,0);
 
+#ifdef _THREAD_TIMING_
+      std::vector<double> durThread(nThreads,0);
+#endif
 
       #pragma omp parallel
       {
+#ifdef _THREAD_TIMING_
+        auto LLSSBegin = tick();
+#endif
 
         dcomplex iscale = dcomplex(0.0, 1.0);
 
         size_t thread_id = GetThreadID();
+        int mpi_thread_id = mpiRank * nThreads + thread_id;
   
         auto &AX_loc = AXthreads[thread_id];
   
@@ -792,8 +900,8 @@ namespace ChronusQ {
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
 
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s1234 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
 
 #ifdef _SHZ_SCREEN_4C_LIBCINT
@@ -809,16 +917,42 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
 #endif
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-          //if(not (bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) 
-          //if(not (bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) 
-            {nSkipLL[thread_id]++; continue;}
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipLL[thread_id]++; continue;}
+            atomCenters.push_back(bas(ATOM_OF, s1));
 
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>3) {nSkipLL[thread_id]++; continue;}
+          }
+ 
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
+
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>2) {nSkipLL[thread_id]++; continue;}
+          }
+ 
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
                  and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
@@ -1135,42 +1269,87 @@ namespace ChronusQ {
         }; // loop s3
         }; // loop s2
         }; // loop s1
-  
+
+#ifdef _THREAD_TIMING_
+        durThread[thread_id] = tock(LLSSBegin);
+#endif
   
       } // OpenMP context
  
       dcomplex iS = dcomplex(0.0, 1.0);
 
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
+      for( auto iTh  = 1; iTh < nThreads; iTh++) {
  
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLLMS],nBasis,MatsT(1.0),
-           matList[CLLMS].AX,nBasis,matList[CLLMS].AX,nBasis);
+           AXthreads[0][CLLMS],nBasis,AXthreads[0][CLLMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMS],nBasis,MatsT(1.0),
-           matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
+           AXthreads[0][CSSMS],nBasis,AXthreads[0][CSSMS],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
-           matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMX],nBasis,AXthreads[0][CSSMX],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
-           matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMY],nBasis,AXthreads[0][CSSMY],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis, iS, AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
-           matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMZ],nBasis,AXthreads[0][CSSMZ],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMS],nBasis,MatsT(1.0),
-           matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+           AXthreads[0][XLSMS],nBasis,AXthreads[0][XLSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMX],nBasis,MatsT(1.0),
-           matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+           AXthreads[0][XLSMX],nBasis,AXthreads[0][XLSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMY],nBasis,MatsT(1.0),
-           matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+           AXthreads[0][XLSMY],nBasis,AXthreads[0][XLSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMZ],nBasis,MatsT(1.0),
-           matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
+           AXthreads[0][XLSMZ],nBasis,AXthreads[0][XLSMZ],nBasis);
 
       };
+
+#ifdef CQ_ENABLE_MPI
+      // Combine all G[X] contributions onto all processes
+      if( mpiSize > 1 ) {
+        MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+
+        std::vector<DIRAC_PAULI_SPINOR_COMP> comps{CLLMS, CSSMS, CSSMX, CSSMY, CSSMZ,
+                                                   XLSMS, XLSMX, XLSMY, XLSMZ};
+        for (auto comp : comps)
+          MPIAllReduceInPlace( AXthreads[0][comp], nBasis*nBasis, comm, mpiScr );
+
+        memManager_.free(mpiScr);
+
+      }
+#endif
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLLMS],nBasis,MatsT(1.0),
+             matList[CLLMS].AX,nBasis,matList[CLLMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CSSMS],nBasis,MatsT(1.0),
+             matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis, iS, AXthreads[0][CSSMX],nBasis,MatsT(1.0),
+             matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis, iS, AXthreads[0][CSSMY],nBasis,MatsT(1.0),
+             matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis, iS, AXthreads[0][CSSMZ],nBasis,MatsT(1.0),
+             matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMS],nBasis,MatsT(1.0),
+             matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMX],nBasis,MatsT(1.0),
+             matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMY],nBasis,MatsT(1.0),
+             matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMZ],nBasis,MatsT(1.0),
+             matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
 
       // Take care of the Hermitian symmetry in the LL and SS blocks
       auto ADCLLMS = matList[CLLMS].AX;
@@ -1194,8 +1373,21 @@ namespace ChronusQ {
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
+#ifdef _THREAD_TIMING_
+      std::cout << "Dirac-Coulomb-C(2) Libcint time on every thread:" << std::endl;
+      for (size_t i = 0; i < nThreads; i++)
+        std::cout << i << "\t:" << durThread[i] << std::endl;
+#endif
+
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipLL = std::accumulate(nSkipLL.begin(),nSkipLL.end(),size_t(0));
+#ifdef CQ_ENABLE_MPI
+      if (mpiSize > 1) {
+        std::cout << "Dirac-Coulomb-C(2) Screened "
+                  << nIntSkipLL << " on Rank " << mpiRank <<  std::endl;
+        nIntSkipLL = MPIAllReduce( nIntSkipLL, comm );
+      }
+#endif
       std::cout << "Dirac-Coulomb-C(2) Screened " << nIntSkipLL << std::endl;
 
       auto durDirectLL = tock(topDirectLL);
@@ -1753,15 +1945,22 @@ namespace ChronusQ {
       auto NB4_12 =12*NB4;  
       auto NB4_13 =13*NB4;  
       auto NB4_14 =14*NB4;  
-      auto NB4_15 =15*NB4;  
-  
+      auto NB4_15 =15*NB4;
+
+#ifdef _THREAD_TIMING_
+      std::vector<double> durThread(nThreads,0);
+#endif
   
       #pragma omp parallel
       {
-  
+#ifdef _THREAD_TIMING_
+        auto SSSSBegin = tick();
+#endif
+
         dcomplex iS = dcomplex(0.0, 1.0);
   
         size_t thread_id = GetThreadID();
+        int mpi_thread_id = mpiRank * nThreads + thread_id;
   
         auto &AX_loc = AXthreads[thread_id];
   
@@ -1803,8 +2002,8 @@ namespace ChronusQ {
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s1234 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
 
 #ifdef _SHZ_SCREEN_4C_LIBCINT
@@ -1818,13 +2017,42 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipSSSS[thread_id]++; continue; }
 #endif
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipSSSS[thread_id]++; continue;}
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipSSSS[thread_id]++; continue;}
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>3) {nSkipSSSS[thread_id]++; continue;}
+          }
+ 
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
+
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>2) {nSkipSSSS[thread_id]++; continue;}
+          }
+ 
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
@@ -2400,40 +2628,82 @@ namespace ChronusQ {
       }; // loop s3
       }; // loop s2
       }; // loop s1
-  
+
+#ifdef _THREAD_TIMING_
+      durThread[thread_id] = tock(SSSSBegin);
+#endif
   
       }; // OpenMP context
   
   
       dcomplex iS = dcomplex(0.0, 1.0);
 
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
+      for( auto iTh  = 1; iTh < nThreads; iTh++) {
    
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMS],nBasis,MatsT(1.0),
-           matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
+           AXthreads[0][CSSMS],nBasis,AXthreads[0][CSSMS],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
-           matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMX],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMX],nBasis,AXthreads[0][CSSMX],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
-           matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMY],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMY],nBasis,AXthreads[0][CSSMY],nBasis);
 
-        MatAdd('N','N',nBasis,nBasis,iS,AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
-           matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
+        MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CSSMZ],nBasis,MatsT(1.0),
+           AXthreads[0][CSSMZ],nBasis,AXthreads[0][CSSMZ],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMS],nBasis,MatsT(1.0),
-           matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+           AXthreads[0][XSSMS],nBasis,AXthreads[0][XSSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMX],nBasis,MatsT(1.0),
-           matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+           AXthreads[0][XSSMX],nBasis,AXthreads[0][XSSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMY],nBasis,MatsT(1.0),
-           matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+           AXthreads[0][XSSMY],nBasis,AXthreads[0][XSSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMZ],nBasis,MatsT(1.0),
-           matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+           AXthreads[0][XSSMZ],nBasis,AXthreads[0][XSSMZ],nBasis);
   
       };
+
+#ifdef CQ_ENABLE_MPI
+      // Combine all G[X] contributions onto all processes
+      if( mpiSize > 1 ) {
+        MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+
+        std::vector<DIRAC_PAULI_SPINOR_COMP> comps{CSSMS, CSSMX, CSSMY, CSSMZ,
+                                                   XSSMS, XSSMX, XSSMY, XSSMZ};
+        for (auto comp : comps)
+          MPIAllReduceInPlace( AXthreads[0][comp], nBasis*nBasis, comm, mpiScr );
+
+        memManager_.free(mpiScr);
+
+      }
+#endif
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CSSMS],nBasis,MatsT(1.0),
+             matList[CSSMS].AX,nBasis,matList[CSSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,iS,AXthreads[0][CSSMX],nBasis,MatsT(1.0),
+             matList[CSSMX].AX,nBasis,matList[CSSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,iS,AXthreads[0][CSSMY],nBasis,MatsT(1.0),
+             matList[CSSMY].AX,nBasis,matList[CSSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,iS,AXthreads[0][CSSMZ],nBasis,MatsT(1.0),
+             matList[CSSMZ].AX,nBasis,matList[CSSMZ].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMS],nBasis,MatsT(1.0),
+             matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMX],nBasis,MatsT(1.0),
+             matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMY],nBasis,MatsT(1.0),
+             matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMZ],nBasis,MatsT(1.0),
+             matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
 
       
       // Take care of the Hermitian symmetry in the LL and SS blocks
@@ -2464,8 +2734,21 @@ namespace ChronusQ {
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
 #endif
 
+#ifdef _THREAD_TIMING_
+      std::cout << "Dirac-Coulomb-SSSS Libcint time on every thread:" << std::endl;
+      for (size_t i = 0; i < nThreads; i++)
+        std::cout << i << "\t:" << durThread[i] << std::endl;
+#endif
+
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipSSSS = std::accumulate(nSkipSSSS.begin(),nSkipSSSS.end(),size_t(0));
+#ifdef CQ_ENABLE_MPI
+      if (mpiSize > 1) {
+        std::cout << "Dirac-Coulomb-SSSS Screened "
+                  << nIntSkipSSSS << " on Rank " << mpiRank <<  std::endl;
+        nIntSkipSSSS = MPIAllReduce( nIntSkipSSSS, comm );
+      }
+#endif
       std::cout << "Dirac-Coulomb-SSSS Screened " << nIntSkipSSSS << std::endl;
   
       auto durDirectSSSS = tock(topDirectSSSS);
@@ -2577,6 +2860,7 @@ namespace ChronusQ {
   
         double C1 = 1./(2*SpeedOfLight);
         size_t thread_id = GetThreadID();
+        size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
   
         int shls[4];
@@ -2593,8 +2877,8 @@ namespace ChronusQ {
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s12 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s12 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
           shls[0] = int(s1);
@@ -2615,6 +2899,10 @@ namespace ChronusQ {
         }
   
       };
+
+#ifdef CQ_ENABLE_MPI
+      MPIAllReduceInPlace(SchwarzGaunt, nShell*nShell, comm, memManager_);
+#endif
 
   
 
@@ -2702,13 +2990,21 @@ namespace ChronusQ {
       ERIBuffer = memManager_.malloc<double>(nSave*NB4*nThreads);
       memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
       std::vector<size_t> nSkipGaunt(nThreads,0);
-  
+
+#ifdef _THREAD_TIMING_
+      std::vector<double> durThread(nThreads,0);
+#endif
+
       #pragma omp parallel
       {
+#ifdef _THREAD_TIMING_
+        auto gauntBegin = tick();
+#endif
   
         dcomplex iS = dcomplex(0.0, 1.0);
   
         size_t thread_id = GetThreadID();
+        int mpi_thread_id = mpiRank * nThreads + thread_id;
   
         auto &AX_loc = AXthreads[thread_id];
   
@@ -2749,8 +3045,8 @@ namespace ChronusQ {
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s1234 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
 #ifdef _SHZ_SCREEN_4C_LIBCINT
@@ -2765,13 +3061,41 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipGaunt[thread_id]++; continue; }
 #endif
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipGaunt[thread_id]++; continue;}
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipGaunt[thread_id]++; continue;}
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>3) {nSkipGaunt[thread_id]++; continue;}
+          }
+ 
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
+
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>2) {nSkipGaunt[thread_id]++; continue;}
+          }
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
@@ -3307,68 +3631,142 @@ namespace ChronusQ {
         }; // loop s3
         }; // loop s2
         }; // loop s1
-  
+
+#ifdef _THREAD_TIMING_
+        durThread[thread_id] = tock(gauntBegin);
+#endif
   
       } // OpenMP context
   
   
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
+      for( auto iTh  = 1; iTh < nThreads; iTh++) {
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMS],nBasis,MatsT(1.0),
-           matList[XLLMS].AX,nBasis,matList[XLLMS].AX,nBasis);
+           AXthreads[0][XLLMS],nBasis,AXthreads[0][XLLMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMX],nBasis,MatsT(1.0),
-           matList[XLLMX].AX,nBasis,matList[XLLMX].AX,nBasis);
+           AXthreads[0][XLLMX],nBasis,AXthreads[0][XLLMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMY],nBasis,MatsT(1.0),
-           matList[XLLMY].AX,nBasis,matList[XLLMY].AX,nBasis);
+           AXthreads[0][XLLMY],nBasis,AXthreads[0][XLLMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMZ],nBasis,MatsT(1.0),
-           matList[XLLMZ].AX,nBasis,matList[XLLMZ].AX,nBasis);
+           AXthreads[0][XLLMZ],nBasis,AXthreads[0][XLLMZ],nBasis);
 
 
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMS],nBasis,MatsT(1.0),
-           matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+           AXthreads[0][XSSMS],nBasis,AXthreads[0][XSSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMX],nBasis,MatsT(1.0),
-           matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+           AXthreads[0][XSSMX],nBasis,AXthreads[0][XSSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMY],nBasis,MatsT(1.0),
-           matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+           AXthreads[0][XSSMY],nBasis,AXthreads[0][XSSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMZ],nBasis,MatsT(1.0),
-           matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+           AXthreads[0][XSSMZ],nBasis,AXthreads[0][XSSMZ],nBasis);
 
 
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMS],nBasis,MatsT(1.0),
-           matList[CLSMS].AX,nBasis,matList[CLSMS].AX,nBasis);
+           AXthreads[0][CLSMS],nBasis,AXthreads[0][CLSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMX],nBasis,MatsT(1.0),
-           matList[CLSMX].AX,nBasis,matList[CLSMX].AX,nBasis);
+           AXthreads[0][CLSMX],nBasis,AXthreads[0][CLSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMY],nBasis,MatsT(1.0),
-           matList[CLSMY].AX,nBasis,matList[CLSMY].AX,nBasis);
+           AXthreads[0][CLSMY],nBasis,AXthreads[0][CLSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMZ],nBasis,MatsT(1.0),
-           matList[CLSMZ].AX,nBasis,matList[CLSMZ].AX,nBasis);
+           AXthreads[0][CLSMZ],nBasis,AXthreads[0][CLSMZ],nBasis);
  
 
   
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMS],nBasis,MatsT(1.0),
-           matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+           AXthreads[0][XLSMS],nBasis,AXthreads[0][XLSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMX],nBasis,MatsT(1.0),
-           matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+           AXthreads[0][XLSMX],nBasis,AXthreads[0][XLSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMY],nBasis,MatsT(1.0),
-           matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+           AXthreads[0][XLSMY],nBasis,AXthreads[0][XLSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMZ],nBasis,MatsT(1.0),
-           matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
+           AXthreads[0][XLSMZ],nBasis,AXthreads[0][XLSMZ],nBasis);
   
       };
+
+#ifdef CQ_ENABLE_MPI
+      // Combine all G[X] contributions onto all processes
+      if( mpiSize > 1 ) {
+        MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+
+        std::vector<DIRAC_PAULI_SPINOR_COMP> comps{XLLMS, XLLMX, XLLMY, XLLMZ,
+                                                   XSSMS, XSSMX, XSSMY, XSSMZ,
+                                                   CLSMS, CLSMX, CLSMY, CLSMZ,
+                                                   XLSMS, XLSMX, XLSMY, XLSMZ};
+        for (auto comp : comps)
+          MPIAllReduceInPlace( AXthreads[0][comp], nBasis*nBasis, comm, mpiScr );
+
+        memManager_.free(mpiScr);
+
+      }
+#endif
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMS],nBasis,MatsT(1.0),
+             matList[XLLMS].AX,nBasis,matList[XLLMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMX],nBasis,MatsT(1.0),
+             matList[XLLMX].AX,nBasis,matList[XLLMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMY],nBasis,MatsT(1.0),
+             matList[XLLMY].AX,nBasis,matList[XLLMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMZ],nBasis,MatsT(1.0),
+             matList[XLLMZ].AX,nBasis,matList[XLLMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMS],nBasis,MatsT(1.0),
+             matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMX],nBasis,MatsT(1.0),
+             matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMY],nBasis,MatsT(1.0),
+             matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMZ],nBasis,MatsT(1.0),
+             matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMS],nBasis,MatsT(1.0),
+             matList[CLSMS].AX,nBasis,matList[CLSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMX],nBasis,MatsT(1.0),
+             matList[CLSMX].AX,nBasis,matList[CLSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMY],nBasis,MatsT(1.0),
+             matList[CLSMY].AX,nBasis,matList[CLSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMZ],nBasis,MatsT(1.0),
+             matList[CLSMZ].AX,nBasis,matList[CLSMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMS],nBasis,MatsT(1.0),
+             matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMX],nBasis,MatsT(1.0),
+             matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMY],nBasis,MatsT(1.0),
+             matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMZ],nBasis,MatsT(1.0),
+             matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
 
 
 #if 1
@@ -3404,9 +3802,22 @@ namespace ChronusQ {
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
       if(SchwarzGaunt!=nullptr) memManager_.free(SchwarzGaunt);
 #endif
-  
+
+#ifdef _THREAD_TIMING_
+      std::cout << "Gaunt Libcint time on every thread:" << std::endl;
+      for (size_t i = 0; i < nThreads; i++)
+        std::cout << i << "\t:" << durThread[i] << std::endl;
+#endif
+
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipGaunt = std::accumulate(nSkipGaunt.begin(),nSkipGaunt.end(),size_t(0));
+#ifdef CQ_ENABLE_MPI
+      if (mpiSize > 1) {
+        std::cout << "Gaunt Screened "
+                  << nIntSkipGaunt << " on Rank " << mpiRank <<  std::endl;
+        nIntSkipGaunt = MPIAllReduce( nIntSkipGaunt, comm );
+      }
+#endif
       std::cout << "Gaunt Screened " << nIntSkipGaunt << std::endl;
   
       auto durDirectGaunt = tock(topDirectGaunt);
@@ -3524,6 +3935,7 @@ namespace ChronusQ {
   
         double C1 = 1./(2*SpeedOfLight);
         size_t thread_id = GetThreadID();
+        size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
         int skiperi1,skiperi2;
   
@@ -3542,8 +3954,8 @@ namespace ChronusQ {
           n2 = basisSet_.shells[s2].size(); // Size of Shell 2
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s12 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s12 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
           shls[0] = int(s1);
@@ -3572,6 +3984,10 @@ namespace ChronusQ {
         }
   
       };
+
+#ifdef CQ_ENABLE_MPI
+      MPIAllReduceInPlace(SchwarzGauge, nShell*nShell, comm, memManager_);
+#endif
 
   
 
@@ -3660,13 +4076,21 @@ namespace ChronusQ {
       ERIBuffer = memManager_.malloc<double>(nSave*NB4*nThreads);
       memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
       std::vector<size_t> nSkipGauge(nThreads,0);
-  
+
+#ifdef _THREAD_TIMING_
+      std::vector<double> durThread(nThreads,0);
+#endif
+
       #pragma omp parallel
       {
-  
+#ifdef _THREAD_TIMING_
+        auto gaugeBegin = tick();
+#endif
+
         dcomplex iS = dcomplex(0.0, 1.0);
   
         size_t thread_id = GetThreadID();
+        int mpi_thread_id = mpiRank * nThreads + thread_id;
   
         auto &AX_loc = AXthreads[thread_id];
   
@@ -3712,8 +4136,8 @@ namespace ChronusQ {
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
   
           // Round Robbin work distribution
-          #ifdef _OPENMP
-          if( s1234 % nThreads != thread_id ) continue;
+          #if defined(_OPENMP) || defined(CQ_ENABLE_MPI)
+          if( s1234 % mpi_thread_size != mpi_thread_id ) continue;
           #endif
   
 #ifdef _SHZ_SCREEN_4C_LIBCINT
@@ -3728,13 +4152,41 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipGauge[thread_id]++; continue; }
 #endif
   
-          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipGauge[thread_id]++; continue;}
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
 
-          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
-          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
-            {nSkipGauge[thread_id]++; continue;}
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>3) {nSkipGauge[thread_id]++; continue;}
+          }
+ 
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
+          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            std::vector<int> atomCenters;
+            std::vector<int>::iterator itAtom;
+
+            atomCenters.push_back(bas(ATOM_OF, s1));
+
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2))) atomCenters.push_back(bas(ATOM_OF, s2));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s3));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s3));
+
+            itAtom = std::find(atomCenters.begin(), atomCenters.end(), bas(ATOM_OF, s4));
+            if (itAtom == atomCenters.end()) atomCenters.push_back(bas(ATOM_OF, s4));
+
+            if(atomCenters.size()>2) {nSkipGauge[thread_id]++; continue;}
+          }
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
@@ -4399,68 +4851,142 @@ namespace ChronusQ {
         }; // loop s3
         }; // loop s2
         }; // loop s1
-  
+
+#ifdef _THREAD_TIMING_
+        durThread[thread_id] = tock(gaugeBegin);
+#endif
   
       } // OpenMP context
   
   
-      for( auto iTh  = 0; iTh < nThreads; iTh++) {
+      for( auto iTh  = 1; iTh < nThreads; iTh++) {
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMS],nBasis,MatsT(1.0),
-           matList[XLLMS].AX,nBasis,matList[XLLMS].AX,nBasis);
+           AXthreads[0][XLLMS],nBasis,AXthreads[0][XLLMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMX],nBasis,MatsT(1.0),
-           matList[XLLMX].AX,nBasis,matList[XLLMX].AX,nBasis);
+           AXthreads[0][XLLMX],nBasis,AXthreads[0][XLLMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMY],nBasis,MatsT(1.0),
-           matList[XLLMY].AX,nBasis,matList[XLLMY].AX,nBasis);
+           AXthreads[0][XLLMY],nBasis,AXthreads[0][XLLMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLLMZ],nBasis,MatsT(1.0),
-           matList[XLLMZ].AX,nBasis,matList[XLLMZ].AX,nBasis);
+           AXthreads[0][XLLMZ],nBasis,AXthreads[0][XLLMZ],nBasis);
 
 
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMS],nBasis,MatsT(1.0),
-           matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+           AXthreads[0][XSSMS],nBasis,AXthreads[0][XSSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMX],nBasis,MatsT(1.0),
-           matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+           AXthreads[0][XSSMX],nBasis,AXthreads[0][XSSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMY],nBasis,MatsT(1.0),
-           matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+           AXthreads[0][XSSMY],nBasis,AXthreads[0][XSSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XSSMZ],nBasis,MatsT(1.0),
-           matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+           AXthreads[0][XSSMZ],nBasis,AXthreads[0][XSSMZ],nBasis);
 
 
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMS],nBasis,MatsT(1.0),
-           matList[CLSMS].AX,nBasis,matList[CLSMS].AX,nBasis);
+           AXthreads[0][CLSMS],nBasis,AXthreads[0][CLSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMX],nBasis,MatsT(1.0),
-           matList[CLSMX].AX,nBasis,matList[CLSMX].AX,nBasis);
+           AXthreads[0][CLSMX],nBasis,AXthreads[0][CLSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMY],nBasis,MatsT(1.0),
-           matList[CLSMY].AX,nBasis,matList[CLSMY].AX,nBasis);
+           AXthreads[0][CLSMY],nBasis,AXthreads[0][CLSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][CLSMZ],nBasis,MatsT(1.0),
-           matList[CLSMZ].AX,nBasis,matList[CLSMZ].AX,nBasis);
+           AXthreads[0][CLSMZ],nBasis,AXthreads[0][CLSMZ],nBasis);
  
 
   
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMS],nBasis,MatsT(1.0),
-           matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+           AXthreads[0][XLSMS],nBasis,AXthreads[0][XLSMS],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMX],nBasis,MatsT(1.0),
-           matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+           AXthreads[0][XLSMX],nBasis,AXthreads[0][XLSMX],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMY],nBasis,MatsT(1.0),
-           matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+           AXthreads[0][XLSMY],nBasis,AXthreads[0][XLSMY],nBasis);
 
         MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[iTh][XLSMZ],nBasis,MatsT(1.0),
-           matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
+           AXthreads[0][XLSMZ],nBasis,AXthreads[0][XLSMZ],nBasis);
   
       };
+
+#ifdef CQ_ENABLE_MPI
+      // Combine all G[X] contributions onto all processes
+      if( mpiSize > 1 ) {
+        MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+
+        std::vector<DIRAC_PAULI_SPINOR_COMP> comps{XLLMS, XLLMX, XLLMY, XLLMZ,
+                                                   XSSMS, XSSMX, XSSMY, XSSMZ,
+                                                   CLSMS, CLSMX, CLSMY, CLSMZ,
+                                                   XLSMS, XLSMX, XLSMY, XLSMZ};
+        for (auto comp : comps)
+          MPIAllReduceInPlace( AXthreads[0][comp], nBasis*nBasis, comm, mpiScr );
+
+        memManager_.free(mpiScr);
+
+      }
+#endif
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMS],nBasis,MatsT(1.0),
+             matList[XLLMS].AX,nBasis,matList[XLLMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMX],nBasis,MatsT(1.0),
+             matList[XLLMX].AX,nBasis,matList[XLLMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMY],nBasis,MatsT(1.0),
+             matList[XLLMY].AX,nBasis,matList[XLLMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLLMZ],nBasis,MatsT(1.0),
+             matList[XLLMZ].AX,nBasis,matList[XLLMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMS],nBasis,MatsT(1.0),
+             matList[XSSMS].AX,nBasis,matList[XSSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMX],nBasis,MatsT(1.0),
+             matList[XSSMX].AX,nBasis,matList[XSSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMY],nBasis,MatsT(1.0),
+             matList[XSSMY].AX,nBasis,matList[XSSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XSSMZ],nBasis,MatsT(1.0),
+             matList[XSSMZ].AX,nBasis,matList[XSSMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMS],nBasis,MatsT(1.0),
+             matList[CLSMS].AX,nBasis,matList[CLSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMX],nBasis,MatsT(1.0),
+             matList[CLSMX].AX,nBasis,matList[CLSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMY],nBasis,MatsT(1.0),
+             matList[CLSMY].AX,nBasis,matList[CLSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][CLSMZ],nBasis,MatsT(1.0),
+             matList[CLSMZ].AX,nBasis,matList[CLSMZ].AX,nBasis);
+
+
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMS],nBasis,MatsT(1.0),
+             matList[XLSMS].AX,nBasis,matList[XLSMS].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMX],nBasis,MatsT(1.0),
+             matList[XLSMX].AX,nBasis,matList[XLSMX].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMY],nBasis,MatsT(1.0),
+             matList[XLSMY].AX,nBasis,matList[XLSMY].AX,nBasis);
+
+      MatAdd('N','N',nBasis,nBasis,MatsT(1.0),AXthreads[0][XLSMZ],nBasis,MatsT(1.0),
+             matList[XLSMZ].AX,nBasis,matList[XLSMZ].AX,nBasis);
 
  #if 1
 
@@ -4495,9 +5021,22 @@ namespace ChronusQ {
       if(ShBlkNorms_raw!=nullptr) memManager_.free(ShBlkNorms_raw);
       if(SchwarzGauge!=nullptr) memManager_.free(SchwarzGauge);
 #endif
-  
+
+#ifdef _THREAD_TIMING_
+      std::cout << "Gauge Libcint time on every thread:" << std::endl;
+      for (size_t i = 0; i < nThreads; i++)
+        std::cout << i << "\t:" << durThread[i] << std::endl;
+#endif
+
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipGauge = std::accumulate(nSkipGauge.begin(),nSkipGauge.end(),size_t(0));
+#ifdef CQ_ENABLE_MPI
+      if (mpiSize > 1) {
+        std::cout << "Gauge Screened "
+                  << nIntSkipGauge << " on Rank " << mpiRank <<  std::endl;
+        nIntSkipGauge = MPIAllReduce( nIntSkipGauge, comm );
+      }
+#endif
       std::cout << "Gauge Screened " << nIntSkipGauge << std::endl;
   
       auto durDirectGauge = tock(topDirectGauge);
@@ -4533,6 +5072,21 @@ namespace ChronusQ {
 
     // Turn threads for LA back on
     SetLAThreads(LAThreads);
+
+
+
+//#ifdef CQ_ENABLE_MPI
+//    // Combine all G[X] contributions onto all processes
+//    if( mpiSize > 1 ) {
+//      MatsT* mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+//
+//      for( auto &C : matList )
+//        MPIAllReduceInPlace( C.AX, nBasis*nBasis, comm, mpiScr );
+//
+//      memManager_.free(mpiScr);
+//
+//    }
+//#endif
 
   }
 
