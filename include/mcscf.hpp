@@ -127,7 +127,7 @@ namespace ChronusQ {
     }
 
     // solve CI
-	void solveCI(MCWaveFunction<MatsT,IntsT> &);
+	void solveCI(MCWaveFunction<MatsT,IntsT> &,EMPerturbation &);
   
   }; // class CISolver
 

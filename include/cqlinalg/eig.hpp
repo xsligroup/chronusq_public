@@ -80,6 +80,10 @@ namespace ChronusQ {
   int HermetianEigen(char JOBZ, char UPLO, int N, _F *A, int LDA, dcomplex *W,
     CQMemManager &mem);
 
+  template <typename _F>
+  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W,
+    CQMemManager &mem);
+
 
 }; // namespace ChronusQ
 

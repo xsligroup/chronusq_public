@@ -52,20 +52,20 @@ namespace ChronusQ {
    */ 
 
   template <typename MatsT, typename IntsT>
-  void CISolver<MatsT, IntsT>::solveCI(MCWaveFunction<MatsT, IntsT> & mcwfn) {
+  void CISolver<MatsT, IntsT>::solveCI(MCWaveFunction<MatsT, IntsT> & mcwfn,EMPerturbation& pert) {
     
-	size_t NDet = mcwfn.NDet;
+    size_t NDet = mcwfn.NDet;
     size_t nR   = mcwfn.NStates;
     auto & StateEnergy = mcwfn.StateEnergy;
     auto & CIVecs = mcwfn.CIVecs;
-	auto & mem    = mcwfn.memManager;
+    auto & mem    = mcwfn.memManager;
 
     if (alg_ == CI_FULL_MATRIX) {
       
       std::cout << "  Diagonalize CI Full Hamitonian Matrix ... \n" << std::endl;
-      dcomplex * Energy = mem.template malloc<dcomplex>(NDet); 
+      dcomplex * Energy = mem.template malloc<dcomplex>(NDet);
       MatsT * fullH     = mem.template malloc<MatsT>(NDet*NDet); 
-      MatsT * EigVec    = mem.template malloc<MatsT>(NDet*NDet); 
+      MatsT * EigVec    = mem.template malloc<MatsT>(NDet*NDet);
       MatsT * dummy     = nullptr;
       
       ProgramTimer::tick("Full Matrix");
@@ -79,8 +79,13 @@ namespace ChronusQ {
 #endif
 
 
-      GeneralEigen('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet);
-      //HermetianEigen('V', 'L', NDet, fullH, NDet, Energy, mem);
+      if( pert_has_type(pert,Magnetic) ){
+        std::cout << "Magnetic field detected. GeneralEigen will be used." << std::endl;
+        GeneralEigen('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet);
+      } else {
+        HermetianEigen('V', 'L', NDet, fullH, NDet, Energy, mem);
+        std::copy_n(fullH,NDet*NDet,EigVec);
+      }
       
 #ifdef _DEBUG_CIENGINE_IMPL
       prettyPrintSmart(std::cout,"HH full H", fullH, NDet, NDet, NDet);
@@ -89,11 +94,11 @@ namespace ChronusQ {
 #endif
     
       // copy over eigenvalues and eigenvectors
-	  for (auto i = 0ul; i < nR; i++) {
-	    StateEnergy[i] = std::real(Energy[i]);
+      for (auto i = 0ul; i < nR; i++) {
+        StateEnergy[i] = std::real(Energy[i]);
         std::copy_n(EigVec+i*NDet, NDet, CIVecs[i]);
-	  }
-	  mem.free(Energy, fullH, EigVec);
+      }
+      mem.free(Energy, fullH, EigVec);
 
     } else if (alg_ == CI_DAVIDSON) {
       
@@ -146,6 +151,10 @@ namespace ChronusQ {
        
       davidson.setM(m);
       davidson.setkG(kG);
+      if( pert_has_type(pert,Magnetic) ){
+        std::cout << "Magnetic field detected. GeneralEigen will be used." << std::endl;
+      }else
+        davidson.setHerm(true);
       davidson.setEigForT(curEig);
       davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
           this->davidsonGS(nGuess, N, diagH, tryGetRawVectorsPointer(Guess));

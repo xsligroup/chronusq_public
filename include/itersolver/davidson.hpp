@@ -244,7 +244,11 @@ namespace ChronusQ {
 #ifdef DAVIDSON_PRINT_TIMING
           auto EIGst = tick();
 #endif
-          GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);
+          if( DoHerm ){
+            HermetianEigen('V', 'L', nVCur, SCR, nVCur, Eig, this->memManager_);
+            std::copy_n(SCR,nVCur*nVCur,XR);
+          }else
+            GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);
 #ifdef DEBUG_DAVIDSON
           prettyPrintSmart(std::cout,"HH Davidson XR",XR,nVCur,nVCur,nVCur);
 #endif

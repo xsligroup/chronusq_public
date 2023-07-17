@@ -438,6 +438,9 @@ namespace ChronusQ {
   template<>
   int GeneralEigen(char JOBVL, char JOBVR, int N, double *A, int LDA,
                    dcomplex *W, double *VL, int LDVL, double *VR, int LDVR) {
+
+    std::cout << "    *** WARNING: GeneralEigen used. No guarantee that eigenvectors will be orthogonal." << std::endl;
+    std::cout << "                 Please use HermitianEigen if this is a Hermitian problem." << std::endl;
   
     // Convert char to lapackpp friendly input
     lapack::Job JVL;
@@ -466,6 +469,9 @@ namespace ChronusQ {
   template<>
   int GeneralEigen(char JOBVL, char JOBVR, int N, dcomplex *A, int LDA,
     dcomplex *W, dcomplex *VL, int LDVL, dcomplex *VR, int LDVR) {
+
+    std::cout << "    *** WARNING: GeneralEigen used. No guarantee that eigenvectors will be orthogonal." << std::endl;
+    std::cout << "                 Please use HermitianEigen if this is a Hermitian problem." << std::endl;
 
     // Convert char to lapackpp friendly input
     lapack::Job JVL;
@@ -546,6 +552,23 @@ namespace ChronusQ {
     return INFO;
   
   }; // HermetianEigen (complex / complex eigenvalues )
+
+  template<>
+  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA,
+    dcomplex *W, CQMemManager &mem){
+
+    int INFO;
+    double *WReal = mem.malloc<double>(N);
+
+    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal,mem);
+
+    for(auto i = 0; i < N; i++) W[i] = WReal[i];
+
+    mem.free(WReal);
+
+    return INFO;
+
+  }; // HermetianEigen (real / complex eigenvalues )
   
   
 

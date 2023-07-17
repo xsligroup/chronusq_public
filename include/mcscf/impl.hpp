@@ -62,7 +62,7 @@ namespace ChronusQ {
 
     ProgramTimer::tick("Diagonalization");
     if (!this->readCI)
-      this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this));
+      this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), pert);
     ProgramTimer::tock("Diagonalization");
     
     ProgramTimer::tock("Solve CI");
@@ -151,7 +151,7 @@ namespace ChronusQ {
         std::cout << std::left << std::setprecision(10); 
         FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
         ProgramTimer::tick("Diagonalization");
-        this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this));
+        this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), pert);
         ProgramTimer::tock("Diagonalization");
         
         ProgramTimer::tock("Solve CI");

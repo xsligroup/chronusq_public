@@ -556,6 +556,7 @@ namespace ChronusQ {
 //    bool sortByDistance = false;
     size_t GramSchmidt_NRe = 1;
     double GramSchmidt_eps = 1e-12;
+    bool DoHerm = false;
 
     // Convergence options
     bool checkEigenValueConv = true;
@@ -628,6 +629,10 @@ namespace ChronusQ {
     void setkG(size_t _kG) {
       kG = _kG;
       this->nGuess_ = kG*this->nRoots_;
+    }
+
+    void setHerm(bool sSym) {
+      DoHerm = sSym;
     }
 
     void setWhenSc(size_t _WhenSc) { whenSc = _WhenSc;}
