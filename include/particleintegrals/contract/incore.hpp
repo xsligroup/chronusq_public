@@ -91,11 +91,17 @@ namespace ChronusQ {
         // Coulomb-type (34,12) ERI contraction
         // AX(mn) = (mn | kl) X(kl)
         if( C.contType == TWOBODY_CONTRACTION_TYPE::COULOMB ) {
+          auto beginJContract = tick();
           JContract(comm,C);
+          if(this->printContractionTiming)
+              std::cout << "        " << std::left << std::setw(38) << "J-Contraction duration = " << tock(beginJContract) << " s " << std::endl;
         // Exchange-type (23,12) ERI contraction
         // AX(mn) = (mk |ln) X(kl)
         } else if( C.contType == TWOBODY_CONTRACTION_TYPE::EXCHANGE ) {
+          auto beginKContract = tick();
           KContract(comm,C);
+          if(this->printContractionTiming)
+              std::cout << "        " << std::left << std::setw(38) << "K-Contraction duration = " << tock(beginKContract) << " s " << std::endl;
         }
 
       } // loop over matricies

@@ -49,6 +49,7 @@ void KohnSham<MatsT, IntsT>::buildModifyOrbitals() {
   modOrbOpt.getFock           = [this]() { return this->getFock(); };
   modOrbOpt.getOnePDM         = [this]() { return this->getOnePDM(); };
   modOrbOpt.getOrtho          = [this]() { return this->getOrtho(); };
+  modOrbOpt.setDenEqCoeff     = [this](bool val) { this->setDenEqCoeff(val); };
   modOrbOpt.getTotalEnergy    = [this]() { return this->getTotalEnergy(); };
 
   // Make ModifyOrbitals based on scfControls

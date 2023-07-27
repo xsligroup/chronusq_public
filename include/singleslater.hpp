@@ -116,6 +116,9 @@ namespace ChronusQ {
     std::vector<double> mullikenCharges;
     std::vector<double> lowdinCharges;
 
+    // Whether the current Density and Coefficients represent the same wavefunction
+    // If so, then RI-K contractions can be done using Coefficients for better performance
+    bool denEqCoeff_ = false;
 
     // Constructors
       
@@ -291,6 +294,10 @@ namespace ChronusQ {
 
     // MO Transformations
     void MOFOCK();
+  
+    // Set the flag that indicates whether 
+    // the current Density and Coefficients represent the same wavefucntion
+    void setDenEqCoeff(bool val);
 
   }; // class SingleSlater
 

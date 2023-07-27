@@ -253,6 +253,9 @@ namespace ChronusQ {
 
     // Whether the contraction is done in the first or second basis
     bool contractSecond = false;
+    
+    // Whether to time contractions when building Fock matrices and print to output
+    bool printContractionTiming = false;
 
   }; // class TPIContractions
 

@@ -748,4 +748,8 @@ void SingleSlater<MatsT, IntsT>::orthoAOMO() {
 #endif
 }
 
+template<typename MatsT, typename IntsT>
+void SingleSlater<MatsT, IntsT>::setDenEqCoeff(bool val){
+    this->denEqCoeff_ = val;
+}
 };   // namespace ChronusQ

@@ -50,10 +50,14 @@ void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT
 
   // Diagonalize the orthonormal fock Matrix (on root MPI process)
   diagOrthoFock(mo, eps);
+  // Coefficients and Density represent different wavefunctions
+  this->modOrbOpt.setDenEqCoeff(false);
 
   ortho2aoMOs(mo);
 
   this->modOrbOpt.formDensity();
+  // Coefficients and Density represent the same wavefunctions
+  this->modOrbOpt.setDenEqCoeff(true);
 
 };    //ConventionalSCF<MatsT>::getNewOrbitals
 
@@ -106,6 +110,7 @@ void ConventionalSCF<MatsT>::diagOrthoFock(VecMORef<MatsT>& mo, VecEPtr& eps) {
       CErr("HermetianEigen failed in Fock", std::cout);
     }
   }
+
 }
 
 template<typename MatsT>

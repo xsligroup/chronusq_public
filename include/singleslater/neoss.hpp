@@ -250,6 +250,7 @@ namespace ChronusQ {
       virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
       virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
       virtual double getTotalEnergy() { return this->totalEnergy; };
+      virtual void setDenEqCoeff(bool val);
 
 
       // Properties
@@ -297,7 +298,7 @@ namespace ChronusQ {
         }
 
         applyToEach([&](SubSSPtr& ss){
-      // Computing the Multipole for each subsystem and then adding to the overall multipoles
+          // Computing the Multipole for each subsystem and then adding to the overall multipoles
           ss->computeMultipole(emPert);
           for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
             this->elecDipole[iXYZ] += ss->elecDipole[iXYZ];
@@ -314,7 +315,7 @@ namespace ChronusQ {
             }
           }
         });
-      // Nuclear contributions to the dipoles
+        // Nuclear contributions to the dipoles
         for(auto &atom : this->molecule().atoms){
 
           if (atom.quantum){

@@ -76,6 +76,11 @@ struct ModifyOrbitalsOptions {
     //--------------------------------------------------------------------------------------------
 
     //--------------------------------------------------------------------------------------------
+    // SETTER FUNCTIONS
+    std::function<void(bool val)> setDenEqCoeff;   ///< Setting the bool flag in SingleSlater whether Coeffs and Density present the same wavefunction
+    //--------------------------------------------------------------------------------------------
+
+    //--------------------------------------------------------------------------------------------
     // OPTIONAL FUNCTIONS
     // User defined Functions to overload default gradient functions in the algorithms
     // if you want to use your own functions then bind a function to these, otherwise the
@@ -119,6 +124,7 @@ class ModifyOrbitals {
         if( not modOrbOpt.getFock ) CErr("getFock was not bound in ModifyOrbitalOptions");
         if( not modOrbOpt.getOnePDM ) CErr("getOnePDM was not bound in ModifyOrbitalOptions");
         if( not modOrbOpt.getOrtho ) CErr("getOrtho was not bound in ModifyOrbitalOptions");
+        if( not modOrbOpt.setDenEqCoeff ) CErr("setDenEqCoeff was not bound in ModifyOrbitalOptions");
     };
 
     // Getter/Setter functions for options struct

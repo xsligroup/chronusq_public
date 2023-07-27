@@ -54,7 +54,8 @@ namespace ChronusQ {
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
-	    "NRLEVELSHIFT"
+	    "NRLEVELSHIFT",
+      "PRINTCONTRACTIONTIMING" 
     };
 
     // Specified keywords
@@ -89,6 +90,7 @@ namespace ChronusQ {
       out << std::endl;
 
       scfControls.guess = READMO;
+      scfControls.prot_guess = READMO;
       scfControls.scfAlg = _SKIP_SCF;
     }
 
@@ -364,6 +366,8 @@ namespace ChronusQ {
     if (scfControls.printMOCoeffs >= 10 ) CErr("SCF print level is not valid!");
 
 
+    // Parse whether to print contraction timing during SCF
+    OPTOPT( scfControls.printContractionTiming = input.getData<bool>("SCF.PRINTCONTRACTIONTIMING"); )
 
 
 

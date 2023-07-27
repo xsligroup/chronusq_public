@@ -146,19 +146,21 @@ namespace ChronusQ {
       }
     }
 
+    if(ss.TPI->printContractionTiming)
+        std::cout << "      " << std::string(ss.particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Symm-Contraction Timing: " << std::endl;
+
     // Determine how many (if any) exchange terms to calculate
     if( std::abs(xHFX) > 1e-12 and not increment and ss.nC == 1 and
-        (ss.scfControls.guess != SAD or 
-        (ss.modifyOrbitals and std::dynamic_pointer_cast<OptimizeOrbitals<MatsT>>(ss.modifyOrbitals)->scfConv.nSCFIter != 0) ) and
-        std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI)) {
+        // (ss.scfControls.guess != SAD or (ss.modifyOrbitals and std::dynamic_pointer_cast<OptimizeOrbitals<MatsT>>(ss.modifyOrbitals)->scfConv.nSCFIter != 0) ) and
+        std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI) and ss.denEqCoeff_) {
       ROOT_ONLY(ss.comm);
+      // Use Coefficients to do K contraction
       auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
 
       SquareMatrix<MatsT> AAblock(exchangeMatrices[0]->memManager(), NB);
-      // auto riKCoeffBegin = tick();
+      
+      auto riKCoeffBegin = tick();
       ritpi->KCoefContract(ss.comm, ss.nOA, ss.mo[0].pointer(), AAblock.pointer());
-      // double durRiKCoeff = tock(riKCoeffBegin);
-      // std::cout << "  RI KCoeff Contraction duration: " << durRiKCoeff << " s" << std::endl;
       if(ss.iCS) {
         
         for (auto i = 0ul; i < nBatch; i++) 
@@ -175,13 +177,19 @@ namespace ChronusQ {
         for (auto i = 0ul; i < nBatch; i++) 
           *exchangeMatrices[i] = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
       }
+      if(ss.TPI->printContractionTiming)
+          std::cout << "        " << std::left << std::setw(38) << "K-Coeff-Contraction duration = " << tock(riKCoeffBegin) << " s" << std::endl;
 
     } else if(computeExchange) {
+
+      // Use density to do K contraction
       for (auto i = 0ul; i < nBatch; i++) { 
         contract.push_back(
             {onePDMs[i]->S().pointer(), exchangeMatrices[i]->S().pointer(), HerDen, EXCHANGE}
         );
-        if (exchangeMatrices[i]->hasZ())
+        // If this is a protonic ss, then beta block is 0, then 2S=AA+BB should be equal to 2Z=AA-BB
+        // We can avoid doing K contraction for Z component
+        if (exchangeMatrices[i]->hasZ() and ss.particle.charge<0)
           contract.push_back(
             {onePDMs[i]->Z().pointer(), exchangeMatrices[i]->Z().pointer(), HerDen, EXCHANGE}
           );
@@ -194,13 +202,19 @@ namespace ChronusQ {
           );
         }
       }
+
     }
 
-    // auto beginContract = tick();
+    auto beginContract = tick();
+
     ss.TPI->twoBodyContract(ss.comm, contract, pert);
-    // double durContract = tock(beginContract);
-    // std::cout << "  " << std::string(ss.particle.charge>0? "ProtDensity" : "ElecDensity")
-    //     << " Symm-Contraction duration = " << durContract << " s " << std::endl;
+
+    // Copy the S component of protonic K matrix to its Z component
+    if(computeExchange and ss.particle.charge>0)
+        for (auto i = 0ul; i < nBatch; i++)  std::copy_n(exchangeMatrices[i]->S().pointer(),NB*NB,exchangeMatrices[i]->Z().pointer());
+
+    if(ss.TPI->printContractionTiming)
+        std::cout << "        " << std::left << std::setw(38) << "Cholesky-Symm-Contraction duration = " << tock(beginContract) << " s " << std::endl;
 
     ROOT_ONLY(ss.comm); // Return if not root (J/K only valid on root process)
 

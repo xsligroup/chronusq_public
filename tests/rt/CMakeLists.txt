@@ -26,7 +26,7 @@ set(RT_TEST_SOURCE_ROOT "${TEST_ROOT}/rt" )
 set(RT_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/rt" )
   
 # Set up compilation of RT test exe
-add_executable(rttest ../ut.cxx rrt.cxx urt.cxx grt.cxx)
+add_executable(rttest ../ut.cxx rrt.cxx urt.cxx grt.cxx neo_rrt.cxx ri_neo_rrt.cxx)
 
 target_include_directories(rttest PUBLIC ${RT_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
@@ -37,10 +37,14 @@ target_link_libraries(rttest PUBLIC gtest)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/urt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/grt)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/neo_rrt)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/ri_neo_rrt)
 
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/urt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/grt)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/neo_rrt)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rineo_rrt)
 
 include( CQTestGeneration )
 
@@ -50,5 +54,9 @@ add_cq_test( X2CHF_RT rttest "X2CHF_RT.*" )
 
 add_cq_test( RKS_RT   rttest "RKS_RT.*"   )
 add_cq_test( UKS_RT   rttest "UKS_RT.*"   )
+
+add_cq_test( NEO_RHF_RT   rttest "NEO_RHF_RT.*"   )
+#add_cq_test( NEO_UHF_RT   rttest "NEO_UHF_RT.*"   )
+add_cq_test( RI_NEO_RHF_RT   rttest "RI_NEO_RHF_RT.*"   )
 
 add_cq_test( RESTART_RT rttest "RESTART_RT.*" )

@@ -78,6 +78,7 @@ void HartreeFock<MatsT, IntsT>::buildModifyOrbitals() {
   modOrbOpt.getFock           = [this]() { return this->getFock(); };
   modOrbOpt.getOnePDM         = [this]() { return this->getOnePDM(); };
   modOrbOpt.getOrtho          = [this]() { return this->getOrtho(); };
+  modOrbOpt.setDenEqCoeff     = [this](bool val) { this->setDenEqCoeff(val); };
   modOrbOpt.getTotalEnergy    = [this]() { return this->getTotalEnergy(); };
   modOrbOpt.computeFullNRStep = [this](MatsT* dx) { this->computeFullNRStep(dx); };
 

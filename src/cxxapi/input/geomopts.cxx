@@ -39,6 +39,7 @@ namespace ChronusQ {
       "NELECPNUC",
       "TMAX",
       "DELTAT",
+      "QPROTMOVEALG"
     };
   }
 
@@ -166,7 +167,7 @@ namespace ChronusQ {
 
         for(auto jlbl = ilbl + 1; jlbl < labels.size(); jlbl++) {
           auto ss2 = neoss->getSubSSBase(labels[jlbl]);
-          createGradInt(epints.get(), ss1, ss2, "EPINTS");
+          createGradInt(epints.get(), ss2, ss1, "EPINTS");
           bool contractSecond = labels[ilbl] == "Protonic";
 
           if(auto neoss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(neoss)) {
@@ -233,7 +234,57 @@ namespace ChronusQ {
         molOpt.nMidpointFockSteps = 0;
 
       auto md = std::make_shared<MolecularDynamics>(molOpt, mol);
+      
+            // If doNEO, Choose how to move quantum proton basis function centers during dynamics simulations
+      // Default is 'fixed'
+      if(mol.atomsQ.size() > 0) {
+        try {
+          auto QPMoveAlg = input.getData<std::string>("DYNAMICS.QPROTMOVEALG");
+          if ( not QPMoveAlg.compare("VV") ) {
+            md->NEODynamicsOpts.QProtMoveAlg = VV;
+            md->NEODynamicsOpts.includeQProtKE = job == JobType::BOMD ? true : false ;
+          } else if ( not QPMoveAlg.compare("EXPECT_VAL")) {
+            md->NEODynamicsOpts.QProtMoveAlg = EXPECT_VAL;
+          } else if ( not QPMoveAlg.compare("TVB")) {
+            md->NEODynamicsOpts.QProtMoveAlg = TVB;
+          } else if ( not QPMoveAlg.compare("FIXED")) {
+            md->NEODynamicsOpts.QProtMoveAlg = FIXED;
+          }
+          else {
+            std::cout << "Could not understand DYNAMICS.QPROTMOVEALG. Default option will be used.";
+            std::cout << std::endl;
+          }
+        }  
+        catch(...) {
+          if(job == JobType::BOMD) {
+            std::cout << "Defaulting DYNAMICS.QPROTMOVEALG to VV for NEO-BOMD Calculations" << std::endl;
+            md->NEODynamicsOpts.QProtMoveAlg = VV;
+            md->NEODynamicsOpts.includeQProtKE = true;
+          } else {
+            std::cout << "Defaulting DYNAMICS.QPROTMOVEALG to FIXED for NEO-Ehrenfest Calculations" << std::endl;
+            md->NEODynamicsOpts.QProtMoveAlg = FIXED; 
+          }
+          
+        }
+      }
+
       mol.geometryModifier = md;
+
+      // TODO: operator overload << such that we can print out information of md to output
+      // Temporary sketchy workaround:
+      std::cout << std::endl;
+      std::cout<< "================================================================================" << std::endl;
+      std::cout << "Molecular Dynamics Information " << std::endl;
+      std::cout << "TMAX:                    " << tMax << std::endl;
+      std::cout << "DeltaT:                  " << deltaT << std::endl;
+      std::cout << "JobType:                 " <<  (job==JobType::BOMD? "BOMD" : "Ehrenfest") << std::endl;
+      std::cout << "DoNEO:                   " << (mol.atomsQ.size()>0? "True" : "False") << std::endl;
+      if(mol.atomsQ.size()>0) {
+        std::cout << "QProt Fixed:             " << (md->NEODynamicsOpts.QProtMoveAlg==FIXED? "True" : "False") << std::endl;
+        std::cout << "QProt KE Included:       " << (md->NEODynamicsOpts.includeQProtKE? "True" : "False") << std::endl;
+      }
+      std::cout<< "================================================================================" << std::endl;
+      std::cout << std::endl;
 
       // Handle gradient integrals
       createGradientIntegrals(input, mol, ss, epints);

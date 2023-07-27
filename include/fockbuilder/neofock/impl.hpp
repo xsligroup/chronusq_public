@@ -64,20 +64,21 @@ namespace ChronusQ {
 
     EMPerturbation pert;
 
-    //auto beginEPJContract = tick();
+    if(contraction->printContractionTiming)
+        std::cout << "      " << std::string(ss.particle.charge>0? "Protonic" : "Electronic") << " Subsystem Asymm-Contraction Timing: " << std::endl;
+    auto beginEPJContract = tick();
     contraction->twoBodyContract(ss.comm, contract, pert);
-    //double durEPJContract = tock(beginEPJContract);
 
-    /***
+///***
     // Print asymm CD contraction total timing (note this is with other density)
-    std::cout << "  " << std::string(ss.particle.charge<0? "ProtDensity" : "ElecDensity")
-        << " Cholesky-Asymm-Contraction duration = " << durEPJContract << " s \n" << std::endl;
+    if(contraction->printContractionTiming)
+        std::cout << "        " << std::left << std::setw(38) << "Cholesky-Asymm-Contraction duration = " << tock(beginEPJContract) << " s \n" << std::endl;
+//***/
 
     // Get the EPJ Energy (by tracing with own density)
-    double epjEnergy = ss.template computeOBProperty<SCALAR>( this->outMat->pointer());
-    std::cout << "  " << std::string(ss.particle.charge>0? "ProtDensity" : "ElecDensity")
-        << " Contracted EPJ Energy  = " << std::setprecision(12) <<  epjEnergy  << std::endl;
-    ***/
+    //double epjEnergy = ss.template computeOBProperty<SCALAR>( this->outMat->pointer());
+    //std::cout << "  " << std::string(ss.particle.charge>0? "ProtDensity" : "ElecDensity")
+    //    << " Contracted EPJ Energy  = " << std::setprecision(12) <<  epjEnergy  << std::endl;
   }
 
   template <typename MatsT, typename IntsT>
@@ -178,6 +179,23 @@ namespace ChronusQ {
 
     std::vector<double> gradient = this->upstream->getGDGrad(ss, pert, xHFX);
     std::vector<double> epjGrad = formepJGrad(ss, pert, xHFX);
+
+    /***
+    // Add additional printout for debugging NEO-Ehrenfest
+    auto printGrad = [&](std::string name, std::vector<double>& vecgrad) {
+      std::cout << name << std::endl;
+      std::cout << std::setprecision(12);
+      for( auto iAt = 0; iAt < ss.molecule().nAtoms; iAt++ ) {
+        std::cout << " Gradient@I = " << iAt << ":";
+        for( auto iCart = 0; iCart < 3; iCart++ ) {
+          std::cout << "  " << vecgrad[iAt*3 + iCart];
+        }
+        std::cout << std::endl;
+      }
+      std::cout << std::endl;
+    };
+    printGrad("EPJ Gradient:", epjGrad);
+    ***/
 
     std::transform(gradient.begin(), gradient.end(), epjGrad.begin(),
                    gradient.begin(), std::plus<double>());

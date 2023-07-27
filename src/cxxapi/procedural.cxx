@@ -241,7 +241,7 @@ namespace ChronusQ {
       std::tie(ss, ssOptions) = CQNEOSSOptions(output,input,*memManager,mol,
                                               *basis,*prot_basis,
                                                aoints, prot_aoints,
-                                               ep_aoints);
+                                               ep_aoints, scfControls);
       ss->scfControls = scfControls;
       // For NEO only one ModifyOrbitals needs to be made since it is a
       // driver for both the NEOSingleSlater and the aux_neoss

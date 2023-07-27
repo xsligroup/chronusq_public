@@ -59,6 +59,9 @@ namespace ChronusQ {
     void setUpstream(FockBuilder<MatsT,IntsT>* up) {
       upstream = up;
     }
+
+    // Getters
+    FockBuilder<MatsT,IntsT>* getUpstream(){ return upstream; }
   };
 
   template <typename MatsT, typename IntsT>
@@ -99,6 +102,10 @@ namespace ChronusQ {
     // Setters
     void setContraction(std::shared_ptr<TPIContractions<MatsT,IntsT>> cont) {
       contraction = cont;
+    }
+
+    void setPrintContractionTiming(bool arg) {
+      contraction->printContractionTiming = arg;
     }
 
     void setGradientIntegrals(GradInts<TwoPInts,IntsT>* tpi) {

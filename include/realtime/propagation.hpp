@@ -59,6 +59,21 @@ namespace ChronusQ {
 
     // Upon entry to RT, assume only the orthonormal density is valid
     for(auto idx = 0; idx < systems_.size(); idx++) {
+
+      // Allow the printing of contraction timing during propagation
+      systems_[idx]->TPI->printContractionTiming = this->printContractionTiming? true : false;
+      if(auto neofock = std::dynamic_pointer_cast<NEOFockBuilder<dcomplex,double>>(systems_[idx]->fockBuilder)){
+        neofock->setPrintContractionTiming(this->printContractionTiming);
+      } else if(auto neoks = std::dynamic_pointer_cast<NEOKohnShamBuilder<dcomplex,double>>(systems_[idx]->fockBuilder)){
+        if(auto neofock = dynamic_cast<NEOFockBuilder<dcomplex,IntsT>*>(neoks->getUpstream())){
+          neofock->setPrintContractionTiming(this->printContractionTiming);
+        }else{
+          CErr("The upstream of NEOKohnShamBuilder is set up incorrectly! Expecting a NEOFockBuilder ptr");
+        }
+      }
+
+      // For propagation, all RI-K contractions are done with density instead of coefficients
+      systems_[idx]->setDenEqCoeff(false);
       systems_[idx]->computeOrtho();
       systems_[idx]->ortho2aoDen();
       systems_[idx]->ortho2aoMOs();
@@ -82,51 +97,40 @@ namespace ChronusQ {
 
 
 
+    // Determine the step type for the current integration step 
+    if( intScheme.intAlg == MMUT ) {
 
+      // "Start" the MMUT if this is the first step or we just
+      // "Finished" the MMUT segment
+      Start = ( curState.iStep == intScheme.restoreStep ) or FinMM;
 
-#if 1
-      // Determine the step type for the current integration step 
-      if( intScheme.intAlg == MMUT ) {
+      // "Start" the MMUT if the current step index is a restart
+      // step
+      if( intScheme.iRstrt > 0 ) 
+        Start = Start or ( curState.iStep % intScheme.iRstrt == 0 );
 
-        // "Start" the MMUT if this is the first step or we just
-        // "Finished" the MMUT segment
-        Start = ( curState.iStep == intScheme.restoreStep ) or FinMM;
+      // "Finish" the MMUT if this is the last step
+      // NOTE: To compare to Gaussian, do NOT do this restart for Ehrenfest
+      FinMM = ( curState.iStep == maxStep );
 
-        // "Start" the MMUT if the current step index is a restart
-        // step
-        if( intScheme.iRstrt > 0 ) 
-          Start = Start or ( curState.iStep % intScheme.iRstrt == 0 );
+      // TODO: "Finish" the MMUT if the field turns on or off
+      FinMM = FinMM or pert.isFieldDiscontinuous(curState.xTime, intScheme.deltaT);
+        
+      // "Finish" the MMUT if the next step will be a restart step
+      if( intScheme.iRstrt > 0 ) 
+        FinMM = FinMM or ( (curState.iStep + 1) % intScheme.iRstrt == 0 );
 
-        // "Finish" the MMUT if this is the last step
-        // NOTE: To compare to Gaussian, do NOT do this restart for Ehrenfest
-        FinMM = ( curState.iStep == maxStep );
+      // If "Starting" or "Finishing" the MMUT, the step type is
+      // the specified restart step type, else it is the MMUT step
+      if( Start or FinMM ) curState.curStep = intScheme.rstStep;
+      else                 curState.curStep = ModifiedMidpoint;
 
-        // TODO: "Finish" the MMUT if the field turns on or off
-        FinMM = FinMM or pert.isFieldDiscontinuous(curState.xTime, intScheme.deltaT);
-          
-        // "Finish" the MMUT if the next step will be a restart step
-        if( intScheme.iRstrt > 0 ) 
-          FinMM = FinMM or ( (curState.iStep + 1) % intScheme.iRstrt == 0 );
+      if( (Start or FinMM) && printLevel > 0 )
+        std::cout << "  *** Restarting MMUT ***\n";
 
-        // If "Starting" or "Finishing" the MMUT, the step type is
-        // the specified restart step type, else it is the MMUT step
-        if( Start or FinMM ) curState.curStep = intScheme.rstStep;
-        else                 curState.curStep = ModifiedMidpoint;
-
-        if( (Start or FinMM) && printLevel > 0 )
-          std::cout << "  *** Restarting MMUT ***\n";
-
-      // For non leapfrog scheme, the step type is constant
-      } else if ( intScheme.intAlg == ExpMagnus2 )
-        curState.curStep = ExplicitMagnus2;
-#else
-      curState.curStep = ForwardEuler;
-#endif
-
-
-
-
-
+    // For non leapfrog scheme, the step type is constant
+    } else if ( intScheme.intAlg == ExpMagnus2 )
+      curState.curStep = ExplicitMagnus2;
 
 
 

@@ -1,0 +1,694 @@
+ChronusQ Job Started: Mon Jul 24 17:19:58 2023
+
+    ______ __                                      ____  
+   / ____// /_   _____ ____   ____   __  __ _____ / __ \ 
+  / /    / __ \ / ___// __ \ / __ \ / / / // ___// / / / 
+ / /___ / / / // /   / /_/ // / / // /_/ /(__  )/ /_/ /  
+ \____//_/ /_//_/    \____//_/ /_/ \__,_//____/ \___\_\  
+
+Release Version: 0.6.0
+
+
+Contributors List:
+================================================================================
+Name                     Institution
+--------------------------------------------------------
+Xiaosong Li              University of Washington
+David Williams-Young     Lawrence Berkeley National Lab
+Edward Valeev            Virginia Tech
+Eugene DePrince III      Florida State University
+Sharon Hammes-Schiffer   Yale University
+Qiming Sun               AxiomQuant
+Alessio Petrone          University of Washington
+Andrew Wildman           University of Washington
+Hang Hu                  University of Washington
+Tianyuan Zhang           University of Washington
+Torin Stetina            University of Washington
+Adam Grofe               University of Washington
+Brandon Cooper           Florida State University
+Chad Hoyer               University of Washington
+Hongbin Liu              University of Washington
+Joshua Goings            University of Washington
+Lauren Koulias           University of Washington
+Lixin Lu                 University of Washington
+Luning Zhao              University of Washington
+Shichao Sun              University of Washington
+Xiaolin Liu              University of Washington
+--------------------------------------------------------
+
+
+
+Input File:
+================================================================================
+#
+#  test0.05 - HCN RHF/STO-3G/PROT-SP : RT
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ N               0             0               0
+ C               1.15824       0               0
+ H               2.22844       0               0 Q
+
+# 
+#  Job Specification
+#
+[QM]
+reference = RHF
+job = RT
+
+[PROTQM]
+reference = UHF
+
+[SCF]
+NEO = TRUE
+guess = core
+prot_guess = tight
+
+[RT]
+TMAX   = 1.
+DELTAT = 0.05
+RESTARTSTEP = MAGNUS2
+FIELD:
+ StepField(0.,0.0001) Electric 0. 0.001 0.
+
+
+[BASIS]
+basis = sto-3g
+
+
+[PBASIS]
+basis = prot-sp
+
+[INTS]
+ALG = INCORE
+ri  = dynamiceri
+RITHRESHOLD = 1e-4
+
+[PINTS]
+ALG = INCORE
+ri  = dynamiceri
+RITHRESHOLD = 1e-4
+
+[EPINTS]
+ALG = INCORE
+RI = ELEC_AND_PROT_AUX
+
+[MISC]
+nsmp = 2
+mem  = 100 mb
+================================================================================
+
+
+
+
+
+  *** Allocating 100.0 MB *** 
+  *** ChronusQ will use 2 OpenMP threads ***
+  *** ChronusQ will use 1 MPI Processes ***
+
+
+
+
+Molecular Information:
+================================================================================
+
+  NAtoms                      3
+  Total Electrons             14
+  Particle Number Charge      0              e
+  Molecular Charge            0.000          e
+  Nuclear Repulsion Energy    1.91889788e+01 Eh
+
+  Center of Mass              { 1.12951e+00    ,0.00000e+00    ,0.00000e+00    }
+  Center of Charges           { 1.23883e+00    ,0.00000e+00    ,0.00000e+00    }
+
+  Moment of Inertia           { -3.29249e-16   ,0.00000e+00    ,0.00000e+00    ,
+                                0.00000e+00    ,7.53603e+01    ,0.00000e+00    ,
+                                0.00000e+00    ,0.00000e+00    ,7.53603e+01    }
+
+  Geometry:                   
+  ----------------------------------------------------------------------------  
+    Element   ZNuc     Mass (AMU)       X (Bohr)       Y (Bohr)       Z (Bohr)
+
+    N-14      7.0      1.40031e+01   0.00000e+00    0.00000e+00    0.00000e+00
+    C-12      6.0      1.20000e+01   2.18876e+00    0.00000e+00    0.00000e+00
+    H-1       1.0      1.00783e+00   4.21114e+00    0.00000e+00    0.00000e+00
+
+================================================================================
+
+  *** Reading Basis Set from /Users/aodongliu/Softwares/chronusq_dev_merge_cdrt/basis/sto3g.gbs ***
+
+Basis Set Information:
+================================================================================
+
+  NBasis                   11
+  NPrimitive               33
+  NShell                   7
+  Max Primitive            3
+  Max L                    1
+
+
+  Shell Information:
+  ----------------------------------------------------------------------------  
+    #    L          Exponents        Normalized Contraction
+
+    0    0         9.9106e+01                    3.4549e+00
+                   1.8052e+01                    3.3414e+00
+                   4.8857e+00                    1.0414e+00
+
+    1    0         3.7805e+00                   -1.9316e-01
+                   8.7850e-01                    2.5837e-01
+                   2.8571e-01                    1.9500e-01
+
+    2    1         3.7805e+00                    1.1716e+00
+                   8.7850e-01                    7.3670e-01
+                   2.8571e-01                    1.1671e-01
+
+    3    0         7.1617e+01                    2.7078e+00
+                   1.3045e+01                    2.6189e+00
+                   3.5305e+00                    8.1619e-01
+
+    4    0         2.9412e+00                   -1.6002e-01
+                   6.8348e-01                    2.1404e-01
+                   2.2229e-01                    1.6154e-01
+
+    5    1         2.9412e+00                    8.5604e-01
+                   6.8348e-01                    5.3830e-01
+                   2.2229e-01                    8.5276e-02
+
+    6    0         3.4253e+00                    2.7693e-01
+                   6.2391e-01                    2.6784e-01
+                   1.6886e-01                    8.3474e-02
+
+
+================================================================================
+
+  *** Reading Basis Set from /Users/aodongliu/Softwares/chronusq_dev_merge_cdrt/basis/prot-sp.gbs ***
+
+Basis Set Information:
+================================================================================
+
+  NBasis                   4
+  NPrimitive               4
+  NShell                   2
+  Max Primitive            1
+  Max L                    1
+
+
+  Shell Information:
+  ----------------------------------------------------------------------------  
+    #    L          Exponents        Normalized Contraction
+
+    0    0         4.0000e+00                    2.0158e+00
+
+    1    1         4.0000e+00                    8.0633e+00
+
+
+================================================================================
+
+  *** Parsing INTS.REFERENCE options ***
+
+  *** Parsing PINTS.REFERENCE options ***
+
+  *** Parsing EPINTS.REFERENCE options ***
+
+================================================================================
+
+Building integral object for the electronic subsystem:
+
+  Property Integrals:
+    * Will Compute Length Gauge Electric Multipoles up to Octupole
+    * Will Compute Velocity Gauge Electric Multipoles up to Octupole
+    * Will Compute Magnetic Multipoles up to Quadrupole
+
+  Electron repulsion integral:
+    * Contraction Algorithm: INCORE Cholesky decomposition RI (Gemm)
+    * AO to MO Transformation Algorithm (if used): INCORE N6
+
+================================================================================
+
+Building integral object for the protonic subsystem:
+
+  Property Integrals:
+    * Will Compute Length Gauge Electric Multipoles up to Octupole
+    * Will Compute Velocity Gauge Electric Multipoles up to Octupole
+    * Will Compute Magnetic Multipoles up to Quadrupole
+
+  Electron repulsion integral:
+    * Contraction Algorithm: INCORE Cholesky decomposition RI (Gemm)
+    * AO to MO Transformation Algorithm (if used): INCORE N6
+
+================================================================================
+
+Building integral object for the electron-quantum proton Coulomb term:
+
+  ----------------------------------------------------------------------------  
+   Will use (ee|ee) to approxiamate (ee|pp) 
+     * Found existing aux basis from (ee|ee)!
+  ----------------------------------------------------------------------------  
+
+  ----------------------------------------------------------------------------  
+   Will use (pp|pp) to approxiamate (ee|pp) 
+     * Found existing aux basis from (pp|pp)!
+  ----------------------------------------------------------------------------  
+
+Built (ee|pp) object that will use both electronic and protonic aux basis. 
+
+  Property Integrals:
+    * Will Compute Length Gauge Electric Multipoles up to Octupole
+    * Will Compute Velocity Gauge Electric Multipoles up to Octupole
+    * Will Compute Magnetic Multipoles up to Quadrupole
+
+  Asymmetric Two Particle Integral:
+    * Contraction Algorithm: INCORE Cholesky decomposition (Using Aux Basis)
+    * AO to MO Transformation Algorithm (if used): INCORE N6
+
+================================================================================
+
+  *** Parsing QM.REFERENCE options ***
+  *** Auto-determination of wave function field: AUTO -> REAL ***
+
+
+
+Hamiltonian Options:
+================================================================================
+
+                                 Integral:
+  ----------------------------------------------------------------------------  
+                               Basis Type:REAL_GTO
+                      Finite Width Nuclei:False
+                            Using Libcint:False
+
+                    One-Component Options:
+  ----------------------------------------------------------------------------  
+           Perturbative Scalar Relativity:Off
+       Perturbative Spin-orbit Relativity:Off
+
+                    Two-Component Options:
+  ----------------------------------------------------------------------------  
+           One-Electron Scalar Relativity:Off
+       One-Electron Spin-orbit Relativity:Off
+              Boettger Spin-orbit Scaling:Off
+             Atomic Mean Field Spin-orbit:Off
+                               Atomic X2C:Off
+
+                   Four-Component Options:
+  ----------------------------------------------------------------------------  
+                Bare Coulomb (LLLL) Term: Off
+           Dirac Coulomb (w/o SSSS) Term: Off
+                          Approximation---None
+                               SSSS Term: Off
+                          Approximation---None
+                              Gaunt Term: Off
+                          Approximation---None
+                              Gauge Term: Off
+                          Approximation---None
+
+================================================================================
+
+  *** Parsing PROTQM.REFERENCE options ***
+  *** Auto-determination of wave function field: AUTO -> REAL ***
+
+
+
+Hamiltonian Options:
+================================================================================
+
+                                 Integral:
+  ----------------------------------------------------------------------------  
+                               Basis Type:REAL_GTO
+                      Finite Width Nuclei:False
+                            Using Libcint:False
+
+                    One-Component Options:
+  ----------------------------------------------------------------------------  
+           Perturbative Scalar Relativity:Off
+       Perturbative Spin-orbit Relativity:Off
+
+                    Two-Component Options:
+  ----------------------------------------------------------------------------  
+           One-Electron Scalar Relativity:Off
+       One-Electron Spin-orbit Relativity:Off
+              Boettger Spin-orbit Scaling:Off
+             Atomic Mean Field Spin-orbit:Off
+                               Atomic X2C:Off
+
+                   Four-Component Options:
+  ----------------------------------------------------------------------------  
+                Bare Coulomb (LLLL) Term: Off
+           Dirac Coulomb (w/o SSSS) Term: Off
+                          Approximation---None
+                               SSSS Term: Off
+                          Approximation---None
+                              Gaunt Term: Off
+                          Approximation---None
+                              Gauge Term: Off
+                          Approximation---None
+
+================================================================================
+
+
+ERI Cholesky Decomposition:
+================================================================================
+
+Parameters and options:
+  ----------------------------------------------------------------------------  
+  Algorithm:                              Dynamic-ERI
+  Threshold:                              1.0000e-04
+  ERI library:                            Libint2
+  General contraction:                    True
+  Have already computed 4-index ERI:      False
+  Build 4-index ERI:                      False
+  Sigma:                                  1.0000e-02
+  Max qualification:                      1000
+
+Dynamic-ERI Pivots Determination:
+  ----------------------------------------------------------------------------  
+  Cholesky-RI-Diagonal duration   = 3.3067e-04 s 
+  Cholesky-RI-Pivots-ERI count    = 338
+  Cholesky-RI-Pivots-ERI duration = 5.2170e-03 s 
+  Cholesky-RI-ERIvec duration     = 2.4845e-03 s 
+  Cholesky-RI-ERIcopy duration    = 1.0162e-04 s 
+  Cholesky-RI-ERItrans duration   = 1.6957e-05 s 
+  Cholesky-RI-CDalgMM duration    = 5.2500e-06 s 
+  Cholesky-RI-CDalgMV duration    = 1.4333e-05 s 
+  Cholesky-RI-Shrink count        = 2
+  Cholesky-RI-Shrink duration     = 9.7208e-05 s 
+  Cholesky-RI-misc duration       = 5.3050e-04 s 
+  Cholesky-RI-Dynamic-ERI-Pivots duration = 3.2503e-03 s 
+  Cholesky-RI auxiliary dimension = 41
+
+Build 3-index RIERI tensor:
+  ----------------------------------------------------------------------------  
+  Cholesky-RI-PivotRI-ERI count       = 315
+  Cholesky-RI-PivotRI-ERI duration    = 4.8197e-03 s 
+  Cholesky-RI-PivotRI-3index duration = 2.8136e-03 s 
+  Cholesky-RI-PivotRI-2index duration = 3.7080e-06 s 
+  RI-ERI3-Transformation-Cholesky duration = 4.3375e-05 s 
+  RI-ERI3-Transformation-TriInv duration   = 1.3125e-05 s 
+  RI-ERI3-Transformation-Gemm duration     = 7.8330e-06 s 
+  RI-ERI3-Transformation-Copy duration     = 9.7920e-06 s 
+  RI-ERI3-Transformation duration = 8.5167e-05 s 
+  Cholesky-RI-PivotRI duration = 2.9187e-03 s 
+
+Cholesky-RI duration = 7.5505e-03 s 
+
+================================================================================
+
+ERI Cholesky Decomposition:
+================================================================================
+
+Parameters and options:
+  ----------------------------------------------------------------------------  
+  Algorithm:                              Dynamic-ERI
+  Threshold:                              1.0000e-04
+  ERI library:                            Libint2
+  General contraction:                    True
+  Have already computed 4-index ERI:      False
+  Build 4-index ERI:                      False
+  Sigma:                                  1.0000e-02
+  Max qualification:                      1000
+
+Dynamic-ERI Pivots Determination:
+  ----------------------------------------------------------------------------  
+  Cholesky-RI-Diagonal duration   = 1.6042e-05 s 
+  Cholesky-RI-Pivots-ERI count    = 6
+  Cholesky-RI-Pivots-ERI duration = 2.2082e-05 s 
+  Cholesky-RI-ERIvec duration     = 9.4580e-06 s 
+  Cholesky-RI-ERIcopy duration    = 3.9580e-06 s 
+  Cholesky-RI-ERItrans duration   = 0.0000e+00 s 
+  Cholesky-RI-CDalgMM duration    = 2.5000e-07 s 
+  Cholesky-RI-CDalgMV duration    = 2.2500e-06 s 
+  Cholesky-RI-Shrink count        = 0
+  Cholesky-RI-Shrink duration     = 0.0000e+00 s 
+  Cholesky-RI-misc duration       = 5.3917e-05 s 
+  Cholesky-RI-Dynamic-ERI-Pivots duration = 6.9833e-05 s 
+  Cholesky-RI auxiliary dimension = 10
+
+Build 3-index RIERI tensor:
+  ----------------------------------------------------------------------------  
+  Cholesky-RI-PivotRI-ERI count       = 6
+  Cholesky-RI-PivotRI-ERI duration    = 9.1250e-06 s 
+  Cholesky-RI-PivotRI-3index duration = 1.8917e-05 s 
+  Cholesky-RI-PivotRI-2index duration = 7.9100e-07 s 
+  RI-ERI3-Transformation-Cholesky duration = 4.0000e-06 s 
+  RI-ERI3-Transformation-TriInv duration   = 1.0840e-06 s 
+  RI-ERI3-Transformation-Gemm duration     = 1.9160e-06 s 
+  RI-ERI3-Transformation-Copy duration     = 2.5420e-06 s 
+  RI-ERI3-Transformation duration = 1.8791e-05 s 
+  Cholesky-RI-PivotRI duration = 5.1167e-05 s 
+
+Cholesky-RI duration = 2.6238e-04 s 
+
+================================================================================
+
+Calculating (ee|pp) Integrals Using Asymmetric Cholesky Decomposition: 
+
+     * Using elec and prot aux basis
+     * Computing PartialTPI for (ee|pp) on the fly
+
+  Cholesky-Asymm-Select-PartialTPI-Index duration = 1.7479e-04 s 
+  Cholesky-Asymm-Build-PartialTPI duration = 6.2080e-06 s 
+  Cholesky-Asymm-Total duration = 1.9954e-04 s 
+
+================================================================================
+  *** Forming Initial Guess Density for SCF Procedure ***
+
+      Each quantum proton occupies the tightest orbital. 
+
+  *** Forming Initial Guess Density for SCF Procedure ***
+
+    * Forming the Core Hamiltonian Guess (F = H)
+
+================================================================================
+Self Consistent Field (SCF) Settings:
+
+  Reference:                          Real 
+  Energy Convergence Tolerence:       1.000000e-10
+  Density Convergence Tolerence:      1.000000e-08
+  Orbital Gradient Tolerence:         1.000000e-08
+  Maximum Number of SCF Cycles:       128
+  SCF Algorithm:                      Conventional SCF
+  DIIS Extrapolation Algorithm:       CEDIIS
+    * CDIIS will track up to 10 previous iterations
+    * EDIIS will track up to 10 previous iterations
+    * will switch at 0.05000000 for max([F,D])
+
+--------------------------------------------------------------------------------
+
+   SCF Iteration      Energy (Eh)         ΔE (Eh)            |ΔD|          Max(Gradient)
+   -------------      -----------         -------            ----          -------------
+    SCFIt:     0    -83.5049116809
+    SCFIt:     1    -97.3844373498    -9.7384437e+01     3.9955594e-01     1.0976788e+00
+    SCFIt:     2    -86.0776952151     1.1306742e+01     3.7831585e-01     5.8284622e-01
+    SCFIt:     3    -91.5716012657    -5.4939061e+00     2.4225048e-01     9.6686434e-01
+    SCFIt:     4    -92.9671073408    -1.3955061e+00     1.6012208e-01     4.3426388e-01
+    SCFIt:     5    -90.7490352994     2.2180720e+00     1.0361206e-01     3.5283176e-01
+    SCFIt:     6    -92.0192699197    -1.2702346e+00     5.9995398e-02     1.9945831e-01
+    SCFIt:     7    -91.3031793679     7.1609055e-01     3.8981087e-02     1.5361415e-01
+    SCFIt:     8    -91.7207715664    -4.1759220e-01     1.7733168e-02     7.0582470e-02
+    SCFIt:     9    -91.5229087126     1.9786285e-01     1.0355682e-02     4.1923388e-02
+    SCFIt:    10    -91.6115647211    -8.8656008e-02     2.4624139e-02     1.0125127e-02
+    SCFIt:    11    -91.5874838510     2.4080870e-02     7.3879934e-03     2.2732918e-03
+    SCFIt:    12    -91.5869847720     4.9907905e-04     1.2591122e-03     3.6369982e-04
+    SCFIt:    13    -91.5855136249     1.4711471e-03     2.5752563e-04     1.8665599e-04
+    SCFIt:    14    -91.5855680623    -5.4437445e-05     7.9150253e-05     1.4317413e-05
+    SCFIt:    15    -91.5855658427     2.2195640e-06     8.7530246e-06     2.6928343e-06
+    SCFIt:    16    -91.5855617051     4.1376633e-06     7.2584082e-07     2.6934037e-07
+    SCFIt:    17    -91.5855621450    -4.3988699e-07     4.0712675e-08     1.2250872e-08
+    SCFIt:    18    -91.5855621433     1.6571136e-09     3.0923306e-09     5.7213317e-10
+    SCFIt:    19    -91.5855621414     1.9278161e-09     2.2079083e-10     7.5870199e-11
+    SCFIt:    20    -91.5855621417    -3.3058711e-10     1.6395480e-11     5.2069182e-12
+    SCFIt:    21    -91.5855621417    -4.9595883e-12     7.8353486e-14     6.8917094e-14
+
+SCF Completed: E(R-) = -91.5855621417 Eh after 21 SCF Iterations
+================================================================================
+
+
+SCF Results:
+================================================================================
+
+Orbital Eigenenergies (Alpha) / Eh
+--------------------------------------------------------------------------------
+Occupied:
+  -8.2963e-01
+
+Virtual:
+   7.2001e-01   7.2001e-01   7.6344e-01
+--------------------------------------------------------------------------------
+
+
+Orbital Eigenenergies (Beta) / Eh
+--------------------------------------------------------------------------------
+Occupied:
+
+
+Virtual:
+   1.0577e+00   1.0796e+00   1.0796e+00   1.4830e+00
+--------------------------------------------------------------------------------
+Spin Information:
+--------------------------------------------------------------------------------
+
+  <Sx> =    0.00000
+  <Sy> =    0.00000
+  <Sz> =    0.50000
+  <S²> =    0.75000
+
+--------------------------------------------------------------------------------
+
+
+Charge Analysis:
+--------------------------------------------------------------------------------
+
+  Atom                  Mulliken Charges      Lowdin Charges
+  ----------------------------------------------------------------------------  
+  N-14                           0.00000             0.00000
+  C-12                           0.00000             0.00000
+  H-1                            0.00000             0.00000
+
+--------------------------------------------------------------------------------
+
+
+SCF Results:
+================================================================================
+
+Orbital Eigenenergies (Alpha) / Eh
+--------------------------------------------------------------------------------
+Occupied:
+  -1.5343e+01  -1.1023e+01  -1.1487e+00  -6.8463e-01  -4.6096e-01
+  -4.1056e-01  -4.1056e-01
+
+Virtual:
+   3.7751e-01   3.7751e-01   6.2762e-01   1.3479e+00
+--------------------------------------------------------------------------------
+Spin Information:
+--------------------------------------------------------------------------------
+
+  <Sx> =    0.00000
+  <Sy> =    0.00000
+  <Sz> =    0.00000
+  <S²> =    0.00000
+
+--------------------------------------------------------------------------------
+
+
+Charge Analysis:
+--------------------------------------------------------------------------------
+
+  Atom                  Mulliken Charges      Lowdin Charges
+  ----------------------------------------------------------------------------  
+  N-14                          -0.19695            -0.12629
+  C-12                          -0.07233            -0.06408
+  H-1                            0.26928             0.19037
+
+--------------------------------------------------------------------------------
+
+Multipole Information:
+--------------------------------------------------------------------------------
+
+Electric Dipole Moment                            (Debye)
+X=           3.3688983601 Y=          0.0000000000 Z=          0.0000000000
+
+Electric Quadrupole Moment                        (Debye-Å)
+XX=         -3.2769221799 XY=         0.0000000000 XZ=         0.0000000000
+YX=          0.0000000000 YY=       -10.3151803976 YZ=         0.0000000000
+ZX=          0.0000000000 ZY=         0.0000000000 ZZ=       -10.3151803976
+
+
+
+
+Electric Octupole Moment                          (Debye-Å²)
+XXX=        -1.1280331515 XXY=        0.0000000000 XXZ=        0.0000000000
+XYX=         0.0000000000 XYY=       -6.8886553900 XYZ=        0.0000000000
+XZX=         0.0000000000 XZY=        0.0000000000 XZZ=       -6.8886553900
+YXX=         0.0000000000 YXY=       -6.8886553900 YXZ=        0.0000000000
+YYX=        -6.8886553900 YYY=        0.0000000000 YYZ=        0.0000000000
+YZX=         0.0000000000 YZY=        0.0000000000 YZZ=        0.0000000000
+ZXX=         0.0000000000 ZXY=        0.0000000000 ZXZ=       -6.8886553900
+ZYX=         0.0000000000 ZYY=        0.0000000000 ZYZ=        0.0000000000
+ZZX=        -6.8886553900 ZZY=        0.0000000000 ZZZ=        0.0000000000
+--------------------------------------------------------------------------------
+
+  *** Parsing RT options ***
+Defaulting to MMUT integration algorithm
+================================================================================
+Real-Time Propagation Settings:
+
+  * Simulation Parameters:            
+  Simulation Time:                    1.0000000 ħ / Eh
+  Number of Steps:                    20
+  Step Size:                          0.0500000 ħ / Eh
+                                      0.0012094 fs
+
+  * Integration Parameters:           
+  Electronic Integration:             Modified Midpoint Unitary Transformation (MMUT)
+  Restarting MMUT every               50 steps with a(n) Explicit 2nd Order Magnus step
+
+  * Perturbation:
+                    
+    Field 1:  Electric Dipole Field
+     * Amplitude (AU)   { 0.0000000, 0.0010000, 0.0000000 }
+     * Step Field       TON =    0.0000000    TOFF =   0.0001000 
+
+  * Misc Parameters:                  
+  Matrix Exponential Method:          Eigen Decomposition
+
+================================================================================
+
+  Time (AU)      Energy (Eh)       Dipole (X)       Dipole (Y)       Dipole (Z) 
+--------------------------------------------------------------------------------
+
+  *** Restarting MMUT ***
+     0.0000   -91.5855621417       1.32542672      -0.00000000      -0.00000000 
+  *** Restarting MMUT ***
+     0.0500   -91.5855621412       1.32542672      -0.00000039      -0.00000000 
+  *** Restarting MMUT ***
+     0.1000   -91.5855621412       1.32542672      -0.00000226      -0.00000000 
+     0.1500   -91.5855621412       1.32542672      -0.00000387      -0.00000000 
+     0.2000   -91.5855621412       1.32542672      -0.00000517      -0.00000000 
+     0.2500   -91.5855621412       1.32542672      -0.00000625       0.00000000 
+     0.3000   -91.5855621412       1.32542672      -0.00000727       0.00000000 
+     0.3500   -91.5855621412       1.32542672      -0.00000839       0.00000000 
+     0.4000   -91.5855621412       1.32542672      -0.00000972       0.00000000 
+     0.4500   -91.5855621412       1.32542672      -0.00001126       0.00000000 
+     0.5000   -91.5855621412       1.32542672      -0.00001290       0.00000000 
+     0.5500   -91.5855621412       1.32542672      -0.00001452       0.00000000 
+     0.6000   -91.5855621412       1.32542672      -0.00001603       0.00000000 
+     0.6500   -91.5855621412       1.32542672      -0.00001743      -0.00000000 
+     0.7000   -91.5855621412       1.32542672      -0.00001873       0.00000000 
+     0.7500   -91.5855621412       1.32542672      -0.00002002      -0.00000000 
+     0.8000   -91.5855621412       1.32542672      -0.00002131       0.00000000 
+     0.8500   -91.5855621412       1.32542672      -0.00002258       0.00000000 
+     0.9000   -91.5855621412       1.32542672      -0.00002377       0.00000000 
+     0.9500   -91.5855621412       1.32542672      -0.00002482      -0.00000000 
+  *** Restarting MMUT ***
+  *** Saving data to binary file ***
+     1.0000   -91.5855621412       1.32542672      -0.00002575       0.00000000 
+
+MemManager high-water mark: 0.001 GB.
+
+Timing Summary:
+================================================================================
+  Section                              Total Duration (s)  Average Duration (s)
+--------------------------------------------------------------------------------
+  Total program time                :              0.8607
+  - Memory allocation               :              0.5744
+  - Core Hamiltonian                :              0.1032
+  - Guess Formation                 :              0.0048
+  - SCF                             :              0.1080
+    - SCF Iteration                 :              0.0168
+      - Fock Formation              :              0.0019
+      - Property Evaluation         :              0.0022
+  - RT Propagation                  :              0.0261
+    - RT Iteration                  :              0.0257
+      - Fock Formation              :              0.0180
+      - Propagator Formation        :              0.0020
+      - Density Propagation         :              0.0008
+================================================================================
+
+
+ChronusQ Job Ended: Mon Jul 24 17:19:59 2023
+

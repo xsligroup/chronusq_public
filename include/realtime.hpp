@@ -106,6 +106,7 @@ namespace ChronusQ {
 
     int printLevel = 1; ///< Amount of printing in RT calc
     bool printDen = false; ///< Print density to out file
+    bool printContractionTiming =false; ///< Print contraction timing during RT propagation
     size_t orbitalPopFreq = 0; ///< Amount of printing in RT calc
     
     bool restart   = false; ///< Restarting calc from bin file

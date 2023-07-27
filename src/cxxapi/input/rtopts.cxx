@@ -48,7 +48,8 @@ namespace ChronusQ {
       "SCFFIELD",
       "PRINTLEVEL",
       "ORBITALPOPULATION",
-      "PRINTDEN"
+      "PRINTDEN",
+      "PRINTCONTRACTIONTIMING"
     };
 
     // Specified keywords
@@ -304,6 +305,11 @@ namespace ChronusQ {
     // Whether to print time-dependent density
     OPTOPT(
       rt->printDen = input.getData<bool>("RT.PRINTDEN");
+    )
+
+    // Parse whether to print contraction timing during RT propagation
+    OPTOPT( 
+      rt->printContractionTiming = input.getData<bool>("RT.PRINTCONTRACTIONTIMING"); 
     )
 
     return rt;

@@ -73,6 +73,14 @@ namespace ChronusQ {
     return ortho;
   };
 
+  template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT, IntsT>::setDenEqCoeff(bool val) {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+    applyToEach([&val](NEOSS<MatsT,IntsT>::SubSSPtr& ss) {
+      ss->setDenEqCoeff(val);
+    });
+  };
+
   template<typename MatsT, typename IntsT>
   void NEOSS<MatsT, IntsT>::runModifyOrbitals(EMPerturbation& pert) {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;

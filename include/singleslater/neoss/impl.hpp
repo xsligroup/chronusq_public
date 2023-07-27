@@ -203,6 +203,10 @@ namespace ChronusQ {
       this_cont->contractSecond = contractSecond;
       other_cont->contractSecond = not contractSecond;
 
+      // Set printContractionTiming
+      this_cont->printContractionTiming = ss->TPI->printContractionTiming;
+      other_cont->printContractionTiming = ss->TPI->printContractionTiming;
+
       this_newFock->setContraction(this_cont);
       other_newFock->setContraction(other_cont);
 
@@ -379,6 +383,7 @@ namespace ChronusQ {
     modOrbOpt.getFock           = [this]() { return this->getFock(); };
     modOrbOpt.getOnePDM         = [this]() { return this->getOnePDM(); };
     modOrbOpt.getOrtho          = [this]() { return this->getOrtho(); };
+    modOrbOpt.setDenEqCoeff     = [this](bool val) { return this->setDenEqCoeff(val); };
     modOrbOpt.getTotalEnergy    = [this]() { return this->getTotalEnergy(); };
 
     // Make ModifyOrbitals based on scfControls

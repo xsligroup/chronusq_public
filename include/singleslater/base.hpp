@@ -162,6 +162,7 @@ namespace ChronusQ {
     // Printing
     size_t printMOCoeffs = 0;
     size_t printLevel = 1;
+    bool   printContractionTiming = false; ///< Whether to print contraction timing during SCF
     std::string refLongName_;
     std::string refShortName_;
 

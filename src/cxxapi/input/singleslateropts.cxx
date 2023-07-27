@@ -1296,6 +1296,8 @@ namespace ChronusQ {
           CErr("Invalid TPInts type for Four-component Wavefunction<double,double>",std::cout);
         }
 
+        p->TPI->printContractionTiming = scfControls.printContractionTiming;
+
       } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
         std::shared_ptr<TwoPInts<double>> &TPI =
@@ -1314,6 +1316,8 @@ namespace ChronusQ {
         } else if (TPI) {
           CErr("Invalid TPInts type for Four-component Wavefunction<dcomplex,double>",std::cout);
         }
+        
+        p->TPI->printContractionTiming = scfControls.printContractionTiming;
 
       } else if (auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
@@ -1346,6 +1350,9 @@ namespace ChronusQ {
         CErr("Invalid TPInts type for Wavefunction<double,double>",std::cout);
 
       }
+      
+      p->TPI->printContractionTiming = scfControls.printContractionTiming;
+    
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
       std::shared_ptr<TwoPInts<double>> TPI =
@@ -1368,6 +1375,9 @@ namespace ChronusQ {
         CErr("Invalid TPInts type for Wavefunction<dcomplex,double>",std::cout);
 
       }
+      
+      p->TPI->printContractionTiming = scfControls.printContractionTiming;
+    
     } else if (auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
       std::shared_ptr<TwoPInts<dcomplex>> TPI =
@@ -1386,6 +1396,9 @@ namespace ChronusQ {
         CErr("Invalid TPInts type for Wavefunction<dcomplex,dcomplex>",std::cout);
 
       }
+
+      p->TPI->printContractionTiming = scfControls.printContractionTiming;
+
     } else {
 
       CErr("Complex INT + Real WFN is not a valid option",std::cout);
@@ -1538,22 +1551,29 @@ namespace ChronusQ {
     BasisSet &ebasis, BasisSet &pbasis,
     std::shared_ptr<IntegralsBase> eaoints, 
     std::shared_ptr<IntegralsBase> paoints,
-    std::shared_ptr<IntegralsBase> epaoints) {
+    std::shared_ptr<IntegralsBase> epaoints,
+    SCFControls scfControls) {
 
     Particle p{-1., 1.};
 #define NEO_LIST(T) \
     MPI_COMM_WORLD,mem,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
 
-    auto essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
-    auto pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., ProtMassPerE}, "PROTQM");
+    SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
+    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., ProtMassPerE}, "PROTQM");
 
-    auto ess = essopt.buildSingleSlater(out, mem, mol, ebasis, eaoints);
-    auto pss = pssopt.buildSingleSlater(out, mem, mol, pbasis, paoints);
+    std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out, mem, mol, ebasis, eaoints);
+    std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out, mem, mol, pbasis, paoints);
 
     std::shared_ptr<SingleSlaterBase> neoss;
 
     if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ess)) {
       if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(pss)) {
+        
+        if(scfControls.printContractionTiming){
+          ess_t->TPI->printContractionTiming = true;
+          pss_t->TPI->printContractionTiming = true;
+        }
+        
         auto neoss_t = std::make_shared<NEOSS<double,double>>(NEO_LIST(double));
         auto epaoints_t = std::dynamic_pointer_cast<Integrals<double>>(epaoints);
         neoss_t->addSubsystem("Electronic", ess_t, {});
@@ -1575,6 +1595,12 @@ namespace ChronusQ {
     }
     else if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ess)) {
       if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(pss)) {
+        
+        if(scfControls.printContractionTiming){
+          ess_t->TPI->printContractionTiming = true;
+          pss_t->TPI->printContractionTiming = true;
+        }
+        
         auto neoss_t = std::make_shared<NEOSS<dcomplex,double>>(NEO_LIST(double));
         auto epaoints_t = std::dynamic_pointer_cast<Integrals<double>>(epaoints);
         neoss_t->addSubsystem("Electronic", ess_t, {});
