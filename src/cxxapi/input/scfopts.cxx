@@ -55,7 +55,8 @@ namespace ChronusQ {
       "NRAPPROX",
       "NRTRUST",
 	    "NRLEVELSHIFT",
-      "PRINTCONTRACTIONTIMING" 
+      "PRINTCONTRACTIONTIMING" ,
+      "ACCURACY"
     };
 
     // Specified keywords
@@ -90,8 +91,9 @@ namespace ChronusQ {
       out << std::endl;
 
       scfControls.guess = READMO;
-      scfControls.prot_guess = READMO;
-      scfControls.scfAlg = _SKIP_SCF;
+      //scfControls.scfAlg = _SKIP_SCF;
+      scfControls.scfAlg = _CONVENTIONAL_SCF;
+      scfControls.energyOnly = true;
     }
 
   }
@@ -153,17 +155,23 @@ namespace ChronusQ {
 
     // Optionally parse guess
 
-    // Energy convergence tolerance
-    OPTOPT( scfControls.eneConvTol =
-              input.getData<double>("SCF.ENETOL"); )
+    OPTOPT( scfControls.rmsdPConvTol =
+      input.getData<double>("SCF.ACCURACY"); )
+
+    scfControls.maxdPConvTol = scfControls.rmsdPConvTol*100;
+    scfControls.eneConvTol = scfControls.rmsdPConvTol*100;
 
     // Energy convergence tolerance
-    OPTOPT( scfControls.denConvTol =
-              input.getData<double>("SCF.DENTOL"); )
+    //OPTOPT( scfControls.eneConvTol =
+    //          input.getData<double>("SCF.ENETOL"); )
+
+    // Energy convergence tolerance
+    //OPTOPT( scfControls.denConvTol =
+    //          input.getData<double>("SCF.DENTOL"); )
 
     // Energy Gradient convergence tolerance
-    OPTOPT( scfControls.FDCConvTol =
-              input.getData<double>("SCF.FDCTOL"); )
+    //OPTOPT( scfControls.FDCConvTol =
+    //          input.getData<double>("SCF.FDCTOL"); )
 
     // Maximum SCF iterations
     OPTOPT( scfControls.maxSCFIter =
@@ -228,9 +236,10 @@ namespace ChronusQ {
       scfControls.scfAlg = _CONVENTIONAL_SCF;
     else if( not algString.compare("NR") )
       scfControls.scfAlg = _NEWTON_RAPHSON_SCF;
-    else if( not algString.compare("SKIP") )
-      scfControls.scfAlg = _SKIP_SCF;
-    else 
+    else if( not algString.compare("SKIP") ) {
+      scfControls.scfAlg = _CONVENTIONAL_SCF;
+      scfControls.energyOnly = true;
+    } else 
       CErr("Unrecognized entry for SCF.ALG!");
 
 

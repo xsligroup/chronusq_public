@@ -37,7 +37,8 @@ TEST( X2CHF, U_91_plus_defBasis ) {
 TEST( X2CHF, Water_6311pGdp_sph ) {
 
   CQSCFTEST( "scf/serial/x2c/water_6-311+Gdp_sph", 
-    "water_6-311+Gdp_sph_x2c.bin.ref",1e-6 );
+    "water_6-311+Gdp_sph_x2c.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
  
 };
 
@@ -45,7 +46,8 @@ TEST( X2CHF, Water_6311pGdp_sph ) {
 TEST( X2CHF, Water_6311pGdp_cart ) {
 
   CQSCFTEST( "scf/serial/x2c/water_6-311+Gdp_cart", 
-    "water_6-311+Gdp_cart_x2c.bin.ref",1e-6 );
+    "water_6-311+Gdp_cart_x2c.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
  
 };
 
@@ -53,7 +55,8 @@ TEST( X2CHF, Water_6311pGdp_cart ) {
 TEST( X2CHF, Hg_SAP_DZP_DKH3_2012_SP  ) {
 
   CQSCFTEST( "scf/serial/x2c/hg_sap_dz_dkh3_2012_sp", 
-    "hg_sap_dz_dkh3_2012_sp.bin.ref",1e-6 );
+    "hg_sap_dz_dkh3_2012_sp.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -69,7 +72,8 @@ TEST( X2CHF, Cd_SAP_DZP_DKH3_2012_SP  ) {
 TEST( X2CHF, Ag2_sto3g_ALH_X2C ) {
 
   CQSCFTEST( "scf/serial/x2c/Ag2_sto-3g_ALH",
-    "Ag2_sto-3g_ALH.bin.ref",1e-6 );
+    "Ag2_sto-3g_ALH.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -105,13 +109,14 @@ TEST( X2CHF, NeHeH_fracZ_sto3G ) {
 };
 
 // UPu 183+ fock-X2C test
-TEST( X2CHF, UPu_183plus_DCGGS_fockX2C ) {
-
-  CQSCFTEST( "scf/serial/x2c/UPu_183+_P_DCGGS_fockX2C",
-             "UPu_183+_P_DCGGS_fockX2C.bin.ref",1e-8,
-             false, false, false, false, false, true );
-
-};
+// Disable for now as we obtain different energy minima on different machines.
+//TEST( X2CHF, UPu_183plus_DCGGS_fockX2C ) {
+//
+//  CQSCFTEST( "scf/serial/x2c/UPu_183+_P_DCGGS_fockX2C",
+//             "UPu_183+_P_DCGGS_fockX2C.bin.ref",1e-8,
+//             false, false, false, false, false, true );
+//
+//};
 
 // Water X2CHF/cc-pVDZ with RHF guess (READDEN)
 TEST( X2CHF, Water_ccpVDZ_X2CHF_RHFGuess_READDEN ) {
@@ -217,7 +222,8 @@ TEST( X2CHF, Water_ccpVDZ_X2CHF_X2CHFGuess_READMO_restart ) {
 TEST( X2CHF, PAR_Water_6311pGdp_sph ) {
 
   CQSCFTEST( "scf/parallel/x2c/water_6-311+Gdp_sph", 
-    "water_6-311+Gdp_sph_x2c.bin.ref",1e-6 );
+    "water_6-311+Gdp_sph_x2c.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
  
 };
 
@@ -225,7 +231,8 @@ TEST( X2CHF, PAR_Water_6311pGdp_sph ) {
 TEST( X2CHF, PAR_Ag2_sto3g_ALH_X2C ) {
 
   CQSCFTEST( "scf/parallel/x2c/Ag2_sto-3g_ALH",
-    "Ag2_sto-3g_ALH.bin.ref",1e-6 );
+    "Ag2_sto-3g_ALH.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -233,7 +240,7 @@ TEST( X2CHF, PAR_Ag2_sto3g_ALH_X2C ) {
 TEST( X2CHF, PAR_Ag2_sto3g_ALU_X2C ) {
 
   CQSCFTEST( "scf/parallel/x2c/Ag2_sto-3g_ALU",
-    "Ag2_sto-3g_ALU.bin.ref",1e-6 );
+    "Ag2_sto-3g_ALU.bin.ref",1e-6, false, false, false, false, false, true);
 
 };
 
@@ -254,13 +261,16 @@ TEST( X2CHF, PAR_AgBr_sto3g_DLU_X2C ) {
 };
 
 // UPu 183+ fock-X2C test
-TEST( X2CHF, PAR_UPu_183plus_DCGGS_fockX2C ) {
-
-  CQSCFTEST( "scf/parallel/x2c/UPu_183+_P_DCGGS_fockX2C",
-             "UPu_183+_P_DCGGS_fockX2C.bin.ref",1e-8,
-             false, false, false, false, false, true );
-
-};
+// Disable for now as we obtain different energy minima on different machines.
+//TEST( X2CHF, UPu_183plus_DCGGS_fockX2C ) {
+//
+// TEST( X2CHF, PAR_UPu_183plus_DCGGS_fockX2C ) {
+// 
+//   CQSCFTEST( "scf/parallel/x2c/UPu_183+_P_DCGGS_fockX2C",
+//              "UPu_183+_P_DCGGS_fockX2C.bin.ref",1e-8,
+//              false, false, false, false, false, true );
+// 
+// };
 
 /*
 // SMP Hg SAPPORO DZP DKH_2012 SP

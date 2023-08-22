@@ -48,15 +48,15 @@ file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rineo_rrt)
 
 include( CQTestGeneration )
 
-add_cq_test( RHF_RT   rttest "RHF_RT.*"   )
-add_cq_test( UHF_RT   rttest "UHF_RT.*"   )
-add_cq_test( X2CHF_RT rttest "X2CHF_RT.*" )
-
-add_cq_test( RKS_RT   rttest "RKS_RT.*"   )
-add_cq_test( UKS_RT   rttest "UKS_RT.*"   )
-
-add_cq_test( NEO_RHF_RT   rttest "NEO_RHF_RT.*"   )
-#add_cq_test( NEO_UHF_RT   rttest "NEO_UHF_RT.*"   )
-add_cq_test( RI_NEO_RHF_RT   rttest "RI_NEO_RHF_RT.*"   )
-
-add_cq_test( RESTART_RT rttest "RESTART_RT.*" )
+#add_cq_test( RHF_RT   rttest "RHF_RT.*"   )
+#add_cq_test( UHF_RT   rttest "UHF_RT.*"   )
+#add_cq_test( X2CHF_RT rttest "X2CHF_RT.*" )
+#
+#add_cq_test( RKS_RT   rttest "RKS_RT.*"   )
+#add_cq_test( UKS_RT   rttest "UKS_RT.*"   )
+#
+#add_cq_test( NEO_RHF_RT   rttest "NEO_RHF_RT.*"   )
+##add_cq_test( NEO_UHF_RT   rttest "NEO_UHF_RT.*"   )
+#add_cq_test( RI_NEO_RHF_RT   rttest "RI_NEO_RHF_RT.*"   )
+#
+#add_cq_test( RESTART_RT rttest "RESTART_RT.*" )

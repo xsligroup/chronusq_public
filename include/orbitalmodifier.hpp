@@ -24,7 +24,7 @@
 #pragma once
 
 /*
- *     Brief: This header defines the inteface between ModifyOrbitals Objects and
+ *     Brief: This header defines the inteface between OrbitalModifier Objects and
  *            the objects that call them. The objects inherit the SCFInterface
  *            base class
  *
@@ -34,12 +34,12 @@ namespace ChronusQ {
 
   // Assign input types to alias for ease of use
 template<typename MatsT>
-using VecMORef = std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>;
-using VecEPtr  = std::vector<double*>;
+using vecMORef = std::vector<std::reference_wrapper<SquareMatrix < MatsT>>>;
+using vecEPtr  = std::vector<double*>;
 template<typename MatsT>
-using VecShrdPtrMat = std::vector<std::shared_ptr<SquareMatrix<MatsT>>>;
+using vecShrdPtrMat = std::vector<std::shared_ptr<SquareMatrix<MatsT>>>;
 template<typename MatsT>
-using VecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
+using vecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
 
 /*
  *   These are the functions that should be defined in order to use the
@@ -48,7 +48,7 @@ using VecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
  *
  */
 template<typename MatsT>
-struct ModifyOrbitalsOptions {
+struct OrbitalModifierDrivers {
     //--------------------------------------------------------------------------------------------
     // I/O  FUNCTIONS
     std::function<void()> printProperties;    ///< Prints the properties after completion of SCF
@@ -60,6 +60,7 @@ struct ModifyOrbitalsOptions {
     // NECESSARY COMPUTATION FUNCTIONS
     std::function<void(EMPerturbation&)> formFock;            ///< Form the Fock Matrix
     std::function<void(EMPerturbation&)> computeProperties;   ///< Compute Implemented Properties
+    std::function<void(EMPerturbation&)> computeEnergy;       ///< Compute Implemented Energy Function
     std::function<void()> formDensity;                        ///< Form the Density
 
     //--------------------------------------------------------------------------------------------
@@ -67,11 +68,11 @@ struct ModifyOrbitalsOptions {
     //--------------------------------------------------------------------------------------------
     // GETTER FUNCTIONS
     std::function<double()> getTotalEnergy;   ///< Returns the energy for Convergence test
-    std::function<VecShrdPtrMat<MatsT>()>
+    std::function<vecShrdPtrMat<MatsT>()>
         getFock;   ///< Returns a vector of shared_ptr to the fock Matrix(same basis as MOs)
-    std::function<VecShrdPtrMat<MatsT>()>
+    std::function<vecShrdPtrMat<MatsT>()>
         getOnePDM;   ///< Returns a vector of shared_ptr to density matrix(same basis as MOs)
-    std::function<VecShrdPtrOrtho<MatsT>()>
+    std::function<vecShrdPtrOrtho<MatsT>()>
         getOrtho;   ///< Returns a vector to the orthogonalization object(same basis as MOs)
     //--------------------------------------------------------------------------------------------
 
@@ -100,44 +101,44 @@ struct ModifyOrbitalsOptions {
 /*
  *   Brief: Abstract Base class for the modifyOrbitals object. This allows
  *          us to abstract the algorithms that modify the orbitals into one
- *          interface. This is the interface that the object that owns ModifyOrbitals
- *          runs the ModifyOrbitals algorithms.
+ *          interface. This is the interface that the object that owns OrbitalModifier
+ *          runs the OrbitalModifier algorithms.
  */
 template<typename MatsT>
-class ModifyOrbitals {
+class OrbitalModifier {
 
   protected:
     MPI_Comm comm;   ///< MPI Communication
     CQMemManager& memManager;
-    ModifyOrbitalsOptions<MatsT> modOrbOpt;   ///< Options struct for Modify Orbitals
+    OrbitalModifierDrivers<MatsT> orbitalModifierDrivers;   ///< Options struct for Modify Orbitals
 
   public:
-    ModifyOrbitals() = delete;
-    ModifyOrbitals(MPI_Comm c, ModifyOrbitalsOptions<MatsT> m, CQMemManager& mem): comm(c), modOrbOpt(m), memManager(mem) {
+    OrbitalModifier() = delete;
+    OrbitalModifier(MPI_Comm c, OrbitalModifierDrivers<MatsT> m, CQMemManager& mem): comm(c), orbitalModifierDrivers(m), memManager(mem) {
         // Check that Essential functions are bound
-        if( not modOrbOpt.printProperties ) CErr("printProperties was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.saveCurrentState ) CErr("saveCurrentState was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.formFock ) CErr("formFock was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.formDensity ) CErr("formDensity was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.computeProperties ) CErr("computeProperties was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.getTotalEnergy ) CErr("getTotalEnergy was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.getFock ) CErr("getFock was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.getOnePDM ) CErr("getOnePDM was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.getOrtho ) CErr("getOrtho was not bound in ModifyOrbitalOptions");
-        if( not modOrbOpt.setDenEqCoeff ) CErr("setDenEqCoeff was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.printProperties ) CErr("printProperties was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.saveCurrentState ) CErr("saveCurrentState was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.formFock ) CErr("formFock was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.formDensity ) CErr("formDensity was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.computeProperties ) CErr("computeProperties was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.getTotalEnergy ) CErr("getTotalEnergy was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.getFock ) CErr("getFock was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.getOnePDM ) CErr("getOnePDM was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.getOrtho ) CErr("getOrtho was not bound in ModifyOrbitalOptions");
+        if( not orbitalModifierDrivers.setDenEqCoeff ) CErr("setDenEqCoeff was not bound in ModifyOrbitalOptions");
     };
 
     // Getter/Setter functions for options struct
-    ModifyOrbitalsOptions<MatsT> getModOpt() { return modOrbOpt; };
-    void setModOpt(const ModifyOrbitalsOptions<MatsT>& mod) { modOrbOpt = mod; };
+    OrbitalModifierDrivers<MatsT> getOrbitalModifierDrivers() { return orbitalModifierDrivers; };
+    void setOrbitalModifierDrivers(const OrbitalModifierDrivers<MatsT>& mod) { orbitalModifierDrivers = mod; };
 
-    // runModifyOrbitals is the driver function that performs
+    // runOrbitalModifier is the driver function that performs
     // the whole optimization/simulation
-    virtual void runModifyOrbitals(EMPerturbation& pert, VecMORef<MatsT>&, VecEPtr&) = 0;
+    virtual void runOrbitalModifier(EMPerturbation& pert, vecMORef<MatsT>&, vecEPtr&) = 0;
 
     // getNewOrbitals performs only a single step in the
     // optimization/simulation
-    virtual void getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT>&, VecEPtr&) = 0;
+    virtual void getNewOrbitals(EMPerturbation& pert, vecMORef<MatsT>&, vecEPtr&) = 0;
 
     // Printing functions
     virtual void printRunHeader(std::ostream& out, EMPerturbation&) const                   = 0;
@@ -146,7 +147,7 @@ class ModifyOrbitals {
 
 };   // Namespace ChronusQ
 
-#include <modifyorbitals/optOrbitals.hpp>
-#include <modifyorbitals/conventionalSCF.hpp>
-#include <modifyorbitals/newtonRaphsonSCF.hpp>
-#include <modifyorbitals/skipSCF.hpp>
+#include <orbitalmodifier/orbitaloptimizer.hpp>
+#include <orbitalmodifier/conventionalSCF.hpp>
+#include <orbitalmodifier/newtonRaphsonSCF.hpp>
+//#include <orbitalmodifier/skipSCF.hpp>

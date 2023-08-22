@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include <modifyorbitals/conventionalSCF/extrap.hpp>
+#include <orbitalmodifier/conventionalSCF/extrap.hpp>
 
 namespace ChronusQ {
 
@@ -33,11 +33,8 @@ namespace ChronusQ {
  *  Currently implements the fixed-point SCF procedure.
  */
 template<typename MatsT>
-void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT>& mo,
-                                            VecEPtr& eps) {
-
-  // Form the Fock matrix D(k) -> F(k)
-  ProgramTimer::timeOp("Form Fock", [&]() { this->modOrbOpt.formFock(pert); });
+void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, vecMORef<MatsT>& mo,
+                                            vecEPtr& eps) {
 
   // Transform AO fock into the orthonormal basis (on root MPI process)
   ao2orthoFock();
@@ -50,25 +47,20 @@ void ConventionalSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT
 
   // Diagonalize the orthonormal fock Matrix (on root MPI process)
   diagOrthoFock(mo, eps);
-  // Coefficients and Density represent different wavefunctions
-  this->modOrbOpt.setDenEqCoeff(false);
 
   ortho2aoMOs(mo);
 
-  this->modOrbOpt.formDensity();
-  // Coefficients and Density represent the same wavefunctions
-  this->modOrbOpt.setDenEqCoeff(true);
-
 };    //ConventionalSCF<MatsT>::getNewOrbitals
 
+
 template<typename MatsT>
-void ConventionalSCF<MatsT>::ao2orthoFock(VecShrdPtrMat<MatsT> fock) {
+void ConventionalSCF<MatsT>::ao2orthoFock(vecShrdPtrMat<MatsT> fock) {
 
   ROOT_ONLY(this->comm);
 
-  if( fock.empty() ) fock = this->modOrbOpt.getFock();
+  if( fock.empty() ) fock = this->orbitalModifierDrivers.getFock();
 
-  VecShrdPtrOrtho<MatsT> ortho = this->modOrbOpt.getOrtho();
+  vecShrdPtrOrtho<MatsT> ortho = this->orbitalModifierDrivers.getOrtho();
   for( size_t i = 0; i < fock.size(); i++ ) {
     if( ortho[i]->hasOverlap() ) {
       fockMatrixOrtho[i] = ortho[i]->nonortho2ortho(*fock[i]);
@@ -79,13 +71,13 @@ void ConventionalSCF<MatsT>::ao2orthoFock(VecShrdPtrMat<MatsT> fock) {
 };
 
 template<typename MatsT>
-void ConventionalSCF<MatsT>::ao2orthoDen(VecShrdPtrMat<MatsT> den) {
+void ConventionalSCF<MatsT>::ao2orthoDen(vecShrdPtrMat<MatsT> den) {
 
   ROOT_ONLY(this->comm);
 
-  if( den.empty() ) den = this->modOrbOpt.getOnePDM();
+  if( den.empty() ) den = this->orbitalModifierDrivers.getOnePDM();
 
-  VecShrdPtrOrtho<MatsT> ortho = this->modOrbOpt.getOrtho();
+  vecShrdPtrOrtho<MatsT> ortho = this->orbitalModifierDrivers.getOrtho();
   for( size_t i = 0; i < den.size(); i++ ) {
     if( ortho[i]->hasOverlap() ) {
       onePDMOrtho[i] = ortho[i]->ortho2nonortho(*den[i]);
@@ -96,7 +88,7 @@ void ConventionalSCF<MatsT>::ao2orthoDen(VecShrdPtrMat<MatsT> den) {
 };
 
 template<typename MatsT>
-void ConventionalSCF<MatsT>::diagOrthoFock(VecMORef<MatsT>& mo, VecEPtr& eps) {
+void ConventionalSCF<MatsT>::diagOrthoFock(vecMORef<MatsT>& mo, vecEPtr& eps) {
 
   ROOT_ONLY(this->comm);
 
@@ -106,7 +98,7 @@ void ConventionalSCF<MatsT>::diagOrthoFock(VecMORef<MatsT>& mo, VecEPtr& eps) {
     std::copy_n(fockMatrixOrtho[i].pointer(),NB*NB,mo[i].get().pointer());
     int INFO  = HermetianEigen('V', 'L', NB, mo[i].get().pointer(), NB, eps[i], this->memManager);
     if( INFO != 0 ) {
-      std::cout << "Attempted to diagonalize " << i << "th Fock Matrix" << std::endl;
+      std::cout << "Attempted to diagonalize " << i << "the Fock Matrix" << std::endl;
       CErr("HermetianEigen failed in Fock", std::cout);
     }
   }
@@ -114,19 +106,29 @@ void ConventionalSCF<MatsT>::diagOrthoFock(VecMORef<MatsT>& mo, VecEPtr& eps) {
 }
 
 template<typename MatsT>
-void ConventionalSCF<MatsT>::ortho2aoMOs(VecMORef<MatsT>& mo) {
+void ConventionalSCF<MatsT>::ortho2aoMOs(vecMORef<MatsT>& mo) {
 
   ROOT_ONLY(this->comm);
-
-  VecShrdPtrOrtho<MatsT> ortho = this->modOrbOpt.getOrtho();
+  vecShrdPtrOrtho<MatsT> ortho = this->orbitalModifierDrivers.getOrtho();
   for( size_t i = 0; i < mo.size(); i++ ) {
     if( ortho[i]->hasOverlap() ) { ortho[i]->ortho2nonorthoCoeffs(mo[i]); }
   }
 }
 
 template<typename MatsT>
+void ConventionalSCF<MatsT>::ao2orthoMOs(vecMORef<MatsT>& mo) {
+
+  ROOT_ONLY(this->comm);
+
+  vecShrdPtrOrtho<MatsT> ortho = this->orbitalModifierDrivers.getOrtho();
+  for( size_t i = 0; i < mo.size(); i++ ) {
+    if( ortho[i]->hasOverlap() ) { ortho[i]->nonortho2orthoCoeffs(mo[i]); }
+  }
+}
+
+template<typename MatsT>
 void ConventionalSCF<MatsT>::printRunHeader(std::ostream& out, EMPerturbation& pert) const {
-  OptimizeOrbitals<MatsT>::printRunHeader(out, pert);
+  OrbitalOptimizer<MatsT>::printRunHeader(out, pert);
 
   // Print DIIS Algorithm info
   if( this->scfControls.doExtrap ) {

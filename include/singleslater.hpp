@@ -29,7 +29,7 @@
 #include <particleintegrals/twopints.hpp>
 #include <matrix.hpp>
 #include <orthogonalization.hpp>
-#include <modifyorbitals.hpp>
+#include <orbitalmodifier.hpp>
 
 // Debug print triggered by Wavefunction
   
@@ -110,7 +110,7 @@ namespace ChronusQ {
     std::shared_ptr<FockBuilder<MatsT,IntsT>> fockBuilder;  ///< Builder for Fock
     std::shared_ptr<Orthogonalization<MatsT>> orthoSpinor;  ///< Orthogonalization functions for spinor basis
     std::shared_ptr<Orthogonalization<MatsT>> orthoAB;      ///< Orthogonalization functions alpha/beta basis
-    std::shared_ptr<ModifyOrbitals<MatsT>> modifyOrbitals;  ///< SCF/RT Abstraction Object
+    std::shared_ptr<OrbitalModifier<MatsT>> orbitalModifier;  ///< SCF/RT Abstraction Object
 
     // Method specific propery storage
     std::vector<double> mullikenCharges;
@@ -191,6 +191,8 @@ namespace ChronusQ {
     // Declarations from QuantumBase 
     // (see include/singleslater/quantum.hpp for docs)
     void formDensity();
+
+    using QuantumBase::computeEnergy;
     void computeEnergy();
     void computeMultipole(EMPerturbation &);
     void computeSpin();
@@ -262,7 +264,7 @@ namespace ChronusQ {
     virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
     virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
     virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
-    virtual void runModifyOrbitals(EMPerturbation&);
+    virtual void runSCF(EMPerturbation&);
     virtual std::vector<NRRotOptions> buildRotOpt();
 
     // Misc procedural

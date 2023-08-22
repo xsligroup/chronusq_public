@@ -240,7 +240,7 @@ namespace ChronusQ {
     else if( not jt.compare("MOR") )  doMOR = true;
     else CErr(jt + " NOT RECOGNIZED RESPONSE.TYPE");
 
-		if ( input.containsData("Response.NEO") ) doNEO = input.getData<bool>("Response.NEO");
+		if ( input.containsData("RESPONSE.NEO") ) doNEO = input.getData<bool>("RESPONSE.NEO");
 
     // Determine propagator
     try {

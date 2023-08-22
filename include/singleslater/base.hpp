@@ -116,19 +116,25 @@ namespace ChronusQ {
    *  \brief A struct to hold the information pertaining to
    *  the control of an SCF procedure.
    *
-   *  Holds information like convergence critera, DIIS settings, 
+   *  Holds information like convergence criteria, DIIS settings,
    *  max iterations, etc.
    */ 
   struct SCFControls {
 
     // Convergence criteria
-    double denConvTol = 1e-8;  ///< Density convergence criteria
-    double eneConvTol = 1e-10; ///< Energy convergence criteria
+    double rmsdPConvTol = 1e-7; ///< RSMDP Density convergence criteria
+    double maxdPConvTol = 1e-5; ///< MaxDP Density convergence criteria
+    double eneConvTol = 1e-5; ///< Energy convergence criteria
+    double smallEnergy= 1e-9; ///< Small energy threshold
+    // XSLI: FDC is no longer used
+    double denConvTol = 1e-8; ///< RSMDP Density convergence criteria
     double FDCConvTol = 1e-8; ///< Gradient convergence criteria
 
     // TODO: need to add logic to set this
     // Extrapolation flag for DIIS and damping
     bool doExtrap = true;     ///< Whether to extrapolate Fock matrix
+
+    bool energyOnly = false;  ///< Skip SCF
 
     // Algorithm and step
     SCF_STEP  scfStep = _CONVENTIONAL_SCF_STEP;
@@ -142,7 +148,7 @@ namespace ChronusQ {
     SS_GUESS prot_guess = NEOTightProton;
 
     // DIIS settings 
-    DIIS_ALG diisAlg = CEDIIS; ///< Type of DIIS extrapolation 
+    DIIS_ALG diisAlg = CDIIS; ///< Type of DIIS extrapolation 
     size_t nKeep     = 10;     ///< Number of matrices to use for DIIS
     double cediisSwitch = 0.05; ///< When to switch from EDIIS to CDIIS
 
@@ -246,10 +252,10 @@ namespace ChronusQ {
     //   Form a Fock matrix with the ability to increment
     virtual void formFock(EMPerturbation &, bool increment = false, double xHFX = 1.) = 0;
 
-    // Function to build the modifyOrbitals object which determines which
+    // Function to build the orbitalModifier object which determines which
     // algorithm is used
-    virtual void buildModifyOrbitals() = 0;
-    virtual void runModifyOrbitals(EMPerturbation&) = 0;
+    virtual void buildOrbitalModifierOptions() = 0;
+    virtual void runSCF(EMPerturbation&) = 0;
 
     //   Form an initial Guess (which populates the Fock, Density 
     //   and energy)

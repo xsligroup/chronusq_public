@@ -1584,10 +1584,10 @@ namespace ChronusQ {
     std::vector<size_t> nConSkip(nThreads,0);
 #endif
     // MPI info
-    size_t mpiChunks = (snShell * (snShell + 1) / 2) / mpiSize;
+    size_t mpiChunks = (nShell * (nShell + 1) / 2) / mpiSize;
     size_t mpiS12St  = mpiRank * mpiChunks;
     size_t mpiS12End = (mpiRank + 1) * mpiChunks;
-    if( mpiRank == (mpiSize - 1) ) mpiS12End = (snShell * (snShell + 1) / 2);
+    if( mpiRank == (mpiSize - 1) ) mpiS12End = (nShell * (nShell + 1) / 2);
 
     auto topDirect = tick();
     

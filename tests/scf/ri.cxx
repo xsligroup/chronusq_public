@@ -30,7 +30,8 @@
 TEST( RI_RHF, water_631Gd_ccpvdzrifit ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cc-pvdz-rifit",
-             "water_6-31Gd_cc-pvdz-rifit.bin.ref" );
+             "water_6-31Gd_cc-pvdz-rifit.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -38,7 +39,8 @@ TEST( RI_RHF, water_631Gd_ccpvdzrifit ) {
 TEST( RI_RHF, water_631Gd_cd ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -46,7 +48,8 @@ TEST( RI_RHF, water_631Gd_cd ) {
 TEST( RI_RHF, water_631Gd_cd_traditional ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_traditional",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -54,7 +57,8 @@ TEST( RI_RHF, water_631Gd_cd_traditional ) {
 TEST( RI_RHF, water_631Gd_cd_dynamicall ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_dynamicall",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -62,7 +66,8 @@ TEST( RI_RHF, water_631Gd_cd_dynamicall ) {
 TEST( RI_RHF, water_631Gd_cd_spanfactor ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_spanfactor",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -70,7 +75,8 @@ TEST( RI_RHF, water_631Gd_cd_spanfactor ) {
 TEST( RI_RHF, water_631Gd_cd_dynamiceri ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_dynamiceri",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -78,7 +84,8 @@ TEST( RI_RHF, water_631Gd_cd_dynamiceri ) {
 TEST( RI_RHF, water_631Gd_cd_spanfactorreuse ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_spanfactorreuse",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -174,7 +181,8 @@ TEST( RI_RKS, water_631Gd_ccpvdzrifit_B3LYP ) {
 TEST( RI_ROHF, Oxygen_ccpvtzjkfit ) {
 
   CQSCFTEST( "scf/serial/ri_rohf/oxygen_cc-pvtz_cc-pvtz-jkfit",
-             "oxygen_cc-pvtz_cc-pvtz-jkfit.bin.ref" );
+             "oxygen_cc-pvtz_cc-pvtz-jkfit.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -182,7 +190,8 @@ TEST( RI_ROHF, Oxygen_ccpvtzjkfit ) {
 TEST( RI_UHF, Oxygen_def2tzvp_rifit ) {
 
   CQSCFTEST( "scf/serial/ri_uhf/oxygen_def2-tzvp_def2-tzvp-rifit",
-             "oxygen_def2-tzvp_def2-tzvp-rifit.bin.ref" );
+             "oxygen_def2-tzvp_def2-tzvp-rifit.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -207,8 +216,8 @@ TEST( RI_X2CHF, cd_sap_dz_dkh3_2012_sp_x2c_jfit ) {
 TEST( RI_X2CHF, hg_sap_dz_dkh3_2012_sp_x2c_jfit ) {
 
   CQSCFTEST( "scf/serial/ri_x2c/hg_sap-dz-dkh3-2012-sp_x2c-jfit",
-             "hg_sap-dz-dkh3-2012-sp_x2c-jfit.bin.ref",
-             1e-6 );
+             "hg_sap-dz-dkh3-2012-sp_x2c-jfit.bin.ref", 1e-6, 
+            true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -225,8 +234,8 @@ TEST( RI_X2CHF, hg_sap_dz_dkh3_2012_sp_x2c_cd ) {
 TEST( RI_X2CKS, hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
 
   CQSCFTEST( "scf/serial/ri_x2c/hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp",
-             "hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp.bin.ref",
-             1e-6 );
+             "hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp.bin.ref", 1e-6, 
+            true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -235,7 +244,8 @@ TEST( RI_X2CKS, hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
 TEST( RI_RHF, PAR_water_631Gd_ccpvdzrifit ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cc-pvdz-rifit",
-             "water_6-31Gd_cc-pvdz-rifit.bin.ref" );
+             "water_6-31Gd_cc-pvdz-rifit.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -243,7 +253,8 @@ TEST( RI_RHF, PAR_water_631Gd_ccpvdzrifit ) {
 TEST( RI_RHF, PAR_water_631Gd_cd ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -251,7 +262,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd ) {
 TEST( RI_RHF, PAR_water_631Gd_cd_traditional ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_traditional",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -259,7 +271,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd_traditional ) {
 TEST( RI_RHF, PAR_water_631Gd_cd_dynamicall ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_dynamicall",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -267,7 +280,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd_dynamicall ) {
 TEST( RI_RHF, PAR_water_631Gd_cd_spanfactor ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_spanfactor",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -275,7 +289,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd_spanfactor ) {
 TEST( RI_RHF, PAR_water_631Gd_cd_dynamiceri ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_dynamiceri",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -283,7 +298,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd_dynamiceri ) {
 TEST( RI_RHF, PAR_water_631Gd_cd_spanfactorreuse ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_spanfactorreuse",
-             "water_6-31Gd_cd.bin.ref" );
+             "water_6-31Gd_cd.bin.ref", 1e-6, 
+             true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -379,7 +395,8 @@ TEST( RI_RKS, PAR_water_631Gd_ccpvdzrifit_B3LYP ) {
 TEST( RI_ROHF, PAR_Oxygen_ccpvtzjkfit ) {
 
   CQSCFTEST( "scf/parallel/ri_rohf/oxygen_cc-pvtz_cc-pvtz-jkfit",
-             "oxygen_cc-pvtz_cc-pvtz-jkfit.bin.ref" );
+             "oxygen_cc-pvtz_cc-pvtz-jkfit.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -387,7 +404,8 @@ TEST( RI_ROHF, PAR_Oxygen_ccpvtzjkfit ) {
 TEST( RI_UHF, PAR_Oxygen_def2tzvp_rifit ) {
 
   CQSCFTEST( "scf/parallel/ri_uhf/oxygen_def2-tzvp_def2-tzvp-rifit",
-             "oxygen_def2-tzvp_def2-tzvp-rifit.bin.ref" );
+             "oxygen_def2-tzvp_def2-tzvp-rifit.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -412,8 +430,8 @@ TEST( RI_X2CHF, PAR_cd_sap_dz_dkh3_2012_sp_x2c_jfit ) {
 TEST( RI_X2CHF, PAR_hg_sap_dz_dkh3_2012_sp_x2c_jfit ) {
 
   CQSCFTEST( "scf/parallel/ri_x2c/hg_sap-dz-dkh3-2012-sp_x2c-jfit",
-             "hg_sap-dz-dkh3-2012-sp_x2c-jfit.bin.ref",
-             1e-6 );
+             "hg_sap-dz-dkh3-2012-sp_x2c-jfit.bin.ref", 1e-6, 
+            true, true, true, true, true, true, false, "no", true  );
 
 };
 
@@ -430,8 +448,8 @@ TEST( RI_X2CHF, PAR_hg_sap_dz_dkh3_2012_sp_x2c_cd ) {
 TEST( RI_X2CKS, PAR_hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
 
   CQSCFTEST( "scf/parallel/ri_x2c/hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp",
-             "hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp.bin.ref",
-             1e-6 );
+             "hg_sap-dz-dkh3-2012-sp_x2c-jfit_b3lyp.bin.ref", 1e-6, 
+            true, true, true, true, true, true, false, "no", true  );
 
 };
 #endif
@@ -448,7 +466,8 @@ TEST( RI_X2CKS, PAR_hg_sap_dz_dkh3_2012_sp_x2c_jfit_b3lyp ) {
 TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_4I_eaux ) {
 
   CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_4I_eaux",
-             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -458,7 +477,8 @@ TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_4I_eaux ) {
 TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 
   CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_4I_cdp_paux",
-             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -468,7 +488,8 @@ TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 
   CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
-             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -477,7 +498,8 @@ TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis ) {
 
   CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis",
-             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -491,7 +513,8 @@ TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis ) {
 TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_4I_eaux ) {
 
   CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_4I_eaux",
-             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_4I_eaux.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -501,7 +524,8 @@ TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_4I_eaux ) {
 TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 
   CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_4I_cdp_paux",
-             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_4I_cdp_paux.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -511,7 +535,8 @@ TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 
   CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
-             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 
@@ -520,7 +545,8 @@ TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis ) {
 
   CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis",
-             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6);
+             "coh2_ccpvdz_pb4d_cde_cdp_combineauxbasis.bin.ref", 1e-6, 
+              true, true, true, true, false, "no", true, false ) ;
 
 };
 #endif

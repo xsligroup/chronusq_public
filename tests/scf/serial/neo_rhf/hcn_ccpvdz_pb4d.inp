@@ -1,0 +1,42 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ n  0.00000      0.000000    0.000000                                            
+ c  1.15824      0.000000    0.000000                                            
+ h  2.22844      0.000000    0.000100 Q
+
+
+[QM]
+reference = Real RHF
+job = SCF
+
+[PROTQM]
+reference = Real UHF
+
+[SCF]
+NEO = TRUE
+GUESS = CLASSICAL
+PROT_GUESS = TIGHT
+PRINTMOS = 0
+EXTRAP = TRUE
+MAXITER = 512
+
+[BASIS]
+basis = cc-pvdz
+
+[PBASIS]
+basis = prot-pb4-d
+
+[MISC]
+nsmp = 1
+mem = 100 MB
+
+[INTS]
+ALG = INCORE
+
+[PINTS]
+ALG = INCORE
+
+[EPINTS]
+ALG = INCORE

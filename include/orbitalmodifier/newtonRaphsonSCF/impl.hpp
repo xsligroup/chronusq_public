@@ -23,8 +23,8 @@
  */
 #pragma once
 
-#include <modifyorbitals/newtonRaphsonSCF/quasi-newton.hpp>
-#include <modifyorbitals/newtonRaphsonSCF/rotate.hpp>
+#include <orbitalmodifier/newtonRaphsonSCF/quasi-newton.hpp>
+#include <orbitalmodifier/newtonRaphsonSCF/rotate.hpp>
 
 namespace ChronusQ {
 
@@ -32,11 +32,11 @@ namespace ChronusQ {
  *  \Brief: Computes the fock Matrix and then computes a new set of orbitals
  */
 template<typename MatsT>
-void NewtonRaphsonSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<MatsT>& mo,
-                                             VecEPtr& eps) {
+void NewtonRaphsonSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, vecMORef<MatsT>& mo,
+                                             vecEPtr& eps) {
 
   // Form the Fock matrix D(k) -> F(k)
-  ProgramTimer::timeOp("Form Fock", [&]() { this->modOrbOpt.formFock(pert); });
+  ProgramTimer::timeOp("Form Fock", [&]() { this->orbitalModifierDrivers.formFock(pert); });
 
   if( not storedRef ) saveRefMOs(mo);
 
@@ -50,9 +50,9 @@ void NewtonRaphsonSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef<Mats
   rotateMOs(mo);
 
   // Compute new Eigenvalues
-  this->computeEigenvalues(mo, eps);
+  this->computeEigenvalues(pert, mo, eps);
 
-  this->modOrbOpt.formDensity();
+  this->orbitalModifierDrivers.formDensity();
 }
 
 /*
@@ -114,7 +114,7 @@ double NewtonRaphsonSCF<MatsT>::computeFDCConv() {
  */
 template<typename MatsT>
 void NewtonRaphsonSCF<MatsT>::printRunHeader(std::ostream& out, EMPerturbation& pert) const {
-  OptimizeOrbitals<MatsT>::printRunHeader(out, pert);
+  OrbitalOptimizer<MatsT>::printRunHeader(out, pert);
 
   // Print Damping and Level Shift Info
   out << std::setw(38) << std::left << "  Static Trust Region:" << this->scfControls.nrTrust << std::endl;
@@ -167,7 +167,7 @@ void NewtonRaphsonSCF<MatsT>::sanityChecks(){
       }
 
   // Check that the spaceIndex is correct
-  VecShrdPtrMat<MatsT> den = this->modOrbOpt.getOnePDM();
+  vecShrdPtrMat<MatsT> den = this->orbitalModifierDrivers.getOnePDM();
   size_t nMat = den.size();
   for( auto& rO : rotOpt )
     if( rO.spaceIndex >= nMat ) CErr("Space Index in NRRotOptions is larger than the input vectors");

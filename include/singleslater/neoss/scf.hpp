@@ -82,14 +82,14 @@ namespace ChronusQ {
   };
 
   template<typename MatsT, typename IntsT>
-  void NEOSS<MatsT, IntsT>::runModifyOrbitals(EMPerturbation& pert) {
+  void NEOSS<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
 
     // Initialize properties
-    applyToEach([&pert](SubSSPtr& ss){
-      ss->getNewOrbitals();
-      ss->computeProperties(pert);
-    });
+    //applyToEach([&pert](SubSSPtr& ss){
+    //  ss->getNewOrbitals();
+    //  ss->computeProperties(pert);
+    //});
 
     // Setup MO reference vector
     std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moRefs;
@@ -106,7 +106,7 @@ namespace ChronusQ {
         epsVec.push_back(ss->eps2);
     });
 
-    this->modifyOrbitals->runModifyOrbitals(pert, moRefs, epsVec);
+    this->orbitalModifier->runOrbitalModifier(pert, moRefs, epsVec);
 
     applyToEach([](SubSSPtr& ss) {
       ss->ao2orthoFock();

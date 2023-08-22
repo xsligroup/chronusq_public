@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   // Parse command line options
   if(argc < 2) { // No Options
 
-    CErr("No Command Line Arguements Given",std::cout);
+    CErr("No Command Line Arguments Given",std::cout);
   //inFileName = "distfromroot_reduced.inp";
   //std::vector<std::string> tokens;
   //split(tokens,inFileName,".");
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
   if( rstFileName.empty() ) rstFileName = tokens[0] + ".bin";
 
   if( rstFileName == oldRstFileName ) 
-    CErr("Old (-z) and current (-b) rstFile cannot have same name!");
+    CErr("Old (-z) and current (-b) rstFile cannot have the same name!");
 
   if( not oldRstFileName.empty() ) {
 

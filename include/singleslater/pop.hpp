@@ -68,7 +68,7 @@ namespace ChronusQ {
     } 
 
 
-    // Loewdin population analysis
+    // Lowdin population analysis
     lowdinCharges.clear();
 
 /*

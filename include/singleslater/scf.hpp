@@ -449,13 +449,13 @@ std::vector<NRRotOptions> SingleSlater<MatsT,IntsT>::buildRotOpt(){
 }
 
 template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::runModifyOrbitals(EMPerturbation& pert) {
+void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
 
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
 
   // Initialize properties
-  if( not std::dynamic_pointer_cast<SkipSCF<MatsT>>(this->modifyOrbitals) ) getNewOrbitals();
-  this->computeProperties(pert);
+  //if( not std::dynamic_pointer_cast<SkipSCF<MatsT>>(this->orbitalModifier) ) getNewOrbitals();
+  //this->computeProperties(pert);
 
   // Setup MO reference vector
   std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moRefs;
@@ -475,15 +475,15 @@ void SingleSlater<MatsT, IntsT>::runModifyOrbitals(EMPerturbation& pert) {
   }
 
   // Run modify orbitals
-  this->modifyOrbitals->runModifyOrbitals(pert, moRefs, epsVec);
+  this->orbitalModifier->runOrbitalModifier(pert, moRefs, epsVec);
 
   // Orthogonalize MO's for NewtonRaphsonSCF and check Stability
-  if( std::dynamic_pointer_cast<NewtonRaphsonSCF<MatsT>>(this->modifyOrbitals) ){
+  if( std::dynamic_pointer_cast<NewtonRaphsonSCF<MatsT>>(this->orbitalModifier) ){
     this->orthoAOMO();
     if( this->scfControls.nrAlg == FULL_NR ){
       bool converged = this->checkStability();
       if( not converged ) {
-        this->modifyOrbitals->runModifyOrbitals(pert, moRefs, epsVec);
+        this->orbitalModifier->runOrbitalModifier(pert, moRefs, epsVec);
         this->orthoAOMO();
         converged = this->checkStability();
         if( not converged ) CErr("Newton-Raphson SCF failed to converge to a minimum");
@@ -523,11 +523,11 @@ void SingleSlater<MatsT, IntsT>::runModifyOrbitals(EMPerturbation& pert) {
     }
 
 #endif
-};   // SingleSlater<MatsT,IntsT> :: runModifyOrbitals
+};   // SingleSlater<MatsT,IntsT> :: runOrbitalModifier
 
 /*
  *     Brief: Function to generate shared pointers to Fock Matrix for modify orbitals
- *            Here, the ModifyOrbitals object cannot modify the fockMatrix in SingleSlater
+ *            Here, the OrbitalModifier object cannot modify the fockMatrix in SingleSlater
  *            since they are temporary objects. Additionally, the interface assumes the
  *            matrices are spin gathered.
  */
@@ -554,7 +554,7 @@ std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::ge
 
 /*
  *     Brief: Function to generate shared pointers to Fock Matrix for modify orbitals
- *            Here, the ModifyOrbitals object cannot modify the fockMatrix in SingleSlater
+ *            Here, the OrbitalModifier object cannot modify the fockMatrix in SingleSlater
  *            since they are copies of the objects. Additionally, the interface assumes the
  *            matrices are spin gathered.
  */

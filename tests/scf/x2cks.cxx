@@ -28,7 +28,8 @@
 TEST( X2CKS, Water_6311pGdp_x2c_b3lyp_sph ) {
 
   CQSCFTEST( "scf/serial/x2c/water_6-311+Gdp_b3lyp_sph", 
-    "water_6-311+Gdp_sph_x2c_b3lyp.bin.ref",1e-6 );
+    "water_6-311+Gdp_sph_x2c_b3lyp.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -36,7 +37,8 @@ TEST( X2CKS, Water_6311pGdp_x2c_b3lyp_sph ) {
 TEST( X2CKS, Water_6311pGdp_x2c_b3lyp_cart ) {
 
   CQSCFTEST( "scf/serial/x2c/water_6-311+Gdp_b3lyp_cart", 
-    "water_6-311+Gdp_cart_x2c_b3lyp.bin.ref",1e-6 );
+    "water_6-311+Gdp_cart_x2c_b3lyp.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -46,7 +48,8 @@ TEST( X2CKS, Water_6311pGdp_x2c_b3lyp_cart ) {
 TEST( X2CKS, Hg_SAP_DZP_DKH3_2012_SP_SLATER  ) {
 
   CQSCFTEST( "scf/serial/x2c/hg_sap_dz_dkh3_2012_sp_slater", 
-    "hg_sap_dz_dkh3_2012_sp_slater.bin.ref",1e-6 );
+    "hg_sap_dz_dkh3_2012_sp_slater.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -84,7 +87,8 @@ TEST( X2CKS, Cd_SAP_DZP_DKH3_2012_SP_B3LYP  ) {
 TEST( X2CKS, PAR_Water_6311pGdp_x2c_b3lyp_sph ) {
 
   CQSCFTEST( "scf/parallel/x2c/water_6-311+Gdp_b3lyp_sph", 
-    "water_6-311+Gdp_sph_x2c_b3lyp.bin.ref",1e-6 );
+    "water_6-311+Gdp_sph_x2c_b3lyp.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
  
 };
 

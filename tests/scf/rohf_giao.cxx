@@ -27,7 +27,8 @@
 // H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001
 TEST( ROHF_GIAO, H2_TRIPLET_ROHF_GIAO_631G ) {
 
-  CQSCFTEST( "scf/serial/rohf_giao/h2_triplet_rohf_giao_631G", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/serial/rohf_giao/h2_triplet_rohf_giao_631G", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
  
 };
 
@@ -37,7 +38,8 @@ TEST( ROHF_GIAO, H2_TRIPLET_ROHF_GIAO_631G ) {
 // H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001 (DIRECT)
 TEST( ROHF_GIAO, H2_TRIPLET_ROHF_GIAO_631G_DIRECT ) {
 
-  CQSCFTEST( "scf/serial/rohf_giao/h2_triplet_rohf_giao_631G_direct", "h2_triplet_rohf_giao_631G.bin.ref", 1e-5 );
+  CQSCFTEST( "scf/serial/rohf_giao/h2_triplet_rohf_giao_631G_direct", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -48,7 +50,8 @@ TEST( ROHF_GIAO, H2_TRIPLET_ROHF_GIAO_631G_DIRECT ) {
 // SMP H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001
 TEST( ROHF_GIAO, Par_H2_TRIPLET_ROHF_GIAO_631G ) {
 
-  CQSCFTEST( "scf/parallel/rohf_giao/h2_triplet_rohf_giao_631G", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/parallel/rohf_giao/h2_triplet_rohf_giao_631G", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
  
 };
 
@@ -56,7 +59,8 @@ TEST( ROHF_GIAO, Par_H2_TRIPLET_ROHF_GIAO_631G ) {
 // SMP H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001 (DIRECT)
 TEST( ROHF_GIAO, Par_H2_TRIPLET_ROHF_GIAO_631G_DIRECT ) {
 
-  CQSCFTEST( "scf/parallel/rohf_giao/h2_triplet_rohf_giao_631G_direct", "h2_triplet_rohf_giao_631G.bin.ref", 1e-5 );
+  CQSCFTEST( "scf/parallel/rohf_giao/h2_triplet_rohf_giao_631G_direct", "h2_triplet_rohf_giao_631G.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 

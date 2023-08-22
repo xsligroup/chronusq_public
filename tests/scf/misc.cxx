@@ -30,7 +30,8 @@
 TEST( MISC_SCF, Water_631Gd_ed_0_0pt01_0 ) {
 
   CQSCFTEST( "scf/serial/rhf/water_6-31Gd_ed_0_0.01_0", 
-    "water_6-31Gd_ed_0_0.01_0.bin.ref" );
+    "water_6-31Gd_ed_0_0.01_0.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true  );
  
 };
 
@@ -38,7 +39,8 @@ TEST( MISC_SCF, Water_631Gd_ed_0_0pt01_0 ) {
 TEST( MISC_SCF, Water_631Gd_ed_0pt01_0_0 ) {
 
   CQSCFTEST( "scf/serial/rhf/water_6-31Gd_ed_0.01_0_0", 
-    "water_6-31Gd_ed_0.01_0_0.bin.ref" );
+    "water_6-31Gd_ed_0.01_0_0.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -46,7 +48,8 @@ TEST( MISC_SCF, Water_631Gd_ed_0pt01_0_0 ) {
 TEST( MISC_SCF, Water_631Gd_ed_0_0_0pt01 ) {
 
   CQSCFTEST( "scf/serial/rhf/water_6-31Gd_ed_0_0_0.01", 
-    "water_6-31Gd_ed_0_0_0.01.bin.ref" );
+    "water_6-31Gd_ed_0_0_0.01.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -72,7 +75,8 @@ TEST( RHF, Water_631Gd_FindBasis ) {
   newFile << oldFile.rdbuf();
   newFile.flush();
 
-  CQSCFTEST( "scf/serial/rhf/water_6-31Gd_findBasis", "water_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/serial/rhf/water_6-31Gd_findBasis", "water_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -80,7 +84,8 @@ TEST( RHF, Water_631Gd_FindBasis ) {
 // Water 6-31G(d) input basis 
 TEST( RHF, Water_631Gd_InputBasis ) {
 
-  CQSCFTEST( "scf/serial/rhf/water_6-31Gd_inBasis", "water_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/serial/rhf/water_6-31Gd_inBasis", "water_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 

@@ -25,7 +25,7 @@
 #include "resp.hpp"
 
 #define CQRESTEST_IMPL(TNAME, IN, REF) \
-TEST( RHF_PP_RESIDUE, TNAME ) { CQRESTEST( false, IN, REF ); }
+TEST( RHF_PP_RESIDUE, TNAME ) { CQRESTEST( false, IN, REF, true, 1e-5); }
 
 
 // AA PP-RPA

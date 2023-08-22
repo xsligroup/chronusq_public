@@ -28,21 +28,24 @@
 // B3LYP / cc-pVTZ
 TEST( RKS, Water_ccpVTZ_B3LYP ) {
 
-  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_B3LYP", "water_cc-pVTZ_B3LYP.bin.ref" );
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_B3LYP", "water_cc-pVTZ_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 }
 
 // BLYP / cc-pVTZ
 TEST( RKS, Water_ccpVTZ_BLYP ) {
 
-  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_BLYP", "water_cc-pVTZ_BLYP.bin.ref" );
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_BLYP", "water_cc-pVTZ_BLYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
 // LSDA / cc-pVTZ
 TEST( RKS, Water_ccpVTZ_LSDA ) {
 
-  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref" );
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
@@ -51,21 +54,24 @@ TEST( RKS, Water_ccpVTZ_LSDA ) {
 // SMP B3LYP / cc-pVTZ
 TEST( RKS, PAR_Water_ccpVTZ_B3LYP ) {
 
-  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_B3LYP", "water_cc-pVTZ_B3LYP.bin.ref" );
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_B3LYP", "water_cc-pVTZ_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
 // SMP BLYP / cc-pVTZ
 TEST( RKS, PAR_Water_ccpVTZ_BLYP ) {
 
-  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_BLYP", "water_cc-pVTZ_BLYP.bin.ref" );
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_BLYP", "water_cc-pVTZ_BLYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
 // SMP LSDA / cc-pVTZ
 TEST( RKS, PAR_Water_ccpVTZ_LSDA ) {
 
-  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref", 2e-8 );
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 }
 

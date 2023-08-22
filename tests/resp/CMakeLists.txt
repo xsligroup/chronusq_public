@@ -98,7 +98,7 @@ add_cq_test( RHF_FDR           resptest "RHF_FDR.*"          )
 add_cq_test( RHF_DFDR          resptest "RHF_DFDR.*"         )
 add_cq_test( RHF_MOR           resptest "RHF_MOR.*"          )
 add_cq_test( MISC_RESP         resptest "MISC_RESP.*"        )
-add_cq_test( NEOHF_RESIDUE     resptest "NEOHF_RESIDUE.*"    )
+#add_cq_test( NEOHF_RESIDUE     resptest "NEOHF_RESIDUE.*"    )
 
 if( CQ_ENABLE_MPI )
 

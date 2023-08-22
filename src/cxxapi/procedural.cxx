@@ -243,14 +243,14 @@ namespace ChronusQ {
                                                aoints, prot_aoints,
                                                ep_aoints, scfControls);
       ss->scfControls = scfControls;
-      // For NEO only one ModifyOrbitals needs to be made since it is a
+      // For NEO only one OrbitalModifier needs to be made since it is a
       // driver for both the NEOSingleSlater and the aux_neoss
-      ss->buildModifyOrbitals();
+      ss->buildOrbitalModifierOptions();
     } else {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
       ss = ssOptions.buildSingleSlater(output,*memManager,mol,*basis,aoints);
-      ss->buildModifyOrbitals();
+      ss->buildOrbitalModifierOptions();
 
       // MO swapping
       HandleOrbitalSwaps(output, input, *ss);
@@ -385,12 +385,12 @@ namespace ChronusQ {
           ss->formCoreH(emPert, true);
           if(firstStep) {
             ss->formGuess(guessSSOptions);
-            ss->formFock(emPert, false);
+//            ss->formFock(emPert, false);
           }
 //xslis
 #if 0
           if(ssSCF!=nullptr) {
-            auto scfC = std::dynamic_pointer_cast<OptimizeOrbitals<dcomplex>>(ssSCF->modifyOrbitals);
+            auto scfC = std::dynamic_pointer_cast<OrbitalOptimizer<dcomplex>>(ssSCF->orbitalModifier);
             if(scfC!=nullptr) scfC->scfControls.eneConvTol *= 100.0;
             ssSCF->runModifyOrbitals(emPert);
             if(scfC!=nullptr) scfC->scfControls.eneConvTol /= 100.0;
@@ -403,7 +403,7 @@ namespace ChronusQ {
           ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb = dcSave;
 #endif
 //xslie
-          ss->runModifyOrbitals(emPert);
+          ss->runSCF(emPert);
         }
 
         // Run RT job
@@ -491,5 +491,8 @@ namespace ChronusQ {
 
   }; // RunChronusQ
 
+  void CQParser(std::string inFileName, std::string outFileName) {
+
+  };
 
  }; // namespace ChronusQ

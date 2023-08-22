@@ -28,14 +28,16 @@
 // B3LYP / 6-311pG**
 TEST( UKS, Oxygen_6311pGss_B3LYP ) {
 
-  CQSCFTEST( "scf/serial/uks/oxygen_6-311pG**_B3LYP", "oxygen_6-311pG**_B3LYP.bin.ref" );
+  CQSCFTEST( "scf/serial/uks/oxygen_6-311pG**_B3LYP", "oxygen_6-311pG**_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
 // BLYP / 6-311pG**
 TEST( UKS, Oxygen_6311pGss_BLYP ) {
 
-  CQSCFTEST( "scf/serial/uks/oxygen_6-311pG**_BLYP", "oxygen_6-311pG**_BLYP.bin.ref" );
+  CQSCFTEST( "scf/serial/uks/oxygen_6-311pG**_BLYP", "oxygen_6-311pG**_BLYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 
@@ -51,7 +53,8 @@ TEST( UKS, Oxygen_6311pGss_LSDA ) {
 // SMP B3LYP / 6-311pG**
 TEST( UKS, PAR_Oxygen_6311pGss_B3LYP ) {
 
-  CQSCFTEST( "scf/parallel/uks/oxygen_6-311pG**_B3LYP", "oxygen_6-311pG**_B3LYP.bin.ref" );
+  CQSCFTEST( "scf/parallel/uks/oxygen_6-311pG**_B3LYP", "oxygen_6-311pG**_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 

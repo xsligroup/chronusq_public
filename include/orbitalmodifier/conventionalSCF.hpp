@@ -23,12 +23,12 @@
  */
 #pragma once
 
-#include <modifyorbitals/optOrbitals.hpp>
+#include <orbitalmodifier/orbitaloptimizer.hpp>
 
 namespace ChronusQ {
 
 template<typename MatsT>
-class ConventionalSCF : public OptimizeOrbitals<MatsT> {
+class ConventionalSCF : public OrbitalOptimizer<MatsT> {
 
 protected:
   // Orthogonal Fock/Density Matrices
@@ -52,13 +52,14 @@ protected:
 public:
   // Constructor
   ConventionalSCF() = delete;
-  ConventionalSCF(SCFControls sC, MPI_Comm comm, ModifyOrbitalsOptions<MatsT> mod, CQMemManager& mem): OptimizeOrbitals<MatsT>(sC, comm, mod, mem) {
+  ConventionalSCF(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> mod, CQMemManager& mem):
+    OrbitalOptimizer<MatsT>(sC, comm, mod, mem) {
 
     // Allocate ortho Fock and Den
-    VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
+    vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
     for( auto& f : fock )
       fockMatrixOrtho.emplace_back(f->memManager(), f->dimension());
-    VecShrdPtrMat<MatsT> den = this->modOrbOpt.getOnePDM();
+    vecShrdPtrMat<MatsT> den = this->orbitalModifierDrivers.getOnePDM();
     for( auto& d : den )
       onePDMOrtho.emplace_back(d->memManager(), d->dimension());
     for( auto& d : den )
@@ -81,17 +82,18 @@ public:
   };
 
   // ModifyOrbital Functions
-  void getNewOrbitals(EMPerturbation&, VecMORef<MatsT>&, VecEPtr&);
+  void getNewOrbitals(EMPerturbation&, vecMORef<MatsT>&, vecEPtr&);
   void printRunHeader(std::ostream&, EMPerturbation&) const;
 
   // Orthogonalization Functions
-  void ao2orthoFock(VecShrdPtrMat<MatsT> fock = {});
-  void ao2orthoDen(VecShrdPtrMat<MatsT> den = {});
-  void ortho2aoMOs(VecMORef<MatsT>&);
+  void ao2orthoFock(vecShrdPtrMat<MatsT> fock = {});
+  void ao2orthoDen(vecShrdPtrMat<MatsT> den = {});
+  void ortho2aoMOs(vecMORef<MatsT>&);
+  void ao2orthoMOs(vecMORef<MatsT>&);
 
   // SCF extrapolation functions (see include/singleslater/extrap.hpp for docs)
   void allocExtrapStorage();
-  void diagOrthoFock(VecMORef<MatsT>&, VecEPtr&);
+  void diagOrthoFock(vecMORef<MatsT>&, vecEPtr&);
   void modifyFock(EMPerturbation&);
   void fockDamping();
   void scfCDIIS(size_t, size_t);

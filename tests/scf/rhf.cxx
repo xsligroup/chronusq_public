@@ -28,7 +28,8 @@
 // Water 6-31G(d) test
 TEST( RHF, Water_631Gd ) {
 
-  CQSCFTEST( "scf/serial/rhf/water_6-31Gd", "water_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/serial/rhf/water_6-31Gd", "water_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 
@@ -112,7 +113,8 @@ TEST( RHF, Water_ccpVDZ_RHF_RHFGuess_READMO_restart ) {
 // SMP Water 6-31G(d) test
 TEST( RHF, PAR_Water_631Gd ) {
 
-  CQSCFTEST( "scf/parallel/rhf/water_6-31Gd", "water_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/parallel/rhf/water_6-31Gd", "water_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
  
 };
 

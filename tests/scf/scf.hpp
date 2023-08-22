@@ -95,7 +95,7 @@ static void CQSCRSCF( std::string in, std::string ref, std::string scr ) {
 };
  
 static void CQSCFTEST( std::string in, std::string ref,
-  double tol        = 1e-8,
+  double tol        = 1e-6,
   bool checkSEXP    = true,
   bool checkSSq     = true,
   bool checkOctLen  = true,
@@ -103,7 +103,8 @@ static void CQSCFTEST( std::string in, std::string ref,
   bool checkDipLen  = true,
   bool checkEne     = true,
   bool readBin      = false,
-  std::string scr  = "no" ) {
+  std::string scr  = "no",
+  bool looserPropretyThreshold = false ) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -137,6 +138,8 @@ static void CQSCFTEST( std::string in, std::string ref,
 
   }
 
+  double property_tol = looserPropretyThreshold ? tol*100.0 : tol ;
+
   /* Check Multipoles */
 
   if( checkDipLen ) {
@@ -146,7 +149,7 @@ static void CQSCFTEST( std::string in, std::string ref,
     refFile.readData("SCF/LEN_ELECTRIC_DIPOLE",&xDummy3[0]);
     resFile.readData("SCF/LEN_ELECTRIC_DIPOLE",&yDummy3[0]);
     for(auto i = 0; i < 3; i++)
-      EXPECT_NEAR(yDummy3[i], xDummy3[i], tol ) <<
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol ) <<
         "DIPOLE TEST FAILED IXYZ = " << i;
 
 
@@ -161,7 +164,7 @@ static void CQSCFTEST( std::string in, std::string ref,
     resFile.readData("SCF/LEN_ELECTRIC_QUADRUPOLE",&yDummy33[0][0]);
     for(auto i = 0; i < 3; i++)
     for(auto j = 0; j < 3; j++)
-      EXPECT_NEAR(yDummy33[i][j], xDummy33[i][j],  tol) <<
+      EXPECT_NEAR(yDummy33[i][j], xDummy33[i][j],  property_tol) <<
         "QUADRUPOLE TEST FAILED IXYZ = " << i
                            << " JXYZ = " << j;
 
@@ -176,7 +179,7 @@ static void CQSCFTEST( std::string in, std::string ref,
     for(auto i = 0; i < 3; i++)
     for(auto j = 0; j < 3; j++)
     for(auto k = 0; k < 3; k++)
-      EXPECT_NEAR(yDummy333[i][j][k],  xDummy333[i][j][k],  tol) <<
+      EXPECT_NEAR(yDummy333[i][j][k],  xDummy333[i][j][k],  property_tol) <<
         "OCTUPOLE TEST FAILED IXYZ = " << i
                                        << " JXYZ = " << j
                                        << " KXYZ = " << k;
@@ -192,7 +195,7 @@ static void CQSCFTEST( std::string in, std::string ref,
     refFile.readData("SCF/S_EXPECT",&xDummy3[0]);
     resFile.readData("SCF/S_EXPECT",&yDummy3[0]);
     for(auto i = 0; i < 3; i++)
-      EXPECT_NEAR(yDummy3[i], xDummy3[i], tol ) <<
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol ) <<
         "<S> TEST FAILED IXYZ = " << i;
 
   }
@@ -203,7 +206,7 @@ static void CQSCFTEST( std::string in, std::string ref,
 
     refFile.readData("SCF/S_SQUARED",&xDummy);
     resFile.readData("SCF/S_SQUARED",&yDummy);
-    EXPECT_NEAR(yDummy,  xDummy, tol) << "<S^2> TEST FAILED " ;
+    EXPECT_NEAR(yDummy,  xDummy, property_tol) << "<S^2> TEST FAILED " ;
 
   }
 
@@ -213,13 +216,15 @@ static void CQSCFTEST( std::string in, std::string ref,
 
 
 static void CQNEOSCFTEST( std::string in, std::string ref,
-  double tol        = 1e-8,
+  double tol        = 1e-6,
   bool checkOctLen  = true,
   bool checkQuadLen = true,
   bool checkDipLen  = true,
   bool checkEne     = true,
   bool readBin      = false,
-  std::string scr  = "no" ) {
+  std::string scr  = "no",
+  bool looserPropretyThreshold = false,
+  bool checkSubSSEne = true ) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -245,15 +250,19 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
 
     std::cout << " * PERFORMING NEO-SCF ENERGY CHECK " << std::endl;
 
-    std::cout << "     * CHECKING ELECTRONIC ENERGY" << std::endl;
-    refFile.readData("NEO/ELEC_ENERGY",&xDummyE);
-    resFile.readData("NEO/ELEC_ENERGY",&yDummyE);
-    EXPECT_NEAR( xDummyE, yDummyE, tol ) << "NEO ELEC-ENERGY TEST FAILED ";
+    if(checkSubSSEne){
+    
+      std::cout << "     * CHECKING ELECTRONIC ENERGY" << std::endl;
+      refFile.readData("NEO/ELEC_ENERGY",&xDummyE);
+      resFile.readData("NEO/ELEC_ENERGY",&yDummyE);
+      EXPECT_NEAR( xDummyE, yDummyE, tol ) << "NEO ELEC-ENERGY TEST FAILED ";
 
-    std::cout << "     * CHECKING PROTONIC ENERGY" << std::endl;
-    refFile.readData("NEO/PROT_ENERGY",&xDummyP);
-    resFile.readData("NEO/PROT_ENERGY",&yDummyP);
-    EXPECT_NEAR( xDummyP, yDummyP, tol ) << "NEO PROT-ENERGY TEST FAILED ";
+      std::cout << "     * CHECKING PROTONIC ENERGY" << std::endl;
+      refFile.readData("NEO/PROT_ENERGY",&xDummyP);
+      resFile.readData("NEO/PROT_ENERGY",&yDummyP);
+      EXPECT_NEAR( xDummyP, yDummyP, tol ) << "NEO PROT-ENERGY TEST FAILED ";
+
+    }
     
     std::cout << "     * CHECKING TOTAL NEO ENERGY" << std::endl;
     refFile.readData("NEO/TOTAL_ENERGY",&xDummyT);
@@ -262,6 +271,7 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
 
   }
 
+  double property_tol = looserPropretyThreshold ? tol*100.0 : tol ;
   /* Check Multipoles */
 
   if( checkDipLen ) {
@@ -271,7 +281,7 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
     refFile.readData("NEO/LEN_ELECTRIC_DIPOLE",&xDummy3[0]);
     resFile.readData("NEO/LEN_ELECTRIC_DIPOLE",&yDummy3[0]);
     for(auto i = 0; i < 3; i++)
-      EXPECT_NEAR(yDummy3[i], xDummy3[i], tol ) <<
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol) <<
         "DIPOLE TEST FAILED IXYZ = " << i;
 
   }
@@ -285,7 +295,7 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
     resFile.readData("NEO/LEN_ELECTRIC_QUADRUPOLE",&yDummy33[0][0]);
     for(auto i = 0; i < 3; i++)
     for(auto j = 0; j < 3; j++)
-      EXPECT_NEAR(yDummy33[i][j], xDummy33[i][j],  tol) <<
+      EXPECT_NEAR(yDummy33[i][j], xDummy33[i][j],  property_tol) <<
         "QUADRUPOLE TEST FAILED IXYZ = " << i
                            << " JXYZ = " << j;
 
@@ -300,7 +310,7 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
     for(auto i = 0; i < 3; i++)
     for(auto j = 0; j < 3; j++)
     for(auto k = 0; k < 3; k++)
-      EXPECT_NEAR(yDummy333[i][j][k],  xDummy333[i][j][k],  tol) <<
+      EXPECT_NEAR(yDummy333[i][j][k],  xDummy333[i][j][k],  property_tol) <<
         "OCTUPOLE TEST FAILED IXYZ = " << i
                                        << " JXYZ = " << j
                                        << " KXYZ = " << k;

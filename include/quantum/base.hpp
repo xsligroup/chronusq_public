@@ -187,7 +187,7 @@ namespace ChronusQ {
       ProgramTimer::tick("Compute Properties");
 
       if(nC != 4) computeMultipole(pert);
-      computeEnergy(pert);
+      //computeEnergy(pert);
       if(nC != 4) computeSpin();
       methodSpecificProperties();
 

@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include <modifyorbitals/optOrbitals.hpp>
+#include <orbitalmodifier/orbitaloptimizer.hpp>
 #include <cqlinalg/matfunc.hpp>
 
 //#define _NRSCF_DEBUG
@@ -52,12 +52,12 @@ struct NRRotOptions{
  *         is the set of occupied indices, and the second set is the set of 
  *         virtual indices. These are used to determine the nonredundant 
  *         parameters in the NewtonRaphsonSCF object. The implementation
- *         is in include/modifyorbitals/newtonraphsonscf/impl.hpp
+ *         is in include/orbitalmodifier/newtonraphsonscf/impl.hpp
  */ 
 std::pair<std::set<size_t>,std::set<size_t>> ssNRRotIndices( size_t nOcc, size_t NB, size_t shift=0 );
 
 template<typename MatsT>
-class NewtonRaphsonSCF : public OptimizeOrbitals<MatsT> {
+class NewtonRaphsonSCF : public OrbitalOptimizer<MatsT> {
 private:
   size_t nParam;                  ///< Total number of independent parameters
   bool refMOsAllocated = false;   ///< Whether the reference MOs were allocated yet
@@ -75,8 +75,8 @@ private:
 public:
   // Constructor
   NewtonRaphsonSCF() = delete;
-  NewtonRaphsonSCF(std::vector<NRRotOptions> nrrot, SCFControls sC, MPI_Comm comm, ModifyOrbitalsOptions<MatsT> modOpt, CQMemManager& mem):
-    OptimizeOrbitals<MatsT>(sC, comm, modOpt, mem),rotOpt(nrrot) {
+  NewtonRaphsonSCF(std::vector<NRRotOptions> nrrot, SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
+    OrbitalOptimizer<MatsT>(sC, comm, modOpt, mem), rotOpt(nrrot) {
 
     sanityChecks();
 
@@ -104,7 +104,7 @@ public:
   // Functions
   void sanityChecks();
   void alloc();
-  void getNewOrbitals(EMPerturbation&, VecMORef<MatsT>&, VecEPtr&);
+  void getNewOrbitals(EMPerturbation&, vecMORef<MatsT>&, vecEPtr&);
   void NewtonRaphsonIteration();
   void printRunHeader(std::ostream&, EMPerturbation&) const;
 
@@ -115,10 +115,10 @@ public:
   void gradDescentStep();
 
   // Common Functions
-  void computeGradient(VecMORef<MatsT>&);
-  void computeDiagHess(VecEPtr&);
-  void rotateMOs(VecMORef<MatsT>&);
-  void saveRefMOs(VecMORef<MatsT>& mo);
+  void computeGradient(vecMORef<MatsT>&);
+  void computeDiagHess(vecEPtr&);
+  void rotateMOs(vecMORef<MatsT>&);
+  void saveRefMOs(vecMORef<MatsT>& mo);
   std::vector<SquareMatrix<MatsT>> computeUnitary();
 
 

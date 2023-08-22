@@ -42,6 +42,21 @@
 
 namespace ChronusQ {
 
+  enum class CQJobType {
+    SCF,
+    RT,
+    LR,
+    CC,
+    EOMCC,
+    MR,
+    BOMD,
+    EHRENFEST
+  };
+
+  /*************/
+  /* OLD CODES */
+  /*************/
+
   // Type of Job
   enum class JobType {
     SCF,
@@ -53,6 +68,8 @@ namespace ChronusQ {
     BOMD,
     EHRENFEST
   };
+
+
 
   // Tedious, but there isn't an easier way to do this
   inline JobType parseJob(std::string jobStr) {

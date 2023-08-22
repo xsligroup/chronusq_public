@@ -25,7 +25,7 @@
 #include "resp.hpp"
 
 #define CQRESTEST_IMPL(TNAME, IN, REF) \
-TEST( MISC_RESP, TNAME ) { CQRESTEST( true, IN, REF ); }
+TEST( MISC_RESP, TNAME ) { CQRESTEST( true, IN, REF, true, 1e-5 ); }
 
 
 // Water 6-31G(d) TDHF (RESIDUE, GPLHR + DIRECT) Oxygen K-Edge (540 eV)

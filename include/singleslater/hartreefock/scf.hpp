@@ -60,20 +60,21 @@ void HartreeFock<MatsT, IntsT>::computeFullNRStep(MatsT* orbRot) {
 };
 
 template<typename MatsT, typename IntsT>
-void HartreeFock<MatsT, IntsT>::buildModifyOrbitals() {
+void HartreeFock<MatsT, IntsT>::buildOrbitalModifierOptions() {
   // Modify SCFControls
   this->scfControls.printLevel    = this->printLevel;
   this->scfControls.refLongName_  = this->refLongName_;
   this->scfControls.refShortName_ = this->refShortName_;
 
   // Initialize ModifyOrbitalOptions
-  ModifyOrbitalsOptions<MatsT> modOrbOpt;
+  OrbitalModifierDrivers<MatsT> modOrbOpt;
 
   // Bind Lambdas to std::functions
   modOrbOpt.printProperties   = [this]() { this->printProperties(); };
   modOrbOpt.saveCurrentState  = [this]() { this->saveCurrentState(); };
   modOrbOpt.formFock          = [this](EMPerturbation& pert) { this->formFock(pert,false,1.); };
   modOrbOpt.computeProperties = [this](EMPerturbation& pert) { this->computeProperties(pert); };
+  modOrbOpt.computeEnergy     = [this](EMPerturbation& pert) { this->computeEnergy(pert); };
   modOrbOpt.formDensity       = [this]() { this->formDensity(); };
   modOrbOpt.getFock           = [this]() { return this->getFock(); };
   modOrbOpt.getOnePDM         = [this]() { return this->getOnePDM(); };
@@ -82,11 +83,11 @@ void HartreeFock<MatsT, IntsT>::buildModifyOrbitals() {
   modOrbOpt.getTotalEnergy    = [this]() { return this->getTotalEnergy(); };
   modOrbOpt.computeFullNRStep = [this](MatsT* dx) { this->computeFullNRStep(dx); };
 
-  // Make ModifyOrbitals based on scfControls
+  // Make OrbitalModifier based on scfControls
   if( this->scfControls.scfAlg == _CONVENTIONAL_SCF ) {
     // Conventional SCF
 
-    this->modifyOrbitals = std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(
+    this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
         std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
 
   } else if( this->scfControls.scfAlg == _NEWTON_RAPHSON_SCF ) {
@@ -99,16 +100,16 @@ void HartreeFock<MatsT, IntsT>::buildModifyOrbitals() {
 
     std::vector<NRRotOptions> rotOpt = this->buildRotOpt();
 
-    this->modifyOrbitals = std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(
+    this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
         std::make_shared<NewtonRaphsonSCF<MatsT>>(rotOpt,this->scfControls, this->comm, modOrbOpt, this->memManager));
 
   } else {
     // SKIP SCF
-    this->scfControls.doExtrap = false;
-    this->modifyOrbitals       = std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(
-        std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+    //this->scfControls.doExtrap = false;
+    //this->orbitalModifier       = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
+    //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
   }
-};   // HartreeFock<MatsT,IntsT> :: buildModifyOrbitals
+};   // HartreeFock<MatsT,IntsT> :: buildOrbitalModifierOptions
 
 template<typename MatsT, typename IntsT>
 std::pair<double, MatsT*> HartreeFock<MatsT, IntsT>::getStab() {

@@ -86,7 +86,8 @@ TEST( KS_KEYWORD, KEYWORD_SLATER ) {
 // B3LYP
 TEST( KS_FUNC, KS_CART_B3LYP ) {
 
-  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_cart_B3LYP", "water_cc-pVTZ_cart_B3LYP.bin.ref" );
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_cart_B3LYP", "water_cc-pVTZ_cart_B3LYP.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
 
 }
 

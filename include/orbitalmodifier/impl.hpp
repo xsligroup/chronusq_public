@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include <modifyorbitals/optOrbitals/impl.hpp>
-#include <modifyorbitals/conventionalSCF/impl.hpp>
-#include <modifyorbitals/newtonRaphsonSCF/impl.hpp>
-#include <modifyorbitals/skipSCF.hpp>
+#include <orbitalmodifier/orbitaloptimizer/impl.hpp>
+#include <orbitalmodifier/conventionalSCF/impl.hpp>
+#include <orbitalmodifier/newtonRaphsonSCF/impl.hpp>
+//#include <orbitalmodifier/skipSCF.hpp>

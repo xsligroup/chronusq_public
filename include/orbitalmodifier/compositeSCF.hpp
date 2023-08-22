@@ -30,41 +30,41 @@
  *    here for someone in the future to use it if they want to. 
  *
  */
-#include <modifyorbitals.hpp>
+#include <orbitalmodifier.hpp>
 
 namespace ChronusQ {
 
 template<typename MatsT>
-class CompositeSCF : public ModifyOrbitals<MatsT> {
+class CompositeSCF : public OrbitalModifier<MatsT> {
 protected:
-  std::vector<std::shared_ptr<ModifyOrbitals<MatsT>>> modifyOrbitals;
+  std::vector<std::shared_ptr<OrbitalModifier<MatsT>>> orbitalModifier;
   std::vector<SCFControls> scfControls;
 
 public:
   // Constructor
-  CompositeSCF(std::vector<SCFControls> sC, MPI_Comm comm, ModifyOrbitalsOptions<MatsT> modOpt, CQMemManager& mem):
+  CompositeSCF(std::vector<SCFControls> sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
     ModifyOrbitals(comm, modOpt, mem) {
 
     for( auto s : scfControls ) {
       if( s.scfAlg == _CONVENTIONAL_SCF ) {
-        modifyOrbitals.emplace_back(std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(std::make_shared<ConventionalSCF<MatsT>>(s, comm, modOpt, mem)));
+        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<ConventionalSCF<MatsT>>(s, comm, modOpt, mem)));
       } else if( s.scfAlg == _NEWTON_RAPHSON_SCF ) {
-        modifyOrbitals.emplace_back(
-          std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(std::make_shared<NewtonRaphsonSCF<MatsT>>(s, comm, modOpt, mem)));
+        orbitalModifier.emplace_back(
+          std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<NewtonRaphsonSCF<MatsT>>(s, comm, modOpt, mem)));
       } else {
-        modifyOrbitals.emplace_back(std::dynamic_pointer_cast<ModifyOrbitals<MatsT>>(std::make_shared<SkipSCF<MatsT>>(s, comm, modOpt, mem)));
+        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<SkipSCF<MatsT>>(s, comm, modOpt, mem)));
       }
     }
   };
 
   // Member Functions
 
-  void runModifyOrbitals(EMPerturbation& pert, VecMORef& mo, VecEPtr eps) {
-    for( auto mO : modifyOrbitals )
+  void runModifyOrbitals(EMPerturbation& pert, vecMORef& mo, vecEPtr eps) {
+    for( auto mO : orbitalModifier )
       mO->runModifyOrbitals(pert, mo, eps);
   };
 
-  void getNewOrbitals(EMPerturbation& pert, VecMORef& mo, VecEPtr eps, bool frmFock = true);
+  void getNewOrbitals(EMPerturbation& pert, vecMORef& mo, vecEPtr eps, bool frmFock = true);
 
   // Printing functions
   virtual void printRunHeader(std::ostream& out, EMPerturbation&);
@@ -72,7 +72,7 @@ public:
 }
 
 template<typename MatsT>
-void CompositeSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, VecMORef& mo, VecEPtr eps, frmFock) {
+void CompositeSCF<MatsT>::getNewOrbitals(EMPerturbation& pert, vecMORef& mo, vecEPtr eps, frmFock) {
   for( auto mO : modifyOrbitals )
     mO->runModifyOrbitals(pert, mo, eps, frmFock);
 };

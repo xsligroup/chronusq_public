@@ -65,6 +65,22 @@ namespace ChronusQ {
     std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
 #endif
 
+#ifdef _THREAD_TIMING_
+    // Print current time
+    time_t currentClockTime;
+    time(&currentClockTime);
+
+    std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
+#endif
+
+#ifdef _THREAD_TIMING_
+    // Print current time
+    time_t currentClockTime;
+    time(&currentClockTime);
+
+    std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
+#endif
+
     // FIXME: This should be able to be done with MPI_IN_PLACE for
     // the root process
 
@@ -917,8 +933,8 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipLL[thread_id]++; continue; }
 #endif
 
+#if 0 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -934,9 +950,9 @@ namespace ChronusQ {
 
             if(atomCenters.size()>3) {nSkipLL[thread_id]++; continue;}
           }
- 
+
+
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -952,13 +968,22 @@ namespace ChronusQ {
 
             if(atomCenters.size()>2) {nSkipLL[thread_id]++; continue;}
           }
+#else
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter)
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) )
+            {nSkipLL[thread_id]++; continue;}
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            {nSkipLL[thread_id]++; continue;}
+#endif
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
                  and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipLL[thread_id]++; continue;}
- 
-          auto nQuad = n1*n2*n3*n4;
+
+
   
           shls[0] = int(s1);
           shls[1] = int(s2);
@@ -967,7 +992,8 @@ namespace ChronusQ {
   
           if(int2e_ipvip1_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
 
- 
+          auto nQuad = n1*n2*n3*n4;
+
           for(l = 3*maxShellSize, mnkl = 0ul; l < 3*maxShellSize + n4; ++l) {
             auto lNB3 = l*NB3;
             auto lNB  = l*NB;
@@ -1105,8 +1131,8 @@ namespace ChronusQ {
             /* Start of Dirac-Coulomb (LL|LL) Contraction */
             /*++++++++++++++++++++++++++++++++++++++++++++*/
 
-           // The LLLL block is all Coulomb type
-  
+            // The LLLL block is all Coulomb type
+#if  1 
             // KLMN
             // Equation (C6) in Xiaosong's note
             if(bf3 >= bf4 ) {
@@ -1142,7 +1168,7 @@ namespace ChronusQ {
             /* End of Dirac-Coulomb C(2)-(SS|SS) Contraction */
             /*-----------------------------------------------*/
 
-
+#endif
 
 
             /*++++++++++++++++++++++++++++++++++++++++++*/
@@ -2017,8 +2043,8 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipSSSS[thread_id]++; continue; }
 #endif
 
+#if 0 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -2034,9 +2060,9 @@ namespace ChronusQ {
 
             if(atomCenters.size()>3) {nSkipSSSS[thread_id]++; continue;}
           }
- 
+
+
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -2052,14 +2078,22 @@ namespace ChronusQ {
 
             if(atomCenters.size()>2) {nSkipSSSS[thread_id]++; continue;}
           }
- 
+#else
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter)
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) )
+            {nSkipSSSS[thread_id]++; continue;}
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            {nSkipSSSS[thread_id]++; continue;}
+#endif
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
                  and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipSSSS[thread_id]++; continue;}
 
-          auto nQuad = n1*n2*n3*n4;
+
   
           shls[0] = int(s1);
           shls[1] = int(s2);
@@ -2068,6 +2102,8 @@ namespace ChronusQ {
   
           if(int2e_ipvip1ipvip2_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
   
+          auto nQuad = n1*n2*n3*n4;
+
           for(l = 3*maxShellSize, mnkl = 0ul; l < 3*maxShellSize + n4; ++l)
           for(k = 2*maxShellSize            ; k < 2*maxShellSize + n3; ++k) 
           for(n =   maxShellSize            ; n <   maxShellSize + n2; ++n) 
@@ -3061,8 +3097,8 @@ namespace ChronusQ {
              eri.threshSchwarz()) { nSkipGaunt[thread_id]++; continue; }
 #endif
 
+#if 0 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -3078,9 +3114,9 @@ namespace ChronusQ {
 
             if(atomCenters.size()>3) {nSkipGaunt[thread_id]++; continue;}
           }
- 
+
+
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -3096,11 +3132,21 @@ namespace ChronusQ {
 
             if(atomCenters.size()>2) {nSkipGaunt[thread_id]++; continue;}
           }
+#else
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter)
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) )
+            {nSkipGaunt[thread_id]++; continue;}
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            {nSkipGaunt[thread_id]++; continue;}
+#endif
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
                  and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGaunt[thread_id]++; continue;}
+
 
  
           shls[0] = int(s2);
@@ -4151,9 +4197,9 @@ namespace ChronusQ {
           if((shMax*SchwarzGauge[s1+s2*nShell]*SchwarzGauge[s4+s3*nShell]) <
              eri.threshSchwarz()) { nSkipGauge[thread_id]++; continue; }
 #endif
-  
+
+#if 0 
           if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -4169,9 +4215,9 @@ namespace ChronusQ {
 
             if(atomCenters.size()>3) {nSkipGauge[thread_id]++; continue;}
           }
- 
+
+
           if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) {
-          //if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
             std::vector<int> atomCenters;
             std::vector<int>::iterator itAtom;
 
@@ -4187,12 +4233,22 @@ namespace ChronusQ {
 
             if(atomCenters.size()>2) {nSkipGauge[thread_id]++; continue;}
           }
+#else
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter)
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) )
+            {nSkipGauge[thread_id]++; continue;}
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) 
+          if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)) ) 
+            {nSkipGauge[thread_id]++; continue;}
+#endif
  
           if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) 
           if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
                  and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) )
             {nSkipGauge[thread_id]++; continue;}
 
+ 
           shls[0] = int(s1);
           shls[1] = int(s2);
           shls[2] = int(s3);

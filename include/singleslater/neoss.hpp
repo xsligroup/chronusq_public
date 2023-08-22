@@ -242,9 +242,9 @@ namespace ChronusQ {
 
       std::vector<double> getGrad(EMPerturbation&, bool, bool);
 
-      // Functions for ModifyOrbitals
-      virtual void runModifyOrbitals(EMPerturbation&);
-      virtual void buildModifyOrbitals();
+      // Functions for OrbitalModifier
+      virtual void runSCF(EMPerturbation&);
+      virtual void buildOrbitalModifierOptions();
       virtual void printProperties();
       virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
       virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
@@ -258,11 +258,9 @@ namespace ChronusQ {
 
         this->totalEnergy = 0.;
         applyToEach([&](SubSSPtr& ss){
-
-          ss->computeEnergy(); 
-
+          ss->computeEnergy();
+          // ss compute energy include nuclear repulsion energy that needs to be removed
           this->totalEnergy += ss->totalEnergy - this->molecule().nucRepEnergy;
-
         });
 
         // If we're doing EPC, we've double counted the energy, so subtract it

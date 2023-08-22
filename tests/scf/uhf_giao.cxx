@@ -27,7 +27,8 @@
 // H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001
 TEST( UHF_GIAO, H2_TRIPLET_UHF_GIAO_631G ) {
 
-  CQSCFTEST( "scf/serial/uhf_giao/h2_triplet_uhf_giao_631G", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/serial/uhf_giao/h2_triplet_uhf_giao_631G", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6,
+      true,true,false,true,true,true,true );
  
 };
 
@@ -37,7 +38,8 @@ TEST( UHF_GIAO, H2_TRIPLET_UHF_GIAO_631G ) {
 // H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001 (DIRECT)
 TEST( UHF_GIAO, H2_TRIPLET_UHF_GIAO_631G_DIRECT ) {
 
-  CQSCFTEST( "scf/serial/uhf_giao/h2_triplet_uhf_giao_631G_direct", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/serial/uhf_giao/h2_triplet_uhf_giao_631G_direct", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6,
+      true,true,false,true,true,true,true );
  
 };
 
@@ -48,7 +50,8 @@ TEST( UHF_GIAO, H2_TRIPLET_UHF_GIAO_631G_DIRECT ) {
 // SMP H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001
 TEST( UHF_GIAO, Par_H2_TRIPLET_UHF_GIAO_631G ) {
 
-  CQSCFTEST( "scf/parallel/uhf_giao/h2_triplet_uhf_giao_631G", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/parallel/uhf_giao/h2_triplet_uhf_giao_631G", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6,
+      true,true,false,true,true,true,true );
  
 };
 
@@ -56,7 +59,8 @@ TEST( UHF_GIAO, Par_H2_TRIPLET_UHF_GIAO_631G ) {
 // SMP H2 TRIPLET GIAO 6-31G test  B = 0, 0, -0.001 (DIRECT)
 TEST( UHF_GIAO, Par_H2_TRIPLET_UHF_GIAO_631G_DIRECT ) {
 
-  CQSCFTEST( "scf/parallel/uhf_giao/h2_triplet_uhf_giao_631G_direct", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6 );
+  CQSCFTEST( "scf/parallel/uhf_giao/h2_triplet_uhf_giao_631G_direct", "h2_triplet_uhf_giao_631G.bin.ref", 1e-6,
+      true,true,false,true,true,true,true );
  
 };
 

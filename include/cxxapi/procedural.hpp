@@ -31,5 +31,6 @@ namespace ChronusQ {
     std::string outFileName, std::string rstFileName,
     std::string scrFileName);
 
+  void CQParser(std::string inFileName, std::string outFileName);
 }; // namespace ChronusQ
 

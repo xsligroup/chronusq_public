@@ -44,8 +44,8 @@ void ConventionalSCF<MatsT>::modifyFock(EMPerturbation& pert) {
   if( this->scfControls.diisAlg == NONE ) return;
 
   // Prepare for DIIS
-  VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
-  VecShrdPtrMat<MatsT> den  = this->modOrbOpt.getOnePDM();
+  vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
+  vecShrdPtrMat<MatsT> den  = this->orbitalModifierDrivers.getOnePDM();
   size_t iDIIS = this->scfConv.nSCFIter % this->scfControls.nKeep;
   for( size_t i = 0; i < fock.size(); i++ ) {
     diisFock[iDIIS][i]   = *fock[i];
@@ -81,8 +81,8 @@ void ConventionalSCF<MatsT>::fockDamping() {
   // to use the guess Fock and it's not saved anyway.
   if( this->scfConv.nSCFIter == 0 ) return;
 
-  VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
-  VecShrdPtrMat<MatsT> den  = this->modOrbOpt.getOnePDM();
+  vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
+  vecShrdPtrMat<MatsT> den  = this->orbitalModifierDrivers.getOnePDM();
   double dp                                              = this->scfControls.dampParam;
   for( size_t i = 0; i < fock.size(); i++ ) {
 
@@ -137,8 +137,8 @@ void ConventionalSCF<MatsT>::scfEDIIS(size_t nExtrap, size_t iDIIS, EMPerturbati
   // The total energy from the last iteration was
   // computed by contracting the new density with the
   // old twoEH matrix. i.e. D_i * G[D_i-1]
-  this->modOrbOpt.computeProperties(pert);
-  diisEnergy[iDIIS] = this->modOrbOpt.getTotalEnergy();
+  this->orbitalModifierDrivers.computeProperties(pert);
+  diisEnergy[iDIIS] = this->orbitalModifierDrivers.getTotalEnergy();
 
   //  Just save the Fock, density, and coupling for the first iteration
   if( this->scfConv.nSCFIter == 0 ) return;
@@ -172,8 +172,8 @@ void ConventionalSCF<MatsT>::scfEDIIS(size_t nExtrap, size_t iDIIS, EMPerturbati
 template<typename MatsT>
 void ConventionalSCF<MatsT>::scfCEDIIS(size_t nExtrap, size_t iDIIS, EMPerturbation& pert) {
 
-  this->modOrbOpt.computeProperties(pert);
-  diisEnergy[iDIIS] = this->modOrbOpt.getTotalEnergy();
+  this->orbitalModifierDrivers.computeProperties(pert);
+  diisEnergy[iDIIS] = this->orbitalModifierDrivers.getTotalEnergy();
 
   //  Just save the Fock, density, and commutator for the first iteration
   if( this->scfConv.nSCFIter == 0 ) return;
@@ -260,8 +260,8 @@ void ConventionalSCF<MatsT>::ediisErrorMetric(size_t iDIIS, size_t nExtrap) {
 template<typename MatsT>
 void ConventionalSCF<MatsT>::diisCombineMat(std::vector<MatsT> c, size_t nExtrap) {
   // Extrapolate Fock and density matrices using DIIS coefficients
-  VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
-  VecShrdPtrMat<MatsT> den  = this->modOrbOpt.getOnePDM();
+  vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
+  vecShrdPtrMat<MatsT> den  = this->orbitalModifierDrivers.getOnePDM();
 
   for( size_t a = 0; a < fock.size(); a++ ) {
     fock[a]->clear();
@@ -296,7 +296,7 @@ void ConventionalSCF<MatsT>::allocExtrapStorage() {
   diisBMat->clear();
 
   // Allocate memory to store previous orthonormal Focks and densities for DIIS
-  VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
+  vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
   if( this->scfControls.diisAlg != NONE ) {
     for( auto i = 0; i < this->scfControls.nKeep; i++ ) {
       std::vector<SquareMatrix<MatsT>> f;
@@ -329,8 +329,8 @@ void ConventionalSCF<MatsT>::allocExtrapStorage() {
 
 template<typename MatsT>
 void ConventionalSCF<MatsT>::computeOrbGradient(std::vector<SquareMatrix<MatsT>>& grad) {
-  if( this->modOrbOpt.computeErrorVector ) {
-    this->modOrbOpt.computeErrorVector(grad);
+  if( this->orbitalModifierDrivers.computeErrorVector ) {
+    this->orbitalModifierDrivers.computeErrorVector(grad);
   } else {
     FDCommutator(grad);
   }

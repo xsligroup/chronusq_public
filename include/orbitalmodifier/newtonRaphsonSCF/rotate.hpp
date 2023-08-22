@@ -29,7 +29,7 @@ namespace ChronusQ{
  *        reference for the unitary transformation
  */
 template<typename MatsT>
-void NewtonRaphsonSCF<MatsT>::saveRefMOs(VecMORef<MatsT>& mo) {
+void NewtonRaphsonSCF<MatsT>::saveRefMOs(vecMORef<MatsT>& mo) {
 
   // Store Reference MO's from which to compute rotations
   size_t nMO = mo.size();
@@ -56,7 +56,7 @@ void NewtonRaphsonSCF<MatsT>::saveRefMOs(VecMORef<MatsT>& mo) {
  *     Brief: Rotate the vector of MO's using the computed OrbRot parameters
  */
 template<typename MatsT>
-void NewtonRaphsonSCF<MatsT>::rotateMOs(VecMORef<MatsT>& mo) {
+void NewtonRaphsonSCF<MatsT>::rotateMOs(vecMORef<MatsT>& mo) {
 
   std::vector<SquareMatrix<MatsT>> U = computeUnitary();
 
@@ -80,7 +80,7 @@ void NewtonRaphsonSCF<MatsT>::rotateMOs(VecMORef<MatsT>& mo) {
 template<typename MatsT>
 std::vector<SquareMatrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
 
-  VecShrdPtrMat<MatsT> den = this->modOrbOpt.getOnePDM();
+  vecShrdPtrMat<MatsT> den = this->orbitalModifierDrivers.getOnePDM();
   size_t nMat = den.size();
 
   // Initialize Anti-hermitian matrix
@@ -145,19 +145,19 @@ std::vector<SquareMatrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
  *         orbital gradients for each Fock matrix. e.g. UHF->[Grad_alpha,Grad_beta]
  */
 template<typename MatsT>
-void NewtonRaphsonSCF<MatsT>::computeGradient(VecMORef<MatsT>& mo) {
+void NewtonRaphsonSCF<MatsT>::computeGradient(vecMORef<MatsT>& mo) {
 
   // Compute the Gradient of orbital rotations
-  if( this->modOrbOpt.computeNROrbGrad ) {
+  if( this->orbitalModifierDrivers.computeNROrbGrad ) {
     // Compute user-defined gradient
-    this->modOrbOpt.computeNROrbGrad(orbGrad);
+    this->orbitalModifierDrivers.computeNROrbGrad(orbGrad);
   } else {
     // Compute default gradient from fock and mo's
       
       
     // Compute MO Fock
     size_t nMat = mo.size();
-    VecShrdPtrMat<MatsT> fock = this->modOrbOpt.getFock();
+    vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
     std::vector<SquareMatrix<MatsT>> moFock;
     moFock.reserve(nMat);
     for( size_t i=0; i<nMat; ++i ) {
@@ -192,7 +192,7 @@ void NewtonRaphsonSCF<MatsT>::computeGradient(VecMORef<MatsT>& mo) {
 }; // NewtonRaphsonSCF<MatsT> :: computeGradient
 
 template<typename MatsT>
-void NewtonRaphsonSCF<MatsT>::computeDiagHess(VecEPtr& eps){
+void NewtonRaphsonSCF<MatsT>::computeDiagHess(vecEPtr& eps){
 
   size_t disp = 0;
   for( auto& rO : rotOpt ){

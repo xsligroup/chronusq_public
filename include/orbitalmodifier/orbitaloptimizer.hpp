@@ -23,14 +23,17 @@
  */
 #pragma once
 
-#include <modifyorbitals.hpp>
+#include <orbitalmodifier.hpp>
 
 namespace ChronusQ {
 
 struct SCFConvergence {
 
     double deltaEnergy;   ///< Convergence of Energy
-    double RMSDen;        ///< RMS change in Scalar density
+    double currentEnergy;
+    double previousEnergy;
+    double rmsdP;         ///< RMS change in density
+    double maxdP;         ///< Max change in density
     double nrmFDC;        ///< 2-Norm of [F,D]
     double maxFDC;        ///< Maximum element of [F,D]
     size_t nSCFIter = 0;  ///< Number of SCF Iterations
@@ -43,38 +46,37 @@ struct SCFConvergence {
  *            is modified depending on which step is used. ie. SCF or Newton-Raphson
  */
 template<typename MatsT>
-class OptimizeOrbitals : public ModifyOrbitals<MatsT> {
+class OrbitalOptimizer : public OrbitalModifier<MatsT> {
   private:
     std::vector<SquareMatrix<MatsT>> prevOnePDM;   ///< Previous density used to test convergence
     double prevEnergy;                             ///< Previous Energy to test convergence
 
   public:
-//xslis
+
     SCFControls scfControls;
-//xslie
     SCFConvergence scfConv;
     bool doingDamp;                                ///< Whether damping is currently on or off (only used for printing)
 
     // Constructor
-    OptimizeOrbitals(SCFControls sC, MPI_Comm comm, ModifyOrbitalsOptions<MatsT> modOpt, CQMemManager& mem):
-        scfControls(sC), ModifyOrbitals<MatsT>(comm, modOpt, mem) {
+    OrbitalOptimizer(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
+      scfControls(sC), OrbitalModifier<MatsT>(comm, modOpt, mem) {
 
         // Allocate prevOnePDM
-        VecShrdPtrMat<MatsT> den = this->modOrbOpt.getOnePDM();
-        for( size_t a = 0; a < den.size(); a++ ) {
-            prevOnePDM.emplace_back(den[a]->memManager(), den[a]->dimension());
-            prevOnePDM[a] = *den[a];
+        vecShrdPtrMat<MatsT> onePDM = this->orbitalModifierDrivers.getOnePDM();
+        for( size_t a = 0; a < onePDM.size(); a++ ) {
+          prevOnePDM.emplace_back(onePDM[a]->memManager(), onePDM[a]->dimension());
+          prevOnePDM[a] = *onePDM[a];
         }
     };
 
     // Destructor
-    ~OptimizeOrbitals() {};
+    ~OrbitalOptimizer() {};
 
     // Perform an SCF procedure (see include/singleslater/scf.hpp for docs)
-    void runModifyOrbitals(EMPerturbation&, VecMORef<MatsT>&, VecEPtr&);
+    void runOrbitalModifier(EMPerturbation&, vecMORef<MatsT>&, vecEPtr&) override;
 
     // Evaluate convergence
-    bool evalProgress(EMPerturbation&);
+    bool evaluateProgress(EMPerturbation&);
     double computeDensityConv();
     virtual double computeFDCConv() { return 0.; };
 
@@ -84,6 +86,6 @@ class OptimizeOrbitals : public ModifyOrbitals<MatsT> {
     void printIteration(std::ostream& out = std::cout, bool printDiff = true) const;
 
     // Common SCF Functions
-    void computeEigenvalues(VecMORef<MatsT>&, VecEPtr&);
+    void computeEigenvalues(EMPerturbation& pert, vecMORef<MatsT>&, vecEPtr&);
 };
 };   // namespace ChronusQ

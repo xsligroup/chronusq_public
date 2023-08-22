@@ -606,8 +606,8 @@ namespace ChronusQ {
 
       // For Fock X2C, solve four-component SCF
       fourCompSS.formGuess(fourCoptions);
-      fourCompSS.buildModifyOrbitals();
-      fourCompSS.runModifyOrbitals(emPert);
+      fourCompSS.buildOrbitalModifierOptions();
+      fourCompSS.runSCF(emPert);
     }
 
     ROOT_ONLY(ss->comm);

@@ -37,21 +37,27 @@ namespace ChronusQ {
   
     std::shared_ptr<std::ifstream> inFile_ = nullptr;  ///< Input file
   
-    std::unordered_map<std::string,
-      std::unordered_map<std::string,std::string>> dict_; 
+    std::map<std::string,std::string> dict_;
     ///< Input data fields partitioned by section headings 
-  
-  
-  
-  
-  
+
     // Parses the input file
     // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
     void parse();
-  
+
+    void parseFreeCQInput(std::string&);
+    void parseFreeCQInputNEO(std::string&);
+    void parseFreeCQInputElectron(std::string&);
+    void parseFreeCQInputSCF(std::string&);
+
+    // Parses a section of the input file
+    // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
+    void parse(std::vector<std::string>::const_iterator lines_begin,
+               std::vector<std::string>::const_iterator lines_end,
+               const std::string &prefix);
+
     // Splits query string on "."
     // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
-    static std::pair<std::string,std::string> 
+    static std::pair<std::string,std::string>
       splitQuery(const std::string&);
   
     /**
@@ -121,7 +127,10 @@ namespace ChronusQ {
      *  \return      True if input file contains that heading
      */ 
     inline bool containsSection(std::string str) const {
-      return dict_.find(str) != dict_.end();
+      auto it = dict_.lower_bound(str);
+      if (it == dict_.end()) return false;
+      // Check if the query string is a substring of the section heading
+      return it->first.find(str) == 0;
     }
   
     /**
@@ -132,9 +141,7 @@ namespace ChronusQ {
      *  \return      True if input file contains that data field
      */ 
     inline bool containsData(std::string str) const {
-      auto pr = splitQuery(str);
-      if( not containsSection(pr.first) ) return false;
-      return dict_.at(pr.first).find(pr.second) != dict_.at(pr.first).end();
+      return dict_.find(str) != dict_.end();
     }
   
 
@@ -143,16 +150,27 @@ namespace ChronusQ {
 
     inline std::vector<std::string> getDataInSection( std::string section )  {
 
-      std::vector<std::string> datasets;
+      std::set<std::string> datasets;
 
-      if( containsSection(section) ) {
+      std::string::size_type lenSection = section.size();
+      auto it = dict_.lower_bound(section);
+      while (it != dict_.end()) {
+        const std::string &key = it->first;
+        if (key.find(section) != 0) break;
 
-        for(auto & data : dict_[section])
-          datasets.emplace_back(data.first);
+        if (key.size() > lenSection) {
+          std::string::size_type nextDotPos = key.find('.', lenSection + 1);
 
+          if (nextDotPos == std::string::npos) {
+            datasets.emplace(key.substr(lenSection + 1));
+          } else {
+            datasets.emplace(key.substr(lenSection + 1, nextDotPos - lenSection - 1));
+          }
+        }
+        ++it;
       }
 
-      return datasets;
+      return std::vector<std::string>(datasets.begin(), datasets.end());
 
     }
 
@@ -219,6 +237,27 @@ namespace ChronusQ {
           // Find next "non-delimiter"
           pos = str.find_first_of(delimiters, lastPos);
       }
+  }; // split
+
+  /**
+   *  Reverse the order of tokens in a string separated by dots
+   *
+   *  \param [in]  str        std::string to reverse
+   */
+  static inline std::string reverse_by_dot(const std::string& str) {
+
+    std::vector<std::string> tokens;
+
+    split(tokens,str,".");
+
+    // Combine tokens in reverse order by dot
+    std::string reversed = "";
+    for( auto it = tokens.rbegin(); it != tokens.rend(); ++it ) {
+      reversed += *it;
+      if( it != tokens.rend()-1 ) reversed += ".";
+    }
+
+    return reversed;
   }; // split
 
 }; // namespace ChronusQ

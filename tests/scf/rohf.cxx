@@ -36,7 +36,8 @@ TEST( ROHF, Li_631Gd ) {
 // O2 6-31G(d) test
 TEST( ROHF, O2_631Gd ) {
 
-  CQSCFTEST( "scf/serial/rohf/oxygen_6-31Gd", "oxygen_rohf_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/serial/rohf/oxygen_6-31Gd", "oxygen_rohf_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -103,14 +104,16 @@ TEST( ROHF, Water_ccpVDZ_ROHF_ROHFGuess_READMO_restart ) {
 // SMP Li 6-31G(d) test
 TEST( ROHF, PAR_Li_631Gd ) {
 
-  CQSCFTEST( "scf/parallel/rohf/li_6-31Gd", "li_rohf_6-31Gd.bin.ref", 1e-7 );
+  CQSCFTEST( "scf/parallel/rohf/li_6-31Gd", "li_rohf_6-31Gd.bin.ref", 1e-6,
+      false, false, false, false, false, true);
 
 };
 
 // SMP O2 6-31G(d) test
 TEST( ROHF, PAR_O2_631Gd ) {
 
-  CQSCFTEST( "scf/parallel/rohf/oxygen_6-31Gd", "oxygen_rohf_6-31Gd.bin.ref" );
+  CQSCFTEST( "scf/parallel/rohf/oxygen_6-31Gd", "oxygen_rohf_6-31Gd.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 

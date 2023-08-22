@@ -33,9 +33,9 @@ namespace ChronusQ {
 template<typename MatsT>
 void NewtonRaphsonSCF<MatsT>::fullNRStep() {
 
-  if( this->modOrbOpt.computeFullNRStep ) {
+  if( this->orbitalModifierDrivers.computeFullNRStep ) {
     MatsT* dx = this->memManager.template malloc<MatsT>(nParam);
-    this->modOrbOpt.computeFullNRStep(dx);
+    this->orbitalModifierDrivers.computeFullNRStep(dx);
     takeStep(dx);
     this->memManager.free(dx);
   } else {

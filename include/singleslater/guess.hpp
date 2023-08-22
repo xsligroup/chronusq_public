@@ -200,6 +200,9 @@ namespace ChronusQ {
     // *** Replicates on all MPI processes ***
     if( scfControls.guess == RANDOM ) {
 
+      if (nC == 4)
+        CErr("Random guess not implemented for 4-component",std::cout);
+
       size_t NB = this->basisSet().nBasis;
 
       double TS =
@@ -451,7 +454,7 @@ namespace ChronusQ {
       ss->scfControls.doIncFock = false;
       ss->scfControls.dampError = 1e-4;
       ss->scfControls.nKeep     = 8;
-      ss->buildModifyOrbitals();
+      ss->buildOrbitalModifierOptions();
 
       ss->formCoreH(pert, false);
       aointsAtom->TPI->computeAOInts(basis, atom, pert,
@@ -459,7 +462,7 @@ namespace ChronusQ {
 
 
       ss->formGuess(ssOptions);
-      ss->runModifyOrbitals(pert);
+      ss->runSCF(pert);
 
       size_t NBbasis = basis.nBasis;
 
@@ -499,6 +502,7 @@ namespace ChronusQ {
                 << "  *** Forming Initial Fock Matrix from SAD Density ***\n\n";
 
     ao2orthoDen();
+    //computeNaturalOrbitals();
 
   }; // SingleSlater<T>::SADGuess
 
@@ -507,7 +511,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::RandomGuess() {
 
-    size_t NB = this->basisSet().nBasis;
+    size_t NB = this->fockMatrix->dimension();
 
     // Set up random number generator
     std::random_device rd;
@@ -589,6 +593,7 @@ namespace ChronusQ {
 #endif
 
     ao2orthoDen();
+    //computeNaturalOrbitals();
 
   } // SingleSlater<T>::ReadGuess1PDM()
 
@@ -1574,13 +1579,14 @@ namespace ChronusQ {
 
     classicalSS->printLevel = 1;
     classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;
-    classicalSS->scfControls.guess =   SAD; 
-    classicalSS->buildModifyOrbitals();
+    classicalSS->scfControls.guess =   SAD;
+    classicalSS->scfControls.diisAlg =   CDIIS;
+    classicalSS->buildOrbitalModifierOptions();
 
     classicalSS->formCoreH(pert, false);
     classicalSS->formGuess(classicalSSOptions);
     classicalSS->formFock(pert, false);
-    classicalSS->runModifyOrbitals(pert);
+    classicalSS->runSCF(pert);
 
     std::cout << "\nClassical SCF Calculation Converged!" << std::endl;
     std::cout << "\nWill use this converged density as the guess density\n"  
@@ -1595,6 +1601,7 @@ namespace ChronusQ {
       this->onePDM->Z() = (MatsT(this->nOA - this->nOB) / MatsT(this->nO)) * this->onePDM->S();
 
     ao2orthoDen();
+    computeNaturalOrbitals();
 
   } // SingleSlater<MatsT,IntsT>::NEOConvergeClassicalGuess
 

@@ -84,7 +84,7 @@ namespace ChronusQ {
     guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
  
     curr_->formGuess(guessSSOptions);
-    curr_->runModifyOrbitals(emPert);
+    curr_->runSCF(emPert);
  
     return curr_->getEnergySummary();
 
