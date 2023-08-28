@@ -150,9 +150,7 @@ namespace ChronusQ {
       { 2    ,  "1-Component Unrestricted"          },
       { 3    ,  "1-Component Restricted Open Shell" },
       { 4    ,  "2-Component Unrestricted"          },
-      { 5    ,  "2-Component Unrestricted"          },
-      { 6    ,  "2-Component Unrestricted"          },
-      { 7    ,  "4-Component Unrestricted"          },
+      { 5    ,  "4-Component Unrestricted"          },
     }
   );
 
