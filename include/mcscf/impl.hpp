@@ -36,10 +36,18 @@
 namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::run(EMPerturbation & pert) {
+  void MCSCF<MatsT,IntsT>::run(EMPerturbation & externalPert) {
     
     ProgramTimer::tick("MCSCF Total");
-    
+    // Create combined perturbation
+    EMPerturbation pert;
+    // Add on the MCSCF Perturbation if present
+    for( auto& field : this->mcscfPert.fields )
+      pert.addField( field );
+    // Finally add any additional Perturbations
+    for( auto& field : externalPert.fields )
+      pert.addField( field );
+
     // allocating memeory
     this->alloc(); 
     

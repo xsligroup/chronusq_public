@@ -463,9 +463,10 @@ namespace ChronusQ {
           if (doNEO)
             CErr("NEO-MCSCF NYI!",output);
 
-          auto mcscf = CQMCSCFOptions(output,input,ss);
+          EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
+          auto mcscf = CQMCSCFOptions(output,input,ss,emPert);
           mcscf->savFile = rstFile;
-          mcscf->run(emPert);
+          mcscf->run(additionalPert);
         }
 
         firstStep = false;

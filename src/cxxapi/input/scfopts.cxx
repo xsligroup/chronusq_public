@@ -324,46 +324,14 @@ namespace ChronusQ {
 
 
     // SCF Field
-    auto handleField = [&]() {
-      std::string fieldStr;
-      OPTOPT(
-        fieldStr = input.getData<std::string>("SCF.FIELD");
-      )
-      if( fieldStr.empty() ) return;
-
-      std::vector<std::string> tokens;
-      split(tokens,fieldStr);
-
-      if( tokens.size() < 4 )
-        CErr(fieldStr + "is not a valid SCF Field specification");
-
-      std::string fieldTypeStr = tokens[0];
-
-      EMFieldTyp fieldType;
-      if( not fieldTypeStr.compare("ELECTRIC") )
-        fieldType = Electric;
-      else if( not fieldTypeStr.compare("MAGNETIC") )
-        fieldType = Magnetic;  
-      else
-        CErr(fieldTypeStr + "not a valid Field type");
-
-      if( tokens.size() == 4 ) { 
-
-        cart_t field = {std::stod(tokens[1]), std::stod(tokens[2]), 
-                        std::stod(tokens[3])};
-
-        pert.addField(fieldType,field);
-
-      } else
-        CErr("Non Dipole fields NYI");
-    };
-
-    handleField();
-
-
-
-
-
+    std::string fieldStr;
+    OPTOPT(
+      fieldStr = input.getData<std::string>("SCF.FIELD");
+    )
+    EMPerturbation parsedField;
+    if (!fieldStr.empty())
+        handleField(fieldStr, parsedField);
+    pert.addField(parsedField);
 
     // Printing Options
     if ( input.containsData("SCF.PRINTMOS") ) {

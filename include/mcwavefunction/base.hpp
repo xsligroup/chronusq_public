@@ -118,6 +118,9 @@ namespace ChronusQ {
 
     bool readCI = false; ///< Read CI vectors and state energies from rstfiles
 
+    // Perturbation
+    EMPerturbation mcscfPert;
+
     // Print Settings
     size_t printMOCoeffs = 0;
     size_t printRDMs = 0;

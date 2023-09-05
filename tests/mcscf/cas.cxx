@@ -98,6 +98,24 @@ TEST(GHF_CAS_OSC, Al_GHF_OSC_STR) {
 
 }
 
+TEST(MCSCF_FIELD, Ethylene_MCSCF_W_FIELD) {
+  // 1 DET
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield",                          "ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true);
+
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield",                          "ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true);
+
+  // 2 electron 2 orbital CASSCF
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield",    "ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
+}
+
 // H2O 6-31G(d) test (for multipole properties)
 TEST(OneC_CASSCF_FULLMATRIX, Water_631Gd ) {
 

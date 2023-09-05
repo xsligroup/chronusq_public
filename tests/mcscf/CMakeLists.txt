@@ -53,6 +53,7 @@ add_cq_test(CASCI_DAVIDSON       mcscftest "CASCI_DAVIDSON.*")
 add_cq_test(OneC_CAS_SWAP        mcscftest "OneC_CAS_SWAP.*")
 add_cq_test(TwoC_CAS_SWAP        mcscftest "TwoC_CAS_SWAP.*")
 add_cq_test(GHF_CAS_OSC          mcscftest "GHF_CAS_OSC.*")
+add_cq_test(MCSCF_FIELD          mcscftest "MCSCF_FIELD.*")
 
 # RAS test
 add_cq_test(RASCI_DAVIDSON         mcscftest "RASCI_DAVIDSON.*")

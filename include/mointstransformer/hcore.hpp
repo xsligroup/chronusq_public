@@ -124,13 +124,34 @@ namespace ChronusQ {
 #endif
         
         AOHCore = ints_cache_.template getIntegral<OnePInts, MatsT>("AOHCore");
-        
         if (not AOHCore) {
+            std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> pertContributions;
+            size_t NB = ss_.basisSet().nBasis;
+            if (ss_.nC == 4 ) NB = 2 * NB;
+            if(ss_.nC > 1)
+              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, true);
+            else if (not ss_.iCS)
+              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, false);
+            else
+              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, false, false);
+            pertContributions->clear();
+          // FIXME: the magnetic field contribution is currently absorbed into HCore but that is planned to change
+          // https://github.com/xsligroup/chronusq_dev/blob/56c94dfac7a1c28e7fdb4e217052f38ea7d9013a/include/fockbuilder/impl.hpp#L296
+          // For RT manipulation, fields will not be added to HCore so we will add the Electric field back in here.
+          if( pert_has_type(pert,Electric) ) {
+            auto dipAmp = pert.getDipoleAmp(Electric);
+            for(auto i = 0;    i < 3;     i++){
+                if (dipAmp[i] != 0.0) {
+                  pertContributions->S() -= 2. * dipAmp[i] * (*ss_.aoints_->lenElectric)[i].matrix();
+                }
+            }
+          }
           if(ss_.nC == 1) {
-            AOHCore = std::make_shared<OnePInts<MatsT>>(0.5*ss_.coreH->S());
+            AOHCore = std::make_shared<OnePInts<MatsT>>(0.5* (ss_.coreH->S() + pertContributions->S()));
           } else { 
             AOHCore = std::make_shared<OnePInts<MatsT>>(
-              ss_.coreH->template spinGather<MatsT>());
+              ss_.coreH->template spinGather<MatsT>() +
+              pertContributions-> template spinGather<MatsT>());
           }
           if (cacheAOHCore) ints_cache_.addIntegral("AOHCore", AOHCore);
         }

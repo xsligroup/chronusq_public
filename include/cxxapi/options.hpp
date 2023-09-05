@@ -33,6 +33,7 @@
 #include <response.hpp>
 #include <coupledcluster.hpp>
 #include <mcscf.hpp>
+#include <regex>
 
 
 
@@ -179,6 +180,40 @@ namespace ChronusQ {
 
   void CQINTS_VALID(std::ostream&, CQInputFile &);
 
+  // Parse the external field options
+  inline void handleField(const std::string& fieldInputStr, EMPerturbation& parsedField, const EMPerturbation& otherField = EMPerturbation()) {
+      auto const regexOFF = std::regex("false|off",std::regex_constants::icase);
+      if( std::regex_search(fieldInputStr, regexOFF) ) {
+          return;
+      } else if( fieldInputStr.empty() ) {
+        parsedField.addField(otherField);
+        return;
+      }
+
+      std::vector<std::string> tokens;
+      split(tokens,fieldInputStr);
+
+      if( tokens.size() < 4 )
+        CErr(fieldInputStr + "is not a valid Field specification");
+
+      std::string fieldTypeStr = tokens[0];
+
+      EMFieldTyp fieldType;
+      if( not fieldTypeStr.compare("ELECTRIC") )
+        fieldType = Electric;
+      else if( not fieldTypeStr.compare("MAGNETIC") )
+        fieldType = Magnetic;
+      else
+        CErr(fieldTypeStr + "not a valid Field type");
+
+      if( tokens.size() == 4 ) {
+        cart_t field = {std::stod(tokens[1]), std::stod(tokens[2]),
+                        std::stod(tokens[3])};
+        parsedField.addField(fieldType,field);
+      } else
+        CErr("Non Dipole fields NYI");
+  };
+
   // Parse the SCF options
   SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &);
 
@@ -214,7 +249,7 @@ namespace ChronusQ {
 
   // Parse MCSCF options
   std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &, 
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &);
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation & );
   
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
 

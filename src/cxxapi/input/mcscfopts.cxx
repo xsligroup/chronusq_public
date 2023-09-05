@@ -23,7 +23,6 @@
  */
 #include <cxxapi/options.hpp>
 #include <cerr.hpp>
-#include <regex>
 #include <physcon.hpp>
 #include <mcwavefunction/base.hpp>
 #include <mcscf.hpp>
@@ -68,6 +67,7 @@ namespace ChronusQ {
       "POPULATION",
       "OSCISTREN",
       "GENIVO",
+      "FIELD",
       "PRINTMOS",
       "PRINTRDMS",
       "MAXDAVIDSONSPACE",
@@ -309,8 +309,7 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss) {
-//    EMPerturbation& scfPert ) {
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, EMPerturbation& scfPert ) {
 
     if( not input.containsSection("MCSCF") )
       CErr("MCSCF section must be specified for MCSCF job",out);
@@ -658,6 +657,21 @@ namespace ChronusQ {
 
    // Multipole moments
    OPTOPT( mcscf->multipoleMoment = input.getData<bool>("MCSCF.PRINTMULT"); )
+
+   // MCSCF Field
+   std::string fieldStr;
+   OPTOPT(
+      fieldStr = input.getData<std::string>("MCSCF.FIELD");
+   )
+   EMPerturbation parsedField;
+   handleField(fieldStr, parsedField, scfPert);
+   mcscf->mcscfPert.addField(parsedField);
+
+   if( pert_has_type(mcscf->mcscfPert,Magnetic) ) {
+       CErr("NYI - MCSCF with magnetic field might work, but unverified.");
+   } else if (pert_has_type(mcscf->mcscfPert, Electric) && ss->nC == 4) {
+       CErr("NYI - 4C MCSCF with electric field might work, but unverified.");
+   }
 
    // Printing Options
    // MOs

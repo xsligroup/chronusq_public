@@ -128,6 +128,14 @@ namespace ChronusQ {
         > fields; ///< Fields for the EM perturbation
 
 
+    inline void addField(std::shared_ptr<EMPerturbation> otherPert){
+      for(auto &field : otherPert->fields) {
+          this->addField(field);
+      }
+    }
+
+    inline void addField(const EMPerturbation& otherPert) { addField(std::make_shared<EMPerturbation>(otherPert)); };
+
     /**
      *  \brief Add a field to the perturbation.
      *
