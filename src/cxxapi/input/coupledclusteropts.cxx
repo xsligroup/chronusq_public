@@ -40,7 +40,8 @@ namespace ChronusQ {
       "TTOL",
       "MAXITER",
       "TABLKSIZE",
-      "NEVARIATION"
+      "NEVARIATION",
+      "REBUILDFOCK"
     };
       // Specified keywords
     std::vector<std::string> ccKeywords = input.getDataInSection("CC");
@@ -157,6 +158,17 @@ namespace ChronusQ {
 
       if(input.containsData("CC.NEVARIATION")){
         OPTOPT(ccSettings.nEvariation = input.getData<int>("CC.NEVARIATION");)
+      }
+
+      if(input.containsData("CC.REBUILDFOCK")){
+        OPTOPT(ccSettings.rebuildFock = input.getData<bool>("CC.REBUILDFOCK");)
+        if (not ccSettings.rebuildFock and ccSettings.nEvariation != 0) {
+          CErr("CC.NEVARIATION being non-zero requires CC.REBUILDFOCK = True");
+        }
+      } else if (ccSettings.nEvariation != 0) {
+        ccSettings.rebuildFock = true;
+        std::cout << "      ccSettings.rebuildFock default to True for inequal number "
+                  << "of electrons between reference and CCSD calculation." << std::endl;
       }
     }
     else {

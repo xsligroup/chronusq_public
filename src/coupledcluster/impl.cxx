@@ -171,10 +171,13 @@ namespace ChronusQ {
   template <typename MatsT>
   template <typename IntsT>
   void CCIntermediates<MatsT>::initializeIntegrals(const PauliSpinorSquareMatrices<MatsT> &aoCoreH,
+                                                   const PauliSpinorSquareMatrices<MatsT> &aoFock,
+                                                   const PauliSpinorSquareMatrices<MatsT> &aoTwoeH,
                                                    const TwoPInts<IntsT> &aoTPI,
                                                    const MultipoleInts<IntsT> &lenElectric,
                                                    MatsT *mo, size_t nO, size_t nV,
-                                                   size_t blksize, double nucRepEnergy) {
+                                                   size_t blksize, double nucRepEnergy,
+                                                   bool rebuildFock) {
 
     auto initIntStart = tick();
 
@@ -284,15 +287,89 @@ namespace ChronusQ {
     }
     TAmanager.free("aaaa", std::move(aoTPIta), true);
 
-    // Create MO H
-    SquareMatrix<MatsT> moCoreH = aoCoreH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
-    std::map<std::string,TArray> coreHta;
+    // Create MO Density matrics
     TArray moDen = TAmanager.template malloc_fresh<dcomplex>("oo");
-    moDen.init_elements([](const typename TArray::index &i){
+    moDen.init_elements([](const typename TArray::index &i) {
       return i[0] == i[1] ? 1.0 : 0.0;
     });
 
+
+    std::map<std::string, TArray> twoeHta;
+
+    if (rebuildFock) {
+      // Create MO H
+      SquareMatrix<MatsT> moCoreH = aoCoreH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+      std::map<std::string, TArray> coreHta;
+
 //    moCoreH.output(std::cout, "moCoreH", true);
+
+      // Build Fock from coreH and TPI to TA blocks
+      std::vector<std::string> onePTypes{"oo", "vo", "vv", "ov"};
+      for (const auto &onePType: onePTypes) {
+
+        std::vector<size_t> offset;
+
+        for (const auto &otype: onePType) {
+          if (otype == 'o') {
+            offset.push_back(0);
+          } else {
+            offset.push_back(nO);
+          }
+        }
+
+        coreHta[onePType] = TAmanager.template malloc_fresh<dcomplex>(onePType);
+        coreHta[onePType].init_elements([&moCoreH, offset](const typename TArray::index &i) {
+          return moCoreH(i[0] + offset[0], i[1] + offset[1]);
+        });
+
+        fockMatrix[onePType] = TAmanager.template malloc<dcomplex>(onePType);
+      }
+
+#ifdef DEBUG_CCSD
+      std::cout << "Hvv:" << coreHta["vv"] << std::endl;
+      std::cout << "Hov:" << coreHta["ov"] << std::endl;
+      std::cout << "Hvo:" << coreHta["vo"] << std::endl;
+      std::cout << "Hoo:" << coreHta["oo"] << std::endl;
+#endif
+
+      fockMatrix["oo"]("p,q") = coreHta["oo"]("p,q") + antiSymMoInts["oooo"]("p,i,q,j") * moDen("i,j");
+      fockMatrix["vo"]("p,q") = coreHta["vo"]("p,q") + antiSymMoInts["vooo"]("p,i,q,j") * moDen("i,j");
+      fockMatrix["vv"]("p,q") = coreHta["vv"]("p,q") + antiSymMoInts["vovo"]("p,i,q,j") * moDen("i,j");
+      fockMatrix["ov"]("p,q") = coreHta["ov"]("p,q") + conj(antiSymMoInts["vooo"]("q,j,p,i")) * moDen("i,j");
+
+      for (auto ta: coreHta)
+        TAmanager.free(ta.first, std::move(ta.second), true);
+    } else {
+
+      SquareMatrix<MatsT> moFock = aoFock.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+
+      std::vector<std::string> onePTypes{"oo", "vo", "vv", "ov"};
+      for (const auto &onePType: onePTypes) {
+
+        std::vector<size_t> offset;
+
+        for (const auto &otype: onePType) {
+          if (otype == 'o') {
+            offset.push_back(0);
+          } else {
+            offset.push_back(nO);
+          }
+        }
+
+        fockMatrix[onePType] = TAmanager.template malloc_fresh<dcomplex>(onePType);
+        fockMatrix[onePType].init_elements([&moFock, offset](const typename TArray::index &i) {
+          return moFock(i[0] + offset[0], i[1] + offset[1]);
+        });
+      }
+      TA::get_default_world().gop.fence();
+#ifdef DEBUG_CCSD
+      std::cout << "Fvv:" << fockMatrix["vv"] << std::endl;
+      std::cout << "Fov:" << fockMatrix["ov"] << std::endl;
+      std::cout << "Fvo:" << fockMatrix["vo"] << std::endl;
+      std::cout << "Foo:" << fockMatrix["oo"] << std::endl;
+#endif
+    }
+
 
     // Create MO lenElectric multipoles
     MultipoleInts<MatsT> moMU = lenElectric.template spatialToSpinBlock<IntsT>().transform('N', mo, nMO, nMO);
@@ -314,13 +391,6 @@ namespace ChronusQ {
         }
       }
 
-      coreHta[onePType] = TAmanager.template malloc_fresh<dcomplex>(onePType);
-      coreHta[onePType].init_elements([&moCoreH, offset, nO](const typename TArray::index &i){
-        return moCoreH(i[0] + offset[0], i[1] + offset[1]);
-      });
-
-      fockMatrix[onePType] = TAmanager.template malloc<dcomplex>(onePType);
-
       for (size_t j = 0; j < 3; j++) {
         muMatrix[static_cast<char>('X' + j) + onePType] = TAmanager.template malloc_fresh<dcomplex>(onePType);
 
@@ -329,20 +399,6 @@ namespace ChronusQ {
         });
       }
     }
-#ifdef DEBUG_CCSD
-    std::cout << "Hvv:" << coreHta["vv"] << std::endl;
-    std::cout << "Hov:" << coreHta["ov"] << std::endl;
-    std::cout << "Hvo:" << coreHta["vo"] << std::endl;
-    std::cout << "Hoo:" << coreHta["oo"] << std::endl;
-#endif
-
-    fockMatrix["oo"]("p,q") = coreHta["oo"]("p,q") + antiSymMoInts["oooo"]("p,i,q,j") * moDen("i,j");
-    fockMatrix["vo"]("p,q") = coreHta["vo"]("p,q") + antiSymMoInts["vooo"]("p,i,q,j") * moDen("i,j");
-    fockMatrix["vv"]("p,q") = coreHta["vv"]("p,q") + antiSymMoInts["vovo"]("p,i,q,j") * moDen("i,j");
-    fockMatrix["ov"]("p,q") = coreHta["ov"]("p,q") + conj(antiSymMoInts["vooo"]("q,j,p,i")) * moDen("i,j");
-
-    for (auto ta : coreHta)
-      TAmanager.free(ta.first, std::move(ta.second), true);
 
     // Compute diagonal Fock (orbital energies)
     eps.clear();
@@ -388,7 +444,14 @@ namespace ChronusQ {
     for (size_t i = 0; i < nO; i++)
       EF += eps[i];
 
-    EG = 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen("i,j")).dot(moDen("k,l")).get();
+    if (rebuildFock)
+      EG = 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen("i,j")).dot(moDen("k,l")).get();
+    else {
+
+      SquareMatrix<MatsT> moTwoeH = aoTwoeH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+      for (size_t i = 0; i < nO; i++)
+        EG += 0.5 * moTwoeH(i, i);
+    }
     TAmanager.free("oo", std::move(moDen), true);
 
     E_ref = EF - std::real(EG) + nucRepEnergy;
@@ -514,12 +577,15 @@ namespace ChronusQ {
     }
     aoMU->broadcast();
     intermediates.initializeIntegrals(*ccref->coreH,
+                                      *ccref->fockMatrix,
+                                      *ccref->twoeH,
                                       *std::dynamic_pointer_cast<Integrals<double>>(aoints)->TPI,
                                       *aoMU,
                                       ccref->mo[0].pointer(),
                                       ccref->nO + ccSettings.nEvariation,
                                       ccref->nV - ccSettings.nEvariation,
-                                      ccSettings.blksize, mol.nucRepEnergy);
+                                      ccSettings.blksize, mol.nucRepEnergy,
+                                      ccSettings.rebuildFock);
     intermediates.T = std::make_shared<EOMCCSDVector<dcomplex>>(intermediates.vLabel, intermediates.oLabel);
 
     // Create CCSD object

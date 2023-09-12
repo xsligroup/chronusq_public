@@ -50,6 +50,7 @@ namespace ChronusQ {
     size_t nDIIS = 8;     // # of vectors to keep in DIIS
     size_t blksize = 32;   // Block size of TildeArray
     size_t nEvariation = 0;// Variation of number of electrons
+    bool rebuildFock = false; // Rebuild Fock matrix from Core Hamiltonian
   };
 
   enum class EOM_HBAR_TYPE { EXPLICIT, IMPLICIT, DEBUG };
@@ -140,10 +141,13 @@ namespace ChronusQ {
 
     template <typename IntsT>
     void initializeIntegrals(const PauliSpinorSquareMatrices<MatsT> &aoCoreH,
+                             const PauliSpinorSquareMatrices<MatsT> &aoFock,
+                             const PauliSpinorSquareMatrices<MatsT> &aoTwoeH,
                              const TwoPInts<IntsT> &aoTPI,
                              const MultipoleInts<IntsT> &lenElectric,
                              MatsT *mo, size_t nO_, size_t nV_,
-                             size_t blksize, double nucRepEnergy);
+                             size_t blksize, double nucRepEnergy,
+                             bool rebuildFock = false);
 
     size_t estimate_mem_peak(size_t nDIIS) const;
 
