@@ -58,7 +58,8 @@ namespace ChronusQ {
       "JOB",
       "X2CTYPE",
       "SPINORBITSCALING",
-      "ATOMICX2C"
+      "ATOMICX2C",
+      "SNSOTYPE"
     };
 
     // Specified keywords
@@ -463,7 +464,7 @@ namespace ChronusQ {
       hamiltonianOptions.x2cType = X2C_TYPE::ONEE;
       hamiltonianOptions.OneEScalarRelativity = true;
       hamiltonianOptions.OneESpinOrbit = false;
-      hamiltonianOptions.Boettger = false;
+      hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = false;
 
     } else if( not X.compare("FOCK")) {
@@ -471,7 +472,7 @@ namespace ChronusQ {
       hamiltonianOptions.x2cType = X2C_TYPE::FOCK;
       hamiltonianOptions.OneEScalarRelativity = true;
       hamiltonianOptions.OneESpinOrbit = true;
-      hamiltonianOptions.Boettger = false;
+      hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = false;
 
     } else if( not X.compare("ONEE") or not X.compare("ONEELECTRON")
@@ -481,7 +482,7 @@ namespace ChronusQ {
       hamiltonianOptions.x2cType = X2C_TYPE::ONEE;
       hamiltonianOptions.OneEScalarRelativity = true;
       hamiltonianOptions.OneESpinOrbit = true;
-      hamiltonianOptions.Boettger = true;
+      hamiltonianOptions.SNSO = true;
       hamiltonianOptions.AtomicMeanField = false;
 
     } else if( not X.compare("TWOE") or not X.compare("TWOELECTRON")) {
@@ -504,7 +505,7 @@ namespace ChronusQ {
 
       }
 
-      hamiltonianOptions.Boettger = false;
+      hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = false;
 
     } else  {
@@ -522,21 +523,21 @@ namespace ChronusQ {
     trim(X);
     if( not X.compare("NOSCALING") ) {
 
-      hamiltonianOptions.Boettger = false;
+      hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = false;
 
-    } else if( not X.compare("BOETTGER") ) {
+    } else if( not X.compare("SNSO") ) {
 
       if( not hamiltonianOptions.OneESpinOrbit ) 
         CErr("Spin-Orbit Scaling = "+ X + " is not compatible with X2CType = SpinFree",out);
-      hamiltonianOptions.Boettger = true;
+      hamiltonianOptions.SNSO = true;
       hamiltonianOptions.AtomicMeanField = false;
 
     } else if( not X.compare("AMFI") or not X.compare("ATOMICMEANFIELD")) {
 
       if( not hamiltonianOptions.OneESpinOrbit ) 
         CErr("Spin-Orbit Scaling = "+ X + " is not compatible with X2CType = SpinFree",out);
-      hamiltonianOptions.Boettger = false;
+      hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = true;
       CErr("AMFI NYI!",out);
 
@@ -546,19 +547,45 @@ namespace ChronusQ {
            and refOptions.refType != isFourCRef
            and hamiltonianOptions.x2cType != X2C_TYPE::FOCK) {
 
-        hamiltonianOptions.Boettger = true;
+        hamiltonianOptions.SNSO = true;
         hamiltonianOptions.AtomicMeanField = false;
 
       } else {
 
-        hamiltonianOptions.Boettger = false;
+        hamiltonianOptions.SNSO = false;
         hamiltonianOptions.AtomicMeanField = false;
 
       }
 
     } else {
 
-      CErr(X + " not a valid " + section + ".X2CTYPE",out);
+      CErr(X + " not a valid " + section + ".SPINORBITSCALING",out);
+
+    }
+
+    // Parse screened nuclear spin–orbit approximation
+    X = "BOETTGER"; // Unspecified value
+    OPTOPT( X = input.getData<std::string>(section + ".SNSOTYPE")  );
+    trim(X);
+    if( not X.compare("BOETTGER") ) {
+
+      hamiltonianOptions.snsoType = SNSO_TYPE::BOETTGER;
+
+    } else if( not X.compare("DC") ) {
+
+      hamiltonianOptions.snsoType = SNSO_TYPE::DC;
+
+    } else if( not X.compare("DCB") ) {
+
+      hamiltonianOptions.snsoType = SNSO_TYPE::DCB;
+
+    } else if( not X.compare("ROW_DEP_DCB")) {
+
+      hamiltonianOptions.snsoType = SNSO_TYPE::ROW_DEP_DCB;
+
+    } else {
+
+      CErr(X + " not a valid " + section + ".SNSOTYPE",out);
 
     }
 
@@ -1473,8 +1500,23 @@ namespace ChronusQ {
         << (options.OneEScalarRelativity ? "On" : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "One-Electron Spin-orbit Relativity:"
         << (options.OneESpinOrbit ? "On" : "Off") << std::endl;
-    out << "  " << std::setw(fieldNameWidth) << "Boettger Spin-orbit Scaling:"
-        << (options.Boettger ? "On" : "Off") << std::endl;
+
+    std::function<std::string(SNSO_TYPE)> snsoTypeToString = [](SNSO_TYPE type) {
+      switch (type) {
+      case SNSO_TYPE::BOETTGER:
+        return "Boettger";
+      case SNSO_TYPE::DC:
+        return "Dirac-Coulomb";
+      case SNSO_TYPE::DCB:
+        return "Dirac-Coulomb-Breit";
+      case SNSO_TYPE::ROW_DEP_DCB:
+        return "Row-dependent Dirac-Coulomb-Breit";
+      }
+      return "Unknown";
+    };
+
+    out << "  " << std::setw(fieldNameWidth) << "Screened Nuclear Spin-orbit Approximation:"
+        << (options.SNSO ? snsoTypeToString(options.snsoType) : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Atomic Mean Field Spin-orbit:"
         << (options.AtomicMeanField ? "On" : "Off") << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Atomic X2C:"

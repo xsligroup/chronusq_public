@@ -132,7 +132,8 @@ namespace ChronusQ {
     virtual void computeOneEX2C_corr(EMPerturbation&,
         std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
     virtual void saveX2C(std::shared_ptr<SingleSlaterBase>);
-    void BoettgerScale(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+    void SNSOScale(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>, SNSO_TYPE);
+    void RowDepDCB_SNSO(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
 
     // Compute Fock X2C
     virtual void computeFockX2C(EMPerturbation&,

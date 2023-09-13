@@ -36,6 +36,14 @@ namespace ChronusQ {
 
   enum class X2C_TYPE {OFF, ONEE, TWOE, FOCK};
 
+  /**
+   * Type of screened nuclear spin–orbit approximation
+   * BOETTGER:    Scaling factors proposed by Boettger, Phys. Rev. B 62, 7809 (2000)
+   * DC,DCB:      Scaling factors proposed by Ehrman et al., J. Chem. Theory Comput. 19, 5785 (2023)
+   * ROW_DEP_DCB: Row-dependent version of DCB
+   */
+  enum class SNSO_TYPE {BOETTGER, DC, DCB, ROW_DEP_DCB};
+
   struct ATOMIC_X2C_TYPE {
     bool isolateAtom;  ///< If atomic OEI feel only the basis origin nuclei potential
     bool diagonalOnly; ///< If only diagonal blocks of Hamiltonian are X2C corrected
@@ -86,7 +94,8 @@ namespace ChronusQ {
     X2C_TYPE x2cType = X2C_TYPE::OFF; //Type of X2C
     bool OneEScalarRelativity = true; //scalar relativity
     bool OneESpinOrbit = true; //spin-orbit relativity
-    bool Boettger = true; // Use Boetteger factor to scale one-electron spin-orbit
+    bool SNSO = true; // Use Boetteger factor to scale one-electron spin-orbit
+    SNSO_TYPE snsoType = SNSO_TYPE::BOETTGER; // Type of screened nuclear spin–orbit
     bool AtomicMeanField = false; // Use atomic mean field two-electron spin-orbit
     bool AtomicX2C = false; // Use atomic X2C
     ATOMIC_X2C_TYPE AtomicX2CType; // The type of atomic X2C

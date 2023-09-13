@@ -83,15 +83,30 @@ namespace ChronusQ {
    *  \brief Boettger scaling for spin-orbit operator
    */
   template <typename MatsT, typename IntsT>
-  void X2C<MatsT, IntsT>::BoettgerScale(
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+  void X2C<MatsT, IntsT>::SNSOScale(
+      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH,
+      SNSO_TYPE snso_type) {
+
+    if( this->basisSet_.maxL > 7 ) CErr("SNSO scaling for L > 7 NYI");
 
     size_t NB = basisSet_.nBasis;
 
     size_t n1, n2;
-    std::array<double,6> Ql={0.,2.,10.,28.,60.,110.};
+    std::array<double,8> Ql;
+    switch (snso_type) {
+      case SNSO_TYPE::BOETTGER:
+        Ql={0.,2.,10.,28.,60.,110.,182.,280.};
+        break;
+      case SNSO_TYPE::DC:
+        Ql={0.,2.32,10.64,28.38,60.,110.,182.,280.};
+        break;
+      case SNSO_TYPE::DCB:
+        Ql={0.,2.97,11.93,29.84,64.,115.,188.,287.};
+        break;
+      default:
+        CErr("Unknown row-independent SNSO type");
+    }
 
-    if( this->basisSet_.maxL > 5 ) CErr("Boettger scaling for L > 5 NYI");
 
     for(auto s1(0ul), i(0ul); s1 < this->basisSet_.nShell; s1++, i+=n1) {
       n1 = this->basisSet_.shells[s1].size();
@@ -128,6 +143,99 @@ namespace ChronusQ {
           coreH->X().pointer() + i + j*NB,NB);
 
     } // loop s2
+    } // loop s1
+  }
+
+
+  /**
+   *  \brief Row-dependent DCB SNSO approximation for spin-orbit operator (ehrmanj row-dependent)
+   */
+  template <typename MatsT, typename IntsT>
+  void X2C<MatsT, IntsT>::RowDepDCB_SNSO(
+      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+
+    size_t NB = basisSet_.nBasis;
+
+    size_t n1, n2;
+    // ehrmanj row-dependent Ql values
+    std::array<double,8> Ql1;
+    std::array<double,8> Ql2;
+    // ehrmanj end
+
+    if( this->basisSet_.maxL > 7 ) CErr("Boettger scaling for L > 7 NYI");
+
+    for(auto s1(0ul), i(0ul); s1 < this->basisSet_.nShell; s1++, i+=n1) {
+      n1 = this->basisSet_.shells[s1].size();
+
+      size_t L1 = this->basisSet_.shells[s1].contr[0].l;
+      if ( L1 == 0 ) continue;
+
+      auto Z1 = this->molecule_.atoms[this->basisSet_.mapSh2Cen[s1]].nucCharge;
+
+
+      for(auto s2(0ul), j(0ul); s2 < this->basisSet_.nShell; s2++, j+=n2) {
+        n2 = this->basisSet_.shells[s2].size();
+
+        size_t L2 = this->basisSet_.shells[s2].contr[0].l;
+        if ( L2 == 0 ) continue;
+
+        auto Z2 = this->molecule_.atoms[this->basisSet_.mapSh2Cen[s2]].nucCharge;
+        // ehrmanj row-dependent Ql values
+        if ( Z1 <= 2 ){
+          Ql1={0.,2.97,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z2 <= 2 ){
+          Ql2={0.,2.97,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z1 >= 3 && Z1 <= 10){
+          Ql1={0.,2.80,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z2 >= 3 && Z2 <= 10){
+          Ql2={0.,2.80,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z1 >= 11 && Z1 <= 18){
+          Ql1={0.,2.95,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z2 >= 11 && Z2 <= 18){
+          Ql2={0.,2.95,11.93,29.84,64.,115.,188.,287.};
+        }
+        if ( Z1 >= 19 && Z1 <= 36){
+          Ql1={0.,3.09,11.49,29.84,64.,115.,188.,287.};
+        }
+        if ( Z2 >= 19 && Z2 <= 36){
+          Ql2={0.,3.09,11.49,29.84,64.,115.,188.,287.};
+        }
+        if ( Z1 >= 37 && Z1 <= 54){
+          Ql1={0.,3.02,11.91,29.84,64.,115.,188.,287.};
+        }
+        if ( Z2 >= 37 && Z2 <= 54){
+          Ql2={0.,3.02,11.91,29.84,64.,115.,188.,287.};
+        }
+        if ( Z1 >= 55){
+          Ql1={0.,2.85,12.31,30.61,64.,115.,188.,287.};
+        }
+        if ( Z2 >= 55){
+          Ql2={0.,2.85,12.31,30.61,64.,115.,188.,287.};
+        }//ehrmanj row-dependent Ql values
+
+        MatsT fudgeFactor = -1 * std::sqrt(
+            Ql1[L1] * Ql2[L2] /
+            Z1 / Z2
+        );
+        std::cout<<Ql1[L1]<<std::endl;
+        MatAdd('N','N',n1,n2,MatsT(1.),coreH->Z().pointer() + i + j*NB,NB,
+               fudgeFactor,coreH->Z().pointer() + i + j*NB,NB,
+               coreH->Z().pointer() + i + j*NB,NB);
+
+        MatAdd('N','N',n1,n2,MatsT(1.),coreH->Y().pointer() + i + j*NB,NB,
+               fudgeFactor,coreH->Y().pointer() + i + j*NB,NB,
+               coreH->Y().pointer() + i + j*NB,NB);
+
+        MatAdd('N','N',n1,n2,MatsT(1.),coreH->X().pointer() + i + j*NB,NB,
+               fudgeFactor,coreH->X().pointer() + i + j*NB,NB,
+               coreH->X().pointer() + i + j*NB,NB);
+
+      } // loop s2
     } // loop s1
   }
 
@@ -1719,9 +1827,20 @@ namespace ChronusQ {
     if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::ONEE) {
       x2c->computeOneEX2C(emPert, coreH);
 
-      // Added BoettgerScale two-electron relativistic effect
-      if (ssOptions.hamiltonianOptions.Boettger)
-        x2c->BoettgerScale(coreH);
+      // Added SNSOScale two-electron relativistic effect
+      if (ssOptions.hamiltonianOptions.SNSO)
+        switch (ssOptions.hamiltonianOptions.snsoType) {
+          case SNSO_TYPE::BOETTGER:
+          case SNSO_TYPE::DC:
+          case SNSO_TYPE::DCB:
+            x2c->SNSOScale(coreH, ssOptions.hamiltonianOptions.snsoType);
+            break;
+          case SNSO_TYPE::ROW_DEP_DCB:
+            x2c->RowDepDCB_SNSO(coreH);
+            break;
+          default:
+            CErr("Unknown SNSO type",std::cout);
+        }
 
 #ifdef DebugX2Cprint2
     prettyPrintSmart(std::cout,"CH0",coreH->S().pointer(),basis.nBasis,basis.nBasis,basis.nBasis);
