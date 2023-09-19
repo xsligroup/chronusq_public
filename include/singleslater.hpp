@@ -243,6 +243,16 @@ namespace ChronusQ {
     void readDiffTypeMOBin(std::string binName);
     template <typename ScrMatsT>
     void getScrMO(SafeFile &);
+    template <typename ScrMatsT>
+    void convert1CRto2CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    template <typename ScrMatsT>
+    void convert1CUto2CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    template <typename ScrMatsT>
+    void convert1CRto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    template <typename ScrMatsT>
+    void convert1CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    template <typename ScrMatsT>
+    void convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
 
     // Fchk-related functions
     std::vector<int> fchkToCQMO();
