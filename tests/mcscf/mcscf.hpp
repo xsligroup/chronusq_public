@@ -92,6 +92,28 @@ inline void CQSCRMCSCF( std::string in, std::string ref, std::string scr ) {
 
 };
 
+inline void CQBINSCRMCSCF( std::string in, std::string ref, std::string scr ) {
+
+#ifdef _CQ_GENERATE_TESTS
+
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
+    MCSCF_TEST_REF + ref, MCSCF_TEST_REF + scr);
+
+#else
+
+  std::ifstream  src(MCSCF_TEST_REF + ref, std::ios::binary);
+  std::ofstream  dst(TEST_OUT + in + ".bin", std::ios::binary);
+  dst << src.rdbuf();
+  dst.flush();
+
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
+    TEST_OUT + in + ".bin",
+    MCSCF_TEST_REF + scr);
+
+#endif
+
+};
+
 inline void CQMCSCFTEST( std::string in, std::string ref,
   bool readBin      = false,
   std::string scr   = "",
@@ -103,8 +125,9 @@ inline void CQMCSCFTEST( std::string in, std::string ref,
   bool checkEne     = true ) {
 
   if( !readBin and scr=="" ) CQNORMALMCSCF(in,ref);
-  else if( readBin ) CQBINMCSCF(in,ref);
-  else CQSCRMCSCF(in,ref,scr);
+  else if( readBin and scr=="" ) CQBINMCSCF(in,ref);
+  else if( !readBin and scr!="" ) CQSCRMCSCF(in,ref,scr);
+  else CQBINSCRMCSCF(in,ref,scr);
 
 #ifndef _CQ_GENERATE_TESTS
 

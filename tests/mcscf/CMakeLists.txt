@@ -54,6 +54,9 @@ add_cq_test(OneC_CAS_SWAP        mcscftest "OneC_CAS_SWAP.*")
 add_cq_test(TwoC_CAS_SWAP        mcscftest "TwoC_CAS_SWAP.*")
 add_cq_test(GHF_CAS_OSC          mcscftest "GHF_CAS_OSC.*")
 add_cq_test(MCSCF_FIELD          mcscftest "MCSCF_FIELD.*")
+add_cq_test(OneC_CASSCF_READCI   mcscftest "OneC_CASSCF_READCI.*")
+add_cq_test(X2C_CASSCF_READCI   mcscftest "X2C_CASSCF_READCI.*")
+add_cq_test(FourC_CASSCF_READCI   mcscftest "FourC_CASSCF_READCI.*")
 
 # RAS test
 add_cq_test(RASCI_DAVIDSON         mcscftest "RASCI_DAVIDSON.*")

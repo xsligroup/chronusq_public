@@ -567,6 +567,8 @@ namespace ChronusQ {
     }    
 
     OPTOPT( mcscf->readCI = input.getData<bool>("MCSCF.READCI");)
+
+    if( mcscf->readCI and nR>1 ) CErr("READCI not implemented for more than 1 state");
  
     // Parse CI Options
     if (isCI or isSCF) {

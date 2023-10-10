@@ -28,6 +28,7 @@
 #include <cxxapi/boilerplate.hpp>
 #include <cxxapi/procedural.hpp>
 
+#include <filesystem>
 #include <util/files.hpp>
 #include <util/mpi.hpp>
 #include <util/threads.hpp>
@@ -257,21 +258,19 @@ namespace ChronusQ {
     }
 
     bool rstExists = false;
-    if( (ss->scfControls.guess == READMO or 
+    if( std::filesystem::exists(rstFileName) and rank == 0 )
+      rstExists = true;
+    if( (ss->scfControls.guess == READMO or
          ss->scfControls.guess == READDEN or
          ss->scfControls.prot_guess == READMO or
          ss->scfControls.prot_guess == READDEN)
-        and scrFileName.empty())
-      rstExists = true;
-    else if( (ss->scfControls.guess == READMO or
-             ss->scfControls.guess == READDEN or
-             ss->scfControls.prot_guess == READMO or
-             ss->scfControls.prot_guess == READDEN)
-             and not scrFileName.empty() )
+         and not scrFileName.empty() )
       ss->scrBinFileName = scrFileName;
     else if( ss->scfControls.guess == FCHKMO or
              ss->scfControls.prot_guess == FCHKMO )
       ss->fchkFileName = scrFileName;
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // Create the restart and scratch files
     SafeFile rstFile(rstFileName, rstExists);

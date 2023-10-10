@@ -205,3 +205,86 @@ TEST(CASCI_DAVIDSON, PAR_Al_631G) {
 #endif
 
 
+// 1-component H2O sto-3g for testing READCI (from restart file)
+TEST(OneC_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true);
+
+#ifndef _CQ_GENERATE_TESTS
+
+  // CI from restart file and MOs from scratch file
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref");
+
+#endif
+
+};
+
+#ifndef _CQ_GENERATE_TESTS
+#ifdef _CQ_DO_PARTESTS
+
+TEST(OneC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true);
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref");
+
+};
+
+#endif
+#endif
+
+// X2C H2O sto-3g for testing READCI (from restart file)
+TEST(X2C_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true);
+
+#ifndef _CQ_GENERATE_TESTS
+
+  // CI from restart file and MOs from scratch file
+  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref");
+
+#endif
+
+};
+
+#ifndef _CQ_GENERATE_TESTS
+#ifdef _CQ_DO_PARTESTS
+
+TEST(X2C_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true);
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref");
+
+};
+
+#endif
+#endif
+
+// DC H2O sto-3g for testing READCI (from restart file)
+TEST(FourC_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true);
+
+#ifndef _CQ_GENERATE_TESTS
+
+  // CI from restart file and MOs from scratch file
+  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref");
+
+#endif
+
+};
+
+#ifndef _CQ_GENERATE_TESTS
+#ifdef _CQ_DO_PARTESTS
+
+TEST(FourC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true);
+
+  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref");
+
+};
+
+#endif
+#endif
