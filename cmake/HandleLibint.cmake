@@ -67,7 +67,7 @@ else()
   FetchContent_Declare (
     Libint2
     #PREFIX ${CUSTOM_LIBINT_PREFIX}
-    GIT_REPOSITORY "https://urania.chem.washington.edu/chronusq/libint-cq.git"
+    GIT_REPOSITORY "https://github.com/xsligroup/libint-cq.git"
     GIT_TAG "2.7.0-beta.6"
   )
 
