@@ -252,7 +252,7 @@ namespace ChronusQ {
     template <typename ScrMatsT>
     void convert1CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
     template <typename ScrMatsT>
-    void convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    void convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&, SafeFile &);
 
     // Fchk-related functions
     std::vector<int> fchkToCQMO();

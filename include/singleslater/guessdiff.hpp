@@ -158,22 +158,23 @@ namespace ChronusQ {
         // 4c MOs stored as alpha-large, alpha-small, beta-large, beta-small
         // Negative MOs come before positive MOs
 
-        // TODO: Improve negative-energy spinor guess
-        std::cout << "    * WARNING: Small component and negative-energy solutions set to zero" << std::endl;
-
         // RHF/ROHF->4c
         if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+
+          std::cout << "    * WARNING: Small component and negative-energy solutions set to zero" << std::endl;
 
           convert1CRto4CU(motmp,this->mo);
 
         }else if( scrRefType == RefType::isURef ){ // UHF->4c
+
+          std::cout << "    * WARNING: Small component and negative-energy solutions set to zero" << std::endl;
 
           convert1CUto4CU(motmp,this->mo);
 
         // 2c->4c
         }else if( scrRefType == RefType::isTwoCRef ){
 
-          convert2CUto4CU(motmp,this->mo);
+          convert2CUto4CU(motmp,this->mo,scrBin);
 
         } else {
           CErr("Initial Guess MO Conversion for 4c Failed");
@@ -321,16 +322,99 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO, SafeFile& scrBin) {
 
-    size_t NB = outputMO[0].dimension();
-    size_t NB2 = NB*NB;
+
+    std::cout << "    * Looking for U matrices on scratch file: " << scrBin.fName() << std::endl;
+
+    bool doSmallCGuess = true;
+
+    size_t NB = this->basisSet().nBasis;
+    size_t NP = this->basisSet().nPrimitive;
+    size_t NBC = outputMO[0].dimension();
     size_t scrMOSize = inputMO[0].dimension();
+    size_t NBC2 = NBC*NBC;
 
-    // 2c for plus large alpha
-    SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),inputMO[0].pointer(),scrMOSize,outputMO[0].pointer()+NB2/2,NB);
-    // 2c for plus large beta
-    SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),inputMO[0].pointer()+scrMOSize/2,scrMOSize,outputMO[0].pointer()+NB2/2+NB/2,NB);
+    // dimensions: row 2*NP, column 2*NB
+    size_t Urow = 2*NP;
+    size_t Ucol = 2*NB;
+
+    if( Urow != Ucol ) CErr("Only implemented for uncontracted basis set");
+
+    MatsT *readUL = memManager.malloc<MatsT>(Urow*Ucol);
+    MatsT *readUS = memManager.malloc<MatsT>(Urow*Ucol);
+
+    // Read in U matrices
+    std::string prefix = "X2C/";
+
+    try{
+      scrBin.readData(prefix + "UL", readUL);
+    } catch (...) {
+      std::cout << "    * Cannot find " + prefix + "UL on scratch file!" << std::endl;
+      doSmallCGuess = false;
+    }
+
+    try{
+      scrBin.readData(prefix + "US", readUS);
+    } catch (...) {
+      std::cout << "    * Cannot find " + prefix + "US on scratch file!" << std::endl;
+      doSmallCGuess = false;
+    }
+
+    if( doSmallCGuess ){
+
+      // Note on picture change. We use U for back transformation instead of U^{dagger} because
+      // CQ has convention of U^{dagger}HU instead of UHU^{dagger}
+//    prettyPrintSmart(std::cout,"UL after read",readUL,Urow,Ucol,Urow);
+//    prettyPrintSmart(std::cout,"US after read",readUS,Urow,Ucol,Urow);
+
+      if( scrMOSize != Urow or scrMOSize != Ucol ) CErr("2c MO and U matrix need to have same dimensions!");
+
+      // Make a temporary copy for 2c transformed MO
+      SquareMatrix<MatsT> tmpMO(this->memManager,scrMOSize);
+
+//    prettyPrintSmart(std::cout, "phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
+
+      // Large component: UL phi
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,scrMOSize,scrMOSize,scrMOSize,MatsT(1.),readUL,scrMOSize,
+       inputMO[0].pointer(),scrMOSize,MatsT(0.),tmpMO.pointer(),scrMOSize);
+
+//    prettyPrintSmart(std::cout, "UL phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
+
+      // initialize plus large alpha
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),tmpMO.pointer(),scrMOSize,outputMO[0].pointer()+NBC2/2,NBC);
+      // initialize plus large beta
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),tmpMO.pointer()+scrMOSize/2,scrMOSize,outputMO[0].pointer()+NBC2/2+NBC/2,NBC);
+
+//    prettyPrintSmart(std::cout, "4c initial guess with just large component in 2CUto4CU", outputMO[0].pointer(),NBC,NBC,NBC);
+
+      // Small component: US phi
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,scrMOSize,scrMOSize,scrMOSize,MatsT(1.),readUS,scrMOSize,
+       inputMO[0].pointer(),scrMOSize,MatsT(0.),tmpMO.pointer(),scrMOSize);
+
+//    prettyPrintSmart(std::cout, "US phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
+
+      // initialize plus small alpha
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),tmpMO.pointer(),scrMOSize,outputMO[0].pointer()+NBC2/2+NBC/4,NBC);
+      // initialize plus small beta
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),tmpMO.pointer()+scrMOSize/2,scrMOSize,outputMO[0].pointer()+NBC2/2+3*NBC/4,NBC);
+
+//    prettyPrintSmart(std::cout, "4c initial guess with small component in 2CUto4CU", outputMO[0].pointer(),NBC,NBC,NBC);
+
+      tmpMO.clear();
+
+    } else {
+
+      std::cout << "    * WARNING: Small component guess set to zero" << std::endl;
+
+      // 2c for plus large alpha
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),inputMO[0].pointer(),scrMOSize,outputMO[0].pointer()+NBC2/2,NBC);
+      // 2c for plus large beta
+      SetMat('N',scrMOSize/2,scrMOSize,MatsT(1.),inputMO[0].pointer()+scrMOSize/2,scrMOSize,outputMO[0].pointer()+NBC2/2+NBC/2,NBC);
+
+    }
+
+    memManager.free(readUL,readUS);
 
   } // SingleSlater<MatsT,IntsT>::convert2CUto4CU
 

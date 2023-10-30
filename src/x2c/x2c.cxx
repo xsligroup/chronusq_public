@@ -857,6 +857,12 @@ namespace ChronusQ {
         *std::dynamic_pointer_cast<Integrals<IntsT>>(aoints),
         ssOptions.hamiltonianOptions, std::move(*coreH));
 
+
+    // U transformation to bin file
+    if(not (ssOptions.hamiltonianOptions.AtomicX2C
+            and ssOptions.hamiltonianOptions.AtomicX2CType.diagonalOnly == true))
+      x2c->saveX2C(ss);
+
 //    CErr("Requested X2C type NYI.");
 
   }
@@ -903,7 +909,46 @@ namespace ChronusQ {
 
       CErr("Real X2C + Complex Ints invalid",std::cout);
     }
+
   }
+
+  /**
+   *  \brief Save the X2C transformation
+   */
+  template <typename MatsT, typename IntsT>
+  void X2C<MatsT, IntsT>::saveX2C(std::shared_ptr<SingleSlaterBase> ss) {
+
+    size_t NP = uncontractedBasis_.nPrimitive;
+    size_t NB = basisSet_.nBasis;
+
+    if( ss->savFile.exists() ){
+
+      if( UL == nullptr or US == nullptr ){
+
+        std::cout << "    * Saving X2C. U matrices not found. Recomputing." << std::endl << std::endl;
+        computeOneEX2C_Umatrix();
+
+      }
+
+      // dimensions: row 2*NP, column 2*NB
+      size_t Urow = 2*NP;
+      size_t Ucol = 2*NB;
+
+      std::string prefix = "X2C/";
+      ss->savFile.safeWriteData(prefix + "UL", UL, {Urow, Ucol});
+      ss->savFile.safeWriteData(prefix + "US", US, {Urow, Ucol});
+
+    } else CErr("Could not find savFile in saveX2C");
+
+  }
+
+  template void X2C<dcomplex,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
+
+  template<> void X2C<dcomplex,dcomplex>::saveX2C(std::shared_ptr<SingleSlaterBase>) {
+    CErr("X2C + Complex Ints NYI",std::cout);
+  }
+
+  template void X2C<double,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
 
 }; // namespace ChronusQ
 

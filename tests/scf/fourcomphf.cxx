@@ -199,6 +199,16 @@ TEST( FOURCHF, Water_ccpVDZ_DCHF_UHFGuess_READMO ) {
 
 };
 
+// Water DC-HF/cc-pVDZ with GHF guess (READMO)
+TEST( FOURCHF, Water_ccpVDZ_DCHF_GHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/water_cc-pVDZ_DC-HF_READMO",
+    "water_cc-pVDZ_DC-HF_GHFGuess_READMO.bin.ref",1e-6,
+    false, false, false, false, false, true, false,
+    "water_cc-pVDZ_GHF.scr.bin" );
+
+};
+
 // Water DC-HF/cc-pVDZ with X2C guess (READDEN)
 TEST( FOURCHF, Water_ccpVDZ_DCHF_X2CGuess_READDEN ) {
 
