@@ -36,8 +36,9 @@ namespace ChronusQ {
 
     // Molecule object to use
     Molecule inputMol = this->molecule();
-    if (this->particle.charge > 0)
-      inputMol = inputMol.retainQNuc();
+
+    // For protonic SS, charge analysis are done for only proton atoms 
+    if (this->particle.charge > 0)  inputMol = inputMol.retainQNuc();
 
     // Mulliken population analysis
     mullikenCharges.clear();

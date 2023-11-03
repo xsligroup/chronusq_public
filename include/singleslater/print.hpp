@@ -119,7 +119,11 @@ namespace ChronusQ {
 
     out << std::right << bannerMid << std::endl;
 
-    Molecule & mol = this->molecule();
+    Molecule mol = this->molecule();
+
+    // For protonic SS, charge analysis are done for only proton atoms 
+    if (this->particle.charge > 0)  mol = mol.retainQNuc();
+
     for(auto iAtm = 0; iAtm < mol.nAtoms; iAtm++) {
 
       // Get symbol
