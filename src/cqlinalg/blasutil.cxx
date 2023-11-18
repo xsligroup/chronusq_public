@@ -950,11 +950,6 @@ namespace ChronusQ {
     char TRANSA, const dcomplex * A, size_t NI, size_t NJ, size_t NM, 
     char TRANSB, dcomplex * B, size_t NK, size_t NL, dcomplex * ASCR, dcomplex * SCR, bool increment);
 
-extern "C" {
-void openblas_set_num_threads_(int*) { }
-void openblas_get_num_threads_(int*) { }
-int openblas_get_num_threads() { return 1; }
-}
 }; // namespace ChronusQ
 
 
