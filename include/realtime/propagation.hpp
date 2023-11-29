@@ -126,13 +126,11 @@ namespace ChronusQ {
       else                 curState.curStep = ModifiedMidpoint;
 
       if( (Start or FinMM) && printLevel > 0 )
-        std::cout << "  *** Restarting MMUT ***\n";
+        std::cout <<"  *** Restarting MMUT ***\n";
 
     // For non leapfrog scheme, the step type is constant
     } else if ( intScheme.intAlg == ExpMagnus2 )
       curState.curStep = ExplicitMagnus2;
-
-
 
 
 
@@ -171,7 +169,8 @@ namespace ChronusQ {
         this->formFock(false,curState.xTime,idx);
       }
 
-      // Compute properties for D(k) 
+      // Compute properties for D(k)
+      propagator_.computeEnergy(pert_t);
       propagator_.computeProperties(pert_t);
 
       // Save data
@@ -318,16 +317,17 @@ namespace ChronusQ {
       *UH[idx] = PauliSpinorSquareMatrices<dcomplex>::
           spinBlockScatterBuild<dcomplex>(UHblocks[0],UHblocks[1]);
 
-    // Generalized (2C)
+    // Generalized (2C) or 4C
     } else {
 
-      SquareMatrix<dcomplex> F2C(systems_[idx]->fockMatrixOrtho->template spinGather<dcomplex>());
-      SquareMatrix<dcomplex> UH2C(memManager_, 2*NB);
+      size_t nC = systems_[idx]->nC;
+      SquareMatrix<dcomplex> FnC(systems_[idx]->fockMatrixOrtho->template spinGather<dcomplex>());
+      SquareMatrix<dcomplex> UHnC(memManager_, nC*NB);
 
-      MatExp('D',2*NB,dcomplex(0.,-curState.stepSize),
-             F2C.pointer(),2*NB,UH2C.pointer(),2*NB, memManager_);
+      MatExp('D',nC*NB,dcomplex(0.,-curState.stepSize),
+             FnC.pointer(),nC*NB,UHnC.pointer(),nC*NB, memManager_);
 
-      *UH[idx] = UH2C.template spinScatter<dcomplex>();
+      *UH[idx] = UHnC.template spinScatter<dcomplex>();
 
     }
 
@@ -424,6 +424,8 @@ namespace ChronusQ {
 
     } else {
 
+      size_t nC = systems_[idx]->nC;
+
       // Gather DO
       SquareMatrix<dcomplex> DO(systems_[idx]->onePDMOrtho->template spinGather<dcomplex>());
 
@@ -431,12 +433,12 @@ namespace ChronusQ {
       SquareMatrix<dcomplex> UHblockForm(UH[idx]->template spinGather<dcomplex>());
 
       // SCR1 = U**H * DO
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NB,2*NB,2*NB,dcomplex(1.),UHblockForm.pointer(),2*NB,
-           DO.pointer(),2*NB,dcomplex(0.),SCR1,2*NB);
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nC*NB,nC*NB,nC*NB,dcomplex(1.),UHblockForm.pointer(),nC*NB,
+           DO.pointer(),nC*NB,dcomplex(0.),SCR1,nC*NB);
 
       // DO = SCR1 * U
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NB,2*NB,2*NB,dcomplex(1.),SCR1,2*NB,
-           UHblockForm.pointer(),2*NB,dcomplex(0.),DO.pointer(),2*NB);
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,nC*NB,nC*NB,nC*NB,dcomplex(1.),SCR1,nC*NB,
+           UHblockForm.pointer(),nC*NB,dcomplex(0.),DO.pointer(),nC*NB);
 
       // Scatter DO
       *systems_[idx]->onePDMOrtho = DO.template spinScatter<dcomplex>();

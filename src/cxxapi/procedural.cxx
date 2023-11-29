@@ -68,11 +68,13 @@
 #include <limits.h>
 
 #include <coupledcluster/TAManager.hpp>
-
+#include <orbitalmodifiernew.hpp>
 //#include <TiledArray/util/bug.h>
 
 
 //#include <cubegen.hpp>
+
+#include <job.hpp>
 
 namespace ChronusQ {
 
@@ -106,20 +108,14 @@ namespace ChronusQ {
 
     }
 
-
     // Setup MPI rank files
-
     std::shared_ptr<std::ofstream> rankfile;
     std::streambuf *cerrbuf = std::cerr.rdbuf();
 
     if( size > 1 ) {
-      
-      std::string rankFileName = outFileName + ".mpi." + 
-        std::to_string(rank);
-
+      std::string rankFileName = outFileName + ".mpi." + std::to_string(rank);
       rankfile = std::make_shared<std::ofstream>(rankFileName);
       std::cerr.rdbuf(rankfile->rdbuf());
-
       std::cerr << "Hello from RANK = " << rank << " / SIZE = " << size << std::endl;
 
 #ifndef HOST_NAME_MAX // not defined on MacOS or other BSDs
@@ -132,7 +128,6 @@ namespace ChronusQ {
       if (rank != 0) {
         std::cout.rdbuf(rankfile->rdbuf());
       }
-
       int i = 0;
 
 #ifndef NDEBUG
@@ -140,24 +135,30 @@ namespace ChronusQ {
 //        sleep(10);
 //      }
 #endif
-
 //      TA::launch_lldb_xterm();
-
       MPI_Barrier(MPI_COMM_WORLD);
-
     }
 
-
     std::ostream &output = (rank == 0) ? std::cout : std::cerr;
-
 
     // Output CQ header
     CQOutputHeader(output);
     if(rankfile and rank == 0) CQOutputHeader(std::cerr);
 
-
     // Parse Input File
     CQInputFile input(inFileName);
+    SCFOptions scfOptions;
+    TDSCFOptions tdSCFOptions;
+    SingleSlaterGuessOptions ssGuestOptions;
+    input.parse();
+
+    if (input.containsSection("SCF")) {
+      ssGuestOptions.parseSection(input.getSection("SCF"));
+    }
+
+    if (input.containsSection("RT")) {
+      tdSCFOptions.parseSection(input.getSection("RT"));
+    }
 
 
     CQINPUT_VALID(output,input);
@@ -173,8 +174,12 @@ namespace ChronusQ {
       std::copy(begin_src,end_src,begin_dest);
       inStream.close();
       std::cout << BannerEnd << "\n\n\n" << std::endl;
-    }
 
+
+      std::cout << "Parsed Input File:\n" << BannerTop << std::endl;
+      std::cout << input << std::endl;
+      std::cout << BannerEnd << "\n\n\n" << std::endl;
+    }
 
     // TEMPORARY
     bool doTemp = true;
@@ -189,7 +194,7 @@ namespace ChronusQ {
     }
 
     // Break into sequence of individual jobs
-    std::vector<JobType> jobs;
+    std::vector<CQJob> jobs;
     if( jobType != JobType::SCF ) {
       jobs.push_back(JobType::SCF);
     }
@@ -205,17 +210,11 @@ namespace ChronusQ {
 
     auto memManager = CQMiscOptions(output,input);
 
+    Molecule mol(std::move(CQMoleculeOptions(output,input,scrFileName))); // Create Molecule object
 
-    // Create Molecule and BasisSet objects
-    Molecule mol(std::move(CQMoleculeOptions(output,input,scrFileName)));
-
-    // Create BasisSet object
-    std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS");
-    // Create BasisSet object for DFBasis if defined
-    std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS");
-    // Create BasisSet object for nuclear orbitals if it's a NEO calculation
-    std::shared_ptr<BasisSet> prot_basis = 
-      doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr;
+    std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS"); // Create BasisSet object
+    std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
+    std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation
 
     // Parse Integral options from input file
     IntegralOptions aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"INTS");
@@ -271,6 +270,8 @@ namespace ChronusQ {
       ss->fchkFileName = scrFileName;
 
     MPI_Barrier(MPI_COMM_WORLD);
+    
+    if(tdSCFOptions.restoreFromStep!=0) rstExists = true;
 
     // Create the restart and scratch files
     SafeFile rstFile(rstFileName, rstExists);
@@ -310,7 +311,7 @@ namespace ChronusQ {
 //        compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
 //      }
 
-      JobType elecJob = CQGeometryOptions(output, input, job, mol, ss, rt,
+      JobType elecJob = CQGeometryOptions(output, input, job.jobType, mol, ss, rt,
         ep_aoints, emPert);
 
       // Loop over various structures
@@ -363,64 +364,86 @@ namespace ChronusQ {
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
             compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
           }
-//xslis
-#if 0
-          auto ssSCF = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss);
-          auto gaugeSave = ssSCF->fockBuilder->hamiltonianOptions_.Gauge;
-          auto gauntSave = ssSCF->fockBuilder->hamiltonianOptions_.Gaunt;
-          auto spinfreeonlySave = ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly;
-          auto ssssSave = ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS;
-          auto dcSave = ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb;
-
-          if(ssSCF!=nullptr) {
-            ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly = true;
-            ssSCF->fockBuilder->hamiltonianOptions_.Gauge = false;
-            ssSCF->fockBuilder->hamiltonianOptions_.Gaunt = false;
-            ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS = false;
-            //ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb = false;
-          }
-#endif
-//xslie
           ss->formCoreH(emPert, true);
-          if(firstStep) {
-            ss->formGuess(guessSSOptions);
-//            ss->formFock(emPert, false);
-          }
-//xslis
-#if 0
-          if(ssSCF!=nullptr) {
-            auto scfC = std::dynamic_pointer_cast<OrbitalOptimizer<dcomplex>>(ssSCF->orbitalModifier);
-            if(scfC!=nullptr) scfC->scfControls.eneConvTol *= 100.0;
-            ssSCF->runModifyOrbitals(emPert);
-            if(scfC!=nullptr) scfC->scfControls.eneConvTol /= 100.0;
-          }
+          //if(firstStep) ss->formGuess(guessSSOptions);
+          //ss->runSCF(emPert);
 
-          ssSCF->fockBuilder->hamiltonianOptions_.SpinFreeOnly = spinfreeonlySave;
-          ssSCF->fockBuilder->hamiltonianOptions_.Gauge = gaugeSave;
-          ssSCF->fockBuilder->hamiltonianOptions_.Gaunt = gauntSave;
-          ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulombSSSS = ssssSave;
-          ssSCF->fockBuilder->hamiltonianOptions_.DiracCoulomb = dcSave;
-#endif
-//xslie
-          ss->runSCF(emPert);
+#if 1 // new SCF
+          std::shared_ptr<OrbitalModifierNewBase> conventionalSCF = nullptr;
+          bool found = false;
+          #define CONSTRUCT_NEWSCF(_ssT,_MatsT,_IntsT)             \
+          if( not found ) try {                          \
+            conventionalSCF = \
+            std::make_shared<ConventionalSCFNew<_ssT,_MatsT,_IntsT>>(  \
+              ss->scfControls, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
+              ,MPI_COMM_WORLD,*memManager) ;                                       \
+            found = true;                                \
+          } catch(...) { };
+
+          // Construct RT object
+          CONSTRUCT_NEWSCF( NEOSS, double, double     );
+          CONSTRUCT_NEWSCF( NEOSS, dcomplex, double   );
+          CONSTRUCT_NEWSCF( NEOSS, dcomplex, dcomplex );
+
+          CONSTRUCT_NEWSCF( HartreeFock, double, double     );
+          CONSTRUCT_NEWSCF( HartreeFock, dcomplex, double   );
+          CONSTRUCT_NEWSCF( HartreeFock, dcomplex, dcomplex );
+
+          CONSTRUCT_NEWSCF( KohnSham, double, double     );
+          CONSTRUCT_NEWSCF( KohnSham, dcomplex, double   );
+          CONSTRUCT_NEWSCF( KohnSham, dcomplex, dcomplex );
+
+          if(conventionalSCF!=nullptr){
+            std::cout<<"xsli test new SCF"<<std::endl;
+            ss->formGuess(guessSSOptions);
+            ss->initializeSCF();
+            conventionalSCF->run(emPert);
+          }
+#endif // new SCF
         }
+
 
         // Run RT job
         if( elecJob == JobType::RT ) {
-
           // Initialize core hamiltonian
           rt->formCoreH(emPert);
-
           // Get correct time length
           if( !firstStep ) {
             rt->intScheme.restoreStep = rt->curState.iStep;
             rt->intScheme.tMax = rt->intScheme.tMax + rt->intScheme.nSteps*rt->intScheme.deltaT;
           }
+          //rt->doPropagation();
 
-          if( MPISize() > 1 ) CErr("RT + MPI NYI!",output);
+#if 1 // new TDSCF
+          std::cout<<"xsli test new RT"<<std::endl;
 
-          rt->doPropagation();
+          std::shared_ptr<OrbitalModifierNewBase> realtimeSCF = nullptr;
+          bool found = false;
 
+          #define CONSTRUCT_NEWRT(_ssT,_MatsT,_IntsT)             \
+          if( not found ) try {                          \
+            realtimeSCF = \
+            std::make_shared<RealTimeSCF<_ssT,_MatsT,_IntsT>>(  \
+            tdSCFOptions, rt->pert, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
+            ,MPI_COMM_WORLD,*memManager) ;                                       \
+            found = true;                                \
+          } catch(...) { }
+
+          // Construct RT object
+          CONSTRUCT_NEWRT( NEOSS, dcomplex, double   );
+          CONSTRUCT_NEWRT( NEOSS, dcomplex, dcomplex );
+
+          CONSTRUCT_NEWRT( HartreeFock, dcomplex, double   );
+          CONSTRUCT_NEWRT( HartreeFock, dcomplex, dcomplex );
+
+          CONSTRUCT_NEWRT( KohnSham, dcomplex, double   );
+          CONSTRUCT_NEWRT( KohnSham, dcomplex, dcomplex );
+
+          if(realtimeSCF!=nullptr) {
+            realtimeSCF->initialize(0);
+            realtimeSCF->run(emPert);
+          }
+#endif // new TDSCF
         }
 
 

@@ -81,7 +81,8 @@ TEST( X2CHF, Ag2_sto3g_ALH_X2C ) {
 TEST( X2CHF, Ag2_sto3g_ALU_X2C ) {
 
   CQSCFTEST( "scf/serial/x2c/Ag2_sto-3g_ALU",
-    "Ag2_sto-3g_ALU.bin.ref",1e-6 );
+    "Ag2_sto-3g_ALU.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -97,7 +98,8 @@ TEST( X2CHF, AgBr_sto3g_DLH_X2C ) {
 TEST( X2CHF, AgBr_sto3g_DLU_X2C ) {
 
   CQSCFTEST( "scf/serial/x2c/AgBr_sto-3g_DLU",
-    "AgBr_sto-3g_DLU.bin.ref",1e-6 );
+    "AgBr_sto-3g_DLU.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true);
 
 };
 
@@ -256,7 +258,8 @@ TEST( X2CHF, PAR_AgBr_sto3g_DLH_X2C ) {
 TEST( X2CHF, PAR_AgBr_sto3g_DLU_X2C ) {
 
   CQSCFTEST( "scf/parallel/x2c/AgBr_sto-3g_DLU",
-    "AgBr_sto-3g_DLU.bin.ref",1e-6 );
+    "AgBr_sto-3g_DLU.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 };
 

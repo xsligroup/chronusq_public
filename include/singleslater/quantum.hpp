@@ -221,23 +221,38 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::computeMultipole(EMPerturbation &pert) {
     ROOT_ONLY(comm);
+    
+    if(this->nC == 4){
+      compute4CDipole(pert);
+      return;
+    }
+
+
+    if(this->nC == 2 and pchgDipole_[0] and pchgDipole_[1] and pchgDipole_[2]){
+      computeFockX2CDipole(pert);
+      return;
+    }
+
+
     // Compute elecric contribution to the dipoles
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) 
-      this->elecDipole[iXYZ] = -this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iXYZ].pointer());
+      this->elecDipole[iXYZ] = -this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iXYZ]->pointer());
 
 
     // Nuclear contributions to the dipoles
     for(auto &atom : this->molecule().atoms){
-    if (atom.quantum) continue;  
-    MatAdd('N','N',3,1,1.,&this->elecDipole[0],3,atom.nucCharge,
-        &atom.coord[0],3,&this->elecDipole[0],3);
+      if (atom.quantum) continue;  
+      MatAdd('N','N',3,1,1.,&this->elecDipole[0],3,atom.nucCharge,
+          &atom.coord[0],3,&this->elecDipole[0],3);
     }
+
+
     // Electric contribution to the quadrupoles
     for(size_t iXYZ = 0, iX = 0; iXYZ < 3; iXYZ++)
     for(size_t jXYZ = iXYZ     ; jXYZ < 3; jXYZ++, iX++){
 
       this->elecQuadrupole[iXYZ][jXYZ] = -
-        this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iX+3].pointer());
+        this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iX+3]->pointer());
       
       this->elecQuadrupole[jXYZ][iXYZ] = this->elecQuadrupole[iXYZ][jXYZ]; 
     }
@@ -259,7 +274,7 @@ namespace ChronusQ {
 
       this->elecOctupole[iXYZ][jXYZ][kXYZ] = -
         this->template computeOBProperty<SCALAR>(
-          (*this->aoints_->lenElectric)[iX+9].pointer());
+          (*this->aoints_->lenElectric)[iX+9]->pointer());
 
       this->elecOctupole[iXYZ][kXYZ][jXYZ] = this->elecOctupole[iXYZ][jXYZ][kXYZ]; 
 
@@ -361,6 +376,66 @@ namespace ChronusQ {
 
   };
   
+template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::compute4CDipole(EMPerturbation &pert) {
+    ROOT_ONLY(comm);
+
+    // Compute elecric contribution to the dipoles
+    for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+      // Scalar
+      double dipole_s = -this->template computeOBProperty<DENSITY_TYPE::SCALAR>(
+          (*(this->aoints_->lenElectric4C))[iXYZ].S().pointer());
+      // MZ
+      double dipole_z = -this->template computeOBProperty<DENSITY_TYPE::MZ>(
+          (*(this->aoints_->lenElectric4C))[iXYZ].Z().pointer());
+      // MY
+      double dipole_y= -this->template computeOBProperty<DENSITY_TYPE::MY>(
+          (*(this->aoints_->lenElectric4C))[iXYZ].Y().pointer());
+      // MX
+      double dipole_x= -this->template computeOBProperty<DENSITY_TYPE::MX>(
+          (*(this->aoints_->lenElectric4C))[iXYZ].X().pointer());
+    
+      this->elecDipole[iXYZ] = dipole_s + dipole_z + dipole_y + dipole_x;
+    }
+
+    
+    for(auto &atom : this->molecule().atoms){
+      if (atom.quantum) continue;  
+      MatAdd('N','N',3,1,1.,&this->elecDipole[0],3,atom.nucCharge,
+          &atom.coord[0],3,&this->elecDipole[0],3);
+    }
+
+  };
+
+template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::computeFockX2CDipole(EMPerturbation &pert) {
+    ROOT_ONLY(comm);
+
+    // Compute elecric contribution to the dipoles
+    for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+      // Scalar
+      double dipole_s = -this->template computeOBProperty<DENSITY_TYPE::SCALAR>(
+          this->pchgDipole_[iXYZ]->S().pointer());
+      // MZ
+      double dipole_z = -this->template computeOBProperty<DENSITY_TYPE::MZ>(
+          this->pchgDipole_[iXYZ]->Z().pointer());
+      // MY
+      double dipole_y= -this->template computeOBProperty<DENSITY_TYPE::MY>(
+          this->pchgDipole_[iXYZ]->Y().pointer());
+      // MX
+      double dipole_x= -this->template computeOBProperty<DENSITY_TYPE::MX>(
+          this->pchgDipole_[iXYZ]->X().pointer());
+    
+      this->elecDipole[iXYZ] = dipole_s + dipole_z + dipole_y + dipole_x;
+    }
+
+    for(auto &atom : this->molecule().atoms){
+      if (atom.quantum) continue;  
+      MatAdd('N','N',3,1,1.,&this->elecDipole[0],3,atom.nucCharge,
+          &atom.coord[0],3,&this->elecDipole[0],3);
+    }
+
+  };
 
 }; // namespace ChronusQ
 

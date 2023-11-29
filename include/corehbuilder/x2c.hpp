@@ -137,7 +137,8 @@ namespace ChronusQ {
     // Compute Fock X2C
     virtual void computeFockX2C(EMPerturbation&,
         std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrix = nullptr,
+        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>,
+        std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>,
         bool incore = true, double threshSchwarz = 1e-12);
     void computeFockX2C_Umatrix(const SquareMatrix<MatsT> &fourCompMOSpin);
 

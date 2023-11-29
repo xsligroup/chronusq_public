@@ -23,6 +23,7 @@
  */
 
 #include <realtime/impl.hpp>
+#include <orbitalmodifiernew/realtimeSCF/impl.hpp>
 
 namespace ChronusQ {
 
@@ -43,5 +44,15 @@ namespace ChronusQ {
   template void RealTime<NEOSS,double>::alloc<double>();
   template void RealTime<NEOSS,double>::alloc<dcomplex>();
   template void RealTime<NEOSS,dcomplex>::alloc<dcomplex>();
+
+  //template class RealTimeSCF<HartreeFock,double,double>;
+  template class RealTimeSCF<HartreeFock,dcomplex,double>;
+  template class RealTimeSCF<HartreeFock,dcomplex,dcomplex>;
+  //template class RealTimeSCF<KohnSham,double,double>;
+  template class RealTimeSCF<KohnSham,dcomplex,double>;
+  template class RealTimeSCF<KohnSham,dcomplex,dcomplex>;
+  //template class RealTimeSCF<NEOSS,double,double>;
+  template class RealTimeSCF<NEOSS,dcomplex,double>;
+  template class RealTimeSCF<NEOSS,dcomplex,dcomplex>;
 
 }; // namespace ChronusQ

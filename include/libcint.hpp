@@ -155,6 +155,7 @@ CQ_CINT_OPT_WRAPPER(int1e_r_optimizer);
 CQ_CINT_INT1E_WRAPPER(int1e_r_cart);
 CQ_CINT_INT1E_WRAPPER(int1e_r_sph);
 CQ_CINT_INT1E_WRAPPER(int1e_r_spinor);
+CQ_INT_WRAPPER(int1e_r_sph);
 
 /* <i|RC DOT RC |j> */
 CQ_CINT_OPT_WRAPPER(int1e_r2_optimizer);
@@ -421,6 +422,7 @@ CQ_CINT_OPT_WRAPPER(int1e_sprsp_optimizer);
 CQ_CINT_INT1E_WRAPPER(int1e_sprsp_cart);
 CQ_CINT_INT1E_WRAPPER(int1e_sprsp_sph);
 CQ_CINT_INT1E_WRAPPER(int1e_sprsp_spinor);
+CQ_INT_WRAPPER(int1e_sprsp_sph);
 
 /* <G i|OVLP |j> */
 CQ_CINT_OPT_WRAPPER(int1e_govlp_optimizer);

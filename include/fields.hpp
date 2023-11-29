@@ -59,7 +59,7 @@ namespace ChronusQ {
    *  Handles the specification of various descriptions of the EM field
    *  perturbation, such as the multipole expansion.
    *
-   *  Expectes field amplidudes of the following:
+   *  Expected field amplitudes of the following:
    *  1. Dipole operator     - [x, y, z]
    *  2. Quadrupole operator - [xx, xy, xz, yy, yz, zz]
    *  ect...
@@ -209,6 +209,5 @@ namespace ChronusQ {
 
 
   // Instantiations of Amplitude getters
-
 };
 

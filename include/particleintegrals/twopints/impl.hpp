@@ -27,6 +27,7 @@
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/twopints/giaodirecteri.hpp>
+#include <particleintegrals/twopints/gtodirectreleri.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
 #include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <typeinfo>
@@ -57,6 +58,10 @@ namespace ChronusQ {
     } else if (tID == typeid(GTODirectTPIContraction<MatsT,IntsT>)) {
       return std::make_shared<GTODirectTPIContraction<MatsU,IntsT>>(
                *std::dynamic_pointer_cast<GTODirectTPIContraction<MatsT,IntsT>>(ch));
+
+    } else if (tID == typeid(GTODirectRelERIContraction<MatsT,IntsT>)) {
+      return std::make_shared<GTODirectRelERIContraction<MatsU,IntsT>>(
+               *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ch));
 
     } else if (tID == typeid(GIAODirectERIContraction)) {
       return std::dynamic_pointer_cast<TPIContractions<MatsU,IntsT>>(ch);

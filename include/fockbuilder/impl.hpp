@@ -24,6 +24,7 @@
 #pragma once
 
 #include <fockbuilder.hpp>
+#include <memory>
 #include <util/timer.hpp>
 #include <cqlinalg.hpp>
 #include <matrix.hpp>
@@ -301,9 +302,17 @@ namespace ChronusQ {
       auto dipAmp = pert.getDipoleAmp(Electric);
 
       for(auto i = 0;    i < 3;     i++)
-        ss.fockMatrix->S() -=
-          2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i].matrix();
 
+        if (ss.nC == 4){
+          if(auto p = std::dynamic_pointer_cast<PauliSpinorSquareMatrices<dcomplex>> (ss.fockMatrix) ){
+              p->S() -= dcomplex(2.0 * dipAmp[i],0) * (*(ss.aoints_->lenElectric4C))[i].S();
+          }else{
+            CErr("Four component Fockmatrix should be complex!");
+          }
+        } else {
+        ss.fockMatrix->S() -=
+          2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i]->matrix();
+        }
     }
 
 #if 0

@@ -79,6 +79,12 @@ namespace ChronusQ {
   REGISTER_MPI_TYPE(int,    MPI_INT   )
   REGISTER_MPI_TYPE(int64_t,MPI_INT64_T)
   REGISTER_MPI_TYPE(size_t, MPI_UINT64_T)
+
+  // For compilers that are known to have `long int` equivalent to `int64_t`, avoid redefinition
+  #if !(defined(__INTEL_COMPILER) || defined(__ICC) || (defined(__GNUC__) && !defined(__clang__)) || defined(_MSC_VER))
+  REGISTER_MPI_TYPE(long int, MPI_LONG)
+  #endif
+
   REGISTER_MPI_TYPE(std::complex<double>, MPI_C_DOUBLE_COMPLEX)
 
   #undef REGISTER_MPI_TYPE

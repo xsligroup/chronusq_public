@@ -21,7 +21,7 @@
 #   E-Mail: xsli@uw.edu
 #
 
-set(INPUT_SRC input/parse.cxx)
+set(INPUT_SRC input/parse.cxx input/freeparsers.cxx)
 
 set(OPT_SRC input/molopts.cxx input/basisopts.cxx 
     input/singleslateropts.cxx input/scfopts.cxx input/rtopts.cxx

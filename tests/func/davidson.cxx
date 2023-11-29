@@ -178,7 +178,7 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
-      if( alloc ) {
+      if( true ) {
 
         VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
         AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);

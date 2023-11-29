@@ -395,7 +395,7 @@ namespace ChronusQ {
         muMatrix[static_cast<char>('X' + j) + onePType] = TAmanager.template malloc_fresh<dcomplex>(onePType);
 
         muMatrix[static_cast<char>('X' + j) + onePType].init_elements([&moMU, offset, j](const typename TArray::index &i){
-          return moMU[std::string()+static_cast<char>('X' + j)](i[0] + offset[0], i[1] + offset[1]);
+          return (*moMU[std::string()+static_cast<char>('X' + j)])(i[0] + offset[0], i[1] + offset[1]);
         });
       }
     }

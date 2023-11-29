@@ -28,151 +28,13 @@
 #include <integrals.hpp>
 #include <fields.hpp>
 #include <util/files.hpp>
+#include <orbitalmodifieroptions.hpp>
 
 // #define TEST_MOINTSTRANSFORMER
 
 namespace ChronusQ {
 
-  // Type of SingleSlater object
-  enum RefType {
-    isRawRef,  // non-specified
-    isRRef,    // RHF/DFT
-    isURef,    // UHF/DFT
-    isRORef,   // ROHF/DFT
-    isTwoCRef, // Two-component
-    isFourCRef // Four-component
-  };
 
-  // A struct that stores reference information
-  struct RefOptions {
-
-    std::string RCflag = "REAL"; // Real or Complex
-
-    RefType refType = isRRef;    // R/U/RO/2c/4c
-
-    bool isKSRef = false;        // HF or DFT
-    bool isEPCRef = false;       // NEO-KS or not
-    bool isX2CRef = false;       // If user used legacy way to reference X2C
-
-    size_t nC = 1;               // number of component
-    bool iCS = true;             // closed shell or not
-
-    std::string funcName;        // DFT functional name
-  };
-
-
-  /**
-   *  \brief A datastructure to hold the information
-   *  pertaining to the control of the Kohn--Sham
-   *  numerical integration.
-   */
-  struct IntegrationParam {
-    double epsilon      = 1e-12; ///< Screening parameter
-    size_t nAng         = 302;   ///< # Angular points
-    size_t nRad         = 100;   ///< # Radial points
-    size_t nRadPerBatch = 4;     ///< # Radial points / macro batch
-  };
-
-  /**
-   *  The Single Slater guess types
-   */ 
-  enum SS_GUESS {
-    CORE,
-    SAD,
-    TIGHT,
-    RANDOM,
-    READMO,
-    READDEN,
-    FCHKMO,
-    // Specific Guess Options For NEO
-    NEOTightProton,
-    NEOConvergeClassical
-  };
-  /**
-   *  The types of steps for the SCF
-   */
-  enum SCF_STEP { _CONVENTIONAL_SCF_STEP, _NEWTON_RAPHSON_STEP };
-
-  /**
-   *  SCF Algorithms
-   */
-  enum SCF_ALG { _CONVENTIONAL_SCF, _NEWTON_RAPHSON_SCF, _SKIP_SCF };
-
-  enum DIIS_ALG {
-    CDIIS,    ///< Commutator DIIS
-    EDIIS,    ///< Energy DIIS
-    CEDIIS,   ///< Commutator & Energy DIIS
-    NONE = -1
-  };
-
-  enum NR_APPROX {
-    FULL_NR,
-    QUASI_BFGS,
-    QUASI_SR1,
-    GRAD_DESCENT
-  };
-
-  /**
-   *  \brief A struct to hold the information pertaining to
-   *  the control of an SCF procedure.
-   *
-   *  Holds information like convergence criteria, DIIS settings,
-   *  max iterations, etc.
-   */ 
-  struct SCFControls {
-
-    // Convergence criteria
-    double rmsdPConvTol = 1e-7; ///< RSMDP Density convergence criteria
-    double maxdPConvTol = 1e-5; ///< MaxDP Density convergence criteria
-    double eneConvTol = 1e-5; ///< Energy convergence criteria
-    double smallEnergy= 1e-9; ///< Small energy threshold
-    // XSLI: FDC is no longer used
-    double denConvTol = 1e-8; ///< RSMDP Density convergence criteria
-    double FDCConvTol = 1e-8; ///< Gradient convergence criteria
-
-    // TODO: need to add logic to set this
-    // Extrapolation flag for DIIS and damping
-    bool doExtrap = true;     ///< Whether to extrapolate Fock matrix
-
-    bool energyOnly = false;  ///< Skip SCF
-
-    // Algorithm and step
-    SCF_STEP  scfStep = _CONVENTIONAL_SCF_STEP;
-    SCF_ALG   scfAlg  = _CONVENTIONAL_SCF;
-    NR_APPROX nrAlg   = QUASI_BFGS;         ///< NR approximation(i.e. quasi-Newton)
-    double nrTrust = 0.1;                   ///< Initial trust region for NR SCF 
-    double nrLevelShift = 0.; 				///< Level shift for diagonal hessian
-
-    // Guess Settings
-    SS_GUESS guess = SAD;
-    SS_GUESS prot_guess = NEOTightProton;
-
-    // DIIS settings 
-    DIIS_ALG diisAlg = CDIIS; ///< Type of DIIS extrapolation 
-    size_t nKeep     = 10;     ///< Number of matrices to use for DIIS
-    double cediisSwitch = 0.05; ///< When to switch from EDIIS to CDIIS
-
-    // Static Damping settings
-    bool   doDamp         = false;           ///< Flag for turning on damping
-    double dampStartParam = 0.7;            ///< Starting damping parameter
-    double dampParam      = dampStartParam; ///< Current Damp parameter 
-    double dampError      = 1e-3; ///< Energy oscillation to turn off damp
-
-    // Incremental Fock build settings
-    bool   doIncFock = false; ///< Whether to perform an incremental fock build
-    size_t nIncFock  = 20;   ///< Restart incremental fock build after n steps
-
-    // Misc control
-    size_t maxSCFIter = 128; ///< Maximum SCF iterations.
-
-    // Printing
-    size_t printMOCoeffs = 0;
-    size_t printLevel = 1;
-    bool   printContractionTiming = false; ///< Whether to print contraction timing during SCF
-    std::string refLongName_;
-    std::string refShortName_;
-
-  }; // SCFControls struct
 
   class SingleSlaterBase;
 
@@ -247,7 +109,8 @@ namespace ChronusQ {
 
 
     // Procedural Functions to be defined in all derived classes
-      
+    virtual void initializeSCF() = 0;
+
     // In essence, all derived classes should be able to:
     //   Form a Fock matrix with the ability to increment
     virtual void formFock(EMPerturbation &, bool increment = false, double xHFX = 1.) = 0;

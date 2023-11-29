@@ -142,7 +142,7 @@ namespace ChronusQ {
             auto dipAmp = pert.getDipoleAmp(Electric);
             for(auto i = 0;    i < 3;     i++){
                 if (dipAmp[i] != 0.0) {
-                  pertContributions->S() -= 2. * dipAmp[i] * (*ss_.aoints_->lenElectric)[i].matrix();
+                  pertContributions->S() -= 2. * dipAmp[i] * (*ss_.aoints_->lenElectric)[i]->matrix();
                 }
             }
           }

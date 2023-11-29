@@ -35,7 +35,8 @@ TEST( UHF, O2_631Gd ) {
 // MnHe sto-3g test
 TEST( UHF, MnHe_sto3G ) {
 
-  CQSCFTEST( "scf/serial/uhf/MnHe_sto-3G", "MnHe_sto-3G.bin.ref" );
+  CQSCFTEST( "scf/serial/uhf/MnHe_sto-3G", "MnHe_sto-3G.bin.ref", 1e-8, 
+            true, true, false, true, true, true, false, "no", true  );
 
 };
 

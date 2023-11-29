@@ -25,8 +25,58 @@
 
 #include <chronusq_sys.hpp>
 
-
 namespace ChronusQ {
+
+  /**
+   * \brief A class to compare two strings in lexicographic order with exceptions:
+   *        1. Dots are before any other characters
+   *        2. Numbers in brackets are compared before any other characters
+   *        3. Numbers in brackets are compared numerically
+   */
+  struct InputKeyCompare {
+    static size_t extractNumber(const std::string& str, size_t index) {
+      size_t num = 0;
+      while (index < str.size() and str[index] != ']') {
+        if (std::isdigit(str[index])) {
+          num = num * 10 + (str[index] - '0');
+        } else {
+          return std::numeric_limits<size_t>::max();
+        }
+        ++index;
+      }
+      return num;
+    }
+
+    bool operator()(const std::string& a, const std::string& b) const {
+      size_t i = 0, j = 0;
+      while (i < a.size() and j < b.size()) {
+        if (a[i] == '[' && b[j] == '[') {
+          size_t numA = extractNumber(a, i+1);
+          size_t numB = extractNumber(b, j+1);
+          if (numA != numB) return numA < numB;
+        } else if (a[i] == '[') {
+          if (b[j] == '.')
+            return false;
+          return true;
+        } else if (b[j] == '[') {
+          if (a[i] == '.')
+            return true;
+          return false;
+        } else {
+          if (a[i] != b[j]) {
+            if (a[i] == '.') return true;
+            if (b[j] == '.') return false;
+            return a[i] < b[j];
+          }
+        }
+        ++i;
+        ++j;
+      }
+      return a.size() < b.size();
+    }
+  };
+
+  typedef std::map<std::string,std::string,InputKeyCompare> InputMap;
 
 
   /**
@@ -34,26 +84,40 @@ namespace ChronusQ {
    *  ChronusQ input file.
    */
   class CQInputFile {
+
+    // friend function to overload the << operator for the CQInputFile class
+    friend std::ostream& operator<<(std::ostream& os, const CQInputFile& inputFile);
   
     std::shared_ptr<std::ifstream> inFile_ = nullptr;  ///< Input file
-  
-    std::map<std::string,std::string> dict_;
-    ///< Input data fields partitioned by section headings 
 
-    // Parses the input file
-    // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
-    void parse();
+    InputMap dict_;
+    ///< Input data fields partitioned by section headings
 
     void parseFreeCQInput(std::string&);
     void parseFreeCQInputNEO(std::string&);
     void parseFreeCQInputElectron(std::string&);
     void parseFreeCQInputSCF(std::string&);
+    void parseFreeCQInputRT(std::string&);
+    void parseFreeCQInputField(std::string&);
+    void parseFreeCQInputSSGuess(std::string&);
 
-    // Parses a section of the input file
-    // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
-    void parse(std::vector<std::string>::const_iterator lines_begin,
-               std::vector<std::string>::const_iterator lines_end,
-               const std::string &prefix);
+
+
+    /**
+     * \brief Add an key-value pair to the input storage
+     * \param [in] key   Key of the data field
+     * \param [in] value Value of the data field
+     */
+    void addData(const std::string &key, const std::string &value);
+
+
+    /**
+     * \brief Merge a subsection into the input storage
+     * \param [in] subsection Subsection to be merged
+     * \param [in] prefix Prefix of the data field
+     */
+    void mergeSection(const InputMap &subsection, const std::string &prefix = "");
+
 
     // Splits query string on "."
     // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
@@ -67,7 +131,7 @@ namespace ChronusQ {
      *  \param [in] inFile  File object to parse
      */  
     CQInputFile(std::shared_ptr<std::ifstream> inFile) :
-      inFile_(inFile){ parse(); }
+      inFile_(inFile){ }
   
   
   
@@ -78,8 +142,17 @@ namespace ChronusQ {
     CQInputFile(const CQInputFile &)            = delete;
     CQInputFile(CQInputFile &&)                 = delete;
     CQInputFile& operator=(const CQInputFile &) = delete; 
-    CQInputFile& operator=(CQInputFile &&)      = delete; 
-  
+    CQInputFile& operator=(CQInputFile &&)      = delete;
+
+    // Parses the input file
+    // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
+    void parse();
+
+    // Parses a section of the input file
+    // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
+    void parse(std::vector<std::string>::const_iterator lines_begin,
+               std::vector<std::string>::const_iterator lines_end,
+               const std::string &prefix);
     /**
      *  Filename constructor.
      *
@@ -88,8 +161,6 @@ namespace ChronusQ {
      */ 
     CQInputFile(std::string inFileName) :
       CQInputFile(std::make_shared<std::ifstream>(inFileName)){ }
-  
-  
   
   
   
@@ -126,12 +197,33 @@ namespace ChronusQ {
      *  \paral  [in] str Query string of a section heading
      *  \return      True if input file contains that heading
      */ 
-    inline bool containsSection(std::string str) const {
-      auto it = dict_.lower_bound(str);
-      if (it == dict_.end()) return false;
-      // Check if the query string is a substring of the section heading
-      return it->first.find(str) == 0;
-    }
+    bool containsSection(const std::string &str) const;
+
+    /**
+     *  Checks whether or not the parsed CQ input file contains
+     *  a query list.
+     *
+     *  \paral  [in] str Query string of a section heading
+     *  \return      True if input file contains that heading
+     */
+    bool containsList(const std::string &str) const;
+
+    /**
+     *  Checks the size of a query list.
+     *
+     *  \paral  [in] str Query string of a section heading
+     *  \return      Size of the query list.
+     */
+    size_t getListSize(const std::string &str) const;
+
+    /**
+     * \brief Add a data to the end of a list
+     * @param str  Query string of a section heading
+     * @param data Data to be added to the list
+     * @param dict InputMap to be appended
+     */
+    void appendList(const std::string &str, const std::string &data);
+    void appendList(const std::string &str, const InputMap &dict);
   
     /**
      *  Checks whether or not the parsed CQ input file contains
@@ -140,41 +232,41 @@ namespace ChronusQ {
      *  \paral  [in] str Query string of a data field (includes section heading)
      *  \return      True if input file contains that data field
      */ 
-    inline bool containsData(std::string str) const {
-      return dict_.find(str) != dict_.end();
-    }
+    bool containsData(std::string str) const;
   
 
 
 
 
-    inline std::vector<std::string> getDataInSection( std::string section )  {
+    std::vector<std::string> getDataInSection( std::string section ) const;
 
-      std::set<std::string> datasets;
 
-      std::string::size_type lenSection = section.size();
-      auto it = dict_.lower_bound(section);
-      while (it != dict_.end()) {
-        const std::string &key = it->first;
-        if (key.find(section) != 0) break;
+    /**
+     *  \brief Returns a subsection of data fields from the input file
+     *
+     *  \param [in] section Section heading
+     *  \return             Vector of data fields in section
+     */
+    InputMap getSection(const std::string &section) const;
 
-        if (key.size() > lenSection) {
-          std::string::size_type nextDotPos = key.find('.', lenSection + 1);
-
-          if (nextDotPos == std::string::npos) {
-            datasets.emplace(key.substr(lenSection + 1));
-          } else {
-            datasets.emplace(key.substr(lenSection + 1, nextDotPos - lenSection - 1));
-          }
-        }
-        ++it;
-      }
-
-      return std::vector<std::string>(datasets.begin(), datasets.end());
-
-    }
+    /**
+     *  \brief Returns a subsection of data fields from the input file
+     *
+     *  \param [in] section Section heading
+     *  \return             Vector of data fields in section
+     */
 
   }; // CQInputFile class
+
+  /**
+   *  \brief Overload the << operator for the CQInputFile class
+   *
+   *  \param [in] os        Output device for data / error output.
+   *  \param [in] inputFile CQInputFile object to be printed
+   *
+   *  \returns std::ostream object
+   */
+  std::ostream& operator<<(std::ostream& os, const CQInputFile& inputFile);
   
   
   // Misc string functions

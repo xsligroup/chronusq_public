@@ -80,6 +80,9 @@ namespace ChronusQ {
     //ORTHO_TYPE            orthoType; ///< Orthogonalization scheme
 
     // Operator storage
+    std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matricies
+    std::vector<double*> moEigenvalues; ///< List of populated MO eigenvalues
+    virtual void initializeSCF(); ///< Initialize SCF, populate MO coefficients and eigenvalues
 
     // AO Fock Matrix
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matricies
@@ -99,6 +102,7 @@ namespace ChronusQ {
 
     // Orthonormal density
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDMOrtho; ///< List of populated orthonormal 1PDM matricies
+    std::vector<SquareMatrix<MatsT>> onePDMAlphaBetaOrtho; ///< List of populated orthonormal 1PDM matricies
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> deltaOnePDM; ///< Change in density for incremental Fock Build
 
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH; ///< Core Hamiltonian (scalar and magnetization)
@@ -119,6 +123,9 @@ namespace ChronusQ {
     // Whether the current Density and Coefficients represent the same wavefunction
     // If so, then RI-K contractions can be done using Coefficients for better performance
     bool denEqCoeff_ = false;
+
+    // Temporary structure to hold x2c picture-changed dipole matrices
+    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> pchgDipole_;
 
     // Constructors
       
@@ -150,7 +157,12 @@ namespace ChronusQ {
       } else {
         refLongName_  = "Complex ";
         refShortName_ = "C-";
-      
+      }
+
+      // Initialize temporary container for x2c picture change dipole
+      pchgDipole_.reserve(3);
+      for (size_t i = 1; i <= 3; i++) {
+        pchgDipole_.emplace_back(nullptr);
       }
 
     }; // SingleSlater constructor
@@ -195,6 +207,8 @@ namespace ChronusQ {
     using QuantumBase::computeEnergy;
     void computeEnergy();
     void computeMultipole(EMPerturbation &);
+    void compute4CDipole(EMPerturbation &);
+    void computeFockX2CDipole(EMPerturbation &);
     void computeSpin();
     virtual std::vector<double> getEnergySummary();
 
@@ -264,7 +278,7 @@ namespace ChronusQ {
     void ao2orthoFock();
     void ao2orthoMOs();
     void ao2orthoDen();
-    void ortho2aoDen();
+    virtual void ortho2aoDen();
     void ortho2aoMOs();
     void orthoAOMO();
 
@@ -273,6 +287,8 @@ namespace ChronusQ {
     virtual void printProperties();
     virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
     virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
+    virtual void setOnePDMOrtho(SquareMatrix<MatsT>*);
+    virtual void setOnePDMAO(SquareMatrix<MatsT>*);
     virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
     virtual void runSCF(EMPerturbation&);
     virtual std::vector<NRRotOptions> buildRotOpt();

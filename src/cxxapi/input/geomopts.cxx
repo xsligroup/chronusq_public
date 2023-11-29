@@ -363,7 +363,7 @@ namespace ChronusQ {
       rt = CQRealTimeOptions(out,input,ss,emPert);
 
       rt->savFile = ss->savFile;
-      rt->createRTDataSets(0);
+      //rt->createRTDataSets(0);
       // Single point job
       MolecularOptions molOpt(0.0, 0.0);
       mol.geometryModifier = std::make_shared<SinglePoint>(molOpt);

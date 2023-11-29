@@ -24,6 +24,7 @@
 #pragma once
 #include <particleintegrals.hpp>
 #include <particleintegrals/onepints.hpp>
+#include <particleintegrals/onepints/relativisticints.hpp>
 
 namespace ChronusQ {
 
@@ -78,7 +79,7 @@ namespace ChronusQ {
   protected:
     size_t order_ = 0;
     bool symmetric_ = false;
-    std::vector<OnePInts<IntsT>> components_;
+    std::vector<std::shared_ptr<OnePInts<IntsT>>> components_;
 
     void orderCheck(size_t order) const {
       if (order != order_)
@@ -136,7 +137,7 @@ namespace ChronusQ {
       size_t size = nComponents();
       components_.reserve(size);
       for (size_t i = 0; i < size; i++) {
-        components_.emplace_back(mem, nb);
+        components_.emplace_back(std::make_shared<OnePInts<IntsT>>(mem, nb));
       }
     }
 
@@ -149,7 +150,7 @@ namespace ChronusQ {
         CErr("Cannot create a Real VectorInts from a Complex one.");
       components_.reserve(other.components_.size());
       for (auto &p : other.components_)
-        components_.emplace_back(p);
+        components_.emplace_back(std::make_shared<OnePInts<IntsT>>(*p));
     }
 
     VectorInts& operator=( const VectorInts &other ) {
@@ -177,19 +178,19 @@ namespace ChronusQ {
     bool symmetric() const { return symmetric_; }
     size_t order() const { return order_; }
 
-    OnePInts<IntsT>& operator[](size_t i) {
+    std::shared_ptr<OnePInts<IntsT>>& operator[](size_t i) {
       return components_[i];
     }
 
-    const OnePInts<IntsT>& operator[](size_t i) const {
+    const std::shared_ptr<OnePInts<IntsT>>& operator[](size_t i) const {
       return components_[i];
     }
 
-    OnePInts<IntsT>& operator[](std::string s) {
+    std::shared_ptr<OnePInts<IntsT>>& operator[](std::string s) {
       return components_[index(indices(s))];
     }
 
-    const OnePInts<IntsT>& operator[](std::string s) const {
+    const std::shared_ptr<OnePInts<IntsT>>& operator[](std::string s) const {
       return components_[index(indices(s))];
     }
 
@@ -197,7 +198,7 @@ namespace ChronusQ {
       std::vector<IntsT*> ps(nComponents());
       std::transform(components_.begin(),
           components_.end(), ps.begin(),
-          [](OnePInts<IntsT> &opi){ return opi.pointer(); });
+          [](std::shared_ptr<OnePInts<IntsT>>& opi){ return opi->pointer(); });
       return ps;
     }
 
@@ -213,8 +214,8 @@ namespace ChronusQ {
     };
 
     virtual void clear() {
-      for (OnePInts<IntsT>& c : components_)
-        c.clear();
+      for (std::shared_ptr<OnePInts<IntsT>>& c : components_)
+        c->clear();
     }
 
     virtual void output(std::ostream &out, const std::string &s = "",
@@ -227,7 +228,7 @@ namespace ChronusQ {
           opiStr = "VectorInts[" + s + "].";
         for (size_t i = 0; i < size(); i++)
           prettyPrintSmart(out, opiStr+indexToLabel(i, order(), symmetric()),
-                           operator[](i).pointer(), this->nBasis(),
+                           operator[](i)->pointer(), this->nBasis(),
                            this->nBasis(), this->nBasis());
       } else {
         switch (order()) {
@@ -269,12 +270,12 @@ namespace ChronusQ {
           size_t size = nComponents();
           components_.reserve(size);
           for (size_t i = 0; i < size; i++) {
-            components_.emplace_back(memManager_, NB);
+            components_.emplace_back(std::make_shared<OnePInts<IntsT>>(memManager_, NB));
           }
         }
 
-        for (OnePInts<IntsT>& comp : components_)
-          comp.broadcast(comm, root);
+        for (std::shared_ptr<OnePInts<IntsT>>& comp : components_)
+          comp->broadcast(comm, root);
       }
 #endif
     }
@@ -284,7 +285,8 @@ namespace ChronusQ {
       VectorInts<IntsU> spinBlockInts(memManager_, NB * 2, order_, symmetric_);
       size_t size = nComponents();
       for (size_t i = 0; i < size; i++) {
-        spinBlockInts.components_[i] = components_[i].template spatialToSpinBlock<IntsU>();
+        spinBlockInts.components_[i] = std::make_shared<OnePInts<IntsU>>(*components_[i]);
+        spinBlockInts.components_[i]->template spatialToSpinBlock<IntsU>();
       }
       return spinBlockInts;
     }
@@ -300,9 +302,29 @@ namespace ChronusQ {
        std::is_same<TransT, dcomplex>::value),
       dcomplex, double>::type> transInts(
           memManager(), NT, order(), symmetric());
-      for (size_t i = 0; i < size(); i++)
-        transInts[i] = (*this)[i].transform(TRANS, T, NT, LDT);
+      for (size_t i = 0; i < size(); i++){
+        std::shared_ptr<OnePInts<IntsT>> comp = (*this)[i];
+        
+        if (std::shared_ptr<OnePRelInts<IntsT>> relInt
+            = std::dynamic_pointer_cast<OnePRelInts<IntsT>>(comp)) {
+          transInts[i] = std::make_shared<OnePRelInts<typename std::conditional<
+            (std::is_same<IntsT, dcomplex>::value or std::is_same<TransT, dcomplex>::value),
+            dcomplex, double>::type>>( relInt->transform(TRANS, T, NT, LDT), 0 );
+            continue;
+        }
+        transInts[i] = std::make_shared<OnePInts<typename std::conditional<
+            (std::is_same<IntsT, dcomplex>::value or std::is_same<TransT, dcomplex>::value),
+            dcomplex, double>::type>>( comp->transform(TRANS, T, NT, LDT), 0 );
+      }
       return transInts;
+    }
+
+    void convert2OnePRelInts(CQMemManager &mem, size_t nb, bool SORelativistic){
+      size_t originalSize = this->size();
+      components_.clear();
+      components_.reserve(originalSize);
+      for (size_t i = 0; i < originalSize; i++) 
+        components_.emplace_back(std::make_shared<OnePRelInts<IntsT>>(mem, nb, SORelativistic));
     }
 
     ~VectorInts() {}

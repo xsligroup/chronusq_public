@@ -52,6 +52,15 @@ inline H5::CompType H5PredType() {
     return H5::CompType(
       H5::DataType(H5::PredType::NATIVE_CHAR).getId()
     );
+  else if( std::is_same<size_t,T>::value ) {
+    if (sizeof(size_t) == 4) {
+      return H5::CompType(H5::DataType(H5::PredType::STD_U32LE).getId());
+    } else if (sizeof(size_t) == 8) {
+      return H5::CompType(H5::DataType(H5::PredType::STD_U64LE).getId());
+    } else {
+      ChronusQ::CErr("Cannot determine size of size_t");
+    }
+  }
   else if( std::is_same<dcomplex,T>::value ) {
     typedef struct {
       double re;
@@ -172,6 +181,31 @@ namespace ChronusQ {
         }
       };
 
+      template <typename T>
+      void partialReadData(const std::string &dataSet, T* data,
+                           const std::vector<hsize_t> &start, const std::vector<hsize_t> &dims,
+                           const std::vector<hsize_t> &memStart = {},
+                           const std::vector<hsize_t> &memDims = {} ) {
+        OpenDataSet(file,obj,dataSet);
+        H5::DataSpace space = obj.getSpace();
+        space.selectHyperslab( H5S_SELECT_SET, &dims[0], &start[0] );
+
+        try{
+          if ( memStart.empty() )
+            // XSLI: this line is not working
+            obj.read(data, H5PredType<T>(), space, space);
+          else {
+            H5::DataSpace mspace(memDims.size(), &memDims[0]);
+            mspace.selectHyperslab( H5S_SELECT_SET, &dims[0], &memStart[0]);
+            obj.read(data, H5PredType<T>(), mspace, space);
+          }
+        } catch (H5::DataSetIException error) {
+          std::cerr << "Dataset exception caught: " << error.getDetailMsg() << std::endl;
+          ChronusQ::CErr("Error reading partial data from file");
+        }
+
+      };
+
       size_t sizeOfData(const std::string &dataSet) {
 
         size_t datSize;
@@ -195,18 +229,24 @@ namespace ChronusQ {
           const std::vector<hsize_t> &start, const std::vector<hsize_t> &dims,
           const std::vector<hsize_t> &memStart = {},
           const std::vector<hsize_t> &memDims = {} ) {
-        OpenDataSet(file,obj,dataSet);
+        OpenDataSet(file, obj, dataSet);
         H5::DataSpace space = obj.getSpace();
-        space.selectHyperslab( H5S_SELECT_SET, &dims[0], &start[0] );
- 
-        if ( memStart.empty() )
-          obj.write(data, H5PredType<T>(), space, space);
+        space.selectHyperslab(H5S_SELECT_SET, &dims[0], &start[0]);
 
-        else {
-          H5::DataSpace mspace(memDims.size(), &memDims[0]);
-          mspace.selectHyperslab( H5S_SELECT_SET, &dims[0], &memStart[0]);
-          obj.write(data, H5PredType<T>(), mspace, space);
+        try {
+          if (memStart.empty())
+            // XSLI: this line is not working
+            obj.write(data, H5PredType<T>(), space, space);
+          else {
+            H5::DataSpace mspace(memDims.size(), &memDims[0]);
+            mspace.selectHyperslab(H5S_SELECT_SET, &dims[0], &memStart[0]);
+            obj.write(data, H5PredType<T>(), mspace, space);
+          }
+        } catch (H5::DataSetIException error) {
+          std::cerr << "Dataset exception caught: " << error.getDetailMsg() << std::endl;
+          ChronusQ::CErr("Error writing partial data to file");
         }
+
       };
 
 

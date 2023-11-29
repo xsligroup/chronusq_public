@@ -112,7 +112,7 @@ namespace ChronusQ {
       { }
 
 
-
+    using QuantumBase::computeEnergy;
     //void getNRCoeffs(MatsT*);
     void computeFullNRStep(MatsT*);
     std::pair<double,MatsT*> getStab();

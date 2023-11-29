@@ -81,6 +81,22 @@ namespace ChronusQ {
     std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
 #endif
 
+#ifdef _THREAD_TIMING_
+    // Print current time
+    time_t currentClockTime;
+    time(&currentClockTime);
+
+    std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
+#endif
+
+#ifdef _THREAD_TIMING_
+    // Print current time
+    time_t currentClockTime;
+    time(&currentClockTime);
+
+    std::cout << "MPIAllReduceInPlace clock time: " << ctime(&currentClockTime) << std::endl;
+#endif
+
     // FIXME: This should be able to be done with MPI_IN_PLACE for
     // the root process
 

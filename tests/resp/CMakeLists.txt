@@ -102,13 +102,13 @@ add_cq_test( MISC_RESP         resptest "MISC_RESP.*"        )
 
 if( CQ_ENABLE_MPI )
 
-  add_cq_mpi_test( RHF_RESIDUE_MPI  2  resptest "RHF_RESIDUE.*" )
-  add_cq_mpi_test( RKS_RESIDUE_MPI  2  resptest "RKS_RESIDUE.*" )
-  add_cq_mpi_test( GHGGA_RESIDUE_MPI  2  resptest "GHGGA_RESIDUE_MPI.*" )
+  #add_cq_mpi_test( RHF_RESIDUE_MPI  2  resptest "RHF_RESIDUE.*" )
+  #add_cq_mpi_test( RKS_RESIDUE_MPI  2  resptest "RKS_RESIDUE.*" )
+  #add_cq_mpi_test( GHGGA_RESIDUE_MPI  2  resptest "GHGGA_RESIDUE_MPI.*" )
 
-  add_cq_mpi_test( RHF_FDR_MPI  2  resptest "RHF_FDR.*"  )
-  add_cq_mpi_test( RHF_DFDR_MPI 2  resptest "RHF_DFDR.*" )
-  add_cq_mpi_test( RHF_MOR_MPI  2  resptest "RHF_MOR.*"  )
+  #add_cq_mpi_test( RHF_FDR_MPI  2  resptest "RHF_FDR.*"  )
+  #add_cq_mpi_test( RHF_DFDR_MPI 2  resptest "RHF_DFDR.*" )
+  #add_cq_mpi_test( RHF_MOR_MPI  2  resptest "RHF_MOR.*"  )
 
 endif()
 

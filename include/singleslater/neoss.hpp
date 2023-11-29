@@ -213,6 +213,8 @@ namespace ChronusQ {
 
       }
 
+      void initializeSCF() override;
+
       void formGuess(const SingleSlaterOptions& ssopt) {
         applyToEach([&](SubSSPtr& ss){ ss->formGuess(ssopt); });
       }
@@ -248,12 +250,16 @@ namespace ChronusQ {
       virtual void printProperties();
       virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
       virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
+      virtual void setOnePDMOrtho(SquareMatrix<MatsT>*);
+      virtual void setOnePDMAO(SquareMatrix<MatsT>*);
       virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
       virtual double getTotalEnergy() { return this->totalEnergy; };
       virtual void setDenEqCoeff(bool val);
+      virtual void ortho2aoDen();
 
 
       // Properties
+      using QuantumBase::computeEnergy;
       void computeEnergy() {
 
         this->totalEnergy = 0.;

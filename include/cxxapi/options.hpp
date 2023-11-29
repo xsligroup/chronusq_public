@@ -43,6 +43,7 @@
 
 namespace ChronusQ {
 
+  // TODO: Remove duplicated JobType enum
   enum class CQJobType {
     SCF,
     RT,

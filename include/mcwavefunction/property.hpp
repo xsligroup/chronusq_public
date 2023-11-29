@@ -151,12 +151,12 @@ namespace ChronusQ {
 
       for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
         if (referenceWaveFunction().nC == 1)
-                 (*AOdipole)[iXYZ] = (*reference().aoints_->lenElectric)[iXYZ];
+            (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*reference().aoints_->lenElectric)[iXYZ]) );
         else if (referenceWaveFunction().nC == 2)
-          (*AOdipole)[iXYZ] = (*reference().aoints_->lenElectric)[iXYZ]
-                                .template spatialToSpinBlock<IntsT>();
-        (*AOdipole)[iXYZ].subsetTransform('N',reference().mo[0].pointer(),
-                nAO, active, (*MOdipole_scr)[iXYZ].pointer(), false);
+            (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( (*reference().aoints_->lenElectric)[iXYZ]->template spatialToSpinBlock<IntsT>() ) ;
+        
+        (*AOdipole)[iXYZ]->subsetTransform('N',reference().mo[0].pointer(),
+            nAO, active, (*MOdipole_scr)[iXYZ]->pointer(), false);
       }
 
       moints.addIntegral("MOdipole", MOdipole_scr);
@@ -166,8 +166,8 @@ namespace ChronusQ {
 
     // dipole strength D = Tr(TDM \dot MOdiple) Tr(TDM^* \dot MOdipole)
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-      D += blas::dotu(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ].pointer(),1)
-          *blas::dotu(nCorrO*nCorrO,tmpTDM2.pointer(),1,(*MOdipole)[iXYZ].pointer(),1);
+      D += blas::dotu(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ]->pointer(),1)
+          *blas::dotu(nCorrO*nCorrO,tmpTDM2.pointer(),1,(*MOdipole)[iXYZ]->pointer(),1);
     }
 
     // oscillator strength f = 2/3 (E2 - E1) D.

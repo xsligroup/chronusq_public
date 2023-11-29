@@ -93,7 +93,8 @@ TEST( RI_RHF, water_631Gd_cd_spanfactorreuse ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_traditional ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_traditional",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -101,7 +102,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_traditional ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_traditional_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_traditional_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -109,7 +111,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_traditional_libcint ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_dynamiceri ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_dynamiceri",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -117,7 +120,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_dynamiceri ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_dynamiceri_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_dynamiceri_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -125,7 +129,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_dynamiceri_libcint ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_dynamicall ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_dynamicall",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -133,7 +138,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_dynamicall ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_dynamicall_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_dynamicall_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -141,7 +147,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_dynamicall_libcint ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactor ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_spanfactor",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -149,7 +156,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactor ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactor_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_spanfactor_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -157,7 +165,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactor_libcint ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactorreuse ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_spanfactorreuse",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -165,7 +174,8 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactorreuse ) {
 TEST( RI_RHF, H2S_ccpVDZ_cd_spanfactorreuse_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_spanfactorreuse_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -307,7 +317,8 @@ TEST( RI_RHF, PAR_water_631Gd_cd_spanfactorreuse ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_traditional",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -315,7 +326,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_traditional_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -323,7 +335,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional_libcint ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamiceri ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_dynamiceri",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -331,7 +344,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamiceri ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamiceri_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_dynamiceri_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -339,7 +353,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamiceri_libcint ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamicall ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_dynamicall",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -347,7 +362,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamicall ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamicall_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_dynamicall_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -355,7 +371,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_dynamicall_libcint ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactor ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_spanfactor",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -363,7 +380,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactor ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactor_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_spanfactor_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -371,7 +389,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactor_libcint ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactorreuse ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_spanfactorreuse",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 
@@ -379,7 +398,8 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactorreuse ) {
 TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_spanfactorreuse_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_spanfactorreuse_libcint",
-             "H2S_cc-pvdz_cd.bin.ref" );
+             "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
+              true, true, true, true, true, true, false, "no", true );
 
 };
 

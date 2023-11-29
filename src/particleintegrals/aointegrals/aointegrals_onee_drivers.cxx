@@ -467,15 +467,10 @@ namespace ChronusQ {
 
     clear();
 
-    Eigen::Map<
-      Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
-    > VMap(pointer(), NB, NB), pVpMap(scalar().pointer(), NB, NB);
+    Eigen::Map< Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> > VMap(pointer(), NB, NB);
+    Eigen::Map< Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> > pVpMap(scalar().pointer(), NB, NB);
 
-    std::vector<
-      Eigen::Map<
-        Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
-      >
-    > pxVpMaps;
+    std::vector< Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> > pxVpMaps;
     if (options.OneESpinOrbit) {
 
       if (not hasSpinOrbit())
@@ -854,13 +849,168 @@ namespace ChronusQ {
 
   };
 
+  /**
+   *  \brief Computes relativistic dipole integrals,
+   *         using int1e_sprsp by libcint
+   */
+  template <>
+  void MultipoleInts<dcomplex>::MultipoleRelDriverLibcint(const Molecule&,
+      const BasisSet&, const HamiltonianOptions&) {
+    CErr("Only real GTOs are allowed",std::cout);
+  };
+  template <>
+  void MultipoleInts<double>::MultipoleRelDriverLibcint(const Molecule &molecule_,
+      const BasisSet &originalBasisSet, const HamiltonianOptions &options) {
+
+    if (originalBasisSet.forceCart)
+      CErr("Libcint + cartesian GTO NYI.");
+
+    if (this->highOrder_ > 1)
+      CErr("MultipoleRelDriverLibcint only handles 1st order Multipole");
+
+    BasisSet basisSet_ = originalBasisSet.groupGeneralContractionBasis();
+
+    size_t buffSize = std::max_element(basisSet_.shells.begin(),
+                                       basisSet_.shells.end(),
+                                       [](libint2::Shell &a, libint2::Shell &b) {
+                                         return a.size() < b.size();
+                                       })->size();
+    buffSize *= buffSize;
+    
+    int nAtoms = molecule_.nAtoms;
+    int nShells = basisSet_.nShell;
+
+    // ATM_SLOTS = 6; BAS_SLOTS = 8;
+    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
+    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    
+    basisSet_.setLibcintEnv(molecule_, atm, bas, env, options.finiteWidthNuc);
+
+    clear();
+    
+    //Container for LL dipoles
+    std::vector< Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> > LLMaps;
+    LLMaps.reserve(3);
+    for(double* ptr: this->dipolePointers()) LLMaps.emplace_back(ptr, NB, NB);
+
+    //Container for SS dipoles
+    std::vector< Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> > SSMaps;
+    buffSize *= 12;
+    SSMaps.reserve(12);
+    for (size_t i = 0; i < 3; i++){
+      if(auto di = std::dynamic_pointer_cast<OnePRelInts<double>>((*this)[i])){
+        for (double *ptr : di->SOXYZPointers())   SSMaps.emplace_back(ptr, NB, NB);
+        SSMaps.emplace_back(di->scalar().pointer(), NB, NB);
+      }else{
+        CErr("OnePInts Stored in MultipoleInts Not Converted to OnePRelInts");
+      }
+    }
+    
+
+    size_t cache_size = 0;
+    for (int i = 0; i < nShells; i++) {
+      size_t n;
+      int shls[2]{i,i};
+      n = int1e_r_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+      cache_size = std::max(cache_size, n);
+      n = int1e_sprsp_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+      cache_size = std::max(cache_size, n);
+    }
+    
+    // Determine the number of OpenMP threads
+    int nthreads = GetNumThreads();
+
+    double *buffAll = memManager_.template malloc<double>(buffSize*nthreads);
+    double *cacheAll = memManager_.template malloc<double>(cache_size*nthreads);
+
+    #pragma omp parallel
+    {
+      int thread_id = GetThreadID();
+      size_t n1,n2;
+      int shls[2];
+      double *buff = buffAll + buffSize * thread_id;
+      double *cache = cacheAll + cache_size * thread_id;
+
+      // Loop over unique shell pairs
+      for(size_t s1(0), bf1_s(0), s12(0); s1 < basisSet_.nShell; bf1_s+=n1, s1++){
+        n1 = basisSet_.shells[s1].size(); // Size of Shell 1
+      for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++, s12++) {
+        n2 = basisSet_.shells[s2].size(); // Size of Shell 2
+
+        // Round Robbin work distribution
+        #ifdef _OPENMP
+        if( s12 % nthreads != thread_id ) continue;
+        #endif
+
+        // Assign shells, note row-major in libcint
+        shls[0] = int(s2);
+        shls[1] = int(s1);
+
+        // Place integral blocks into their respective matricies
+        Eigen::Map<
+          const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+            Eigen::RowMajor>
+        > bufMat(buff, n1, n2);
+
+        // Compute LL dipole integrals
+        if(int1e_r_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+          size_t n1n2 = n1*n2;
+          // Place x,y,z integral blocks into their respective matricies
+          for(auto iMat = 0; iMat < 3; iMat++){
+            Eigen::Map<
+              const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>>
+              bufMat(buff + iMat * n1n2,n1,n2);
+
+            LLMaps[iMat].block(bf1_s,bf2_s,n1,n2) = bufMat.template cast<double>();
+            // Symmetrize
+            LLMaps[iMat].block(bf2_s,bf1_s,n2,n1) = bufMat.transpose().template cast<double>();
+          } // Loop over x y z direction
+        }
+
+
+
+        // Compute SS dipole integrals
+        if (int1e_sprsp_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+          size_t n1n2 = n1*n2;
+          // Place 12 integral blocks into their respective matricies
+          // Order: X_x, X_y, X_z, X_s, Y_x, Y_y, Y_z, Y_s, Z_x, Z_y, Z_z, Z_s
+          for(auto iMat = 0; iMat < 12; iMat++){
+            Eigen::Map<
+              const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>>
+              bufMat(buff + iMat * n1n2,n1,n2);
+
+            SSMaps[iMat].block(bf1_s,bf2_s,n1,n2) = bufMat.template cast<double>();
+            // Symmetrize
+            SSMaps[iMat].block(bf2_s,bf1_s,n2,n1) = bufMat.transpose().template cast<double>();
+          } // Loop over integral blocks
+        }
+        
+        } // Loop over s2 <= s1
+      } // Loop over s1
+
+    } // end OpenMP context
+
+    memManager_.free(cacheAll, buffAll, env, bas, atm);
+
+    //Currently, did not scale dipole by particle charge
+  };
+
   template <>
   void MultipoleInts<double>::computeAOInts(BasisSet &basis, Molecule &mol,
       EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &options) {
     if (options.basisType != REAL_GTO)
       CErr("Only Real GTOs are allowed in MultipoleInts<double>",std::cout);
-    if (options.OneEScalarRelativity or options.OneESpinOrbit)
-      CErr("Relativistic multipole integrals are implemented in OnePRelInts",std::cout);
+    // For 4C, use Libcint to compute multipole
+    if (options.OneEScalarRelativity or options.OneESpinOrbit) {
+      if (options.Libcint) {
+        MultipoleRelDriverLibcint(mol, basis, options);
+        return;
+      }    
+      CErr("Relativistic multipole integrals are implemented with Libint2",std::cout);
+    }
 
     std::vector<double*> _multipole(1, nullptr);
     libint2::Operator libOp;
@@ -1056,4 +1206,3 @@ namespace ChronusQ {
       const HamiltonianOptions&);
 
 }; // namespace ChronusQ
-

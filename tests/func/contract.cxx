@@ -109,6 +109,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
 
   // Input file for the constructions of Basis sets and Molecules
   CQInputFile input(FUNC_INPUT "contract_ref.inp");
+  input.parse();
   
   // Memory
   auto memManager = CQMiscOptions(std::cout,input); 
@@ -116,6 +117,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
   std::string scrName;
   
   // Molecule and BasisSet
+  std::cout << input << std::endl;
   Molecule mol(std::move(CQMoleculeOptions(std::cout,input,scrName)));
   std::shared_ptr<BasisSet> basis = CQBasisSetOptions(std::cout,input,mol,"BASIS");
 

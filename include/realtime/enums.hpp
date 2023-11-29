@@ -23,32 +23,10 @@
  */
 
 #pragma once
+#include <orbitalmodifieroptions.hpp>
 
 namespace ChronusQ {
 
-  enum IntegrationAlgorithm {
-    MMUT,
-    ExpMagnus2
-  };
-
-  enum PropagationStep {
-    ForwardEuler,
-    ModifiedMidpoint,
-    ExplicitMagnus2
-  };
-
-  enum PropagatorAlgorithm {
-    Diagonalization,
-    TaylorExpansion,
-    ChebyshevExpansion
-  };
-
-  enum FieldEnvelopeTyp {
-    Constant,
-    LinRamp,
-    Gaussian,
-    Step
-  };
 
 };
 

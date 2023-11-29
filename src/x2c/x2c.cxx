@@ -555,6 +555,7 @@ namespace ChronusQ {
   void X2C<MatsT, IntsT>::computeFockX2C(EMPerturbation &emPert,
       std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH,
       std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrix,
+      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> pchgDipole_,
       bool incore, double threshSchwarz) {
 
     size_t NP = uncontractedBasis_.nPrimitive;
@@ -633,6 +634,19 @@ namespace ChronusQ {
 
       *fockMatrix = fourCompFock.transform('N', U, 2 * NB, 4 * NP).template spinScatter<MatsT>(
           ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
+
+
+      SquareMatrix<dcomplex> fourCompDipoleX = (*(fourCompSS.aoints_->lenElectric4C))[0].template spinGather<dcomplex>();
+      SquareMatrix<dcomplex> fourCompDipoleY = (*(fourCompSS.aoints_->lenElectric4C))[1].template spinGather<dcomplex>();
+      SquareMatrix<dcomplex> fourCompDipoleZ = (*(fourCompSS.aoints_->lenElectric4C))[2].template spinGather<dcomplex>();
+
+      *pchgDipole_[0] = fourCompDipoleX.transform('N', U, 2 * NB, 4 * NP).template spinScatter<dcomplex>(
+          ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
+      *pchgDipole_[1] = fourCompDipoleY.transform('N', U, 2 * NB, 4 * NP).template spinScatter<dcomplex>(
+          ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
+      *pchgDipole_[2] = fourCompDipoleZ.transform('N', U, 2 * NB, 4 * NP).template spinScatter<dcomplex>(
+          ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
+
     }
 
     memManager_.free(U);
@@ -641,17 +655,20 @@ namespace ChronusQ {
 
   template void X2C<dcomplex,double>::computeFockX2C(EMPerturbation&,
       std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, bool, double);
+      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, 
+      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double);
 
   template<> void X2C<dcomplex,dcomplex>::computeFockX2C(EMPerturbation&,
       std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, bool, double) {
+      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, 
+      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 
   template void X2C<double,double>::computeFockX2C(EMPerturbation&,
       std::shared_ptr<PauliSpinorSquareMatrices<double>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>, bool, double);
+      std::shared_ptr<PauliSpinorSquareMatrices<double>>, 
+      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double);
 
 
   /**
@@ -837,7 +854,12 @@ namespace ChronusQ {
       if (not incore)
         threshSchwarz = tpi->threshSchwarz();
 
-      x2c->computeFockX2C(emPert, coreH, ref.fockMatrix, incore, threshSchwarz);
+      // Initialize the returned dipole matrix
+      ref.pchgDipole_[0] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[1] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[2] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+
+      x2c->computeFockX2C(emPert, coreH, ref.fockMatrix, ref.pchgDipole_, incore, threshSchwarz);
 
 #ifdef CQ_ENABLE_MPI
       // BCast fockMatrix to all MPI processes

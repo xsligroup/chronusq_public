@@ -920,6 +920,8 @@ namespace ChronusQ {
       CErr("4C Gauge and SSSS terms NYI with libint. "
             "Please use libcint = true instead.", out);
 
+    if(refOptions.refType == isFourCRef)  hamiltonianOptions.Libcint=true;
+
   }
 
   /**

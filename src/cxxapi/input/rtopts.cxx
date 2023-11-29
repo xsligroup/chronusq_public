@@ -37,19 +37,24 @@ namespace ChronusQ {
     std::vector<std::string> allowedKeywords = {
       "TYPE",          // Type of dynamics: BOMD (Default), Ehrenfest, RT
       "TMAX",          // The total time for the whole dynamics: 100 fs (Default)
-      "UNITS",         // The units of time: FS (Default), AU
+      "MAXSTEPS",
+      "UNITS",         // The units of time: FS (Default), AU //TODO: this option is never used
       "DELTAT",
       "IRSTRT",
       "FIELD",
       "INTALG",
+      "RESTARTALG",
       "RESTARTSTEP",
+      "RESTARTFROM",
       "SAVESTEP",
       "RESTART",
       "SCFFIELD",
       "PRINTLEVEL",
       "ORBITALPOPULATION",
       "PRINTDEN",
-      "PRINTCONTRACTIONTIMING"
+      "PRINTCONTRACTIONTIMING",
+      "PRINTSTEP",
+      "RTGaunt"
     };
 
     // Specified keywords

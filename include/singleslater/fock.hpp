@@ -108,7 +108,10 @@ namespace ChronusQ {
              {MAGNETIC_MULTIPOLE,1}};
 
     // Multipole integrals NYI for 4C
-    if (nC == 4) ops.resize(3);
+    // if (nC == 4) ops.resize(3);
+    // ADL implemeting 4c dipole
+    if (nC == 4) ops = {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}, {LEN_ELECTRIC_MULTIPOLE,1}};
+
 
     // In case of X2C coreHBuilder, here we only compute
     // non-relativistic one electron integrals for contracted basis functions.

@@ -449,6 +449,27 @@ std::vector<NRRotOptions> SingleSlater<MatsT,IntsT>::buildRotOpt(){
 }
 
 template<typename MatsT, typename IntsT>
+void SingleSlater<MatsT, IntsT>::initializeSCF() {
+
+  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
+
+  // Setup MO reference vector
+  if( iRO ) {
+    this->moCoefficients.emplace_back(this->mo[0]);
+  } else {
+    for( auto& m : this->mo )
+      this->moCoefficients.emplace_back(m);
+  }
+
+  // Setup Eigenvalue vector
+  if( this->nC == 1 and not(iCS or iRO) ) {
+    this->moEigenvalues = {this->eps1, this->eps2};
+  } else {
+    this->moEigenvalues = {this->eps1};
+  }
+}
+
+template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
 
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
@@ -559,6 +580,49 @@ std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::ge
  *            matrices are spin gathered.
  */
 template<typename MatsT, typename IntsT>
+void SingleSlater<MatsT, IntsT>::setOnePDMOrtho(SquareMatrix<MatsT> *tempOnePDMOrtho) {
+
+  if(nC == 1) {
+    if(iCS) {
+      *onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0]);
+    } else {
+      *onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0],tempOnePDMOrtho[1]);
+    }
+  } else {
+    *onePDMOrtho = tempOnePDMOrtho[0].template spinScatter<MatsT>();
+  }
+
+};   // SingleSlater<MatsT,IntsT> :: setOnePDMOrtho
+
+template<typename MatsT, typename IntsT>
+void SingleSlater<MatsT, IntsT>::setOnePDMAO(SquareMatrix<MatsT> *tempOnePDMAO) {
+
+  // Scatter to spin blocks on root process
+  if( MPIRank(comm) == 0 ) {
+    if(nC == 1) {
+      if(iCS) {
+        *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0]);
+      } else {
+        *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0],tempOnePDMAO[1]);
+      }
+    } else {
+      *this->onePDM = tempOnePDMAO[0].template spinScatter<MatsT>();
+    }
+  } 
+
+  #ifdef CQ_ENABLE_MPI
+    // Broadcast the 1PDM to all MPI processes
+    if( MPISize(comm) > 1 ) {
+      size_t NB  = this->nAlphaOrbital() * nC;
+      std::cerr  << "  *** Scattering the 1PDMAO ***\n";
+      for(auto p : this->onePDM->SZYXPointers())
+        MPIBCast(p,NB*NB/nC/nC,0,comm);
+    }
+  #endif
+
+};   // SingleSlater<MatsT,IntsT> :: setOnePDMAO
+
+template<typename MatsT, typename IntsT>
 std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::getOnePDM() {
 
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
@@ -568,11 +632,11 @@ std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::ge
     return {std::make_shared<SquareMatrix<MatsT>>(MatsT(0.5) * this->onePDM->S() + MatsT(0.5)*this->onePDM->Z())};
   } else if( this->nC == 1 ) {
     std::shared_ptr<SquareMatrix<MatsT>> dA = std::make_shared<SquareMatrix<MatsT>>(
-            MatsT(0.5) * this->onePDM->S() + MatsT(0.5) * this->onePDM->Z()
-         );
+      MatsT(0.5) * this->onePDM->S() + MatsT(0.5) * this->onePDM->Z()
+    );
     std::shared_ptr<SquareMatrix<MatsT>> dB = std::make_shared<SquareMatrix<MatsT>>(
-            MatsT(0.5) * this->onePDM->S() - MatsT(0.5) * this->onePDM->Z()
-         );
+      MatsT(0.5) * this->onePDM->S() - MatsT(0.5) * this->onePDM->Z()
+    );
     return {dA, dB};
   } else {
     return {std::make_shared<SquareMatrix<MatsT>>(this->onePDM->template spinGather<MatsT>())};
@@ -597,7 +661,8 @@ std::vector<std::shared_ptr<Orthogonalization<MatsT>>> SingleSlater<MatsT, IntsT
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::printProperties() {
   printMOInfo(std::cout);
-  if( this->nC != 4 ) this->printMultipoles(std::cout);
+  //if( this->nC != 4 ) this->printMultipoles(std::cout);
+  this->printMultipoles(std::cout);
   if( this->nC != 4 ) this->printSpin(std::cout);
   printMiscProperties(std::cout);
 }

@@ -25,7 +25,7 @@
 #include <particleintegrals.hpp>
 #include <particleintegrals/onepints.hpp>
 #include <particleintegrals/vectorints.hpp>
-
+#include <particleintegrals/onepints/relativisticints.hpp>
 namespace ChronusQ {
 
   /**
@@ -136,22 +136,22 @@ namespace ChronusQ {
     bool symmetric() const { return symmetric_; }
     size_t highOrder() const { return highOrder_; }
 
-    OnePInts<IntsT>& operator[](size_t i) {
+    std::shared_ptr<OnePInts<IntsT>>& operator[](size_t i) {
       std::pair<size_t, size_t> indices = index(i);
       return components_[indices.first][indices.second];
     }
 
-    const OnePInts<IntsT>& operator[](size_t i) const {
+    const std::shared_ptr<OnePInts<IntsT>>& operator[](size_t i) const {
       std::pair<size_t, size_t> indices = index(i);
       return components_[indices.first][indices.second];
     }
 
-    OnePInts<IntsT>& operator[](std::string s) {
+    std::shared_ptr<OnePInts<IntsT>>& operator[](std::string s) {
       orderCheck(s.size());
       return components_[s.size()-1][s];
     }
 
-    const OnePInts<IntsT>& operator[](std::string s) const {
+    const std::shared_ptr<OnePInts<IntsT>>& operator[](std::string s) const {
       orderCheck(s.size());
       return components_[s.size()-1][s];
     }
@@ -207,7 +207,7 @@ namespace ChronusQ {
           oeiStr = "MultipoleInts[" + s + "].";
         for (size_t i = 0; i < size(); i++) {
           std::string label_i = label(i);
-          prettyPrintSmart(out, oeiStr+label_i, operator[](label_i).pointer(),
+          prettyPrintSmart(out, oeiStr+label_i, operator[](label_i)->pointer(),
                            this->nBasis(), this->nBasis(), this->nBasis());
         }
       } else {
@@ -282,10 +282,79 @@ namespace ChronusQ {
        std::is_same<TransT, dcomplex>::value),
       dcomplex, double>::type> transInts(
           memManager(), NT, highOrder(), symmetric());
-      for (size_t i = 0; i < size(); i++)
-        transInts[i] = (*this)[i].transform(TRANS, T, NT, LDT);
+      for (size_t i = 0; i < size(); i++) {
+        std::shared_ptr<OnePInts<IntsT>> comp = (*this)[i];
+        
+        if (std::shared_ptr<OnePRelInts<IntsT>> relInt
+            = std::dynamic_pointer_cast<OnePRelInts<IntsT>>(comp)) {
+          transInts[i] = std::make_shared<OnePRelInts<typename std::conditional<
+            (std::is_same<IntsT, dcomplex>::value or std::is_same<TransT, dcomplex>::value),
+            dcomplex, double>::type>>( relInt->transform(TRANS, T, NT, LDT), 0 );
+            continue;
+        }
+        transInts[i] = std::make_shared<OnePInts<typename std::conditional<
+            (std::is_same<IntsT, dcomplex>::value or std::is_same<TransT, dcomplex>::value),
+            dcomplex, double>::type>>( comp->transform(TRANS, T, NT, LDT), 0 );
+      }
       return transInts;
     }
+
+    void convert2OnePRelInts(CQMemManager &mem, size_t nb, bool SORelativistic) {
+      for (VectorInts<IntsT>& c : components_)
+        c.convert2OnePRelInts(mem, nb, SORelativistic);
+    };
+
+    // Assemble LL and SS components of 4C Dipole
+    std::shared_ptr<std::vector<PauliSpinorSquareMatrices<dcomplex>>> gather4CDipole(){
+      
+      if(this->size() != 3) CErr("Only Dipole is implement for 4C");
+      
+      // Initialize the returned dipole matrix vector (x, y, z)
+      auto lenElectric4C = std::make_shared<std::vector<PauliSpinorSquareMatrices<dcomplex>>>();
+      lenElectric4C->reserve(3);
+
+      size_t NB = this->nBasis();
+      
+      // Loop over x, y, z directions
+      for (size_t ixyz = 0; ixyz < 3; ixyz++){
+        if(auto onePRelInt = std::dynamic_pointer_cast<OnePRelInts<double>>((*this)[ixyz])){
+          
+          // Initialize the returned dipole matrix
+          lenElectric4C->emplace_back(this->ParticleIntegrals::memManager(), 2 * NB, true, true);
+          PauliSpinorSquareMatrices<dcomplex>& dipole_ixyz = (*lenElectric4C)[ixyz];
+
+          dipole_ixyz.clear();
+
+          //Piece together the SS components in to 2NB by 2NB square matrix W
+          // W = 1/(4c^2)* [ W1  W2 ]
+          //               [ W3  W4 ]
+          SquareMatrix<dcomplex> W( 1./(4. * SpeedOfLight * SpeedOfLight) *
+              onePRelInt->template formW<dcomplex>() );
+
+          // Spin Scatter square matrix W (2NB*2NB) into paulispinor matrix W_spinor (NB*NB) 
+          PauliSpinorSquareMatrices<dcomplex> W_spinor(W.template spinScatter<dcomplex>());
+
+          // LL Scalar 
+          SetMat('N',NB,NB,dcomplex(1.),onePRelInt->pointer(), NB,dipole_ixyz.S().pointer(),           2*NB);
+          // SS Scalar 
+          SetMat('N',NB,NB,dcomplex(1.),W_spinor.S().pointer(),NB,dipole_ixyz.S().pointer()+2*NB*NB+NB,2*NB);
+          // SS MZ
+          SetMat('N',NB,NB,dcomplex(1.),W_spinor.Z().pointer(),NB,dipole_ixyz.Z().pointer()+2*NB*NB+NB,2*NB);
+          // SS MY
+          SetMat('N',NB,NB,dcomplex(1.),W_spinor.Y().pointer(),NB,dipole_ixyz.Y().pointer()+2*NB*NB+NB,2*NB);
+          // SS MX
+          SetMat('N',NB,NB,dcomplex(1.),W_spinor.X().pointer(),NB,dipole_ixyz.X().pointer()+2*NB*NB+NB,2*NB);
+
+        }else{
+          CErr("OnePInts Stored in MultipoleInts Not Converted to OnePRelInts");
+        } // Checking if dipole OnePInts are integrals are relativistic
+      } // dipole x, y, z direction loops ends
+
+      return lenElectric4C;
+
+    } // gather4CDipole 
+
+    void MultipoleRelDriverLibcint(const Molecule&, const BasisSet&, const HamiltonianOptions &options);
 
     ~MultipoleInts() {}
 

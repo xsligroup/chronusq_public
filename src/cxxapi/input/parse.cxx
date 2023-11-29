@@ -27,34 +27,81 @@
 #include <cxxapi/input.hpp>
 #include <cerr.hpp>
 #include <regex>
+#include <stack>
 
 namespace ChronusQ {
 
 
-  /**
-   *  \brief Parses a ChronusQ input file
-   *
-   *  Parses the file and populates the dict_ map which holds the
-   *  input data fields to control the ChronusQ calculation
-   */
-  void CQInputFile::parse() {
+  enum class InputLineType {
+    SECTION_HEADER,
+    DATA_ENTRY,
+    CONTINUATION,
+    EMPTY
+  };
 
-    // Check if file actually exists
-    if(not inFile_->good()) CErr("Input File Couldn't Be Found!",std::cout);
+  bool containsUnenclosedEqualSign(const std::string &s) {
+    std::stack<char> st;
 
-    // Read in all lines of the file
-    std::vector<std::string> lines;
-    while( not inFile_->eof() ) {
-      std::string line;
-      std::getline(*inFile_,line);
-      lines.push_back(line);
+    for (char c : s) {
+      if (c == '(' or c == '[' or c == '{') {
+        st.push(c);
+      } else if (c == ')' or c == ']' or c == '}') {
+        if (st.empty()) {
+          // unmatched closing bracket
+          CErr("Unmatched closing bracket in input file line:\n" + s, std::cout);
+        }
+        char top = st.top();
+        st.pop();
+        if ((c == ')' and top != '(')
+            or (c == ']' and top != '[')
+            or (c == '}' and top != '{'))
+          CErr("Unmatched bracket in input file line:\n" + s, std::cout);
+      } else if (c == '=' or c == ':') {
+        if (st.empty()) {
+          // unenclosed '=' or ':' sign
+          return true;
+        }
+      }
     }
 
-    // Parse the file
-    parse(lines.cbegin(), lines.cend(), "");
+    return false; // If we don't find an unenclosed '=' by the end
+  }
 
-  }; // CQInputFile::parse
+  InputLineType get_input_line_type_and_trim(std::string &line) {
 
+    // Determine position of first and last non-space character
+    size_t firstNonSpace = line.find_first_not_of(" ");
+    size_t lastNonSpace  = line.find_last_not_of(" ");
+
+    size_t comPos = line.find("#");
+
+    // Skip lines in which the first non-space character is #
+    // (Comment line)
+    if(comPos == firstNonSpace) return InputLineType::EMPTY;
+
+    // Remove comment portion of the line if it exists
+    //  - This is general to when # does not appear in the line
+    line = line.substr(0,comPos);
+
+    // Strip trailing spaces
+    trim_right(line);
+
+    size_t lBrckPos = line.find('[');
+    size_t rBrckPos = line.find(']');
+
+    // Check if we have a section header
+    if( lBrckPos == firstNonSpace and rBrckPos == lastNonSpace )
+      return InputLineType::SECTION_HEADER;
+
+    // Check if we have a data entry
+    if( containsUnenclosedEqualSign(line) ) {
+      return InputLineType::DATA_ENTRY;
+    }
+
+    // If we get here, we have a continuation line
+    return InputLineType::CONTINUATION;
+
+  }; // get_input_line_type_and_trim
 
 
   /**
@@ -67,9 +114,11 @@ namespace ChronusQ {
                           std::vector<std::string>::const_iterator lines_end,
                           const std::string &prefix) {
 
-    bool parseSection(false);
-    bool prevLineData(false);
-    size_t prevIndent(0);
+
+    auto strToUpper = [](std::string& s){
+      std::for_each(s.begin(), s.end(),
+                    [](char &c){ c = std::toupper(c);});
+    };
   
     std::string sectionHeader;
     std::string dataHeader;
@@ -83,133 +132,75 @@ namespace ChronusQ {
     // Reverse entries in caseSens
     for (auto &sec : caseSens)
       caseSensReverse.insert(reverse_by_dot(sec));
-  
+
     // Loop over all lines of the file
     for( auto line_iter = lines_begin; line_iter != lines_end; ++line_iter ) {
 
       std::string line = *line_iter;
-  
-      // Skip blank lines
-      if(line.length() < 1) {
-        prevLineData = false;
-        continue;
-      }
-        
-  
-      // Determine position of first and last non-space character
-      size_t firstNonSpace = line.find_first_not_of(" ");
-      size_t lastNonSpace  = line.find_last_not_of(" ");
-  
-      size_t comPos = line.find("#");
-  
-      // Skip lines in which the first non-space character is #
-      // (Comment line)
-      if(comPos == firstNonSpace) continue;
-  
-      // Remove comment portion of the line if it exists
-      //  - This is general to when # does not appear in the line
-      line = line.substr(0,comPos); 
-  
-      // Strip trailing spaces
-      trim_right(line);
-  
-  
-      auto strToUpper = [](std::string& s){
-        std::transform(s.begin(), s.end(), s.begin(),
-        [](unsigned char c){ return std::toupper(c);});
-      };
 
+      InputLineType lineType = get_input_line_type_and_trim(line);
 
-      // Check if we have a free-style CQ input
-      parseFreeCQInput(line);
+      // Skip empty lines
+      if (lineType == InputLineType::EMPTY) continue;
 
-      size_t lBrckPos = line.find('[');
-      size_t rBrckPos = line.find(']');
-  
-      size_t eqPos  = line.find('=');
-      size_t colPos = line.find(':');
-  
-      // Determine if this is a line with a section header
-      bool sectionLine = 
-        lBrckPos == firstNonSpace and rBrckPos == lastNonSpace;
-  
-      // Determine if this is a line that contains a data field
-      bool dataLine    = 
-        eqPos != std::string::npos or 
-        colPos != std::string::npos;
-  
-      // Determine if this is a line continuation of a previous data field
-      bool multiLine   = prevLineData and firstNonSpace > prevIndent;
-  
       // Section line
-      if(sectionLine) {
-  
-        // Strip first spaces
-        line = line.substr(firstNonSpace,line.length());
+      if(lineType == InputLineType::SECTION_HEADER) {
   
         // Obtain the section header name
         sectionHeader = line.substr(1,line.length()-2);
         
         // Convert to UPPER
         strToUpper(sectionHeader);
-  
-//        // Create a dictionary entry for the section header
-//        dict_[sectionHeader] =
-//          std::unordered_map<std::string,std::string>();
-  
-        // XXX: Possibly check if the section is already defined?
-  
-        parseSection = true;
-        prevLineData = false;
+
         continue;
   
       }
   
   
       // Data line
-      if(parseSection and dataLine) {
-  
-        line = 
-          line.substr(firstNonSpace,line.length()-firstNonSpace);
-  
-        // Split the line into tokens, trim spaces
-        std::vector<std::string> tokens;
-        split(tokens,line,"=:");
-        for(auto &X : tokens) { trim(X); }
-  
-        dataHeader = tokens[0];
+      if(lineType == InputLineType::DATA_ENTRY) {
+
+        // Find first = or : and get substring before and after it
+        // TODO: make sure = or : is not enclosed by brackets
+        size_t equalIndex = line.find_first_of("=:");
+        dataHeader = line.substr(0,equalIndex);
+        trim(dataHeader);
+        std::string value = line.substr(equalIndex+1);
+        trim(value);
+
         strToUpper(dataHeader);
-        dataHeader = sectionHeader + "." + dataHeader;
+        if (sectionHeader != "")
+          dataHeader = sectionHeader + "." + dataHeader;
+
+        // Check if the data entry has continuation lines below
+        while (line_iter + 1 != lines_end) {
+          std::string next_line = *(line_iter + 1);
+          InputLineType next_line_type = get_input_line_type_and_trim(next_line);
+
+          // End while loop if next line is not a continuation line or empty
+          if (next_line_type != InputLineType::CONTINUATION
+              and next_line_type != InputLineType::EMPTY)
+            break;
+
+          if (next_line_type == InputLineType::CONTINUATION)
+            value += "\n" + next_line;
+          ++line_iter;
+        }
 
         // Capitalize data if not case sensitive
         auto it = caseSensReverse.lower_bound(reverse_by_dot(dataHeader));
         if ((it == caseSensReverse.end()
               or it->find(reverse_by_dot(dataHeader)) != 0)
-            and tokens.size() > 1)
-          strToUpper(tokens[1]);
+            and not value.empty())
+          strToUpper(value);
 
         // Create a dictionary entry for the data field in the current
         // section header
-        if(tokens.size() > 1) 
-          dict_[dataHeader] = tokens[1];
-        else 
-          dict_[dataHeader] = " ";
-  
-        prevLineData = true;
-        prevIndent = firstNonSpace;
-      }
-  
-      // Multiline data
-      else if(parseSection and multiLine) {
-        // Capitalize data if not case sensitive
-        auto it = caseSensReverse.lower_bound(reverse_by_dot(dataHeader));
-        if (it == caseSensReverse.end()
-             or it->find(reverse_by_dot(dataHeader)) != 0)
-          strToUpper(line);
- 
-        line = 
-          line.substr(firstNonSpace,line.length()-firstNonSpace);
-        dict_[dataHeader] += "\n" + line;
+        if(not value.empty())
+          addData(dataHeader,value);
+        else
+          CErr("No data entry for " + dataHeader + " in input file.");
+
       }
       
     };
@@ -224,200 +215,7 @@ namespace ChronusQ {
   */
   
   }; // CQInputFile::parse(lines)
-  
-  void CQInputFile::parseFreeCQInput (std::string &line){
 
-    /********************************************************************************/
-    /* CQ Free Format Input                                                         */
-    /* example, CQ= HF/STO-3G NEO(EPC17/PROT-BP4-D) SCF(accuracy=1.e-6)             */
-    /* example, ChronuQ: X2C-HF/CD-6-31G RT(time=10fs, stepsize = 1as)              */
-    /* example, ChronuQ= 4C-HF/ano-rcc hamiltonian(DCB, scalar, atomic)             */
-    /********************************************************************************/
-    auto const freeCQInput = std::regex("CQ[[:blank:]]*=|CQ[[:blank:]]*:|CHRONUSQ[[:blank:]]*=|CHRONUSQ[[:blank:]]*:",std::regex_constants::icase);
-    if(!std::regex_search(line, freeCQInput)) return;
-    std::cout<<"xsli test CQ Input"<<std::endl;
-    line = std::regex_replace(line, freeCQInput, "");
-
-    // Parse NEO Section
-    parseFreeCQInputNEO(line);
-    parseFreeCQInputElectron(line);
-    parseFreeCQInputSCF(line);
-
-  }; // Free Format Input Parser
-
-
-
-  void CQInputFile::parseFreeCQInputNEO (std::string &line){
-
-    auto const freeCQInputHF    = std::regex("((2C)|(X2C)|(4C)|(G)-?)?HF/?",std::regex_constants::icase);
-    auto const freeCQInputCCSD  = std::regex("((2C)|(X2C)|(4C)|(G)-?)?CCSD((T)|(\\(T\\)))?/?",std::regex_constants::icase);
-
-    /*************************************/
-    /* NEO Input                         */
-    /* example, NEO(EPC19/prot-pb6-g)    */
-    /* example, NEO(EPC19/CD-prot-pb6-g) */
-    /* example, NEO(EPC19/ri-prot-pb6-g) */
-    /*************************************/
-    auto const freeCQInputEPC17 = std::regex("EPC17",std::regex_constants::icase);
-    auto const freeCQInputEPC19 = std::regex("EPC19",std::regex_constants::icase);
-
-    auto const freeCQInputPROTSP    = std::regex("((CD)|(RI)-?)?PROT-SP",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4D  = std::regex("((CD)|(RI)-?)?PROT-PB4-D",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4F1 = std::regex("((CD)|(RI)-?)?PROT-PB4-F1",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4F2 = std::regex("((CD)|(RI)-?)?PROT-PB4-F2",std::regex_constants::icase);
-    auto const freeCQInputPROTPB5G  = std::regex("((CD)|(RI)-?)?PROT-PB5-G",std::regex_constants::icase);
-    auto const freeCQInputPROTPB6G  = std::regex("((CD)|(RI)-?)?PROT-PB6-G",std::regex_constants::icase);
-
-    auto const freeCQInputNEO = std::regex("NEO(\\((.*?)\\))?",std::regex_constants::icase);
-    std::smatch NEOmatch;
-
-    if( std::regex_search(line, NEOmatch, freeCQInputNEO) ){
-      // Catch what is inside NEO()
-      if(NEOmatch.str(2).size()>0) {
-        // Parse user-defined input
-        std::cout<<"xsli test NEO Section "<<std::endl;
-        std::string NEOInputOptions = NEOmatch.str(2);
-
-        // Methods
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputHF) ) {
-          std::cout<<"xsli test NEO HF"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputEPC17) ) {
-          std::cout<<"xsli test NEO EPC17"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputEPC19) ) {
-          std::cout<<"xsli test NEO EPC19"<<std::endl;
-        }
-
-        // Basis Sets
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTSP) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PORT-SP"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PORT-SP"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PORT-SP"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4D) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-D"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4F1) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-F1"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-F1"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-F1"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4F2) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-F2"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-F2"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-F2"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB5G) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-D"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB6G) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB5-G"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB5-G"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB5-G"<<std::endl;
-        }
-
-      } else {
-        // Choose default parameters
-      }
-      // We need to delete the NEO section so that we can parse the electronic section properly
-      line = std::regex_replace(line, freeCQInputNEO, "");
-    } // NEO Input
-
-  };
-
-  void CQInputFile::parseFreeCQInputElectron (std::string &line){
-
-    auto const freeCQInputHF    = std::regex("((2C)|(X2C)|(4C)|(G)-?)?HF/?",std::regex_constants::icase);
-    // Match strings                             1  2      3       4     5         6 7      8
-    auto const freeCQInputCCSD  = std::regex("((2C)|(X2C)|(4C)|(G)-?)?CCSD((T)|(\\(T\\)))?/?",std::regex_constants::icase);
-
-    /****************************/
-    /* Electronic Input         */
-    /* example, B3LYP/6-31G     */
-    /* example, 4C-B3LYP/6-31G  */
-    /* example, X2C-B3LYP/6-31G */
-    /* example, B3LYP/RI-6-31G  */
-    /* example, B3LYP/CD-6-31G  */
-    /****************************/
-
-    auto const freeCQInputB3LYP = std::regex("((2C)|(X2C)|(4C)|(G)-?)?B3LYP/?",std::regex_constants::icase);
-    auto const freeCQInputPBE   = std::regex("((2C)|(X2C)|(4C)|(G)-?)?PBE/?",std::regex_constants::icase);
-
-    std::smatch methodMatch;
-    if ( std::regex_search(line, methodMatch, freeCQInputHF) ) {
-      if( methodMatch.str(1).size()==0 ) std::cout<< "xsli test HF " <<std::endl;
-      if( methodMatch.str(2).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(2)<<std::endl;
-      if( methodMatch.str(3).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(3)<<std::endl;
-      if( methodMatch.str(4).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(4)<<std::endl;
-      if( methodMatch.str(5).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(5)<<std::endl;
-      line = std::regex_replace(line, freeCQInputHF, "");
-    }
-    else if ( std::regex_search(line, methodMatch, freeCQInputCCSD) ) {
-      if( methodMatch.str(1).size()==0 ) std::cout<< "xsli test CCSD " <<std::endl;
-      if( methodMatch.str(2).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(2)<<std::endl;
-      if( methodMatch.str(3).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(3)<<std::endl;
-      if( methodMatch.str(4).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(4)<<std::endl;
-      if( methodMatch.str(5).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(5)<<std::endl;
-      if( methodMatch.str(7).size()>0 ) std::cout<< "xsli test CCSDT "<<std::endl;
-      if( methodMatch.str(8).size()>0 ) std::cout<< "xsli test CCSD(T) "<<std::endl;
-      line = std::regex_replace(line, freeCQInputCCSD, "");
-    }
-
-
-    auto const freeCQInputSTO3G   = std::regex("((CD)|(RI)-?)?STO-3G",std::regex_constants::icase);
-    auto const freeCQInput321G    = std::regex("((CD)|(RI)-?)?3-21G",std::regex_constants::icase);
-    auto const freeCQInput631G    = std::regex("((CD)|(RI)-?)?6-31G",std::regex_constants::icase);
-    auto const freeCQInput6311G   = std::regex("((CD)|(RI)-?)?6-311G",std::regex_constants::icase);
-
-    std::smatch basisMatch;
-    if ( std::regex_search(line, basisMatch, freeCQInputSTO3G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test STO-3G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test CD-STO-3G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test RI-STO-3G"<<std::endl;
-      line = std::regex_replace(line, freeCQInputSTO3G, "");
-    }
-    else if ( std::regex_search(line, basisMatch, freeCQInput321G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 3-21G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test CD-3-21G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test RI-3-21G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput321G, "");
-    }
-    else if ( std::regex_search(line, basisMatch, freeCQInput631G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput631G, "");
-    }
-    else if ( std::regex_search(line, basisMatch, freeCQInput6311G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 6-311G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test 6-311GG"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test 6-311G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput6311G, "");
-    }
-
-    auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
-    line = std::regex_replace(line, freeDividers, " ");
-    // the second call remove multiple space left after replace ','
-    line = std::regex_replace(line, freeDividers, " ");
-    if(line.size()>0) std::cout<<"CQ input ignored: "<< line <<std::endl;
-
-  };
-
-  void CQInputFile::parseFreeCQInputSCF (std::string &line) {
-
-    /********************************/
-    /* SCF Input                    */
-    /* example, SCF(accuracy=1.e-8) */
-    /* example, SCF(endiis)         */
-    /* example, SCF(energyonly)     */
-    /********************************/
-
-  };
 
   /** 
    *  \brief Splits a query string on a period "."
@@ -482,6 +280,177 @@ namespace ChronusQ {
     }
   
   }; // data_not_found class
+
+  /**
+   * \brief Add an key-value pair to the input storage
+   * \param [in] key   Key of the data field
+   * \param [in] value Value of the data field
+   */
+  void CQInputFile::addData(const std::string &key, const std::string &value) {
+    if (containsData(key))
+      CErr("Key " + key + " already exists in the parsed input.", std::cout);
+    dict_[key] = value;
+  }
+
+
+  /**
+   * \brief Merge a subsection into the input storage
+   * \param [in] subsection Subsection to be merged
+   * \param [in] prefix Prefix of the data field
+   */
+  void CQInputFile::mergeSection(const InputMap &subsection,
+                                 const std::string &prefix) {
+    if (prefix == "")
+      for (auto &kv : subsection) {
+        addData(kv.first, kv.second);
+      }
+    else
+      for (auto &kv : subsection) {
+        addData(prefix + "." + kv.first, kv.second);
+      }
+  }
+
+
+  /**
+   *  Checks whether or not the parsed CQ input file contains
+   *  a query section.
+   *
+   *  \paral  [in] str Query string of a section heading
+   *  \return      True if input file contains that heading
+   */
+  bool CQInputFile::containsSection(const std::string &str) const {
+    auto it = dict_.lower_bound(str);
+    if (it == dict_.end()) return false;
+
+    // Check if the query string is identical section heading, this case is a data entry instead of section
+    if (it->first == str) it++;
+    if (it == dict_.end()) return false;
+    // Check if the query string is a substring of the section heading
+    return it->first.find(str) == 0 and it->first.size() > str.size() and it->first[str.size()] == '.';
+  }
+
+
+  /**
+   *  Checks whether or not the parsed CQ input file contains
+   *  a query section.
+   *
+   *  \paral  [in] str Query string of a section heading
+   *  \return      True if input file contains that heading
+   */
+  bool CQInputFile::containsList(const std::string &str) const {
+    auto it = dict_.lower_bound(str);
+    if (it == dict_.end()) return false;
+    // Check if the query string is a substring of the section heading
+    while (it->first.find(str) == 0) {
+      if (it->first.size() > str.size() and it->first[str.size()] == '[')
+        return true;
+      it++;
+    }
+    return false;
+  }
+
+
+  /**
+   *  Checks the size of a query list.
+   *
+   *  \paral  [in] str Query string of a section heading
+   *  \return      Size of the query list.
+   */
+  size_t CQInputFile::getListSize(const std::string &str) const {
+    if (not containsList(str))
+      return 0;
+    size_t max_index = 0;
+    auto it = dict_.lower_bound(str);
+    // Check if the query string is a substring of the section heading
+    while (it->first.find(str) == 0) {
+      if (it->first.size() > str.size() and it->first[str.size()] == '[')
+        max_index = std::max(max_index, InputKeyCompare::extractNumber(it->first, str.size() + 1));
+      it++;
+    }
+    return max_index + 1;
+  }
+
+  /**
+   * \brief Add a data to the end of a list
+   * @param str  Query string of a section heading
+   * @param data Data to be added to the list
+   * @param dict InputMap to be appended
+   */
+  void CQInputFile::appendList(const std::string &str, const std::string &data) {
+    addData(str + "[" + std::to_string(getListSize(str)) + "]", data);
+  }
+  void CQInputFile::appendList(const std::string &str, const InputMap &dict) {
+    mergeSection(dict, str + "[" + std::to_string(getListSize(str)) + "]");
+  }
+
+
+  /**
+   *  \brief Returns a subsection of data fields from the input file
+   *
+   *  \param [in] section Section heading
+   *  \return             Vector of data fields in section
+   */
+  InputMap CQInputFile::getSection(const std::string &section) const {
+
+    if (not containsSection(section))
+      CErr("Section " + section + " not found in input file!");
+
+    InputMap sectionData;
+
+    auto it = dict_.lower_bound(section);
+
+    // Check if the query string is identical section heading, this case is a data entry instead of section
+    if (it->first == section) it++;
+    while (it != dict_.end()) {
+      const std::string &key = it->first;
+      if (key.find(section) != 0 or key[section.size()] != '.') break;
+
+      if (key.size() > section.size())
+        sectionData.emplace(key.substr(section.size() + 1), it->second);
+
+      ++it;
+    }
+
+    return sectionData;
+  }
+
+  /**
+   *  Checks whether or not the parsed CQ input file contains
+   *  a query data field.
+   *
+   *  \paral  [in] str Query string of a data field (includes section heading)
+   *  \return      True if input file contains that data field
+   */
+  bool CQInputFile::containsData(std::string str) const {
+    return dict_.find(str) != dict_.end();
+  }
+
+
+  std::vector<std::string> CQInputFile::getDataInSection( std::string section ) const  {
+
+    std::set<std::string> datasets;
+
+    std::string::size_type lenSection = section.size();
+    auto it = dict_.lower_bound(section);
+    while (it != dict_.end()) {
+      const std::string &key = it->first;
+      if (key.find(section) != 0) break;
+
+      if (key.size() > lenSection) {
+        std::string::size_type nextDotPos = key.find('.', lenSection + 1);
+
+        if (nextDotPos == std::string::npos) {
+          datasets.emplace(key.substr(lenSection + 1));
+        } else {
+          datasets.emplace(key.substr(lenSection + 1, nextDotPos - lenSection - 1));
+        }
+      }
+      ++it;
+    }
+
+    return std::vector<std::string>(datasets.begin(), datasets.end());
+
+  }
   
   
   /**
@@ -567,6 +536,78 @@ namespace ChronusQ {
     return std::stod(getData<std::string>(query));
   
   }; // CQInputFile::getData<double>
+
+
+  /**
+   *  \brief Parses a ChronusQ input file
+   *
+   *  Parses the file and populates the dict_ map which holds the
+   *  input data fields to control the ChronusQ calculation
+   */
+  void CQInputFile::parse() {
+
+    // Check if file actually exists
+    if(not inFile_->good()) CErr("Input File Couldn't Be Found!",std::cout);
+
+    // Read in all lines of the file
+    std::vector<std::string> lines;
+    while( not inFile_->eof() ) {
+      std::string line;
+      std::getline(*inFile_,line);
+      lines.push_back(line);
+    }
+
+    // Parse the file
+    parse(lines.cbegin(), lines.cend(), "");
+
+    std::string freeFormatLine;
+
+    // Parse the free format input
+    if (containsData("CQ")) {
+      freeFormatLine = getData<std::string>("CQ");
+    } else if (containsData("CHRONUSQ")) {
+      freeFormatLine = getData<std::string>("CHRONUSQ");
+    }
+
+    if (freeFormatLine != "")
+      parseFreeCQInput(freeFormatLine);
+
+  }; // CQInputFile::parse
+
+  /**
+   *  \brief Overload the << operator for the CQInputFile class
+   *
+   *  \param [in] os        Output device for data / error output.
+   *  \param [in] inputFile CQInputFile object to be printed
+   *
+   *  \returns std::ostream object
+   */
+  std::ostream& operator<<(std::ostream& os, const CQInputFile& inputFile) {
+    std::vector<std::string> lastSegments;
+
+    for (const auto& [key, value] : inputFile.dict_) {
+      std::vector<std::string> currentSegments;
+      split(currentSegments, key, ".");
+
+      int commonCount = 0;
+      while (commonCount < currentSegments.size()
+              and commonCount < lastSegments.size()
+              and currentSegments[commonCount] == lastSegments[commonCount]) {
+        ++commonCount;
+      }
+
+      for (int i = commonCount; i < currentSegments.size() - 1; ++i) {
+        os << std::string(i * 4, ' ') << currentSegments[i] << ":" << std::endl;
+      }
+
+      os << std::string((currentSegments.size() - 1) * 4, ' ')
+          << currentSegments.back() << ": " << value << std::endl;
+
+      lastSegments = std::move(currentSegments);
+    }
+
+    return os;
+  }
 
 }; // namespace ChronusQ
 

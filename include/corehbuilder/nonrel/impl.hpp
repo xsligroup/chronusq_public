@@ -41,7 +41,7 @@ namespace ChronusQ {
 
     // this part add the angular momentum term
     for ( auto index = 0 ; index < 3 ; index++ ) {
-      *coreH += -magAmp[index] * onei * (*aoints_.magnetic)[index].matrix();
+      *coreH += -magAmp[index] * onei * (*aoints_.magnetic)[index]->matrix();
     } // for ( auto inde = 0 ; inde < 3 ; inde++ )
 
     // this part add the length gauge electric quadrupole term
@@ -55,7 +55,7 @@ namespace ChronusQ {
 
     // add diagonal part
     for ( size_t index = 0 ; index < 3 ; index++ ) {
-      *coreH += 2.0*diagcoeff[index] * (*aoints_.lenElectric)[diagindex[index]].matrix();
+      *coreH += 2.0*diagcoeff[index] * (*aoints_.lenElectric)[diagindex[index]]->matrix();
     }
 
     const std::array<std::string,3> offindex =
@@ -68,7 +68,7 @@ namespace ChronusQ {
 
     // add off diagonal part
     for ( size_t index = 0 ; index < 3 ; index++ ) {
-      *coreH += 2.0*offcoeff[index] * (*aoints_.lenElectric)[offindex[index]].matrix();
+      *coreH += 2.0*offcoeff[index] * (*aoints_.lenElectric)[offindex[index]]->matrix();
     }
 
     // finally spin Zeeman term

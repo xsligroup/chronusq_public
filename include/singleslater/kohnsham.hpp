@@ -169,11 +169,13 @@ namespace ChronusQ {
 
     }; // formFock
 
+
     /**
      *  \brief Kohn-Sham specialization of computeEnergy
      *
      *  Compute EXC and add it to the HF energy 
-     */  
+     */
+    using QuantumBase::computeEnergy;
     virtual void computeEnergy() {
 
       SingleSlater<MatsT,IntsT>::computeEnergy();

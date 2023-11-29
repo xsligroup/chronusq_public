@@ -30,6 +30,9 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   class GTODirectRelERIContraction : public GTODirectTPIContraction<MatsT,IntsT> {
   
+    template <typename MatsU, typename IntsU>
+    friend class GTODirectRelERIContraction;
+
   protected:
     
     size_t libcintCacheSize(const TWOBODY_CONTRACTION_TYPE &, int *, const int, 
@@ -50,10 +53,23 @@ namespace ChronusQ {
 
     }
 
+    template <typename MatsU>
+    GTODirectRelERIContraction(
+      const GTODirectRelERIContraction<MatsU,IntsT> &other, int dummy = 0 ):
+      GTODirectRelERIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+    template <typename MatsU>
+    GTODirectRelERIContraction(
+      GTODirectRelERIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
+      GTODirectRelERIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+
     GTODirectRelERIContraction( const GTODirectRelERIContraction &other ):
-      GTODirectRelERIContraction(other.ints_) {}
+      GTODirectRelERIContraction(other, 0) {}
     GTODirectRelERIContraction( GTODirectRelERIContraction &&other ):
-      GTODirectRelERIContraction(other.ints_) {}
+      GTODirectRelERIContraction(std::move(other),0) {}
 
     // Computation interfaces
     virtual void twoBodyContract(

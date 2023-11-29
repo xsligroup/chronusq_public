@@ -63,6 +63,52 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::setOnePDMOrtho(SquareMatrix<MatsT> *tempOnePDMOrtho) {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+
+      auto neoMap = getSubsystemMap();
+      auto neoSubsystemOrder = getOrder();
+      // Loop over all subsystems
+      size_t i = 0;
+      for( auto& neoSubsystemLabel: neoSubsystemOrder ) {
+        auto &neoSubsystem = neoMap[neoSubsystemLabel];
+        neoSubsystem->setOnePDMOrtho(&tempOnePDMOrtho[i]);
+        if(neoSubsystem->nC == 1) {
+          if (neoSubsystem->iCS) i++;
+          else i+=2;
+        }
+        else i++;
+      }
+  };
+
+  template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::setOnePDMAO(SquareMatrix<MatsT> *tempOnePDMAO) {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+
+    auto neoMap = getSubsystemMap();
+    auto neoSubsystemOrder = getOrder();
+    // Loop over all subsystems
+    size_t i = 0;
+    for( auto& neoSubsystemLabel: neoSubsystemOrder ) {
+      auto &neoSubsystem = neoMap[neoSubsystemLabel];
+      neoSubsystem->setOnePDMAO(&tempOnePDMAO[i]);
+      if(neoSubsystem->nC == 1) {
+        if (neoSubsystem->iCS) i++;
+        else i+=2;
+      }
+      else i++;
+    }
+  };
+
+  template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::ortho2aoDen() {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+    applyToEach([this](SubSSPtr& ss) {
+      ss->ortho2aoDen();
+    });
+  };
+
+  template <typename MatsT, typename IntsT>
   std::vector<std::shared_ptr<Orthogonalization<MatsT>>> NEOSS<MatsT, IntsT>::getOrtho() {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     std::vector<std::shared_ptr<Orthogonalization<MatsT>>> ortho;
@@ -80,6 +126,25 @@ namespace ChronusQ {
       ss->setDenEqCoeff(val);
     });
   };
+
+  template<typename MatsT, typename IntsT>
+  void NEOSS<MatsT, IntsT>::initializeSCF() {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+
+    // Setup MO reference vector
+    applyToEach([this](SubSSPtr& ss) {
+      for( auto& m: ss->mo )
+        this->moCoefficients.emplace_back(m);
+    });
+
+    // Setup Eigenvalue vector
+    applyToEach([this](SubSSPtr& ss) {
+      this->moEigenvalues.push_back(ss->eps1);
+      if( ss->nC == 1 and !ss->iCS )
+        this->moEigenvalues.push_back(ss->eps2);
+    });
+
+  }
 
   template<typename MatsT, typename IntsT>
   void NEOSS<MatsT, IntsT>::runSCF(EMPerturbation& pert) {

@@ -131,7 +131,7 @@ namespace ChronusQ {
       printReg("    - RT Iteration", "Real Time Iter", rtId);
       printReg("      - Fock Formation", "Form Fock", rtId);
       printReg("      - Propagator Formation", "Propagator Formation", rtId);
-      printReg("      - Density Propagation", "Propagate WFN", rtId);
+      printReg("      - Propagate Density", "Propagate Density", rtId);
     }
 
     // RESP specific

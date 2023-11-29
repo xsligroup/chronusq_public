@@ -56,6 +56,7 @@ namespace ChronusQ {
       "NRTRUST",
 	    "NRLEVELSHIFT",
       "PRINTCONTRACTIONTIMING" ,
+      // New parameters
       "ACCURACY"
     };
 
@@ -278,7 +279,7 @@ namespace ChronusQ {
     )
 
     // Handle DIIS options
-    std::string diisAlgString = "CEDIIS"; 
+    std::string diisAlgString = "CDIIS"; 
     OPTOPT( diisAlgString = input.getData<std::string>("SCF.DIISALG"); )
     if( not diisAlgString.compare("CEDIIS"))
       scfControls.diisAlg = CEDIIS;

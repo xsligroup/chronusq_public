@@ -115,24 +115,31 @@ namespace ChronusQ {
 
       case LEN_ELECTRIC_MULTIPOLE:
         lenElectric = std::make_shared<MultipoleInts<IntsT>>(mem, NB, op.second, true);
+        // If 4C, we convert OnePInts stored in MultipoleInts object to be OnePRelInts
+        if(options.OneEScalarRelativity) lenElectric->convert2OnePRelInts(mem, NB, options.OneESpinOrbit);
         lenElectric->computeAOInts(basis, mol, emPert, LEN_ELECTRIC_MULTIPOLE, options);
+
+        // If 4C, we gather all components of dipole integrals
+        if(options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
+
+        if(options.OneEScalarRelativity)
         if( savFile.exists() ) {
           // Length Gauge electric dipole
           for(auto i = 0; i < 3; i++)
             savFile.safeWriteData(prefix + "ELEC_DIPOLE_LEN_" +
-              dipoleList[i], (*lenElectric)[dipoleList[i]].pointer(), {NB,NB} );
+              dipoleList[i], (*lenElectric)[dipoleList[i]]->pointer(), {NB,NB} );
 
           // Length Gauge electric quadrupole
           if(op.second >= 2)
             for(auto i = 0; i < 6; i++)
               savFile.safeWriteData(prefix + "ELEC_QUADRUPOLE_LEN_" +
-                quadrupoleList[i], (*lenElectric)[quadrupoleList[i]].pointer(), {NB,NB} );
+                quadrupoleList[i], (*lenElectric)[quadrupoleList[i]]->pointer(), {NB,NB} );
 
           // Length Gauge electric octupole
           if(op.second >= 3)
             for(auto i = 0; i < 10; i++)
               savFile.safeWriteData(prefix + "/ELEC_OCTUPOLE_LEN_" +
-                octupoleList[i], (*lenElectric)[octupoleList[i]].pointer(), {NB,NB} );
+                octupoleList[i], (*lenElectric)[octupoleList[i]]->pointer(), {NB,NB} );
         }
         break;
 
@@ -143,19 +150,19 @@ namespace ChronusQ {
           // Velocity Gauge electric dipole
           for(auto i = 0; i < 3; i++)
             savFile.safeWriteData(prefix + "ELEC_DIPOLE_VEL_" +
-              dipoleList[i], (*velElectric)[dipoleList[i]].pointer(), {NB,NB} );
+              dipoleList[i], (*velElectric)[dipoleList[i]]->pointer(), {NB,NB} );
 
           // Velocity Gauge electric quadrupole
           if(op.second >= 2)
             for(auto i = 0; i < 6; i++)
               savFile.safeWriteData(prefix + "ELEC_QUADRUPOLE_VEL_" +
-                quadrupoleList[i], (*velElectric)[quadrupoleList[i]].pointer(), {NB,NB} );
+                quadrupoleList[i], (*velElectric)[quadrupoleList[i]]->pointer(), {NB,NB} );
 
           // Velocity Gauge electric octupole
           if(op.second >= 3)
             for(auto i = 0; i < 10; i++)
               savFile.safeWriteData(prefix + "ELEC_OCTUPOLE_VEL_" +
-                octupoleList[i], (*velElectric)[octupoleList[i]].pointer(), {NB,NB} );
+                octupoleList[i], (*velElectric)[octupoleList[i]]->pointer(), {NB,NB} );
         }
         break;
 
@@ -166,13 +173,13 @@ namespace ChronusQ {
           // Magnetic Dipole
           for(auto i = 0; i < 3; i++)
             savFile.safeWriteData(prefix + "MAG_DIPOLE_" +
-              dipoleList[i], (*magnetic)[dipoleList[i]].pointer(), {NB,NB} );
+              dipoleList[i], (*magnetic)[dipoleList[i]]->pointer(), {NB,NB} );
 
           // Magnetic Quadrupole
           if(op.second >= 2)
             for(auto i = 0; i < 6; i++)
               savFile.safeWriteData(prefix + "MAG_QUADRUPOLE_" +
-                quadrupoleList[i], (*magnetic)[i+3].pointer(), {NB,NB} );
+                quadrupoleList[i], (*magnetic)[i+3]->pointer(), {NB,NB} );
         }
         break;
 
