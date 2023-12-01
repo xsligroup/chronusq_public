@@ -115,12 +115,12 @@ namespace ChronusQ {
 
       case LEN_ELECTRIC_MULTIPOLE:
         lenElectric = std::make_shared<MultipoleInts<IntsT>>(mem, NB, op.second, true);
-        // If 4C, we convert OnePInts stored in MultipoleInts object to be OnePRelInts
-        if(options.OneEScalarRelativity) lenElectric->convert2OnePRelInts(mem, NB, options.OneESpinOrbit);
+        // If 4C, we convert OnePInts stored in MultipoleInts object to be OnePRelInts (only handles dipole)
+        if(op.second == 1 and options.OneEScalarRelativity) lenElectric->convert2OnePRelInts(mem, NB, options.OneESpinOrbit);
         lenElectric->computeAOInts(basis, mol, emPert, LEN_ELECTRIC_MULTIPOLE, options);
 
-        // If 4C, we gather all components of dipole integrals
-        if(options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
+        // If 4C, we gather all components of dipole integralsa (only handles dipole)
+        if(op.second == 1 and options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
 
         if(options.OneEScalarRelativity)
         if( savFile.exists() ) {
