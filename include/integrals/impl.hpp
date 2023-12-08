@@ -122,7 +122,6 @@ namespace ChronusQ {
         // If 4C, we gather all components of dipole integralsa (only handles dipole)
         if(op.second == 1 and options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
 
-        if(options.OneEScalarRelativity)
         if( savFile.exists() ) {
           // Length Gauge electric dipole
           for(auto i = 0; i < 3; i++)
