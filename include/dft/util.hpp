@@ -117,6 +117,16 @@ namespace ChronusQ {
     std::vector<std::pair<size_t,size_t>> &subMatCut, double *SCR1,
     double *SCR2, double *DENMAT, double *Den, double *GDenX, double *GDenY, double *GDenZ,
     double *BasisScr);
+  //SS: for non-hermitian density matrix contract with complex orbital
+  void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
+    dcomplex *SCR2, dcomplex *DENMAT, double *Den, double *GDenX, double *GDenY, double *GDenZ,
+    dcomplex *BasisScr);
+  void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
+    dcomplex *SCR2, dcomplex *DENMAT, dcomplex *Den, dcomplex *GDenX, dcomplex *GDenY, dcomplex *GDenZ,
+    dcomplex *BasisScr);
+
 
   /**
    *  \brief Evaluate the EXC energy 
@@ -213,7 +223,7 @@ namespace ChronusQ {
    *   
    *  Note. See Documentations of constructZVars.
    */  
-  template <typename MatsT>
+  template <typename MatsT, typename IntsT>
   void formZ_vxc(
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM,
     DENSITY_TYPE denTyp, bool isGGA, size_t NPts, size_t NBE, size_t IOff, 
@@ -223,6 +233,6 @@ namespace ChronusQ {
     double *GDenS, double *GDenZ, double *GDenY, double *GDenX, 
     double *Kx, double *Ky, double *Kz,
     double *Hx, double *Hy, double *Hz,
-    double *BasisScratch, double *ZMAT);
+    IntsT *BasisScratch, IntsT *ZMAT);
 
 }

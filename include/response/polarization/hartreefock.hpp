@@ -83,7 +83,7 @@ namespace ChronusQ {
           this->template phTransitionVecMO2AO<U>(c, scatter, nDo, N, hf, hf,
             true, V_c, V_c + tdOffSet);
 
-        TPI->twoBodyContract(c,cList); // form G[V]
+        TPI->twoBodyContract(c,cList,this->scfPert); // form G[V]
 
         // Only finish transformation on root process
         if( MPIRank(c) == 0 ) {

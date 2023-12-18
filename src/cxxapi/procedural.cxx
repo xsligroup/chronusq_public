@@ -453,7 +453,7 @@ namespace ChronusQ {
           if( ss->scfControls.scfAlg == _SKIP_SCF and ss->scfControls.guess == READDEN )
             CErr("READDEN + SKIP + RESPONSE disabled. Use READMO instead.");
 
-          auto resp = CQResponseOptions(output,input,ss);
+          auto resp = CQResponseOptions(output,input,ss,emPert);
           resp->savFile = rstFile;
           resp->run();
 

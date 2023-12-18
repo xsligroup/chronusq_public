@@ -29,8 +29,9 @@ set(SCF_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/scf" )
 # Set up compilation of SCF test exe
 add_executable(scftest ../ut.cxx
 	rhf.cxx uhf.cxx ghf.cxx rohf.cxx x2chf.cxx fourcomphf.cxx
-        rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx
-	rks.cxx uks.cxx x2cks.cxx ks.cxx neo_rhf.cxx neo_rks.cxx
+        rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx x2c_giao.cxx
+	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx 
+        neo_rhf.cxx neo_rks.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx
 )
 
@@ -52,6 +53,9 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/rhf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/uhf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/rohf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ghf_giao)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/x2c_giao)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/gks_giao)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/x2cks_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_uhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_rohf)
@@ -75,6 +79,7 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rhf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/uhf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rohf_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ghf_giao)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/x2c_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_uhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_rohf)
@@ -99,6 +104,9 @@ add_cq_test( RHF_GIAO_SCF scftest "RHF_GIAO.*" )
 add_cq_test( UHF_GIAO_SCF scftest "UHF_GIAO.*" )
 add_cq_test( ROHF_GIAO_SCF scftest "ROHF_GIAO.*")
 add_cq_test( GHF_GIAO_SCF scftest "GHF_GIAO.*" )
+add_cq_test( GKS_GIAO_SCF scftest "GKS_GIAO.*" )
+add_cq_test( X2C_GIAO_SCF scftest "X2C_GIAO.*" )
+add_cq_test( X2CKS_GIAO_SCF scftest "X2CKS_GIAO.*" )
 add_cq_test( RI_RHF_SCF   scftest "RI_RHF.*"   )
 add_cq_test( RI_UHF_SCF   scftest "RI_UHF.*"   )
 add_cq_test( RI_ROHF_SCF  scftest "RI_ROHF.*"  )
@@ -130,6 +138,7 @@ if( CQ_ENABLE_MPI )
   add_cq_mpi_test( RHF_GIAO_SCF_MPI 2   scftest "RHF_GIAO.*"   )
   #add_cq_mpi_test( UHF_GIAO_SCF_MPI 2   scftest "UHF_GIAO.*"   )
   #add_cq_mpi_test( ROHF_GIAO_SCF_MPI 2  scftest "ROHF_GIAO.*"  )
+  add_cq_mpi_test( X2C_GIAO_SCF_MPI 2  scftest "X2C_GIAO.*"  )
   add_cq_mpi_test( RI_RHF_SCF_MPI   2   scftest "RI_RHF.*"   )
   add_cq_mpi_test( RI_UHF_SCF_MPI   2   scftest "RI_UHF.*"   )
   add_cq_mpi_test( RI_ROHF_SCF_MPI  2   scftest "RI_ROHF.*"  )

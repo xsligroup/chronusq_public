@@ -25,6 +25,7 @@
 #include <cxxapi/options.hpp>
 #include <cxxapi/output.hpp>
 #include <cerr.hpp>
+#include <regex>
 #include <corehbuilder.hpp>
 #include <corehbuilder/nonrel.hpp>
 #include <corehbuilder/fourcomp.hpp>
@@ -1063,11 +1064,8 @@ namespace ChronusQ {
     if( isGIAO and not refOptions.RCflag.compare("REAL") )
       CErr("Real + GIAO not valid",out);
 
-    if( isGIAO and refOptions.isKSRef )
-      CErr("KS + GIAO not valid",out);
-
-    if( isGIAO and refOptions.isX2CRef )
-      CErr("X2C + GIAO not valid",out);
+    //if( isGIAO and refOptions.isKSRef )
+    //  CErr("KS + GIAO  NYI!",out);
 
 
     // Override core hamiltoninan type for X2C
@@ -1222,9 +1220,10 @@ namespace ChronusQ {
 
           CErr("OneE-X2C-SpinOrbit + Real WFN is not a valid option",std::cout);
 
-      } else if (std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
+      } else if (auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
-        CErr("X2C + Complex Ints NYI",std::cout);
+        if(refOptions.refType == isRORef) p->fockBuilder = std::make_shared<ROFock<dcomplex,dcomplex>>(hamiltonianOptions);
+        else p->fockBuilder = std::make_shared<FockBuilder<dcomplex,dcomplex>>(hamiltonianOptions);
 
       } else {
 

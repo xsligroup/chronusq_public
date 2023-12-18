@@ -80,6 +80,7 @@ namespace ChronusQ {
 
     // Check for disallowed combinations (if any)
 
+/*
     // No GIAO + RESPONSE
     if( input.containsData("BASIS.BASISTYPE") ) {
 
@@ -90,6 +91,7 @@ namespace ChronusQ {
         CErr("GIAO + RESPONSE not allowed");
 
     } 
+*/
 
 #if 0
     // No MPI + Full Residue
@@ -208,7 +210,8 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<ResponseBase> CQResponseOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> ss) {
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss,
+    EMPerturbation &scfPert ) {
 
 
     if( not input.containsSection("RESPONSE") )
@@ -369,7 +372,8 @@ namespace ChronusQ {
    
     }
 
-
+    // Copy over SCF Perturbation
+    resp->scfPert = scfPert;
 
     // General settings
 

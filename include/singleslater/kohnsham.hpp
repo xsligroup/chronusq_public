@@ -67,7 +67,7 @@ namespace ChronusQ {
     bool isGGA_; ///< Whether or not the XC kernel is within the GGA
     double XCEnergy; ///< Exchange-correlation energy
 
-    std::shared_ptr<PauliSpinorSquareMatrices<double>> VXC; ///< VXC terms
+    std::shared_ptr<PauliSpinorSquareMatrices<IntsT>> VXC; ///< VXC terms
 
     // Current Timings
     double VXCDur;
@@ -101,11 +101,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, true);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, false);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false);
       else
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false, false);
 
 
     }; // KohnSham constructor
@@ -127,11 +127,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, true);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, false);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false);
       else
-        VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false, false);
 
 
     }; // KohnSham constructor
@@ -159,7 +159,7 @@ namespace ChronusQ {
       SingleSlater<MatsT,IntsT>::formFock(pert,increment,xHFX);
 
       if( doVXC_ ) {
-        formVXC();
+        formVXC(pert);
 
         ROOT_ONLY(this->comm);
 
@@ -207,7 +207,7 @@ namespace ChronusQ {
     // See include/singleslater/kohnsham/vxc.hpp for docs.
 
     // VXC
-    void formVXC(); 
+    void formVXC(EMPerturbation&); 
 
     // FXC Terms
     template <typename U>
@@ -251,6 +251,12 @@ namespace ChronusQ {
       double* GDenS, double* GDenZ, double* GDenY, double* GDenX, U* GTS, U* GTZ, U* GTY, U* GTX,
       double *BasisScr, U* ZMAT);
 
+    void formZ_fxc(DENSITY_TYPE denType, bool isGGA, size_t NPts, size_t NBE, size_t IOff,
+      double epsScreen, std::vector<double> &weights,
+      dcomplex *ZrhoVar1, dcomplex *ZgammaVar1, dcomplex *ZgammaVar2, dcomplex *ZgammaVar3, dcomplex *ZgammaVar4,
+      double* GDenS, double* GDenZ, double* GDenY, double* GDenX, dcomplex* GTS, dcomplex* GTZ, dcomplex* GTY, dcomplex* GTX,
+      dcomplex *BasisScr, dcomplex* ZMAT);
+
     // GTO-based TDDFT
     template <typename U>
     void formZ_fxc(DENSITY_TYPE denType, bool isGGA, size_t NPts, size_t NBE, size_t IOff,
@@ -266,6 +272,20 @@ namespace ChronusQ {
       U* gPTyy, U* gPTxx,  
       double *BasisScr, U* ZMAT);
 
+    void formZ_fxc(DENSITY_TYPE denType, bool isGGA, size_t NPts, size_t NBE, size_t IOff,
+      double epsScreen, std::vector<double> &weights,
+      dcomplex *ZrhoVar1, dcomplex *ZgammaVar1, dcomplex *ZgammaVar2, dcomplex *ZgammaVar3, dcomplex *ZgammaVar4,
+      bool * Msmall, double *Mnorm, 
+//      double* DenS, double* DenZ, double* DenY, double* DenX, 
+      double* DSDMnorm, double* signMD, 
+      double* GDenS, double* GDenZ, double* GDenY, double* GDenX, 
+      double *Kx, double *Ky, double *Kz, 
+      double *Hx, double *Hy, double *Hz,
+      dcomplex* GTS, dcomplex* GTZ, dcomplex* GTY, dcomplex* GTX,
+      dcomplex* gPTss, dcomplex* gPTsz, dcomplex* gPTsy, dcomplex* gPTsx, dcomplex* gPTzz, 
+      dcomplex* gPTyy, dcomplex* gPTxx,  
+      dcomplex *BasisScr, dcomplex* ZMAT);
+
     // Calculate gPTss,sx,sy,sz 
     template <typename U>
     void mkgPTVar( 
@@ -278,7 +298,7 @@ namespace ChronusQ {
 
 
     template <typename U>
-    void formFXC(MPI_Comm c,  std::vector<TwoBodyContraction<U>> &cList );
+    void formFXC(MPI_Comm c,  std::vector<TwoBodyContraction<U>> &cList, EMPerturbation& );
 
 
 

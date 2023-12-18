@@ -167,7 +167,8 @@ namespace ChronusQ {
 
   // Parse Response options
   std::shared_ptr<ResponseBase> CQResponseOptions(
-    std::ostream &, CQInputFile &, std::shared_ptr<SingleSlaterBase>
+    std::ostream &, CQInputFile &, std::shared_ptr<SingleSlaterBase> &,
+    EMPerturbation &
   );
 
   void CQRESPONSE_VALID(std::ostream&, CQInputFile &);

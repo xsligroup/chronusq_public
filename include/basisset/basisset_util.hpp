@@ -26,6 +26,7 @@
 #include <libint2/shell.h>
 #include <memmanager.hpp>
 #include <basisset/basisset_def.hpp>
+#include <fields.hpp> 
 
 namespace ChronusQ {
 
@@ -62,6 +63,11 @@ namespace ChronusQ {
    */ 
   void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &,double *, double *, size_t, 
     size_t, std::vector<size_t>&, size_t, double*, double*, size_t, bool );
+// SS start
+  // define level 2 basis set eval for GIAO 
+  void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &,double *, double *, size_t, 
+    size_t, std::vector<size_t>&, size_t, dcomplex*, dcomplex*, size_t, bool, EMPerturbation& );
+// SS end 
 
   /**
    *  \brief Level 3 Basis Set Evaluation Function
@@ -70,6 +76,10 @@ namespace ChronusQ {
    *  \brief to properly store the results can be used..
    */ 
   void evalShellSet(SHELL_EVAL_TYPE,const libint2::Shell&,double,const std::array<double,3>&, double *, size_t);
+//SS start
+  // define level 3 basis set eval for GIAO  
+  void evalShellSet(SHELL_EVAL_TYPE,const libint2::Shell&,double,const std::array<double,3>&, dcomplex *, size_t, double *);
+//SS end
 
   /**
    *  \brief Basis Set transformation from Cartesian to Spherical
@@ -77,6 +87,7 @@ namespace ChronusQ {
    *  is already populated.
    */ 
   void CarToSpDEval(SHELL_EVAL_TYPE, size_t , double *, double*, size_t, size_t, bool);
+  void CarToSpDEval(SHELL_EVAL_TYPE, size_t , dcomplex *, dcomplex*, size_t, size_t, bool); //GIAO
 
   void testEval(CQMemManager &,double *, std::vector<libint2::Shell> &, bool);
 

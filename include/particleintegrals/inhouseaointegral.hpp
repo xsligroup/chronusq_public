@@ -394,6 +394,15 @@ namespace ChronusQ {
       libint2::Shell&,libint2::Shell&, double*, std::vector<dcomplex>&, 
       int, int*, int, int*, int );
 
+    /* Momentum Integrals */
+    // electric dipole (velocity gauge) integrals of a shell pair
+    static std::vector<std::vector<dcomplex>> computeGIAOEDipoleE1_vel(libint2::ShellPair&,
+                      libint2::Shell&, libint2::Shell&, double* );
+
+    // contracted momentum integral
+    static dcomplex GIAOMomentummu(libint2::ShellPair&,libint2::Shell&,libint2::Shell&, 
+                      double*, double*, std::vector<dcomplex>&, int,int*,int,int*,int);
+
     // compute a shell pair of GIAO electric quadrupole momentum length gauge integral 
     static std::vector<std::vector<dcomplex>> computeGIAOEQuadrupoleE2_len( libint2::ShellPair&,
       libint2::Shell&, libint2::Shell&, double* );
@@ -411,6 +420,17 @@ namespace ChronusQ {
     static dcomplex compOctupoleE3_len( libint2::ShellPair&, 
       libint2::Shell&,libint2::Shell&, double*, std::vector<dcomplex>&, 
       int, int*, int, int*, int,int,int );
+
+    // compute a shell pair of GIAO electric prp length gauge integral
+    static std::vector<std::vector<dcomplex>> computeGIAOEprp_len( libint2::ShellPair&,
+      libint2::Shell&, libint2::Shell&, double* );
+
+    // complex GIAO electric prp length gauge
+    static dcomplex compGIAOprp_len( libint2::ShellPair&, 
+      libint2::Shell&,libint2::Shell&, double*, double*, std::vector<dcomplex>&, 
+      int, int*, int, int*, int, int, int );
+
+
 
     // compute a shell pair of GIAO Potential integral
     static std::vector<std::vector<dcomplex>> computeGIAOPotentialV( const std::vector<libint2::Shell>&,
@@ -554,6 +574,10 @@ namespace ChronusQ {
 
     /* GIAO ERI */
     
+    // bottom up GIAO ERI of shell pair 1 and 2 
+    static std::vector<dcomplex> bottomupcomplexERI(libint2::ShellPair&,libint2::ShellPair&,
+      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double* );
+
     // compute GIAO ERI of shell pair 1 and 2 
     static std::vector<dcomplex> computeGIAOERIabcd(libint2::ShellPair&,libint2::ShellPair&,
       libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double* );

@@ -176,6 +176,11 @@ namespace ChronusQ {
 
     std::shared_ptr<GradInts<TwoPInts,IntsT>> gradERI = nullptr;
 
+    // GIAO integrals
+    std::shared_ptr<VectorInts<IntsT>> PVrprVP = nullptr;
+    std::shared_ptr<VectorInts<IntsT>> PVrmrVP = nullptr;
+    std::shared_ptr<VectorInts<IntsT>> rVr = nullptr; 
+
     // miscellaneous storage
     IntegralsCollection misc;
 

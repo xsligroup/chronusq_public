@@ -1,0 +1,37 @@
+#
+#  testGIAO - BH RHF/aug-cc-pvtz : SCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O 0.   0.   0.
+ O 1.2  0.   0.
+
+# 
+#  Job Specification
+[QM]
+reference = COMPLEX X2CHF
+job = SCF
+
+[BASIS]
+basis = 6-31g
+basisType = GIAO  
+
+[SCF]
+MAXITER = 50000 
+ACCURACY = 1.0e-10
+DIIS    = FALSE
+Field = Magnetic 0.0 0.0 -0.001
+GUESS = Core
+
+[MISC]
+mem=1GB
+nsmp = 2
+
+[INTS]
+ALG = INCORE
+
+

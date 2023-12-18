@@ -379,6 +379,185 @@ namespace ChronusQ {
       }
     }
   };
+  // SS: evalDen for GIAO 
+  void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
+    dcomplex *SCR2, dcomplex *DENMAT, double *Den, double *GDenX, double *GDenY, double *GDenZ,
+    dcomplex *BasisScr){
+
+    size_t IOff = NPts*NBE;
+
+    SubMatSet(NB,NB,NBE,NBE,DENMAT,NB,SCR1,NBE,subMatCut);           
+
+    // Obtain Sum_nu P^T_mu_nu Phi_nu
+    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr,NBE,dcomplex(0.),SCR2,NBE);
+
+    if( typ != GRADIENT ) {
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        Den[iPt] = 0.;
+        dcomplex *SCR_cur = SCR2 + iPt*NBE;
+        dcomplex *B_cur   = BasisScr + iPt*NBE;
+
+        dcomplex dentmp;  
+        for (size_t j = 0; j < NBE; j++) 
+          dentmp += SCR_cur[j] * std::conj(B_cur[j]);
+
+        if (std::abs(dentmp.imag())> 1.0e-13 )
+          std::cout<<"imaginary part of density is nonzero "<<std::imag(dentmp)<<std::endl;
+
+        Den[iPt] = std::real(dentmp);
+
+       } // for(auto iPt = 0
+
+    } else {
+
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        Den[iPt] = 0.;
+        GDenX[iPt] = 0.;
+        GDenY[iPt] = 0.;
+        GDenZ[iPt] = 0.;
+        const size_t NBEiPt = iPt*NBE;
+        const dcomplex *SCR_cur  = SCR2 + NBEiPt;
+        const dcomplex *B_cur    = BasisScr + NBEiPt;
+        const dcomplex *B_curX   = B_cur  + IOff;
+        const dcomplex *B_curY   = B_curX + IOff;
+        const dcomplex *B_curZ   = B_curY + IOff;
+
+        dcomplex dentmp=0.0;
+        dcomplex denXtmp=0.0;
+        dcomplex denYtmp=0.0;
+        dcomplex denZtmp=0.0;
+              
+        for(size_t j = 0; j < NBE; j++) { 
+          dentmp  += SCR_cur[j] * std::conj(B_cur[j]);
+          denXtmp += SCR_cur[j] * std::conj(B_curX[j]);
+          denYtmp += SCR_cur[j] * std::conj(B_curY[j]);
+          denZtmp += SCR_cur[j] * std::conj(B_curZ[j]);
+        }
+
+ 
+        dentmp = dentmp + std::conj(dentmp);
+        denXtmp = denXtmp + std::conj(denXtmp);
+        denYtmp = denYtmp + std::conj(denYtmp);
+        denZtmp = denZtmp + std::conj(denZtmp);
+
+        if (std::abs(dentmp.imag())> 1.0e-13 )
+          std::cout<<"imaginary part of density is nonzero "<<std::imag(dentmp)<<std::endl;
+        if (std::abs(denXtmp.imag())> 1.0e-13 )
+          std::cout<<"imaginary part of Nabla x density is nonzero "<<std::imag(denXtmp)<<std::endl;
+        if (std::abs(denYtmp.imag())> 1.0e-13 )
+          std::cout<<"imaginary part of Nabla y density is nonzero "<<std::imag(denYtmp)<<std::endl;
+        if (std::abs(denZtmp.imag())> 1.0e-13 )
+          std::cout<<"imaginary part of Nabla z density is nonzero "<<std::imag(denZtmp)<<std::endl;
+
+
+        Den[iPt]   = 0.5*std::real(dentmp);
+        GDenX[iPt] = std::real(denXtmp);
+        GDenY[iPt] = std::real(denYtmp);
+        GDenZ[iPt] = std::real(denZtmp);
+
+      }
+    }
+  }; // evalDen
+// this is specifically for non-Hermitian density matrix contracted with complex orbitals
+  void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
+    dcomplex *SCR2, dcomplex *DENMAT, dcomplex *Den, dcomplex *GDenX, dcomplex *GDenY, dcomplex *GDenZ,
+    dcomplex *BasisScr){
+
+    size_t IOff = NPts*NBE;
+
+    SubMatSet(NB,NB,NBE,NBE,DENMAT,NB,SCR1,NBE,subMatCut);           
+
+    // Obtain Sum_nu P^T_mu_nu Phi_nu
+    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr,NBE,dcomplex(0.),SCR2,NBE);
+
+    if( typ != GRADIENT ) {
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        Den[iPt] = 0.;
+        dcomplex *SCR_cur = SCR2 + iPt*NBE;
+        dcomplex *B_cur   = BasisScr + iPt*NBE;
+
+        dcomplex dentmp;  
+        for (size_t j = 0; j < NBE; j++) 
+          dentmp += SCR_cur[j] * std::conj(B_cur[j]);
+
+        //if (std::abs(dentmp.imag())> 1.0e-13 )
+        //  std::cout<<"imaginary part of density is nonzero "<<std::imag(dentmp)<<std::endl;
+
+        Den[iPt] = dentmp;
+
+       } // for(auto iPt = 0
+
+    } else {
+
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        Den[iPt] = 0.;
+        GDenX[iPt] = 0.;
+        GDenY[iPt] = 0.;
+        GDenZ[iPt] = 0.;
+        const size_t NBEiPt = iPt*NBE;
+        const dcomplex *SCR_cur  = SCR2 + NBEiPt;
+        const dcomplex *B_cur    = BasisScr + NBEiPt;
+        const dcomplex *B_curX   = B_cur  + IOff;
+        const dcomplex *B_curY   = B_curX + IOff;
+        const dcomplex *B_curZ   = B_curY + IOff;
+
+        dcomplex dentmp=0.0;
+        dcomplex denXtmp=0.0;
+        dcomplex denYtmp=0.0;
+        dcomplex denZtmp=0.0;
+              
+        for(size_t j = 0; j < NBE; j++) { 
+          dentmp  += SCR_cur[j] * std::conj(B_cur[j]);
+          denXtmp += SCR_cur[j] * std::conj(B_curX[j]);
+          denYtmp += SCR_cur[j] * std::conj(B_curY[j]);
+          denZtmp += SCR_cur[j] * std::conj(B_curZ[j]);
+        }
+
+        Den[iPt]   = dentmp;
+        GDenX[iPt] += denXtmp;
+        GDenY[iPt] += denYtmp;
+        GDenZ[iPt] += denZtmp;
+
+
+      } //for(auto iPt = 0; iPt < NPts; iPt++) 
+
+      for ( int icount = 0 ; icount < NBE*NPts ; icount++ )      
+        BasisScr[icount] = std::conj(BasisScr[icount]);
+ 
+      // Obtain Sum_nu P_mu_nu Phi^*_nu
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr,NBE,dcomplex(0.),SCR2,NBE);
+ 
+      for ( int icount = 0 ; icount < NBE*NPts ; icount++ )      
+        BasisScr[icount] = std::conj(BasisScr[icount]);
+
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        const size_t NBEiPt = iPt*NBE;
+        const dcomplex *SCR_cur  = SCR2 + NBEiPt;
+        const dcomplex *B_cur    = BasisScr + NBEiPt;
+        const dcomplex *B_curX   = B_cur  + IOff;
+        const dcomplex *B_curY   = B_curX + IOff;
+        const dcomplex *B_curZ   = B_curY + IOff;
+
+        dcomplex denXtmp=0.0;
+        dcomplex denYtmp=0.0;
+        dcomplex denZtmp=0.0;
+              
+        for(size_t j = 0; j < NBE; j++) { 
+          denXtmp += SCR_cur[j] * B_curX[j];
+          denYtmp += SCR_cur[j] * B_curY[j];
+          denZtmp += SCR_cur[j] * B_curZ[j];
+        }
+
+        GDenX[iPt] += denXtmp;
+        GDenY[iPt] += denYtmp;
+        GDenZ[iPt] += denZtmp;
+
+      } //for(auto iPt = 0; iPt < NPts; iPt++) 
+
+    }//if( typ != GRADIENT )
+  }; // //KohnSham<dcomplex,dcomplex>::evalDen
 
 
   /**
@@ -562,7 +741,7 @@ namespace ChronusQ {
    *   
    *  Note. See Documentations of constructZVars.
    */  
-  template <typename MatsT>
+  template <typename MatsT, typename IntsT>
   void formZ_vxc(
     std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM,
     DENSITY_TYPE denTyp, bool isGGA, size_t NPts, size_t NBE, size_t IOff, 
@@ -572,15 +751,15 @@ namespace ChronusQ {
     double *GDenS, double *GDenZ, double *GDenY, double *GDenX, 
     double *Kx, double *Ky, double *Kz,
     double *Hx, double *Hy, double *Hz,
-    double *BasisScratch, double *ZMAT) {
+    IntsT *BasisScratch, IntsT *ZMAT) {
 
-    double Fg;
+    IntsT Fg;
     // Fx,y,z  ^m(all batch) in J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 17 (changed for Total and Magn)
-    double FgX;
-    double FgY;
-    double FgZ;
+    IntsT FgX;
+    IntsT FgY;
+    IntsT FgZ;
 
-    memset(ZMAT,0,IOff*sizeof(double));
+    memset(ZMAT,0,IOff*sizeof(IntsT));
 
     if( not onePDM->hasXY() ) {
       for(auto iPt = 0; iPt < NPts; iPt++) { 
@@ -821,5 +1000,17 @@ namespace ChronusQ {
     double *Kx, double *Ky, double *Kz,
     double *Hx, double *Hy, double *Hz,
     double *BasisScratch, double *ZMAT);
+
+  template
+  void formZ_vxc(
+    std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>> onePDM,
+    DENSITY_TYPE denTyp, bool isGGA, size_t NPts, size_t NBE, size_t IOff, 
+    double epsScreen, std::vector<double> &weights, double *ZrhoVar1,
+    double *ZgammaVar1, double *ZgammaVar2, 
+    double *DenS, double *DenZ, double *DenY, double *DenX, 
+    double *GDenS, double *GDenZ, double *GDenY, double *GDenX, 
+    double *Kx, double *Ky, double *Kz,
+    double *Hx, double *Hy, double *Hz,
+    dcomplex *BasisScratch, dcomplex *ZMAT);
 
 }

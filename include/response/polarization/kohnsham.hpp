@@ -81,8 +81,8 @@ namespace ChronusQ {
           this->template phTransitionVecMO2AO<U>(c, scatter, nDo, N, ks, ks,
             true, V_c, V_c + tdOffSet);
 
-        TPI->twoBodyContract(c,cList); // form G[V]
-        ks.formFXC(c,cList); // Fxc contraction
+        TPI->twoBodyContract(c,cList,this->scfPert); // form G[V]
+        ks.formFXC(c,cList,this->scfPert); // Fxc contraction
 
 
         // Only finish transformation on root process

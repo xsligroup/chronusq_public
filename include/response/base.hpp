@@ -41,6 +41,8 @@ namespace ChronusQ {
     FDResponseSettings       fdrSettings;
     ResidueResponseSettings  resSettings;
 
+    EMPerturbation           scfPert;
+
     FDObservables  fdObs;
     ResObservables resObs;
 

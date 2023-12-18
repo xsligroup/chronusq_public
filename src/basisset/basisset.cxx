@@ -484,7 +484,7 @@ namespace ChronusQ {
   }
 
 
-
+  template <> 
   void BasisSet::makeMapPrim2Cont(const double *SUn, double *MAP, CQMemManager &mem) const {
 
     memset(MAP,0,nPrimitive * nBasis * sizeof(double));
@@ -560,6 +560,78 @@ namespace ChronusQ {
     mem.free(SCR);
 
   };  // BasisSet::makeMapPrim2Cont
+
+
+// make tempelate for makeMapPrim2Cont for real and complex
+  template <> 
+  void BasisSet::makeMapPrim2Cont(const dcomplex *SUn, dcomplex *MAP, CQMemManager &mem) const {
+
+    memset(MAP,0,nPrimitive * nBasis * sizeof(dcomplex));
+
+    dcomplex *rA = MAP;
+
+    // Compute the unnormalized mapping
+    for(auto iSh = 0; iSh < nShell; iSh++) {
+
+      size_t nPrim = shells[iSh].alpha.size();
+      size_t nBf   = shells[iSh].size();
+
+      for(auto iP = 0ul; iP < nPrim; iP++)
+      for(auto iB = 0ul; iB < nBf;   iB++) 
+        rA[iB + (iP*nBf + iB)*nBasis] = unNormCont[iSh][iP];
+
+      rA += nPrim * nBf * nBasis + nBf;
+
+    } // loop over shells
+
+ 
+    // Compute SUn * MAP
+    dcomplex *SCR = mem.malloc<dcomplex>(nBasis*nPrimitive);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nPrimitive,nBasis,nPrimitive,static_cast<dcomplex>(1.),SUn,nPrimitive,
+      MAP,nBasis,static_cast<dcomplex>(0.),SCR,nPrimitive);
+
+
+    libint2::Engine engine(libint2::Operator::overlap,maxPrim, maxL, 0);
+    engine.set_precision(0.);
+
+    const auto& buf_vec = engine.results();
+
+    // Loop over the shells and the basis functions,
+    // calculate the diagonals of contracted overlap integrals
+    size_t n1;
+    for(size_t s1 = 0,  Itot = 0 ; s1<nShell; s1++, Itot += n1 ) {
+    // Itot is the beginning basis function index of current shell
+
+      // Get the size of the shell
+      n1 = shells[s1].size();  
+
+      // This computes the diagonal shell block for s1
+      engine.compute(shells[s1],shells[s1]);
+
+      if( buf_vec[0] == nullptr ) continue;
+      const double* buff = buf_vec[0];
+
+      for(size_t i = 0; i < n1; i++) {
+      // i loop over the function in the current shell             
+
+        dcomplex fact = blas::dot(nPrimitive,MAP + (i+Itot) ,nBasis,
+                                                   SCR + (i+Itot)*nPrimitive,1);
+
+        // i+I is the basis function index 
+        dcomplex alpha = buff[i + i*n1];
+        // alpha is the diagonal element of overlap of basis function i+Itot
+         
+        blas::scal(nPrimitive,std::sqrt(alpha)/std::sqrt(fact),
+          MAP + (i+Itot),nBasis);
+
+      } // for size_t i = 0
+    } // for size_t s1 = 0
+    mem.free(SCR);
+
+  };  // BasisSet::makeMapPrim2Cont Complex
+
+
+
 
   void ShellPairData::computeShellPairs(std::vector<libint2::Shell> &shs, 
       std::vector<size_t> &mapSh2Cen, size_t maxNPrim, size_t maxL, 

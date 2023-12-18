@@ -186,8 +186,11 @@ namespace ChronusQ {
     // Misc functions
       
     void uncontractShells();
-    void makeMapPrim2Cont(const double*, double*, CQMemManager&) const;
-
+    //void makeMapPrim2Cont(const double*, double*, CQMemManager&) const;
+    // TangDD Make makeMapPrim2Cont available for Real/Complex 
+    template <typename IntsT>
+    void makeMapPrim2Cont(const IntsT*, IntsT*, CQMemManager&) const;
+    // TangDD End
 
     BasisSet uncontractBasis() const;
     BasisSet groupGeneralContractionBasis() const;

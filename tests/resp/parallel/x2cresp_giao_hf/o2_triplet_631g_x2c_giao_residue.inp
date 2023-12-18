@@ -1,0 +1,40 @@
+[Molecule]
+charge = 0
+mult = 3
+geom:
+ O      0.000000     0.000000     0.000000
+ O      1.200000     0.000000     0.000000
+
+#
+#  Job Specification
+#
+[QM]
+reference = Complex X2CHF
+job = RESP
+
+[SCF]
+ACCURACY=1e-10
+guess=core
+maxiter=500
+DAMPPARAM = 0.3
+damperror = 5.0e-5
+field = Magnetic 0.0 0.0 0.005
+diisalg = cdiis
+
+[MISC]
+nsmp = 2
+mem = 500 MB
+
+[INTS]
+alg=incore
+
+[RESPONSE]
+TYPE = RESIDUE
+DOFULL = FALSE
+NROOTS = 12
+
+# 6-311g(d,p)
+[BASIS]
+basis = 6-31g
+basistype = GIAO
+

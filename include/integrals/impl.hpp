@@ -182,10 +182,38 @@ namespace ChronusQ {
         }
         break;
 
+      // Calculate additional integrals, if using GIAO + X2C
+      case MAGNETIC_4COMP_rVr:
+        if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
+          rVr = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, true);
+          rVr->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_rVr, options);
+        } else {
+          CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
+        }
+        break;
+      case MAGNETIC_4COMP_PVrprVP:
+        if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
+          PVrprVP = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, false);
+          PVrprVP->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_PVrprVP, options); 
+        } else {
+          CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
+        }
+        break;
+      case MAGNETIC_4COMP_PVrmrVP:
+        if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
+          PVrmrVP = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, false);
+          PVrmrVP->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_PVrmrVP, options);  
+        } else {
+          CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
+        }
+        break;
+
       case ELECTRON_REPULSION:
         CErr("Electron repulsion integrals are not implemented in computeAOOneP,"
              " they are implemented in TwoPInts",std::cout);
         break;
+
+
       }
 
   }; // AOIntegrals<IntsT>::computeAOOneP

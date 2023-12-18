@@ -51,6 +51,9 @@ namespace ChronusQ {
   void OnePInts<dcomplex>::OnePDriverLocal(
       const F &obFunc, shell_set& shells, std::vector<dcomplex*> mats) {
 
+    // Determine the number of OpenMP threads
+    int nthreads = GetNumThreads();
+
     // Determine the number of basis functions for the passed shell set
     size_t NB = std::accumulate(shells.begin(),shells.end(),0,
       [](size_t init, libint2::Shell &sh) -> size_t {
@@ -88,13 +91,22 @@ namespace ChronusQ {
 //    if(basisType == REAL_GTO)
       // pre compute all the shellpair data
 //      auto pair_to_use = genShellPairs(shells,std::log(std::numeric_limits<double>::lowest()));
-    
+
+    #pragma omp parallel
+    {
+      int thread_id = GetThreadID();
+
     size_t n1,n2;
     // Loop over unique shell pairs
     for(size_t s1(0), bf1_s(0), s12(0); s1 < shells.size(); bf1_s+=n1, s1++){ 
       n1 = shells[s1].size(); // Size of Shell 1
     for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++, s12++) {
       n2 = shells[s2].size(); // Size of Shell 2
+
+      // Round Robbin work distribution
+      #ifdef _OPENMP
+      if( s12 % nthreads != thread_id ) continue;
+      #endif
 
       libint2::ShellPair pair_to_use;
       pair_to_use.init(shells[s1],shells[s2],-1000);
@@ -118,6 +130,7 @@ namespace ChronusQ {
     } // Loop over s2 <= s1
     } // Loop over s1
 
+    } // end of omp
 
     // Symmetrize the matricies 
     // XXX: USES EIGEN
@@ -144,7 +157,7 @@ namespace ChronusQ {
       CErr("Real GTOs are not allowed in OneEInts<dcomplex>",std::cout);
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in OneEInts<dcomplex>",std::cout);
-    if (options.OneEScalarRelativity or options.OneESpinOrbit)
+    if (op == NUCLEAR_POTENTIAL and (options.OneEScalarRelativity or options.OneESpinOrbit))
       CErr("Relativistic integrals are implemented in OnePRelInts",std::cout);
 
     auto magAmp = emPert.getDipoleAmp(Magnetic);
@@ -166,8 +179,13 @@ namespace ChronusQ {
           basis.shells, tmp);
       break;
     case NUCLEAR_POTENTIAL:
-      if (options.finiteWidthNuc)
-        CErr("Finite nuclei NYI for GIAO",std::cout);
+      options.finiteWidthNuc ?
+      OnePInts<dcomplex>::OnePDriverLocal<1,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
+            return ComplexGIAOIntEngine::computeGIAOPotentialV(
+                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol);
+            }, basis.shells, tmp) :
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
@@ -193,14 +211,15 @@ namespace ChronusQ {
   };
 
   template <>
-  void VectorInts<dcomplex>::computeAOInts(BasisSet &basis, Molecule&,
+  void VectorInts<dcomplex>::computeAOInts(BasisSet &basis, Molecule &mol,
       EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &options) {
     if (options.basisType == REAL_GTO)
       CErr("Real GTOs are not allowed in VectorInts<dcomplex>",std::cout);
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in VectorInts<dcomplex>",std::cout);
-    if (options.OneEScalarRelativity or options.OneESpinOrbit)
-      CErr("Relativistic integrals are implemented in OnePRelInts",std::cout);
+    // TangDD: Magnetic 4component integrals are placed here. lifting
+    //if (options.OneEScalarRelativity or options.OneESpinOrbit)
+    //  CErr("Relativistic integrals are implemented in OnePRelInts",std::cout);
 
     auto magAmp = emPert.getDipoleAmp(Magnetic);
 
@@ -260,9 +279,55 @@ namespace ChronusQ {
         break;
       }
       break;
-    default:
-      CErr("Requested operator is not implemented in VectorInts.");
+
+    // GIAO + X2C
+    // Calculate rVr and pVAAVp integrals
+    case MAGNETIC_4COMP_rVr:
+      switch (order()) {
+      case 2:
+        OnePInts<dcomplex>::OnePDriverLocal<6,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+            return ComplexGIAOIntEngine::computeGIAOrVr(
+              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
+            }, basis.shells, pointers());
+        break;
+      default:
+        CErr("Requested operator is not implemented in VectorInts.");
+        break;
+      }
       break;
+    case MAGNETIC_4COMP_PVrprVP:
+      switch (order()) {
+      case 2: 
+        OnePInts<dcomplex>::OnePDriverLocal<9,false>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+            return ComplexGIAOIntEngine::computeGIAOpVrprVp(
+              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
+            }, basis.shells, pointers());
+        break;
+      default:
+        CErr("Requested operator is not implemented in VectorInts.");
+        break;
+      }
+      break;
+    case MAGNETIC_4COMP_PVrmrVP:
+      switch (order()) {
+      case 2: 
+        OnePInts<dcomplex>::OnePDriverLocal<9,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+            return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
+              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
+            }, basis.shells, pointers());
+        break;
+      default:
+        CErr("Requested operator is not implemented in VectorInts.");
+        break;
+      }
+      break;
+
     }
 
   };
@@ -274,8 +339,8 @@ namespace ChronusQ {
       CErr("Real GTOs are not allowed in MultipoleInts<dcomplex>",std::cout);
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in MultipoleInts<dcomplex>",std::cout);
-    if (options.OneEScalarRelativity or options.OneESpinOrbit)
-      CErr("Relativistic integrals are implemented in OnePRelInts",std::cout);
+    //if (options.OneEScalarRelativity or options.OneESpinOrbit)
+    //  CErr("Relativistic integrals are implemented in OnePRelInts",std::cout);
 
     auto magAmp = emPert.getDipoleAmp(Magnetic);
 
@@ -305,14 +370,60 @@ namespace ChronusQ {
   };
 
   template <>
-  void OnePRelInts<dcomplex>::computeAOInts(BasisSet&, Molecule&,
-      EMPerturbation&, OPERATOR, const HamiltonianOptions &options) {
+  void OnePRelInts<dcomplex>::computeAOInts(BasisSet &basis, Molecule &mol,
+      EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &options) {
     if (options.basisType == REAL_GTO)
       CErr("Real GTOs are not allowed in OnePRelInts<dcomplex>",std::cout);
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in OnePRelInts<dcomplex>",std::cout);
 
-    CErr("Relativistic GIAO one particle integrals NYI",std::cout);
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
+    std::vector<dcomplex*> tmp(1, pointer());
+
+    // All Magnetic integrals are placed under potential pointer!
+    // Finite Nuc width
+    std::vector<dcomplex*> _potential(1, pointer());
+    if (options.finiteWidthNuc)
+      OnePInts<dcomplex>::OnePDriverLocal<1,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
+            return ComplexGIAOIntEngine::computeGIAOPotentialV(
+                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol);
+            }, basis.shells, _potential);
+    else
+      OnePInts<dcomplex>::OnePDriverLocal<1,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
+            return ComplexGIAOIntEngine::computeGIAOPotentialV(
+                pair,sh1,sh2,&magAmp[0],mol);
+            }, basis.shells, _potential);
+
+    // Point nuclei is used when chargeDist is empty
+    const std::vector<libint2::Shell> &chargeDist = options.finiteWidthNuc ?
+        mol.chargeDist : std::vector<libint2::Shell>();
+
+    // pVp Part
+    if (options.OneESpinOrbit) {
+      if (not hasSpinOrbit())
+        CErr("computeAOInts: Requested spin-orbit integrals, "
+             "but the OnePRelInts object does not contain spin-orbit components");
+
+      OnePInts<dcomplex>::OnePDriverLocal<3,false>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
+              return ComplexGIAOIntEngine::computeGIAOSL(chargeDist,
+                  pair,sh1,sh2,&magAmp[0],mol);
+              }, basis.shells, SOXYZPointers());       
+    }
+
+    std::vector<dcomplex*> _PVdP(1, scalar().pointer());
+    OnePInts<dcomplex>::OnePDriverLocal<1,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
+            return ComplexGIAOIntEngine::computeGIAOpVdotp(chargeDist,
+                pair,sh1,sh2,&magAmp[0],mol);
+            }, basis.shells, _PVdP);
+
   };
 
   template void Integrals<dcomplex>::computeAOOneP(

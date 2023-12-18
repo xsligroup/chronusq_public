@@ -126,6 +126,52 @@ namespace ChronusQ {
 
   }; // evalShellSet Level 2
 
+//SS start 
+  // level two evel shellset for GIAO 
+  void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
+    std::vector<bool> &evalShell, double* rSq, double *r, size_t npts, size_t nCenter, 
+    std::vector<size_t> &mapSh2Cen, size_t NBasisEff, dcomplex *fEval, dcomplex *SCR, 
+    size_t IOffSCR, bool forceCart, EMPerturbation &pert) {
+
+    assert(shells.size() == evalShell.size());
+
+    size_t nShSize = shells.size();
+    size_t IOff =  npts*NBasisEff;
+    std::array<double,3> rVal;
+
+    for (auto ipts = 0ul; ipts < npts; ipts++){
+      size_t Ic = 0;
+    for (auto iSh = 0ul; iSh < nShSize; iSh++){
+      if(evalShell[iSh]) {
+        dcomplex * fStart    = fEval + Ic + ipts*NBasisEff;
+
+        rVal [0]= r[0 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+        rVal [1]= r[1 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+        rVal [2]= r[2 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+
+        // calculate wave vector
+
+        double k[3];
+
+        auto magAmp = pert.getDipoleAmp(Magnetic);
+
+        k[0] = 0.5*( shells[iSh].O[1]*magAmp[2] - shells[iSh].O[2]*magAmp[1] );
+        k[1] = 0.5*( shells[iSh].O[2]*magAmp[0] - shells[iSh].O[0]*magAmp[2] );
+        k[2] = 0.5*( shells[iSh].O[0]*magAmp[1] - shells[iSh].O[1]*magAmp[0] );
+
+        evalShellSet(typ,shells[iSh],rSq[mapSh2Cen[iSh] + ipts*nCenter],
+          rVal,SCR,IOffSCR,k); 
+
+        CarToSpDEval(typ, shells[iSh].contr[0].l, SCR, fStart, IOff, IOffSCR, forceCart);
+
+        Ic += shells[iSh].size(); // Increment offset in basis
+      }
+
+    } // loop over shells
+    } // loop over points
+
+  }; // evalShellSet Level 2
+//SS end
 
   /**
    *   \brief Level 3 Basis Set Evaluation Function
@@ -240,6 +286,158 @@ namespace ChronusQ {
 
   }; // evalShellSet Level3
 
+// SS start 
+  /**
+   *   \brief Level 3 Basis Set Evaluation Function for GIAO 
+   *   Evaluates a single shell over a single cartesian point. This function requires a precomputed
+   *   the distance and its x,y,z components for the point from the shell origin. An offset
+   *   to properly store the results can be used.
+   *   \param [in] typ        Type of evaluation to perform (gradient, etc)
+   *   \param [in] shell      Shell for evaluation(libint2::Shell).
+   *   \param [in] rSq        Raw storage of square distance between the point and the shell origin (precomputed outside)
+   *   \param [in] r          Raw storage of x,y,z of the vector between each point and the shell origin 
+   *                          (precomputed outside).  
+   *   \param [in/out] SCR    eval Storage for the shell set evaluation, f(ixyz,iSh,ipt). 
+   *                          Variable dimensions(npts*NBasisEff*1 or 4) allocated outside.
+   *                          This storage will have all values of the functions in the shell, 
+   *                          for each shell, for each point. If requested there will be appended 
+   *                          f/dx(ixyz,iSh,ipt), f/dy(ixyz,iSh,ipt), f/dz(ixyz,iSh,ipt) values of 
+   *                          the functions in the shell, for each shell(nShSize), for each point(npts)
+   *   \param [in] IOffSCR       OffSet to properly store the basis set. 
+   */ 
+  void evalShellSet(SHELL_EVAL_TYPE typ, const libint2::Shell &shell,double rSq, const std::array<double,3> &xyz, 
+    dcomplex *SCR, size_t IOffSCR, double *k) {
+    auto L         = shell.contr[0].l;
+    auto shSize    = ((L+1)*(L+2))/2; 
+    auto shSize_car   = ((L+1)*(L+2))/2; 
+    dcomplex * f_car     = SCR ;
+    dcomplex * dx_car = f_car   + IOffSCR;
+    dcomplex * dy_car = dx_car  + IOffSCR;
+    dcomplex * dz_car = dy_car  + IOffSCR;
+    auto contDepth = shell.alpha.size(); 
+    dcomplex alpha=0.0;
+    dcomplex expFactor=0.0;
+    dcomplex expArg=0.0;
+    double tmpcoef,tmpalpha;
+    int lx,ly,lz, ixyz;
+    double tmpxyz;
+    dcomplex tmpdx;
+    dcomplex tmpdy;
+    dcomplex tmpdz;
+    // Generating the expArgument, expFactotr and the
+    // alpha (for derivatives later on) and store them
+    // in temp variables
+    
+    // calculate the phase factor 
+    dcomplex phase=0.0;
+    dcomplex onei;
+    onei.real(0.0);
+    onei.imag(1.0);
+    double kdotr = 0.0;
+    for ( int ii = 0 ; ii < 3 ; ii++ ) kdotr += k[ii]*xyz[ii];
+    phase = std::exp(onei*kdotr); 
+
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expArg = phase * std::exp(-tmpalpha*rSq);
+      expFactor += tmpcoef * expArg;
+      if (typ == GRADIENT) { 
+        // quantities for derivatives
+        tmpcoef *= tmpalpha;
+        alpha += tmpcoef * expArg;
+      }
+    } 
+
+    if (typ == GRADIENT) alpha *= 2;
+
+    for(auto i = 0u, I = 0u; i <= L; i++) {
+      lx = L - i;
+      for( auto j = 0u; j <= i; j++, I++) {   // I count the number of elements in a shell
+        ly = i - j;
+        lz = L - lx - ly;
+        tmpxyz= 1.0;
+        tmpdx = 0.0;
+        tmpdy = 0.0;
+        tmpdz = 0.0;
+        for(ixyz = 0; ixyz < lx-1; ixyz++) tmpxyz *= xyz[0];
+        for(ixyz = 0; ixyz < ly-1; ixyz++) tmpxyz *= xyz[1];
+        for(ixyz = 0; ixyz < lz-1; ixyz++) tmpxyz *= xyz[2];
+        f_car[I]  =  tmpxyz;
+
+        if (typ == GRADIENT) {
+        // Derivatives
+/*
+          if(lx> 0) {tmpdx = -expFactor * static_cast<dcomplex>( lx );}
+          if(ly> 0) {tmpdy = -expFactor * static_cast<dcomplex>( ly );}
+          if(lz> 0) {tmpdz = -expFactor * static_cast<dcomplex>( lz );}
+*/
+
+          if(lx> 0) {tmpdx = expFactor * static_cast<dcomplex>( lx );}
+          if(ly> 0) {tmpdy = expFactor * static_cast<dcomplex>( ly );}
+          if(lz> 0) {tmpdz = expFactor * static_cast<dcomplex>( lz );}
+
+           
+          dx_car[I] = tmpxyz*tmpdx;
+          dy_car[I] = tmpxyz*tmpdy;
+          dz_car[I] = tmpxyz*tmpdz;
+    
+          // finishing up        
+          if(lx> 0) {f_car[I]  *= xyz[0]; dy_car[I] *=xyz[0];dz_car[I] *=xyz[0];}
+          if(ly> 0) {f_car[I]  *= xyz[1]; dx_car[I] *=xyz[1];dz_car[I] *=xyz[1];}
+          if(lz> 0) {f_car[I]  *= xyz[2]; dx_car[I] *=xyz[2];dy_car[I] *=xyz[2];}
+
+/*    
+          dx_car[I] += f_car[I] * xyz[0] * alpha;
+          dy_car[I] += f_car[I] * xyz[1] * alpha;
+          dz_car[I] += f_car[I] * xyz[2] * alpha;
+*/
+
+          dx_car[I] -= f_car[I] * xyz[0] * alpha;
+          dy_car[I] -= f_car[I] * xyz[1] * alpha;
+          dz_car[I] -= f_car[I] * xyz[2] * alpha;
+
+
+
+          f_car[I]  *= expFactor;
+          // extra term for GIAO 
+/*
+          dx_car[I] += -onei*k[0]*f_car[I];
+          dy_car[I] += -onei*k[1]*f_car[I];
+          dz_car[I] += -onei*k[2]*f_car[I];
+*/
+
+          dx_car[I] += onei*k[0]*f_car[I];
+          dy_car[I] += onei*k[1]*f_car[I];
+          dz_car[I] += onei*k[2]*f_car[I];
+    
+        } else{
+        // Only basis (not GGA)
+          if(lx> 0) {f_car[I]  *= xyz[0];}
+          if(ly> 0) {f_car[I]  *= xyz[1];}
+          if(lz> 0) {f_car[I]  *= xyz[2];}
+          f_car[I]  *= expFactor;
+        }
+
+#if Basis_DEBUG_LEVEL >= 3
+          // Debug Printing
+          std::cout << I <<" "<< lx << " " 
+            << ly << " "<<lz <<"  f(pt) "<< std::real(f_car[I]) <<" " <<std::endl;
+          std::cout << I<<" "<< lx << " "  
+            << ly << " "<<lz <<" dx(pt) "<< std::real(dx_car[I]) << std::endl;
+          std::cout << I<<" "<< lx << " " 
+            << ly << " "<<lz <<" dy(pt) "<< std::real(dy_car[I]) << std::endl;
+          std::cout << I<<" "<< lx << " " 
+            << ly << " "<<lz <<" dz(pt) "<< std::real(dz_car[I]) << std::endl;
+#endif
+
+      } //loop overj, j[0,i]
+    } //loop over i, i[0,L] this to loop required to build the lx,ly,lz combination given L
+
+  }; // evalShellSet Level3
+
+//SS end 
+
 
   /**
    *   \brief Basis Set Cartesian to Sperical conversion over a single shell.
@@ -346,6 +544,93 @@ namespace ChronusQ {
     } //copy vs transform
   }; // CarToSpDEval
 
+// SS start
+
+  void CarToSpDEval(SHELL_EVAL_TYPE typ, size_t L, dcomplex *fCarEVal, dcomplex *FSpEVAl, size_t IOff, size_t IOffSCR, 
+    bool forceCart){
+
+    auto shSize_sp  = (2*L+1);
+    auto shSize_car   = ((L+1)*(L+2))/2; 
+    dcomplex * f_sp     = FSpEVAl ;
+    dcomplex * dx_sp = f_sp   + IOff;
+    dcomplex * dy_sp = dx_sp  + IOff;
+    dcomplex * dz_sp = dy_sp  + IOff;
+    dcomplex * f_car     = fCarEVal ;
+    dcomplex * dx_car = f_car   + IOffSCR;
+    dcomplex * dy_car = dx_car  + IOffSCR;
+    dcomplex * dz_car = dy_car  + IOffSCR;
+    dcomplex tmp, tmpx, tmpy, tmpz ;
+    // No trasformation needed
+    //FIXME if (L < 2 or force cart) 
+    //if (L < 2 ){
+    //bool forceCart = true ;
+    if (L < 2 or forceCart){
+
+      if (typ != GRADIENT) {
+        for( auto I = 0u ; I<shSize_car ; I++){ 
+          f_sp[I] = f_car[I];
+          } //loop over car/sp (equal in this case)
+
+      } else {
+        for( auto I = 0u ; I<shSize_car ; I++) {
+          f_sp[I]  =  f_car[I];
+          dx_sp[I] = dx_car[I];
+          dy_sp[I] = dy_car[I];
+          dz_sp[I] = dz_car[I];
+          } //loop over car/sp (equal in this case)
+
+      } //GGA or not
+
+    //We do transform here
+    } else {
+
+      if (typ != GRADIENT) {
+        for( auto I = 0u ; I<shSize_sp ;I++  ) {
+          tmp = 0.0;
+          for( auto p = 0u; p<shSize_car ; p++) { 
+            tmp += car2sph_matrix[L][I*shSize_car+p] * f_car[p];
+            } //loop over cart
+          f_sp[I] = tmp;
+        } //loop over sp
+
+      } else {
+        for( auto I = 0u ; I<shSize_sp ;I++  ) {
+          tmp  = 0.0;
+          tmpx = 0.0;
+          tmpy = 0.0;
+          tmpz = 0.0;
+          for( auto p = 0u; p<shSize_car ; p++) { 
+            tmp  += car2sph_matrix[L][I*shSize_car+p] * f_car[p];
+            tmpx += car2sph_matrix[L][I*shSize_car+p] * dx_car[p];
+            tmpy += car2sph_matrix[L][I*shSize_car+p] * dy_car[p];
+            tmpz += car2sph_matrix[L][I*shSize_car+p] * dz_car[p];
+            } //loop over cart
+          f_sp[I]  =  tmp;
+          dx_sp[I] = tmpx;
+          dy_sp[I] = tmpy;
+          dz_sp[I] = tmpz;
+
+#if Basis_DEBUG_LEVEL >= 3
+/*
+          // Debug Printing
+          std::cerr << I << 
+            "  f(pt) "<< f_sp[I] <<" " <<std::endl;
+          std::cerr << I<<" " <<  
+            " dx(pt) "<< dx_sp[I] << std::endl;
+          std::cerr << I<<" " << 
+            " dy(pt) "<< dy_sp[I] << std::endl;
+          std::cerr << I<<" " <<  
+            " dz(pt) "<< dz_sp[I] << std::endl;
+*/
+#endif
+
+        } //loop over sp
+
+      } //GGA or not
+
+    } //copy vs transform
+  }; // CarToSpDEval
+// SS end
 
   /**
    *  \brief only for debug 

@@ -934,6 +934,11 @@ namespace ChronusQ {
 
   }
 
+  template <>
+  inline void NEOKohnShamBuilder<dcomplex,dcomplex>::formVXC(SingleSlater<dcomplex,dcomplex>&) {
+    CErr("GIAO for NEO NYI!");
+  };
+
 
   template <typename MatsT, typename IntsT>
   void NEOKohnShamBuilder<MatsT,IntsT>::formFock(

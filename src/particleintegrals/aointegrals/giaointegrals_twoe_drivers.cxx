@@ -30,6 +30,12 @@
 
 #include <util/threads.hpp>
 #include <chrono>
+
+//#define _DEBUGORTHO
+//#define _DEBUGERI
+//#define _DEBUGGIAOERI //SS
+//#define _DEBUGGIAOONEE //SS 
+#define bottomupGIAO //SS
 // Debug directives
 
 namespace ChronusQ {
@@ -53,9 +59,10 @@ namespace ChronusQ {
       CErr("Complex GTOs NYI in InCore4indexTPI<dcomplex>",std::cout);
 
     // Determine the number of OpenMP threads
-    //int nthreads = GetNumThreads(1);
+    int nthreads = GetNumThreads();
     
 //SS: for debug    
+/*
     // Create a vector of libint2::Engines for possible threading
       std::vector<libint2::Engine> engines(1);
 
@@ -64,7 +71,7 @@ namespace ChronusQ {
     engines[0] = libint2::Engine(libint2::Operator::coulomb,
       basisSet.maxPrim,basisSet.maxL,0);
     engines[0].set_precision(0.);
-    
+*/    
 // SS: end
 
     // Copy over the engines to other threads if need be
@@ -78,10 +85,10 @@ namespace ChronusQ {
     InCore4indexTPI<dcomplex> &eri4I = *this;
     std::fill_n(eri4I.pointer(),NB2*NB2,0.);
 
-/*
     #pragma omp parallel
     {
       int thread_id = GetThreadID();
+/*
       // Get threads result buffer
       const auto& buf_vec = engines[thread_id].results();
 */
@@ -125,6 +132,11 @@ namespace ChronusQ {
 
         n4 = basisSet.shells[s4].size(); // Size of Shell 4
 
+        // Round Robbin work distribution
+        #ifdef _OPENMP
+        if( s1234 % nthreads != thread_id ) continue;
+        #endif
+
         //SS start generate shellpair2 and calculate GIAO ERI
 
         libint2::ShellPair pair2_to_use;
@@ -141,6 +153,17 @@ namespace ChronusQ {
 
 // SS: end
 
+// SS bottom up start
+#ifdef bottomupGIAO
+        auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use,pair2_to_use,
+          basisSet.shells[s1],basisSet.shells[s2],
+          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+//std::cout<<"calculate bottom up GIAO ERI fuck!!!"<<std::endl;
+        auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use_switch,pair2_to_use,
+          basisSet.shells[s2],basisSet.shells[s1],
+          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+// SS bottom up end
+#else
         // calculate integral (s1,s2|s3,s4)
         auto two2buff = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
@@ -151,6 +174,8 @@ namespace ChronusQ {
         auto two2buff_switch = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
           basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+
+#endif
         
 /*
         auto realbuff = RealGTOIntEngine::computeERIabcd(pair1_to_use,pair2_to_use,
@@ -261,10 +286,10 @@ if ( std::abs(two2buff[ijkl]-two2buff_switch[ijkl]) > 1.0e-11  ) {
       }; // s3
       }; // s2
       }; // s1
-//    }; // omp region
+    }; // omp region
 
     // Debug output of the ERIs
-#if 0
+#if _DEBUGGIAOERI
     std::cout << "Two-Electron GIAO Integrals (GIAO ERIs)" << std::endl;
     for(auto k = 0ul; k < NB; k++)
     for(auto l = 0ul; l < NB; l++)

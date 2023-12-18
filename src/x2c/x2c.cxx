@@ -37,6 +37,10 @@
 #include <cqlinalg/svd.hpp>
 #include <cqlinalg/matfunc.hpp>
 
+//#define DebugX2Cprint
+//#define DebugX2Cprint2 
+//#define oldimpl
+
 namespace ChronusQ {
 
   template <typename MatsT>
@@ -367,10 +371,835 @@ namespace ChronusQ {
   template void X2C<dcomplex,double>::computeOneEX2C(EMPerturbation&,
       std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
 
-  template<> void X2C<dcomplex,dcomplex>::computeOneEX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
-    CErr("X2C + Complex Ints NYI",std::cout);
+  /**
+   *  \brief X2C core Hamiltonian with GIAO.
+   */
+  template <>
+  void X2C<dcomplex, dcomplex>::computeOneEX2C(EMPerturbation &emPert,
+      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>> coreH) {
+
+#ifdef REAL_SPACE_X2C_ALGORITHM
+    CErr("No Real Space for GIAO!",std::cout);
+#endif
+
+    dcomplex* XXX = reinterpret_cast<dcomplex*>(NULL);
+
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
+    dcomplex onei = dcomplex(0,1);
+
+    size_t NP = uncontractedBasis_.nPrimitive;
+    size_t NB = basisSet_.nBasis;
+
+    uncontractedInts_.computeAOOneP(memManager_,
+        molecule_, uncontractedBasis_, emPert,
+        {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}, 
+         {LEN_ELECTRIC_MULTIPOLE,2}, {MAGNETIC_MULTIPOLE,1},
+         {MAGNETIC_4COMP_rVr,2},
+         {MAGNETIC_4COMP_PVrprVP,2},
+         {MAGNETIC_4COMP_PVrmrVP,2}},
+        ssOptions_.hamiltonianOptions);
+
+    std::cout << " Building GIAO core Hamiltonian." << std::endl;
+    
+    // Make copy of integrals
+    dcomplex *overlap   = memManager_.malloc<dcomplex>(NP*NP);
+    std::copy_n(uncontractedInts_.overlap->pointer(), NP*NP, overlap);
+
+    // Compute the mappings from primitives to GIAOs
+    mapPrim2Cont = memManager_.malloc<dcomplex>(NP*NB);
+    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont,memManager_);
+
+    // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
+    dcomplex *SCR1  = memManager_.malloc<dcomplex>(8*NP*NP);
+    dcomplex *CSCR1 = reinterpret_cast<dcomplex*>(SCR1);
+
+    // Make a copy of the overlap for later
+    dcomplex* SCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex* M = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex* VCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex* Ms = memManager_.malloc<dcomplex>(NP*NP);  // Scalar component of M 
+
+    // Construct M Matrix
+    // M = 1/2 * (\sigma\dot\pi) * (\sigma\dot\pi)
+
+    // assemble the scalar part of M (Ms)
+    for(auto k = 0ul; k < NP*NP; k++)
+      Ms[k] = (uncontractedInts_.kinetic->pointer()[k]);// + this->aoints.potential[k]);
+
+    // this part add the angular momentum term 
+    for ( auto index = 0 ; index < 3 ; index++ ) {
+      MatAdd('N','N',NP,NP,-0.5*magAmp[index]*onei,
+        (*uncontractedInts_.magnetic)[index]->pointer(),NP,dcomplex(1.),Ms,NP,Ms,NP);
+    } // for ( auto inde = 0 ; inde < 3 ; inde++ ) 
+
+    // this part add the length gauge electric quadrupole term (diamagnetic term)
+    const std::array<std::string,3> diagindex = { "XX","YY","ZZ" };
+
+    double diagcoeff[3];
+    diagcoeff[0] = 1.0/8.0*(magAmp[1]*magAmp[1]+magAmp[2]*magAmp[2]); 
+    diagcoeff[1] = 1.0/8.0*(magAmp[0]*magAmp[0]+magAmp[2]*magAmp[2]);    
+    diagcoeff[2] = 1.0/8.0*(magAmp[0]*magAmp[0]+magAmp[1]*magAmp[1]);    
+
+    // add diagonal part
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      MatAdd('N','N',NP,NP, 
+        dcomplex(diagcoeff[index]),
+        (*uncontractedInts_.lenElectric)[diagindex[index]]->pointer(),
+        NP,dcomplex(1.),Ms,NP,Ms,NP);
+    }   
+
+    const std::array<std::string,3> offindex = { "XY","XZ","YZ" };
+    
+    double offcoeff[3];
+    offcoeff[0] = -1.0/4.0*magAmp[0]*magAmp[1];
+    offcoeff[1] = -1.0/4.0*magAmp[0]*magAmp[2];
+    offcoeff[2] = -1.0/4.0*magAmp[1]*magAmp[2];
+   
+    // add off diagonal part
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      MatAdd('N','N',NP,NP, 
+        dcomplex(offcoeff[index]),
+        (*uncontractedInts_.lenElectric)[offindex[index]]->pointer(),
+        NP,dcomplex(1.),Ms,NP,Ms,NP);
+    } 
+
+    // M = [ M1  M2 ]
+    //     [ M3  M4 ]
+    dcomplex *M1 = M;
+    dcomplex *M2 = M1 + 2*NP*NP;
+    dcomplex *M3 = M1 + NP;
+    dcomplex *M4 = M2 + NP;
+
+    // M1 = Ms + Mz
+    MatAdd('N','N',NP,NP,dcomplex(1.),Ms,NP,0.5*dcomplex(magAmp[2]),
+      overlap,NP,M1,2*NP);
+    // M4 = Ms - Mz
+    MatAdd('N','N',NP,NP,dcomplex(1.),Ms,NP,0.5*dcomplex(-magAmp[2]),
+      overlap,NP,M4,2*NP);
+
+    // M2 = Mx - iMy
+    MatAdd('N','N',NP,NP,0.5*dcomplex(magAmp[0]),overlap,NP,
+      0.5*dcomplex(0.,-1.)*magAmp[1],overlap,NP,M2,2*NP);
+    // M3 = Mx + iMy
+    MatAdd('N','N',NP,NP,0.5*dcomplex(magAmp[0]),overlap,NP,
+      0.5*dcomplex(0.,1.)*magAmp[1],overlap,NP,M3,2*NP);
+
+#ifdef DebugX2Cprint  
+    prettyPrintSmart(std::cout,"2c M",M,2*NP,2*NP,2*NP);
+#endif 
+    
+    // need to copy a block instead of the whole matrix
+    SetMat('N',NP,NP,dcomplex(1.),overlap,NP,SCPY,2*NP);
+    SetMat('N',NP,NP,dcomplex(1.),overlap,NP,SCPY+2*NP*NP+NP,2*NP);
+    SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.potential->pointer(),NP,VCPY,2*NP);
+    SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.potential->pointer(),NP,VCPY+2*NP*NP+NP,2*NP);
+
+    // Singular value storage (initially S then T)
+    p = memManager_.malloc<double>(2*NP);
+    double* SS = p;
+    
+    // Get SVD of uncontracted overlap
+    // Store the left singular vectors in S
+    lapack::gesvd(lapack::Job::OverwriteVec,lapack::Job::NoVec, 
+      2*NP,2*NP,SCPY,2*NP,SS,XXX,2*NP,XXX,2*NP);
+    double minSS = *std::min_element(SS,SS+2*NP);
+    if( minSS < 1e-10 ) CErr("Stop: Uncontracted Overlap is Singular");
+
+    // FIXME: Reducing linear dependency -- something like
+    // nPrimUse_ = ORTH(2*NP,2*NP,SCPY,2*NP,SS,XXX,2*NP);
+    // size_t NPU = nPrimUse_;
+    // if (nPrimUse_ < 2*NP)
+    //    std::cout << "Info: Uncontracted Overlap is Singular." << std::endl;  
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"svd of 2c overlap",SCPY,2*NP,2*NP,2*NP);
+#endif 
+
+    // Form orthonormal transformation matrix in S
+    for(auto i = 0ul; i < 2*NP; i++)
+      blas::scal(2*NP,dcomplex(1.)/std::sqrt(SS[i]),
+        SCPY + i*2*NP,1);
+
+#ifdef DebugX2Cprint  
+    prettyPrintSmart(std::cout,"ortho matrix",SCPY,2*NP,2*NP,2*NP);
+    prettyPrintSmart(std::cout,"overlap singular values",SS,2*NP,1,2*NP);
+#endif 
+
+    // Transform M into the orthonormal basis (TangDD: M == T if no Magnetic)
+    // M -> MO
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCPY,2*NP,
+      M,2*NP,dcomplex(0.),SCR1,2*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCR1,2*NP,
+      SCPY,2*NP,dcomplex(0.),M,2*NP);
+
+#ifdef DebugX2Cprint  
+    prettyPrintSmart(std::cout,"M in orthogonal basis",M,2*NP,2*NP,2*NP);
+#endif
+
+    // Get the SVD of MO
+    // Store the left singular vectors in MO
+    lapack::gesvd(lapack::Job::OverwriteVec,lapack::Job::NoVec, 
+      2*NP,2*NP,M,2*NP,SS,XXX,2*NP,XXX,2*NP);
+
+    minSS = *std::min_element(SS,SS+2*NP);
+    if( minSS < 1e-10 ) CErr("Uncontracted Kinetic Energy Tensor is Singular");
+
+#ifdef DebugX2Cprint       
+    prettyPrintSmart(std::cout,"svd of ortho M",M,2*NP,2*NP,2*NP);
+    prettyPrintSmart(std::cout,"M singular values",SS,2*NP,1,2*NP);
+#endif
+
+    // Transformation matrix
+    UK = memManager_.malloc<dcomplex>(2*NP*2*NP);
+
+    // Form UK = US (Stored in S) * UT (Stored in M)
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCPY,2*NP,
+      M,2*NP,dcomplex(0.),UK,2*NP);
+
+#ifdef DebugX2Cprint       
+    prettyPrintSmart(std::cout,"UK",UK,2*NP,2*NP,2*NP);
+#endif
+
+    // Allocate and for "P^2" potential
+    dcomplex *P2P = memManager_.malloc<dcomplex>(2*NP*2*NP);
+
+    // P2P = UK**H * V * UK  -- Potential in P^2 basis
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
+      VCPY,2*NP,dcomplex(0.),SCR1,2*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCR1,2*NP,
+      UK,2*NP,dcomplex(0.),P2P,2*NP);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"P2P",P2P,2*NP,2*NP,2*NP);
+#endif
+
+    // Allocate W separately as it's needed later
+    size_t LDW = 2*NP;
+    W = std::make_shared<SquareMatrix<dcomplex>>(
+        std::dynamic_pointer_cast<OnePRelInts<dcomplex>>(
+            uncontractedInts_.potential)->template formW<dcomplex>());
+    auto Wp = W->pointer();
+
+#ifdef DebugX2Cprint       
+    prettyPrintSmart(std::cout,"W only pVp",Wp,2*NP,2*NP,2*NP);
+#endif
+
+    // need to copy a block instead of the whole matrix
+    // Components of 1/(4c^2)*(\sigma\dot)V(\sigma\dot)
+    dcomplex *AVA     = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *DOT     = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSx  = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSy  = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSz  = memManager_.malloc<dcomplex>(NP*NP);
+
+    // calculate AVA part
+    memset(AVA,0,NP*NP*sizeof(dcomplex));
+    
+    diagcoeff[0] = 1.0/4.0*(magAmp[1]*magAmp[1]+magAmp[2]*magAmp[2]); 
+    diagcoeff[1] = 1.0/4.0*(magAmp[0]*magAmp[0]+magAmp[2]*magAmp[2]);    
+    diagcoeff[2] = 1.0/4.0*(magAmp[0]*magAmp[0]+magAmp[1]*magAmp[1]);    
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"rVr XX",(*uncontractedInts_.rVr)["XX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"rVr YY",(*uncontractedInts_.rVr)["YY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"rVr ZZ",(*uncontractedInts_.rVr)["ZZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"rVr XY",(*uncontractedInts_.rVr)["XY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"rVr XZ",(*uncontractedInts_.rVr)["XZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"rVr YZ",(*uncontractedInts_.rVr)["YZ"]->pointer(),NP,NP,NP);
+#endif
+
+    // add diagonal part:  xVx(By^2+Bz^2)...
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      MatAdd('N','N',NP,NP, 
+        dcomplex(diagcoeff[index]),
+        (*uncontractedInts_.rVr)[diagindex[index]]->pointer(),
+        NP,dcomplex(1.),AVA,NP,AVA,NP);
+    }   
+    
+    offcoeff[0] = -1.0/2.0*magAmp[0]*magAmp[1];
+    offcoeff[1] = -1.0/2.0*magAmp[0]*magAmp[2];
+    offcoeff[2] = -1.0/2.0*magAmp[1]*magAmp[2];
+   
+    // add off diagonal part:  -xVy2BxBy...
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      MatAdd('N','N',NP,NP, 
+        dcomplex(offcoeff[index]),
+        (*uncontractedInts_.rVr)[offindex[index]]->pointer(),
+        NP,dcomplex(1.),AVA,NP,AVA,NP);
+    }   
+
+    // AVA part end
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"PVrprVP XX",(*uncontractedInts_.PVrprVP)["XX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP XY",(*uncontractedInts_.PVrprVP)["XY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP XZ",(*uncontractedInts_.PVrprVP)["XZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP YX",(*uncontractedInts_.PVrprVP)["YX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP YY",(*uncontractedInts_.PVrprVP)["YY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP YZ",(*uncontractedInts_.PVrprVP)["YZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP ZX",(*uncontractedInts_.PVrprVP)["ZX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP ZY",(*uncontractedInts_.PVrprVP)["ZY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrprVP ZZ",(*uncontractedInts_.PVrprVP)["ZZ"]->pointer(),NP,NP,NP);
+
+    prettyPrintSmart(std::cout,"PVrmrVP XX",(*uncontractedInts_.PVrmrVP)["XX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP XY",(*uncontractedInts_.PVrmrVP)["XY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP XZ",(*uncontractedInts_.PVrmrVP)["XZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP YX",(*uncontractedInts_.PVrmrVP)["YX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP YY",(*uncontractedInts_.PVrmrVP)["YY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP YZ",(*uncontractedInts_.PVrmrVP)["YZ"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP ZX",(*uncontractedInts_.PVrmrVP)["ZX"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP ZY",(*uncontractedInts_.PVrmrVP)["ZY"]->pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"PVrmrVP ZZ",(*uncontractedInts_.PVrmrVP)["ZZ"]->pointer(),NP,NP,NP);
+#endif
+
+    // CROSS part start (pVxA + AVxp)
+
+    // notice that PVrprVP(alpha,beta) = PVrprVP(beta,alpha)
+    //             PVrmrVP(alpha,beta) =-PVrmrVP(beta,alpha)
+
+    // 0: xx       1: xy      2: xz 
+    // 3: yx       4: yy      5: yz
+    // 6: zx       7: zy      8: zz   
+
+    memset(CROSSx,0,NP*NP*sizeof(dcomplex));  
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      MatAdd('N','N',NP,NP, 
+        dcomplex(1.0),
+        (*uncontractedInts_.PVrmrVP)[diagindex[index]]->pointer(),
+        NP,dcomplex(1.),CROSSx,NP,CROSSx,NP);
+    }   
+
+    memset(CROSSy,0,NP*NP*sizeof(dcomplex));  
+    memset(CROSSz,0,NP*NP*sizeof(dcomplex));  
+    
+    SetMat('N',NP,NP,dcomplex(1.),CROSSx,NP,CROSSy,NP);
+    SetMat('N',NP,NP,dcomplex(1.),CROSSx,NP,CROSSz,NP);
+
+    blas::scal(NP*NP,dcomplex(0.5*magAmp[0]),CROSSx,1);
+    blas::scal(NP*NP,dcomplex(0.5*magAmp[1]),CROSSy,1);
+    blas::scal(NP*NP,dcomplex(0.5*magAmp[2]),CROSSz,1);
+
+    // CROSSx = CROSSx -0.5*Bx*(pxVrx-rxVpx)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[0]),
+      (*uncontractedInts_.PVrmrVP)["XX"]->pointer(),
+      NP,dcomplex(1.),CROSSx,NP,CROSSx, NP);
+
+    // CROSSx = CROSSx -0.5*By*(pyVrx-rxVpy)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[1]),
+      (*uncontractedInts_.PVrmrVP)["YX"]->pointer(),
+      NP,dcomplex(1.),CROSSx,NP,CROSSx, NP);
+
+    // CROSSx = CROSSx -0.5*Bz*(pzVrx-rxVpz)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[2]),
+      (*uncontractedInts_.PVrmrVP)["ZX"]->pointer(),
+      NP,dcomplex(1.),CROSSx,NP,CROSSx, NP);
+
+
+    // CROSSy = CROSSy -0.5*Bx*(pxVry-ryVpx)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[0]),
+      (*uncontractedInts_.PVrmrVP)["XY"]->pointer(),
+      NP,dcomplex(1.),CROSSy,NP,CROSSy, NP);
+
+    // CROSSy = CROSSy -0.5*By*(pyVry-ryVpy)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[1]),
+      (*uncontractedInts_.PVrmrVP)["YY"]->pointer(),
+      NP,dcomplex(1.),CROSSy,NP,CROSSy, NP);
+
+    // CROSSy = CROSSy -0.5*Bz*(pzVry-ryVpz)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[2]),
+      (*uncontractedInts_.PVrmrVP)["ZY"]->pointer(),
+      NP,dcomplex(1.),CROSSy,NP,CROSSy, NP);
+
+
+    // CROSSz = CROSSz -0.5*Bx*(pxVrz-rzVpx)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[0]),
+      (*uncontractedInts_.PVrmrVP)["XZ"]->pointer(),
+      NP,dcomplex(1.),CROSSz,NP,CROSSz, NP);
+
+    // CROSSz = CROSSz -0.5*By*(pyVrz-rzVpy)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[1]),
+      (*uncontractedInts_.PVrmrVP)["YZ"]->pointer(),
+      NP,dcomplex(1.),CROSSz,NP,CROSSz, NP);
+
+    // CROSSz = CROSSz -0.5*Bz*(pzVrz-rzVpz)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-0.5*magAmp[2]),
+      (*uncontractedInts_.PVrmrVP)["ZZ"]->pointer(),
+      NP,dcomplex(1.),CROSSz,NP,CROSSz, NP);
+
+    blas::scal(NP*NP,dcomplex(0.0,-1.0),CROSSx,1);
+    blas::scal(NP*NP,dcomplex(0.0,-1.0),CROSSy,1);
+    blas::scal(NP*NP,dcomplex(0.0,-1.0),CROSSz,1);
+    
+    // CROSS part end 
+
+    // now calculate DOT (pV.A + AV.p)
+
+    memset(DOT,0,NP*NP*sizeof(dcomplex));  
+
+    // DOT = DOT + Bx*[(DyVrz+rzVDy)-(DzVry+ryVDz)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(magAmp[0]),
+      (*uncontractedInts_.PVrprVP)["YZ"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-magAmp[0]),
+      (*uncontractedInts_.PVrprVP)["ZY"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+
+    // DOT = DOT + By*[(DzVrx+rxVDz)-(DxVrz+rzVDx)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(magAmp[1]),
+      (*uncontractedInts_.PVrprVP)["ZX"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-magAmp[1]),
+      (*uncontractedInts_.PVrprVP)["XZ"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+
+    // DOT = DOT + Bz*[(DxVry+ryVDx)-(DyVrx+rxVDy)        
+    MatAdd('N','N',NP,NP, 
+      dcomplex(magAmp[2]),
+      (*uncontractedInts_.PVrprVP)["XY"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+    MatAdd('N','N',NP,NP, 
+      dcomplex(-magAmp[2]),
+      (*uncontractedInts_.PVrprVP)["YX"]->pointer(),
+      NP,dcomplex(1.),DOT,NP,DOT, NP);
+
+    blas::scal(NP*NP,dcomplex(0.0,0.5),DOT,1);
+   
+    // DOT end   
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"AVA",AVA,NP,NP,NP);
+    prettyPrintSmart(std::cout,"DOT",DOT,NP,NP,NP);
+    prettyPrintSmart(std::cout,"CROSSx one term",CROSSx,NP,NP,NP);
+    prettyPrintSmart(std::cout,"CROSSy one term",CROSSy,NP,NP,NP);
+    prettyPrintSmart(std::cout,"CROSSz one term",CROSSz,NP,NP,NP);
+#endif
+
+    // add DOT and AVA to the diagonal blocks 
+
+    MatAdd('N','N',NP,NP,dcomplex(1.),DOT,NP,dcomplex(1.),Wp,2*NP,Wp,2*NP);
+    MatAdd('N','N',NP,NP,dcomplex(1.),AVA,NP,dcomplex(1.),Wp,2*NP,Wp,2*NP);
+    MatAdd('N','N',NP,NP,dcomplex(1.),DOT,NP,dcomplex(1.),Wp+2*NP*NP+NP,2*NP,Wp+2*NP*NP+NP,2*NP);
+    MatAdd('N','N',NP,NP,dcomplex(1.),AVA,NP,dcomplex(1.),Wp+2*NP*NP+NP,2*NP,Wp+2*NP*NP+NP,2*NP);
+
+    // add CROSS x,y,z component to W 
+    // Waa +=  i CROSSz
+
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp,2*NP,dcomplex(0.,1.),CROSSz,NP,Wp,2*NP);
+
+    // Wbb += -i CROSSz
+
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp+2*NP*NP+NP,2*NP,dcomplex(0.,-1.),CROSSz,NP,
+      Wp+2*NP*NP+NP,2*NP);
+
+    // Wab +=  CROSSy + i CROSSx
+
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp+2*NP*NP,2*NP,dcomplex(1.0),CROSSy,NP,
+      Wp+2*NP*NP,2*NP);
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp+2*NP*NP,2*NP,dcomplex(0.0,1.0),CROSSx,NP,
+      Wp+2*NP*NP,2*NP);
+
+    // Wba += -CROSSy + i CROSSx
+
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp+NP,2*NP,dcomplex(-1.0),CROSSy,NP,
+      Wp+NP,2*NP);
+    MatAdd('N','N',NP,NP,dcomplex(1.),Wp+NP,2*NP,dcomplex(0.0,1.0),CROSSx,NP,
+      Wp+NP,2*NP);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"W end",Wp,2*NP,2*NP,2*NP);
+#endif
+
+    // do P^2 transform for W
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
+      Wp,2*NP,dcomplex(0.),SCR1,2*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCR1,2*NP,
+      UK,2*NP,dcomplex(0.),Wp,2*NP);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"W p2",Wp,2*NP,2*NP,2*NP);
+#endif
+
+    // P^2 -> P^-1
+    for(auto i = 0; i < 2*NP; i++) SS[i] = 1./std::sqrt(2*SS[i]);
+
+    // Transform W into "P^-1" basis
+    for(auto j = 0; j < 2*NP; j++) 
+    for(auto i = 0; i < 2*NP; i++){
+      Wp[i+j*2*NP] *= SS[i] * SS[j];
+    }
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"W p1",Wp,2*NP,2*NP,2*NP);
+#endif
+
+    // Subtract out 2mc^2 from W diagonals
+    const dcomplex WFact = 2. * SpeedOfLight * SpeedOfLight;
+    for(auto j = 0ul; j < 2*NP; j++) Wp[j + LDW*j] -= WFact;
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"W final",Wp,2*NP,2*NP,2*NP);
+#endif
+   
+    // W End
+
+    // Allocate 4C CORE Hamiltonian
+
+    // CH = [ V    cp       ]
+    //      [ cp   W - 2mc^2]
+    dcomplex *CH4C = memManager_.malloc<dcomplex>(16*NP*NP);
+    memset(CH4C,0,16*NP*NP*sizeof(dcomplex));
+
+    // Copy W into the 4C CH storage
+    dcomplex *CHW = CH4C + 8*NP*NP + 2*NP;
+    SetMat('N',2*NP,2*NP,dcomplex(1.),Wp,LDW,CHW,4*NP);
+
+    // P^-1 -> P
+    for(auto i = 0; i < 2*NP; i++) SS[i] = 1./SS[i];
+
+    // V = [ P2P  0   ]
+    //     [ 0    P2P ]
+    dcomplex * V1 = CH4C;
+    SetMat('N',2*NP,2*NP,dcomplex(1.),P2P,2*NP,V1,4*NP);
+
+    // Set the diagonal cp blocks of CH
+    // CP = [ cp  0 ]
+    //      [ 0  cp ]
+    dcomplex *CP11 = CH4C + 8*NP*NP;
+    dcomplex *CP21 = CH4C + 2*NP;
+   
+    for(auto j = 0; j < 2*NP; j++) {
+      CP11[j + 4*NP*j] = SpeedOfLight * SS[j];
+      CP21[j + 4*NP*j] = SpeedOfLight * SS[j];
+    }
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"4CCH",CH4C,4*NP,4*NP,4*NP);
+#endif
+
+    // Diagonalize the 4C CH
+    double *CHEV = memManager_.malloc<double>(4*NP);
+    HermetianEigen('V','U',4*NP,CH4C,4*NP,CHEV,memManager_);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"4C eigen values",CHEV,4*NP,1,4*NP);
+#endif
+
+#ifdef oldimpl
+    // Old Implementations 
+    // Only for debug use!
+
+    // Get pointers to "L" and "S" components of eigenvectors
+    dcomplex *L = CH4C + 8*NP*NP;
+    dcomplex *S = L + 2*NP;
+
+    // Invert "L"; L -> L^-1
+    LUInv(2*NP,L,4*NP,memManager_);
+
+    // Reuse the charge conjugated space for X and Y
+    dcomplex *X = CH4C;
+    dcomplex *Y = X + 2*NP;
+
+    // Form X = S * L^-1
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),S,4*NP,
+      L,4*NP,dcomplex(0.),X,4*NP);
+
+    // Form Y = sqrt(1 + X**H * X)
+
+    // Y = X**H * X
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),X,4*NP,
+      X,4*NP,dcomplex(0.),Y,4*NP);
+
+    // Y = Y + I
+    for(auto j = 0; j < 2*NP; j++) Y[j + 4*NP*j] += 1.0;
+
+    // Y -> V * y * V**H 
+    // XXX: Store the eigenvalues of Y in CHEV
+    HermetianEigen('V','U',2*NP,Y,4*NP,CHEV,memManager_);
+
+    // SCR1 -> V * y^-0.25
+    for(auto j = 0ul; j < 2*NP; j++)
+    for(auto i = 0ul; i < 2*NP; i++)
+      CSCR1[i + 2*NP*j] = Y[i + 4*NP*j] * std::pow(CHEV[j],-0.25);
+
+    // Y = SCR1 * SCR1**H
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
+      CSCR1,2*NP,dcomplex(0.),Y,4*NP);
+    
+    // Build the effective two component CH in "L"
+    dcomplex *FullCH2C = L;
+
+    // Zero it out
+    for(auto j = 0; j < 2*NP; j++)
+    for(auto i = 0; i < 2*NP; i++)
+      FullCH2C[i + 4*NP*j] = 0.;
+
+    // Copy P2P into spin diagonal blocks of 2C CH
+    dcomplex *CH2C1 = FullCH2C;
+    dcomplex *CH2C2 = CH2C1 + 4*NP*NP + NP;
+
+    SetMat('N',2*NP,2*NP,dcomplex(1.),P2P,2*NP,CH2C1,4*NP);
+
+    // Construct 2C CH in the uncontracted basis
+    // 2C CH = Y * (V' + cp * X + X**H * cp + X**H * W' * X) * Y
+
+    // SCR1 = cp * X
+    for(auto j = 0; j < 2*NP; j++)
+    for(auto i = 0; i < 2*NP; i++) {
+      CSCR1[i + 2*NP*j] = SpeedOfLight * SS[i] * X[i + 4*NP*j];
+    }
+
+    // 2C CH += SCR1 + SCR1**H
+    MatAdd('N','N',2*NP,2*NP,dcomplex(1.),FullCH2C,4*NP,dcomplex(1.),
+      CSCR1,2*NP, FullCH2C,4*NP);
+    MatAdd('N','C',2*NP,2*NP,dcomplex(1.),FullCH2C,4*NP,dcomplex(1.),
+      CSCR1,2*NP, FullCH2C,4*NP);
+
+    // SCR1 = X**H * W
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),X,4*NP,
+      Wp,LDW,dcomplex(0.),CSCR1,2*NP);
+    
+    // 2C CH += SCR1 * X
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
+      X,4*NP,dcomplex(1.),FullCH2C,4*NP);
+
+    // SCR1 = CH2C * Y
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),FullCH2C,4*NP,
+      Y,4*NP,dcomplex(0.),CSCR1,2*NP);
+
+    // 2C CH = Y * SCR1
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),Y,4*NP,
+      CSCR1,2*NP,dcomplex(0.),FullCH2C,4*NP);
+
+    // Allocate memory for the uncontracted spin components of the 2C CH
+    dcomplex *HUnS = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *HUnZ = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *HUnX = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *HUnY = memManager_.malloc<dcomplex>(NP*NP);
+
+    // first half of the scratch space is SUK(2*NP x 2*NP) 
+    // matrix
+    dcomplex   * SUK   = SCR1;
+    dcomplex * CSCR2 = SUK+4*NP*NP;
+
+    // recopy overlap matrix 2c 
+    memset(SCPY,0,4*NP*NP*sizeof(dcomplex));
+    SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.overlap->pointer(),NP,SCPY,2*NP);
+    SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.overlap->pointer(),NP,SCPY+2*NP*NP+NP,2*NP);
+
+    LUInv(2*NP,UK,2*NP,memManager_);
+
+    // Transform the spin components of the 2C CH into R-space
+    //
+    // H(k) -> SUK * H(k) * (SUK)**H
+    //
+    // ** Using the fact that H(k) is hermetian
+    // CSCR2 = SUK * H(k) -> CSCR2**H = H(k) * (SUK)**H
+    // H(k) -> SUK * CSCR2**H
+    //
+
+    // SCR2 = SUK**H * CH2C 
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
+      FullCH2C,4*NP,dcomplex(0.),CSCR2,2*NP);
+
+    // 2C CH = SCR2 * SUK
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR2,2*NP,
+      UK,2*NP,dcomplex(0.),FullCH2C,4*NP);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"FullCH2C",FullCH2C,2*NP,2*NP,4*NP);
+#endif
+
+    SpinScatter(NP,FullCH2C,4*NP,HUnS,NP,HUnZ,NP,HUnY,NP,HUnX,NP);
+
+    // Transform H(k) into the contracted basis
+
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,HUnS,
+      NP,dcomplex(0.),CSCR1,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NP,dcomplex(1.),mapPrim2Cont,NB,CSCR1,
+      NB,dcomplex(0.),HUnS,NB);
+
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,HUnZ,
+      NP,dcomplex(0.),CSCR1,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NP,dcomplex(1.),mapPrim2Cont,NB,CSCR1,
+      NB,dcomplex(0.),HUnZ,NB);
+
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,HUnY,
+      NP,dcomplex(0.),CSCR1,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NP,dcomplex(1.),mapPrim2Cont,NB,CSCR1,
+      NB,dcomplex(0.),HUnY,NB);
+
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,HUnX,
+      NP,dcomplex(0.),CSCR1,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NP,dcomplex(1.),mapPrim2Cont,NB,CSCR1,
+      NB,dcomplex(0.),HUnX,NB);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"CH0 no Boettger",HUnS,NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHx no Boettger",HUnX,NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHy no Boettger",HUnY,NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHz no Boettger",HUnZ,NB,NB,NB);
+#endif
+      
+#else
+    // Get pointers to "L" and "S" components of eigenvectors
+    dcomplex *L = CH4C + 8*NP*NP;
+    dcomplex *S = L + 2*NP;
+
+    // Invert "L"; L -> L^-1
+    LUInv(2*NP,L,4*NP,memManager_);
+
+    // Save X and Y
+    X = std::make_shared<SquareMatrix<dcomplex>>(memManager_, 2*NP);
+    X->clear();
+    Y = std::make_shared<SquareMatrix<dcomplex>>(memManager_, 2*NP);
+    Y->clear();
+
+    // Form X = S * L^-1
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),S,4*NP,
+      L,4*NP,dcomplex(0.),X->pointer(),X->dimension());
+
+    // Form Y = sqrt(1 + X**H * X)
+
+    // Y = X**H * X
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->dimension(),
+      X->pointer(),X->dimension(),dcomplex(0.),Y->pointer(),Y->dimension());
+
+    // Y = Y + I
+    for(auto j = 0; j < 2*NP; j++) (*Y)(j,j) += 1.0;
+
+    // Y -> V * y * V**H 
+    // XXX: Store the eigenvalues of Y in CHEV
+    HermetianEigen('V','U',2*NP,Y->pointer(),Y->dimension(),CHEV,memManager_);
+
+    // SCR1 -> V * y^-0.25
+    for(auto j = 0ul; j < 2*NP; j++)
+    for(auto i = 0ul; i < 2*NP; i++)
+      CSCR1[i + 2*NP*j] = (*Y)(i,j) * std::pow(CHEV[j],-0.25);
+
+    // Y = SCR1 * SCR1**H
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
+      CSCR1,2*NP,dcomplex(0.),Y->pointer(),Y->dimension());
+
+    // Build the effective two component CH 
+    SquareMatrix<dcomplex> FullCH2C(memManager_, 2*NP);
+    FullCH2C.clear();
+
+    // Copy P2P into spin diagonal blocks of 2C CH
+    SetMat('N',2*NP,2*NP,dcomplex(1.),P2P,2*NP,FullCH2C.pointer(),2*NP);
+
+    // Construct 2C CH in the uncontracted basis
+    // 2C CH = Y * (V' + cp * X + X**H * cp + X**H * W' * X) * Y
+
+    // SCR1 = cp * X
+    for(auto j = 0; j < 2*NP; j++)
+    for(auto i = 0; i < 2*NP; i++) {
+      CSCR1[i + 2*NP*j] = SpeedOfLight * SS[i] * (*X)(i,j);
+    }
+
+    // 2C CH += SCR1 + SCR1**H
+    MatAdd('N','N',2*NP,2*NP,dcomplex(1.),FullCH2C.pointer(),2*NP,dcomplex(1.),
+      CSCR1,2*NP, FullCH2C.pointer(),2*NP);
+    MatAdd('N','C',2*NP,2*NP,dcomplex(1.),FullCH2C.pointer(),2*NP,dcomplex(1.),
+      CSCR1,2*NP, FullCH2C.pointer(),2*NP);
+
+    // SCR1 = X**H * W
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
+               2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->dimension(),
+               Wp,LDW,dcomplex(0.),CSCR1,2*NP);
+
+    // 2C CH += SCR1 * X
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+               2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
+               X->pointer(),X->dimension(),dcomplex(1.),FullCH2C.pointer(),2*NP);
+
+    // SCR1 = CH2C * Y
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+               2*NP,2*NP,2*NP,dcomplex(1.),FullCH2C.pointer(),2*NP,
+               Y->pointer(),Y->dimension(),dcomplex(0.),CSCR1,2*NP);
+
+
+    // 2C CH = Y * SCR1
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
+               2*NP,2*NP,2*NP,dcomplex(1.),Y->pointer(),Y->dimension(),CSCR1,2*NP,
+               dcomplex(0.),FullCH2C.pointer(),2*NP);
+
+
+    // Transform the spin components of the 2C CH into R-space
+    //
+    // H(k) -> SUK * H(k) * (SUK)**H
+    //
+    // ** Using the fact that H(k) is hermetian
+    // CSCR2 = SUK * H(k) -> CSCR2**H = H(k) * (SUK)**H
+    // H(k) -> SUK * CSCR2**H
+    //
+
+    // first half of the scratch space is SUK(2*NP x 2*NP) 
+    // matrix
+    dcomplex   * SUK   = SCR1;
+    dcomplex * CSCR2 = SUK+4*NP*NP;
+
+    // Recover R-Space
+    LUInv(2*NP,UK,2*NP,memManager_);
+
+    // SCR2 = SUK**H * CH2C 
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
+      FullCH2C.pointer(),2*NP,dcomplex(0.),CSCR2,2*NP);
+
+    // 2C CH = SCR2 * SUK
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR2,2*NP,
+      UK,2*NP,dcomplex(0.),FullCH2C.pointer(),2*NP);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"FullCH2C",FullCH2C.pointer(),2*NP,2*NP,2*NP);
+#endif 
+
+    // Allocate memory for the uncontracted spin components
+    // of the 2C CH
+    PauliSpinorSquareMatrices<dcomplex> HUn(
+        FullCH2C.template spinScatter<dcomplex>(
+            ssOptions_.hamiltonianOptions.OneESpinOrbit,ssOptions_.hamiltonianOptions.OneESpinOrbit));
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"CH0 in Primitive",HUn.S().pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"CHx in Primitive",HUn.X().pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"CHy in Primitive",HUn.Y().pointer(),NP,NP,NP);
+    prettyPrintSmart(std::cout,"CHz in Primitive",HUn.Z().pointer(),NP,NP,NP);
+#endif
+
+    // Transform the spin components of the 2C CH into Contracted Basis
+    *coreH = HUn.transform('C', mapPrim2Cont, NB, NB);
+
+#ifdef DebugX2Cprint
+    prettyPrintSmart(std::cout,"CH0 no Boettger",coreH->S().pointer(),NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHx no Boettger",coreH->X().pointer(),NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHy no Boettger",coreH->Y().pointer(),NB,NB,NB);
+    prettyPrintSmart(std::cout,"CHz no Boettger",coreH->Z().pointer(),NB,NB,NB);
+#endif
+
+    memManager_.free(overlap, SCR1, SCPY, VCPY, CH4C, CHEV,
+                     M, Ms, P2P, AVA, DOT, CROSSx, CROSSy, CROSSz);
+
+#endif
   }
+
 
   template void X2C<double,double>::computeOneEX2C(EMPerturbation&,
       std::shared_ptr<PauliSpinorSquareMatrices<double>>);
@@ -437,7 +1266,58 @@ namespace ChronusQ {
   template void X2C<dcomplex,double>::computeOneEX2C_Umatrix();
 
   template<> void X2C<dcomplex,dcomplex>::computeOneEX2C_Umatrix() {
-    CErr("X2C + Complex Ints NYI",std::cout);
+    
+    //CErr("X2C + Complex Ints NYI",std::cout);
+
+    // Mind that UK & p are 2-component for GIAO as T is no longer DiagMat
+    // After X2C, stored UK is actually UK^-1
+
+    // NPU is temperaily disabled in GIAO
+    size_t NP = uncontractedBasis_.nPrimitive;
+    size_t NB = basisSet_.nBasis;
+
+    // 1. UP2CSUK = UP2C * S * UK  (in 2 component)
+    // Compute UP2CS
+    dcomplex *UP2CS = memManager_.malloc<dcomplex>(4*NB*NP);
+    dcomplex *UP2CSUK = memManager_.malloc<dcomplex>(4*NP*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,
+      uncontractedInts_.overlap->pointer(),NP,dcomplex(0.),UP2CS,2*NB);
+    SetMatDiag(NB,NP,UP2CS,2*NB,UP2CS,2*NB);
+    // Recover UK
+    LUInv(2*NP,UK,2*NP,memManager_);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NB,2*NP,2*NP,dcomplex(1.),UP2CS,2*NB,UK,2*NP,dcomplex(0.),UP2CSUK,2*NB);
+
+    // 2. R^T = UP2CSUK * Y^T
+    dcomplex *RT = memManager_.malloc<dcomplex>(4*NB*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
+               2*NB,2*NP,2*NP,dcomplex(1.),UP2CSUK,2*NB,
+               Y->pointer(),Y->dimension(),dcomplex(0.),RT,2*NB);  
+
+    // 3. Xp = 2 c p^-1 X
+    // Mind that p is reverted by the end of computeOneEX2C 
+    double twoC = 2 * SpeedOfLight;
+    double *twoCPinv = memManager_.malloc<double>(2*NP);
+    for(size_t i = 0; i < 2*NP; i++) twoCPinv[i] = twoC/p[i];
+    dcomplex *twoCPinvX = memManager_.malloc<dcomplex>(4*NP*NP);
+    for(size_t j = 0; j < 2*NP; j++)
+    for(size_t i = 0; i < 2*NP; i++) {
+      twoCPinvX[i + 2*NP*j] = twoCPinv[i] * (*X)(i,j);
+    }
+
+    // 4. US = UK2c * Xp * RT^T
+    UL = memManager_.malloc<dcomplex>(4*NP*NB);
+    US = memManager_.malloc<dcomplex>(4*NP*NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NP,dcomplex(1.),twoCPinvX,2*NP,
+      RT,2*NB,dcomplex(0.),UL,2*NP);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NB,2*NP,dcomplex(1.),UK,2*NP,
+      UL,2*NP,dcomplex(0.),US,2*NP);
+
+    // 5. UL = UK2c * RT^T
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NP,dcomplex(1.),UK,2*NP,
+      RT,2*NB,dcomplex(0.),UL,2*NP);
+
+    memManager_.free(UP2CS, UP2CSUK, RT, twoCPinv, twoCPinvX);
+    
   }
 
   template void X2C<double,double>::computeOneEX2C_Umatrix();
@@ -842,6 +1722,14 @@ namespace ChronusQ {
       // Added BoettgerScale two-electron relativistic effect
       if (ssOptions.hamiltonianOptions.Boettger)
         x2c->BoettgerScale(coreH);
+
+#ifdef DebugX2Cprint2
+    prettyPrintSmart(std::cout,"CH0",coreH->S().pointer(),basis.nBasis,basis.nBasis,basis.nBasis);
+    prettyPrintSmart(std::cout,"CH1",coreH->Z().pointer(),basis.nBasis,basis.nBasis,basis.nBasis);
+    prettyPrintSmart(std::cout,"CH2",coreH->Y().pointer(),basis.nBasis,basis.nBasis,basis.nBasis);
+    prettyPrintSmart(std::cout,"CH3",coreH->X().pointer(),basis.nBasis,basis.nBasis,basis.nBasis);
+#endif
+        
     }
 
     if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
@@ -889,12 +1777,12 @@ namespace ChronusQ {
 
   }
 
-  template <> void X2C<dcomplex, dcomplex>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+// TangDD Add X2C + GIAO
+  template void X2C<dcomplex, dcomplex>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions) {
-    CErr("X2C + Complex Ints NYI",std::cout);
-  }
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+    //CErr("X2C + Complex Ints NYI",std::cout);
 
   template void X2C<dcomplex, double>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
@@ -966,9 +1854,7 @@ namespace ChronusQ {
 
   template void X2C<dcomplex,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
 
-  template<> void X2C<dcomplex,dcomplex>::saveX2C(std::shared_ptr<SingleSlaterBase>) {
-    CErr("X2C + Complex Ints NYI",std::cout);
-  }
+  template void X2C<dcomplex,dcomplex>::saveX2C(std::shared_ptr<SingleSlaterBase>);
 
   template void X2C<double,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
 

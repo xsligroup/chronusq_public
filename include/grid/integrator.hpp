@@ -1156,6 +1156,420 @@ namespace ChronusQ {
 #endif
 
     };// integrate
+  /**
+   *  \brief Integration function according the Becke scheme with GIAO 
+   *
+   *  See J. Chem. Phys. 88, 2547(1988).  
+   *
+   *  \param [in]  res     VXC submatrix for the current batch
+   *  \param [in] func    funtion to be integrated (formVXC)
+   *  \param [in] arg     several arguments to be passed in 
+   */  
+    template <typename T, class F, typename... Args>
+    void integrate(T &res, const F &func, EMPerturbation &pert, Args... args) {
+
+#if INT_DEBUG_LEVEL >= 1
+    //TIMING
+      std::chrono::duration<double> durDist(0.)  ;
+      std::chrono::duration<double> durWeight(0.)  ;
+      std::chrono::duration<double> durBasis(0.) ;
+      std::chrono::duration<double> durFunc(0.)  ;
+#endif
+
+      size_t nthreads = GetNumThreads();
+      size_t mpiRank  = MPIRank(comm);
+      size_t mpiSize  = MPISize(comm);
+
+      assert( mpiSize <= molecule_.nAtoms );
+
+      size_t maxBatchSize      = this->nRadPerMacroBatch * this->q2.nPts;
+      size_t maxBatchSizeAtoms = maxBatchSize * molecule_.nAtoms;
+
+      // Allocate Basis scratch
+      dcomplex *BasisEval = 
+        memManager_.template malloc<dcomplex>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
+
+      // Allocate Basis2 scratch
+      dcomplex *Basis2Eval;
+      //std::cout << "In integrate " << Int2nd << std::endl;
+      if (Int2nd) 
+        Basis2Eval = memManager_.template malloc<dcomplex>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
+
+      // Allocate Basis scratch (shell cartisian)
+      int LMax = 0;
+      for(auto iSh = 0; iSh < basisSet_.nShell; iSh++)
+        LMax = std::max(basisSet_.shells[iSh].contr[0].l,LMax);
+
+      size_t shSizeCar = ((LMax+1)*(LMax+2))/2; 
+      dcomplex * SCR_Car = 
+        memManager_.template malloc<dcomplex>(nthreads*NDer*shSizeCar);
+
+      // Allocate Basis2 scratch (shell cartisian)
+      int LMax2 = 0;
+      if (Int2nd)
+        for(auto iSh = 0; iSh < basisSet2_.nShell; iSh++)
+          LMax2 = std::max(basisSet2_.shells[iSh].contr[0].l,LMax2);
+
+      size_t shSizeCar2 = ((LMax2+1)*(LMax2+2))/2; 
+      dcomplex * SCR_Car2;
+      if (Int2nd) 
+        SCR_Car2 = memManager_.template malloc<dcomplex>(nthreads*NDer2*shSizeCar2);
+
+      // Allocate scratch for Point Distances (squared and components) from each atomic center
+
+      double * cenRSq = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenR   = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenXYZ = memManager_.template malloc<double>(nthreads * 3*maxBatchSizeAtoms);
+
+
+      // Populate cutoff Map (for each shell the distance beyond which the shell contribution is negligeble
+      std::vector<double> mapSh2Cut;
+      std::vector<double> mapSh2Cut2;
+
+      double epsilon = 
+        std::max((epsScreen_/maxBatchSizeAtoms),std::numeric_limits<double>::epsilon()); 
+
+      // Cutoff radius accordin Eq.20 in J. Chem. Theory Comput. 2011, 7, 3097-3104
+      auto cutFunc = [&] (double alpha) -> double{
+        return std::sqrt((-std::log(epsilon) + 0.5 * std::log(alpha))/alpha);
+      };
+
+      //Evaluate the Max for  each primitive in the shell and than push back in the mapSh2Cut vector
+      for(auto iSh = 0; iSh < basisSet_.nShell; iSh++)
+        mapSh2Cut.emplace_back(
+          cutFunc(
+            *std::max_element(
+              basisSet_.shells[iSh].alpha.begin(),
+              basisSet_.shells[iSh].alpha.end(),[&](double x, double y){
+                return cutFunc(x) < cutFunc(y);
+              }
+            )
+          )
+        );
+
+      if (Int2nd) 
+        for(auto iSh = 0; iSh < basisSet2_.nShell; iSh++)
+          mapSh2Cut2.emplace_back(
+            cutFunc(
+              *std::max_element(
+                basisSet2_.shells[iSh].alpha.begin(),
+                basisSet2_.shells[iSh].alpha.end(),[&](double x, double y){
+                  return cutFunc(x) < cutFunc(y);
+                }
+              )
+            )
+          );
+
+      // Function that it is finally integrated
+      auto g = [&](T &res, std::vector<cart_t> &batch, std::vector<double> &weights, 
+        const std::pair<double,double> &rBounds, Args... args) -> void {
+
+#if INT_DEBUG_LEVEL >= 1
+        // Timing
+        auto topDist = std::chrono::high_resolution_clock::now();
+#endif
+
+        size_t thread_id = GetThreadID();       
+
+        dcomplex * BasisEval_loc = BasisEval + thread_id * NDer * maxBatchSize * basisSet_.nBasis;
+        dcomplex * SCR_Car_loc   = SCR_Car   + thread_id * NDer * shSizeCar;
+
+        dcomplex * BasisEval2_loc, * SCR_Car2_loc;
+        if (Int2nd) {
+          BasisEval2_loc = Basis2Eval + thread_id * NDer2 * maxBatchSize * basisSet2_.nBasis;
+          SCR_Car2_loc   = SCR_Car2   + thread_id * NDer2 * shSizeCar2;  
+        }
+
+        double * cenRSq_loc = cenRSq + thread_id * maxBatchSizeAtoms;
+        double * cenR_loc   = cenR   + thread_id * maxBatchSizeAtoms;
+        double * cenXYZ_loc = cenXYZ + thread_id * 3*maxBatchSizeAtoms;
+
+        // Populate for each batch the distances vectors 
+        calcCenDist(batch,cenRSq_loc,cenR_loc,cenXYZ_loc);
+
+
+
+        double maxR = rBounds.second;
+        double minR = rBounds.first;
+
+        double epsilon = 
+          std::max((epsScreen_/maxBatchSizeAtoms),std::numeric_limits<double>::epsilon()); 
+
+#if INT_DEBUG_LEVEL >= 1
+        // Timing
+        auto botDist = std::chrono::high_resolution_clock::now();
+        durDist += botDist - topDist;
+#endif
+        
+
+        // Populating a vector of bool to know which shell need to 
+        // be evaluated for the current batch of points according to 
+        // the cutoff distances 
+        std::vector<bool> evalShell;
+        size_t basisEvalDim(0);
+        std::vector<size_t> batchEvalShells;
+
+        // SubMat Vector of pairs specifing the blocks of the super matrix to be used
+        std::vector<std::pair<size_t,size_t>> batchSubMat; 
+
+#if INT_DEBUG_LEVEL > 0
+           std::cerr << "Screen ON eps= " << epsilon<<std::endl;
+        
+#endif
+        for(auto iSh = 0; iSh < basisSet_.nShell; iSh++) {
+
+          double RAS = molecule_.RIJ[iAtm][basisSet_.mapSh2Cen[iSh]];
+          evalShell.emplace_back(
+#if INT_DEBUG_LEVEL < 3
+           // Note. the spherical shell of point has to be within the shell cutoff 
+           // if is on the center or inside the other shell cutoff 
+            not (
+              (RAS >= (minR + mapSh2Cut[iSh])) or
+              (RAS <  (maxR - mapSh2Cut[iSh]))  
+            )
+           //true
+#else
+            true
+#endif
+          );
+
+          if(evalShell.back()) {
+            basisEvalDim += basisSet_.shells[iSh].size();
+            batchEvalShells.emplace_back(iSh);
+          }
+
+        }
+ 
+#if INT_DEBUG_LEVEL >= 3
+        std::cerr << "BASIS DIM " << basisEvalDim << std::endl;
+#endif
+
+        // Skyp the entire batch;
+        if(basisEvalDim == 0){ return; }
+
+        //FIXME (Write a function to handle this)
+        batchSubMat.emplace_back(
+          basisSet_.mapSh2Bf[batchEvalShells[0]],
+          basisSet_.mapSh2Bf[batchEvalShells.back()] +
+            basisSet_.shells[batchEvalShells.back()].size()
+        );
+
+        for(auto iShell = batchEvalShells.begin(); 
+            iShell != batchEvalShells.end()-1;
+            ++iShell){
+
+          if(*(iShell+1) - (*iShell) != 1){
+            batchSubMat.back().second = 
+              basisSet_.mapSh2Bf[*iShell] + basisSet_.shells[*iShell].size();
+
+            batchSubMat.emplace_back(
+              basisSet_.mapSh2Bf[*(iShell+1)],
+              basisSet_.mapSh2Bf[batchEvalShells.back()] +
+                basisSet_.shells[batchEvalShells.back()].size()
+            );
+          }
+       
+        }
+
+        if(batchEvalShells.size() == 1) 
+          batchSubMat[0].second = 
+            batchSubMat[0].first + basisSet_.shells[batchEvalShells[0]].size();
+
+        //----------------------NEO---------------------------------
+        std::vector<bool> evalShell2;
+        size_t basisEvalDim2(0);
+        std::vector<size_t> batchEvalShells2;
+
+        // SubMat Vector of pairs specifing the blocks of the super matrix to be used
+        std::vector<std::pair<size_t,size_t>> batchSubMat2; 
+
+#if INT_DEBUG_LEVEL > 0
+           //std::cerr << "Screen ON eps= " << epsilon<<std::endl;
+        
+#endif
+        if (Int2nd)
+          for(auto iSh = 0; iSh < basisSet2_.nShell; iSh++) {
+
+            double RAS = molecule_.RIJ[iAtm][basisSet2_.mapSh2Cen[iSh]];
+            // this is always set to be true since it is the main system that matters
+            evalShell2.emplace_back(true);
+
+            if(evalShell2.back()) {
+              basisEvalDim2 += basisSet2_.shells[iSh].size();
+              batchEvalShells2.emplace_back(iSh);
+            }
+
+          }
+ 
+#if INT_DEBUG_LEVEL >= 3
+        //std::cerr << "AUX BASIS DIM " << aux_basisEvalDim << std::endl;
+#endif
+
+        if (Int2nd) {
+          //FIXME (Write a function to handle this)
+          batchSubMat2.emplace_back(
+            basisSet2_.mapSh2Bf[batchEvalShells2[0]],
+            basisSet2_.mapSh2Bf[batchEvalShells2.back()] +
+              basisSet2_.shells[batchEvalShells2.back()].size()
+          );
+
+          for(auto iShell = batchEvalShells2.begin(); 
+              iShell != batchEvalShells2.end()-1;
+              ++iShell){
+
+            if(*(iShell+1) - (*iShell) != 1){
+              batchSubMat2.back().second = 
+                basisSet2_.mapSh2Bf[*iShell] + basisSet2_.shells[*iShell].size();
+
+              batchSubMat2.emplace_back(
+                basisSet2_.mapSh2Bf[*(iShell+1)],
+                basisSet2_.mapSh2Bf[batchEvalShells2.back()] +
+                  basisSet2_.shells[batchEvalShells2.back()].size()
+              );
+            }
+       
+          }
+
+          if(batchEvalShells2.size() == 1) 
+            batchSubMat2[0].second = 
+              batchSubMat2[0].first + basisSet2_.shells[batchEvalShells2[0]].size();
+        }
+        //-----------------------end NEO----------------------------------------------------
+
+#if INT_DEBUG_LEVEL >= 1
+        // TIMING
+        auto topBasis = std::chrono::high_resolution_clock::now();
+#endif
+        
+        evalShellSet(typ_,basisSet_.shells,evalShell,cenRSq_loc,cenXYZ_loc,batch.size(),molecule_.nAtoms,
+          basisSet_.mapSh2Cen,basisEvalDim,BasisEval_loc,SCR_Car_loc,shSizeCar,basisSet_.forceCart,pert);
+
+        if (Int2nd)
+          evalShellSet(typ2_,basisSet2_.shells,evalShell2,cenRSq_loc,cenXYZ_loc,batch.size(), molecule_.nAtoms,
+            basisSet2_.mapSh2Cen,basisEvalDim2,BasisEval2_loc,SCR_Car2_loc,shSizeCar2,basisSet2_.forceCart,pert);
+
+#if INT_DEBUG_LEVEL >= 1
+        // TIMNG
+        auto botBasis = std::chrono::high_resolution_clock::now();
+        durBasis += botBasis - topBasis;
+#endif
+        
+#if INT_DEBUG_LEVEL >= 1
+        // Timing
+        auto topWeight = std::chrono::high_resolution_clock::now();
+#endif
+
+        // Modify weight according Becke scheme, get max weight
+#if 1
+        auto maxWeight = evalPartitionWeights(iAtm,cenR_loc,weights); 
+#if INT_DEBUG_LEVEL < 3
+        if (std::abs(maxWeight) < epsilon) {
+          //std::cerr << "batch screened" << std::endl;
+          return;
+        }
+#endif
+#else
+	evalFrischPartitionWeights(iAtm,batch,weights);
+#endif
+
+#if INT_DEBUG_LEVEL >= 1
+        // Timing
+        auto botWeight = std::chrono::high_resolution_clock::now();
+        durWeight += botWeight - topWeight;
+#endif
+
+
+
+#if INT_DEBUG_LEVEL >= 1
+        auto topFunc = std::chrono::high_resolution_clock::now();
+#endif
+
+
+        // Final call to be resambled ba the lambda function
+        if (not Int2nd) {
+          //std::cout << "before call to func " << std::endl;
+          std::vector<size_t> basisEvalDim_vec{basisEvalDim};
+          std::vector<dcomplex*> BasisEval_loc_vec{BasisEval_loc};
+          std::vector<std::vector<size_t>> batchEvalShells_vec;
+          batchEvalShells_vec.push_back(batchEvalShells);
+          std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec;
+          batchSubMat_vec.push_back(batchSubMat);
+
+          func(res,batch,weights,basisEvalDim_vec,BasisEval_loc_vec,
+               batchEvalShells_vec,batchSubMat_vec,args...);
+        }
+        else {
+          CErr("GIAO NEO-Kohn-Sham NYI!",std::cout);
+          std::vector<size_t> basisEvalDim_vec{basisEvalDim, basisEvalDim2};
+          std::vector<dcomplex*> BasisEval_loc_vec{BasisEval_loc, BasisEval2_loc};
+          std::vector<std::vector<size_t>> batchEvalShells_vec; 
+          batchEvalShells_vec.push_back(batchEvalShells);
+          batchEvalShells_vec.push_back(batchEvalShells2);
+          std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec;
+          batchSubMat_vec.push_back(batchSubMat); 
+          batchSubMat_vec.push_back(batchSubMat2);
+
+          func(res,batch,weights,basisEvalDim_vec,BasisEval_loc_vec,
+               batchEvalShells_vec,batchSubMat_vec,args...);
+        }
+
+#if INT_DEBUG_LEVEL >= 1
+        auto botFunc = std::chrono::high_resolution_clock::now();
+        // TIMNG
+        durFunc += botFunc - topFunc;
+#endif
+        
+      }; // End g function
+
+      // Perform integration over atomic centers, by using spherical Integrators
+      for(iAtm = 0; iAtm < molecule_.nAtoms; iAtm++) {
+
+
+        // Round robin on mpi processes
+        if( iAtm % mpiSize != mpiRank ) continue;
+
+        this->Center = {molecule_.atoms[iAtm].coord[0],
+                        molecule_.atoms[iAtm].coord[1],
+                        molecule_.atoms[iAtm].coord[2]};
+
+        // The effective radius is chosen as half of the Bragg-Slater radius of the 
+        // respective atom (stored in the slaterRadius in Ang), except for
+        // hydrogen in which case the factor of 0.5 is not applied (the stored value
+        // for hydrogen is pre scaled by 2 to prevent scaling).
+        // Procedure according J. Chem. Phys. 88, 2547(1988). pg 2550 
+          
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
+
+      } // loop over atoms
+      res *= 4.* M_PI;
+
+      // clean memory
+      memManager_.free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
+
+      if (Int2nd)
+       memManager_.free(Basis2Eval,SCR_Car2);
+
+#if INT_DEBUG_LEVEL >= 1
+      //TIMING
+      double d_batch =  molecule_.nAtoms *  this->q1.nPts /  this->nRadPerMacroBatch;
+      std::cerr << std::scientific << std::endl;
+      std::cerr << "Total # of Batch  " << d_batch << std::endl;
+      std::cerr << "Total Dist " << durDist.count() << std::endl;
+      std::cerr << "Total Weight " << durWeight.count() << std::endl;
+      std::cerr << "Total Basis " << durBasis.count() << std::endl;
+      std::cerr << "Total Func " << durFunc.count() << std::endl;
+      std::cerr << "Total int the gfun " <<  durDist.count()+ durBasis.count() +durFunc.count() 
+                << std::endl;
+
+      std::cerr << "Dist " << durDist.count()/d_batch << std::endl;
+      std::cerr << "Weight " << durWeight.count()/d_batch << std::endl;
+      std::cerr << "Basis " << durBasis.count()/d_batch << std::endl;
+      std::cerr << "Func " << durFunc.count()/d_batch << std::endl;
+#endif
+
+    };// integrate
+
 
     /**
      *  \brief Generalization of the integrate function which
@@ -1169,6 +1583,21 @@ namespace ChronusQ {
       integrate<T>(res,func,args...);
       return res;
     }
+
+// SS start
+    /**
+     *  \brief Generalization of the integrate function which
+     *  constructs the result internally and passes to the
+     *  integrate function to be incremented by reference.
+     *
+     */ 
+    template <typename T, class F, typename... Args>
+    T integrate(const F &func, EMPerturbation &pert, Args... args) {
+      T res(0.);
+      integrate<T>(res,func,pert,args...);
+      return res;
+    }
+// SS end 
 
   };// class BeckeIntegrator 
 
