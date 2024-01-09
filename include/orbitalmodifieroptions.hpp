@@ -219,6 +219,7 @@ namespace ChronusQ {
     bool  includeSCFField = true;  ///< Whether to include the SCF field
 
     size_t Rtgaunt = 1;
+    size_t Rtprintden = 0;
 
     void parseSection(const InputMap &dict);
   };

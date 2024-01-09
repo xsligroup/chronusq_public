@@ -62,7 +62,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
   // Restore 1PDM Ortho and integration process (on root process)
   if ( tdSCFOptions.restoreFromStep != 0 ) this->restoreState();
-  if (this->mpiComm == 0)
+  if ( MPIRank(this->mpiComm) == 0)
     for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) 
       previousOnePDMSquareOrtho[i] = this->onePDMSquareOrtho[i];
 
@@ -96,7 +96,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     normalStep = true;
     if(finalStep or startStep) normalStep = false;
     std::vector<SquareMatrix<MatsT>> onePDMSquareOrthoSave;
-    if(this->mpiComm == 0){
+    if( MPIRank(this->mpiComm) == 0){
       if(normalStep) {
         std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
       } else if(startStep or finalStep) {
@@ -122,7 +122,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     // Explicit Magnus 2
     if ((finalStep or startStep) and tdSCFOptions.restartAlgorithm == ExplicitMagnus2 ) {
-      if(this->mpiComm == 0){
+      if( MPIRank(this->mpiComm) == 0){
       	for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
       	  this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
       	  this->previousOnePDMSquareOrtho[i] = onePDMSquareOrthoSave[i];
@@ -134,7 +134,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
         *fock_k[i] = 0.5 * (*fock_k[i] + *fock_k1[i]); // compute 0.5 * (F(k) + F(k+1))
       formPropagator(fock_k);
       doPropagation();
-      if(this->mpiComm == 0)  
+      if( MPIRank(this->mpiComm) == 0)  
         for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) 
           this->onePDMSquareOrtho[i] = onePDMSquareOrthoSave[i];
 
@@ -571,6 +571,15 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printIteration(bool printDiff) {
   if(this->printLevel == 1) printStepSummary();
   else if(this->printLevel > 1) printStepDetail();
   if( printDen ) this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
+  if (tdSCFOptions.Rtprintden != 0) {
+        int Rtprintdenstep = 0;
+        Rtprintdenstep = integrationProgress.currentStep % tdSCFOptions.Rtprintden;
+        if (Rtprintdenstep ==0) {
+          this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
+        } else{
+        }
+      }
+  
   //if(tdSCFOptions.iPrint != 0 && integrationProgress.currentStep % tdSCFOptions.iPrint == 0) orbitalPop();
 };
 
