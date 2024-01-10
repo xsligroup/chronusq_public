@@ -158,12 +158,18 @@ namespace ChronusQ {
 
 
       // Purely electric field contributions here
-      auto elecDipoleField = pert.getDipoleAmp(Electric);
-      field_delta += 
-        elecDipoleField[0] * elecDipole[0] +
-        elecDipoleField[1] * elecDipole[1] +
-        elecDipoleField[2] * elecDipole[2];
+      // Only calculate the dipole during SCF iterations if there's an applied
+      // electric field
+      if(pert_has_type(pert,Electric))
+      {
+        computeMultipole(pert);
 
+         auto elecDipoleField = pert.getDipoleAmp(Electric);
+         field_delta +=
+           elecDipoleField[0] * elecDipole[0] +
+           elecDipoleField[1] * elecDipole[1] +
+           elecDipoleField[2] * elecDipole[2];
+      }
 
       totalEnergy += field_delta; // Increment total energy
 
