@@ -96,7 +96,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     normalStep = true;
     if(finalStep or startStep) normalStep = false;
     std::vector<SquareMatrix<MatsT>> onePDMSquareOrthoSave;
-    if( MPIRank(this->mpiComm) == 0){
+    if(MPIRank(this->mpiComm) == 0){
       if(normalStep) {
         std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
       } else if(startStep or finalStep) {
@@ -122,7 +122,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     // Explicit Magnus 2
     if ((finalStep or startStep) and tdSCFOptions.restartAlgorithm == ExplicitMagnus2 ) {
-      if( MPIRank(this->mpiComm) == 0){
+      if(MPIRank(this->mpiComm) == 0){
       	for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
       	  this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
       	  this->previousOnePDMSquareOrtho[i] = onePDMSquareOrthoSave[i];
@@ -134,7 +134,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
         *fock_k[i] = 0.5 * (*fock_k[i] + *fock_k1[i]); // compute 0.5 * (F(k) + F(k+1))
       formPropagator(fock_k);
       doPropagation();
-      if( MPIRank(this->mpiComm) == 0)  
+      if(MPIRank(this->mpiComm) == 0)
         for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) 
           this->onePDMSquareOrtho[i] = onePDMSquareOrthoSave[i];
 
