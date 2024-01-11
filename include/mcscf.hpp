@@ -184,7 +184,7 @@ namespace ChronusQ {
     void saveCurrentStates(bool prop = false);
 
     void printStateEnergy();
-    void printMCSCFHeader();
+    void printMCSCFHeader(EMPerturbation &);
     void printMCSCFFooter();
 
     // Memory functions

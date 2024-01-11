@@ -69,7 +69,7 @@ namespace ChronusQ {
   }; // MCSCFSettings::print
 
   template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::printMCSCFHeader() {
+  void MCSCF<MatsT,IntsT>::printMCSCFHeader(EMPerturbation & pert) {
     
     auto & mopart = this->MOPartition;
     auto & ref = this->reference();
@@ -117,7 +117,38 @@ namespace ChronusQ {
       
       std::cout << std::left << std::endl;
     }
-    
+   
+    // Field print
+    if( pert.fields.size() != 0 ) {
+
+      std::cout << "\n\n  * MCSCF will be performed in the presence of an EM "
+          << "perturbation:\n\n";
+
+      for(auto &field : pert.fields) {
+
+        auto amp = field->getAmp();
+
+        std::cout << "     * ";
+        if( field->emFieldTyp == Electric ) std::cout << "Electric";
+        else                                std::cout << "Magnetic";
+        
+        std::cout << " ";
+      
+        if( field->size == 3 )        std::cout << "Dipole";
+        else if ( field->size == 6 )  std::cout << "Quadrupole";
+        else if ( field->size == 10 ) std::cout << "Octupole";
+        
+        std::cout << " Field: ";
+        std::cout << "{ ";
+        for(auto i = 0; i < amp.size(); i++) {
+          std::cout << amp[i]; if(i != amp.size() - 1) std::cout << ", ";
+        }
+        std::cout << " }\n";
+
+      }
+
+
+    } 
     std::cout << std::endl << bannerTop << std::endl << std::endl;
   
   }; //MCSCF::printMCSCFHeader
