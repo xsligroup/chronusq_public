@@ -151,7 +151,7 @@ namespace ChronusQ {
     // it's either state specific or state averaged RDM
     std::shared_ptr<SquareMatrix<MatsT>>    oneRDMSOI = nullptr;
     std::shared_ptr<InCore4indexTPI<MatsT>> twoRDMSOI = nullptr;
-    
+
     // Disable default, copy and move constructors
     MCSCF()              = delete;
     MCSCF(const MCSCF &) = delete;
@@ -180,6 +180,9 @@ namespace ChronusQ {
     void computeOneRDM(size_t);
     void computeTwoRDM();
     void computeTwoRDM(size_t);
+
+    // For dealting with electric fields
+    void precompute_efield(EMPerturbation &);
 
     void saveCurrentStates(bool prop = false);
 
