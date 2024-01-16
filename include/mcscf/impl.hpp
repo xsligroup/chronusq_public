@@ -68,8 +68,8 @@ namespace ChronusQ {
     std::cout << std::left << std::setprecision(10); 
     FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
 
-    // Precompute the field - basis diagonal contributions
-    precompute_efield(pert);
+    // Precompute the field - nuclear diagonal contributions
+    precompute_NucEField(pert);
 
     ProgramTimer::tick("Diagonalization");
     if (!this->readCI)
@@ -157,6 +157,8 @@ namespace ChronusQ {
         FormattedLine(std::cout, "Redo AO to MO Intergral Transformation ...");
         ProgramTimer::tick("Integral Trans");
         MCWaveFunction<MatsT,IntsT>::transformInts(pert);
+        // Don't need to call precompute_NucEField here since pert cannot
+        // change between above and here
         ProgramTimer::tock("Integral Trans");
 
         std::cout << std::left << std::setprecision(10); 
@@ -275,7 +277,7 @@ namespace ChronusQ {
   }
 
   template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::precompute_efield(EMPerturbation & pert)
+  void MCSCF<MatsT,IntsT>::precompute_NucEField(EMPerturbation & pert)
   {
     // Zero out in case this has already been calculated & stored
     // (for example from RT-CI)
