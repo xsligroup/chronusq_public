@@ -102,6 +102,10 @@ namespace ChronusQ {
 
     double InactEnergy;
     std::vector<double> StateEnergy;
+    // Storage for Field-Nuclear dipole interactions
+    // This is addative to the diagonal in CI theory, so it can be 
+    // simply added to the total state energies on convergence
+    double EFieldNuc = 0.0;
 
     bool StateAverage    = false;
     std::vector<double> SAWeight;

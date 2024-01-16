@@ -83,11 +83,6 @@ namespace ChronusQ {
     // Transition density matrix
     std::vector<std::vector<SquareMatrix<MatsT>>> TDMs;
 
-    // Storage for Field-Nuclear dipole interactions
-    // This is addative to the diagonal in CI theory, so it can be 
-    // simply added to the total state energies on convergence
-    double EFieldNuc = 0.0;
-
     // TODO: Save vectors 
     //oper_t_coll DOSav;
     //oper_t_coll UH;
