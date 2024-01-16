@@ -277,6 +277,10 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::precompute_efield(EMPerturbation & pert)
   {
+    // Zero out in case this has already been calculated & stored
+    // (for example from RT-CI)
+    this->EFieldNuc = 0.0;
+
     if(!pert_has_type(pert,Electric))
       return;
 
