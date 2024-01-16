@@ -150,6 +150,8 @@ namespace ChronusQ {
     double oscillator_strength(size_t, size_t s1 = 0);
     void computeMultipole(size_t);
     void computeMultipole();
+    // For dealting with electric fields
+    void precompute_NucEField(EMPerturbation &);
 
     // Memory functions
     void alloc();

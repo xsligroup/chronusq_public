@@ -180,9 +180,6 @@ namespace ChronusQ {
     void computeTwoRDM();
     void computeTwoRDM(size_t);
 
-    // For dealting with electric fields
-    void precompute_NucEField(EMPerturbation &);
-
     void saveCurrentStates(bool prop = false);
 
     void printStateEnergy();

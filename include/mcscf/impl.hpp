@@ -68,9 +68,6 @@ namespace ChronusQ {
     std::cout << std::left << std::setprecision(10); 
     FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
 
-    // Precompute the field - nuclear diagonal contributions
-    precompute_NucEField(pert);
-
     ProgramTimer::tick("Diagonalization");
     if (!this->readCI)
       this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), pert);
@@ -157,8 +154,6 @@ namespace ChronusQ {
         FormattedLine(std::cout, "Redo AO to MO Intergral Transformation ...");
         ProgramTimer::tick("Integral Trans");
         MCWaveFunction<MatsT,IntsT>::transformInts(pert);
-        // Don't need to call precompute_NucEField here since pert cannot
-        // change between above and here
         ProgramTimer::tock("Integral Trans");
 
         std::cout << std::left << std::setprecision(10); 
@@ -274,144 +269,6 @@ namespace ChronusQ {
     twoRDMSOI = nullptr;
     ciSolver  = nullptr;
     moRotator = nullptr;
-  }
-
-  template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::precompute_NucEField(EMPerturbation & pert)
-  {
-    // Zero out in case this has already been calculated & stored
-    // (for example from RT-CI)
-    this->EFieldNuc = 0.0;
-
-    if(!pert_has_type(pert,Electric))
-      return;
-
-    std::array<double,3> nucmoment = {0.0,0.0,0.0};
-    for(auto & atom : this->reference().molecule().atoms)
-    {
-      if(atom.quantum) continue;
-      MatAdd('N','N',3,1,1.,&nucmoment[0],3,atom.nucCharge,&atom.coord[0],3,&nucmoment[0],3);
-    }
-      
-    auto elecDipoleField = pert.getDipoleAmp(Electric);
-    this->EFieldNuc+=blas::dot(3,&nucmoment[0],1,&elecDipoleField[0],1);
-  
-  // The code below takes an alternate approach:  Instead of folding the field
-  // contributions into the one electron integrals, it calculates the dipole 
-  // moment for each individual basis function (in this case, slater determinants)
-  // as well as the cross terms between them (ie, E\dot<SD_i|x,y,z|SD_j>).
-  // This is far less computationally efficient than folding the field contribution
-  // into the integrals, but might have future use if say the dipole moment of a 
-  // single non-aufbau slater determinant is required for some reason.
-
-  // To use the below code, you must also make corresponding changes in the 
-  // hcore portion of mointstransformer in order to prevent the field being
-  // double counted by both folding into the integrals and calculating each 
-  // slater determinants dipole moment
-
-//    if(this->reference().nC!=1)
-//      CErr("CI Dipole Diagonal EField for nC!=1 NYI");
-//
-//    SingleSlater<MatsT,IntsT> * ss_ptr = &(this->reference());
-//
-//    size_t NDet = this->NDet;
-//    size_t nAO = this->reference().nAlphaOrbital();
-//    size_t nI = this->MOPartition.nFCore + this->MOPartition.nInact;
-//    size_t nCorrO = this->MOPartition.nCorrO;
-//
-//    this->EFieldDiag = this->memManager.template malloc<MatsT>(NDet*NDet);
-//    std::fill_n(this->EFieldDiag,NDet*NDet,MatsT(0.0));
-//
-//    MatsT * dummyCIi = this->memManager.template malloc<MatsT>(NDet);
-//    MatsT * dummyCIj = this->memManager.template malloc<MatsT>(NDet);
-//    SquareMatrix<MatsT> dummyRDM(this->memManager,NDet);
-//    SquareMatrix<MatsT> dummyRDM2(this->memManager,NDet);
-//    SquareMatrix<MatsT> dummyPDM(this->memManager,nAO);
-//
-//    auto elecDipoleField = pert.getDipoleAmp(Electric);
-//    
-//    // Loop over determinants
-//    for(size_t i = 0; i < NDet; i++)
-//    {
-//      // Zero out the CI vector and RDM
-//      std::fill_n(dummyCIi,NDet,MatsT(0.0));
-//      dummyCIi[i]=1.0;
-//      for(size_t j = 0; j < NDet; j++)
-//      {
-//        if(i==j)
-//        {
-//          std::fill_n(dummyCIj,NDet,MatsT(0.0));
-//          dummyCIj[j]=1.0;
-//          dummyRDM.clear();
-//          dummyPDM.clear();
-//          for(size_t k = 0; k < 3; k++)
-//            ss_ptr->elecDipole[k] = 0.0;
-//
-//          // Fill in the dummy CI Vector and turn it into the RDM
-//          this->ciBuilder->computeTDM(*this,dummyCIi,dummyCIj,dummyRDM);
-//
-//          // Convert the RDM to a PDM
-//          // Fold in core orbitals
-//          for(size_t k = 0; k < nI; k++)
-//            dummyPDM(k,k) = 2.0;
-//          // Add RDM contributions
-//          SetMat('R',nCorrO,nCorrO,1.0,dummyRDM.pointer(),nCorrO,dummyPDM.pointer()+nI*(nAO+1),nAO);
-//          // Transform
-//          dummyPDM = dummyPDM.transform('C',this->reference().mo[0].pointer(),nAO,nAO);
-//          // Set the reference PDM to this PDM
-//          this->reference().onePDM->S() = dummyPDM;
-//
-//          ss_ptr->computeMultipole(pert);
-//
-//          this->EFieldDiag[i+j*NDet] = ss_ptr->elecDipole[0]*elecDipoleField[0]+
-//                                      ss_ptr->elecDipole[1]*elecDipoleField[1]+
-//                                      ss_ptr->elecDipole[2]*elecDipoleField[2];
-//        }
-//        else
-//        {
-//          std::fill_n(dummyCIj,NDet,MatsT(0.0));
-//          dummyCIj[j]=1.0;
-//          dummyRDM.clear();
-//          dummyRDM2.clear();
-//          dummyPDM.clear();
-//          // Fill in the dummy CI Vector and turn it into the RDM
-//          this->ciBuilder->computeTDM(*this,dummyCIi,dummyCIj,dummyRDM);
-//          this->ciBuilder->computeTDM(*this,dummyCIj,dummyCIi,dummyRDM2);
-//
-//          auto MOdipole = this->moints.template getIntegral<VectorInts,MatsT>("MOdipole");
-//          if (!MOdipole) {
-//            std::shared_ptr<VectorInts<IntsT>> AOdipole =
-//                      std::make_shared<VectorInts<IntsT>>(this->memManager, nAO, 1, true);
-//            std::shared_ptr<VectorInts<MatsT>> MOdipole_scr =
-//                      std::make_shared<VectorInts<MatsT>>(this->memManager, nCorrO, 1, true);
-//
-//            std::vector<std::pair<size_t, size_t>> active(2, {this->MOPartition.nFCore+this->MOPartition.nInact, nCorrO});
-//
-//            for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-//              (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*this->reference().aoints_->lenElectric)[iXYZ]) );
-//              
-//              (*AOdipole)[iXYZ]->subsetTransform('N',this->reference().mo[0].pointer(),
-//                  nAO, active, (*MOdipole_scr)[iXYZ]->pointer(), false);
-//            }
-//
-//            this->moints.addIntegral("MOdipole", MOdipole_scr);
-//          }
-//
-//          MOdipole = this->moints.template getIntegral<VectorInts,MatsT>("MOdipole");
-//
-//          MatsT Etemp = 0.0;
-//          for(size_t ixyz = 0; ixyz < 3; ixyz++)
-//          {
-//            Etemp += elecDipoleField[ixyz]*blas::dotu(nCorrO*nCorrO,dummyRDM.pointer(),1,(*MOdipole)[ixyz]->pointer(),1);
-//          }
-//          this->EFieldDiag[i+j*NDet]=-Etemp;
-//          this->EFieldDiag[j+i*NDet]=-Etemp;
-// 
-//        }
-//      }
-//    }
-//    // prettyPrintSmart(std::cout,"Matrix-Dipole additions",this->EFieldDiag,NDet,NDet,NDet);
-//
   }
 }; // namespace ChronusQ
 
