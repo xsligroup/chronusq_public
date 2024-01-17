@@ -151,7 +151,6 @@ namespace ChronusQ {
     // it's either state specific or state averaged RDM
     std::shared_ptr<SquareMatrix<MatsT>>    oneRDMSOI = nullptr;
     std::shared_ptr<InCore4indexTPI<MatsT>> twoRDMSOI = nullptr;
-    
     // Disable default, copy and move constructors
     MCSCF()              = delete;
     MCSCF(const MCSCF &) = delete;
@@ -184,7 +183,7 @@ namespace ChronusQ {
     void saveCurrentStates(bool prop = false);
 
     void printStateEnergy();
-    void printMCSCFHeader();
+    void printMCSCFHeader(EMPerturbation &);
     void printMCSCFFooter();
 
     // Memory functions

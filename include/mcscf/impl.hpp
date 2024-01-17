@@ -52,7 +52,7 @@ namespace ChronusQ {
     this->alloc(); 
     
     // Initial Printing
-    this->printMCSCFHeader();
+    this->printMCSCFHeader(pert);
     
     // MCSCF Intial CI solution
     std::cout << "Cycle 0:\n" << std::endl;

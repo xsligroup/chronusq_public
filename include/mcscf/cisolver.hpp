@@ -181,7 +181,7 @@ namespace ChronusQ {
     }
       
     // add other parts of the energy 
-     double EOther = mcwfn.reference().molecule().nucRepEnergy + mcwfn.InactEnergy;
+     double EOther = mcwfn.reference().molecule().nucRepEnergy + mcwfn.InactEnergy + mcwfn.EFieldNuc;
      for (auto i = 0ul; i < nR; i++) StateEnergy[i] += EOther;
   
   } // CISolver::solveCI
