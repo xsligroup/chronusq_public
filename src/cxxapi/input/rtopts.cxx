@@ -54,7 +54,8 @@ namespace ChronusQ {
       "PRINTDEN",
       "PRINTCONTRACTIONTIMING",
       "PRINTSTEP",
-      "RTGaunt"
+      "RTGaunt",
+      "RTPRINTDEN"
     };
 
     // Specified keywords

@@ -503,6 +503,14 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtgaunt, "");
         }
 
+        auto const freeCQInputRtprintden = std::regex("(RTPRINTDEN)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRtprintden) ) {
+          tdSCFControls.Rtprintden = std::stoi(RTmatch.str(2));
+          std::cout<<"zxc test read in Rtprintden = "<<tdSCFControls.Rtprintden<<std::endl;
+          addData("RT.RTPRINTDEN", std::to_string(tdSCFControls.Rtprintden));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtprintden, "");
+        }
+
         auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
         RTInputOptions = std::regex_replace(RTInputOptions, freeDividers, "");
         if(!RTInputOptions.empty()) CErr("Unrecognized RT Input Options: "+RTInputOptions);
@@ -533,6 +541,7 @@ namespace ChronusQ {
       else if (dict.at("RESTARTSTEP") == "MAGNUS2") restartAlgorithm = RTExplicitMagnus2;
     }
     if (dict.count("RTGAUNT")) Rtgaunt = std::stod(dict.at("RTGAUNT"));
+    if (dict.count("RTPRINTDEN")) Rtprintden = std::stod(dict.at("RTPRINTDEN"));
 
   }
 
