@@ -379,7 +379,7 @@ namespace ChronusQ {
     modOrbOpt.saveCurrentState  = [this]() { this->saveCurrentState(); };
     modOrbOpt.formFock          = [this](EMPerturbation& pert) { this->formFock(pert,false,1.); };
     modOrbOpt.computeProperties = [this](EMPerturbation& pert) { this->computeProperties(pert); };
-    modOrbOpt.computeEnergy     = [this](EMPerturbation& pert) { this->computeEnergy(); };
+    modOrbOpt.computeEnergy     = [this](EMPerturbation& pert) { this->computeEnergy(pert); };
     modOrbOpt.formDensity       = [this]() { this->formDensity(); };
     modOrbOpt.getFock           = [this]() { return this->getFock(); };
     modOrbOpt.getOnePDM         = [this]() { return this->getOnePDM(); };
