@@ -576,8 +576,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printIteration(bool printDiff) {
         Rtprintdenstep = integrationProgress.currentStep % tdSCFOptions.Rtprintden;
         if (Rtprintdenstep ==0) {
           this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
-        } else{
-        }
+        } 
       }
   
   //if(tdSCFOptions.iPrint != 0 && integrationProgress.currentStep % tdSCFOptions.iPrint == 0) orbitalPop();
