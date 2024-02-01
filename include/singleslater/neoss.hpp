@@ -231,6 +231,14 @@ namespace ChronusQ {
         applyToEach([&](SubSSPtr& ss){ ss->formDensity(); });
       }
 
+      virtual void printOrbitalPopulation(std::ostream& out){
+        applyToEach([&](SubSSPtr& ss){ 
+          out << bannerTop << std::endl;
+          out << std::string(ss->particle.charge>0? "Protonic" : "Electronic") << " MO Occupation: " << std::endl;
+          ss->printOrbitalPopulation(out); });
+          out << bannerTop << std::endl;
+      }
+
       // Propagate options that were set by value in the *Options functions
       void setSubSetup() {
         applyToEach([&](SubSSPtr& ss){

@@ -139,6 +139,9 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
 
   if( scfControls.printLevel > 1 ) this->singleSlaterSystem.printProperties();
 
+  // Print MO occupations 
+  //this->singleSlaterSystem.printOrbitalPopulation(std::cout);
+
   ProgramTimer::tock("SCF Total");
 
   // Save final results to bin file

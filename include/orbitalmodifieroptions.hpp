@@ -220,6 +220,7 @@ namespace ChronusQ {
 
     size_t Rtgaunt = 1;
     size_t Rtprintden = 0;
+    size_t orbitalPopFreq = 0; ///< Print orbital population every 'orbitalPopFreq' steps during RT propagation
 
     void parseSection(const InputMap &dict);
   };

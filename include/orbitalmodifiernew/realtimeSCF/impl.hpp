@@ -353,85 +353,6 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
 
 }; // RealTime::restoreState
 
-
-template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::orbitalPop() {
-
-  // Spin-Gather Ortho Density
-  std::vector<SquareMatrix<MatsT>> orthoDen;
-  if(this->singleSlaterSystem.nC == 1 ){
-    orthoDen = this->singleSlaterSystem.onePDMOrtho->template spinGatherToBlocks<MatsT>(false);
-  } else {
-    orthoDen.push_back(this->singleSlaterSystem.onePDMOrtho->template spinGather<MatsT>());
-  }
-
-  // Transform a copy of the MOs because
-  std::vector<SquareMatrix<MatsT>> orthoMO = this->singleSlaterSystem.mo;
-
-  this->singleSlaterSystem.orthoAB->nonortho2orthoCoeffs(orthoMO);
-
-  // Transform alpha Density and compute populations
-  size_t NB = orthoMO[0].dimension();
-  std::vector<double> population;
-  std::vector<SquareMatrix<MatsT>> moDen;
-  moDen.push_back( orthoDen[0].transform('N',orthoMO[0].pointer(),NB,NB) );
-  for( size_t i=0; i<NB; ++i)
-    population.push_back( std::real(moDen[0](i,i)) );
-
-  // UHF Beta populations
-  if(this->singleSlaterSystem.nC == 1 and not this->singleSlaterSystem.iCS ){
-    moDen.push_back( orthoDen[1].transform('N',orthoMO[1].pointer(),NB,NB) );
-    for( size_t i=0; i<NB; ++i)
-      population.push_back( std::real(moDen[1](i,i)) );
-  }
-
-  // Printing
-  if( this->printLevel > 1 ) {
-
-    size_t orbPerRow = 5;
-    auto printBlock = [&](std::string header, size_t& start, size_t n){
-      std::cout << header << std::endl;
-      std::cout << std::fixed << std::setprecision(11);
-
-      for(auto idx = 0; idx < n; idx += orbPerRow) {
-
-        size_t end = idx + orbPerRow < n ? orbPerRow : n - idx;
-        for(auto idummy = idx; idummy < idx+end; idummy++) {
-          std::cout << std::setw(15) << population[start+idummy];
-        }
-        std::cout << '\n';
-      }
-      start += n;
-    };
-
-    if( this->printLevel > 3 ){
-      moDen[0].output(std::cout, "MO Density Matrix", true);
-      if(this->singleSlaterSystem.nC == 1 and not this->singleSlaterSystem.iCS )
-        moDen[1].output(std::cout, "MO Beta Density Matrix", true);
-    }
-
-    size_t start = 0;
-    if(this->singleSlaterSystem.nC == 1 ) {
-      printBlock("Alpha occupied orbitals", start, this->singleSlaterSystem.nOA);
-      printBlock("Alpha virtual orbitals", start, this->singleSlaterSystem.nVA);
-      if( not this->singleSlaterSystem.iCS ){
-        printBlock("Beta occupied orbitals", start, this->singleSlaterSystem.nOB);
-        printBlock("Beta virtual orbitals", start, this->singleSlaterSystem.nVB);
-      }
-    }
-    else if(this->singleSlaterSystem.nC == 2 ){
-      printBlock("Occupied orbitals", start, this->singleSlaterSystem.nO);
-      printBlock("Virtual orbitals", start, this->singleSlaterSystem.nV);
-    } else if(this->singleSlaterSystem.nC == 4 ){
-      start += NB/2;
-      printBlock("Positive Energy Occupied orbitals", start, this->singleSlaterSystem.nO);
-      printBlock("Positive Energy Virtual orbitals", start, this->singleSlaterSystem.nV);
-    }
-    std::cout << std::flush;
-  }
-
-}; // RealTime :: orbitalPop
-
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s) {
   out << std::setw(38) << "  " + s << std::endl;
@@ -572,14 +493,14 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printIteration(bool printDiff) {
   else if(this->printLevel > 1) printStepDetail();
   if( printDen ) this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
   if (tdSCFOptions.Rtprintden != 0) {
-        int Rtprintdenstep = 0;
-        Rtprintdenstep = integrationProgress.currentStep % tdSCFOptions.Rtprintden;
-        if (Rtprintdenstep ==0) {
-          this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
-        } 
-      }
-  
-  //if(tdSCFOptions.iPrint != 0 && integrationProgress.currentStep % tdSCFOptions.iPrint == 0) orbitalPop();
+    int Rtprintdenstep = 0;
+    Rtprintdenstep = integrationProgress.currentStep % tdSCFOptions.Rtprintden;
+    if (Rtprintdenstep ==0) {
+      this->singleSlaterSystem.onePDM->output(std::cout, "OnePDM at t=" + std::to_string(integrationProgress.currentTime), true);
+    } 
+  }
+  if( tdSCFOptions.orbitalPopFreq != 0 && integrationProgress.currentStep % tdSCFOptions.orbitalPopFreq == 0) 
+      this->singleSlaterSystem.printOrbitalPopulation(std::cout);
 };
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>

@@ -327,6 +327,11 @@ namespace ChronusQ {
     // the current Density and Coefficients represent the same wavefucntion
     void setDenEqCoeff(bool val);
 
+    // Project a AO density onto a MO basis
+    SquareMatrix<MatsT> generateMODensity(const SquareMatrix<MatsT>&, const SquareMatrix<MatsT>&);
+    // Print the occupation of orbitals based on MO density 
+    void printOrbitalPopulation(std::ostream&);
+
   }; // class SingleSlater
 
 }; // namespace ChronusQ

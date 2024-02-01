@@ -437,5 +437,159 @@ template <typename MatsT, typename IntsT>
 
   };
 
+/**
+ *  \brief A function to calculate Densitry matrix in MO basis, 
+ *  given the density matrix and the coefficient matrix in AO basis
+ *
+ *  Equation: D^{MO} = C^{T} S D^{AO} S C
+ */
+template <typename MatsT, typename IntsT>
+  SquareMatrix<MatsT> SingleSlater<MatsT,IntsT>::generateMODensity(const SquareMatrix<MatsT>& denAO, const SquareMatrix<MatsT>& coeffAO) {
+    
+    //ROOT_ONLY(comm);
+
+    size_t NB = coeffAO.dimension();
+    SquareMatrix<MatsT> S(memManager,NB);
+    
+    // Obtaining overlap matrix S
+    if(this->nC == 1 ) {
+      S = this->aoints_->overlap->matrix();
+    } else if(this->nC == 2) {
+      std::fill_n(S.pointer(),NB*NB,MatsT(0.0));
+      SetMat('N',NB/2,NB/2,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/2, S.pointer(),NB);
+      SetMat('N',NB/2,NB/2,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/2, S.pointer()+NB*NB/2+NB/2,NB);
+    } else if(this->nC == 4) {
+      std::fill_n(S.pointer(),NB*NB,MatsT(0.0));
+      SetMat('N',NB/4,NB/4,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/4, S.pointer(),NB);
+      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB/4+NB/4,NB);
+      SetMat('N',NB/4,NB/4,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/4, S.pointer()+NB*NB/2+NB/2,NB);
+      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB*3/4+NB*3/4,NB);
+    } else{
+      CErr("nC invalid in OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::computeMODensity!");
+    }
+    
+    SquareMatrix<MatsT> SCR(memManager,NB);
+    SquareMatrix<MatsT> SCR1(memManager,NB);
+
+    // SCR  = D^{AO} S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
+        NB, NB, NB, MatsT(1.), denAO.pointer(), NB,
+        S.pointer(), NB, MatsT(0.), SCR.pointer(), NB);
+    //  SCR1 = S * SCR = S * D^{AO} S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
+        NB, NB, NB, MatsT(1.), S.pointer(), NB,
+        SCR.pointer(), NB, MatsT(0.), SCR1.pointer(), NB);
+    //  SCR  = C^T * SCR1 = C^T * S * D^{AO} S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
+        NB, NB, NB, MatsT(1.), coeffAO.pointer(), NB,
+        SCR1.pointer(), NB, MatsT(0.), SCR.pointer(), NB);
+    //  SCR1 = SCR * C = C^T * S * D^{AO} S C
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
+        NB, NB, NB, MatsT(1.), SCR.pointer(), NB,
+        coeffAO.pointer(), NB, MatsT(0.), SCR1.pointer(), NB);
+    
+    return SCR1;
+
+  };
+
+template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::printOrbitalPopulation(std::ostream &out) {
+
+    //ROOT_ONLY(comm);
+
+    // Do Orbital Analysis in AO basis
+
+    std::vector<SquareMatrix<MatsT>> aoDen;
+    //this->ortho2aoDen(this->onePDMSquareOrtho);
+    //this->setOnePDMAO(this->onePDMSquareAO.data());
+
+    // Spin-Gather AO Density
+    if(this->nC == 1 ){
+      aoDen = this->onePDM->template spinGatherToBlocks<MatsT>(false);
+    } else {
+      aoDen.push_back(this->onePDM->template spinGather<MatsT>());
+    }
+
+    // Transform a copy of the ground-state MOs in AO basis
+    std::vector<SquareMatrix<MatsT>> aoMO = this->mo;
+
+    // Transform alpha Density and compute populations
+    size_t NB = aoMO[0].dimension();
+    std::vector<double> population;
+    std::vector<SquareMatrix<MatsT>> moDen;
+
+    moDen.push_back( this->generateMODensity(aoDen[0], aoMO[0]) );
+    for( size_t i=0; i<NB; ++i)
+      population.push_back( std::real(moDen[0](i,i)) );
+
+    // UHF Beta populations
+    if(this->nC == 1 and not this->iCS ){
+      moDen.push_back( this->generateMODensity(aoDen[1], aoMO[1]) );
+      for( size_t i=0; i<NB; ++i)
+        population.push_back( std::real(moDen[1](i,i)) );
+    }
+
+    // Printing
+    //if( this->printLevel > 1 ) {
+    {
+      size_t orbPerRow = 5;
+      auto printBlock = [&](std::string header, size_t& start, size_t n){
+        std::cout << header << std::endl;
+        std::cout << std::fixed << std::setprecision(11);
+
+        for(auto idx = 0; idx < n; idx += orbPerRow) {
+
+          size_t end = idx + orbPerRow < n ? orbPerRow : n - idx;
+          for(auto idummy = idx; idummy < idx+end; idummy++) {
+            std::cout << std::setw(15) << population[start+idummy];
+          }
+          std::cout << '\n';
+        }
+        start += n;
+      };
+
+
+      #if 0
+        moDen[0].output(std::cout, "MO Density Matrix", true);
+        if(this->nC == 1 and not this->iCS )
+          moDen[1].output(std::cout, "MO Beta Density Matrix", true);
+      #endif
+
+      size_t start = 0;
+      if(this->nC == 1 ) {
+        printBlock("Alpha occupied orbitals", start, this->nOA);
+        printBlock("Alpha virtual orbitals", start, this->nVA);
+        if( not this->iCS ){
+          printBlock("Beta occupied orbitals", start, this->nOB);
+          printBlock("Beta virtual orbitals", start, this->nVB);
+        }
+      }
+      else if(this->nC == 2 ){
+        printBlock("Occupied orbitals", start, this->nO);
+        printBlock("Virtual orbitals", start, this->nV);
+      } else if(this->nC == 4 ){
+        start += NB/2;
+        printBlock("Positive Energy Occupied orbitals", start, this->nO);
+        printBlock("Positive Energy Virtual orbitals",  start, this->nV);
+        start = 0;
+        printBlock("Negative Energy Orbitals", start, this->nO+this->nV);
+
+        // Print # of particles for 4C
+        MatsT negTotal(MatsT(0.)), posTotal(MatsT(0.));
+        for (size_t i = 0; i < NB; ++i) 
+          if (i < NB/2) negTotal += moDen[0](i, i);
+          else          posTotal += moDen[0](i, i);
+        MatsT total = negTotal + posTotal;
+        std::cout << std::scientific << std::setprecision(16);
+        std::cout << "Negative Particles: " << negTotal << std::endl;
+        std::cout << "Positive Particles: " << posTotal << std::endl;
+        std::cout << "Total    Particles: " << total << std::endl;
+
+      }
+      std::cout << std::flush;
+    }
+
+};
+
 }; // namespace ChronusQ
 

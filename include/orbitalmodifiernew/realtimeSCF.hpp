@@ -125,7 +125,6 @@ public:
   void saveState(EMPerturbation&);
   void restoreState();
   void createRTDataSets(size_t maxPoint = 0);
-  void orbitalPop();
 
   // Progress functions
   void printStepSummary();

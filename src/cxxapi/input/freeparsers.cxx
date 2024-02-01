@@ -511,6 +511,13 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtprintden, "");
         }
 
+        auto const freeCQInputOrbitalPopFreq = std::regex("(ORBITALPOPFREQ)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputOrbitalPopFreq) ) {
+          tdSCFControls.orbitalPopFreq = std::stoi(RTmatch.str(2));
+          addData("RT.ORBITALPOPFREQ", std::to_string(tdSCFControls.orbitalPopFreq));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputOrbitalPopFreq, "");
+        }
+
         auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
         RTInputOptions = std::regex_replace(RTInputOptions, freeDividers, "");
         if(!RTInputOptions.empty()) CErr("Unrecognized RT Input Options: "+RTInputOptions);
@@ -540,8 +547,9 @@ namespace ChronusQ {
       else if (dict.at("RESTARTSTEP") == "FORWARDEULER") restartAlgorithm = RTForwardEuler;
       else if (dict.at("RESTARTSTEP") == "MAGNUS2") restartAlgorithm = RTExplicitMagnus2;
     }
-    if (dict.count("RTGAUNT")) Rtgaunt = std::stod(dict.at("RTGAUNT"));
-    if (dict.count("RTPRINTDEN")) Rtprintden = std::stod(dict.at("RTPRINTDEN"));
+    if (dict.count("RTGAUNT")) Rtgaunt = std::stoi(dict.at("RTGAUNT"));
+    if (dict.count("RTPRINTDEN")) Rtprintden = std::stoi(dict.at("RTPRINTDEN"));
+    if (dict.count("ORBITALPOPFREQ")) orbitalPopFreq = std::stoi(dict.at("ORBITALPOPFREQ"));
 
   }
 
