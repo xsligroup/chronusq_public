@@ -181,6 +181,24 @@ namespace ChronusQ {
     std::cout << std::setw(15) << std::right << "f = "
               << std::setprecision(12) << std::fixed << f << std::endl;
 
+    // SS
+    if( savFile.exists() ) {
+      std::string nameoftdm("MCWFN/TransitionDipole_");
+      std::string state1(std::to_string(s1));
+      std::string state2(std::to_string(s2));
+      nameoftdm.append(state1);
+      nameoftdm.append("to");
+      nameoftdm.append(state2);
+
+      std::vector<dcomplex> tdxyz(3);
+      for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+        tdxyz[iXYZ] = blas::dot(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ]->pointer(),1);
+      }
+
+      savFile.safeWriteData(nameoftdm, &tdxyz[0], {3});
+    }
+
+
     tmpTDM1.clear();
     tmpTDM2.clear();
 

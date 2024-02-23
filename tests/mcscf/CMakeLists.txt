@@ -47,6 +47,7 @@ include( CQTestGeneration )
 # CAS test
 add_cq_test(OneC_CASSCF_FULLMATRIX  mcscftest "OneC_CASSCF_FULLMATRIX.*")
 add_cq_test(X2C_CASSCF_FULLMATRIX   mcscftest "X2C_CASSCF_FULLMATRIX.*")
+add_cq_test(X2C_CASSCF_GIAO         mcscftest "X2C_CASSCF_GIAO.*")
 add_cq_test(FourC_CASSCF_FULLMATRIX mcscftest "FourC_CASSCF_FULLMATRIX.*")
 add_cq_test(CASCI_READMO_SKIPSCF mcscftest "CASCI_READMO_SKIPSCF.*")
 add_cq_test(CASCI_DAVIDSON       mcscftest "CASCI_DAVIDSON.*")

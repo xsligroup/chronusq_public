@@ -46,6 +46,16 @@ TEST(X2C_CASSCF_FULLMATRIX, Al_631G ) {
 #endif
 };
 
+// GIAO + CASSCF
+TEST(X2C_CASSCF_GIAO, NO_631G ) {
+  CQMCSCFTEST( "mcscf/serial/cas/nox2chf_sacas", "nox2chf_sacas.bin.ref");
+
+#ifndef _CQ_GENERATE_TESTS
+  CQMCSCFTEST( "mcscf/serial/cas/nox2chf_sacas", "nox2chf_sacas.bin.ref");
+#endif 
+};
+
+
 TEST(FourC_CASSCF_FULLMATRIX, Al_631G ) {
 
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n6", "al_6-31G_4c_bc_casscf.bin.ref");

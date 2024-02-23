@@ -670,7 +670,8 @@ namespace ChronusQ {
    mcscf->mcscfPert.addField(parsedField);
 
    if( pert_has_type(mcscf->mcscfPert,Magnetic) ) {
-       CErr("NYI - MCSCF with magnetic field might work, but unverified.");
+      if (ss->basisSet_.basisType != COMPLEX_GIAO) 
+        CErr("NYI - MCSCF with magnetic field only works with GIAO!");
    } else if (pert_has_type(mcscf->mcscfPert, Electric) && ss->nC == 4) {
        CErr("NYI - 4C MCSCF with electric field might work, but unverified.");
    }
