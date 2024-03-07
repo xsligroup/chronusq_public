@@ -46,6 +46,7 @@
 
 // MPI / ScaLAPACK / BLACS
 #cmakedefine CQ_ENABLE_MPI
+#cmakedefine LONG_INT_IS_INT64_T
 #cmakedefine CQ_HAS_TA
 
 /*
