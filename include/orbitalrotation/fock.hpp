@@ -44,7 +44,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void OrbitalRotation<MatsT, IntsT>::formGeneralizedFock1(EMPerturbation & pert,
-    SquareMatrix<MatsT> & oneRDM, MatsT * F1, const std::string & moType,
+    cqmatrix::Matrix<MatsT> & oneRDM, MatsT * F1, const std::string & moType,
     bool deltaPQ) {
     
     // unpack pq_size
@@ -66,7 +66,7 @@ namespace ChronusQ {
     size_t nt   = tsize[0].second;
     size_t nAO  = mcwfn_.reference().nAlphaOrbital() * mcwfn_.reference().nC;
     
-    SquareMatrix<MatsT> Den(mem, nAO);
+    cqmatrix::Matrix<MatsT> Den(mem, nAO);
     MatsT * SCR = mem.template malloc<MatsT>(std::max(nAO*nt, npqDim)); 
     MatsT * tMO = mcwfn_.reference().mo[0].pointer() + toff*nAO;
 
@@ -96,7 +96,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void OrbitalRotation<MatsT, IntsT>::formGeneralizedFock2(EMPerturbation & pert,
-      SquareMatrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM, MatsT * F2, 
+      cqmatrix::Matrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM, MatsT * F2, 
       const std::string & moType) {
     
     // unpack q_size

@@ -116,7 +116,7 @@ namespace ChronusQ {
     }
 
     template <typename IntsU>
-    SquareMatrix<IntsU> formW() const;
+    cqmatrix::Matrix<IntsU> formW() const;
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,

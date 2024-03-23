@@ -147,7 +147,7 @@ namespace ChronusQ {
     // Add the base fockBuilder to make sure it has a persistent lifetime
     fockBuilders.insert({label, {ss->fockBuilder}});
     // New coulomb matrices to be added to the _new_ system
-    std::unordered_map<std::string, SquareMatrix<MatsT>> newCoulombs;
+    std::unordered_map<std::string, cqmatrix::Matrix<MatsT>> newCoulombs;
 
     // Loop over other subsystems
     for( auto& x: subsystems ) {
@@ -157,9 +157,9 @@ namespace ChronusQ {
       auto other_NB = x.second->basisSet().nBasis;
 
       // Add a new coulomb matrix to the new system
-      newCoulombs.insert({x.first, SquareMatrix<MatsT>(ss->memManager, NB)});
+      newCoulombs.insert({x.first, cqmatrix::Matrix<MatsT>(ss->memManager, NB)});
       // Add a new coulomb matrix to the other system
-      interCoulomb.at(x.first).insert({label, SquareMatrix<MatsT>(ss->memManager, other_NB)});
+      interCoulomb.at(x.first).insert({label, cqmatrix::Matrix<MatsT>(ss->memManager, other_NB)});
 
       HamiltonianOptions this_options = ss->aoints_->options_;
       HamiltonianOptions other_options = x.second->aoints_->options_;

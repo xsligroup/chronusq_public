@@ -108,11 +108,11 @@ namespace ChronusQ {
    *  \brief Construct L=(P|Q)^{-1/2}
    */
   template <>
-  void InCoreRITPI<dcomplex>::halfInverse2CenterERI(SquareMatrix<dcomplex> &S) {
+  void InCoreRITPI<dcomplex>::halfInverse2CenterERI(cqmatrix::Matrix<dcomplex> &S) {
     CErr("Only real GTOs are allowed",std::cout);
   };
   template <>
-  void InCoreRITPI<double>::halfInverse2CenterERI(SquareMatrix<double> &twocenterERI) {
+  void InCoreRITPI<double>::halfInverse2CenterERI(cqmatrix::Matrix<double> &twocenterERI) {
 
     auto topERI3Trans = tick();
 
@@ -417,11 +417,11 @@ namespace ChronusQ {
     compute3CenterERI(basisSet, *auxBasisSet_);
     saveRawERI3J();
 
-    twocenterERI_ = std::make_shared<SquareMatrix<double>>(memManager(), NBRI);
+    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(memManager(), NBRI);
 
     compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
     if (saveRawERI_)
-      rawERI2C_ = std::make_shared<SquareMatrix<double>>(*twocenterERI_);
+      rawERI2C_ = std::make_shared<cqmatrix::Matrix<double>>(*twocenterERI_);
 
     auto topERI3Trans = tick();
     halfInverse2CenterERI(*twocenterERI_);
@@ -4948,11 +4948,11 @@ namespace ChronusQ {
 
     saveRawERI3J();
 
-    twocenterERI_ = std::make_shared<SquareMatrix<double>>(mem, NBRI);
+    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(mem, NBRI);
     double *S = twocenterERI_->pointer();
     extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI);
     if (saveRawERI_)
-      rawERI2C_ = std::make_shared<SquareMatrix<double>>(*twocenterERI_);
+      rawERI2C_ = std::make_shared<cqmatrix::Matrix<double>>(*twocenterERI_);
 
 #ifdef __DEBUGERI__
     std::cout << "Pivots:" << std::endl;

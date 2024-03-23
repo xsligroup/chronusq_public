@@ -94,7 +94,7 @@ namespace ChronusQ{
     // VL_^\dagger = L^{-1}*P^{T}*VL_\dagger
     // VR_ = VR_ * U^{-1}
     std::vector<int64_t> IPIV(nR);
-    SquareMatrix<_F> LUMat(memManager_, nR);
+    cqmatrix::Matrix<_F> LUMat(memManager_, nR);
 
 //    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
 //               nR,nR,N,_F(1.),VL,N,VR,N,_F(0.),LUMat,nR);
@@ -161,7 +161,7 @@ namespace ChronusQ{
     // VL_^\dagger = L^{-1}*P^{T}*VL_\dagger
     // VR_ = VR_ * U^{-1}
     std::vector<int64_t> IPIV(nR);
-    SquareMatrix<_F> LUMat(memManager_, nR);
+    cqmatrix::Matrix<_F> LUMat(memManager_, nR);
 
     //    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
     //               nR,nR,N,_F(1.),VL,N,VR,N,_F(0.),LUMat,nR);
@@ -182,9 +182,9 @@ namespace ChronusQ{
     LUMat.broadcast();
     MPIBCast(IPIV.data(), nR, 0, MPI_COMM_WORLD);
 
-    SquareMatrix<_F> UMat(LUMat);
+    cqmatrix::Matrix<_F> UMat(LUMat);
     UMat.setTriangle(blas::Uplo::Lower, 0.0, false);
-    SquareMatrix<_F> LMat(LUMat);
+    cqmatrix::Matrix<_F> LMat(LUMat);
     LMat.setTriangle(blas::Uplo::Upper, 0.0, true, 1.0);
 
     // VR_ = VR_ * U^{-1}
@@ -314,7 +314,7 @@ namespace ChronusQ{
     std::cout << " Start building the full matrix " << std::endl;
 
     auto beginBuild = tick();
-    SquareMatrix<MatsT> fullMat(buildHbarCVS(false));
+    cqmatrix::Matrix<MatsT> fullMat(buildHbarCVS(false));
     std::cout << "buildHbar spend " << tock(beginBuild) << " s." << std::endl;
 
 //    fullMat.output(std::cout, "Hbar", true);
@@ -393,7 +393,7 @@ namespace ChronusQ{
     std::cout << " Start building the full matrix " << std::endl;
 
     auto beginBuild_w0 = tick();
-    SquareMatrix<MatsT> fullMat_w0(buildHbarCVS(true));
+    cqmatrix::Matrix<MatsT> fullMat_w0(buildHbarCVS(true));
     std::cout << "buildHbar_w0 spend " << tock(beginBuild_w0) << " s." << std::endl;
 
 //    fullMat_w0.output(std::cout, "Hbar_w0", true);
@@ -405,7 +405,7 @@ namespace ChronusQ{
     }
 
     // Diagonalize the big Hbar matrix
-    SquareMatrix<MatsT> fullMat_w0_copy(fullMat_w0);
+    cqmatrix::Matrix<MatsT> fullMat_w0_copy(fullMat_w0);
     if (MPIRank() == 0) {
       SetLAThreads(GetNumThreads());
     std::cout << " Start Full diagonalization, Hbar_dim_w0 = "  << Hbar_dim_w0 << std::endl;

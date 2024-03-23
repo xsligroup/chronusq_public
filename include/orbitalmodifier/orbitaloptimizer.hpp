@@ -48,7 +48,7 @@ struct SCFConvergence {
 template<typename MatsT>
 class OrbitalOptimizer : public OrbitalModifier<MatsT> {
   private:
-    std::vector<SquareMatrix<MatsT>> prevOnePDM;   ///< Previous density used to test convergence
+    std::vector<cqmatrix::Matrix<MatsT>> prevOnePDM;   ///< Previous density used to test convergence
     double prevEnergy;                             ///< Previous Energy to test convergence
 
   public:

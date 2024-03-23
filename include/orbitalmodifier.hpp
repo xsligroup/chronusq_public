@@ -34,10 +34,10 @@ namespace ChronusQ {
 
   // Assign input types to alias for ease of use
 template<typename MatsT>
-using vecMORef = std::vector<std::reference_wrapper<SquareMatrix < MatsT>>>;
+using vecMORef = std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>;
 using vecEPtr  = std::vector<double*>;
 template<typename MatsT>
-using vecShrdPtrMat = std::vector<std::shared_ptr<SquareMatrix<MatsT>>>;
+using vecShrdPtrMat = std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>;
 template<typename MatsT>
 using vecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
 
@@ -93,7 +93,7 @@ struct OrbitalModifierDrivers {
                                                     ///<   this replaces the gradient function in NewtonRaphsonSCF if an
                                                     ///<   approximation is being used
 
-    std::function<void(std::vector<SquareMatrix<MatsT>>&)> computeErrorVector;   ///< Computes the Orbital Gradient in the AO Basis
+    std::function<void(std::vector<cqmatrix::Matrix<MatsT>>&)> computeErrorVector;   ///< Computes the Orbital Gradient in the AO Basis
                                                                                  ///<   this replaces the F,D Commutator function in ConventionalSCF
     //--------------------------------------------------------------------------------------------
 };

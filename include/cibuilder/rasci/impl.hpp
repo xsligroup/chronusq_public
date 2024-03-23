@@ -564,7 +564,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void RASCI<MatsT,IntsT>::computeOneRDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * C,
-    SquareMatrix<MatsT> & oneRDM) {
+    cqmatrix::Matrix<MatsT> & oneRDM) {
 
     computeTDM(mcwfn, C, C, oneRDM);
 
@@ -573,7 +573,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void RASCI<MatsT,IntsT>::computeTDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * Cm,
-        MatsT * Cn, SquareMatrix<MatsT> & TDM) {
+        MatsT * Cn, cqmatrix::Matrix<MatsT> & TDM) {
 
 #ifdef _DEBUG_CIBUILDER_RASCI_IMPL
     std::cout << "LL RAS compute TDM." << std::endl;
@@ -584,7 +584,7 @@ namespace ChronusQ {
     TDM.clear();
 
     size_t nThreads = GetNumThreads();
-    std::vector<SquareMatrix<MatsT>> SCR;
+    std::vector<cqmatrix::Matrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++) {
       SCR.emplace_back(mcwfn.memManager, TDM.dimension());
       SCR.back().clear();

@@ -33,7 +33,7 @@ namespace ChronusQ {
     protected:
 
     FockBuilder<MatsT, IntsT>* upstream = nullptr;
-    SquareMatrix<MatsT>* outMat = nullptr;
+    cqmatrix::Matrix<MatsT>* outMat = nullptr;
     SingleSlater<MatsT,IntsT>* aux_ss = nullptr;
 
     public:
@@ -52,7 +52,7 @@ namespace ChronusQ {
       aux_ss = ss;
     }
 
-    void setOutput(SquareMatrix<MatsT>* out) {
+    void setOutput(cqmatrix::Matrix<MatsT>* out) {
       outMat = out;
     }
 
@@ -141,7 +141,7 @@ namespace ChronusQ {
 
     std::vector<std::shared_ptr<DFTFunctional>> epc_functionals;
     IntegrationParam intParam;
-    std::shared_ptr<PauliSpinorSquareMatrices<double>> VXC;
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> VXC;
     double XCEnergy;
 
     public:

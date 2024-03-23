@@ -42,14 +42,14 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>  
   double OrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & pert,
-    SquareMatrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM) {
+    cqmatrix::Matrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM) {
     
     ProgramTimer::tick("Form Gradient");
     
     auto & mopart = mcwfn_.MOPartition;
     auto & mem    = mcwfn_.memManager;
     if (not orbitalGradient_) 
-      orbitalGradient_ = std::make_shared<SquareMatrix<MatsT>>(mem, mopart.nMO);
+      orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(mem, mopart.nMO);
 
     size_t nTOrb   = mopart.nMO;
     size_t nCorrO  = mopart.nCorrO;
@@ -140,8 +140,12 @@ namespace ChronusQ {
     double orbitalGradientNorm =  lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, G, nTOrb); 
 
 #ifdef DEBUG_ORBITALROTATION_GRADIENT
-    prettyPrintSmart(std::cout, " 1RDM ", oneRDM.pointer(), nCorrO, nCorrO, nCorrO);
-    prettyPrintSmart(std::cout, " OR Orbital Gradient ", G, nTOrb, nTOrb, nTOrb);
+    prettyPrintSmart(std::cout, " old 1RDM ", oneRDM.pointer(), nCorrO, nCorrO, nCorrO);
+    prettyPrintSmart(std::cout, " old 2RDM ", twoRDM.pointer(), nCorrO*nCorrO, nCorrO*nCorrO, nCorrO*nCorrO);
+    std::cout << "old 2RDM norm = " << std::setprecision(16) << 
+       lapack::lange(lapack::Norm::Fro, nCorrO*nCorrO, nCorrO*nCorrO, twoRDM.pointer(), nCorrO*nCorrO)
+       << std::endl;
+    prettyPrintSmart(std::cout, " old OR Orbital Gradient ", G, nTOrb, nTOrb, nTOrb);
     std::cout << "OR Orbital Gradient Norm = " << orbitalGradientNorm << std::endl;
 #endif  
     

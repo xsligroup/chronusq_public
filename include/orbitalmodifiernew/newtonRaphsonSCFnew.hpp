@@ -65,7 +65,7 @@ private:
   MatsT* orbRot;                  ///< Orbital Rotation Parameters
   MatsT* orbGrad;                 ///< Orbital Gradient
   MatsT* orbDiagHess;             ///< Diagonal Hessian Approximation
-  std::vector<SquareMatrix<MatsT>> refMO;   ///< The reference set of MO's that are being rotated
+  std::vector<cqmatrix::Matrix<MatsT>> refMO;   ///< The reference set of MO's that are being rotated
   std::vector<NRRotOptions> rotOpt;         ///< Data structure to generate rotation matrices
 
   // Quasi-Newton Data Structures
@@ -119,7 +119,7 @@ public:
   void computeDiagHess(vecEPtr&);
   void rotateMOs(vecMORef<MatsT>&);
   void saveRefMOs(vecMORef<MatsT>& mo);
-  std::vector<SquareMatrix<MatsT>> computeUnitary();
+  std::vector<cqmatrix::Matrix<MatsT>> computeUnitary();
 
 
   // Line Search and step functions

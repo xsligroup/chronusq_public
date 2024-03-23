@@ -206,12 +206,12 @@ namespace ChronusQ{
 
 
   template <typename MatsT, typename IntsT>
-  SquareMatrix<MatsT> EOMCCSD<MatsT,IntsT>::buildHbarCVS(bool includeGroundState) const {
+  cqmatrix::Matrix<MatsT> EOMCCSD<MatsT,IntsT>::buildHbarCVS(bool includeGroundState) const {
     TAManager &TAmanager = TAManager::get();
     size_t nV = TAmanager.getRange(vLabel_).extent();
     size_t nO = TAmanager.getRange(oLabel_).extent();
 
-    SquareMatrix<MatsT> fullMat(memManager_, includeGroundState ? Hbar_dim + 1 : Hbar_dim);
+    cqmatrix::Matrix<MatsT> fullMat(memManager_, includeGroundState ? Hbar_dim + 1 : Hbar_dim);
     fullMat.clear();
 
     MatsT * Hbar = fullMat.pointer();

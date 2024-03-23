@@ -25,101 +25,103 @@
 #include <matrix.hpp>
 
 namespace ChronusQ {
+namespace cqmatrix {
 
-  template <typename ScalarT, typename MatsT>
-  class ScaledSquareMatrix {
+template <typename ScalarT, typename MatsT>
+class ScaledMatrix {
 
-    template <typename ScalarT2, typename MatsT2>
-    friend class ScaledSquareMatrix;
+  template <typename ScalarT2, typename MatsT2>
+  friend class ScaledMatrix;
 
-  protected:
-    bool isPauli_; // Keep track of declaration type for static binding effect
-    ScalarT scalar_;
-    const SquareMatrix<MatsT> &mat_;
+protected:
+  bool isPauli_; // Keep track of declaration type for static binding effect
+  ScalarT scalar_;
+  const Matrix<MatsT> &mat_;
 
-  public:
+public:
 
-    ScaledSquareMatrix() = delete;
-    ScaledSquareMatrix( const ScaledSquareMatrix& ) = default;
-    ScaledSquareMatrix( ScaledSquareMatrix&& ) = default;
-    ScaledSquareMatrix(ScalarT scalar, const SquareMatrix<MatsT> &ints, bool isPauli = false):
-        isPauli_(isPauli), scalar_(scalar), mat_(ints) {}
-    ScaledSquareMatrix(ScalarT scalar, const PauliSpinorSquareMatrices<MatsT> &ints):
-        isPauli_(true), scalar_(scalar), mat_(ints) {}
-    template <typename ScalarT1, typename ScalarT2>
-    ScaledSquareMatrix(ScalarT1 scalar,
-        const ScaledSquareMatrix<ScalarT2, MatsT> &scaled):
-        isPauli_(scaled.isPauli_), scalar_(scalar * scaled.scalar_), mat_(scaled.mat_) {}
+  ScaledMatrix() = delete;
+  ScaledMatrix( const ScaledMatrix& ) = default;
+  ScaledMatrix( ScaledMatrix&& ) = default;
+  ScaledMatrix(ScalarT scalar, const Matrix<MatsT> &ints, bool isPauli = false):
+      isPauli_(isPauli), scalar_(scalar), mat_(ints) {}
+  ScaledMatrix(ScalarT scalar, const PauliSpinorMatrices<MatsT> &ints):
+      isPauli_(true), scalar_(scalar), mat_(ints) {}
+  template <typename ScalarT1, typename ScalarT2>
+  ScaledMatrix(ScalarT1 scalar,
+      const ScaledMatrix<ScalarT2, MatsT> &scaled):
+      isPauli_(scaled.isPauli_), scalar_(scalar * scaled.scalar_), mat_(scaled.mat_) {}
 
-    bool isPauli() const { return isPauli_; }
-    ScalarT scalar() const { return scalar_; }
-    const SquareMatrix<MatsT>& matrix() const { return mat_; }
+  bool isPauli() const { return isPauli_; }
+  ScalarT scalar() const { return scalar_; }
+  const Matrix<MatsT>& matrix() const { return mat_; }
 
-    ScaledSquareMatrix operator-() const {
-      return ScaledSquareMatrix(-1.0, *this);
-    }
-
-  }; // class ScaledSquareMatrix
-
-  template <typename ScalarT, typename MatsT>
-  ScaledSquareMatrix<ScalarT, MatsT>
-  operator*(ScalarT a, const SquareMatrix<MatsT> &ints) {
-    return ScaledSquareMatrix<ScalarT, MatsT>(a, ints);
-  }
-  template <typename ScalarT, typename MatsT>
-  ScaledSquareMatrix<ScalarT, MatsT>
-  operator*(const SquareMatrix<MatsT> &ints, ScalarT a) {
-    return ScaledSquareMatrix<ScalarT, MatsT>(a, ints);
-  }
-  template <typename ScalarT, typename MatsT>
-  ScaledSquareMatrix<ScalarT, MatsT>
-  operator*(ScalarT a, const PauliSpinorSquareMatrices<MatsT> &ints) {
-    return ScaledSquareMatrix<ScalarT, MatsT>(a, ints);
-  }
-  template <typename ScalarT, typename MatsT>
-  ScaledSquareMatrix<ScalarT, MatsT>
-  operator*(const PauliSpinorSquareMatrices<MatsT> &ints, ScalarT a) {
-    return ScaledSquareMatrix<ScalarT, MatsT>(a, ints);
-  }
-  template <typename ScalarT1, typename ScalarT2, typename MatsT>
-  ScaledSquareMatrix<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value),
-  dcomplex, double>::type, MatsT>
-  operator*(ScalarT1 a, const ScaledSquareMatrix<ScalarT2, MatsT> &ints) {
-    return ScaledSquareMatrix<typename std::conditional<
-        (std::is_same<ScalarT1, dcomplex>::value or
-         std::is_same<ScalarT2, dcomplex>::value),
-        dcomplex, double>::type, MatsT>(a, ints);
-  }
-  template <typename ScalarT1, typename ScalarT2, typename MatsT>
-  ScaledSquareMatrix<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value),
-  dcomplex, double>::type, MatsT>
-  operator*(const ScaledSquareMatrix<ScalarT1, MatsT> &ints, ScalarT2 a) {
-    return ScaledSquareMatrix<typename std::conditional<
-        (std::is_same<ScalarT1, dcomplex>::value or
-         std::is_same<ScalarT2, dcomplex>::value),
-        dcomplex, double>::type, MatsT>(a, ints);
+  ScaledMatrix operator-() const {
+    return ScaledMatrix(-1.0, *this);
   }
 
-  template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
-  PauliSpinorSquareMatrices<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value or
-   std::is_same<MatsT1, dcomplex>::value or
-   std::is_same<MatsT2, dcomplex>::value),
-  dcomplex, double>::type>
-  operator+(const ScaledSquareMatrix<ScalarT1, MatsT1>&, const ScaledSquareMatrix<ScalarT2, MatsT2>&);
+}; // class ScaledMatrix
 
-  template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
-  PauliSpinorSquareMatrices<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value or
-   std::is_same<MatsT1, dcomplex>::value or
-   std::is_same<MatsT2, dcomplex>::value),
-  dcomplex, double>::type>
-  operator-(const ScaledSquareMatrix<ScalarT1, MatsT1>&, const ScaledSquareMatrix<ScalarT2, MatsT2>&);
+template <typename ScalarT, typename MatsT>
+ScaledMatrix<ScalarT, MatsT>
+operator*(ScalarT a, const Matrix<MatsT> &ints) {
+  return ScaledMatrix<ScalarT, MatsT>(a, ints);
+}
+template <typename ScalarT, typename MatsT>
+ScaledMatrix<ScalarT, MatsT>
+operator*(const Matrix<MatsT> &ints, ScalarT a) {
+  return ScaledMatrix<ScalarT, MatsT>(a, ints);
+}
+template <typename ScalarT, typename MatsT>
+ScaledMatrix<ScalarT, MatsT>
+operator*(ScalarT a, const PauliSpinorMatrices<MatsT> &ints) {
+  return ScaledMatrix<ScalarT, MatsT>(a, ints);
+}
+template <typename ScalarT, typename MatsT>
+ScaledMatrix<ScalarT, MatsT>
+operator*(const PauliSpinorMatrices<MatsT> &ints, ScalarT a) {
+  return ScaledMatrix<ScalarT, MatsT>(a, ints);
+}
+template <typename ScalarT1, typename ScalarT2, typename MatsT>
+ScaledMatrix<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value),
+dcomplex, double>::type, MatsT>
+operator*(ScalarT1 a, const ScaledMatrix<ScalarT2, MatsT> &ints) {
+  return ScaledMatrix<typename std::conditional<
+      (std::is_same<ScalarT1, dcomplex>::value or
+       std::is_same<ScalarT2, dcomplex>::value),
+      dcomplex, double>::type, MatsT>(a, ints);
+}
+template <typename ScalarT1, typename ScalarT2, typename MatsT>
+ScaledMatrix<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value),
+dcomplex, double>::type, MatsT>
+operator*(const ScaledMatrix<ScalarT1, MatsT> &ints, ScalarT2 a) {
+  return ScaledMatrix<typename std::conditional<
+      (std::is_same<ScalarT1, dcomplex>::value or
+       std::is_same<ScalarT2, dcomplex>::value),
+      dcomplex, double>::type, MatsT>(a, ints);
+}
 
-}; // namespace ChronusQ
+template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
+PauliSpinorMatrices<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value or
+ std::is_same<MatsT1, dcomplex>::value or
+ std::is_same<MatsT2, dcomplex>::value),
+dcomplex, double>::type>
+operator+(const ScaledMatrix<ScalarT1, MatsT1>&, const ScaledMatrix<ScalarT2, MatsT2>&);
+
+template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
+PauliSpinorMatrices<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value or
+ std::is_same<MatsT1, dcomplex>::value or
+ std::is_same<MatsT2, dcomplex>::value),
+dcomplex, double>::type>
+operator-(const ScaledMatrix<ScalarT1, MatsT1>&, const ScaledMatrix<ScalarT2, MatsT2>&);
+
+} // namespace cqmatrix
+} // namespace ChronusQ

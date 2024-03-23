@@ -107,6 +107,41 @@ namespace ChronusQ {
 
   }; // MOIntsTransformer::setMORanges for MCWaveFunction
   
+  template <typename MatsT, typename IntsT>
+  void MOIntsTransformer<MatsT,IntsT>::setMORanges(const PostHartreeFockBase & postHF) {
+  
+      // set 4C for no-pair approximation
+      size_t offset = (ss_.nC == 4 and postHF.FourCompNoPair) ? ss_.nAlphaOrbital() * 2: 0;
+      
+      const auto & corrS = postHF.corrSpace;
+      size_t nCoreO = corrS.nInact + corrS.nFCore; 
+      size_t nCorrO = corrS.nCorrO;
+      size_t nVirtO = corrS.nSVirt + corrS.nFVirt; 
+      size_t nT = corrS.nMO; 
+      size_t corrOffset = offset + nCoreO;
+
+      resetMORanges();
+      
+      // negative energy MO indices
+      if (ss_.nC == 4) addMORanges({'m', 'n'}, {0ul, corrS.nNegMO});
+
+      // general electronic indices
+      addMORanges({'p','q','r','s'}, {0ul, nT});
+      
+      // all core indices
+      addMORanges({'I', 'J'}, {offset, nCoreO});
+
+      // inactive core indices
+      addMORanges({'i','j','k','l'}, {offset + corrS.nFCore, corrS.nInact});
+      
+      // correlated space
+      addMORanges({'t','u','v','w'}, {corrOffset, nCorrO});
+
+      // secondary virtual indices
+      addMORanges({'a','b','c','d'}, {corrOffset + nCorrO, corrS.nSVirt});
+
+  }; // MOIntsTransformer::setMORanges for PostHartreeFockBase 
+  
   /**
    *  \brief parsing the mo ints types to offsizes 
    */

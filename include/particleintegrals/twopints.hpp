@@ -82,8 +82,8 @@ namespace ChronusQ {
   template <typename T>
   struct TwoBodyRelContraction {
 
-    std::shared_ptr<PauliSpinorSquareMatrices<T>>  X;  ///< 1-Body (2 index) operator to contraction
-    std::shared_ptr<PauliSpinorSquareMatrices<T>>  AX; ///< 1-Body (2 index) storage for the contraction
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<T>>  X;  ///< 1-Body (2 index) operator to contraction
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<T>>  AX; ///< 1-Body (2 index) storage for the contraction
 
     bool HER; ///< Whether or not X is hermetian
 

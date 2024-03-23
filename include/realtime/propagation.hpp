@@ -145,7 +145,7 @@ namespace ChronusQ {
             
           // DOSav(k) = DO(k)
           // DO(k)    = DO(k-1)
-          std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>> tmp = DOSav[idx];
+          std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> tmp = DOSav[idx];
           DOSav[idx] = systems_[idx]->onePDMOrtho;
           systems_[idx]->onePDMOrtho = tmp;
 
@@ -178,12 +178,12 @@ namespace ChronusQ {
       saveState(pert_t);
 
       // Save D(k) if doing Magnus 2
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> den_k;
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> denOrtho_k;
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> den_k;
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> denOrtho_k;
       for(auto idx = 0; idx < systems_.size(); idx++) {
         if ( curState.curStep == ExplicitMagnus2 ) {
-          den_k.push_back(std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(*systems_[idx]->onePDM));
-          denOrtho_k.push_back(std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(*systems_[idx]->onePDMOrtho));
+          den_k.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(*systems_[idx]->onePDM));
+          denOrtho_k.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(*systems_[idx]->onePDMOrtho));
         }
       }
 
@@ -232,7 +232,7 @@ namespace ChronusQ {
 
         for(auto idx = 0; idx < systems_.size(); idx++) {
           // F(k)
-          PauliSpinorSquareMatrices<dcomplex> fock_k(*systems_[idx]->fockMatrix);
+          cqmatrix::PauliSpinorMatrices<dcomplex> fock_k(*systems_[idx]->fockMatrix);
           
           // F(k + 1)
           formFock(false, curState.xTime + intScheme.deltaT, idx);
@@ -301,9 +301,9 @@ namespace ChronusQ {
     } else if( not UH[idx]->hasXY() ) {
 
       // Transform SCALAR / MZ -> ALPHA / BETA
-      std::vector<SquareMatrix<dcomplex>> Fblocks =
+      std::vector<cqmatrix::Matrix<dcomplex>> Fblocks =
           systems_[idx]->fockMatrixOrtho->template spinGatherToBlocks<dcomplex>(false);
-      std::vector<SquareMatrix<dcomplex>> UHblocks;
+      std::vector<cqmatrix::Matrix<dcomplex>> UHblocks;
       UHblocks.reserve(2);
       UHblocks.emplace_back(memManager_, NB);
       UHblocks.emplace_back(memManager_, NB);
@@ -314,15 +314,15 @@ namespace ChronusQ {
         Fblocks[1].pointer(),NB,UHblocks[1].pointer(),NB,memManager_);
 
       // Transform ALPHA / BETA -> SCALAR / MZ
-      *UH[idx] = PauliSpinorSquareMatrices<dcomplex>::
+      *UH[idx] = cqmatrix::PauliSpinorMatrices<dcomplex>::
           spinBlockScatterBuild<dcomplex>(UHblocks[0],UHblocks[1]);
 
     // Generalized (2C) or 4C
     } else {
 
       size_t nC = systems_[idx]->nC;
-      SquareMatrix<dcomplex> FnC(systems_[idx]->fockMatrixOrtho->template spinGather<dcomplex>());
-      SquareMatrix<dcomplex> UHnC(memManager_, nC*NB);
+      cqmatrix::Matrix<dcomplex> FnC(systems_[idx]->fockMatrixOrtho->template spinGather<dcomplex>());
+      cqmatrix::Matrix<dcomplex> UHnC(memManager_, nC*NB);
 
       MatExp('D',nC*NB,dcomplex(0.,-curState.stepSize),
              FnC.pointer(),nC*NB,UHnC.pointer(),nC*NB, memManager_);
@@ -427,10 +427,10 @@ namespace ChronusQ {
       size_t nC = systems_[idx]->nC;
 
       // Gather DO
-      SquareMatrix<dcomplex> DO(systems_[idx]->onePDMOrtho->template spinGather<dcomplex>());
+      cqmatrix::Matrix<dcomplex> DO(systems_[idx]->onePDMOrtho->template spinGather<dcomplex>());
 
       // Gather UH into SCR
-      SquareMatrix<dcomplex> UHblockForm(UH[idx]->template spinGather<dcomplex>());
+      cqmatrix::Matrix<dcomplex> UHblockForm(UH[idx]->template spinGather<dcomplex>());
 
       // SCR1 = U**H * DO
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nC*NB,nC*NB,nC*NB,dcomplex(1.),UHblockForm.pointer(),nC*NB,
@@ -572,7 +572,7 @@ namespace ChronusQ {
   void RealTime<_SSTyp,IntsT>::orbitalPop() {
 
     // Spin-Gather Ortho Density
-    std::vector<SquareMatrix<dcomplex>> orthoDen;
+    std::vector<cqmatrix::Matrix<dcomplex>> orthoDen;
     if( propagator_.nC == 1 ){
        orthoDen = propagator_.onePDMOrtho->template spinGatherToBlocks<dcomplex>(false);
     } else {
@@ -580,14 +580,14 @@ namespace ChronusQ {
     }
 
     // Transform a copy of the MOs because
-    std::vector<SquareMatrix<dcomplex>> orthoMO = propagator_.mo;
+    std::vector<cqmatrix::Matrix<dcomplex>> orthoMO = propagator_.mo;
 
     propagator_.orthoAB->nonortho2orthoCoeffs(orthoMO);
 
     // Transform alpha Density and compute populations
     size_t NB = orthoMO[0].dimension();
     std::vector<double> population;
-    std::vector<SquareMatrix<dcomplex>> moDen;
+    std::vector<cqmatrix::Matrix<dcomplex>> moDen;
     moDen.push_back( orthoDen[0].transform('N',orthoMO[0].pointer(),NB,NB) );
     for( size_t i=0; i<NB; ++i)
         population.push_back( std::real(moDen[0](i,i)) );
@@ -673,7 +673,7 @@ namespace ChronusQ {
     
     // Allocation
     size_t fullDim = fullDen.dimension();
-    SquareMatrix<dcomplex> orthoTrans(memManager_, fullDim); 
+    cqmatrix::Matrix<dcomplex> orthoTrans(memManager_, fullDim); 
     orthoTrans.clear();
     auto& mos = propagator_.mo;
 
@@ -698,7 +698,7 @@ namespace ChronusQ {
       moPointers, moDim, (dcomplex*)nullptr, outPointers, fullDim);
 
     // Transform the orthonormal density into the MO basis
-    SquareMatrix<dcomplex> moDen = fullDen.transform('N', orthoTrans.pointer(),
+    cqmatrix::Matrix<dcomplex> moDen = fullDen.transform('N', orthoTrans.pointer(),
       fullDim, fullDim);
 
     std::vector<double> population;

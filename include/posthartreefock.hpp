@@ -1,0 +1,133 @@
+/* 
+ *  This file is part of the Chronus Quantum (ChronusQ) software package
+ *  
+ *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *  
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  
+ *  Contact the Developers:
+ *    E-Mail: xsli@uw.edu
+ *  
+ */
+#pragma once
+
+#include <chronusq_sys.hpp>
+#include <singleslater.hpp>
+#include <detfactory.hpp>
+#include <integrals.hpp>
+#include <posthartreefock/base.hpp>
+
+namespace ChronusQ {
+
+/**
+ *  \brief The PostHartreeFock class. The typed abstract interface for all
+ *  classes with correlated wave functions (CI, DMRG, PT, CC, etc).
+ */
+
+template <typename MatsT, typename IntsT>
+class PostHartreeFock : public PostHartreeFockBase {
+
+protected:  
+  
+  std::shared_ptr<SingleSlater<MatsT, IntsT>> ref_;
+  
+public:
+  
+  // Integrals here are computed and stored in correalted space by default
+  // Only one set of integrals, means not working for UHF reference
+  std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> mointsTF; 
+  IntegralsCollection moints = IntegralsCollection(); ///< MOIntegrals for the storage of integrals
+  // fold the following intgrals into moints
+  //oper_t moERI;   // Transformed MO 2e integral in correalted space
+  //oper_t hCore;   // 1e integral with frozen core contribution
+  //oper_t hCoreP;  // hCore with 2e-contribution folded in.
+  
+  // Reduced density Matrices (RDMs) only span over correlated space
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> oneRDM;
+  // TODO: Save vectors 
+  //oper_t_coll DOSav;
+  //oper_t_coll UH;
+
+  /**
+   *  \brief PostHartreeFock Constructor by PostHartreeFock
+   *
+   *  Stores references to a "reference" PostHartreeFock object and
+   *  CQMemManager and makes a copy of the reference into a complex
+   *  PostHartreeFock object for the propagation.
+   */ 
+  template <typename MatsU>
+  PostHartreeFock(std::shared_ptr<SingleSlater<MatsU,IntsT>> ref, size_t NS):
+    PostHartreeFockBase(ref->comm, ref->memManager, ref, NS),
+    ref_(ref) {
+    
+    if (std::is_same<IntsT, dcomplex>::value) 
+       CErr("PostHartreeFock with dcomplex IntsT is not tested yet!");
+    
+    mointsTF = ref_->generateMOIntsTransformer();
+  
+  }  // PostHartreeFock constructor
+
+  // See include/mcwavefunction/impl.hpp for documentation 
+  PostHartreeFock() = delete;
+  // Different type
+  template <typename MatsU> 
+    PostHartreeFock(const PostHartreeFock<MatsU,IntsT> &, int dummy = 0);
+  template <typename MatsU> 
+    PostHartreeFock(PostHartreeFock<MatsU,IntsT> &&     , int dummy = 0);
+
+  // Same type
+  PostHartreeFock(const PostHartreeFock<MatsT,IntsT> &);
+  PostHartreeFock(PostHartreeFock<MatsT,IntsT> &&);     
+  
+  ~PostHartreeFock(){ dealloc(); }
+
+  // PostHartreeFock procedural functions
+  virtual void run(EMPerturbation &)      = 0;  // From PostHartreeFockBase
+  virtual void computeTDM(size_t, size_t, std::shared_ptr<cqmatrix::Matrix<MatsT>>) = 0;
+
+  void computeOneRDM(size_t i) { computeTDM(i, i, oneRDM[i]);};    
+  void computeOneRDM();
+  void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1.);
+  
+  std::shared_ptr<SingleSlater<MatsT,IntsT>> reference() const { return ref_;}
+  
+  void transformInts(EMPerturbation &, bool);
+  void prepareMOIntegrals(EMPerturbation &, const DeterminantFactory&, bool, bool);
+
+  void swapMOs(std::vector<std::vector<std::pair<size_t, size_t>>>& moPairs, SpinType sp) {
+    this->reference()->swapMOs(moPairs,sp);
+  }
+  
+  virtual void saveCurrentStates();
+  void setMORanges();
+  void printCorrMOSpace();
+  void print1RDMs();
+  void printMOInfo(std::ostream&, size_t a = 0);
+
+  // Properties
+  void populationAnalysis(size_t);
+  void populationAnalysis();
+  double oscillator_strength(size_t, size_t s1 = 0);
+
+  // Memory functions
+  void alloc();
+  void dealloc();
+
+}; // class PostHartreeFock
+
+} // namespace ChronusQ
+
+// include declaration of CIBuilder
+#include <cibuilder.hpp>

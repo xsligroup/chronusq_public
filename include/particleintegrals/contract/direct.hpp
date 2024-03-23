@@ -2091,7 +2091,7 @@ namespace ChronusQ {
 
       // FIXME: This should be able to be done with MPI_IN_PLACE for
       // the root process
-        
+
       MatsT* mpiScr;
       if( mpiRank == 0 ) mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
 

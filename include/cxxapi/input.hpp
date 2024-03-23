@@ -100,6 +100,7 @@ namespace ChronusQ {
     void parseFreeCQInputRT(std::string&);
     void parseFreeCQInputField(std::string&);
     void parseFreeCQInputSSGuess(std::string&);
+    void parseFreeCQInputCI(std::string&);
 
 
 

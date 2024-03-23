@@ -58,7 +58,7 @@ namespace ChronusQ {
 
       if(nC == 1) {
 
-        SquareMatrix<MatsT> DA(memManager, NB);
+        cqmatrix::Matrix<MatsT> DA(memManager, NB);
 
         //this->mo[0].output(std::cout, "mo1", true);
 
@@ -69,11 +69,11 @@ namespace ChronusQ {
         if(iCS) {
 
           // DS = 2 * DA
-          *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(DA);
+          *this->onePDM = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(DA);
 
         } else {
 
-          SquareMatrix<MatsT> DB(memManager, NB);
+          cqmatrix::Matrix<MatsT> DB(memManager, NB);
 
           // DB = CB * CB**H
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOB, MatsT(1.), this->mo[1].pointer(), NB,
@@ -81,13 +81,13 @@ namespace ChronusQ {
 
           // DS = DA + DB
           // DZ = DA - DB
-          *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(DA,DB);
+          *this->onePDM = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(DA,DB);
 
         }
       } else {
 
         // 2C or 4C cases
-        SquareMatrix<MatsT> spinBlockForm(memManager, NB);
+        cqmatrix::Matrix<MatsT> spinBlockForm(memManager, NB);
 
         if( nC == 2 ) {
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer(), NB,
@@ -444,12 +444,12 @@ template <typename MatsT, typename IntsT>
  *  Equation: D^{MO} = C^{T} S D^{AO} S C
  */
 template <typename MatsT, typename IntsT>
-  SquareMatrix<MatsT> SingleSlater<MatsT,IntsT>::generateMODensity(const SquareMatrix<MatsT>& denAO, const SquareMatrix<MatsT>& coeffAO) {
+  cqmatrix::Matrix<MatsT> SingleSlater<MatsT,IntsT>::generateMODensity(const cqmatrix::Matrix<MatsT>& denAO, const cqmatrix::Matrix<MatsT>& coeffAO) {
     
     //ROOT_ONLY(comm);
 
     size_t NB = coeffAO.dimension();
-    SquareMatrix<MatsT> S(memManager,NB);
+    cqmatrix::Matrix<MatsT> S(memManager,NB);
     
     // Obtaining overlap matrix S
     if(this->nC == 1 ) {
@@ -468,8 +468,8 @@ template <typename MatsT, typename IntsT>
       CErr("nC invalid in OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::computeMODensity!");
     }
     
-    SquareMatrix<MatsT> SCR(memManager,NB);
-    SquareMatrix<MatsT> SCR1(memManager,NB);
+    cqmatrix::Matrix<MatsT> SCR(memManager,NB);
+    cqmatrix::Matrix<MatsT> SCR1(memManager,NB);
 
     // SCR  = D^{AO} S
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
@@ -499,7 +499,7 @@ template <typename MatsT, typename IntsT>
 
     // Do Orbital Analysis in AO basis
 
-    std::vector<SquareMatrix<MatsT>> aoDen;
+    std::vector<cqmatrix::Matrix<MatsT>> aoDen;
     //this->ortho2aoDen(this->onePDMSquareOrtho);
     //this->setOnePDMAO(this->onePDMSquareAO.data());
 
@@ -511,12 +511,12 @@ template <typename MatsT, typename IntsT>
     }
 
     // Transform a copy of the ground-state MOs in AO basis
-    std::vector<SquareMatrix<MatsT>> aoMO = this->mo;
+    std::vector<cqmatrix::Matrix<MatsT>> aoMO = this->mo;
 
     // Transform alpha Density and compute populations
     size_t NB = aoMO[0].dimension();
     std::vector<double> population;
-    std::vector<SquareMatrix<MatsT>> moDen;
+    std::vector<cqmatrix::Matrix<MatsT>> moDen;
 
     moDen.push_back( this->generateMODensity(aoDen[0], aoMO[0]) );
     for( size_t i=0; i<NB; ++i)

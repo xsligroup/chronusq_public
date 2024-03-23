@@ -66,7 +66,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void AtomicX2C<MatsT, IntsT>::computeOneEX2C(EMPerturbation &emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
     size_t NP = this->uncontractedBasis_.nPrimitive;
     size_t NB = this->basisSet_.nBasis;
 
@@ -133,13 +133,13 @@ namespace ChronusQ {
 
     for (size_t k = 0; k < atoms_.size(); k++) {
       size_t atomNB = atoms_[k].basisSet_.nBasis;
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> atomCoreH;
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> atomCoreH;
       if (coreH->hasXY())
-        atomCoreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(this->memManager_, atomNB, true);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, true);
       else if (coreH->hasZ())
-        atomCoreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(this->memManager_, atomNB, false);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, false);
       else
-        atomCoreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(this->memManager_, atomNB, false, false);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, false, false);
       atomCoreH->clear();
       if (type_.diagonalOnly) {
         atoms_[k].computeOneEX2C_corr(emPert, atomCoreH);
@@ -201,7 +201,7 @@ namespace ChronusQ {
         {{KINETIC,0}, {NUCLEAR_POTENTIAL,0}},
         this->ssOptions_.hamiltonianOptions);
 
-    this->W = std::make_shared<SquareMatrix<MatsT>>(
+    this->W = std::make_shared<cqmatrix::Matrix<MatsT>>(
         std::dynamic_pointer_cast<OnePRelInts<IntsT>>(
             this->uncontractedInts_.potential)->template formW<MatsT>());
 
@@ -322,7 +322,7 @@ namespace ChronusQ {
   }
 
   template<> void AtomicX2C<dcomplex,dcomplex>::computeOneEX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 

@@ -41,9 +41,9 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> NEOSS<MatsT,IntsT>::getFock() {
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOSS<MatsT,IntsT>::getFock() {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
-    std::vector<std::shared_ptr<SquareMatrix<MatsT>>> focks;
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> focks;
     applyToEach([&focks](SubSSPtr& ss) {
       for( auto& X: ss->getFock() )
         focks.push_back(X);
@@ -52,9 +52,9 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> NEOSS<MatsT,IntsT>::getOnePDM() {
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOSS<MatsT,IntsT>::getOnePDM() {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
-    std::vector<std::shared_ptr<SquareMatrix<MatsT>>> dens;
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> dens;
     applyToEach([&dens](SubSSPtr& ss) {
       for( auto& X: ss->getOnePDM() )
         dens.push_back(X);
@@ -63,7 +63,7 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
-  void NEOSS<MatsT,IntsT>::setOnePDMOrtho(SquareMatrix<MatsT> *tempOnePDMOrtho) {
+  void NEOSS<MatsT,IntsT>::setOnePDMOrtho(cqmatrix::Matrix<MatsT> *tempOnePDMOrtho) {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
 
       auto neoMap = getSubsystemMap();
@@ -82,7 +82,7 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
-  void NEOSS<MatsT,IntsT>::setOnePDMAO(SquareMatrix<MatsT> *tempOnePDMAO) {
+  void NEOSS<MatsT,IntsT>::setOnePDMAO(cqmatrix::Matrix<MatsT> *tempOnePDMAO) {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
 
     auto neoMap = getSubsystemMap();
@@ -157,7 +157,7 @@ namespace ChronusQ {
     //});
 
     // Setup MO reference vector
-    std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moRefs;
+    std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moRefs;
     applyToEach([&moRefs](SubSSPtr& ss) {
       for( auto& m: ss->mo )
         moRefs.emplace_back(m);

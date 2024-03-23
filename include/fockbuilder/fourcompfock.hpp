@@ -62,16 +62,16 @@ namespace ChronusQ {
     void formGD3Index(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
     
     void formRawGDInBatches(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool, double, bool, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &,
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &);
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &,
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &);
 
     void formRawGDInBatchesDirect(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool, double, bool, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &,
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &);
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &,
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &);
     
     size_t formRawGDSCRSizePerBatch(SingleSlater<MatsT,IntsT> &, bool, bool) const;
 

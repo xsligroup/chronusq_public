@@ -479,7 +479,7 @@ void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
   //this->computeProperties(pert);
 
   // Setup MO reference vector
-  std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moRefs;
+  std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moRefs;
   if( iRO ) {
     moRefs.emplace_back(this->mo[0]);
   } else {
@@ -553,23 +553,23 @@ void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
  *            matrices are spin gathered.
  */
 template<typename MatsT, typename IntsT>
-std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::getFock() {
+std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>::getFock() {
 
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
   if( this->nC == 1 and iCS ) {
-    return {std::make_shared<SquareMatrix<MatsT>>(MatsT(0.5) * fockMatrix->S())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * fockMatrix->S())};
   } else if( this->nC == 1 and iRO ) {
-    return {std::make_shared<SquareMatrix<MatsT>>(MatsT(1.) * fockMatrix->S())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(1.) * fockMatrix->S())};
   } else if( this->nC == 1 ) {
-    std::shared_ptr<SquareMatrix<MatsT>> fA = std::make_shared<SquareMatrix<MatsT>>(
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fA = std::make_shared<cqmatrix::Matrix<MatsT>>(
                     MatsT(0.5) * fockMatrix->S() + MatsT(0.5) * fockMatrix->Z()
                 );
-    std::shared_ptr<SquareMatrix<MatsT>> fB = std::make_shared<SquareMatrix<MatsT>>(
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fB = std::make_shared<cqmatrix::Matrix<MatsT>>(
                     MatsT(0.5) * fockMatrix->S() - MatsT(0.5) * fockMatrix->Z()
                 );
     return {fA, fB};
   } else {
-    return {std::make_shared<SquareMatrix<MatsT>>(fockMatrix->template spinGather<MatsT>())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(fockMatrix->template spinGather<MatsT>())};
   }
 };   // SingleSlater<MatsT,IntsT> :: getFock
 
@@ -580,13 +580,13 @@ std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::ge
  *            matrices are spin gathered.
  */
 template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::setOnePDMOrtho(SquareMatrix<MatsT> *tempOnePDMOrtho) {
+void SingleSlater<MatsT, IntsT>::setOnePDMOrtho(cqmatrix::Matrix<MatsT> *tempOnePDMOrtho) {
 
   if(nC == 1) {
     if(iCS) {
-      *onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0]);
+      *onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0]);
     } else {
-      *onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0],tempOnePDMOrtho[1]);
+      *onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMOrtho[0],tempOnePDMOrtho[1]);
     }
   } else {
     *onePDMOrtho = tempOnePDMOrtho[0].template spinScatter<MatsT>();
@@ -595,15 +595,15 @@ void SingleSlater<MatsT, IntsT>::setOnePDMOrtho(SquareMatrix<MatsT> *tempOnePDMO
 };   // SingleSlater<MatsT,IntsT> :: setOnePDMOrtho
 
 template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::setOnePDMAO(SquareMatrix<MatsT> *tempOnePDMAO) {
+void SingleSlater<MatsT, IntsT>::setOnePDMAO(cqmatrix::Matrix<MatsT> *tempOnePDMAO) {
 
   // Scatter to spin blocks on root process
   if( MPIRank(comm) == 0 ) {
     if(nC == 1) {
       if(iCS) {
-        *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0]);
+        *this->onePDM = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0]);
       } else {
-        *this->onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0],tempOnePDMAO[1]);
+        *this->onePDM = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(tempOnePDMAO[0],tempOnePDMAO[1]);
       }
     } else {
       *this->onePDM = tempOnePDMAO[0].template spinScatter<MatsT>();
@@ -623,23 +623,23 @@ void SingleSlater<MatsT, IntsT>::setOnePDMAO(SquareMatrix<MatsT> *tempOnePDMAO) 
 };   // SingleSlater<MatsT,IntsT> :: setOnePDMAO
 
 template<typename MatsT, typename IntsT>
-std::vector<std::shared_ptr<SquareMatrix<MatsT>>> SingleSlater<MatsT, IntsT>::getOnePDM() {
+std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>::getOnePDM() {
 
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
   if( this->nC == 1 and iCS ) {
-    return {std::make_shared<SquareMatrix<MatsT>>(MatsT(0.5) * this->onePDM->S())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * this->onePDM->S())};
   } else if( this->nC == 1 and iRO ) {
-    return {std::make_shared<SquareMatrix<MatsT>>(MatsT(0.5) * this->onePDM->S() + MatsT(0.5)*this->onePDM->Z())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * this->onePDM->S() + MatsT(0.5)*this->onePDM->Z())};
   } else if( this->nC == 1 ) {
-    std::shared_ptr<SquareMatrix<MatsT>> dA = std::make_shared<SquareMatrix<MatsT>>(
-      MatsT(0.5) * this->onePDM->S() + MatsT(0.5) * this->onePDM->Z()
-    );
-    std::shared_ptr<SquareMatrix<MatsT>> dB = std::make_shared<SquareMatrix<MatsT>>(
-      MatsT(0.5) * this->onePDM->S() - MatsT(0.5) * this->onePDM->Z()
-    );
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> dA = std::make_shared<cqmatrix::Matrix<MatsT>>(
+            MatsT(0.5) * this->onePDM->S() + MatsT(0.5) * this->onePDM->Z()
+         );
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> dB = std::make_shared<cqmatrix::Matrix<MatsT>>(
+            MatsT(0.5) * this->onePDM->S() - MatsT(0.5) * this->onePDM->Z()
+         );
     return {dA, dB};
   } else {
-    return {std::make_shared<SquareMatrix<MatsT>>(this->onePDM->template spinGather<MatsT>())};
+    return {std::make_shared<cqmatrix::Matrix<MatsT>>(this->onePDM->template spinGather<MatsT>())};
   }
 };   // SingleSlater<MatsT,IntsT> :: getOnePDM
 

@@ -32,6 +32,23 @@ namespace ChronusQ {
 // Smallest value to print
 constexpr long double PRINT_SMALL = 1e-10;
 
+template <typename T, 
+          typename std::enable_if<
+                     std::is_same<T,double>::value, int>::type = 0>
+void printValWithCheck(std::ostream& out, T val, const size_t printWidth) {
+  if(std::abs(val) > PRINT_SMALL) out << std::setw(printWidth) << val; 
+  else if(std::isnan(val))        out << std::setw(printWidth) << "NAN";
+  else if(std::isinf(val))        out << std::setw(printWidth) << "INF";
+  else                            out << std::setw(printWidth) << 0.;
+} // check for double
+
+template <typename T, 
+          typename std::enable_if<
+                     std::is_integral<T>::value, int>::type = 0>
+void printValWithCheck(std::ostream& out, T val, const size_t printWidth) {
+  out << std::setw(printWidth) << +val; 
+} // No check for int types
+
 /**
  *  \brief Base routine to print out a matrix given raw storage and dimension
  *  parameters in a standard (pretty) way.
@@ -61,17 +78,14 @@ void prettyPrintSmartBase(std::ostream& out, const T* A, const size_t M,
     end = list;
     out << std::setw(5) << " ";
     if((i + list) >= N) end = N - i;
+    out << std::right;
     for(size_t k = i; k < i+end; k++) out << std::setw(printWidth) << k+1;
     out << std::endl;
     for(size_t j = 0; j < M; j++) {
       out << std::setw(5) << std::left << j+1;
       out << std::right;
       for(size_t n = i; n < i+end; n++) {
-        T VAL = A[j*colStride + n*LDA];
-        if(std::abs(VAL) > PRINT_SMALL) out << std::setw(printWidth) << VAL; 
-        else if(std::isnan(VAL))        out << std::setw(printWidth) << "NAN";
-        else if(std::isinf(VAL))        out << std::setw(printWidth) << "INF";
-        else                            out << std::setw(printWidth) << 0.;
+        printValWithCheck(out, A[j*colStride + n*LDA], printWidth);
       }
       out << std::endl;
     };
@@ -157,8 +171,7 @@ void prettyPrintSmart(std::ostream& out, std::string str, const T* A,
  *  \param [in]     printWidth Field with of a matrix column
  */
 template <typename T, 
-          typename std::enable_if<
-                     std::is_same<T,int>::value,int>::type = 0>
+          typename std::enable_if<std::is_integral<T>::value,int>::type = 0>
 void prettyPrintSmart(std::ostream& out, std::string str, const T* A,
   const size_t M, const size_t N, const size_t LDA, const size_t colStride = 1, 
   const size_t list = 10, const size_t printWidth = 8) {

@@ -58,7 +58,7 @@ template <template <typename, typename> class _SSTyp, typename MatsT, typename I
 template <template <typename, typename> class _SSTyp, typename MatsT, typename IntsT>
   void NewtonRaphsonSCF<_SSTyp,MatsT,IntsT>::rotateMOs(vecMORef<MatsT>& mo) {
 
-  std::vector<SquareMatrix<MatsT>> U = computeUnitary();
+  std::vector<cqmatrix::Matrix<MatsT>> U = computeUnitary();
 
   size_t disp = 0;
   for( size_t i = 0; i < mo.size(); i++ ) {
@@ -78,13 +78,13 @@ template <template <typename, typename> class _SSTyp, typename MatsT, typename I
 }
 
 template <template <typename, typename> class _SSTyp, typename MatsT, typename IntsT>
-  std::vector<SquareMatrix<MatsT>> NewtonRaphsonSCF<_SSTyp,MatsT,IntsT>::computeUnitary(){
+  std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<_SSTyp,MatsT,IntsT>::computeUnitary(){
 
   vecShrdPtrMat<MatsT> den = this->singleSlaterSystem.getOnePDM();
   size_t nMat = den.size();
 
   // Initialize Anti-hermitian matrix
-  std::vector<SquareMatrix<MatsT>> A;
+  std::vector<cqmatrix::Matrix<MatsT>> A;
   A.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
     A.emplace_back(this->memManager,den[i]->dimension());
@@ -103,7 +103,7 @@ template <template <typename, typename> class _SSTyp, typename MatsT, typename I
   }
 
   // Compute the Unitary matrices
-  std::vector<SquareMatrix<MatsT>> U;
+  std::vector<cqmatrix::Matrix<MatsT>> U;
   U.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
     U.emplace_back(this->memManager,den[i]->dimension());
@@ -121,7 +121,7 @@ template <template <typename, typename> class _SSTyp, typename MatsT, typename I
     }
 #ifdef _NRSCF_DEBUG_UNITARY
     prettyPrintSmart(std::cout, "Unitary Matrix", U[i].pointer(),N,N,N);
-    SquareMatrix<MatsT> SCR(this->memManager,N);
+    cqmatrix::Matrix<MatsT> SCR(this->memManager,N);
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
         N, N, N, 
         MatsT(1.), U[i].pointer(), N, 
@@ -158,7 +158,7 @@ template <template <typename, typename> class _SSTyp, typename MatsT, typename I
     // Compute MO Fock
     size_t nMat = mo.size();
     vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
-    std::vector<SquareMatrix<MatsT>> moFock;
+    std::vector<cqmatrix::Matrix<MatsT>> moFock;
     moFock.reserve(nMat);
     for( size_t i=0; i<nMat; ++i ) {
       size_t NB = mo[i].get().dimension();

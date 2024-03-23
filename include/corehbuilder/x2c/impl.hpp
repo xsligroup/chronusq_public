@@ -56,7 +56,7 @@ namespace ChronusQ {
     uncontractedBasis_(other.uncontractedBasis_),
     uncontractedInts_(other.uncontractedInts_),
     nPrimUse_(other.nPrimUse_),
-    W(other.W ? std::make_shared<SquareMatrix<MatsT>>(*other.W) : nullptr) {
+    W(other.W ? std::make_shared<cqmatrix::Matrix<MatsT>>(*other.W) : nullptr) {
 
     X2C_COLLECTIVE_OP(COPY_OTHER_MEMBER_OP, COPY_OTHER_MEMBER_VEC_OP)
 
@@ -71,7 +71,7 @@ namespace ChronusQ {
     uncontractedBasis_(other.uncontractedBasis_),
     uncontractedInts_(other.uncontractedInts_),
     nPrimUse_(other.nPrimUse_),
-    W(other.W ? std::make_shared<SquareMatrix<MatsT>>(*other.W) : nullptr) {
+    W(other.W ? std::make_shared<cqmatrix::Matrix<MatsT>>(*other.W) : nullptr) {
 
     X2C_COLLECTIVE_OP(MOVE_OTHER_MEMBER_OP, MOVE_OTHER_MEMBER_VEC_OP)
 

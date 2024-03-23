@@ -24,6 +24,7 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
+#include <cerr.hpp>
 
 namespace ChronusQ {
 
@@ -41,20 +42,22 @@ namespace ChronusQ {
   inline dcomplex SmartConj(const dcomplex &x) { return std::conj(x); }
 
   // Combinaiton
-  inline size_t Comb(size_t N, size_t K){
+  template <typename T>
+  inline T Comb(T N, T K){
 
-	if (K > N) CErr("Can not do combinations of choosing a K larger than N"); 
+	if (K > N) return T(0); 
 
-    size_t KMin = std::min(K, N - K); 
-    size_t Comb, Comb_tmp;
+    T KMin = std::min(K, T(N - K)); 
+    T Comb, Comb_tmp;
     
-    Comb = 1ul;
-    for (auto i = 1ul; i <= KMin; i ++) {
+    Comb = 1;
+
+    for (T i = 1; i <= KMin; i ++) {
       Comb_tmp = Comb;
       Comb *= (N - KMin + i);
       Comb /= i;
 
-      if (Comb  < Comb_tmp) CErr("Overflow of long unsign int detected in Comb"); 
+      if (Comb  < Comb_tmp) CErr("Overflow detected in Comb");
     }
     
     return Comb;

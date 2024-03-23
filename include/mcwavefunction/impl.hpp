@@ -64,7 +64,7 @@ namespace ChronusQ {
     mointsTF = ref_.generateMOIntsTransformer();
 
     oneRDM.reserve(NStates);
-    for (const SquareMatrix<MatsU> &mat : other.oneRDM) 
+    for (const cqmatrix::Matrix<MatsU> &mat : other.oneRDM) 
        oneRDM.emplace_back(mat);
     
     MCWaveFunction_COLLECTIVE_OP(COPY_OTHER_MEMBER_OP, COPY_OTHER_MEMBER_VEC_OP);
@@ -98,7 +98,7 @@ namespace ChronusQ {
     mointsTF = ref_.generateMOIntsTransformer();
     
     oneRDM.reserve(NStates);
-    for (SquareMatrix<MatsU> &mat : other.oneRDM) 
+    for (cqmatrix::Matrix<MatsU> &mat : other.oneRDM) 
        oneRDM.emplace_back(std::move(mat));
 
     MCWaveFunction_COLLECTIVE_OP(MOVE_OTHER_MEMBER_OP, MOVE_OTHER_MEMBER_VEC_OP);
@@ -144,7 +144,7 @@ namespace ChronusQ {
     try {
       for (auto i = 0ul; i < NS; i++) {
         CIVecs[i] = this->memManager.template malloc<MatsT>(NDet);
-        oneRDM.emplace_back(SquareMatrix<MatsT>(this->memManager, nCorrO)); 
+        oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(this->memManager, nCorrO)); 
       }
     } catch (...) {
       CErr("Not enough Memory to allocate CIVector for the specified number of determiants");
@@ -227,10 +227,9 @@ namespace ChronusQ {
 
 // Other headers
 #include <mcwavefunction/base/impl.hpp> // base implementation
-#include <detstringmanager/impl.hpp>   // detstringmanager implementaion
+#include <detstringmanager/impl.hpp>    // detstringmanager implementaion
 #include <mcwavefunction/moints.hpp>    // MO integral transformation
 #include <mcwavefunction/print.hpp>     // print implementaion
 #include <mcwavefunction/property.hpp>  // property implementation
 #include <mcwavefunction/rdm.hpp>       // density matrix
 #include <mcwavefunction/ciguess.hpp>   // Read in CI Vectors
-

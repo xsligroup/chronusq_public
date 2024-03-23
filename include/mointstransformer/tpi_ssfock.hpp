@@ -287,8 +287,8 @@ namespace ChronusQ {
         halfTMOTPI = std::make_shared<InCoreRITPI<MatsT>>(memManager_, nAO, npqDim);
       )
 
-      SquareMatrix<MatsT> SCR(memManager_, nAO);
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> pq1PDMs, pqMOTPIs, dummy;
+      cqmatrix::Matrix<MatsT> SCR(memManager_, nAO);
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> pq1PDMs, pqMOTPIs, dummy;
       MatsT *MOTPIpq_ptr = nullptr, *density_ptr = nullptr; 
       bool is4C = ss_.nC == 4;
       bool is2C = ss_.nC == 2;
@@ -349,11 +349,11 @@ namespace ChronusQ {
           p = pqJobs[i + NJobComplete].first; 
           q = pqJobs[i + NJobComplete].second; 
           
-          pq1PDMs.push_back(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
+          pq1PDMs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
           
           // 4C will reuse pq1PDM as densities are component scattered anyways
           if (is4C) pqMOTPIs.push_back(pq1PDMs.back());
-          else pqMOTPIs.push_back(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
+          else pqMOTPIs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
           
           if (is1C) {
             density_ptr = pq1PDMs.back()->S().pointer();
@@ -367,6 +367,11 @@ namespace ChronusQ {
           
           if (not is1C) *pq1PDMs.back() = SCR.template spinScatter<MatsT>(is4C, is4C); 
         
+// DEBUG DENSITY***************************        
+//          cqmatrix::Matrix<MatsT> denSCR = pq1PDMs.back()->S();
+//          denSCR += denSCR.T();
+//          denSCR.output(std::cout, "p = " + std::to_string(p) + ", q = " + std::to_string(q), true);  
+// DEBUG DENSITY***************************    
         }
         
         // do contraction to get half-transformed integrals

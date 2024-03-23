@@ -45,7 +45,7 @@ struct SCFConvergenceNew {
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 class OrbitalOptimizerNew : public OrbitalModifierNew<singleSlaterT, MatsT, IntsT> {
   private:
-    std::vector<SquareMatrix<MatsT>> prevOnePDM;   ///< Previous density used to test convergence
+    std::vector<cqmatrix::Matrix<MatsT>> prevOnePDM;   ///< Previous density used to test convergence
 
   public:
 

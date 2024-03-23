@@ -77,10 +77,10 @@ namespace ChronusQ {
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen) {
   
     // Decide list of onePDMs to use
-    PauliSpinorSquareMatrices<MatsT> &contract1PDM
+    cqmatrix::PauliSpinorMatrices<MatsT> &contract1PDM
         = increment ? *ss.deltaOnePDM : *ss.onePDM;
     
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> 
       onePDMs, coulombMatrices, exchangeMatrices, twoeHs;
     
     // setup pointers 
@@ -91,7 +91,7 @@ namespace ChronusQ {
     twoeHs.push_back(ss.twoeH);
     
     coulombMatrices.push_back(
-      std::make_shared<PauliSpinorSquareMatrices<MatsT>>(
+      std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
       ss.memManager, ss.coulombMatrix->dimension(), false, false)
     );
 
@@ -109,10 +109,10 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void FockBuilder<MatsT,IntsT>::formRawGDInBatches(SingleSlater<MatsT,IntsT> &ss,
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & onePDMs, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & coulombMatrices, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & exchangeMatrices,
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & twoeHs) {
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & onePDMs, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & coulombMatrices, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & exchangeMatrices,
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & twoeHs) {
 
     size_t NB = ss.basisSet().nBasis;
     size_t nBatch = onePDMs.size();
@@ -158,17 +158,18 @@ namespace ChronusQ {
       // Use Coefficients to do K contraction
       auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
 
-      SquareMatrix<MatsT> AAblock(exchangeMatrices[0]->memManager(), NB);
+      cqmatrix::Matrix<MatsT> AAblock(exchangeMatrices[0]->memManager(), NB);
       
       auto riKCoeffBegin = tick();
       ritpi->KCoefContract(ss.comm, ss.nOA, ss.mo[0].pointer(), AAblock.pointer());
       if(ss.iCS) {
         
         for (auto i = 0ul; i < nBatch; i++) 
-          *exchangeMatrices[i] = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(AAblock);
+          *exchangeMatrices[i] = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock);
       
       } else {
-        SquareMatrix<MatsT> BBblock(exchangeMatrices[0]->memManager(), NB);
+        
+        cqmatrix::Matrix<MatsT> BBblock(exchangeMatrices[0]->memManager(), NB);
         if (ss.nOB > 0){
           ritpi->KCoefContract(ss.comm, ss.nOB, ss.mo[1].pointer(), BBblock.pointer());
         } else {
@@ -176,7 +177,7 @@ namespace ChronusQ {
         }
         
         for (auto i = 0ul; i < nBatch; i++) 
-          *exchangeMatrices[i] = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
+          *exchangeMatrices[i] = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
       }
       if(ss.TPI->printContractionTiming)
           std::cout << "        " << std::left << std::setw(38) << "K-Coeff-Contraction duration = " << tock(riKCoeffBegin) << " s" << std::endl;
@@ -304,7 +305,7 @@ namespace ChronusQ {
       for(auto i = 0;    i < 3;     i++)
 
         if (ss.nC == 4){
-          if(auto p = std::dynamic_pointer_cast<PauliSpinorSquareMatrices<dcomplex>> (ss.fockMatrix) ){
+          if(auto p = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<dcomplex>> (ss.fockMatrix) ){
               p->S() -= dcomplex(2.0 * dipAmp[i],0) * (*(ss.aoints_->lenElectric4C))[i].S();
           }else{
             CErr("Four component Fockmatrix should be complex!");
@@ -403,8 +404,8 @@ namespace ChronusQ {
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;
 
-    std::vector<SquareMatrix<MatsT>> JList;
-    std::vector<PauliSpinorSquareMatrices<MatsT>> KList;
+    std::vector<cqmatrix::Matrix<MatsT>> JList;
+    std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> KList;
 
     JList.reserve(nGrad);
     KList.reserve(nGrad);
@@ -453,7 +454,7 @@ namespace ChronusQ {
 
     // Contract to gradient
     std::vector<double> gradient;
-    PauliSpinorSquareMatrices<MatsT> twoEGrad(mem, NB, hasXY, hasZ);
+    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(mem, NB, hasXY, hasZ);
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
 

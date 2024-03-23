@@ -26,118 +26,144 @@
 #include <cqlinalg.hpp>
 
 namespace ChronusQ {
+namespace cqmatrix {
 
-  template <typename MatsT>
-  template <typename MatsU>
-  PauliSpinorSquareMatrices<MatsU>
-  SquareMatrix<MatsT>::spinScatter(bool hasXY, bool hasZ) const {
-    size_t N = dimension() / 2;
-    PauliSpinorSquareMatrices<MatsU> pauli(memManager(), N, hasXY, hasZ);
+template <typename MatsT>
+template <typename MatsU>
+void Matrix<MatsT>::spinScatter(PauliSpinorMatrices<MatsU>& pauli, bool hasXY, bool hasZ) const {
+  size_t nRow = nRows() / 2;
+  size_t nCol = nColumns() / 2;
+  assert(pauli.nRows() == nRow and pauli.nColumns() == nCol);
 
-    MatsU *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
-    if (hasZ) Z = pauli.Z().pointer();
-    if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
+  MatsU *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
+  if (hasZ) Z = pauli.Z().pointer();
+  if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
 
-    SpinScatter(N, pointer(), dimension(), S, N, Z, N, Y, N, X, N);
-    return pauli;
+  SpinScatter(nRow, nCol, pointer(), nRows(), S, nRow, Z, nRow, Y, nRow, X, nRow);
+}
+
+template <typename MatsT>
+template <typename MatsU>
+PauliSpinorMatrices<MatsU>
+Matrix<MatsT>::spinScatter(bool hasXY, bool hasZ) const {
+  size_t nRow = nRows() / 2;
+  size_t nCol = nColumns() / 2;
+  PauliSpinorMatrices<MatsU> pauli(memManager(), nRow, nCol, hasXY, hasZ);
+  spinScatter(pauli, hasXY, hasZ);
+  return pauli;
+}
+
+template <typename MatsT>
+template <typename MatsU>
+PauliSpinorMatrices<MatsT>
+PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
+    const Matrix<MatsU> &AA, bool hasXY, bool hasZ) {
+  size_t nRow = AA.nRows();
+  size_t nCol = AA.nColumns();
+  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
+  if (hasZ) Z = pauli.Z().pointer();
+  if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
+  SpinScatter(nRow, nCol, AA.pointer(), nRow, reinterpret_cast<MatsU*>(NULL), nRow,
+      reinterpret_cast<MatsU*>(NULL), nRow, reinterpret_cast<MatsU*>(NULL), nRow,
+      S, nRow, Z, nRow, Y, nRow, X, nRow, true, true);
+  return pauli;
+}
+
+template <typename MatsT>
+template <typename MatsU>
+PauliSpinorMatrices<MatsT>
+PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
+    const Matrix<MatsU> &AA, const Matrix<MatsU> &BB,
+    bool hasXY, bool hasZ) {
+  size_t nRow = AA.nRows();
+  size_t nCol = AA.nColumns();
+  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
+  if (hasZ) Z = pauli.Z().pointer();
+  if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
+  SpinScatter(nRow, nCol, AA.pointer(), nRow, reinterpret_cast<MatsU*>(NULL), nRow,
+      reinterpret_cast<MatsU*>(NULL), nRow, BB.pointer(), nRow,
+      S, nRow, Z, nRow, Y, nRow, X, nRow, true, false);
+  return pauli;
+}
+
+template <typename MatsT>
+template <typename MatsU>
+PauliSpinorMatrices<MatsT>
+PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
+    const Matrix<MatsU> &AA, const Matrix<MatsU> &AB,
+    const Matrix<MatsU> &BA, const Matrix<MatsU> &BB,
+    bool hasXY, bool hasZ) {
+  size_t nRow = AA.nRows();
+  size_t nCol = AA.nColumns();
+  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
+  if (hasZ) Z = pauli.Z().pointer();
+  if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
+  SpinScatter(nRow, nCol, AA.pointer(), nRow, AB.pointer(), nRow,
+                    BA.pointer(), nRow, BB.pointer(), nRow,
+                    S, nRow, Z, nRow, Y, nRow, X, nRow, false, false);
+  return pauli;
+}
+
+
+template <typename MatsT>
+template <typename MatsU>
+void PauliSpinorMatrices<MatsT>::spinGather(Matrix<MatsU>& mat) const {
+  size_t nRow = this->nRows();
+  size_t nCol = this->nColumns();
+  assert(nRow * 2 == mat.nRows() and nCol * 2 == mat.nColumns());
+
+  const MatsT *AS = S().pointer(), *AZ = nullptr, *AY = nullptr, *AX = nullptr;
+  if (hasZ()) AZ = Z().pointer();
+  if (hasXY()) { AY = Y().pointer(); AX = X().pointer(); }
+  
+  SpinGather(nRow, nCol, mat.pointer(), 2 * nRow, AS, nRow, AZ, nRow, AY, nRow, AX, nRow, not hasXY(), not hasZ());
+}
+
+template <typename MatsT>
+template <typename MatsU>
+Matrix<MatsU> PauliSpinorMatrices<MatsT>::spinGather() const {
+  size_t nRow = this->nRows();
+  size_t nCol = this->nColumns();
+  Matrix<MatsU> mat(this->memManager(), 2 * nRow, 2 * nCol);
+  spinGather(mat);
+  return mat;
+}
+
+template <typename MatsT>
+template <typename MatsU>
+std::vector<Matrix<MatsU>>
+PauliSpinorMatrices<MatsT>::spinGatherToBlocks(
+    bool genABBA, bool genBB) const {
+  size_t nRow = this->nRows();
+  size_t nCol = this->nColumns();
+  std::vector<Matrix<MatsU>> blocks;
+  blocks.reserve(1 + (genABBA ? 2 : 0) + (genBB ? 1 : 0));
+  blocks.emplace_back(this->memManager(), nRow, nCol);
+  MatsU *AA = nullptr, *AB = nullptr, *BA = nullptr, *BB = nullptr;
+  if (genABBA) {
+    blocks.emplace_back(this->memManager(), nRow, nCol);
+    blocks.emplace_back(this->memManager(), nRow, nCol);
   }
+  if (genBB) { blocks.emplace_back(this->memManager(), nRow, nCol); BB = blocks.back().pointer(); }
+  AA = blocks[0].pointer();
+  if (genABBA) { AB = blocks[1].pointer(); BA = blocks[2].pointer(); }
 
-  template <typename MatsT>
-  template <typename MatsU>
-  PauliSpinorSquareMatrices<MatsT>
-  PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(
-      const SquareMatrix<MatsU> &AA, bool hasXY, bool hasZ) {
-    size_t N = AA.dimension();
-    PauliSpinorSquareMatrices<MatsT> pauli(AA.memManager(), N, hasXY, hasZ);
-    MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
-    if (hasZ) Z = pauli.Z().pointer();
-    if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
-    SpinScatter(N, N, AA.pointer(), N, reinterpret_cast<MatsU*>(NULL), N,
-        reinterpret_cast<MatsU*>(NULL), N, reinterpret_cast<MatsU*>(NULL), N,
-        S, N, Z, N, Y, N, X, N, true, true);
-    return pauli;
-  }
+  const MatsT *AS = S().pointer(), *AZ = nullptr, *AY = nullptr, *AX = nullptr;
+  if (hasZ()) AZ = Z().pointer();
+  if (hasXY()) { AY = Y().pointer(); AX = X().pointer(); }
 
-  template <typename MatsT>
-  template <typename MatsU>
-  PauliSpinorSquareMatrices<MatsT>
-  PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(
-      const SquareMatrix<MatsU> &AA, const SquareMatrix<MatsU> &BB,
-      bool hasXY, bool hasZ) {
-    size_t N = AA.dimension();
-    PauliSpinorSquareMatrices<MatsT> pauli(AA.memManager(), N, hasXY, hasZ);
-    MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
-    if (hasZ) Z = pauli.Z().pointer();
-    if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
-    SpinScatter(N, N, AA.pointer(), N, reinterpret_cast<MatsU*>(NULL), N,
-        reinterpret_cast<MatsU*>(NULL), N, BB.pointer(), N,
-        S, N, Z, N, Y, N, X, N, true, false);
-    return pauli;
-  }
+  SpinGather(nRow, nCol, AA, nRow, AB, nRow, BA, nRow, BB, nRow,
+      AS, nRow, AZ, nRow, AY, nRow, AX, nRow, not hasXY(), not hasZ());
+  return blocks;
+}
 
-  template <typename MatsT>
-  template <typename MatsU>
-  PauliSpinorSquareMatrices<MatsT>
-  PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(
-      const SquareMatrix<MatsU> &AA, const SquareMatrix<MatsU> &AB,
-      const SquareMatrix<MatsU> &BA, const SquareMatrix<MatsU> &BB,
-      bool hasXY, bool hasZ) {
-    size_t N = AA.dimension();
-    PauliSpinorSquareMatrices<MatsT> pauli(AA.memManager(), N, hasXY, hasZ);
-    MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
-    if (hasZ) Z = pauli.Z().pointer();
-    if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
-    SpinScatter(N, N, AA.pointer(), N, AB.pointer(), N,
-                      BA.pointer(), N, BB.pointer(), N,
-                      S, N, Z, N, Y, N, X, N, false, false);
-    return pauli;
-  }
-
-  template <typename MatsT>
-  template <typename MatsU>
-  SquareMatrix<MatsU> PauliSpinorSquareMatrices<MatsT>::spinGather() const {
-    size_t N = this->dimension();
-    SquareMatrix<MatsU> mat(this->memManager(), 2*N);
-
-    const MatsT *AS = S().pointer(), *AZ = nullptr, *AY = nullptr, *AX = nullptr;
-    if (hasZ()) AZ = Z().pointer();
-    if (hasXY()) { AY = Y().pointer(); AX = X().pointer(); }
-
-    SpinGather(N, mat.pointer(), 2*N, AS, N, AZ, N, AY, N, AX, N, not hasXY(), not hasZ());
-    return mat;
-  }
-
-  template <typename MatsT>
-  template <typename MatsU>
-  std::vector<SquareMatrix<MatsU>>
-  PauliSpinorSquareMatrices<MatsT>::spinGatherToBlocks(
-      bool genABBA, bool genBB) const {
-    size_t N = this->dimension();
-    std::vector<SquareMatrix<MatsU>> blocks;
-    blocks.reserve(1 + (genABBA ? 2 : 0) + (genBB ? 1 : 0));
-    blocks.emplace_back(this->memManager(), N);
-    MatsU *AA = nullptr, *AB = nullptr, *BA = nullptr, *BB = nullptr;
-    if (genABBA) {
-      blocks.emplace_back(this->memManager(), N);
-      blocks.emplace_back(this->memManager(), N);
-    }
-    if (genBB) { blocks.emplace_back(this->memManager(), N); BB = blocks.back().pointer(); }
-    AA = blocks[0].pointer();
-    if (genABBA) { AB = blocks[1].pointer(); BA = blocks[2].pointer(); }
-
-    const MatsT *AS = S().pointer(), *AZ = nullptr, *AY = nullptr, *AX = nullptr;
-    if (hasZ()) AZ = Z().pointer();
-    if (hasXY()) { AY = Y().pointer(); AX = X().pointer(); }
-
-    SpinGather(N, N, AA, N, AB, N, BA, N, BB, N,
-        AS, N, AZ, N, AY, N, AX, N, not hasXY(), not hasZ());
-    return blocks;
-  }
-
-  template <typename MatsT>
-  template <typename MatsU>
-  SquareMatrix<MatsU> SquareMatrix<MatsT>::spatialToSpinBlock() const {
-    SquareMatrix<MatsU> spinor(memManager(), 2*dimension());
+template <typename MatsT>
+template <typename MatsU>
+Matrix<MatsU> Matrix<MatsT>::spatialToSpinBlock() const {
+  Matrix<MatsU> spinor(memManager(), 2 * nRow_, 2 * nCol_);
 /*
     for ( auto sp = 0ul; sp < 2; sp++)
     for ( auto nu = 0ul; nu < N_; nu++)
@@ -145,55 +171,62 @@ namespace ChronusQ {
       spinor(sp*N_ + mu, sp*N_ + nu) = (*this)(mu, nu);
     }
 */
-    SetMatDiag(N_, N_, pointer(), N_, spinor.pointer(), 2*N_);
-    return spinor;
-  }
+  SetMatDiag(nRow_, nCol_, pointer(), nRow_, spinor.pointer(), 2 * nRow_);
+  return spinor;
+}
 
-  template PauliSpinorSquareMatrices<double> SquareMatrix<double>::spinScatter(bool,bool) const;
-  template PauliSpinorSquareMatrices<dcomplex> SquareMatrix<double>::spinScatter(bool,bool) const;
-  template PauliSpinorSquareMatrices<dcomplex> SquareMatrix<dcomplex>::spinScatter(bool,bool) const;
+template void Matrix<double>::spinScatter(PauliSpinorMatrices<double>&,bool,bool) const;
+template void Matrix<double>::spinScatter(PauliSpinorMatrices<dcomplex>&,bool,bool) const;
+template void Matrix<dcomplex>::spinScatter(PauliSpinorMatrices<dcomplex>&,bool,bool) const;
+template PauliSpinorMatrices<double> Matrix<double>::spinScatter(bool,bool) const;
+template PauliSpinorMatrices<dcomplex> Matrix<double>::spinScatter(bool,bool) const;
+template PauliSpinorMatrices<dcomplex> Matrix<dcomplex>::spinScatter(bool,bool) const;
 
-  template PauliSpinorSquareMatrices<double>
-  PauliSpinorSquareMatrices<double>::spinBlockScatterBuild(const SquareMatrix<double> &AA, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(const SquareMatrix<double> &AA, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(const SquareMatrix<dcomplex> &AA, bool, bool);
-  template PauliSpinorSquareMatrices<double>
-  PauliSpinorSquareMatrices<double>::spinBlockScatterBuild(
-      const SquareMatrix<double> &AA, const SquareMatrix<double> &BB, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(
-      const SquareMatrix<double> &AA, const SquareMatrix<double> &BB, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(
-      const SquareMatrix<dcomplex> &AA, const SquareMatrix<dcomplex> &BB, bool, bool);
-  template PauliSpinorSquareMatrices<double>
-  PauliSpinorSquareMatrices<double>::spinBlockScatterBuild(
-      const SquareMatrix<double> &AA, const SquareMatrix<double> &AB,
-      const SquareMatrix<double> &BA, const SquareMatrix<double> &BB, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(
-      const SquareMatrix<double> &AA, const SquareMatrix<double> &AB,
-      const SquareMatrix<double> &BA, const SquareMatrix<double> &BB, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>
-  PauliSpinorSquareMatrices<dcomplex>::spinBlockScatterBuild(
-      const SquareMatrix<dcomplex> &AA, const SquareMatrix<dcomplex> &AB,
-      const SquareMatrix<dcomplex> &BA, const SquareMatrix<dcomplex> &BB, bool, bool);
+template PauliSpinorMatrices<double>
+PauliSpinorMatrices<double>::spinBlockScatterBuild(const Matrix<double> &AA, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(const Matrix<double> &AA, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(const Matrix<dcomplex> &AA, bool, bool);
+template PauliSpinorMatrices<double>
+PauliSpinorMatrices<double>::spinBlockScatterBuild(
+    const Matrix<double> &AA, const Matrix<double> &BB, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(
+    const Matrix<double> &AA, const Matrix<double> &BB, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(
+    const Matrix<dcomplex> &AA, const Matrix<dcomplex> &BB, bool, bool);
+template PauliSpinorMatrices<double>
+PauliSpinorMatrices<double>::spinBlockScatterBuild(
+    const Matrix<double> &AA, const Matrix<double> &AB,
+    const Matrix<double> &BA, const Matrix<double> &BB, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(
+    const Matrix<double> &AA, const Matrix<double> &AB,
+    const Matrix<double> &BA, const Matrix<double> &BB, bool, bool);
+template PauliSpinorMatrices<dcomplex>
+PauliSpinorMatrices<dcomplex>::spinBlockScatterBuild(
+    const Matrix<dcomplex> &AA, const Matrix<dcomplex> &AB,
+    const Matrix<dcomplex> &BA, const Matrix<dcomplex> &BB, bool, bool);
 
-  template SquareMatrix<double> PauliSpinorSquareMatrices<double>::spinGather() const;
-  template SquareMatrix<dcomplex> PauliSpinorSquareMatrices<double>::spinGather() const;
-  template SquareMatrix<dcomplex> PauliSpinorSquareMatrices<dcomplex>::spinGather() const;
+template void PauliSpinorMatrices<double>::spinGather(Matrix<double>&) const;
+template void PauliSpinorMatrices<double>::spinGather(Matrix<dcomplex>&) const;
+template void PauliSpinorMatrices<dcomplex>::spinGather(Matrix<dcomplex>&) const;
+template Matrix<double> PauliSpinorMatrices<double>::spinGather() const;
+template Matrix<dcomplex> PauliSpinorMatrices<double>::spinGather() const;
+template Matrix<dcomplex> PauliSpinorMatrices<dcomplex>::spinGather() const;
 
-  template std::vector<SquareMatrix<double>>
-  PauliSpinorSquareMatrices<double>::spinGatherToBlocks(bool genABBA, bool genBB) const;
-  template std::vector<SquareMatrix<dcomplex>>
-  PauliSpinorSquareMatrices<double>::spinGatherToBlocks(bool genABBA, bool genBB) const;
-  template std::vector<SquareMatrix<dcomplex>>
-  PauliSpinorSquareMatrices<dcomplex>::spinGatherToBlocks(bool genABBA, bool genBB) const;
+template std::vector<Matrix<double>>
+PauliSpinorMatrices<double>::spinGatherToBlocks(bool genABBA, bool genBB) const;
+template std::vector<Matrix<dcomplex>>
+PauliSpinorMatrices<double>::spinGatherToBlocks(bool genABBA, bool genBB) const;
+template std::vector<Matrix<dcomplex>>
+PauliSpinorMatrices<dcomplex>::spinGatherToBlocks(bool genABBA, bool genBB) const;
 
-  template SquareMatrix<double> SquareMatrix<double>::spatialToSpinBlock() const;
-  template SquareMatrix<dcomplex> SquareMatrix<double>::spatialToSpinBlock() const;
-  template SquareMatrix<dcomplex> SquareMatrix<dcomplex>::spatialToSpinBlock() const;
+template Matrix<double> Matrix<double>::spatialToSpinBlock() const;
+template Matrix<dcomplex> Matrix<double>::spatialToSpinBlock() const;
+template Matrix<dcomplex> Matrix<dcomplex>::spatialToSpinBlock() const;
 
-}; // namespace ChronusQ
+} // namespace cqmatrix
+} // namespace ChronusQ

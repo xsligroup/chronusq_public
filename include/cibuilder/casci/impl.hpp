@@ -568,7 +568,7 @@ namespace ChronusQ {
   
   template <typename MatsT, typename IntsT>
   void CASCI<MatsT,IntsT>::computeOneRDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * C, 
-    SquareMatrix<MatsT> & oneRDM) {
+    cqmatrix::Matrix<MatsT> & oneRDM) {
   
     computeTDM(mcwfn, C, C, oneRDM);
   
@@ -672,12 +672,12 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void CASCI<MatsT,IntsT>::computeTDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * Cm,
-        MatsT * Cn, SquareMatrix<MatsT> & TDM) {
+        MatsT * Cn, cqmatrix::Matrix<MatsT> & TDM) {
 
     CASCI_LOOP_INIT(); // check top for variable definitions
 
     size_t nThreads = GetNumThreads();
-    std::vector<SquareMatrix<MatsT>> SCR;
+    std::vector<cqmatrix::Matrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++)
       SCR.emplace_back(mcwfn.memManager, TDM.dimension());
 
@@ -731,9 +731,6 @@ namespace ChronusQ {
 
     TDM.clear();
     for (auto i = 0ul; i < nThreads; i++) TDM += SCR[i];
-
-    //prettyPrintSmart(std::cout,"PT2 TDM", TDM.pointer(), TDM.dimension(),
-    //            TDM.dimension(), TDM.dimension());
 
     return;
 

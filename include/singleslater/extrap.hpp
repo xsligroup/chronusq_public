@@ -77,7 +77,7 @@ namespace ChronusQ {
       *fockMatrixOrtho = (1-dp) * *fockMatrixOrtho + dp * *prevFock;
     else {
 
-      PauliSpinorSquareMatrices<MatsT> FSCR(this->memManager, NB,
+      cqmatrix::PauliSpinorMatrices<MatsT> FSCR(this->memManager, NB,
           fockMatrixOrtho->hasXY(), fockMatrixOrtho->hasZ());
 
       if (this->particle.charge < 0.)
@@ -218,14 +218,14 @@ namespace ChronusQ {
    *
    */ 
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::FDCommutator(PauliSpinorSquareMatrices<MatsT> &FDC) {
+  void SingleSlater<MatsT,IntsT>::FDCommutator(cqmatrix::PauliSpinorMatrices<MatsT> &FDC) {
 
     size_t NB    = this->basisSet().nBasis;
     bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT,IntsT>>(fockBuilder) != nullptr);
     if( this->nC == 4 ) NB = 2 * NB;
 
     if(this->nC == 1) {
-      SquareMatrix<MatsT> SCR(memManager, NB);
+      cqmatrix::Matrix<MatsT> SCR(memManager, NB);
 
       // FD(S) = F(S)D(S)
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), fockMatrixOrtho->S().pointer(), NB,
@@ -260,9 +260,9 @@ namespace ChronusQ {
     } else {
 
       // Gather the orthonormal Fock and densities
-      SquareMatrix<MatsT> FO(fockMatrixOrtho->template spinGather<MatsT>());
-      SquareMatrix<MatsT> DO(onePDMOrtho->template spinGather<MatsT>());
-      SquareMatrix<MatsT> SCR(memManager, 2*NB);
+      cqmatrix::Matrix<MatsT> FO(fockMatrixOrtho->template spinGather<MatsT>());
+      cqmatrix::Matrix<MatsT> DO(onePDMOrtho->template spinGather<MatsT>());
+      cqmatrix::Matrix<MatsT> SCR(memManager, 2*NB);
 
       // Compute FD product
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NB,2*NB,2*NB,MatsT(1.),FO.pointer(),2*NB,

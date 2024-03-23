@@ -80,7 +80,7 @@ namespace ChronusQ {
    */  
   template <typename MatsT>
   void mkAuxVar(
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM,
     bool isGGA, 
     double epsScreen, size_t NPts,
     double *Scalar, double *Mz, double *My, double *Mx,
@@ -181,7 +181,7 @@ namespace ChronusQ {
    *  
    */  
   template <typename MatsT>
-  void constructZVars(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM,
+  void constructZVars(std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM,
     DENSITY_TYPE denTyp, bool isGGA, size_t NPts, 
     double *VrhoEval, double *VgammaEval, double *ZrhoVar1, 
     double *ZgammaVar1, double *ZgammaVar2);
@@ -225,7 +225,7 @@ namespace ChronusQ {
    */  
   template <typename MatsT, typename IntsT>
   void formZ_vxc(
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM,
     DENSITY_TYPE denTyp, bool isGGA, size_t NPts, size_t NBE, size_t IOff, 
     double epsScreen, std::vector<double> &weights, double *ZrhoVar1,
     double *ZgammaVar1, double *ZgammaVar2, 

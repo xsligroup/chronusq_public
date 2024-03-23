@@ -26,6 +26,7 @@
 
 #include <util/math.hpp>
 #include <detstringmanager.hpp>
+#include <wavefunction/base.hpp>
 
 namespace ChronusQ {
 
@@ -70,6 +71,9 @@ namespace ChronusQ {
     std::vector<int> fCat;  /// < Category offset for RAS string
 
     MOSpacePartition() = default;
+    MOSpacePartition(const MOSpacePartition &) = default;
+    MOSpacePartition(MOSpacePartition &&)      = default;
+  
   };
 
   /**

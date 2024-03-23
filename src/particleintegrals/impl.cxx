@@ -29,6 +29,7 @@
 #include <particleintegrals/contract/direct4C_libint.hpp>
 #include <particleintegrals/contract/direct4C_libcint.hpp>
 #include <particleintegrals/contract/direct4C_libcint_coulombonly.hpp>
+#include <particleintegrals/contract/direct4C_libcint_coulombonly_spinfree.hpp>
 #include <particleintegrals/contract/direct4C_libcint_spinfree.hpp>
 #include <particleintegrals/contract/direct4C_libcint_spindependent.hpp>
 #include <particleintegrals/onepints/relativisticints.hpp>

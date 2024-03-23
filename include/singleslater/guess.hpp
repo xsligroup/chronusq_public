@@ -857,8 +857,8 @@ namespace ChronusQ {
 
       // onePDM on scr bin file
       // assume square and same dimension between S,X,Y,Z
-      std::shared_ptr<PauliSpinorSquareMatrices<ScrMatsT>> onePDMtmp;
-      onePDMtmp = std::make_shared<PauliSpinorSquareMatrices<ScrMatsT>>(memManager,DSdims[0],hasDY,hasDZ);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<ScrMatsT>> onePDMtmp;
+      onePDMtmp = std::make_shared<cqmatrix::PauliSpinorMatrices<ScrMatsT>>(memManager,DSdims[0],hasDY,hasDZ);
 
       // Errors in 1PDM SCALAR
       if( not hasDS )
@@ -1373,7 +1373,7 @@ namespace ChronusQ {
 
     if( this->nC == 1 ){
       // Allocate Local Matrices
-      std::vector<SquareMatrix<MatsT>> SCR = this->onePDMOrtho->template spinGatherToBlocks<MatsT>(false);
+      std::vector<cqmatrix::Matrix<MatsT>> SCR = this->onePDMOrtho->template spinGatherToBlocks<MatsT>(false);
       double* eVals = this->memManager.template malloc<double>(NBC);
 
 
@@ -1421,7 +1421,7 @@ namespace ChronusQ {
     // 2C and 4C
     } else {
 
-      SquareMatrix<MatsT> SCR = this->onePDMOrtho->template spinGather<MatsT>();
+      cqmatrix::Matrix<MatsT> SCR = this->onePDMOrtho->template spinGather<MatsT>();
       double* eVals = this->memManager.template malloc<double>(NBC);
 
       // Diagonalize Density

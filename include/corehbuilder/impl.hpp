@@ -38,7 +38,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void MatrixCoreH<MatsT,IntsT>::computeCoreH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     *coreH = coreHMatrix;
 

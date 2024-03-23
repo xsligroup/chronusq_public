@@ -26,190 +26,192 @@
 #include <cqlinalg.hpp>
 
 namespace ChronusQ {
+namespace cqmatrix {
 
-  template ScaledSquareMatrix<double, double>::
-      ScaledSquareMatrix(double, const ScaledSquareMatrix<double, double>&);
-  template ScaledSquareMatrix<dcomplex, double>::
-      ScaledSquareMatrix(dcomplex, const ScaledSquareMatrix<dcomplex, double>&);
-  template ScaledSquareMatrix<dcomplex, double>::
-      ScaledSquareMatrix(dcomplex, const ScaledSquareMatrix<double, double>&);
-  template ScaledSquareMatrix<dcomplex, double>::
-      ScaledSquareMatrix(double, const ScaledSquareMatrix<dcomplex, double>&);
-  template ScaledSquareMatrix<double, dcomplex>::
-      ScaledSquareMatrix(double, const ScaledSquareMatrix<double, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>::
-      ScaledSquareMatrix(dcomplex, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>::
-      ScaledSquareMatrix(dcomplex, const ScaledSquareMatrix<double, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>::
-      ScaledSquareMatrix(double, const ScaledSquareMatrix<dcomplex, dcomplex>&);
+template ScaledMatrix<double, double>::
+    ScaledMatrix(double, const ScaledMatrix<double, double>&);
+template ScaledMatrix<dcomplex, double>::
+    ScaledMatrix(dcomplex, const ScaledMatrix<dcomplex, double>&);
+template ScaledMatrix<dcomplex, double>::
+    ScaledMatrix(dcomplex, const ScaledMatrix<double, double>&);
+template ScaledMatrix<dcomplex, double>::
+    ScaledMatrix(double, const ScaledMatrix<dcomplex, double>&);
+template ScaledMatrix<double, dcomplex>::
+    ScaledMatrix(double, const ScaledMatrix<double, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>::
+    ScaledMatrix(dcomplex, const ScaledMatrix<dcomplex, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>::
+    ScaledMatrix(dcomplex, const ScaledMatrix<double, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>::
+    ScaledMatrix(double, const ScaledMatrix<dcomplex, dcomplex>&);
 
-  template ScaledSquareMatrix<double, double>
-  operator*(double, const SquareMatrix<double>&);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(dcomplex, const SquareMatrix<double>&);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(double, const SquareMatrix<dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(dcomplex, const SquareMatrix<dcomplex>&);
-  template ScaledSquareMatrix<double, double>
-  operator*(const SquareMatrix<double>&, double);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(const SquareMatrix<double>&, dcomplex);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(const SquareMatrix<dcomplex>&, double);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(const SquareMatrix<dcomplex>&, dcomplex);
+template ScaledMatrix<double, double>
+operator*(double, const Matrix<double>&);
+template ScaledMatrix<dcomplex, double>
+operator*(dcomplex, const Matrix<double>&);
+template ScaledMatrix<double, dcomplex>
+operator*(double, const Matrix<dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(dcomplex, const Matrix<dcomplex>&);
+template ScaledMatrix<double, double>
+operator*(const Matrix<double>&, double);
+template ScaledMatrix<dcomplex, double>
+operator*(const Matrix<double>&, dcomplex);
+template ScaledMatrix<double, dcomplex>
+operator*(const Matrix<dcomplex>&, double);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(const Matrix<dcomplex>&, dcomplex);
 
-  template ScaledSquareMatrix<double, double>
-  operator*(double, const PauliSpinorSquareMatrices<double>&);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(dcomplex, const PauliSpinorSquareMatrices<double>&);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(double, const PauliSpinorSquareMatrices<dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(dcomplex, const PauliSpinorSquareMatrices<dcomplex>&);
-  template ScaledSquareMatrix<double, double>
-  operator*(const PauliSpinorSquareMatrices<double>&, double);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(const PauliSpinorSquareMatrices<double>&, dcomplex);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(const PauliSpinorSquareMatrices<dcomplex>&, double);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(const PauliSpinorSquareMatrices<dcomplex>&, dcomplex);
+template ScaledMatrix<double, double>
+operator*(double, const PauliSpinorMatrices<double>&);
+template ScaledMatrix<dcomplex, double>
+operator*(dcomplex, const PauliSpinorMatrices<double>&);
+template ScaledMatrix<double, dcomplex>
+operator*(double, const PauliSpinorMatrices<dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(dcomplex, const PauliSpinorMatrices<dcomplex>&);
+template ScaledMatrix<double, double>
+operator*(const PauliSpinorMatrices<double>&, double);
+template ScaledMatrix<dcomplex, double>
+operator*(const PauliSpinorMatrices<double>&, dcomplex);
+template ScaledMatrix<double, dcomplex>
+operator*(const PauliSpinorMatrices<dcomplex>&, double);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(const PauliSpinorMatrices<dcomplex>&, dcomplex);
 
-  template ScaledSquareMatrix<double, double>
-  operator*(double, const ScaledSquareMatrix<double, double>&);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(dcomplex, const ScaledSquareMatrix<double, double>&);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(double, const ScaledSquareMatrix<dcomplex, double>&);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(dcomplex, const ScaledSquareMatrix<dcomplex, double>&);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(double, const ScaledSquareMatrix<double, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(dcomplex, const ScaledSquareMatrix<double, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(double, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(dcomplex, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template ScaledSquareMatrix<double, double>
-  operator*(const ScaledSquareMatrix<double, double>&, double);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(const ScaledSquareMatrix<double, double>&, dcomplex);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(const ScaledSquareMatrix<dcomplex, double>&, double);
-  template ScaledSquareMatrix<dcomplex, double>
-  operator*(const ScaledSquareMatrix<dcomplex, double>&, dcomplex);
-  template ScaledSquareMatrix<double, dcomplex>
-  operator*(const ScaledSquareMatrix<double, dcomplex>&, double);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(const ScaledSquareMatrix<double, dcomplex>&, dcomplex);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(const ScaledSquareMatrix<dcomplex, dcomplex>&, double);
-  template ScaledSquareMatrix<dcomplex, dcomplex>
-  operator*(const ScaledSquareMatrix<dcomplex, dcomplex>&, dcomplex);
+template ScaledMatrix<double, double>
+operator*(double, const ScaledMatrix<double, double>&);
+template ScaledMatrix<dcomplex, double>
+operator*(dcomplex, const ScaledMatrix<double, double>&);
+template ScaledMatrix<dcomplex, double>
+operator*(double, const ScaledMatrix<dcomplex, double>&);
+template ScaledMatrix<dcomplex, double>
+operator*(dcomplex, const ScaledMatrix<dcomplex, double>&);
+template ScaledMatrix<double, dcomplex>
+operator*(double, const ScaledMatrix<double, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(dcomplex, const ScaledMatrix<double, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(double, const ScaledMatrix<dcomplex, dcomplex>&);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(dcomplex, const ScaledMatrix<dcomplex, dcomplex>&);
+template ScaledMatrix<double, double>
+operator*(const ScaledMatrix<double, double>&, double);
+template ScaledMatrix<dcomplex, double>
+operator*(const ScaledMatrix<double, double>&, dcomplex);
+template ScaledMatrix<dcomplex, double>
+operator*(const ScaledMatrix<dcomplex, double>&, double);
+template ScaledMatrix<dcomplex, double>
+operator*(const ScaledMatrix<dcomplex, double>&, dcomplex);
+template ScaledMatrix<double, dcomplex>
+operator*(const ScaledMatrix<double, dcomplex>&, double);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(const ScaledMatrix<double, dcomplex>&, dcomplex);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(const ScaledMatrix<dcomplex, dcomplex>&, double);
+template ScaledMatrix<dcomplex, dcomplex>
+operator*(const ScaledMatrix<dcomplex, dcomplex>&, dcomplex);
 
-  template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
-  PauliSpinorSquareMatrices<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value or
-   std::is_same<MatsT1, dcomplex>::value or
-   std::is_same<MatsT2, dcomplex>::value),
-  dcomplex, double>::type>
-  operator+(const ScaledSquareMatrix<ScalarT1, MatsT1> &lhs, const ScaledSquareMatrix<ScalarT2, MatsT2> &rhs) {
-    if (lhs.matrix().dimension() != rhs.matrix().dimension())
-      CErr("Cannot add two SquareMatrix of different size.");
-    typedef typename std::conditional<
-        (std::is_same<ScalarT1, dcomplex>::value or
-         std::is_same<ScalarT2, dcomplex>::value or
-         std::is_same<MatsT1, dcomplex>::value or
-         std::is_same<MatsT2, dcomplex>::value),
-        dcomplex, double>::type RetT;
-    if (rhs.isPauli()) {
-      PauliSpinorSquareMatrices<RetT> result(rhs);
-      result += lhs;
-      return result;
-    }
-    PauliSpinorSquareMatrices<RetT> result(lhs);
-    result += rhs;
+template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
+PauliSpinorMatrices<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value or
+ std::is_same<MatsT1, dcomplex>::value or
+ std::is_same<MatsT2, dcomplex>::value),
+dcomplex, double>::type>
+operator+(const ScaledMatrix<ScalarT1, MatsT1> &lhs, const ScaledMatrix<ScalarT2, MatsT2> &rhs) {
+  if (not lhs.matrix().isSameDimension(rhs.matrix()))
+    CErr("Cannot add two Matrix of different size.");
+  typedef typename std::conditional<
+      (std::is_same<ScalarT1, dcomplex>::value or
+       std::is_same<ScalarT2, dcomplex>::value or
+       std::is_same<MatsT1, dcomplex>::value or
+       std::is_same<MatsT2, dcomplex>::value),
+      dcomplex, double>::type RetT;
+  if (rhs.isPauli()) {
+    PauliSpinorMatrices<RetT> result(rhs);
+    result += lhs;
     return result;
   }
-  template PauliSpinorSquareMatrices<double>
-  operator+(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator+(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
+  PauliSpinorMatrices<RetT> result(lhs);
+  result += rhs;
+  return result;
+}
+template PauliSpinorMatrices<double>
+operator+(const ScaledMatrix<double, double>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, double>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, double>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, double>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator+(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<dcomplex, dcomplex>&);
 
-  template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
-  PauliSpinorSquareMatrices<typename std::conditional<
-  (std::is_same<ScalarT1, dcomplex>::value or
-   std::is_same<ScalarT2, dcomplex>::value or
-   std::is_same<MatsT1, dcomplex>::value or
-   std::is_same<MatsT2, dcomplex>::value),
-  dcomplex, double>::type>
-  operator-(const ScaledSquareMatrix<ScalarT1, MatsT1>& lhs, const ScaledSquareMatrix<ScalarT2, MatsT2>& rhs) {
-    return lhs + (-rhs);
-  }
-  template PauliSpinorSquareMatrices<double>
-  operator-(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, double>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<double, dcomplex>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<double, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<double, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<dcomplex, double>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, double>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
-  template PauliSpinorSquareMatrices<dcomplex>
-  operator-(const ScaledSquareMatrix<dcomplex, dcomplex>&, const ScaledSquareMatrix<dcomplex, dcomplex>&);
+template <typename ScalarT1, typename ScalarT2, typename MatsT1, typename MatsT2>
+PauliSpinorMatrices<typename std::conditional<
+(std::is_same<ScalarT1, dcomplex>::value or
+ std::is_same<ScalarT2, dcomplex>::value or
+ std::is_same<MatsT1, dcomplex>::value or
+ std::is_same<MatsT2, dcomplex>::value),
+dcomplex, double>::type>
+operator-(const ScaledMatrix<ScalarT1, MatsT1>& lhs, const ScaledMatrix<ScalarT2, MatsT2>& rhs) {
+  return lhs + (-rhs);
+}
+template PauliSpinorMatrices<double>
+operator-(const ScaledMatrix<double, double>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, double>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, double>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, double>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<double, dcomplex>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<double, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<double, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<dcomplex, double>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, double>&, const ScaledMatrix<dcomplex, dcomplex>&);
+template PauliSpinorMatrices<dcomplex>
+operator-(const ScaledMatrix<dcomplex, dcomplex>&, const ScaledMatrix<dcomplex, dcomplex>&);
 
-}; // namespace ChronusQ
+} // namespace cqmatrix
+} // namespace ChronusQ

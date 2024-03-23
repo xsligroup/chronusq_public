@@ -257,7 +257,7 @@ namespace ChronusQ {
       } else if (mo2.size() == 2) {
         for (size_t i = std::stoul(mo2[0]), iEnd = std::stoul(mo2[1]); i <= iEnd; i++)
           orbitals.push_back(i-1);
-      } else CErr("Unrecogonized pattern in orbital selection");
+      } else CErr("Unrecognized pattern in orbital selection");
     }
     std::sort(orbitals.begin(), orbitals.end());
     orbitals.erase(std::unique(orbitals.begin(), orbitals.end()), orbitals.end());
@@ -499,7 +499,7 @@ namespace ChronusQ {
 
       std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
       
-      // accomondate cases for no no-pair approximation
+      // accommodate cases for no no-pair approximation
       size_t fourCOffSet = mcscf->MOPartition.nNegMO;  
       
       std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');

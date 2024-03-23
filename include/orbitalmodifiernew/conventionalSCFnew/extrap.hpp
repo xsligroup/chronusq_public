@@ -48,8 +48,8 @@ void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::modifyFock(EMPerturbation& p
 
   // Prepare for DIIS
   //vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> den  = this->singleSlaterSystem.getOnePDM();
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> den  = this->singleSlaterSystem.getOnePDM();
   size_t iDIIS = this->scfConv.nSCFIter % this->scfControls.nKeep;
   for( size_t i = 0; i < fock.size(); i++ ) {
     diisFock[iDIIS][i]   = *fock[i];
@@ -237,8 +237,8 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   for( size_t a = 0; a < nMat; a++ ) {
     size_t NB = diisOnePDM[iDIIS][a].dimension();
 
-    SquareMatrix<MatsT> dF(this->memManager, NB);
-    SquareMatrix<MatsT> dD(this->memManager, NB);
+    cqmatrix::Matrix<MatsT> dF(this->memManager, NB);
+    cqmatrix::Matrix<MatsT> dD(this->memManager, NB);
 
     // Compute the coupling Matrix for EDIIS
     // (F_i - F_j)\cdot(D_i - D_j)
@@ -296,16 +296,16 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   diisError.reserve(this->scfControls.nKeep);
   diisEnergy.clear();
   diisEnergy = std::vector<double>(this->scfControls.nKeep, 0.);
-  diisBMat   = std::make_shared<SquareMatrix<double>>(this->memManager, this->scfControls.nKeep);
+  diisBMat   = std::make_shared<cqmatrix::Matrix<double>>(this->memManager, this->scfControls.nKeep);
   diisBMat->clear();
 
   // Allocate memory to store previous orthonormal Focks and densities for DIIS
   vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
   if( this->scfControls.diisAlg != NONE ) {
     for( auto i = 0; i < this->scfControls.nKeep; i++ ) {
-      std::vector<SquareMatrix<MatsT>> f;
-      std::vector<SquareMatrix<MatsT>> d;
-      std::vector<SquareMatrix<MatsT>> e;
+      std::vector<cqmatrix::Matrix<MatsT>> f;
+      std::vector<cqmatrix::Matrix<MatsT>> d;
+      std::vector<cqmatrix::Matrix<MatsT>> e;
       for( auto a = 0; a < fock.size(); a++ ) {
         f.emplace_back(this->memManager, fock[a]->dimension());
         d.emplace_back(this->memManager, fock[a]->dimension());
@@ -342,12 +342,12 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
  *
  */
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-  void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::FDCommutator(std::vector<SquareMatrix<MatsT>>& FDC) {
+  void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::FDCommutator(std::vector<cqmatrix::Matrix<MatsT>>& FDC) {
 
   this->ao2orthoDen();
   for(size_t a = 0; a < this->fockSquareOrtho.size(); a++ ) {
     size_t NB = this->fockSquareOrtho[a].dimension();
-    SquareMatrix<MatsT> SCR(this->memManager, NB);
+    cqmatrix::Matrix<MatsT> SCR(this->memManager, NB);
     FDC[a].clear();
 
     // Compute F*D

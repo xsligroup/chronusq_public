@@ -188,10 +188,10 @@ void Orthogonalization<MatsT>::computeOrtho() {
 };
 
   //=======================
-  // SquareMatrix Operators
+  // cqmatrix::Matrix Operators
   //=======================
   template<typename MatsT>
-  SquareMatrix<MatsT> Orthogonalization<MatsT>::nonortho2ortho(SquareMatrix<MatsT> & mat) const {
+  cqmatrix::Matrix<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::Matrix<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
     if( forwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in nonortho2ortho");
 
@@ -200,7 +200,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   }
 
   template<typename MatsT>
-  SquareMatrix<MatsT> Orthogonalization<MatsT>::ortho2nonortho(SquareMatrix<MatsT> & mat) const {
+  cqmatrix::Matrix<MatsT> Orthogonalization<MatsT>::ortho2nonortho(cqmatrix::Matrix<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
     if( backwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in ortho2nonortho");
 
@@ -212,7 +212,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   // PauliSpinor Operators
   //======================
   template<typename MatsT>
-  PauliSpinorSquareMatrices<MatsT> Orthogonalization<MatsT>::nonortho2ortho(PauliSpinorSquareMatrices<MatsT> & mat) const {
+  cqmatrix::PauliSpinorMatrices<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::PauliSpinorMatrices<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
     if( forwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in nonortho2ortho");
 
@@ -221,7 +221,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   }
 
   template<typename MatsT>
-  PauliSpinorSquareMatrices<MatsT> Orthogonalization<MatsT>::ortho2nonortho(PauliSpinorSquareMatrices<MatsT> & mat) const {
+  cqmatrix::PauliSpinorMatrices<MatsT> Orthogonalization<MatsT>::ortho2nonortho(cqmatrix::PauliSpinorMatrices<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
     if( backwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in ortho2nonortho");
 
@@ -236,7 +236,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   //       to operators
   //===================
   template<typename MatsT>
-  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(SquareMatrix<MatsT>& mo) const {
+  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(cqmatrix::Matrix<MatsT>& mo) const {
     if( not overlap ) CErr("Overlap has not been initialized in nonortho2orthoCoeffs");
 
     size_t NB = mo.dimension();
@@ -249,7 +249,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   }
 
   template<typename MatsT>
-  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(SquareMatrix<MatsT>& mo) const {
+  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(cqmatrix::Matrix<MatsT>& mo) const {
     if( not overlap ) CErr("Overlap has not been initialized in nonortho2orthoCoeffs");
 
     size_t NB = mo.dimension();
@@ -263,25 +263,25 @@ void Orthogonalization<MatsT>::computeOrtho() {
   }
 
   template<typename MatsT>
-  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(std::vector<SquareMatrix<MatsT>>& mo) const {
+  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(std::vector<cqmatrix::Matrix<MatsT>>& mo) const {
     for( auto& m : mo )
       nonortho2orthoCoeffs(m);
   }
 
   template<typename MatsT>
-  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(std::vector<SquareMatrix<MatsT>>& mo) const {
+  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(std::vector<cqmatrix::Matrix<MatsT>>& mo) const {
     for( auto& m : mo )
       ortho2nonorthoCoeffs(m);
   }
 
   template<typename MatsT>
-  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>&  mo) const {
+  void Orthogonalization<MatsT>::nonortho2orthoCoeffs(std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>&  mo) const {
     for( auto& m : mo )
       nonortho2orthoCoeffs(m);
   }
 
   template<typename MatsT>
-  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>& mo) const {
+  void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>& mo) const {
     for( auto& m : mo )
       ortho2nonorthoCoeffs(m);
   }
@@ -291,7 +291,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
   //===================
   
   template<typename MatsT>
-  void Orthogonalization<MatsT> :: orthogonalizeStates( SquareMatrix<MatsT>& mo, size_t nStates, size_t disp ) const {
+  void Orthogonalization<MatsT> :: orthogonalizeStates( cqmatrix::Matrix<MatsT>& mo, size_t nStates, size_t disp ) const {
 
     if( not overlap ) CErr("Overlap has not been initialized in orthogonalizeStates");
     if( nStates == 0 ) return;
@@ -303,7 +303,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
     MatsT* moPointer = mo.pointer() + disp*NB;
     
     // Compute Overlap Matrix for nStates
-    SquareMatrix<MatsT> stateOverlap = overlap->transform( 'N', moPointer, nStates, NB);
+    cqmatrix::Matrix<MatsT> stateOverlap = overlap->transform( 'N', moPointer, nStates, NB);
 
 #if 0
     prettyPrintSmart(std::cout, "MO Overlap", stateOverlap.pointer(),nStates,nStates,nStates);
@@ -322,7 +322,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 #if 0
     // Test that they are orthogonalized
     // Compute Overlap Matrix for nStates
-    SquareMatrix<MatsT> testOverlap = overlap->transform( 'N', moPointer, nStates, NB);
+    cqmatrix::Matrix<MatsT> testOverlap = overlap->transform( 'N', moPointer, nStates, NB);
 
     // Compute Orthogonalization Matrices
     Orthogonalization<MatsT> testOrtho(stateOverlap);
@@ -337,8 +337,8 @@ void Orthogonalization<MatsT>::computeOrtho() {
   // ====================================================================
   template <typename MatsT>
   void Orthogonalization<MatsT> :: getOrthogonalizationGradients(
-    std::vector<SquareMatrix<MatsT>>& gradOrtho,
-    std::vector<SquareMatrix<MatsT>>& operators)
+    std::vector<cqmatrix::Matrix<MatsT>>& gradOrtho,
+    std::vector<cqmatrix::Matrix<MatsT>>& operators)
   {
 
     if( operators.size() == 0 )

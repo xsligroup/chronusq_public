@@ -365,7 +365,7 @@ namespace ChronusQ {
 
 
     virtual void alloc() {
-
+      
       VR_     = this->vecGen_(this->nRoots_);
 
       // NO MPI
@@ -380,8 +380,10 @@ namespace ChronusQ {
     }
 
 
-    dcomplex* eigVal() const { return eigVal_; }
-    std::shared_ptr<SolverVectors<_F>> VR() const { return VR_; }
+    dcomplex* eigVal() { return eigVal_; }
+    const dcomplex* eigVal() const { return eigVal_; }
+    std::shared_ptr<SolverVectors<_F>> VR() { return VR_; }
+    std::shared_ptr<const SolverVectors<_F>> VR() const { return VR_; }
 
 
     virtual void setGuess(size_t nGuess,

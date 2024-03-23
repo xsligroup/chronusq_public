@@ -40,4 +40,5 @@ add_subdirectory(resp)
 add_subdirectory(func)
 add_subdirectory(mcscf)
 add_subdirectory(coupledcluster)
+add_subdirectory(detfactory)
 

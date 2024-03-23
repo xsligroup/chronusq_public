@@ -140,9 +140,9 @@ namespace ChronusQ {
     std::shared_ptr<EOMCCSDVector<MatsT>> T, Lg;
 
     template <typename IntsT>
-    void initializeIntegrals(const PauliSpinorSquareMatrices<MatsT> &aoCoreH,
-                             const PauliSpinorSquareMatrices<MatsT> &aoFock,
-                             const PauliSpinorSquareMatrices<MatsT> &aoTwoeH,
+    void initializeIntegrals(const cqmatrix::PauliSpinorMatrices<MatsT> &aoCoreH,
+                             const cqmatrix::PauliSpinorMatrices<MatsT> &aoFock,
+                             const cqmatrix::PauliSpinorMatrices<MatsT> &aoTwoeH,
                              const TwoPInts<IntsT> &aoTPI,
                              const MultipoleInts<IntsT> &lenElectric,
                              MatsT *mo, size_t nO_, size_t nV_,
@@ -400,7 +400,7 @@ namespace ChronusQ {
     //Helper functions for diagonalization. Davidson/GPLHR
     void buildSigma(const TArray &V1, const TArray &V2, TArray &HV1, TArray &HV2, EOMCCEigenVecType vecType) const;
 
-    SquareMatrix<MatsT> buildHbarCVS(bool includeGroundState) const;
+    cqmatrix::Matrix<MatsT> buildHbarCVS(bool includeGroundState) const;
     void buildDiag(MatsT * diag) const;
     void buildHbar_sigma(MatsT * out, bool diagOnly) const;
 

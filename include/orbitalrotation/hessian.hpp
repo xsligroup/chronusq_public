@@ -43,7 +43,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>  
   void OrbitalRotation<MatsT, IntsT>::computeOrbOrbHessianDiag(EMPerturbation & pert, 
-    SquareMatrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM, MatsT * H) {
+    cqmatrix::Matrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM, MatsT * H) {
     
     bool oneETermApproximation = settings.alg == ORB_ROT_APPROX_QUASI_2ND_ORDER;
     MatsT notRotatedHessian = MatsT (1 / settings.hessianDiagScale);

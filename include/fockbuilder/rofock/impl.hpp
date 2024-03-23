@@ -44,7 +44,7 @@ namespace ChronusQ {
     ROOT_ONLY(ss.comm);
 
     //construct focka and fockb
-    std::vector<SquareMatrix<MatsT>> SCR = ss.fockMatrix->template spinGatherToBlocks<MatsT>(false);
+    std::vector<cqmatrix::Matrix<MatsT>> SCR = ss.fockMatrix->template spinGatherToBlocks<MatsT>(false);
 
     //construct projectors for closed, open, virtual
     //pc = dmb * S
@@ -53,20 +53,20 @@ namespace ChronusQ {
     MatsT* pc  = ss.memManager.template malloc<MatsT>(NB*NB);
     MatsT* po  = ss.memManager.template malloc<MatsT>(NB*NB);
     MatsT* pv  = ss.memManager.template malloc<MatsT>(NB*NB);
-    SquareMatrix<MatsT> tmp(ss.memManager,NB);
+    cqmatrix::Matrix<MatsT> tmp(ss.memManager,NB);
     MatsT* tmp2 = ss.memManager.template malloc<MatsT>(NB*NB);
 
     //overlap matrix
     tmp = 0.5 * (ss.onePDM->S() - ss.onePDM->Z());
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),tmp.pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
+         cqmatrix::Matrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),pc,NB);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),ss.onePDM->Z().pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
+         cqmatrix::Matrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),po,NB);
     tmp = 0.5 * (ss.onePDM->S() + ss.onePDM->Z());
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(-1.),tmp.pointer(),NB,
-         SquareMatrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
+         cqmatrix::Matrix<MatsT>(ss.aoints_->overlap->matrix()).pointer(),NB,
          MatsT(0.),pv,NB);
     for(auto j = 0; j < NB; j++) pv[j*NB+j] = MatsT(1.) + pv[j*NB+j];
     /*

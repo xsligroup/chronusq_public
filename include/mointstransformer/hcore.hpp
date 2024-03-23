@@ -31,11 +31,12 @@ namespace ChronusQ {
    *  \brief form inactive core density
    */
   template <typename MatsT, typename IntsT>
-  std::shared_ptr<SquareMatrix<MatsT>> MOIntsTransformer<MatsT,IntsT>::formInactDen(
+  std::shared_ptr<cqmatrix::Matrix<MatsT>> MOIntsTransformer<MatsT,IntsT>::formInactDen(
     const char coreIndex) {
-  
+      
+
       size_t nAO  = ss_.nAlphaOrbital() * ss_.nC;
-      auto Den = std::make_shared<SquareMatrix<MatsT>>(memManager_, nAO);
+      auto Den = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, nAO);
       
       auto off_size = parseMOType(coreIndex);
       size_t ioff = off_size.first;
@@ -58,7 +59,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   std::shared_ptr<OnePInts<MatsT>> MOIntsTransformer<MatsT,IntsT>::formAOGD(
-    EMPerturbation & pert, const SquareMatrix<MatsT> & Den, bool HerDen, 
+    EMPerturbation & pert, const cqmatrix::Matrix<MatsT> & Den, bool HerDen, 
     bool cacheAOGD, const std::string & cacheId) {  
      
       std::string cacheAOGDStr = "AOGD-" + cacheId; 
@@ -74,15 +75,15 @@ namespace ChronusQ {
 #endif
        
         size_t nAO  = ss_.nAlphaOrbital() * ss_.nC;
-        
         // hack thru ss_.forkbuilder->formGD
         if (ss_.nC == 1) {
-          *ss_.onePDM = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(Den);
+          *ss_.onePDM = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(Den);
         } else{
           *ss_.onePDM = Den.template spinScatter<MatsT>();  
         }
            
         ss_.fockBuilder->formGD(ss_, pert, false, 1.0, HerDen);
+        
          
         if (ss_.nC == 1) {
           AOGD = std::make_shared<OnePInts<MatsT>>(0.5 * ss_.twoeH->S());
@@ -125,15 +126,15 @@ namespace ChronusQ {
         
         AOHCore = ints_cache_.template getIntegral<OnePInts, MatsT>("AOHCore");
         if (not AOHCore) {
-            std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> pertContributions;
+            std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> pertContributions;
             size_t NB = ss_.basisSet().nBasis;
             if (ss_.nC == 4 ) NB = 2 * NB;
             if(ss_.nC > 1)
-              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, true);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, true);
             else if (not ss_.iCS)
-              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, false);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, false);
             else
-              pertContributions = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NB, false, false);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, false, false);
             pertContributions->clear();
           // FIXME: the magnetic field contribution is currently absorbed into HCore but that is planned to change
           // https://github.com/xsligroup/chronusq_dev/blob/56c94dfac7a1c28e7fdb4e217052f38ea7d9013a/include/fockbuilder/impl.hpp#L296
@@ -229,7 +230,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void MOIntsTransformer<MatsT,IntsT>::subsetTransformGD(EMPerturbation & pert,
-    const SquareMatrix<MatsT> & Den, bool HerDen, MatsT* MOGD,
+    const cqmatrix::Matrix<MatsT> & Den, bool HerDen, MatsT* MOGD,
     const std::vector<std::pair<size_t,size_t>> &off_sizes, 
     bool deltaPQ, bool cacheAOGD, const std::string & cacheId) {
     

@@ -1,8 +1,9 @@
 name: CQ CI - CMake Configure, Build, Test
 
 on:
-  pull_request:
+  push:
     branches: dev
+  pull_request:
 
 concurrency: 
   group: ${{ github.workflow }}-${{ github.ref }}

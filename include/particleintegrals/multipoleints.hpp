@@ -305,12 +305,12 @@ namespace ChronusQ {
     };
 
     // Assemble LL and SS components of 4C Dipole
-    std::shared_ptr<std::vector<PauliSpinorSquareMatrices<dcomplex>>> gather4CDipole(){
+    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>> gather4CDipole(){
       
       if(this->size() != 3) CErr("Only Dipole is implement for 4C");
       
       // Initialize the returned dipole matrix vector (x, y, z)
-      auto lenElectric4C = std::make_shared<std::vector<PauliSpinorSquareMatrices<dcomplex>>>();
+      auto lenElectric4C = std::make_shared<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>>();
       lenElectric4C->reserve(3);
 
       size_t NB = this->nBasis();
@@ -321,18 +321,18 @@ namespace ChronusQ {
           
           // Initialize the returned dipole matrix
           lenElectric4C->emplace_back(this->ParticleIntegrals::memManager(), 2 * NB, true, true);
-          PauliSpinorSquareMatrices<dcomplex>& dipole_ixyz = (*lenElectric4C)[ixyz];
+          cqmatrix::PauliSpinorMatrices<dcomplex>& dipole_ixyz = (*lenElectric4C)[ixyz];
 
           dipole_ixyz.clear();
 
           //Piece together the SS components in to 2NB by 2NB square matrix W
           // W = 1/(4c^2)* [ W1  W2 ]
           //               [ W3  W4 ]
-          SquareMatrix<dcomplex> W( 1./(4. * SpeedOfLight * SpeedOfLight) *
+          cqmatrix::Matrix<dcomplex> W( 1./(4. * SpeedOfLight * SpeedOfLight) *
               onePRelInt->template formW<dcomplex>() );
 
           // Spin Scatter square matrix W (2NB*2NB) into paulispinor matrix W_spinor (NB*NB) 
-          PauliSpinorSquareMatrices<dcomplex> W_spinor(W.template spinScatter<dcomplex>());
+          cqmatrix::PauliSpinorMatrices<dcomplex> W_spinor(W.template spinScatter<dcomplex>());
 
           // LL Scalar 
           SetMat('N',NB,NB,dcomplex(1.),onePRelInt->pointer(), NB,dipole_ixyz.S().pointer(),           2*NB);

@@ -67,6 +67,15 @@ namespace ChronusQ {
       printBase(message, dur, avg);
     };
 
+    auto printRegWithAvgScale = [&](std::string message, std::string label, size_t id,
+        double avgScale) {
+      auto summary = timer.getDurationSummary<Duration>(label, id);
+      auto dur = summary.first.count();
+      auto avg = summary.second.count();
+
+      printBase(message, dur, avg * avgScale);
+    };
+    
     auto printSub = [&](std::string message, std::string label,
                         std::string filter, size_t id) {
       auto summary = timer.getDurationSummary<Duration>(label, id, filter);
@@ -173,6 +182,35 @@ namespace ChronusQ {
       printReg("      - MO Rotation", "Rotate MO", mcscfId);
       printReg("      - IVO Generation", "Gen IVOs", mcscfId);
       printReg("    - Property Evaluation", "Property Eval", mcscfId);
+    }
+    
+    auto ciId = timer.getLabelId("Configuration Interaction Total");
+    if ( ciId != 0 ) {
+      printReg("  - Configuration Interaction", "Configuration Interaction Total", ciId);
+      printReg("    - Build Detetminant Factory", "Determinant Factory", ciId);
+      // CI
+      printReg("    - Solving CI", "NEW Solve CI", ciId);
+      printSub("      - Integral Transformation", "Integral Trans", "NEW Solve CI", ciId);
+      printSub("        - Core Energy Computation",  "MOINTSTRANSFORM CORE ENERGY", "NEW Solve CI", ciId);
+      printSub("        - OPI Transformation", "MOINTSTRANSFORM OPI TRANS", "NEW Solve CI", ciId);
+      printSub("        - TPI Transformation", "MOINTSTRANSFORM TPI TRANS", "NEW Solve CI", ciId);
+      printSub("          - MPI Commumication", "MOINTSTRANSFORM TPI TRANS MPI COMM", "NEW Solve CI", ciId);
+      printSub("        - Populate DAS integrals",  "MOINTSTRANSFORM DAS INT", "NEW Solve CI", ciId);
+      printSub("      - Diagonalization", "Diagonalization", "NEW Solve CI", ciId);
+      printReg("        - Full Matrix Formation", "NEW Full Matrix", ciId);
+      printReg("        - Sigma Formation", "NEWSigma", ciId);
+      printReg("          - MPI Comm First BCast", "Sigma MPI COMM First BCast", ciId);
+      printRegWithAvgScale("          - MPI Comm Create CView", "Sigma MPI COMM Create CView", ciId, MPISize());
+      printRegWithAvgScale("          - MPI Comm Init IBCast", "Sigma MPI COMM Init IBCast", ciId, MPISize() - 1);
+      printRegWithAvgScale("          - MPI Comm Root Wait", "Sigma MPI COMM Root Wait", ciId, MPISize() - 1);
+      printRegWithAvgScale("          - Contraction", "Sigma Contraction", ciId, MPISize());
+      // Orbital Rotation
+      printReg("    - Orbital Rotation", "Orbital Rotation", ciId);
+      printReg("      - Gradient Formation", "Form Gradient", ciId);
+      printReg("      - Hessian Formation", "Form Hessian", ciId);
+      printReg("      - MO Rotation", "Rotate MO", ciId);
+      printReg("      - IVO Generation", "Gen IVOs", ciId);
+      printReg("    - Property Evaluation", "Property Eval", ciId);
     }
     
     // Print footer

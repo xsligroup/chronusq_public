@@ -82,7 +82,7 @@ namespace ChronusQ {
 
     // Compute core Hamitlonian
     virtual void computeOneEX2C(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeOneEX2C_Umatrix();
 
     // Compute the gradient

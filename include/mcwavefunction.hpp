@@ -79,9 +79,9 @@ namespace ChronusQ {
     std::shared_ptr<CIBuilder<MatsT,IntsT>>  ciBuilder  = nullptr;
     
     // Reduced density Matrices (RDMs) only span over correlated space
-    std::vector<SquareMatrix<MatsT>> oneRDM;
+    std::vector<cqmatrix::Matrix<MatsT>> oneRDM;
     // Transition density matrix
-    std::vector<std::vector<SquareMatrix<MatsT>>> TDMs;
+    std::vector<std::vector<cqmatrix::Matrix<MatsT>>> TDMs;
 
     // TODO: Save vectors 
     //oper_t_coll DOSav;
@@ -128,7 +128,7 @@ namespace ChronusQ {
     virtual void computeOneRDM(size_t);    
     virtual void computeOneRDM();
     virtual void computeTDMs(); // compute TDMs
-    void rdm2pdm(SquareMatrix<MatsT> &, double scale = 1.);
+    void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1.);
     
     WaveFunctionBase & referenceWaveFunction() { return dynamic_cast<WaveFunctionBase&>(ref_); }
     SingleSlater<MatsT,IntsT> & reference() const  { return ref_;} 

@@ -39,18 +39,18 @@ namespace ChronusQ {
 
   protected:
 
-    PauliSpinorSquareMatrices<MatsT> fockMatrix;
+    cqmatrix::PauliSpinorMatrices<MatsT> fockMatrix;
 
   public:
 
     // Constructors
     MatrixFock() = delete;
     MatrixFock(HamiltonianOptions hamiltonianOptions,
-               const PauliSpinorSquareMatrices<MatsT> &matrix):
+               const cqmatrix::PauliSpinorMatrices<MatsT> &matrix):
         FockBuilder<MatsT,IntsT>(hamiltonianOptions),
         fockMatrix(matrix) {}
     MatrixFock(HamiltonianOptions hamiltonianOptions,
-               PauliSpinorSquareMatrices<MatsT> &&matrix):
+               cqmatrix::PauliSpinorMatrices<MatsT> &&matrix):
         FockBuilder<MatsT,IntsT>(hamiltonianOptions),
         fockMatrix(matrix) {}
 

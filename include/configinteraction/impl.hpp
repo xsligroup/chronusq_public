@@ -1,0 +1,321 @@
+/* 
+ *  This file is part of the Chronus Quantum (ChronusQ) software package
+ *  
+ *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *  
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  
+ *  Contact the Developers:
+ *    E-Mail: xsli@uw.edu
+ *  
+ */
+#pragma once
+
+#include <configinteraction.hpp>
+#include <configinteraction/print.hpp>
+#include <configinteraction/rdm.hpp>
+#include <configinteraction/solveci.hpp>
+#include <util/matout.hpp>
+#include <orbitalrotation.hpp>
+
+// #define DEBUG_ConfigInteraction_IMPL
+
+namespace ChronusQ {
+  
+template <typename MatsT, typename IntsT>
+void ConfigrationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
+  
+  ProgramTimer::tick("Configuration Interaction Total");
+   
+  std::cout << "configuration interaction starts" << std::endl;
+
+  // TODO: estimate and allocate memory
+  this->alloc();
+
+  // initialize DAS space and categories
+  this->initialization();
+  
+  // Initial Printing
+  this->printCIHeader();
+  
+  detFactory->output(std::cout, "Configuration Interactions");
+
+  // ConfigInteraction Initial CI solution
+  std::cout << "Cycle 0:\n" << std::endl;
+  FormattedLine(std::cout, "AO to MO Integral Transformation ...");
+    
+  ProgramTimer::tick("NEW Solve CI");
+  
+  ProgramTimer::tick("Integral Trans");
+  this->prepareMOIntegrals(pert, *detFactory, ciSettings.doSCF, not ciSettings.doSCF);
+  ProgramTimer::tock("Integral Trans");
+  
+
+  std::cout << std::left << std::setprecision(10); 
+  FormattedLine(std::cout, "Core Energy:", this->coreEnergy);
+
+  ProgramTimer::tick("Diagonalization");
+  this->solveCI();
+  ProgramTimer::tock("Diagonalization");
+  
+  ProgramTimer::tock("NEW Solve CI");
+
+  // Initial 1RDM construction
+  this->computeOneRDM();
+
+  // SCF Cycles 
+  if(this->ciSettings.doSCF) {
+    CErr("MCSCF with the new code is untested. Proceed with caution if you are an expert user.");
+
+    this->printStateEnergy();
+    
+    std::vector<double> EPrev = std::vector<double>(this->NStates);
+    std::fill_n(EPrev.begin(), this->NStates, 0.);
+    double EDiff      = 0.;
+    bool   converged  = false;
+    
+    for (auto iter = 0ul; iter < ciSettings.maxSCFIter; iter++) {
+      
+      ProgramTimer::tick("Orbital Rotation");
+      // Exam Energy
+      if (this->StateAverage) {
+        EDiff = 0.;
+        std::vector<double> EDiff2 = std::vector<double>(this->NStates);
+        for (auto i = 0ul; i < this->NStates; i++)
+          EDiff2[i] = this->StateEnergy[i] - EPrev[i];
+        
+        EDiff = *std::max_element(EDiff2.begin(), EDiff2.end(), 
+          [&] (double a, double b) { return std::abs(a) < std::abs(b); });
+
+      } else {
+        EDiff = this->StateEnergy.back() - EPrev.back(); 
+      }
+      
+      std::cout << "  (Maximum) Energy Difference = " << std::setw(18) 
+                <<  std::right << EDiff << std::left << std::endl; 
+      if(std::abs(EDiff) <= ciSettings.scfEnergyConv) converged = true;
+      
+      // compute RDMs
+      computeRDMsForOrbitalRotations();
+      
+      // this->print1RDMs();
+      
+      // compute gradient 
+      double orbitalGradientNorm = 
+        moRotator->computeOrbGradient(pert, *oneRDMSOI, *twoRDMSOI);
+      
+      // Gradient Convergence exam
+      std::cout << "  Orbital Gradient Residue   = " << std::setw(18) 
+                  << std::right << orbitalGradientNorm << std::left << std::endl;
+      
+      if(converged and orbitalGradientNorm < ciSettings.scfGradientConv) break;
+        
+      converged = false;
+      
+      // start of the new cycle 
+      std::cout << "\n\nCycle " << iter+1 << ":\n" << std::endl;
+      
+      // compute hession diagonal and rotate orbitals
+      FormattedLine(std::cout, "Performing Orbital Rotation ...");
+      
+      moRotator->rotateMO(pert, *oneRDMSOI, *twoRDMSOI);
+      
+      ProgramTimer::tock("Orbital Rotation");
+      
+      this->mointsTF->clearAllCache();
+
+      // print energy and update EPrev
+      std::copy_n(this->StateEnergy.begin(), this->NStates, EPrev.begin());
+
+      ProgramTimer::tick("NEW Solve CI");
+      
+      // Re-transform intgrals and solve new CI
+      FormattedLine(std::cout, "Redo AO to MO Intergral Transformation ...");
+      ProgramTimer::tick("Integral Trans");
+      this->prepareMOIntegrals(pert, *detFactory, true, false);
+      ProgramTimer::tock("Integral Trans");
+
+      std::cout << std::left << std::setprecision(10); 
+      FormattedLine(std::cout, "Core Energy:", this->coreEnergy);
+      ProgramTimer::tick("Diagonalization");
+      this->solveCI();
+      ProgramTimer::tock("Diagonalization");
+      
+      ProgramTimer::tock("NEW Solve CI");
+    
+      this->printStateEnergy();
+    
+      saveCurrentStates();
+    
+    } // SCF Iteration
+    
+    if(not converged) 
+      CErr("\n ConfigInteraction failed to converged in " + std::to_string(ciSettings.maxSCFIter) + " cycles !");
+  
+    // compute 1RDMs
+    if (this->StateAverage) this->computeOneRDM(); 
+    else this->computeOneRDM(this->NStates - 1); 
+    
+    // generate IVOs as needed
+    ProgramTimer::tick("Gen IVOs");
+    if (this->ciSettings.doIVOs) moRotator->generateIVOs(pert, *oneRDMSOI);
+    ProgramTimer::tock("Gen IVOs");
+
+  } // doSCF
+
+  // Final printing and save states for restart
+  std::cout << "\n\nConfiguration Interaction Complete!" << std::endl;
+  std::cout << bannerEnd << std::endl;
+  
+  this->printCIFooter();
+
+  // // property calculation
+
+  // Mulliken analysis
+  if (this->PopulationAnalysis) {
+    std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
+    PostHartreeFock<MatsT,IntsT>::populationAnalysis();
+  }
+
+  // oscillator strength
+  if (this->NosS1) {
+    
+    ProgramTimer::tick("Property Eval");
+    
+    this->osc_str = this->memManager.template malloc<double>(this->NosS1*this->NStates);
+    for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
+    for (size_t s2 = 0ul; s2 < this->NStates; s2++){
+      if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
+      else this->osc_str[s2+s1*this->NStates] = 
+              PostHartreeFock<MatsT,IntsT>::oscillator_strength(s2, s1);
+    }
+    
+    ProgramTimer::tock("Property Eval");
+  }
+
+  saveCurrentStates();
+
+  ProgramTimer::tock("Configuration Interaction Total");
+
+} //ConfigInteraction::run
+
+template <typename MatsT, typename IntsT>
+void ConfigrationInteraction<MatsT, IntsT>::saveCurrentStates() {
+  
+  ROOT_ONLY(this->comm);
+
+  PostHartreeFock<MatsT,IntsT>::saveCurrentStates();
+  
+  // only save MO when doing orbital rotation
+  if (ciSettings.doSCF and this->savFile.exists()) {
+    auto mo_dim = this->reference()->mo[0].dimension();
+    this->savFile.safeWriteData("SCF/MO1", this->reference()->mo[0].pointer(), {mo_dim, mo_dim});
+  }
+
+} // ConfigInteraction::saveCurrentStates
+
+template <typename MatsT, typename IntsT>
+void ConfigrationInteraction<MatsT, IntsT>::alloc() {
+  // TODO: need to estimate memory usage
+}
+
+template <typename MatsT, typename IntsT>
+void ConfigrationInteraction<MatsT, IntsT>::initialization() {
+  
+  PostHartreeFock<MatsT,IntsT>::alloc();
+   
+  // build detFactory
+  ProgramTimer::tick("Determinant Factory");
+  std::cout << "Initializing Determinant Factory" << std::endl;
+
+  // TODO: add automate mechanism of break down large space to smaller spaces
+  // Initialize a DetFactory object with the reference active spaces
+  detFactory = std::make_shared<DeterminantFactory>(this->comm,
+                                                    this->memManager,
+                                                    this->corrSpace.nCorrE, ciSettings.activeSpaces);
+  
+  // make sure the active space partitioning in CategoricalSpace is in reference to
+  // detFactory's active spaces
+  // newCategoricalSpace is an object of CategoricalSpace class.
+  std::cout << "Construct Categorical Space" << std::endl;
+  auto buildCat = tick();
+  auto newCategoricalSpace = detFactory->buildEmptyDetsSpace();
+
+  // build and add user defined categories based on the reference occupation number
+  for (auto const & refOccupation: ciSettings.refOcc) {
+    newCategoricalSpace->addReferenceCategory(refOccupation);
+  }
+  // build new categories based on excitation operator
+  newCategoricalSpace->expandCategory(ciSettings.maxInterSpaceEx);
+  auto durationBuildCat = tock(buildCat);
+  std::cout << "Construct Categorical Space Done: " << durationBuildCat << " s"<<std::endl;
+  std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
+  std::cout << "Total Number of Determinants = "<<newCategoricalSpace->nDeterminants()<<std::endl;
+
+  // For MPI
+  newCategoricalSpace->initializeDistributedCatMap(this->comm);
+  
+  detFactory->setKetCategoricalSpace(newCategoricalSpace);
+  detFactory->setBraCategoricalSpace(newCategoricalSpace);
+
+  // based on Bra and Ket categories, figures out non-zero excitation maps
+  // in terms of active spaces between categories.
+  std::cout << "Computing Graph" << std::endl;
+  auto buildGraph = tick();
+  detFactory->generateComputingGraph();
+  auto durationBuildGraph = tock(buildGraph);
+  std::cout << "Computing Graph Done: " << durationBuildGraph << " s"<<std::endl;
+
+  auto computeExList = tick();
+  detFactory->estimateMemoryRequirement();
+  detFactory->computeExcitationList();
+  auto durationComputExList = tock(computeExList);
+  std::cout << "Computing Excitation List Done: " << durationComputExList << " s"<<std::endl;
+
+  std::cout << "DAS initialization done in Determinant Factory!" << std::endl;
+  ProgramTimer::tock("Determinant Factory");
+  
+  // allocate CI vector
+  size_t NS = this->NStates;
+
+  CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, this->memManager, NS);
+
+  auto dasciBuilder = std::make_shared<DASCIBuilder<MatsT>>(this->comm, this->memManager, this->moints, *detFactory);
+  dasciBuilder->setSigma2eContractionAlgorithm(ciSettings.ciSigma2eContAlg);
+
+  ciBuilder = dasciBuilder;
+
+  if (this->ciSettings.doSCF) {
+    size_t nCorrO = this->corrSpace.nCorrO;
+    oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager,nCorrO);
+    twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(this->memManager, nCorrO);     
+    moRotator = std::make_shared<NewOrbitalRotation<MatsT, IntsT>>(
+      dynamic_cast<PostHartreeFock<MatsT,IntsT>&>(*this), ciSettings.ORSettings);
+  }
+}
+
+template <typename MatsT, typename IntsT>
+void ConfigrationInteraction<MatsT, IntsT>::dealloc() {
+  oneRDMSOI = nullptr;
+  twoRDMSOI = nullptr;
+  ciBuilder = nullptr;
+  detFactory = nullptr;
+  CIVectors = nullptr;
+  // moRotator = nullptr;
+}
+
+
+} // namespace ChronusQ
+

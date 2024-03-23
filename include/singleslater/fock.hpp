@@ -80,11 +80,11 @@ namespace ChronusQ {
     } else {
 
       if(not iCS and nC == 1 and basisSet().basisType == COMPLEX_GIAO)
-        coreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager, NB, false);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false);
       else if(nC == 2 or nC == 4)
-        coreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager, NB, true);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, true);
       else
-        coreH = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager, NB, false, false);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false, false);
 
     }
 
@@ -237,20 +237,20 @@ namespace ChronusQ {
       auto orthoForward = orthoAB->forwardPointer();
 
       // Allocate
-      SquareMatrix<MatsT> vdv(memManager, NB);
-      SquareMatrix<MatsT> dvv(memManager, NB);
-      PauliSpinorSquareMatrices<MatsT> SCR(memManager, NB, hasXY, hasZ);
+      cqmatrix::Matrix<MatsT> vdv(memManager, NB);
+      cqmatrix::Matrix<MatsT> dvv(memManager, NB);
+      cqmatrix::PauliSpinorMatrices<MatsT> SCR(memManager, NB, hasXY, hasZ);
 
       // XXX: This requires copying the overlap gradients, but it is for
       //      copying to MatsT != IntsT
-      std::vector<SquareMatrix<MatsT>> gradOverlap;
+      std::vector<cqmatrix::Matrix<MatsT>> gradOverlap;
       gradOverlap.reserve(nGrad);
       for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
         gradOverlap.emplace_back((*this->aoints_->gradOverlap)[iGrad]->matrix());
       }
 
       // Calculate dV
-      std::vector<SquareMatrix<MatsT>> gradOrtho;
+      std::vector<cqmatrix::Matrix<MatsT>> gradOrtho;
       gradOrtho.reserve(nGrad);
       for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
         gradOrtho.emplace_back(memManager, NB);
@@ -269,7 +269,7 @@ namespace ChronusQ {
 
         // Form FVdV and dVVF
         for( auto iSp = 0; iSp < nSp; iSp++ ) {
-          auto comp = static_cast<PAULI_SPINOR_COMPS>(iSp);
+          auto comp = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(iSp);
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
             NB,NB,NB,MatsT(1.),(*fockMatrix)[comp].pointer(),NB,
             vdv.pointer(),NB,MatsT(0.),SCR[comp].pointer(),NB);
@@ -333,9 +333,9 @@ namespace ChronusQ {
     size_t NBC = this->nC*basisSet().nBasis;
 
     // Allocate scratch
-    SquareMatrix<MatsT> overlapSpinor(memManager, NB);
+    cqmatrix::Matrix<MatsT> overlapSpinor(memManager, NB);
     overlapSpinor.clear();
-    SquareMatrix<MatsT> overlapAB(memManager, NBC);
+    cqmatrix::Matrix<MatsT> overlapAB(memManager, NBC);
     overlapAB.clear();
 
     // Copy the overlap over to scratch space

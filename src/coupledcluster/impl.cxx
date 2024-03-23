@@ -170,9 +170,9 @@ namespace ChronusQ {
 
   template <typename MatsT>
   template <typename IntsT>
-  void CCIntermediates<MatsT>::initializeIntegrals(const PauliSpinorSquareMatrices<MatsT> &aoCoreH,
-                                                   const PauliSpinorSquareMatrices<MatsT> &aoFock,
-                                                   const PauliSpinorSquareMatrices<MatsT> &aoTwoeH,
+  void CCIntermediates<MatsT>::initializeIntegrals(const cqmatrix::PauliSpinorMatrices<MatsT> &aoCoreH,
+                                                   const cqmatrix::PauliSpinorMatrices<MatsT> &aoFock,
+                                                   const cqmatrix::PauliSpinorMatrices<MatsT> &aoTwoeH,
                                                    const TwoPInts<IntsT> &aoTPI,
                                                    const MultipoleInts<IntsT> &lenElectric,
                                                    MatsT *mo, size_t nO, size_t nV,
@@ -298,7 +298,7 @@ namespace ChronusQ {
 
     if (rebuildFock) {
       // Create MO H
-      SquareMatrix<MatsT> moCoreH = aoCoreH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+      cqmatrix::Matrix<MatsT> moCoreH = aoCoreH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
       std::map<std::string, TArray> coreHta;
 
 //    moCoreH.output(std::cout, "moCoreH", true);
@@ -341,7 +341,7 @@ namespace ChronusQ {
         TAmanager.free(ta.first, std::move(ta.second), true);
     } else {
 
-      SquareMatrix<MatsT> moFock = aoFock.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+      cqmatrix::Matrix<MatsT> moFock = aoFock.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
 
       std::vector<std::string> onePTypes{"oo", "vo", "vv", "ov"};
       for (const auto &onePType: onePTypes) {
@@ -448,7 +448,7 @@ namespace ChronusQ {
       EG = 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen("i,j")).dot(moDen("k,l")).get();
     else {
 
-      SquareMatrix<MatsT> moTwoeH = aoTwoeH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
+      cqmatrix::Matrix<MatsT> moTwoeH = aoTwoeH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
       for (size_t i = 0; i < nO; i++)
         EG += 0.5 * moTwoeH(i, i);
     }
@@ -758,7 +758,7 @@ namespace ChronusQ {
       }
 
       // Algorithm with explicit Hbar matrix
-      std::shared_ptr<SquareMatrix<dcomplex>> fullMat = nullptr;
+      std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat = nullptr;
       typename Davidson<dcomplex>::LinearTrans_t funcRaw;
       typename Davidson<dcomplex>::LinearTrans_t PCRaw;
       if (eomSettings.hbar_type == EOM_HBAR_TYPE::EXPLICIT
@@ -767,7 +767,7 @@ namespace ChronusQ {
         std::cout << "  *** Start building the full matrix for explicit diagonalization ***" << std::endl;
 
         auto beginBuildHbar = tick();
-        fullMat = std::make_shared<SquareMatrix<dcomplex>>(eomcc.buildHbarCVS(false));
+        fullMat = std::make_shared<cqmatrix::Matrix<dcomplex>>(eomcc.buildHbarCVS(false));
         std::cout << "    * Build Hbar spent "
                   << std::setw(10) << std::right << std::setprecision(6) << std::fixed
                   << tock(beginBuildHbar) << " s." << std::endl;

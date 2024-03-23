@@ -30,7 +30,7 @@ namespace ChronusQ {
 
   template <>
   void NRCoreH<dcomplex, dcomplex>::addMagPert(EMPerturbation &pert,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> coreH) {
 
     //Compute the GIAO non-relativistic core Hamiltonian in the CGTO basis
     //H(S) = 2(T + V) + B * L + sigma * B + 1/4 *(B\timesr)^2
@@ -89,7 +89,7 @@ namespace ChronusQ {
 
   template <>
   void NRCoreH<dcomplex, double>::addMagPert(EMPerturbation&,
-    std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
 
 
     CErr("GIAO + Real integrals is not a valid option");
@@ -97,7 +97,7 @@ namespace ChronusQ {
   }
   template <>
   void NRCoreH<double, double>::addMagPert(EMPerturbation&,
-    std::shared_ptr<PauliSpinorSquareMatrices<double>>) {
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>) {
 
 
     CErr("GIAO + Real integrals is not a valid option");
@@ -111,7 +111,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void NRCoreH<MatsT,IntsT>::computeCoreH(EMPerturbation& emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     computeNRCH(emPert, coreH);
 
@@ -124,7 +124,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void NRCoreH<MatsT,IntsT>::computeNRCH(EMPerturbation& emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     *coreH = 2. * (this->aoints_.kinetic->matrix() + this->aoints_.potential->matrix());
 
@@ -162,9 +162,9 @@ namespace ChronusQ {
     std::vector<double> gradient;
 
     // Allocate scratch (NRCH is SCALAR only)
-    SquareMatrix<MatsT> vdv(ss.memManager, NB);
-    SquareMatrix<MatsT> dvv(ss.memManager, NB);
-    SquareMatrix<MatsT> coreHGrad(ss.memManager,NB);
+    cqmatrix::Matrix<MatsT> vdv(ss.memManager, NB);
+    cqmatrix::Matrix<MatsT> dvv(ss.memManager, NB);
+    cqmatrix::Matrix<MatsT> coreHGrad(ss.memManager,NB);
     
     // Loop over gradient components
     for ( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {

@@ -365,7 +365,7 @@ namespace ChronusQ {
     * The actual storage of the data is divided into blocks
     *   across different nodes.
     *
-    *   Default is split evenly, but can be intilized with input
+    *   Default is split evenly, but can be initialized with input
     *
     */
   template <typename _F>
@@ -378,9 +378,9 @@ namespace ChronusQ {
     size_t len_;
     size_t size_ = 0;
     
-    // lens accross all nodes 
-    std::vector<size_t> lens_; // lens at each node
-    std::vector<size_t> accLens_; // accumulated lens at each node
+    // lengths across all nodes 
+    std::vector<size_t> lens_; // lengths at each node
+    std::vector<size_t> accLens_; // accumulated lengths at each node
     
     // local data storage 
     _F* data_ = nullptr;
@@ -504,7 +504,6 @@ namespace ChronusQ {
 
     DistributedVectors(const DistributedVectors<_F> &other):
         DistributedVectors(other.comm_, other.memManager_, other.lens_, other.size_) {
-      std::cout << "len_ =  " << length() << ", other.len_ = " << other.length() << std::endl;
       set_data(0, size_, other, 0ul, false);
     }
 
@@ -525,21 +524,35 @@ namespace ChronusQ {
     void alloc() {
       dealloc();
       //std::cout << "Allocating local data, with localLen_ = " << localLen_ << std::endl;
-      data_ = memManager_.malloc<_F>(localLength() * size_);
+      // data_ = memManager_.malloc<_F>(localLength() * size_);
+      if (not data_) {
+        try {
+          data_ = memManager_.malloc<_F>(localLength() * size_);;
+        } catch (...) {
+          std::cout << std::fixed;
+          std::cout << "Insufficient memory for DistributedVectors object, "
+                    <<  " (" << (localLength() * size_ / 1e9) * sizeof(_F) << " GB)"
+                    << std::endl;
+          std::cout << memManager_ << std::endl;
+          CErr();
+        }
+      }
+
     }
     
     virtual size_t length() const override { return len_; }
     virtual size_t size() const override { return size_; }
     
+    size_t lengthAtNode(size_t i) const { return lens_[i]; }
     size_t localLength() const { return localLen_; }
     size_t localOffset() const { return localOffset_; }
     
-    _F* getLocalPtr(size_t i) {
+    _F* getLocalPtr(size_t i = 0ul) {
       this->sizeCheck(i, "DistributedVectors<_F>::getPtr");
       return data_ + i * localLength();
     }
 
-    const _F* getLocalPtr(size_t i) const {
+    const _F* getLocalPtr(size_t i = 0ul) const {
       return const_cast<DistributedVectors*>(this)->getLocalPtr(i);
     }
     
@@ -642,6 +655,72 @@ namespace ChronusQ {
 
     using SolverVectors<_F>::maxNormElement;
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
+  
+    template <typename Compare>
+    void getKIndicesAndValues(size_t K, size_t iVec, 
+        std::vector<size_t>& kIndices, std::vector<_F>& kValues,
+        Compare comp) const {
+       
+       std::vector<size_t> localIndices(localLength());
+       std::iota(localIndices.begin(), localIndices.end(), 0ul);
+       auto vecPointer = getLocalPtr(iVec);
+
+       std::stable_sort(localIndices.begin(), localIndices.end(),
+         [&] (size_t i, size_t j) {
+           return comp(vecPointer[i], vecPointer[j]);
+         });
+       
+       size_t nLocalK = std::min(K, localLength());
+       
+       if (MPISize() == 1) {
+         for (auto i = 0ul; i < nLocalK; ++i) {
+           kIndices.push_back(localIndices[i]);
+           kValues.push_back(vecPointer[kIndices.back()]);
+         }
+         return;
+       }
+       
+       /*
+        * MPI case
+        */
+       std::vector<size_t> kLocalIndices;
+       std::vector<_F> kLocalValues;
+       for (auto i = 0ul; i < nLocalK; ++i) {
+         kLocalIndices.push_back(localIndices[i] + localOffset_);
+         kLocalValues.push_back(vecPointer[localIndices[i]]);
+       }
+
+       // reduction
+       size_t nResultK = std::min(K, length());
+
+       // gather sizes
+       std::vector<size_t> recv_sizes = MPIGather(nLocalK, 0, this->comm_);
+       size_t totalGatheredSize = (MPIRank(this->comm_) == 0) ? 
+           std::accumulate(recv_sizes.begin(), recv_sizes.end(), size_t(0ul)) : 1ul;
+       
+       std::vector<size_t> gatheredIndices(totalGatheredSize);
+       std::vector<_F> gatheredValues(totalGatheredSize);
+       MPIGatherV(&kLocalIndices[0], nLocalK, &gatheredIndices[0], recv_sizes, 0, this->comm_);
+       MPIGatherV(&kLocalValues[0], nLocalK, &gatheredValues[0], recv_sizes, 0, this->comm_);
+       
+       kIndices.resize(nResultK);
+       kValues.resize(nResultK);
+       if (MPIRank(this->comm_) == 0) {
+         localIndices.resize(totalGatheredSize);
+         std::iota(localIndices.begin(), localIndices.end(), 0ul);
+         std::stable_sort(localIndices.begin(), localIndices.end(),
+           [&] (size_t i, size_t j) {
+             return comp(gatheredValues[i], gatheredValues[j]);
+           });
+         
+         for (auto i = 0ul; i < nResultK; ++i) {
+           kIndices[i] = gatheredIndices[localIndices[i]];
+           kValues[i] = gatheredValues[localIndices[i]];
+         }
+       }
+       MPIBCast(&kIndices[0], nResultK, 0, this->comm_);
+       MPIBCast(&kValues[0], nResultK, 0, this->comm_);
+    } // getKIndicesAndValues
   
   }; // class DistributedVectors
 
@@ -784,6 +863,30 @@ namespace ChronusQ {
         [&] (auto& vecsRef, size_t extraShift) {
           shift += extraShift;
           pointer = vecsRef.getPtr(shift);
+        }
+    );
+    return pointer;
+  }
+
+  template <typename _F>
+  _F* tryGetDistributedVectorsLocalPointer(SolverVectors<_F>& vecs, size_t shift = 0) {
+    _F* pointer = nullptr;
+    tryDowncastReferenceTo<DistributedVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+          pointer = vecsRef.getLocalPtr(shift);
+        }
+    );
+    return pointer;
+  }
+
+  template <typename _F>
+  const _F* tryGetDistributedVectorsLocalPointer(const SolverVectors<_F>& vecs, size_t shift = 0) {
+    const _F* pointer = nullptr;
+    tryDowncastReferenceTo<DistributedVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+          pointer = vecsRef.getLocalPtr(shift);
         }
     );
     return pointer;

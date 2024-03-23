@@ -50,7 +50,7 @@ namespace ChronusQ {
       CErr("contraction uninitialized in formepJ!");
 
     // Decide onePDM to use
-    PauliSpinorSquareMatrices<MatsT>& contract1PDM
+    cqmatrix::PauliSpinorMatrices<MatsT>& contract1PDM
         = increment ? *this->aux_ss->deltaOnePDM : *this->aux_ss->onePDM;
 
     size_t NB = ss.basisSet().nBasis;
@@ -111,7 +111,7 @@ namespace ChronusQ {
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;
 
-    std::vector<SquareMatrix<MatsT>> JList;
+    std::vector<cqmatrix::Matrix<MatsT>> JList;
     JList.reserve(nGrad);
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
@@ -132,7 +132,7 @@ namespace ChronusQ {
 
     // Contract to gradient
     std::vector<double> gradient;
-    PauliSpinorSquareMatrices<MatsT> twoEGrad(mem, NB, false, false);
+    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(mem, NB, false, false);
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
 
@@ -276,7 +276,7 @@ namespace ChronusQ {
         if( ks ) {
           VXC = ks->VXC;
         } else {
-          VXC = std::make_shared<PauliSpinorSquareMatrices<double>>(
+          VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
             ss.memManager, NB, ss.nC > 1, !ss.iCS
           );
         }
@@ -374,12 +374,12 @@ namespace ChronusQ {
  
       // Decide if we need to allocate space for real part of the 
       // densities and copy over the real parts
-      std::shared_ptr<PauliSpinorSquareMatrices<double>> Re1PDM;
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM;
       if (std::is_same<MatsT,double>::value)
-        Re1PDM = std::dynamic_pointer_cast<PauliSpinorSquareMatrices<double>>(
+        Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
             ss.onePDM);
       else
-        Re1PDM = std::make_shared<PauliSpinorSquareMatrices<double>>(
+        Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
            ss.onePDM->real_part());
 
 
@@ -437,12 +437,12 @@ namespace ChronusQ {
             ss.memManager.template malloc<double>(3*NTNPPB);
       }
 
-      std::shared_ptr<PauliSpinorSquareMatrices<double>> aux_Re1PDM;
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> aux_Re1PDM;
       if( std::is_same<MatsT,double>::value )
-         aux_Re1PDM = std::dynamic_pointer_cast<PauliSpinorSquareMatrices<double>>(
+         aux_Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
            this->aux_ss->onePDM);
        else
-         aux_Re1PDM = std::make_shared<PauliSpinorSquareMatrices<double>>(
+         aux_Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
            this->aux_ss->onePDM->real_part());
 
 

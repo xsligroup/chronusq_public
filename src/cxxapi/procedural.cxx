@@ -147,7 +147,7 @@ namespace ChronusQ {
 
     // Parse Input File
     CQInputFile input(inFileName);
-    SCFOptions scfOptions;
+    //SCFOptions scfOptions;
     TDSCFOptions tdSCFOptions;
     SingleSlaterGuessOptions ssGuestOptions;
     input.parse();
@@ -274,10 +274,12 @@ namespace ChronusQ {
     if(tdSCFOptions.restoreFromStep!=0) rstExists = true;
 
     // Create the restart and scratch files
-    SafeFile rstFile(rstFileName, rstExists);
+    if( not rstExists and rank == 0 ) {
+      SafeFile rstFile(rstFileName, rstExists);
+      rstFile.createFile();
+    }
 
-    if( not rstExists and rank == 0 ) rstFile.createFile();
-
+    SafeFile rstFile(rstFileName, true);
 
     if( rank == 0 ) {
       ss->savFile     = rstFile;
@@ -486,9 +488,22 @@ namespace ChronusQ {
             CErr("NEO-MCSCF NYI!",output);
 
           EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
-          auto mcscf = CQMCSCFOptions(output,input,ss,emPert);
-          mcscf->savFile = rstFile;
-          mcscf->run(additionalPert);
+
+          if (input.containsSection("MCSCF") && input.containsSection("CI")){
+            CErr("Sections for the new and old CI codes are specified. Please specify either [MCSCF] or [CI]!");
+          }
+
+          if (input.containsSection("MCSCF")) {
+            auto mcscf = CQMCSCFOptions(output,input,ss,emPert);
+            mcscf->savFile = rstFile;
+            mcscf->run(additionalPert);
+          }
+
+          if (input.containsSection("CI")) {
+            auto ci = CQCIOptions(output,input,ss,emPert);
+            ci->savFile = rstFile;
+            ci->run(additionalPert);
+          }
         }
 
         firstStep = false;

@@ -25,16 +25,17 @@
 #include <orbitalrotation/impl.hpp>
 
 namespace ChronusQ {
+ 
+ template class MCSCF<double,double>;
+ template class MCSCF<dcomplex,double>;
+ template class MCSCF<dcomplex,dcomplex>;
+ 
+ template class CISolver<double,double>;
+ template class CISolver<dcomplex,double>;
+ template class CISolver<dcomplex,dcomplex>;
 
-  template class MCSCF<double,double>;
-  template class MCSCF<dcomplex,double>;
-  template class MCSCF<dcomplex,dcomplex>;
-  
-  template class CISolver<double,double>;
-  template class CISolver<dcomplex,double>;
-  template class CISolver<dcomplex,dcomplex>;
+ template class OrbitalRotation<double,double>; 
+ template class OrbitalRotation<dcomplex,double>; 
+ template class OrbitalRotation<dcomplex,dcomplex>; 
 
-  template class OrbitalRotation<double,double>; 
-  template class OrbitalRotation<dcomplex,double>; 
-  template class OrbitalRotation<dcomplex,dcomplex>; 
-}; // namespace ChronusQ
+} // namespace ChronusQ

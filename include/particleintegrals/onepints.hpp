@@ -43,7 +43,7 @@ namespace ChronusQ {
     friend class OnePInts;
 
   protected:
-    SquareMatrix<IntsT> mat_; ///< One Particle integrals (2 index)
+    cqmatrix::Matrix<IntsT> mat_; ///< One Particle integrals (2 index)
 
   public:
 
@@ -56,14 +56,14 @@ namespace ChronusQ {
     OnePInts( const OnePInts<IntsU> &other, int = 0 ):
         ParticleIntegrals(other), mat_(other.mat_) {}
     OnePInts( OnePInts &&other ) = default;
-    OnePInts( const SquareMatrix<IntsT> &other ):
+    OnePInts( const cqmatrix::Matrix<IntsT> &other ):
         ParticleIntegrals(other.memManager(), other.dimension()), 
         mat_(other) {}
     template <typename IntsU>
-    OnePInts( const SquareMatrix<IntsU> &other, int = 0 ):
+    OnePInts( const cqmatrix::Matrix<IntsU> &other, int = 0 ):
         ParticleIntegrals(other.memManager(), other.dimension()),
         mat_(other) {}
-    OnePInts( SquareMatrix<IntsT> &&other ):
+    OnePInts( cqmatrix::Matrix<IntsT> &&other ):
         ParticleIntegrals(other.memManager(), other.dimension()),
         mat_(std::move(other)) {}
 
@@ -82,13 +82,13 @@ namespace ChronusQ {
       return *this;
     }
     template <typename IntsU>
-    OnePInts& operator=( const SquareMatrix<IntsU> &other ) {
+    OnePInts& operator=( const cqmatrix::Matrix<IntsU> &other ) {
       NB = other.dimension();
       mat_ = other;
       return *this;
     }
     template <typename IntsU>
-    OnePInts& operator=( SquareMatrix<IntsU> &&other ) {
+    OnePInts& operator=( cqmatrix::Matrix<IntsU> &&other ) {
       NB = other.dimension();
       mat_ = std::move(other);
       return *this;
@@ -102,8 +102,8 @@ namespace ChronusQ {
     }
 
     // Matrix direct access
-    SquareMatrix<IntsT>& matrix() { return mat_; }
-    const SquareMatrix<IntsT>& matrix() const { return mat_; }
+    cqmatrix::Matrix<IntsT>& matrix() { return mat_; }
+    const cqmatrix::Matrix<IntsT>& matrix() const { return mat_; }
     IntsT* pointer() { return mat_.pointer(); }
     const IntsT* pointer() const { return mat_.pointer(); }
 
@@ -141,7 +141,7 @@ namespace ChronusQ {
     }
 
     template <typename IntsU>
-    PauliSpinorSquareMatrices<IntsU> spinScatter() const {
+    cqmatrix::PauliSpinorMatrices<IntsU> spinScatter() const {
       return mat_.template spinScatter<IntsU>();
     }
 

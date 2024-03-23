@@ -48,7 +48,9 @@
 #include <chrono>
 #include <typeindex>
 #include <system_error>
+#include <unordered_set>
 #include <set>
+#include <bitset>
 
 #include <chronusq_config.hpp> // Configuration header
 

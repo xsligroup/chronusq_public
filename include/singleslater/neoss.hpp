@@ -83,7 +83,7 @@ namespace ChronusQ {
       // EXAMPLE: interCoulomb["electron"]["proton"] is the coulomb matrix for
       //   the electronic subsystem (in the electronic basis) coming from the
       //   protonic coulomb potential.
-      LabeledMap<LabeledMap<SquareMatrix<MatsT>>> interCoulomb;
+      LabeledMap<LabeledMap<cqmatrix::Matrix<MatsT>>> interCoulomb;
 
       // Two particle integral objects (same storage scheme as above)
       // Boolean is contractSecond
@@ -256,10 +256,10 @@ namespace ChronusQ {
       virtual void runSCF(EMPerturbation&);
       virtual void buildOrbitalModifierOptions();
       virtual void printProperties();
-      virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
-      virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
-      virtual void setOnePDMOrtho(SquareMatrix<MatsT>*);
-      virtual void setOnePDMAO(SquareMatrix<MatsT>*);
+      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
+      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock();
+      virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
+      virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);
       virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
       virtual double getTotalEnergy() { return this->totalEnergy; };
       virtual void setDenEqCoeff(bool val);

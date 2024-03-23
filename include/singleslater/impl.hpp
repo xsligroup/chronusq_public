@@ -50,16 +50,16 @@ namespace ChronusQ {
     SingleSlaterBase(dynamic_cast<const SingleSlaterBase&>(other)),
     WaveFunction<MatsT,IntsT>(dynamic_cast<const WaveFunction<MatsU,IntsT>&>(other)),
     //basisSet_(other.basisSet_),
-    fockMatrix(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.fockMatrix)),
-    fockMatrixOrtho(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.fockMatrixOrtho)),
-    coulombMatrix(std::make_shared<SquareMatrix<MatsT>>(*other.coulombMatrix)),
-    exchangeMatrix(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.exchangeMatrix)),
-    twoeH(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.twoeH)),
-    onePDMOrtho(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.onePDMOrtho)),
-    deltaOnePDM(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.deltaOnePDM)),
-    //coreH(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.coreH)),
-    coreH(other.coreH ? std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.coreH) : nullptr),
-    coreHPerturbed(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.coreHPerturbed)),
+    fockMatrix(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.fockMatrix)),
+    fockMatrixOrtho(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.fockMatrixOrtho)),
+    coulombMatrix(std::make_shared<cqmatrix::Matrix<MatsT>>(*other.coulombMatrix)),
+    exchangeMatrix(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.exchangeMatrix)),
+    twoeH(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.twoeH)),
+    onePDMOrtho(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.onePDMOrtho)),
+    deltaOnePDM(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.deltaOnePDM)),
+    //coreH(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.coreH)),
+    coreH(other.coreH ? std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.coreH) : nullptr),
+    coreHPerturbed(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.coreHPerturbed)),
     TPI(TPIContractions<MatsU,IntsT>::template convert<MatsT>(other.TPI)),
     coreHBuilder(CoreHBuilder<MatsU,IntsT>::template convert<MatsT>(other.coreHBuilder)),
     fockBuilder(FockBuilder<MatsU,IntsT>::template convert<MatsT>(other.fockBuilder)) {
@@ -97,15 +97,15 @@ namespace ChronusQ {
     SingleSlaterBase(dynamic_cast<SingleSlaterBase&&>(std::move(other))),
     WaveFunction<MatsT,IntsT>(dynamic_cast<WaveFunction<MatsU,IntsT>&&>(std::move(other))),
     //basisSet_(other.basisSet_),
-    fockMatrix(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.fockMatrix))),
-    fockMatrixOrtho(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.fockMatrixOrtho))),
-    coulombMatrix(std::make_shared<SquareMatrix<MatsT>>(std::move(*other.coulombMatrix))),
-    exchangeMatrix(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.exchangeMatrix))),
-    twoeH(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.twoeH))),
-    onePDMOrtho(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.onePDMOrtho))),
-    deltaOnePDM(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.deltaOnePDM))),
-    coreH(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.coreH))),
-    coreHPerturbed(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.coreHPerturbed))),
+    fockMatrix(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.fockMatrix))),
+    fockMatrixOrtho(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.fockMatrixOrtho))),
+    coulombMatrix(std::make_shared<cqmatrix::Matrix<MatsT>>(std::move(*other.coulombMatrix))),
+    exchangeMatrix(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.exchangeMatrix))),
+    twoeH(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.twoeH))),
+    onePDMOrtho(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.onePDMOrtho))),
+    deltaOnePDM(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.deltaOnePDM))),
+    coreH(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.coreH))),
+    coreHPerturbed(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.coreHPerturbed))),
     TPI(TPIContractions<MatsU,IntsT>::template convert<MatsT>(other.TPI)),
     coreHBuilder(CoreHBuilder<MatsU,IntsT>::template convert<MatsT>(other.coreHBuilder)),
     fockBuilder(FockBuilder<MatsU,IntsT>::template convert<MatsT>(other.fockBuilder)) {
@@ -157,7 +157,7 @@ namespace ChronusQ {
       SPIN_OPERATOR_ALLOC(NB,exchangeMatrix);
       SPIN_OPERATOR_ALLOC(NB,twoeH);
 
-      coulombMatrix = std::make_shared<SquareMatrix<MatsT>>(memManager, NB);
+      coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager, NB);
     } else {
 
       SPIN_OPERATOR_ALLOC(2*NB,fockMatrix);
@@ -169,7 +169,7 @@ namespace ChronusQ {
       SPIN_OPERATOR_ALLOC(2*NB,exchangeMatrix);
       SPIN_OPERATOR_ALLOC(2*NB,twoeH);
 
-      coulombMatrix = std::make_shared<SquareMatrix<MatsT>>(memManager, 2*NB);
+      coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager, 2*NB);
     }
 
   }; // SingleSlater<MatsT>::alloc
@@ -196,6 +196,45 @@ namespace ChronusQ {
    coulombMatrix = nullptr;
 
   }; // SingleSlater<MatsT>::dealloc
+
+  template <typename MatsT, typename IntsT>
+  class NEOSS;
+
+  /**
+   *  \brief The pointer convertor. This static function converts
+   *  the underlying polymorphism correctly to hold a different
+   *  type of matrices.
+   */
+  template <typename MatsT, typename IntsT>
+  template <typename MatsU>
+  std::shared_ptr<SingleSlater<MatsU,IntsT>>
+  SingleSlater<MatsT,IntsT>::convert(const std::shared_ptr<SingleSlater<MatsT,IntsT>>& ss) {
+
+    if (not ss) return nullptr;
+
+    const std::type_info &tID(typeid(*ss));
+
+    if (tID == typeid(NEOSS<MatsT,IntsT>)) {
+      return std::make_shared<NEOSS<MatsU,IntsT>>(
+          *std::dynamic_pointer_cast<NEOSS<MatsT,IntsT>>(ss));
+
+    } else if (tID == typeid(HartreeFock<MatsT,IntsT>)) {
+      return std::make_shared<HartreeFock<MatsU,IntsT>>(
+          *std::dynamic_pointer_cast<HartreeFock<MatsT,IntsT>>(ss));
+
+    } else if (tID == typeid(KohnSham<MatsT,IntsT>)) {
+      return std::make_shared<KohnSham<MatsU,IntsT>>(
+          *std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(ss));
+
+    } else {
+      std::stringstream errMsg;
+      errMsg << "SingleSlater implementation \"" << tID.name() << "\" not registered in convert." << std::endl;
+      CErr(errMsg.str(),std::cout);
+    }
+
+    return nullptr;
+
+  }
  
 }; // namespace ChronusQ
 

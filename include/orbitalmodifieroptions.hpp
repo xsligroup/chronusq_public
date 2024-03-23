@@ -166,6 +166,8 @@ namespace ChronusQ {
     std::string refLongName_;
     std::string refShortName_;
 
+    void parseSection(const InputMap &dict);
+
   }; // SCFControls struct
 
 
@@ -225,9 +227,8 @@ namespace ChronusQ {
     void parseSection(const InputMap &dict);
   };
 
-  struct SCFOptions {
-
-  };
+  //struct SCFOptions {
+  //};
 
   struct OrbitalModifierOptions {
 

@@ -42,7 +42,7 @@ namespace ChronusQ {
   template <typename MatsU>
   Quantum<MatsT>::Quantum(const Quantum<MatsU> &other, int dummy) : 
       QuantumBase(dynamic_cast<const QuantumBase&>(other)),
-      onePDM(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(*other.onePDM)){
+      onePDM(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*other.onePDM)){
 
     #ifdef _QuantumDebug
     std::cout << "Quantum<T>::Quantum(const Quantum<U>&) (this = " << this 
@@ -66,7 +66,7 @@ namespace ChronusQ {
   template <typename MatsU>
   Quantum<MatsT>::Quantum(Quantum<MatsU> &&other, int dummy) : 
     QuantumBase(dynamic_cast<QuantumBase&&>(std::move(other))),
-    onePDM(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(std::move(*other.onePDM))) {
+    onePDM(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(std::move(*other.onePDM))) {
 
     #ifdef _QuantumDebug
     std::cout << "Quantum<T>::Quantum(Quantum<U>&&) (this = " << this 

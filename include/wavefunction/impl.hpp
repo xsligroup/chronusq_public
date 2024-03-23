@@ -56,7 +56,7 @@ namespace ChronusQ {
     //molecule_(other.molecule_), basisSet_(other.basisSet_) {
 
     mo.reserve(2);
-    for (const SquareMatrix<MatsU> &mat : other.mo)
+    for (const cqmatrix::Matrix<MatsU> &mat : other.mo)
       mo.emplace_back(mat);
 
 #ifdef _WaveFunctionDebug
@@ -88,7 +88,7 @@ namespace ChronusQ {
     //molecule_(other.molecule_), basisSet_(other.basisSet_) {
 
     mo.reserve(2);
-    for (SquareMatrix<MatsU> &mat : other.mo)
+    for (cqmatrix::Matrix<MatsU> &mat : other.mo)
       mo.emplace_back(std::move(mat));
 
 #ifdef _WaveFunctionDebug

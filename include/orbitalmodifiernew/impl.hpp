@@ -32,7 +32,7 @@
 namespace ChronusQ {
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-  void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ao2orthoFock(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fockSquareAO) {
+  void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ao2orthoFock(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO) {
 
   ROOT_ONLY(this->mpiComm);
   if(fockSquareAO.empty()) fockSquareAO = this->singleSlaterSystem.getFock();
@@ -48,7 +48,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
 };
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-  void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ao2orthoDen(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> tempOnePDMSquareAO) {
+  void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ao2orthoDen(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> tempOnePDMSquareAO) {
 
   ROOT_ONLY(this->mpiComm);
   if(tempOnePDMSquareAO.empty()) tempOnePDMSquareAO = this->singleSlaterSystem.getOnePDM();
@@ -65,7 +65,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
 
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ortho2aoDen(std::vector<SquareMatrix<MatsT>> tempOnePDMSquareOrtho) {
+void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::ortho2aoDen(std::vector<cqmatrix::Matrix<MatsT>> tempOnePDMSquareOrtho) {
 
   ROOT_ONLY(this->mpiComm);
   //if(tempOnePDMSquareOrtho.empty()) tempOnePDMSquareOrtho = this->singleSlaterSystem.getOnePDMOrtho();

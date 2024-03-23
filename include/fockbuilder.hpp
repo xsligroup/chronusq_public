@@ -66,10 +66,10 @@ namespace ChronusQ {
     virtual void formGD(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
     
     virtual void formRawGDInBatches(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool, double, bool, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &,
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> &);
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &,
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &);
     
     virtual size_t formRawGDSCRSizePerBatch(SingleSlater<MatsT,IntsT> &, bool, bool) const;
     

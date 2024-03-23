@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
   if( rstFileName == oldRstFileName ) 
     CErr("Old (-z) and current (-b) rstFile cannot have the same name!");
 
-  if( not oldRstFileName.empty() ) {
+  if (not oldRstFileName.empty() and rank == 0) {
 
     std::ifstream oldRstFile( oldRstFileName.c_str(), std::ios::binary );
 
@@ -111,23 +111,16 @@ int main(int argc, char *argv[]) {
     }
 
     // Remove destination file if it exists
-    if( std::ifstream( rstFileName.c_str(), std::ios::binary ) and rank == 0 )
-      std::remove( rstFileName.c_str() );
+    if(std::ifstream(rstFileName.c_str(), std::ios::binary))
+      std::remove(rstFileName.c_str() );
 
-    std::ofstream rstFile( rstFileName.c_str(),    std::ios::binary );
+    std::ofstream rstFile(rstFileName.c_str(), std::ios::binary);
 
     // Copy over "old" rst file into new rst file
-    if( rank == 0 ) {
-
-      std::cout << "  * Copying " << oldRstFileName << "  -->  "
-        << rstFileName << std::endl;
-
-      rstFile << oldRstFile.rdbuf();
-
-    }
-
+    std::cout << "  * Copying " << oldRstFileName << "  -->  "
+              << rstFileName << std::endl;
+    rstFile << oldRstFile.rdbuf();
   }
-
 
   RunChronusQ(inFileName,outFileName,rstFileName,scrFileName);
 

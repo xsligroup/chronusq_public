@@ -49,7 +49,7 @@ namespace ChronusQ {
 
     size_t         nExtrap;     ///< Size of extrapolation space
     std::vector<T> coeffs;      ///< Vector of extrapolation coeficients
-    const std::vector<std::vector<SquareMatrix<T>>> &errorMetric; ///< Vector of vectors containing error metrics
+    const std::vector<std::vector<cqmatrix::Matrix<T>>> &errorMetric; ///< Vector of vectors containing error metrics
 
     // Constructor
       
@@ -62,7 +62,7 @@ namespace ChronusQ {
      *  \param [in]  errorMetric Vector of vectors containing error metrics
      *  \param [out] InvFail     Boolean of whether matrix inversion failed
      */ 
-    DIIS(size_t nExtrap, const std::vector<std::vector<SquareMatrix<T>>> &errorMetric) :
+    DIIS(size_t nExtrap, const std::vector<std::vector<cqmatrix::Matrix<T>>> &errorMetric) :
       nExtrap(nExtrap), errorMetric(errorMetric) {
 
       coeffs.resize(nExtrap+1);
@@ -93,7 +93,7 @@ namespace ChronusQ {
     int N          = nExtrap + 1;
     int NRHS       = 1;
     bool InvFail   = false;
-    SquareMatrix<T> B(errorMetric[0][0].memManager(), N);
+    cqmatrix::Matrix<T> B(errorMetric[0][0].memManager(), N);
     B.clear();
 
     // Build the B matrix

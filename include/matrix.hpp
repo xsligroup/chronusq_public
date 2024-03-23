@@ -24,6 +24,6 @@
 
 #pragma once
 
-#include <matrix/squarematrix.hpp>
+#include <matrix/matrix.hpp>
 #include <matrix/paulispinormatrices.hpp>
 #include <matrix/scaledmatrix.hpp>

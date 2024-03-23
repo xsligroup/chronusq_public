@@ -25,7 +25,7 @@ target_sources( cq PRIVATE
 transform.cxx
 spatialtospinor.cxx
 components.cxx
-arithmetic/squarematrix.cxx
+arithmetic/matrix.cxx
 arithmetic/paulispinormatrices.cxx
 arithmetic/scaledmatrix.cxx
 impl.cxx)

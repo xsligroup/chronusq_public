@@ -77,9 +77,9 @@ namespace ChronusQ {
 
     // Compute core Hamitlonian
     virtual void computeCoreH(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void compute4CCH(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
 
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&, SingleSlater<MatsT,IntsT>&) {

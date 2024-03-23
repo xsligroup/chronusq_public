@@ -165,8 +165,8 @@ namespace ChronusQ {
     _SSTyp<dcomplex,IntsT>    propagator_; ///< Total system with complex matrices 
     std::vector<SingleSlater<dcomplex, IntsT>*> systems_; ///< Objects for time propagation
 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> DOSav;
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> UH;
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> DOSav;
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> UH;
     
   public:
 

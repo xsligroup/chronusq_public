@@ -25,6 +25,7 @@
 #include <cerr.hpp>
 
 #include <util/matout.hpp>
+#include <util/math.hpp>
 
 extern "C" {
 
@@ -141,9 +142,8 @@ namespace ChronusQ {
             locC[i] = ALPHA * locA[i] + BETA * locB[i];
         }
       }
-    } else {
+    } else if (M == N) {
 
-      assert( M == N );
       if( TRANSA != 'N' ) 
         assert( reinterpret_cast<const void*>(A) != reinterpret_cast<void*>(C) );
       if( TRANSB != 'N' )
@@ -173,6 +173,38 @@ namespace ChronusQ {
       else TRY_MAT_ADD(R, T)
       else TRY_MAT_ADD(T, R)
 
+    } else if ( TRANSA == 'N' and TRANSB == 'T') {
+      #pragma omp parallel
+      {
+        const _F1 *locA = A;
+        const _F2 *locB = B;
+        _F3 *locC = C;
+        #pragma omp for
+        for(int j = 0; j < N; j++) {
+          locA = A + j*LDA;
+          locB = B + j;
+          locC = C + j*LDC;
+          for(int i = 0; i < M; i++)
+            locC[i] = ALPHA * locA[i] + BETA * locB[i * LDB];
+        }
+      }
+    } else if ( TRANSA == 'N' and TRANSB == 'C') {
+      #pragma omp parallel
+      {
+        const _F1 *locA = A;
+        const _F2 *locB = B;
+        _F3 *locC = C;
+        #pragma omp for
+        for(int j = 0; j < N; j++) {
+          locA = A + j*LDA;
+          locB = B + j;
+          locC = C + j*LDC;
+          for(int i = 0; i < M; i++)
+            locC[i] = ALPHA * locA[i] + BETA * SmartConj(locB[i * LDB]);
+        }
+      }
+    } else {
+      CErr("NYI in generic template");
     }
 
   }; // MatAdd generic template

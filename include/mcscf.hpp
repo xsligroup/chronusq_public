@@ -149,7 +149,7 @@ namespace ChronusQ {
     // Reduced density Matrices (RDMs) only span over correlated space
     // SOI: state of interest, for orbital rotation
     // it's either state specific or state averaged RDM
-    std::shared_ptr<SquareMatrix<MatsT>>    oneRDMSOI = nullptr;
+    std::shared_ptr<cqmatrix::Matrix<MatsT>>    oneRDMSOI = nullptr;
     std::shared_ptr<InCore4indexTPI<MatsT>> twoRDMSOI = nullptr;
     // Disable default, copy and move constructors
     MCSCF()              = delete;

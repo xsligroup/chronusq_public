@@ -61,7 +61,7 @@ namespace ChronusQ {
 
 
     // 1PDM storage
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM; ///< 1PDM array (Scalar + Magnetization)
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM; ///< 1PDM array (Scalar + Magnetization)
 
     // Constructors
       

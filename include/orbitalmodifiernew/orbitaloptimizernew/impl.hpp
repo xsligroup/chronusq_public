@@ -95,12 +95,15 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
     // Coefficients and Density represent different wavefunctions
     this->singleSlaterSystem.setDenEqCoeff(false);
 
-#if 0
-//#ifdef CQ_ENABLE_MPI
+    ProgramTimer::tock("SCF Iter");
 
-  // Broadcast the updated MO's/Eigenvalues to all MPI processes
+  };   // Iteration loop
+
+#ifdef CQ_ENABLE_MPI
+
+      // Broadcast the updated MO's/Eigenvalues to all MPI processes
     if( MPISize(this->mpiComm) > 1 ) {
-      for( auto& m : mo ){
+      for( auto& m : this->singleSlaterSystem.moCoefficients ){
         std::cerr  << "  *** Scattering the MOs ***\n";
         size_t Nmo = m.get().dimension();
         MPIBCast(m.get().pointer(),Nmo*Nmo,0,this->mpiComm);
@@ -108,17 +111,13 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
 
       std::cerr  << "  *** Scattering EPS ***\n";
       size_t cnt = 0;
-      for( auto* e : eps ){
-        size_t Nmo = mo[cnt].get().dimension();
+      for( auto* e : this->singleSlaterSystem.moEigenvalues ){
+        size_t Nmo = this->singleSlaterSystem.moCoefficients[cnt].get().dimension();
         MPIBCast(e,Nmo,0,this->mpiComm);
         ++cnt;
       }
     }
 #endif
-
-    ProgramTimer::tock("SCF Iter");
-
-  };   // Iteration loop
 
   // Populate moFock after SCF
   this->singleSlaterSystem.MOFOCK();
@@ -309,7 +308,7 @@ bool OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::evaluateProgress(EMPerturba
         this->scfConv.maxdP = 0.;
         // Here, onePDM is in the full spin-block form
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          SquareMatrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
+          cqmatrix::Matrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
           prevOnePDM[a] = *onePDM[a];
           size_t NB = onePDM[a]->dimension();
           this->scfConv.rmsdP += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
@@ -364,7 +363,7 @@ double OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::computeDensityConv() {
     // Compute RMS change in Density
     double rmsDen = 0.;
     for( size_t a=0; a<currDen.size(); a++ ) {
-        SquareMatrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
+        cqmatrix::Matrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
         size_t NB = currDen[a]->dimension();
         rmsDen += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
         prevOnePDM[a] = *currDen[a];
@@ -384,7 +383,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::computeEigenvalues(EMPertur
   for( size_t i = 0; i < this->singleSlaterSystem.moCoefficients.size(); i++ ) {
     size_t NB = fock[i]->dimension();
 
-    SquareMatrix<MatsT> moFock = fock[i]->transform('N', this->singleSlaterSystem.moCoefficients[i].get().pointer(), NB, NB);
+    cqmatrix::Matrix<MatsT> moFock = fock[i]->transform('N', this->singleSlaterSystem.moCoefficients[i].get().pointer(), NB, NB);
     for( size_t a = 0; a < NB; a++ )
       this->singleSlaterSystem.moEigenvalues[i][a] = std::real(moFock(a, a));
   }

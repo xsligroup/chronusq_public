@@ -64,7 +64,7 @@ namespace ChronusQ {
     assert( memManager.template getSize(op) == DSize );
 
     // Perform proper trace
-    MatsT *Dptr = (*onePDM)[static_cast<PAULI_SPINOR_COMPS>(DenTyp)].pointer();
+    MatsT *Dptr = (*onePDM)[static_cast<cqmatrix::PAULI_SPINOR_COMPS>(DenTyp)].pointer();
 
     return OperatorTrace(DSize,Dptr,op);
 

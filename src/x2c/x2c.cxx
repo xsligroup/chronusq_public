@@ -44,7 +44,7 @@
 namespace ChronusQ {
 
   template <typename MatsT>
-  void GatherUSpin(const SquareMatrix<MatsT> &UL, const SquareMatrix<MatsT> &US, MatsT *U) {
+  void GatherUSpin(const cqmatrix::Matrix<MatsT> &UL, const cqmatrix::Matrix<MatsT> &US, MatsT *U) {
     size_t NP = UL.dimension() / 2;
     SetMat('N', NP, 2*NP, 1.0, UL.pointer(), 2*NP, U, 4*NP);
     SetMat('N', NP, 2*NP, 1.0, US.pointer(), 2*NP, U + NP, 4*NP);
@@ -52,11 +52,11 @@ namespace ChronusQ {
     SetMat('N', NP, 2*NP, 1.0, US.pointer() + NP, 2*NP, U + 3*NP, 4*NP);
   }
 
-  template void GatherUSpin(const SquareMatrix<double> &UL, const SquareMatrix<double> &US, double *U);
-  template void GatherUSpin(const SquareMatrix<dcomplex> &UL, const SquareMatrix<dcomplex> &US, dcomplex *U);
+  template void GatherUSpin(const cqmatrix::Matrix<double> &UL, const cqmatrix::Matrix<double> &US, double *U);
+  template void GatherUSpin(const cqmatrix::Matrix<dcomplex> &UL, const cqmatrix::Matrix<dcomplex> &US, dcomplex *U);
 
   template <typename MatsT>
-  void ReOrganizeMOSpin(const SquareMatrix<MatsT> &moSpin, SquareMatrix<MatsT> &mo) {
+  void ReOrganizeMOSpin(const cqmatrix::Matrix<MatsT> &moSpin, cqmatrix::Matrix<MatsT> &mo) {
 
     size_t NP = moSpin.dimension() / 4;
 
@@ -74,8 +74,8 @@ namespace ChronusQ {
            mo.pointer() + 3 * NP, 4 * NP);
   }
 
-  template void ReOrganizeMOSpin(const SquareMatrix<double> &moSpin, SquareMatrix<double> &mo);
-  template void ReOrganizeMOSpin(const SquareMatrix<dcomplex> &moSpin, SquareMatrix<dcomplex> &mo);
+  template void ReOrganizeMOSpin(const cqmatrix::Matrix<double> &moSpin, cqmatrix::Matrix<double> &mo);
+  template void ReOrganizeMOSpin(const cqmatrix::Matrix<dcomplex> &moSpin, cqmatrix::Matrix<dcomplex> &mo);
 
 
 
@@ -84,7 +84,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::SNSOScale(
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH,
       SNSO_TYPE snso_type) {
 
     if( this->basisSet_.maxL > 7 ) CErr("SNSO scaling for L > 7 NYI");
@@ -152,7 +152,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::RowDepDCB_SNSO(
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     size_t NB = basisSet_.nBasis;
 
@@ -244,7 +244,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::computeOneEX2C(EMPerturbation &emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
 #ifdef REAL_SPACE_X2C_ALGORITHM
     computeX2C_realSpace(emPert, coreH);
@@ -331,7 +331,7 @@ namespace ChronusQ {
 
     // Allocate W separately  as it's needed later
     size_t LDW = 2*NPU;
-    SquareMatrix<MatsT> Wp(potential->template formW<MatsT>());
+    cqmatrix::Matrix<MatsT> Wp(potential->template formW<MatsT>());
 
     // Subtract out 2mc^2 from W diagonals
     const double WFact = 2. * SpeedOfLight * SpeedOfLight;
@@ -380,9 +380,9 @@ namespace ChronusQ {
 
 
     // Reuse the charge conjugated space for X and Y
-    X = std::make_shared<SquareMatrix<MatsT>>(memManager_, 2*NPU);
+    X = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NPU);
     X->clear();
-    Y = std::make_shared<SquareMatrix<MatsT>>(memManager_, 2*NPU);
+    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NPU);
     Y->clear();
 
     // Form X = S * L^-1
@@ -407,7 +407,7 @@ namespace ChronusQ {
                 2*NPU, Y->pointer(), Y->dimension(), Y->pointer(), Y->dimension(), memManager_);
 
     // Build the effective two component CH in "L"
-    SquareMatrix<MatsT> FullCH2C(memManager_, 2*NPU);
+    cqmatrix::Matrix<MatsT> FullCH2C(memManager_, 2*NPU);
 
     // Copy potential into spin diagonal blocks of 2C CH
     SetMatDiag(NPU,NPU,potential->pointer(),NPU,FullCH2C.pointer(),2*NPU);
@@ -452,7 +452,7 @@ namespace ChronusQ {
 
     // Allocate memory for the uncontracted spin components
     // of the 2C CH
-    PauliSpinorSquareMatrices<MatsT> HUn(
+    cqmatrix::PauliSpinorMatrices<MatsT> HUn(
         FullCH2C.template spinScatter<MatsT>(
             ssOptions_.hamiltonianOptions.OneESpinOrbit,ssOptions_.hamiltonianOptions.OneESpinOrbit));
 
@@ -477,14 +477,14 @@ namespace ChronusQ {
   }
 
   template void X2C<dcomplex,double>::computeOneEX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>);
 
   /**
    *  \brief X2C core Hamiltonian with GIAO.
    */
   template <>
   void X2C<dcomplex, dcomplex>::computeOneEX2C(EMPerturbation &emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> coreH) {
 
 #ifdef REAL_SPACE_X2C_ALGORITHM
     CErr("No Real Space for GIAO!",std::cout);
@@ -683,7 +683,7 @@ namespace ChronusQ {
 
     // Allocate W separately as it's needed later
     size_t LDW = 2*NP;
-    W = std::make_shared<SquareMatrix<dcomplex>>(
+    W = std::make_shared<cqmatrix::Matrix<dcomplex>>(
         std::dynamic_pointer_cast<OnePRelInts<dcomplex>>(
             uncontractedInts_.potential)->template formW<dcomplex>());
     auto Wp = W->pointer();
@@ -1175,9 +1175,9 @@ namespace ChronusQ {
     LUInv(2*NP,L,4*NP,memManager_);
 
     // Save X and Y
-    X = std::make_shared<SquareMatrix<dcomplex>>(memManager_, 2*NP);
+    X = std::make_shared<cqmatrix::Matrix<dcomplex>>(memManager_, 2*NP);
     X->clear();
-    Y = std::make_shared<SquareMatrix<dcomplex>>(memManager_, 2*NP);
+    Y = std::make_shared<cqmatrix::Matrix<dcomplex>>(memManager_, 2*NP);
     Y->clear();
 
     // Form X = S * L^-1
@@ -1207,7 +1207,7 @@ namespace ChronusQ {
       CSCR1,2*NP,dcomplex(0.),Y->pointer(),Y->dimension());
 
     // Build the effective two component CH 
-    SquareMatrix<dcomplex> FullCH2C(memManager_, 2*NP);
+    cqmatrix::Matrix<dcomplex> FullCH2C(memManager_, 2*NP);
     FullCH2C.clear();
 
     // Copy P2P into spin diagonal blocks of 2C CH
@@ -1281,7 +1281,7 @@ namespace ChronusQ {
 
     // Allocate memory for the uncontracted spin components
     // of the 2C CH
-    PauliSpinorSquareMatrices<dcomplex> HUn(
+    cqmatrix::PauliSpinorMatrices<dcomplex> HUn(
         FullCH2C.template spinScatter<dcomplex>(
             ssOptions_.hamiltonianOptions.OneESpinOrbit,ssOptions_.hamiltonianOptions.OneESpinOrbit));
 
@@ -1310,7 +1310,7 @@ namespace ChronusQ {
 
 
   template void X2C<double,double>::computeOneEX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>);
 
   /**
    *  \brief Compute the picture change matrices UL, US
@@ -1435,13 +1435,13 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::computeOneEX2C_UDU(EMPerturbation& emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
     // Allocate W separately  as it's needed later
-    W = std::make_shared<SquareMatrix<MatsT>>(
+    W = std::make_shared<cqmatrix::Matrix<MatsT>>(
         std::dynamic_pointer_cast<OnePRelInts<IntsT>>(
             uncontractedInts_.potential)->template formW<MatsT>());
 
@@ -1455,7 +1455,7 @@ namespace ChronusQ {
     const OnePInts<IntsT> &V2c = uncontractedInts_.potential->
         template spatialToSpinBlock<IntsT>();
 
-    SquareMatrix<MatsT> Hx2c(memManager_, 2*NB);
+    cqmatrix::Matrix<MatsT> Hx2c(memManager_, 2*NB);
     MatsT *SCR = memManager_.malloc<MatsT>(4*NP*NB);
 
     // Hx2c = UL^H * T2c * US
@@ -1492,30 +1492,30 @@ namespace ChronusQ {
   }
 
   template void X2C<dcomplex,double>::computeOneEX2C_UDU(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>);
 
   template<> void X2C<dcomplex,dcomplex>::computeOneEX2C_UDU(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 
   template void X2C<double,double>::computeOneEX2C_UDU(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>);
 
   /**
    *  \brief Compute the X2C Core Hamiltonian correction to NR
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::computeOneEX2C_corr(EMPerturbation &emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     computeOneEX2C(emPert, coreH);
 
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> NRcoreH =
-        std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, NP);
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> NRcoreH =
+        std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NP);
     NRcoreH->clear();
 
     NRCoreH<MatsT, IntsT>(uncontractedInts_, ssOptions_.hamiltonianOptions)
@@ -1526,24 +1526,24 @@ namespace ChronusQ {
   }
 
   template void X2C<dcomplex,double>::computeOneEX2C_corr(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>);
 
   template<> void X2C<dcomplex,dcomplex>::computeOneEX2C_corr(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 
   template void X2C<double,double>::computeOneEX2C_corr(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>);
 
   /**
    *  \brief Compute the X2C Core Hamiltonian in real space
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::computeFockX2C(EMPerturbation &emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrix,
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> pchgDipole_,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrix,
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> pchgDipole_,
       bool incore, double threshSchwarz) {
 
     size_t NP = uncontractedBasis_.nPrimitive;
@@ -1611,22 +1611,22 @@ namespace ChronusQ {
     SetMat('N', NP, 2*NB, 1.0, US + NP, 2*NP, U + 3*NP, 4*NP);
 
     // Generate X2C core Hamiltonian
-    SquareMatrix<MatsT> fourCompCoreH = fourCompSS.coreH->template spinGather<MatsT>();
+    cqmatrix::Matrix<MatsT> fourCompCoreH = fourCompSS.coreH->template spinGather<MatsT>();
 
     *coreH = fourCompCoreH.transform('N', U, 2*NB, 4*NP).template spinScatter<MatsT>(
         ssOptions_.hamiltonianOptions.OneESpinOrbit,ssOptions_.hamiltonianOptions.OneESpinOrbit);
 
     if (ssOptions_.hamiltonianOptions.x2cType == X2C_TYPE::FOCK
         and fockMatrix) {
-      SquareMatrix<MatsT> fourCompFock = fourCompSS.fockMatrix->template spinGather<MatsT>();
+      cqmatrix::Matrix<MatsT> fourCompFock = fourCompSS.fockMatrix->template spinGather<MatsT>();
 
       *fockMatrix = fourCompFock.transform('N', U, 2 * NB, 4 * NP).template spinScatter<MatsT>(
           ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
 
 
-      SquareMatrix<dcomplex> fourCompDipoleX = (*(fourCompSS.aoints_->lenElectric4C))[0].template spinGather<dcomplex>();
-      SquareMatrix<dcomplex> fourCompDipoleY = (*(fourCompSS.aoints_->lenElectric4C))[1].template spinGather<dcomplex>();
-      SquareMatrix<dcomplex> fourCompDipoleZ = (*(fourCompSS.aoints_->lenElectric4C))[2].template spinGather<dcomplex>();
+      cqmatrix::Matrix<dcomplex> fourCompDipoleX = (*(fourCompSS.aoints_->lenElectric4C))[0].template spinGather<dcomplex>();
+      cqmatrix::Matrix<dcomplex> fourCompDipoleY = (*(fourCompSS.aoints_->lenElectric4C))[1].template spinGather<dcomplex>();
+      cqmatrix::Matrix<dcomplex> fourCompDipoleZ = (*(fourCompSS.aoints_->lenElectric4C))[2].template spinGather<dcomplex>();
 
       *pchgDipole_[0] = fourCompDipoleX.transform('N', U, 2 * NB, 4 * NP).template spinScatter<dcomplex>(
           ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
@@ -1642,38 +1642,38 @@ namespace ChronusQ {
   } // X2C::computeFockX2C
 
   template void X2C<dcomplex,double>::computeFockX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>>, bool, double);
 
   template<> void X2C<dcomplex,dcomplex>::computeFockX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>>, bool, double) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 
   template void X2C<double,double>::computeFockX2C(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>, 
-      std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>, bool, double);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>,
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>, 
+      std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>>, bool, double);
 
 
   /**
    *  \brief Compute the X2C Core Hamiltonian in real space
    */
   template <typename MatsT, typename IntsT>
-  void X2C<MatsT, IntsT>::computeFockX2C_Umatrix(const SquareMatrix<MatsT> &fourCompMOSpin) {
+  void X2C<MatsT, IntsT>::computeFockX2C_Umatrix(const cqmatrix::Matrix<MatsT> &fourCompMOSpin) {
 
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
     // Compute transformation matrices in primitives
-    SquareMatrix<IntsT> S2c(uncontractedInts_.overlap->matrix().template spatialToSpinBlock<IntsT>());
-    SquareMatrix<IntsT> T2c(uncontractedInts_.kinetic->matrix().template spatialToSpinBlock<IntsT>());
+    cqmatrix::Matrix<IntsT> S2c(uncontractedInts_.overlap->matrix().template spatialToSpinBlock<IntsT>());
+    cqmatrix::Matrix<IntsT> T2c(uncontractedInts_.kinetic->matrix().template spatialToSpinBlock<IntsT>());
 
     // Get and reorganize coefficients
-    SquareMatrix<MatsT> fourCompMO(memManager_, fourCompMOSpin.dimension());
+    cqmatrix::Matrix<MatsT> fourCompMO(memManager_, fourCompMOSpin.dimension());
     fourCompMO.clear();
     ReOrganizeMOSpin(fourCompMOSpin, fourCompMO);
 
@@ -1688,7 +1688,7 @@ namespace ChronusQ {
     LUInv(2*NP, L, ldCoef, memManager_);
 
     // Compute X
-    X = std::make_shared<SquareMatrix<MatsT>>(memManager_, 2*NP);
+    X = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NP);
 
     // Form X = S * L^-1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
@@ -1698,8 +1698,8 @@ namespace ChronusQ {
     // Compute UL and US
 
     // UL = S^-1/2 ( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2 S^1/2
-    SquareMatrix<IntsT> Shalf(memManager_, 2*NP);
-    SquareMatrix<IntsT> SinvHalf(memManager_, 2*NP);
+    cqmatrix::Matrix<IntsT> Shalf(memManager_, 2*NP);
+    cqmatrix::Matrix<IntsT> SinvHalf(memManager_, 2*NP);
 
     MatDiagFunc(std::function<double(double)>([](double x){ return std::sqrt(x); }),
                 S2c.dimension(), S2c.pointer(), S2c.dimension(),
@@ -1710,7 +1710,7 @@ namespace ChronusQ {
 
     // S + 1/2c^2 X^H T X
     const double TFact = 0.5 / (SpeedOfLight * SpeedOfLight);
-    Y = std::make_shared<SquareMatrix<MatsT>>(S2c + TFact * T2c.transform('N', X->pointer(), X->dimension(), X->dimension()));
+    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(S2c + TFact * T2c.transform('N', X->pointer(), X->dimension(), X->dimension()));
 
     // S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2
     *Y = Y->transform('N', SinvHalf.pointer(), SinvHalf.dimension(), SinvHalf.dimension());
@@ -1720,7 +1720,7 @@ namespace ChronusQ {
                 Y->dimension(), Y->pointer(), Y->dimension(),
                 Y->pointer(), Y->dimension(), memManager_);
 
-    SquareMatrix<MatsT> SCR(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> SCR(memManager_, 2*NP);
 
     // CSCR1 = (( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2 S^1/2)^T
     blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
@@ -1730,7 +1730,7 @@ namespace ChronusQ {
                MatsT(0.0), SCR.pointer(), SCR.dimension());
 
     // compute UL
-    SquareMatrix<MatsT> ULsub(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> ULsub(memManager_, 2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans,
                2*NP, 2*NP, 2*NP,
                MatsT(1.0), SinvHalf.pointer(), SinvHalf.dimension(),
@@ -1738,7 +1738,7 @@ namespace ChronusQ {
                MatsT(0.0), ULsub.pointer(), ULsub.dimension());
 
     // compute US = X UL
-    SquareMatrix<MatsT> USsub(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> USsub(memManager_, 2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                2*NP, 2*NP, 2*NP,
                MatsT(1.0), X->pointer(), X->dimension(),
@@ -1766,13 +1766,13 @@ namespace ChronusQ {
 
   }
 
-  template<> void X2C<dcomplex, dcomplex>::computeFockX2C_Umatrix(const SquareMatrix<dcomplex>&) {
+  template<> void X2C<dcomplex, dcomplex>::computeFockX2C_Umatrix(const cqmatrix::Matrix<dcomplex>&) {
     CErr("X2C + Complex Ints NYI",std::cout);
   }
 
-  template void X2C<dcomplex, double>::computeFockX2C_Umatrix(const SquareMatrix<dcomplex>&);
+  template void X2C<dcomplex, double>::computeFockX2C_Umatrix(const cqmatrix::Matrix<dcomplex>&);
 
-  template void X2C<double, double>::computeFockX2C_Umatrix(const SquareMatrix<double>&);
+  template void X2C<double, double>::computeFockX2C_Umatrix(const cqmatrix::Matrix<double>&);
 
 
 
@@ -1818,8 +1818,8 @@ namespace ChronusQ {
     }
 
     SingleSlater<MatsT, IntsT> &ref = *std::dynamic_pointer_cast<SingleSlater<MatsT, IntsT>>(ss);
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH =
-        std::make_shared<PauliSpinorSquareMatrices<MatsT>>(
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH =
+        std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
             mem, basis.nBasis,
             ssOptions.hamiltonianOptions.OneESpinOrbit,
             ssOptions.hamiltonianOptions.OneESpinOrbit);
@@ -1862,9 +1862,9 @@ namespace ChronusQ {
         threshSchwarz = tpi->threshSchwarz();
 
       // Initialize the returned dipole matrix
-      ref.pchgDipole_[0] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
-      ref.pchgDipole_[1] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
-      ref.pchgDipole_[2] = std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[0] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[1] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[2] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
 
       x2c->computeFockX2C(emPert, coreH, ref.fockMatrix, ref.pchgDipole_, incore, threshSchwarz);
 

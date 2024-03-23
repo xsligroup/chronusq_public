@@ -54,11 +54,11 @@ namespace ChronusQ {
         systems_.push_back(system.get());
 
         DOSav.push_back(
-          std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(
+          std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(
             memManager_, NB, hasXY, hasZ
           ));
         UH.push_back(
-          std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(
+          std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(
             memManager_, NB, hasXY, hasZ
           ));
 
@@ -74,11 +74,11 @@ namespace ChronusQ {
       systems_.push_back(&propagator_);
 
       DOSav.emplace_back(
-        std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(
+        std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(
           memManager_, NB, hasXY, hasZ
         ));
       UH.emplace_back(
-        std::make_shared<PauliSpinorSquareMatrices<dcomplex>>(
+        std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(
           memManager_, NB, hasXY, hasZ
         ));
 

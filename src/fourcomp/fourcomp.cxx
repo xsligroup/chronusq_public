@@ -38,21 +38,21 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void FourComponent<MatsT,IntsT>::compute4CCH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     coreH->clear();
 
     size_t NB = this->aoints_.overlap->nBasis();
 
     // Form 1/(4c^2)*W-T
-    SquareMatrix<MatsT> W_spinBlock(1./(4. * SpeedOfLight * SpeedOfLight)
+    cqmatrix::Matrix<MatsT> W_spinBlock(1./(4. * SpeedOfLight * SpeedOfLight)
         * std::dynamic_pointer_cast<OnePRelInts<IntsT>>(
               this->aoints_.potential)->template formW<MatsT>()
         - this->aoints_.kinetic->matrix()
               .template spatialToSpinBlock<MatsT>());
 
     // Spin Scatter 
-    PauliSpinorSquareMatrices<MatsT> W(W_spinBlock.template spinScatter<MatsT>());
+    cqmatrix::PauliSpinorMatrices<MatsT> W(W_spinBlock.template spinScatter<MatsT>());
 
     // Set the V block in the first diagonal of CH
     // V = [ V   0 ]
@@ -64,8 +64,8 @@ namespace ChronusQ {
     //      [     |    ]    [       |      ]
     
     // Spin Scatter
-    PauliSpinorSquareMatrices<MatsT> V2C(
-        PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(
+    cqmatrix::PauliSpinorMatrices<MatsT> V2C(
+        cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
             this->aoints_.potential->matrix()));
 
 
@@ -76,8 +76,8 @@ namespace ChronusQ {
     //  [   T |     ]    [     CP22 |          ]
     
     // Spin Scatter
-    PauliSpinorSquareMatrices<MatsT> T2C(
-        PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(
+    cqmatrix::PauliSpinorMatrices<MatsT> T2C(
+        cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
             this->aoints_.kinetic->matrix()));
 
     // Build 4C coreH
@@ -100,13 +100,13 @@ namespace ChronusQ {
 
 
   template void FourComponent<double,double>::compute4CCH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>);
 
   template void FourComponent<dcomplex,double>::compute4CCH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>);
 
   template<> void FourComponent<dcomplex,dcomplex>::compute4CCH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
     CErr("4C + Complex Ints NYI",std::cout);
   }
 
@@ -116,20 +116,20 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void FourComponent<MatsT,IntsT>::computeCoreH(EMPerturbation& emPert,
-      std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH) {
 
     compute4CCH(emPert, coreH);
 
   };  // void FourComponent::computeCoreH(std::vector<MatsT*> &CH)
 
   template void FourComponent<double,double>::computeCoreH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<double>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>);
 
   template void FourComponent<dcomplex,double>::computeCoreH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>);
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>);
 
   template<> void FourComponent<dcomplex,dcomplex>::computeCoreH(EMPerturbation&,
-      std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
     CErr("4C + Complex Ints NYI",std::cout);
   }
 

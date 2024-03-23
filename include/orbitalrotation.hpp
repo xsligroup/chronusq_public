@@ -26,8 +26,9 @@
 #include <chronusq_sys.hpp>
 #include <memmanager.hpp>
 #include <mcwavefunction.hpp>
-#include <matrix/squarematrix.hpp>
+#include <matrix/matrix.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
+#include <neworbitalrotation.hpp>
 
 // Orbital Rotation Headers
 
@@ -35,118 +36,82 @@
 
 namespace ChronusQ {
   
-  enum OrbitalRotationAlgorithm {
-    ORB_ROT_APPROX_QUASI_2ND_ORDER,
-    ORB_ROT_QUASI_2ND_ORDER,
-    ORB_ROT_2ND_ORDER,
-  };
+/* 
+ * \brief the OrbitalRotation class. The class can perform 
+ * post-SCF orbital rotation using Newton-Ralphson method
+ *
+ * \warning:
+ *    make sure the dimension of input are correct
+ *    make sure the input RDMs are in same definition.
+ *
+ * Exponential parametrization of the MO coefficient:
+ * |\Psi>_new = exp(X) |\Psi>_old 
+ *
+ */
+template <typename MatsT, typename IntsT>
+class OrbitalRotation { 
   
-  /* 
-   * Brief Definition of OrbitalRotationSettings
-   */
+protected:
   
-  struct OrbitalRotationSettings {
+  MCWaveFunction<MatsT,IntsT> & mcwfn_;
+  std::shared_ptr<cqmatrix::Matrix<MatsT>> orbitalGradient_ = nullptr;
+
+public:
+  
+  OrbitalRotationSettings & settings;
+
+  // delete default Constructor
+  OrbitalRotation() = delete;
+  OrbitalRotation(
+    MCWaveFunction<MatsT,IntsT> & mcwfn, 
+    OrbitalRotationSettings & input_settings):
+    mcwfn_(mcwfn), settings(input_settings) {
     
-    // blocks for rotation
-    bool rotate_within_correlated   = true;
-    bool rotate_inact_correlated    = true;
-    bool rotate_correlated_virtual  = true;
-    bool rotate_inact_virtual       = true;
-    bool rotate_negative_positive   = false;
+    auto & mopart = mcwfn_.MOPartition;
 
-    OrbitalRotationAlgorithm alg = ORB_ROT_APPROX_QUASI_2ND_ORDER;
-
-    // handle hessians 
-    double hessianDiagScale        = 2.0;
-    double hessianDiagDampTol      = 20.0;
-    double hessianDiagDamp         = 10.0;
-    double hessianDiagMinTol       = 1.0e-3;
+    if (mopart.nCorrO == 0) CErr("the correlated space cannot be empty in orbital rotation"); 
+    
+    if (mopart.nInact == 0) {
+      std::cout << "  No Inactive in Orbital Rotations" << std::endl;
+      settings.rotate_inact_correlated = false;
+      settings.rotate_inact_virtual    = false;
+    }
+    
+    if (mopart.nFVirt == 0) {
+      std::cout << "  No Frozen Virtual in Orbital Rotations" << std::endl;
+      settings.rotate_correlated_virtual = false; 
+      settings.rotate_inact_virtual      = false;
+    }
      
-    double XDampTol  = 0.5;
-    
-    OrbitalRotationSettings() = default;
-    OrbitalRotationSettings(const OrbitalRotationSettings &) = default;
-    OrbitalRotationSettings(OrbitalRotationSettings      &&) = default;
+
   
-    void print(bool fourComp);
-  };
+  }; // constructor
   
-  /* 
-   * \brief the OrbitalRotation class. The class can perform 
-   * post-SCF orbital rotation using Newton-Ralphson method
-   *
-   * \warning:
-   *    make sure the dimension of input are correct
-   *    make sure the input RDMs are in same definition.
-   *
-   * Exponential parametrization of the MO coefficient:
-   * |\Psi>_new = exp(X) |\Psi>_old 
-   *
-   */
-  template <typename MatsT, typename IntsT>
-  class OrbitalRotation { 
-    
-  protected:
-    
-    MCWaveFunction<MatsT,IntsT> & mcwfn_;
-    std::shared_ptr<SquareMatrix<MatsT>> orbitalGradient_ = nullptr;
-
-  public:
-    
-    OrbitalRotationSettings & settings;
-
-    // delete default Constructor
-    OrbitalRotation() = delete;
-    OrbitalRotation(
-      MCWaveFunction<MatsT,IntsT> & mcwfn, 
-      OrbitalRotationSettings & input_settings):
-      mcwfn_(mcwfn), settings(input_settings) {
-      
-      auto & mopart = mcwfn_.MOPartition;
-
-      if (mopart.nCorrO == 0) CErr("the correlated space cannot be empty in orbital rotation"); 
-      
-      if (mopart.nInact == 0) {
-        std::cout << "  No Inactive in Orbital Rotations" << std::endl;
-        settings.rotate_inact_correlated = false;
-        settings.rotate_inact_virtual    = false;
-      }
-      
-      if (mopart.nFVirt == 0) {
-        std::cout << "  No Frozen Virtual in Orbital Rotations" << std::endl;
-        settings.rotate_correlated_virtual = false; 
-        settings.rotate_inact_virtual      = false;
-      }
-       
-
-    
-    }; // constructor
-    
-    // use default copy and move constructor
-    OrbitalRotation(const OrbitalRotation<MatsT,IntsT> &) = default;
-    OrbitalRotation(OrbitalRotation<MatsT,IntsT> &&)      = default;
-	
-	~OrbitalRotation() = default;
-    
-    // Perform one-step Orbital Rotation based on 
-    // the underlying oneRDM and twoRDM
-    double computeOrbGradient(EMPerturbation &, SquareMatrix<MatsT> &, InCore4indexTPI<MatsT> &);
-	void rotateMO(EMPerturbation &, SquareMatrix<MatsT> &, InCore4indexTPI<MatsT> &);
-	
-    // generate improved virtual orbitals
-    void generateIVOs(EMPerturbation &, SquareMatrix<MatsT> &);
-    
-	void formGeneralizedFock1(EMPerturbation &, SquareMatrix<MatsT> &, MatsT *, const std::string &, bool deltaPQ = false);
-	void formGeneralizedFock2(EMPerturbation &, SquareMatrix<MatsT> &, InCore4indexTPI<MatsT> &, 
-      MatsT *, const std::string &);
-    void computeOrbOrbHessianDiag(EMPerturbation &, SquareMatrix<MatsT> &, InCore4indexTPI<MatsT> &, 
-      MatsT *);
-    //void computeOrbOrbHessian(MatsT *);
-    
-  }; // class OrbitalRotation
+  // use default copy and move constructor
+  OrbitalRotation(const OrbitalRotation<MatsT,IntsT> &) = default;
+  OrbitalRotation(OrbitalRotation<MatsT,IntsT> &&)      = default;
+  
+  ~OrbitalRotation() = default;
+  
+  // Perform one-step Orbital Rotation based on 
+  // the underlying oneRDM and twoRDM
+  double computeOrbGradient(EMPerturbation &, cqmatrix::Matrix<MatsT> &, InCore4indexTPI<MatsT> &);
+  void rotateMO(EMPerturbation &, cqmatrix::Matrix<MatsT> &, InCore4indexTPI<MatsT> &);
+  
+  // generate improved virtual orbitals
+  void generateIVOs(EMPerturbation &, cqmatrix::Matrix<MatsT> &);
+  
+  void formGeneralizedFock1(EMPerturbation &, cqmatrix::Matrix<MatsT> &, MatsT *, const std::string &, bool deltaPQ = false);
+  void formGeneralizedFock2(EMPerturbation &, cqmatrix::Matrix<MatsT> &, InCore4indexTPI<MatsT> &, 
+    MatsT *, const std::string &);
+  void computeOrbOrbHessianDiag(EMPerturbation &, cqmatrix::Matrix<MatsT> &, InCore4indexTPI<MatsT> &, 
+    MatsT *);
+  //void computeOrbOrbHessian(MatsT *);
+  
+}; // class OrbitalRotation
   
 
-}; // namespace ChronusQ
+} // namespace ChronusQ
 
 // Include declaration for specialization of OrbitalRotation
 

@@ -61,10 +61,10 @@ namespace ChronusQ {
   protected:
     size_t NBRI, NBNBRI;
     IntsT* ERI3J = nullptr; ///< Electron-Electron repulsion integrals (3 index)
-    std::shared_ptr<SquareMatrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)^-1/2
+    std::shared_ptr<cqmatrix::Matrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)^-1/2
     bool saveRawERI_ = false; ///< Save raw ERI before contraction with (P|Q)^-1/2
     IntsT* rawERI3J_ = nullptr; ///< raw Electron-Electron repulsion integrals (P|rs), compound rs
-    std::shared_ptr<SquareMatrix<IntsT>> rawERI2C_ = nullptr;// (P|Q)
+    std::shared_ptr<cqmatrix::Matrix<IntsT>> rawERI2C_ = nullptr;// (P|Q)
 
     void saveRawERI3J();
 
@@ -152,11 +152,11 @@ namespace ChronusQ {
     void clearRawERI() { this->memManager().free(rawERI3J_); rawERI2C_ = nullptr; }
     IntsT* rawERI3J() { return rawERI3J_; }
     const IntsT* rawERI3J() const { return rawERI3J_; }
-    std::shared_ptr<SquareMatrix<IntsT>> rawERI2C() const { return rawERI2C_; }
+    std::shared_ptr<cqmatrix::Matrix<IntsT>> rawERI2C() const { return rawERI2C_; }
 
     // 2-index ERI
-    std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() { return twocenterERI_; } // returns L=(P|Q)
-    const std::shared_ptr<SquareMatrix<IntsT>> twoIndexERI() const { return twocenterERI_; } // returns L=(P|Q)
+    std::shared_ptr<cqmatrix::Matrix<IntsT>> twoIndexERI() { return twocenterERI_; } // returns L=(P|Q)
+    const std::shared_ptr<cqmatrix::Matrix<IntsT>> twoIndexERI() const { return twocenterERI_; } // returns L=(P|Q)
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
@@ -169,7 +169,7 @@ namespace ChronusQ {
       CErr("AO integral evaluation with two basis sets is NOT implemented in super class InCoreRITPI.");
     }
 
-    static void halfInverse2CenterERI(SquareMatrix<IntsT> &S); ///< forms S^{-1/2}, destroys S
+    static void halfInverse2CenterERI(cqmatrix::Matrix<IntsT> &S); ///< forms S^{-1/2}, destroys S
 
     void contract2CenterERI(); ///< forms S^{-1/2}(Q|ij)
 

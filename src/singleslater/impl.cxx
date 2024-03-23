@@ -79,4 +79,14 @@ namespace ChronusQ {
   
   template NEOSS<dcomplex,double>::NEOSS(NEOSS<double, double>&&, int);
 
-}; // namespace ChronusQ
+  template std::shared_ptr<SingleSlater<double,double>>
+  SingleSlater<double,double>::convert(const std::shared_ptr<SingleSlater<double,double>>& ss);
+  template std::shared_ptr<SingleSlater<dcomplex,double>>
+  SingleSlater<double,double>::convert(const std::shared_ptr<SingleSlater<double,double>>& ss);
+  template std::shared_ptr<SingleSlater<dcomplex,double>>
+  SingleSlater<dcomplex,double>::convert(const std::shared_ptr<SingleSlater<dcomplex,double>>& ss);
+  template std::shared_ptr<SingleSlater<dcomplex,dcomplex>>
+  SingleSlater<dcomplex,dcomplex>::convert(const std::shared_ptr<SingleSlater<dcomplex,dcomplex>>& ss);
+
+
+  }; // namespace ChronusQ

@@ -46,6 +46,9 @@ namespace ChronusQ {
     operator int() const { return internal; }
 
   };
+  
+  struct MPI_Request {};
+  struct MPI_Status  {};
 
   static inline bool operator==(MPI_Comm c, MPI_Comm d){ 
     return c.internal == d.internal; }
@@ -68,7 +71,7 @@ namespace ChronusQ {
 #define MPI_UNDEFINED 1
 
   static inline void MPI_Barrier(MPI_Comm c) { };
-
+  static inline int MPI_Wait(MPI_Request *request, MPI_Status *status) { return 0; }
 
 #else // MPI is enabled
   template <typename T> MPI_Datatype mpi_data_type();
@@ -89,6 +92,8 @@ namespace ChronusQ {
 
   #undef REGISTER_MPI_TYPE
 #endif
+
+#define MPI_MAX_INT std::numeric_limits<int32_t>::max()
 
 
   static inline int MPIRank(MPI_Comm comm = MPI_COMM_WORLD) {
@@ -148,7 +153,9 @@ namespace ChronusQ {
 #ifdef ENABLE_BCAST_COUNTER
     bcastCounter++;
 #endif
-    MPI_Bcast(msg, count, mpi_data_type<T>(), root, c);
+    int bcast_count = std::min(count, MPI_MAX_INT);
+    MPI_Bcast(msg, bcast_count, mpi_data_type<T>(), root, c);
+    if (bcast_count < count) MPIBCast(msg + bcast_count, count - bcast_count, root, c);
 #endif
 
   }
@@ -164,12 +171,41 @@ namespace ChronusQ {
     MPIBCast(i, root, c);
     msg = bool(i);
   }
-
   
   template <typename T>
-  static inline void MPIReduce(const T* in, size_t n, T* out, int root, MPI_Comm c) {
+  static inline void MPIIBCast(T* msg, int count, int root, MPI_Comm c, MPI_Request* r) {
 #ifdef CQ_ENABLE_MPI
-    MPI_Reduce(in, out, n, mpi_data_type<T>(), MPI_SUM, root, c);
+    // might be wrong if count > std::numeric_limit<int32_t>::max() for mpich
+    MPI_Ibcast(msg, count, mpi_data_type<T>(), root, c, r);
+#endif
+  }
+
+  template <typename T>
+  static inline std::vector<MPI_Request> MPIIBCast(T* msg, int count, int root, MPI_Comm c) {
+    size_t max_T = MPI_MAX_INT / sizeof(T);
+    size_t n_requests = (count + max_T - 1) / max_T;
+    std::vector<MPI_Request> requests(n_requests);
+    for (auto i = 0ul; i < n_requests; i++) {
+      size_t count_i = (i == n_requests - 1) ? count - (max_T * (n_requests - 1)) : max_T;
+      MPIIBCast(msg + i * max_T, count_i, root, c, &requests[i]);
+    }
+    return requests;
+  }
+
+  static inline std::vector<MPI_Status> MPIWait(std::vector<MPI_Request>& requests) {
+    std::vector<MPI_Status> statuses(requests.size());
+    for (auto i = 0ul; i < requests.size(); i++) {
+      MPI_Wait(&requests[i], &statuses[i]);
+    }
+    return statuses;
+  }
+  
+  template <typename T>
+  static inline void MPIReduce(const T* in, int n, T* out, int root, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+    int nReduce = std::min(n, MPI_MAX_INT);  
+    MPI_Reduce(in, out, nReduce, mpi_data_type<T>(), MPI_SUM, root, c);
+    if (nReduce < n) MPIReduce(in + nReduce, n - nReduce, out + nReduce, root, c);
 #else
     std::copy_n(in, n, out);
 #endif
@@ -186,9 +222,15 @@ namespace ChronusQ {
   }
   
   template <typename T>
-  static inline void MPIAllReduce(const T* in, size_t n, T* out, MPI_Comm c) {
+  static inline void MPIAllReduce(const T* in, int n, T* out, MPI_Comm c) {
 #ifdef CQ_ENABLE_MPI
-    MPI_Allreduce(in, out, n, mpi_data_type<T>(), MPI_SUM, c);
+    int nReduce = std::min(n, MPI_MAX_INT);
+    if (in == out) {
+      MPI_Allreduce(MPI_IN_PLACE, out, nReduce, mpi_data_type<T>(), MPI_SUM, c);
+    } else {
+      MPI_Allreduce(in, out, nReduce, mpi_data_type<T>(), MPI_SUM, c);
+    }
+    if (nReduce < n) MPIAllReduce(in + nReduce, n - nReduce, out + nReduce, c);
 #else
     std::copy_n(in, n, out);
 #endif
@@ -206,6 +248,7 @@ namespace ChronusQ {
 #endif
   }
 
+  // might be wrong if count > std::numeric_limit<int32_t>::max() for mpich
   template <typename T>
   static inline void MPIScatterV(const T* x, 
       const std::vector<size_t>& sizes,
@@ -223,7 +266,21 @@ namespace ChronusQ {
    std::copy_n(x, recv_size, out);
 #endif
   }
+   
+  template <typename T>
+  static inline std::vector<T> MPIGather(const T& x, 
+      int root, MPI_Comm c) {
+#ifdef CQ_ENABLE_MPI
+   std::vector<T> out;
+   if (MPIRank(c) == root) out.resize(MPISize(c));
+   MPI_Gather(&x, 1, mpi_data_type<T>(), out.data(), 1, mpi_data_type<T>(), root, c);
+   return out;
+#else
+   return {x}; 
+#endif
+  }
 
+  // might be wrong if count > std::numeric_limit<int32_t>::max() for mpich
   template <typename T>
   static inline void MPIGatherV(const T* x,
       size_t size,
@@ -242,6 +299,7 @@ namespace ChronusQ {
 #endif
   }
 
+  // might be wrong if count > std::numeric_limit<int32_t>::max() for mpich
   template <typename T>
   static inline void MPIAllGatherV(const T* x,
       size_t size,

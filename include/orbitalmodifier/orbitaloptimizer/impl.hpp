@@ -299,7 +299,7 @@ bool OrbitalOptimizer<MatsT>::evaluateProgress(EMPerturbation& pert) {
         this->scfConv.maxdP = 0.;
         // Here, onePDM is in the full spin-block form
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          SquareMatrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
+          cqmatrix::Matrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
           prevOnePDM[a] = *onePDM[a];
           size_t NB = onePDM[a]->dimension();
           this->scfConv.rmsdP += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
@@ -354,7 +354,7 @@ double OrbitalOptimizer<MatsT> :: computeDensityConv() {
     // Compute RMS change in Density
     double rmsDen = 0.;
     for( size_t a=0; a<currDen.size(); a++ ) {
-        SquareMatrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
+        cqmatrix::Matrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
         size_t NB = currDen[a]->dimension();
         rmsDen += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
         prevOnePDM[a] = *currDen[a];
@@ -374,7 +374,7 @@ void OrbitalOptimizer<MatsT>::computeEigenvalues(EMPerturbation& pert, vecMORef<
   for( size_t i = 0; i < mo.size(); i++ ) {
     size_t NB = fock[i]->dimension();
 
-    SquareMatrix<MatsT> moFock = fock[i]->transform('N', mo[i].get().pointer(), NB, NB);
+    cqmatrix::Matrix<MatsT> moFock = fock[i]->transform('N', mo[i].get().pointer(), NB, NB);
     for( size_t a = 0; a < NB; a++ )
       eps[i][a] = std::real(moFock(a, a));
   }

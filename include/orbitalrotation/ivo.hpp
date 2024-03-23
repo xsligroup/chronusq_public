@@ -39,7 +39,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void OrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
-    SquareMatrix<MatsT> & oneRDM) {
+    cqmatrix::Matrix<MatsT> & oneRDM) {
     
     auto & mopart = mcwfn_.MOPartition;
     auto & mem    = mcwfn_.memManager;
@@ -63,7 +63,7 @@ namespace ChronusQ {
     /**************************************/
     /* Step 1: build scaled AO density    */
     /**************************************/ 
-    SquareMatrix<MatsT> SCR(mem, nAO); 
+    cqmatrix::Matrix<MatsT> SCR(mem, nAO); 
     SCR.clear();
     
     // Cas contribution
@@ -79,7 +79,7 @@ namespace ChronusQ {
     SCR = ss.fockMatrix->template spinGather<MatsT>(); 
     
     // transform to MO basis only with virtual block
-    SquareMatrix<MatsT> virtualFock(mem, nFVirt);
+    cqmatrix::Matrix<MatsT> virtualFock(mem, nFVirt);
     auto off_sizes = mcwfn_.mointsTF->parseMOType("ab");
     SCR.subsetTransform('N', mo.pointer(), nAO, off_sizes, virtualFock.pointer());  
     

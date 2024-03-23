@@ -94,8 +94,23 @@ namespace ChronusQ {
       return integral; 
     }; // get from ints
     
+    void erase(const std::string & name) { 
+      try { integrals.erase(name); } catch (...) {}
+    };
     void clear() { integrals.clear(); } 
-  
+    
+    void output(std::ostream &out, const std::string &s = "",
+      bool printFull = false) const {
+      
+      std::string output_str;
+      if (s == "") output_str = "* Integrals Collection: ";
+      else output_str = "* Integrals Collection in " + s + ": ";
+
+      out << output_str << std::endl;
+      for(auto const & iter: integrals) {
+        iter.second->output(out, iter.first, printFull); 
+      }
+    };
   }; // struct IntegralsCollection
   
   /**
@@ -164,7 +179,7 @@ namespace ChronusQ {
     std::shared_ptr<MultipoleInts<IntsT>> magnetic = nullptr;
 
     // 4-component dipole storage
-    std::shared_ptr<std::vector<PauliSpinorSquareMatrices<dcomplex>>> lenElectric4C = nullptr;
+    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>> lenElectric4C = nullptr;
 
     // 2-particle storage
     std::shared_ptr<TwoPInts<IntsT>> TPI = nullptr;

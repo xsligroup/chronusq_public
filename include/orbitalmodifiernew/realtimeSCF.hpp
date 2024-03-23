@@ -79,10 +79,10 @@ class RealTimeSCF : public OrbitalModifierNew<singleSlaterT, MatsT, IntsT> {
   //singleSlaterT<dcomplex,IntsT>    singleSlaterSystem; ///< Total system with complex matrices
   //std::vector<SingleSlater<MatsT, IntsT>*> systems_; ///< Objects for time propagation
 
-  //std::vector<std::vector<SquareMatrix<MatsT>>> onePDMSquareAOSave;
-  std::vector<SquareMatrix<MatsT>> previousOnePDMSquareOrtho;
-  std::vector<SquareMatrix<MatsT>> previousFockSquareOrtho;
-  std::vector<SquareMatrix<MatsT>> unitarySquareOrtho;
+  //std::vector<std::vector<cqmatrix::Matrix<MatsT>>> onePDMSquareAOSave;
+  std::vector<cqmatrix::Matrix<MatsT>> previousOnePDMSquareOrtho;
+  std::vector<cqmatrix::Matrix<MatsT>> previousFockSquareOrtho;
+  std::vector<cqmatrix::Matrix<MatsT>> unitarySquareOrtho;
 
 public:
 
@@ -119,7 +119,7 @@ public:
   void printRunHeader(EMPerturbation&) override;
   void printIteration(bool printDiff = false) override;
 
-  void formPropagator(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fockSquareAO = {});
+  void formPropagator(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});
   void formFock(bool,double);
   void doPropagation();
   void saveState(EMPerturbation&);
@@ -166,9 +166,9 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::initialize(size_t maxPoints) {
   this->createRTDataSets(maxPoints);
   std::cout<<"xsli test RealTimeSCF initialize 2"<<std::endl;
 
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> onePDM = this->singleSlaterSystem.getOnePDM();
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDM = this->singleSlaterSystem.getOnePDM();
   for (auto &d: onePDM) previousOnePDMSquareOrtho.emplace_back(d->memManager(), d->dimension());
-  std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
   for (auto &f: fock) {
     previousFockSquareOrtho.emplace_back(f->memManager(), f->dimension());
     unitarySquareOrtho.emplace_back(f->memManager(), f->dimension());

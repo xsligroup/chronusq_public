@@ -77,7 +77,6 @@ namespace ChronusQ {
 
     // Initial 1RDM construction
     MCWaveFunction<MatsT, IntsT>::computeOneRDM();
-     
     // MCSCF Cycles 
     
     if(this->settings.doSCF) {
@@ -170,6 +169,8 @@ namespace ChronusQ {
       
       } // SCF Iteration
 
+      ROOT_ONLY(this->comm);
+
       if(not converged) 
         CErr("\n MCSCF failed to converged in " + std::to_string(settings.maxSCFIter) + " cycles !");
     
@@ -255,7 +256,7 @@ namespace ChronusQ {
       this->cacheHalfTransTPI_ = true;
       
       size_t nCorrO = this->MOPartition.nCorrO;
-      oneRDMSOI = std::make_shared<SquareMatrix<MatsT>>(this->memManager,nCorrO);
+      oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager,nCorrO);
       twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(this->memManager, nCorrO);     
       
       moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(

@@ -35,25 +35,6 @@
 
 namespace ChronusQ {
   
-  void OrbitalRotationSettings::print(bool fourComp) {
-    if (alg == OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Approximated Quasi-2nd Order");
-    } else if (alg == OrbitalRotationAlgorithm::ORB_ROT_QUASI_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Quasi-2nd Order");
-    } else if (alg == ORB_ROT_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Seconnd Order");
-    } else CErr("NYI Orbital Rotation Algorithm");
-   
-    FormattedLine(std::cout, "  Rotation Blocks:");
-    FormattedLine(std::cout, "  - Within Correlated:",               rotate_within_correlated);
-    FormattedLine(std::cout, "  - Between Inactive and Correlated:", rotate_inact_correlated);
-    FormattedLine(std::cout, "  - Between Inactive and Virtual:",    rotate_inact_virtual);
-    FormattedLine(std::cout, "  - Between Correlated and Virtual:",  rotate_correlated_virtual);
-    if(fourComp) 
-      FormattedLine(std::cout, "  - Between Negative and Positive:",  rotate_negative_positive);
-
-  } // OrbitalRotationSettings::print
-  
   /*
    * \brief rotate MO for one step size using Newton-Raphson:
    * 
@@ -67,7 +48,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>  
   void OrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert, 
-    SquareMatrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM) {
+    cqmatrix::Matrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM) {
     
     auto & mopart = mcwfn_.MOPartition;
     auto & mem    = mcwfn_.memManager;
@@ -171,5 +152,3 @@ namespace ChronusQ {
 #include <orbitalrotation/gradient.hpp>  // gradient implementation
 #include <orbitalrotation/hessian.hpp>   // hessian implementation
 #include <orbitalrotation/ivo.hpp>   // hessian implementation
-
-

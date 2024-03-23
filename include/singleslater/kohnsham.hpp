@@ -67,7 +67,7 @@ namespace ChronusQ {
     bool isGGA_; ///< Whether or not the XC kernel is within the GGA
     double XCEnergy; ///< Exchange-correlation energy
 
-    std::shared_ptr<PauliSpinorSquareMatrices<IntsT>> VXC; ///< VXC terms
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<IntsT>> VXC; ///< VXC terms
 
     // Current Timings
     double VXCDur;
@@ -101,11 +101,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, true);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
       else
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
 
 
     }; // KohnSham constructor
@@ -127,11 +127,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, true);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
       else
-        VXC = std::make_shared<PauliSpinorSquareMatrices<IntsT>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
 
 
     }; // KohnSham constructor

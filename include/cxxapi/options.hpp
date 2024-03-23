@@ -32,9 +32,9 @@
 #include <realtime.hpp>
 #include <response.hpp>
 #include <coupledcluster.hpp>
+#include <posthartreefock.hpp>
 #include <mcscf.hpp>
 #include <regex>
-
 
 
 // Preprocessor directive to aid the digestion of optional 
@@ -67,6 +67,7 @@ namespace ChronusQ {
     CC,
     EOMCC,
     MR,
+    CI,
     BOMD,
     EHRENFEST
   };
@@ -99,6 +100,9 @@ namespace ChronusQ {
     }
     else if( jobStr == "MCSCF" ) {
       job = JobType::MR;
+    }
+    else if( jobStr == "CI" ) {
+      job = JobType::CI;
     }
     else {
       jobStr = "Unrecognized job type \"" + jobStr + "\"!";
@@ -254,7 +258,36 @@ namespace ChronusQ {
      CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation & );
   
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
+  
+  void HandlePostHFProperties(std::ostream &, CQInputFile &,
+    std::shared_ptr<PostHartreeFockBase> & postHF,
+    std::string postHFSection);
+  
+  void HandlePostHFRDMPrinting(std::ostream &, CQInputFile &,
+    std::shared_ptr<PostHartreeFockBase> & postHF,
+    std::string postHFSection);
 
+  void HandlePostHFOrbitalSwaps(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<SingleSlaterBase> &ss, 
+    std::shared_ptr<PostHartreeFockBase> & postHF,
+    std::string postHFSection);
+  
+  void ConstructActiveSpaces(std::ostream & out, CQInputFile & input,
+                             const std::vector<size_t> & nActOs,
+                             size_t nActE, size_t MOOffset,
+                             int maxInterspaceEX,
+                             std::vector<ActiveSpaceParameters> & actS,
+                             std::vector<std::vector<size_t>> & refOcc,
+                             std::string postHFSection);
+  
+  void ReadReferenceOcc(std::ostream & out, CQInputFile & input,
+    std::vector<std::vector<size_t>> & refOcc, std::string postHFSection);
+
+  std::shared_ptr<PostHartreeFockBase> CQCIOptions(std::ostream &,
+    CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation & );
+
+  void CQCI_VALID(std::ostream &, CQInputFile &);
+  
   // Save reference info
   void saveRefs(SingleSlaterOptions &, std::shared_ptr<SingleSlaterBase> &);
 
@@ -281,6 +314,7 @@ namespace ChronusQ {
     CQDYNAMICS_VALID(out,input);
     CQMCSCF_VALID(out,input);
     CQEOMCC_VALID(out,input);
+    CQCI_VALID(out,input);
 
   }
 

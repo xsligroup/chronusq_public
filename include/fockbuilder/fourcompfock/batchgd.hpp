@@ -40,29 +40,29 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void FourCompFock<MatsT,IntsT>::formRawGDInBatches(SingleSlater<MatsT,IntsT> &ss,
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen,
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & onePDMs, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & coulombMatrices, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & exchangeMatrices,
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & twoeHs) {
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & onePDMs, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & coulombMatrices, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & exchangeMatrices,
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & twoeHs) {
     
       // for incore just wrap around the old loop for now
       //
-      // coulombMatrices and exchangeMatices won't be used
+      // coulombMatrices and exchange Matrices won't be used
       //
-      // because coulombMatrix is SquareMatrix instead of PauliSpinorSquareMatrices
+      // because coulombMatrix is cqmatrix::Matrix instead of cqmatrix::PauliSpinorMatrices
       // so the dividing is not accurate 
       if( std::dynamic_pointer_cast<InCore4indexRelERIContraction<MatsT,IntsT>>(ss.TPI) ) {
         
         // cache the ss pointers
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> ss1PDM 
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ss1PDM 
           = increment ? ss.deltaOnePDM: ss.onePDM;
-        std::shared_ptr<SquareMatrix<MatsT>> ssCoulombMatrix = ss.coulombMatrix;
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> ssExchangeMatrix = ss.exchangeMatrix;
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> ssTwoeH = ss.twoeH;
+        std::shared_ptr<cqmatrix::Matrix<MatsT>> ssCoulombMatrix = ss.coulombMatrix;
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ssExchangeMatrix = ss.exchangeMatrix;
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ssTwoeH = ss.twoeH;
         
         // allocate scratch space for coulombMatrix and exchangeMatrix 
-        ss.coulombMatrix = std::make_shared<SquareMatrix<MatsT>>(ss.memManager, ss.coulombMatrix->dimension());
-        ss.exchangeMatrix = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(ss.memManager, ss.exchangeMatrix->dimension());
+        ss.coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(ss.memManager, ss.coulombMatrix->dimension());
+        ss.exchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ss.memManager, ss.exchangeMatrix->dimension());
 
         for (auto i = 0ul; i < onePDMs.size(); i++) {
           
@@ -99,10 +99,10 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void FourCompFock<MatsT,IntsT>::formRawGDInBatchesDirect(SingleSlater<MatsT,IntsT> &ss,
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & onePDMs, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & coulombMatrices, 
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & exchangeMatrices,
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>> & twoeHs) {
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & onePDMs, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & coulombMatrices, 
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & exchangeMatrices,
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> & twoeHs) {
     
     // disable libint2
     if (not this->hamiltonianOptions_.Libcint) CErr("4C Integrals Needs Libcint");
@@ -142,16 +142,16 @@ namespace ChronusQ {
     bool   isNotRoot = mpiRank != 0;
     
     // allocate scratch spaces for Coulomb-type of contraction part
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>>
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>>
       contractSymm1PDMLLMS, contractSymm1PDMSS, contract1PDMLSpmSL,  
       CScrLLMS, CScrSS, CScrLS; 
 
-    //std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>>
+    //std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>>
     //  contract1PDMLL, contract1PDMSS, contract1PDMLS, contract1PDMSL, 
     //  XScrLL, XScrSS, XScrLS, XScrSL; 
      
     #define ALLOCATE_PAULISPINOR_SCR(SCR, SCRSIZE, hasXYZ) \
-       SCR.push_back(std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, SCRSIZE, hasXYZ, hasXYZ)); 
+       SCR.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, SCRSIZE, hasXYZ, hasXYZ)); 
        // no need to intailize those matrices as it will be initialize in twoBodyRelContract
        // SCR.back()->clear();
     
@@ -195,7 +195,7 @@ namespace ChronusQ {
     // TODO: Implement exchange part accordingly 
     
     for (auto i = 0ul; i < mPDM; i++) {
-      // Allocate Scatterred Density
+      // Allocate Scattered Density
       if (allocateLLMS) ALLOCATE_PAULISPINOR_SCR(contractSymm1PDMLLMS, NB1C, false); 
       if (allocateSS)   ALLOCATE_PAULISPINOR_SCR(contractSymm1PDMSS, NB1C, true);    
       if (allocateLSSL) ALLOCATE_PAULISPINOR_SCR(contract1PDMLSpmSL, NB1C, true);    
@@ -213,16 +213,16 @@ namespace ChronusQ {
     }
 
     // allocate dummies
-    auto dummy_pauli = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, 0, false, false);
+    auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, 0, false, false);
     
     // Compute 1/(2mc)^2
     MatsT C2 = 1./(4*SpeedOfLight*SpeedOfLight);
     
     // make SCRs
-    auto onePDMLLSCR = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, NB1C, false, false);
-    auto onePDMSSSCR = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, NB1C, true, true);
-    auto onePDMLSSCR = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, NB1C, true, true);
-    auto onePDMSLSCR = std::make_shared<PauliSpinorSquareMatrices<MatsT>>(mem, NB1C, true, true);
+    auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, false, false);
+    auto onePDMSSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
+    auto onePDMLSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
+    auto onePDMSLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
     
     // Component Scatter Density
     for (auto i = 0ul; i < mPDM; i++) {
@@ -305,7 +305,7 @@ namespace ChronusQ {
       //   }  
       // }
 
- #ifdef _PRINT_MATRICES
+#ifdef _PRINT_MATRICES
       std::cout<<"After BARE COULOMB"<<std::endl;
       prettyPrintSmart(std::cout, "COULOMB-S",           twoeHs[0]->S().pointer(), NB2C, NB2C, NB2C);
       prettyPrintSmart(std::cout, "COULOMB-X",           twoeHs[0]->X().pointer(), NB2C, NB2C, NB2C);
@@ -346,7 +346,9 @@ namespace ChronusQ {
         } 
 
         // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-        relERICon.twoBodyRelContract(ss.comm, true, contractDCLL, pert, computeExchange);
+        relERICon.twoBodyRelContract(ss.comm, true, contractDCLL, pert, computeExchange,
+           this->hamiltonianOptions_.DiracCoulombType,
+           this->hamiltonianOptions_.DiracCoulombApproximationType);
 
         // Add Dirac-Coulomb contributions to the LLLL block
         for (auto i = 0ul; i < mPDM; i++) {
@@ -457,7 +459,9 @@ namespace ChronusQ {
       } 
 
       // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
-      relERICon.twoBodyRelContract(ss.comm, true, contractDCSS, pert, computeExchange);
+      relERICon.twoBodyRelContract(ss.comm, true, contractDCSS, pert, computeExchange,
+           this->hamiltonianOptions_.SSSSType,
+           this->hamiltonianOptions_.SSSSApproximationType);
 
       // Add (SS|SS) Coulomb contributions to the SSSS block
       for (auto i = 0ul; i < mPDM; i++) {
@@ -510,7 +514,17 @@ namespace ChronusQ {
         } 
 
         // Call the contraction engine to do the assembly of Gaunt/Gauge
-        relERICon.twoBodyRelContract(ss.comm, true, contractDCGau, pert, computeExchange);
+        TYPE_4C fourCType;
+        APPROXIMATION_TYPE_4C approximate4C;
+        if (contT == GAUNT) {
+          fourCType = this->hamiltonianOptions_.GauntType;
+          approximate4C = this->hamiltonianOptions_.GauntApproximationType;
+        } else if(contT == GAUGE) {
+          fourCType = this->hamiltonianOptions_.GaugeType;
+          approximate4C = this->hamiltonianOptions_.GaugeApproximationType;
+        }
+        
+        relERICon.twoBodyRelContract(ss.comm, true, contractDCGau, pert, computeExchange, fourCType, approximate4C);
       
         for (auto i = 0ul; i < mPDM; i++) {
           // Add (LL|SS)  and (SS|LL) Coulomb contributions

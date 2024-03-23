@@ -98,11 +98,22 @@ namespace ChronusQ {
         const bool screen,
         std::vector<TwoBodyRelContraction<MatsT>> &list,
         EMPerturbation&,
-        const bool computeExchange = true) const {
+        const bool computeExchange = true,
+        const TYPE_4C type4C = TYPE_4C::All,
+        const APPROXIMATION_TYPE_4C approximate4C = APPROXIMATION_TYPE_4C::None) const {
       
-      if (computeExchange) CErr("Exchange Term NYI in twoBodyRelContract"); 
-      else directRelScaffoldLibcintCoulombOnly(comm, screen, list);
-    
+      if (computeExchange) { 
+        CErr("Exchange Term NYI in twoBodyRelContract"); 
+      } else {
+        if (type4C==TYPE_4C::All) { 
+          directRelScaffoldLibcintCoulombOnly(comm, screen, list, approximate4C);
+        } else if (type4C==TYPE_4C::SpinFree) {
+          directRelScaffoldLibcintCoulombOnlySpinFree(comm, screen, list, approximate4C);
+        } else if (type4C==TYPE_4C::SpinFree) {
+          CErr("NYI");
+          // directRelScaffoldLibcintCoulombOnlySpinDependent(comm, screen, list, approximate4C);
+        }
+      } 
     }
     
     void directScaffold(
@@ -134,8 +145,15 @@ namespace ChronusQ {
     void directRelScaffoldLibcintCoulombOnly(
         MPI_Comm,
         const bool,
-        std::vector<TwoBodyRelContraction<MatsT>>&) const;
+        std::vector<TwoBodyRelContraction<MatsT>>&,
+        const APPROXIMATION_TYPE_4C approximate4C) const;
    
+    void directRelScaffoldLibcintCoulombOnlySpinFree(
+        MPI_Comm,
+        const bool,
+        std::vector<TwoBodyRelContraction<MatsT>>&,
+        const APPROXIMATION_TYPE_4C approximate4C) const;
+    
     size_t directRelScaffoldLibcintSCRSize(
       const TWOBODY_CONTRACTION_TYPE &,
       const bool) const;

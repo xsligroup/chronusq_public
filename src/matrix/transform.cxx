@@ -25,62 +25,66 @@
 #include <matrix.hpp>
 
 namespace ChronusQ {
+namespace cqmatrix {
 
-  /**
-   *  \brief < p |O| q> = T(mu, p)^H @ < mu |O| nu > @ T(nu, q)
-   *
-   *  \param [in]  TRANS     Whether transpose/adjoint T
-   *  \param [in]  T         Transformation matrix
-   *  \param [in]  LDT       Leading dimension of T
-   *  \param [in]  off_sizes Vector of 2 pairs,
-   *                         a pair of offset and size for each index.
-   *  \param [out] out       Return the contraction result.
-   *  \param [in]  increment Perform out += result if true
-   */
-  template <typename MatsT>
-  template <typename TransT, typename OutT>
-  void SquareMatrix<MatsT>::subsetTransform(
-      char TRANS, const TransT* T, int LDT,
-      const std::vector<std::pair<size_t,size_t>> &off_sizes,
-      OutT* out, bool increment) const {
-    typedef typename std::conditional<
-        (std::is_same<MatsT, dcomplex>::value or
-         std::is_same<TransT, dcomplex>::value),
-        dcomplex, double>::type ResultsT;
-    
-    ResultsT* SCR = memManager_.malloc<ResultsT>(N_ * off_sizes[0].second);
-    MatsT * dummy = nullptr;
+/**
+ *  \brief < p |O| q> = T(mu, p)^H @ < mu |O| nu > @ T(nu, q)
+ *
+ *  \param [in]  TRANS     Whether transpose/adjoint T
+ *  \param [in]  T         Transformation matrix
+ *  \param [in]  LDT       Leading dimension of T
+ *  \param [in]  off_sizes Vector of 2 pairs,
+ *                         a pair of offset and size for each index.
+ *  \param [out] out       Return the contraction result.
+ *  \param [in]  increment Perform out += result if true
+ */
+template <typename MatsT>
+template <typename TransT, typename OutT>
+void Matrix<MatsT>::subsetTransform(
+    char TRANS, const TransT* T, int LDT,
+    const std::vector<std::pair<size_t,size_t>> &off_sizes,
+    OutT* out, bool increment) const {
+  typedef typename std::conditional<
+      (std::is_same<MatsT, dcomplex>::value or
+       std::is_same<TransT, dcomplex>::value),
+      dcomplex, double>::type ResultsT;
+  
+  if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
+  
+  size_t N_ = nRow_;
+  ResultsT* SCR = memManager_.malloc<ResultsT>(N_ * off_sizes[0].second);
+  MatsT * dummy = nullptr;
 
-    // SCR(nu, p) = < mu |O| nu >^H @ T(mu, p)
-    // < p |O| q> = SCR(nu, p)^H @ T(nu, q)
-    PairTransformation(TRANS, T, LDT, off_sizes[0].first, off_sizes[1].first,
-      'N', pointer(), N_, N_, 1, 'T', out, off_sizes[0].second, off_sizes[1].second,
-      dummy, SCR, increment); 
-    
-    memManager_.free(SCR);
-  }
-  template void SquareMatrix<double>::subsetTransform(
-      char TRANS, const double* T, int LDT,
-      const std::vector<std::pair<size_t,size_t>> &off_sizes,
-      double* out, bool increment) const;
-  template void SquareMatrix<double>::subsetTransform(
-      char TRANS, const dcomplex* T, int LDT,
-      const std::vector<std::pair<size_t,size_t>> &off_sizes,
-      dcomplex* out, bool increment) const;
-  template void SquareMatrix<dcomplex>::subsetTransform(
-      char TRANS, const dcomplex* T, int LDT,
-      const std::vector<std::pair<size_t,size_t>> &off_sizes,
-      dcomplex* out, bool increment) const;
-  template void SquareMatrix<dcomplex>::subsetTransform(
-      char TRANS, const double* T, int LDT,
-      const std::vector<std::pair<size_t,size_t>> &off_sizes,
-      dcomplex* out, bool increment) const;
+  // SCR(nu, p) = < mu |O| nu >^H @ T(mu, p)
+  // < p |O| q> = SCR(nu, p)^H @ T(nu, q)
+  PairTransformation(TRANS, T, LDT, off_sizes[0].first, off_sizes[1].first,
+    'N', pointer(), N_, N_, 1, 'T', out, off_sizes[0].second, off_sizes[1].second,
+    dummy, SCR, increment); 
+  
+  memManager_.free(SCR);
+}
+template void Matrix<double>::subsetTransform(
+    char TRANS, const double* T, int LDT,
+    const std::vector<std::pair<size_t,size_t>> &off_sizes,
+    double* out, bool increment) const;
+template void Matrix<double>::subsetTransform(
+    char TRANS, const dcomplex* T, int LDT,
+    const std::vector<std::pair<size_t,size_t>> &off_sizes,
+    dcomplex* out, bool increment) const;
+template void Matrix<dcomplex>::subsetTransform(
+    char TRANS, const dcomplex* T, int LDT,
+    const std::vector<std::pair<size_t,size_t>> &off_sizes,
+    dcomplex* out, bool increment) const;
+template void Matrix<dcomplex>::subsetTransform(
+    char TRANS, const double* T, int LDT,
+    const std::vector<std::pair<size_t,size_t>> &off_sizes,
+    dcomplex* out, bool increment) const;
 
 
 //
 //  template <>
 //  template <>
-//  void SquareMatrix<dcomplex>::subsetTransform(
+//  void Matrix<dcomplex>::subsetTransform(
 //      char TRANS, const double* T, int LDT,
 //      const std::vector<std::pair<size_t,size_t>> &off_sizes,
 //      dcomplex* out, bool increment) const {
@@ -121,39 +125,43 @@ namespace ChronusQ {
 //    memManager_.free(SCR);
 //  }
 
-  /**
-   *  \brief < p |O| q> = T(mu, p)^H @ < mu |O| nu > @ T(nu, q)
-   *
-   *  \param [in] TRANS Whether transpose/adjoint T
-   *  \param [in] T     Transformation matrix
-   *  \param [in] NT    Number of columns for T
-   *  \param [in] LDT   Leading dimension of T
-   *
-   *  \return SquareMatrix object with element type derived from
-   *          MatsT and TransT.
-   */
-  template <typename MatsT>
-  template <typename TransT>
-  SquareMatrix<typename std::conditional<
-  (std::is_same<MatsT, dcomplex>::value or
-   std::is_same<TransT, dcomplex>::value),
-  dcomplex, double>::type> SquareMatrix<MatsT>::transform(
-      char TRANS, const TransT* T, int NT, int LDT) const {
-    SquareMatrix<typename std::conditional<
-        (std::is_same<MatsT, dcomplex>::value or
-         std::is_same<TransT, dcomplex>::value),
-        dcomplex, double>::type> transInts(memManager_, NT);
-    subsetTransform(TRANS,T,LDT,{{0,NT},{0,NT}},transInts.pointer(),false);
-    return transInts;
-  }
+/**
+ *  \brief < p |O| q> = T(mu, p)^H @ < mu |O| nu > @ T(nu, q)
+ *
+ *  \param [in] TRANS Whether transpose/adjoint T
+ *  \param [in] T     Transformation matrix
+ *  \param [in] NT    Number of columns for T
+ *  \param [in] LDT   Leading dimension of T
+ *
+ *  \return Matrix object with element type derived from
+ *          MatsT and TransT.
+ */
+template <typename MatsT>
+template <typename TransT>
+Matrix<typename std::conditional<
+(std::is_same<MatsT, dcomplex>::value or
+ std::is_same<TransT, dcomplex>::value),
+dcomplex, double>::type> Matrix<MatsT>::transform(
+    char TRANS, const TransT* T, int NT, int LDT) const {
+  Matrix<typename std::conditional<
+      (std::is_same<MatsT, dcomplex>::value or
+       std::is_same<TransT, dcomplex>::value),
+      dcomplex, double>::type> transInts(memManager_, NT);
+  
+  if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
+  
+  subsetTransform(TRANS,T,LDT,{{0,NT},{0,NT}},transInts.pointer(),false);
+  return transInts;
+}
 
-  template SquareMatrix<double> SquareMatrix<double>::transform(
-      char TRANS, const double* T, int NT, int LDT) const;
-  template SquareMatrix<dcomplex> SquareMatrix<double>::transform(
-      char TRANS, const dcomplex* T, int NT, int LDT) const;
-  template SquareMatrix<dcomplex> SquareMatrix<dcomplex>::transform(
-      char TRANS, const double* T, int NT, int LDT) const;
-  template SquareMatrix<dcomplex> SquareMatrix<dcomplex>::transform(
-      char TRANS, const dcomplex* T, int NT, int LDT) const;
+template Matrix<double> Matrix<double>::transform(
+    char TRANS, const double* T, int NT, int LDT) const;
+template Matrix<dcomplex> Matrix<double>::transform(
+    char TRANS, const dcomplex* T, int NT, int LDT) const;
+template Matrix<dcomplex> Matrix<dcomplex>::transform(
+    char TRANS, const double* T, int NT, int LDT) const;
+template Matrix<dcomplex> Matrix<dcomplex>::transform(
+    char TRANS, const dcomplex* T, int NT, int LDT) const;
 
-}; // namespace ChronusQ
+} // namespace cqmatrix
+} // namespace ChronusQ

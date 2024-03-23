@@ -64,15 +64,15 @@ namespace ChronusQ {
 
     // Operator storage
     IntsT*  mapPrim2Cont = nullptr;
-    std::shared_ptr<SquareMatrix<MatsT>> W  = nullptr; ///< W = (\sigma p) V (\sigma p)
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> W  = nullptr; ///< W = (\sigma p) V (\sigma p)
 
     // Transformations for momentum space
     IntsT*  UK = nullptr; ///< K transformation between p- and R-space
     double* p  = nullptr; ///< p momentum eigens
 
     // X and Y matrices, means differently in real- and momentum-spaces.
-    std::shared_ptr<SquareMatrix<MatsT>> X = nullptr; ///< X = S * L^-1
-    std::shared_ptr<SquareMatrix<MatsT>> Y = nullptr; ///< Y = 1/sqrt(1 + X**H * X)
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> X = nullptr; ///< X = S * L^-1
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> Y = nullptr; ///< Y = 1/sqrt(1 + X**H * X)
     ///< In real-space non-orthogonal basis, Y = ( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2
 
     // Picture-change U matrics from primitives to contracted basis
@@ -125,23 +125,23 @@ namespace ChronusQ {
 
     // Compute core Hamitlonian
     virtual void computeOneEX2C(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeOneEX2C_Umatrix();
     virtual void computeOneEX2C_UDU(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeOneEX2C_corr(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void saveX2C(std::shared_ptr<SingleSlaterBase>);
-    void SNSOScale(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>, SNSO_TYPE);
-    void RowDepDCB_SNSO(std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+    void SNSOScale(std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>, SNSO_TYPE);
+    void RowDepDCB_SNSO(std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
 
     // Compute Fock X2C
     virtual void computeFockX2C(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>,
-        std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>>,
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>,
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>,
+        std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>>,
         bool incore = true, double threshSchwarz = 1e-12);
-    void computeFockX2C_Umatrix(const SquareMatrix<MatsT> &fourCompMOSpin);
+    void computeFockX2C_Umatrix(const cqmatrix::Matrix<MatsT> &fourCompMOSpin);
 
     static void compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
         BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,

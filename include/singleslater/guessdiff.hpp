@@ -62,7 +62,7 @@ namespace ChronusQ {
           std::cout);
 
     // MOs on scr bin file
-    std::vector<SquareMatrix<ScrMatsT>> motmp;
+    std::vector<cqmatrix::Matrix<ScrMatsT>> motmp;
     motmp.emplace_back(memManager, MO1dims[0]);
     if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) motmp.emplace_back(memManager, MO2dims[0]);
 
@@ -198,7 +198,7 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CRto2CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CRto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
     size_t NB = outputMO[0].dimension();
     size_t scrMOSize = inputMO[0].dimension();
@@ -225,7 +225,7 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CUto2CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
     size_t NB = outputMO[0].dimension();
     size_t scrMOSize = inputMO[0].dimension();
@@ -252,7 +252,7 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CRto4CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
     size_t NB = outputMO[0].dimension();
     size_t scrMOSize = inputMO[0].dimension();
@@ -287,7 +287,7 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CUto4CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
     size_t NB = outputMO[0].dimension();
     size_t scrMOSize = inputMO[0].dimension();
@@ -322,7 +322,7 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>& inputMO, std::vector<SquareMatrix<MatsT>>& outputMO, SafeFile& scrBin) {
+  void SingleSlater<MatsT,IntsT>::convert2CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO, SafeFile& scrBin) {
 
 
     std::cout << "    * Looking for U matrices on scratch file: " << scrBin.fName() << std::endl;
@@ -371,7 +371,7 @@ namespace ChronusQ {
       if( scrMOSize != Urow or scrMOSize != Ucol ) CErr("2c MO and U matrix need to have same dimensions!");
 
       // Make a temporary copy for 2c transformed MO
-      SquareMatrix<MatsT> tmpMO(this->memManager,scrMOSize);
+      cqmatrix::Matrix<MatsT> tmpMO(this->memManager,scrMOSize);
 
 //    prettyPrintSmart(std::cout, "phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
 

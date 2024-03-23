@@ -1,4 +1,6 @@
 *build*
+!*buildtdms*
+!*buildsigma*
 !bin/buildblas
 !*cibuild*
 !*corehbuild*

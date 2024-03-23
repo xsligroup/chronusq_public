@@ -72,7 +72,8 @@ namespace ChronusQ {
       mcwfn.ciBuilder->buildFullH(mcwfn, fullH);
       ProgramTimer::tock("Full Matrix");
       
-#ifdef _DEBUG_CIENGINE_IMPL
+#ifdef _DEBUG_CISOLVER_IMPL
+      prettyPrintSmart(std::cout,"HH full H", fullH, NDet, NDet, NDet);
       std::cout << " <0|H|0> = "  << std::setprecision(16) 
                 << *fullH + mcwfn.reference().molecule().nucRepEnergy + mcwfn.InactEnergy
                 << std::endl;
@@ -87,8 +88,7 @@ namespace ChronusQ {
         std::copy_n(fullH,NDet*NDet,EigVec);
       }
       
-#ifdef _DEBUG_CIENGINE_IMPL
-      prettyPrintSmart(std::cout,"HH full H", fullH, NDet, NDet, NDet);
+#ifdef _DEBUG_CISOLVER_IMPL
       prettyPrintSmart(std::cout,"HH Eigenvectors", EigVec, NDet, NDet, NDet);
       prettyPrintSmart(std::cout,"HH Eigenvalues", Energy, NDet, 1, NDet);
 #endif
@@ -157,6 +157,10 @@ namespace ChronusQ {
         davidson.setHerm(true);
       davidson.setEigForT(curEig);
       davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
+#ifdef CQ_ENABLE_MPI
+	    // disable MPI for now
+	    ROOT_ONLY(mcwfn.comm);
+#endif
           this->davidsonGS(nGuess, N, diagH, tryGetRawVectorsPointer(Guess));
       });
 
@@ -165,15 +169,17 @@ namespace ChronusQ {
       }
 
       davidson.run();
-      
-      // copy over eigenvalues and eigenvectors
-      auto davidsonEig = davidson.eigVal();
-      auto davidsonVec = tryGetRawVectorsPointer(*davidson.VR());
-	  for (auto i = 0ul; i < nR; i++) {
-		StateEnergy[i] = std::real(davidsonEig[i]);
-        std::copy_n(davidsonVec+i*NDet, NDet, CIVecs[i]);
-	  }
-      
+	  
+      if (MPIRank(mcwfn.comm) == 0) {
+        // copy over eigenvalues and eigenvectors
+        auto davidsonEig = davidson.eigVal();
+        auto davidsonVec = tryGetRawVectorsPointer(*davidson.VR());
+	    for (auto i = 0ul; i < nR; i++) {
+	      StateEnergy[i] = std::real(davidsonEig[i]);
+          std::copy_n(davidsonVec+i*NDet, NDet, CIVecs[i]);
+	    }
+      }
+
       mem.free(curEig, diagH);
 
     } else{

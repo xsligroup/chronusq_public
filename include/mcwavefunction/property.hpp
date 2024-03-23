@@ -131,8 +131,8 @@ namespace ChronusQ {
     size_t nInact = MOPartition.nInact;
 
     // compute transition density matrix for specific state
-    SquareMatrix<MatsT> tmpTDM1(mem,nCorrO);
-    SquareMatrix<MatsT> tmpTDM2(mem,nCorrO);
+    cqmatrix::Matrix<MatsT> tmpTDM1(mem,nCorrO);
+    cqmatrix::Matrix<MatsT> tmpTDM2(mem,nCorrO);
     ciBuilder->computeTDM(*this, CIVecs[s1], CIVecs[s2], tmpTDM1);
     ciBuilder->computeTDM(*this, CIVecs[s2], CIVecs[s1], tmpTDM2);
 

@@ -231,7 +231,7 @@ void NewtonRaphsonSCF<_SSTyp,MatsT,IntsT>::computeSR1(size_t N, const std::vecto
 
 #ifdef _NRSCF_DEBUG_SR1
   prettyPrintSmart(std::cout, "R", r, nUpdate, nUpdate, nUpdate);
-  SquareMatrix<MatsT> rCopy(this->memManager, nUpdate);
+  cqmatrix::Matrix<MatsT> rCopy(this->memManager, nUpdate);
   std::copy_n(r, nUpdate * nUpdate, rCopy.pointer());
 #endif
 

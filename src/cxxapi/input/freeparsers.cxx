@@ -55,6 +55,7 @@ namespace ChronusQ {
     parseFreeCQInputSSGuess(line);
     parseFreeCQInputRT(line);
     parseFreeCQInputField(line);
+    parseFreeCQInputCI(line);
 
 
     auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
@@ -226,14 +227,72 @@ namespace ChronusQ {
 
   void CQInputFile::parseFreeCQInputSCF (std::string &line) {
 
-    /********************************/
-    /* SCF Input                    */
-    /* example, SCF(accuracy=1.e-8) */
-    /* example, SCF(endiis)         */
-    /* example, SCF(energyonly)     */
-    /********************************/
+    /**************************************************/
+    /* SCF Input                                      */
+    /* example, SCF(accuracy=1.e-8)                   */
+    /* example, SCF(cdiis, maxiteration=100)          */
+    /* example, SCF(energyonly)                       */
+    /**************************************************/
+
+    auto const freeCQInputSCF = std::regex("(SCF)(\\((.*?)\\))", std::regex_constants::icase);
+    std::smatch scfMatch;
+
+    if (std::regex_search(line, scfMatch, freeCQInputSCF)) {
+      std::string scfInputOptions = scfMatch.str(3);
+
+      // read in SCF accuracy
+      auto const freeCQInputSCFAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
+      if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFAccuracy) ) {
+        addData("SCF.ACCURACY", scfMatch.str(1));
+        std::cout<<"xsli test read in accuracy = "<<std::stod(scfMatch.str(1))<<std::endl;
+      }
+
+      auto const freeCQInputEnergyOnly = std::regex("energyonly|skip", std::regex_constants::icase);
+      if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputEnergyOnly) ) {
+        addData("SCF.ENERGYONLY", "SKIP");
+        std::cout<<"xsli test read in energyonly"<<std::endl;
+      }
+
+      auto const freeCQInputSCFMethod = std::regex("(diis)|(nodiis)|(cdiis)|(ediis)|(qc)", std::regex_constants::icase);
+      if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFMethod) ) {
+        if(!scfMatch.str(1).empty()) addData("SCF.DIISALG","CDIIS");// std::cout<<"xsli test read in SCF method = DIIS "<<std::stod(scfMatch.str(1))<<std::endl;
+        if(!scfMatch.str(2).empty()) addData("SCF.DIISALG","NONE"); // std::cout<<"xsli test read in SCF method = NoDIIS "<<std::stod(scfMatch.str(2))<<std::endl;
+        if(!scfMatch.str(3).empty()) addData("SCF.DIISALG","CDIIS"); // std::cout<<"xsli test read in SCF method = CDIIS "<<std::stod(scfMatch.str(3))<<std::endl;
+        if(!scfMatch.str(4).empty()) addData("SCF.DIISALG","EDIIS"); // std::cout<<"xsli test read in SCF method = EnDIIS "<<std::stod(scfMatch.str(4))<<std::endl;
+        if(!scfMatch.str(4).empty()) addData("SCF.ALG","NR"); // std::cout<<"xsli test read in SCF method = QC "<<std::stod(scfMatch.str(5))<<std::endl;
+      }
+
+      // Check for SCF maxSteps
+      auto const freeCQInputSCFSteps = std::regex("(MAXSTEP|MAXSTEPS|MAXITERATION|MAXITERATIONS|MAXCYCLE|MAXCYCLES)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+      if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFSteps) ) {
+        addData("SCF.MAXITER", scfMatch.str(2));
+        std::cout<<"xsli test read in MAXITERATIONS = "<<std::stod(scfMatch.str(2))<<std::endl;
+      }
+    }
 
   };
+
+  void SCFControls::parseSection(const InputMap &dict) {
+    if (dict.count("ENERGYONLY")) {
+      scfAlg = _CONVENTIONAL_SCF;
+      energyOnly = true;
+    }
+    if (dict.count("MAXITER")) maxSCFIter = std::stoi(dict.at("MAXITER"));
+    if (dict.count("ACCURACY")) {
+      rmsdPConvTol = std::stod(dict.at("ACCURACY"));
+      maxdPConvTol = rmsdPConvTol*100;
+      eneConvTol   = rmsdPConvTol*100;
+    }
+
+      if (dict.at("DIISALG") == "CDIIS") diisAlg = CDIIS;
+      else if (dict.at("DIISALG") == "EDIIS") diisAlg = EDIIS;
+      else if (dict.at("DIISALG") == "DIIS") diisAlg = CDIIS;
+      else if (dict.at("DIISALG") == "NODIIS") diisAlg = NONE;
+
+      if (dict.at("ALG") == "QC") scfAlg = _NEWTON_RAPHSON_SCF;
+
+      if (dict.count("MAXITER")) maxSCFIter = std::stoi(dict.at("MAXITER"));
+  }
 
   void CQInputFile::parseFreeCQInputSSGuess (std::string &line) {
 
@@ -629,6 +688,132 @@ namespace ChronusQ {
     }
   }
 
+  void CQInputFile::parseFreeCQInputCI (std::string &line) {
+
+    /****************************************************************************************/
+    /* CI Input                                                                             */
+    /* example, CASSCF(10o,5e,accuracy=1.e-4,nstates=5)                                     */
+    /* example, X2C-DASCI(40o,20e,nDAS=5,maxexcitation=2)                                   */
+    /* example, 4C-RASCI(40o,20e,RAS1(10o,10e,1h),RAS2(20o,10e),RAS3(10o,0e,2p),nstates=10) */
+    /****************************************************************************************/
+
+    auto const freeCQInputCI = std::regex("((2C)|(X2C)|(4C)|(G))?(-)?((CASSCF)|(RASSCF)|(DASSCF)|(CASCI)|(RASCI)|(DASCI))\\((([^()]*(\\([^()]*\\))?[^()]*)*)\\)", std::regex_constants::icase);
+    std::smatch CIMatch;
+
+    if (std::regex_search(line, CIMatch, freeCQInputCI)) {
+
+      std::cout<< "xsli test CI-0 type: " <<CIMatch.str(0)<<std::endl;
+      // str(1) captures the CI type (e.g., X2C, 4C)
+      if (CIMatch.str(1).size() > 0) {
+        if( CIMatch.str(2).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(2)<<std::endl;
+        if( CIMatch.str(3).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(3)<<std::endl;
+        if( CIMatch.str(4).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(4)<<std::endl;
+        if( CIMatch.str(5).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(5)<<std::endl;
+      }
+
+      bool CASSCF(false),RASSCF(false),DASSCF(false),CASCI(false),RASCI(false),DASCI(false);
+      // str(7) captures the CI methods
+      if (CIMatch.str(7).size() > 0) {
+        if( CIMatch.str(8).size()>0 ) CASSCF = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(8)<<std::endl;
+        if( CIMatch.str(9).size()>0 ) RASSCF = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(9)<<std::endl;
+        if( CIMatch.str(10).size()>0 ) DASSCF =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(10)<<std::endl;
+        if( CIMatch.str(11).size()>0 ) CASCI =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(11)<<std::endl;
+        if( CIMatch.str(12).size()>0 ) RASCI = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(12)<<std::endl;
+        if( CIMatch.str(13).size()>0 ) DASCI =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(13)<<std::endl;
+      }
+
+      // str(14) captures the input inside the parentheses
+      if (CIMatch.str(14).size() > 0) {
+        std::string CIInputOptions = CIMatch.str(14);
+        std::cout << "xsli test CI Options: " << CIInputOptions << std::endl;
+
+        // read in CI eigensolver accuracy
+        auto const freeCQInputCIAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(CIInputOptions, CIMatch, freeCQInputCIAccuracy) ) {
+          std::cout<<"xsli test read in accuracy = "<<std::stod(CIMatch.str(1))<<std::endl;
+        }
+
+        std::regex nEle("\\b([0-9]+)(e|E)\\b"); // an integer number followed by "e" - number of electrons
+        std::regex nOrb("\\b([0-9]+)(o|O)\\b"); // an integer number followed by "o" - number of orbitals
+        std::regex_search(CIInputOptions, CIMatch, nEle);
+        std::cout<<"      nElectrons = "+CIMatch.str(1)<< std::endl;
+        std::regex_search(CIInputOptions, CIMatch, nOrb);
+        std::cout<<"      nOrbitals = "+CIMatch.str(1)<< std::endl;
+
+        // nstates = an integer number - number of eigenstates to solve for
+        std::regex nStates("(nstates)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)",std::regex_constants::icase);
+        std::regex_search(CIInputOptions, CIMatch, nStates);
+        std::cout<<"      nStates = "+CIMatch.str(3)<< std::endl;
+
+        if(DASCI or DASSCF) {
+          // nDAS = an integer number - number of DAS
+          std::regex nDAS("(ndas)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)", std::regex_constants::icase);
+          std::regex_search(CIInputOptions, CIMatch, nDAS);
+          std::cout << "      nDAS = " + CIMatch.str(3) << std::endl;
+
+          // maxexcitation = an integer number - max number of inter-space excitations
+          std::regex MaxExcitation("(maxexcitation)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)", std::regex_constants::icase);
+          std::regex_search(CIInputOptions, CIMatch, MaxExcitation);
+          std::cout << "      MaxExcitation = " + CIMatch.str(3) << std::endl;
+        }
+
+        if(RASCI or RASSCF) {
+          auto const freeCQInputRAS1 = std::regex("RAS1(\\((.*?)\\))", std::regex_constants::icase);
+          auto const freeCQInputRAS2 = std::regex("RAS2(\\((.*?)\\))", std::regex_constants::icase);
+          auto const freeCQInputRAS3 = std::regex("RAS3(\\((.*?)\\))", std::regex_constants::icase);
+          std::regex nHole("\\b([0-9]+)(h|H)\\b"); // an integer number followed by "e" - number of electrons
+          std::regex nParticle("\\b([0-9]+)(p|P)\\b"); // an integer number followed by "o" - number of orbitals
+
+          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS1)) {
+            std::string RAS1InputOptions = CIMatch.str(1);
+            std::regex_search(RAS1InputOptions, CIMatch, nEle);
+            std::cout<<"      RAS1-nElectrons = "+CIMatch.str(1)<< std::endl;
+            std::regex_search(RAS1InputOptions, CIMatch, nOrb);
+            std::cout<<"      RAS1-nOrbitals = "+CIMatch.str(1)<< std::endl;
+            if(std::regex_search(RAS1InputOptions, CIMatch, nHole)) {
+              std::cout<<"      RAS1-nHoles = "+CIMatch.str(1)<< std::endl;
+            }
+            if(std::regex_search(RAS1InputOptions, CIMatch, nParticle)){
+              std::cout<<"      RAS1-nParticles = "+CIMatch.str(1)<< std::endl;
+            }
+          }
+
+          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS2)) {
+            std::string RAS2InputOptions = CIMatch.str(1);
+            std::regex_search(RAS2InputOptions, CIMatch, nEle);
+            std::cout<<"      RAS2-nElectrons = "+CIMatch.str(1)<< std::endl;
+            std::regex_search(RAS2InputOptions, CIMatch, nOrb);
+            std::cout<<"      RAS2-nOrbitals = "+CIMatch.str(1)<< std::endl;
+            if(std::regex_search(RAS2InputOptions, CIMatch, nHole)) {
+              std::cout<<"      RAS2-nHoles = "+CIMatch.str(1)<< std::endl;
+            }
+            if(std::regex_search(RAS2InputOptions, CIMatch, nParticle)){
+              std::cout<<"      RAS2-nParticles = "+CIMatch.str(1)<< std::endl;
+            }
+          }
+
+          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS3)) {
+            std::string RAS3InputOptions = CIMatch.str(1);
+            std::regex_search(RAS3InputOptions, CIMatch, nEle);
+            std::cout<<"      RAS3-nElectrons = "+CIMatch.str(1)<< std::endl;
+            std::regex_search(RAS3InputOptions, CIMatch, nOrb);
+            std::cout<<"      RAS3-nOrbitals = "+CIMatch.str(1)<< std::endl;
+            if(std::regex_search(RAS3InputOptions, CIMatch, nHole)) {
+              std::cout<<"      RAS3-nHoles = "+CIMatch.str(1)<< std::endl;
+            }
+            if(std::regex_search(RAS3InputOptions, CIMatch, nParticle)){
+              std::cout<<"      RAS3-nParticles = "+CIMatch.str(1)<< std::endl;
+            }
+          }
+
+        }
+
+      }
+
+      line = std::regex_replace(line, freeCQInputCI, "");
+    }
+
+  };
 
 }; // namespace ChronusQ
 

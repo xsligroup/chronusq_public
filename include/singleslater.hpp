@@ -80,33 +80,33 @@ namespace ChronusQ {
     //ORTHO_TYPE            orthoType; ///< Orthogonalization scheme
 
     // Operator storage
-    std::vector<std::reference_wrapper<SquareMatrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matricies
+    std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matricies
     std::vector<double*> moEigenvalues; ///< List of populated MO eigenvalues
     virtual void initializeSCF(); ///< Initialize SCF, populate MO coefficients and eigenvalues
 
     // AO Fock Matrix
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matricies
-    std::vector<SquareMatrix<MatsT>> fockMO;     ///< Fock matrix in the MO basis
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matricies
+    std::vector<cqmatrix::Matrix<MatsT>> fockMO;     ///< Fock matrix in the MO basis
 
     // Orthonormal Fock
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> fockMatrixOrtho; ///< List of populated orthonormal Fock matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrixOrtho; ///< List of populated orthonormal Fock matricies
 
     // Coulomb (J[D])
-    std::shared_ptr<SquareMatrix<MatsT>> coulombMatrix; ///< scalar Coulomb Matrix
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> coulombMatrix; ///< scalar Coulomb Matrix
 
     // Exchange (K[D])
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> exchangeMatrix; ///< List of populated exact (HF) exchange matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> exchangeMatrix; ///< List of populated exact (HF) exchange matricies
 
     // Two-electron Hamiltonian (G[D])
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> twoeH; ///< List of populated HF perturbation tensors
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> twoeH; ///< List of populated HF perturbation tensors
 
     // Orthonormal density
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDMOrtho; ///< List of populated orthonormal 1PDM matricies
-    std::vector<SquareMatrix<MatsT>> onePDMAlphaBetaOrtho; ///< List of populated orthonormal 1PDM matricies
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> deltaOnePDM; ///< Change in density for incremental Fock Build
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDMOrtho; ///< List of populated orthonormal 1PDM matricies
+    std::vector<cqmatrix::Matrix<MatsT>> onePDMAlphaBetaOrtho; ///< List of populated orthonormal 1PDM matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> deltaOnePDM; ///< Change in density for incremental Fock Build
 
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreH; ///< Core Hamiltonian (scalar and magnetization)
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> coreHPerturbed; ///< Perturbed Core Hamiltonian (scalar and magnetization)
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH; ///< Core Hamiltonian (scalar and magnetization)
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreHPerturbed; ///< Perturbed Core Hamiltonian (scalar and magnetization)
 
     // Algorithm Abstractions
     std::shared_ptr<TPIContractions<MatsT,IntsT>> TPI; ///< TPIContractions
@@ -125,7 +125,7 @@ namespace ChronusQ {
     bool denEqCoeff_ = false;
 
     // Temporary structure to hold x2c picture-changed dipole matrices
-    std::vector<std::shared_ptr<PauliSpinorSquareMatrices<dcomplex>>> pchgDipole_;
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> pchgDipole_;
 
     // Constructors
       
@@ -258,15 +258,15 @@ namespace ChronusQ {
     template <typename ScrMatsT>
     void getScrMO(SafeFile &);
     template <typename ScrMatsT>
-    void convert1CRto2CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    void convert1CRto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
-    void convert1CUto2CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    void convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
-    void convert1CRto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    void convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
-    void convert1CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&);
+    void convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
-    void convert2CUto4CU(std::vector<SquareMatrix<ScrMatsT>>&, std::vector<SquareMatrix<MatsT>>&, SafeFile &);
+    void convert2CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, SafeFile &);
 
     // Fchk-related functions
     std::vector<int> fchkToCQMO();
@@ -285,10 +285,10 @@ namespace ChronusQ {
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };
     virtual void printProperties();
-    virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getOnePDM();
-    virtual std::vector<std::shared_ptr<SquareMatrix<MatsT>>> getFock();
-    virtual void setOnePDMOrtho(SquareMatrix<MatsT>*);
-    virtual void setOnePDMAO(SquareMatrix<MatsT>*);
+    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
+    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock();
+    virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
+    virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);
     virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
     virtual void runSCF(EMPerturbation&);
     virtual std::vector<NRRotOptions> buildRotOpt();
@@ -328,9 +328,14 @@ namespace ChronusQ {
     void setDenEqCoeff(bool val);
 
     // Project a AO density onto a MO basis
-    SquareMatrix<MatsT> generateMODensity(const SquareMatrix<MatsT>&, const SquareMatrix<MatsT>&);
+    cqmatrix::Matrix<MatsT> generateMODensity(const cqmatrix::Matrix<MatsT>&, const cqmatrix::Matrix<MatsT>&);
     // Print the occupation of orbitals based on MO density 
     void printOrbitalPopulation(std::ostream&);
+
+    // Pointer convertor
+    template <typename MatsU>
+    static std::shared_ptr<SingleSlater<MatsU,IntsT>>
+    convert(const std::shared_ptr<SingleSlater<MatsT,IntsT>>&);
 
   }; // class SingleSlater
 

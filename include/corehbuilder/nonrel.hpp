@@ -57,11 +57,11 @@ namespace ChronusQ {
 
     // Compute core Hamitlonian
     void addMagPert(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeCoreH(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeNRCH(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
 
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&,

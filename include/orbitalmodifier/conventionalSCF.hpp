@@ -32,22 +32,22 @@ class ConventionalSCF : public OrbitalOptimizer<MatsT> {
 
 protected:
   // Orthogonal Fock/Density Matrices
-  std::vector<SquareMatrix<MatsT>> fockMatrixOrtho;
-  std::vector<SquareMatrix<MatsT>> onePDMOrtho;
-  std::vector<SquareMatrix<MatsT>> orbGrad;
+  std::vector<cqmatrix::Matrix<MatsT>> fockMatrixOrtho;
+  std::vector<cqmatrix::Matrix<MatsT>> onePDMOrtho;
+  std::vector<cqmatrix::Matrix<MatsT>> orbGrad;
 
   // DIIS matrices
-  std::vector<std::vector<SquareMatrix<MatsT>>> diisFock;     ///< List of AO Fock matrices for DIIS extrap
-  std::vector<std::vector<SquareMatrix<MatsT>>> diisOnePDM;   ///< List of AO Density matrices for DIIS extrap
-  std::vector<std::vector<SquareMatrix<MatsT>>> diisError;    ///< List of orthonormal [F,D] for DIIS extrap
+  std::vector<std::vector<cqmatrix::Matrix<MatsT>>> diisFock;     ///< List of AO Fock matrices for DIIS extrap
+  std::vector<std::vector<cqmatrix::Matrix<MatsT>>> diisOnePDM;   ///< List of AO Density matrices for DIIS extrap
+  std::vector<std::vector<cqmatrix::Matrix<MatsT>>> diisError;    ///< List of orthonormal [F,D] for DIIS extrap
   std::vector<double> diisEnergy;                             ///< List of energies for EDIIS
-  std::shared_ptr<SquareMatrix<double>> diisBMat;             ///< Matrix of couplings between EDIIS elements
+  std::shared_ptr<cqmatrix::Matrix<double>> diisBMat;             ///< Matrix of couplings between EDIIS elements
                                                               ///<   diisBMat needs to be a shared_ptr because there is
-                                                              ///<   no resize/default constructor for SquareMatrix.
+                                                              ///<   no resize/default constructor for cqmatrix::Matrix.
 
   // Damping Matrices
-  std::vector<SquareMatrix<MatsT>> prevFock;     ///< AO Fock from the previous SCF iteration
-  std::vector<SquareMatrix<MatsT>> prevOnePDM;   ///< AO Density from the previous SCF iteration
+  std::vector<cqmatrix::Matrix<MatsT>> prevFock;     ///< AO Fock from the previous SCF iteration
+  std::vector<cqmatrix::Matrix<MatsT>> prevOnePDM;   ///< AO Density from the previous SCF iteration
 
 public:
   // Constructor
@@ -101,8 +101,8 @@ public:
   void scfCEDIIS(size_t, size_t, EMPerturbation&);
   void ediisErrorMetric(size_t, size_t);
   void diisCombineMat(std::vector<MatsT>, size_t);
-  void computeOrbGradient(std::vector<SquareMatrix<MatsT>>&);
-  void FDCommutator(std::vector<SquareMatrix<MatsT>>&);
+  void computeOrbGradient(std::vector<cqmatrix::Matrix<MatsT>>&);
+  void FDCommutator(std::vector<cqmatrix::Matrix<MatsT>>&);
   double computeFDCConv();
 
 };   // ConventionalSCF

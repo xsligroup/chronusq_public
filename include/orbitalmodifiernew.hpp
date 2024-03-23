@@ -36,10 +36,10 @@ namespace ChronusQ {
 
   // Assign input types to alias for ease of use
 //template<typename MatsT>
-//using vecMORef = std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>;
+//using vecMORef = std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>;
 //using vecEPtr  = std::vector<double*>;
 template<typename MatsT>
-using vecShrdPtrMat = std::vector<std::shared_ptr<SquareMatrix<MatsT>>>;
+using vecShrdPtrMat = std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>;
 template<typename MatsT>
 using vecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
 
@@ -73,9 +73,9 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
   public:
     singleSlaterT<MatsT,IntsT> &singleSlaterSystem;
     // Orthogonal Fock/Density Matrices
-    std::vector<SquareMatrix<MatsT>> fockSquareOrtho;
-    std::vector<SquareMatrix<MatsT>> onePDMSquareOrtho;
-    std::vector<SquareMatrix<MatsT>> onePDMSquareAO;
+    std::vector<cqmatrix::Matrix<MatsT>> fockSquareOrtho;
+    std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareOrtho;
+    std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareAO;
 
     OrbitalModifierNew() = delete;
     OrbitalModifierNew(singleSlaterT<MatsT,IntsT> &ss, MPI_Comm mpiComm, CQMemManager& memManager):
@@ -100,9 +100,9 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
     virtual void printRunHeader(EMPerturbation&)   = 0;
     virtual void printIteration(bool printDiff = true)  = 0;
 
-    void ao2orthoFock(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fockSquareAO = {});
-    void ao2orthoDen(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> onePDMSquareAO = {});
-    void ortho2aoDen(std::vector<SquareMatrix<MatsT>> onePDMSquareOrtho = {});
+    void ao2orthoFock(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});
+    void ao2orthoDen(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDMSquareAO = {});
+    void ortho2aoDen(std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareOrtho = {});
     void diagOrthoFock();
     void ortho2aoMOs();
     void ao2orthoMOs();

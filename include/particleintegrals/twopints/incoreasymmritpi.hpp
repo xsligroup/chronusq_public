@@ -43,7 +43,6 @@ namespace ChronusQ {
     CONNECTOR,             // Will use both aux basis from (ee|ee) and (pp|pp) to approximate (ee|pp), and use a connector match two reduced spaces
     COMBINEAUXBASIS,       // Will use both aux basis from (ee|ee) and (pp|pp) to approximate (ee|pp), and append both aux basis
     COMBINEMATRIX,         // Will do cholesky decomposition on the full (NB_elec+NB_prot) * (NB_elec+NB_prot) ERI matrix to select aux basis 
-
     AUTO,                  // Default option. Will try to use aux basis by detecting what's available. If can't find one, then default to 4-index 
   };
 
@@ -249,9 +248,11 @@ class InCoreAsymmRITPI :
     // Single element interfaces
     virtual IntsT operator()(size_t, size_t, size_t, size_t) const override{
       CErr("Single Element Indexing NYI");
+      return IntsT(0.);
     };
     virtual IntsT operator()(size_t, size_t) const override{
       CErr("Single Element Indexing NYI");
+      return IntsT(0.);
     }
 
     virtual void output(std::ostream& out, const std::string& s= "", 
@@ -392,7 +393,6 @@ class InCoreAsymmRITPI :
 
     
   }; // class InCoreAsymmRITPI
-    
 
   template <typename MatsT, typename IntsT>
   class InCoreAsymmRITPIContraction : public InCore4indexTPIContraction<MatsT,IntsT> {

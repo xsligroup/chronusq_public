@@ -136,16 +136,6 @@ namespace ChronusQ {
        // Determine the number of blocks to allocate
        size_t nBlocks = ( (n-1) * sizeof(T) ) / BlockSize_ + 1;
       
-       // Check to see if requested memory would overflow allocated
-       // memory. Throw a bad alloc if so
-       //if( (NAlloc_ + nBlocks) * BlockSize_ > N_ ) {
-       //  std::bad_alloc excp;
-       //  throw excp;
-       //}
-
-       //// Update the number of allocated blocks
-       //NAlloc_ += nBlocks; 
-
        #ifdef MEM_PRINT
          std::cerr << "Allocating " << n << " words of " << typeid(T).name()
                    << " data (" << nBlocks << " blocks): ";
@@ -161,6 +151,9 @@ namespace ChronusQ {
          throw excp;
        }
 
+       //// Update the number of allocated blocks
+       NAlloc_ += nBlocks; 
+       
        #ifdef MEM_PRINT
          std::cerr << "  PTR = " << ptr << std::endl;
        #endif
@@ -173,7 +166,7 @@ namespace ChronusQ {
        return static_cast<T*>(ptr); // Return the pointer
      }; // CQMemManager::malloc
 
-
+     
      /**
       *  Frees a contiguous memory block given a pointer previously
       *  returned by CQMemManager::malloc.
@@ -313,30 +306,28 @@ namespace ChronusQ {
       const CQMemManager &mem) {
 
       out << "Memory Allocation Summary:" << std::endl << std::left;
+      
+      auto outputFunc = [&](std::string str, double size, size_t nBlocks) {
+         out << std::setw(30) << str << std::setw(30) << std::fixed << size << "  B / " << std::endl; 
+         out << std::setw(30) << ""  << std::setw(30) << std::fixed << size / 1e3 << " KB /" << std::endl; 
+         out << std::setw(30) << ""  << std::setw(30) << std::fixed << size / 1e6 << " MB /" << std::endl; 
+         out << std::setw(30) << ""  << std::setw(30) << std::fixed << size / 1e9 << " GB " << std::endl;
+         out << std::setw(30) << ""  << "(" << nBlocks << " Blocks) ";
+      };
 
-      out << std::setw(30) << "Total Memory Allocated: ";
-      out << std::setw(15) << mem.N_ << " B / "; 
-      out << std::setw(8) << std::fixed << mem.N_ / 1e3 << " kB / "; 
-      out << std::setw(8) << std::fixed << mem.N_ / 1e6 << " MB / "; 
-      out << std::setw(8) << std::fixed << mem.N_ / 1e9 << " GB"; 
-
+      out << std::setw(30) << " - Block Size: ";
+      out << std::setw(10) << mem.BlockSize_ << " B" << std::endl; 
+      out << std::endl;
+      
+      outputFunc(" - Total Memory Allocated:", mem.N_, mem.N_ / mem.BlockSize_);
       out << std::endl;
 
-      out << std::setw(30) << "Block Size: ";
-      out << std::setw(15) << mem.BlockSize_ << " B"; 
-      out << " (" << mem.N_ / mem.BlockSize_ << " Blocks)";
-
+      outputFunc(" - Reserved Memory:", mem.NAlloc_ * mem.BlockSize_, mem.NAlloc_);
       out << std::endl;
 
-      out << std::setw(30) << "Reserved Memory: ";
-      out << std::setw(15) << mem.NAlloc_*mem.BlockSize_ << " B"; 
-      out << " (" << mem.NAlloc_ << " Blocks)";
-
+      outputFunc(" - Free Memory:", mem.N_ - mem.NAlloc_ * mem.BlockSize_, 
+          mem.N_ / mem.BlockSize_ - mem.NAlloc_);
       out << std::endl;
-
-      out << std::setw(30) << "Free Memory: ";
-      out << std::setw(15) << mem.N_ - mem.NAlloc_*mem.BlockSize_ << " B"; 
-      out << " (" << mem.N_ / mem.BlockSize_ - mem.NAlloc_ << " Blocks)";
 
       if( mem.NAlloc_ ) {
         out << std::endl << std::endl;;

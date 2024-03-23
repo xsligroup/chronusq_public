@@ -33,15 +33,15 @@ enum ORTHO_TYPE { LOWDIN, CHOLESKY };   ///< Orthonormalization Scheme
 template<typename MatsT>
 class Orthogonalization {
 private:
-  std::shared_ptr<SquareMatrix<MatsT>> overlap;         ///< Shared_ptr to overlap Matrix
-  std::shared_ptr<SquareMatrix<MatsT>> forwardTrans;    ///< Transformation from the nonorthogonal basis to orthogonal basis (S^{-1/2})
-  std::shared_ptr<SquareMatrix<MatsT>> backwardTrans;   ///< Transformation from the orthogonal basis to the nonorthogonal basis (S^{1/2})
+  std::shared_ptr<cqmatrix::Matrix<MatsT>> overlap;         ///< Shared_ptr to overlap Matrix
+  std::shared_ptr<cqmatrix::Matrix<MatsT>> forwardTrans;    ///< Transformation from the nonorthogonal basis to orthogonal basis (S^{-1/2})
+  std::shared_ptr<cqmatrix::Matrix<MatsT>> backwardTrans;   ///< Transformation from the orthogonal basis to the nonorthogonal basis (S^{1/2})
   ORTHO_TYPE orthoType = LOWDIN;                        ///< Using Lowdin Type Orthogonalization
 
 public:
   // Constructors
   Orthogonalization() {};
-  Orthogonalization(SquareMatrix<MatsT>& s) {setOverlap(s);};
+  Orthogonalization(cqmatrix::Matrix<MatsT>& s) {setOverlap(s);};
 
   // Copy/Move Constructors
   Orthogonalization(Orthogonalization<MatsT>&)  = default;
@@ -49,17 +49,17 @@ public:
 
   template<typename MatsU>
   Orthogonalization(Orthogonalization<MatsU>& other):
-    overlap(std::make_shared<SquareMatrix<MatsT>>(*(other.overlapPointer()) )),
-    forwardTrans(std::make_shared<SquareMatrix<MatsT>>(*(other.forwardPointer()) )),
-    backwardTrans(std::make_shared<SquareMatrix<MatsT>>(*(other.backwardPointer()) )),
+    overlap(std::make_shared<cqmatrix::Matrix<MatsT>>(*(other.overlapPointer()) )),
+    forwardTrans(std::make_shared<cqmatrix::Matrix<MatsT>>(*(other.forwardPointer()) )),
+    backwardTrans(std::make_shared<cqmatrix::Matrix<MatsT>>(*(other.backwardPointer()) )),
     orthoType(other.getOrthoType()) 
   {};
 
   template<typename MatsU>
   Orthogonalization(Orthogonalization<MatsU>&& other):
-    overlap(std::make_shared<SquareMatrix<MatsT>>(std::move(*(other.overlapPointer()) ))),
-    forwardTrans(std::make_shared<SquareMatrix<MatsT>>(std::move(*(other.forwardPointer()) ))),
-    backwardTrans(std::make_shared<SquareMatrix<MatsT>>(std::move(*(other.backwardPointer()) ))),
+    overlap(std::make_shared<cqmatrix::Matrix<MatsT>>(std::move(*(other.overlapPointer()) ))),
+    forwardTrans(std::make_shared<cqmatrix::Matrix<MatsT>>(std::move(*(other.forwardPointer()) ))),
+    backwardTrans(std::make_shared<cqmatrix::Matrix<MatsT>>(std::move(*(other.backwardPointer()) ))),
     orthoType(other.getOrthoType()) 
   {};
 
@@ -67,7 +67,7 @@ public:
   ~Orthogonalization() {};
 
   // Getter/Setters for overlap
-  inline std::shared_ptr<SquareMatrix<MatsT>> overlapPointer() const {
+  inline std::shared_ptr<cqmatrix::Matrix<MatsT>> overlapPointer() const {
     if( not overlap ) CErr("Overlap has not been initialized");
     return overlap;
   };
@@ -75,7 +75,7 @@ public:
   inline bool hasOverlap() const { return (overlap != nullptr); };
 
   // Change out the Overlap Matrix
-  void setOverlap(SquareMatrix<MatsT>& s) {
+  void setOverlap(cqmatrix::Matrix<MatsT>& s) {
     if (not overlap or s.dimension() != overlap->dimension()) {
       size_t nDim   = s.dimension();
       if (overlap and nDim != overlap->dimension()) {
@@ -83,9 +83,9 @@ public:
         std::cout << "WARNING: The overlap matrix given to setOverlap is a different dimension" << std::endl;
         std::cout << "WARNING: Changing the dimension of overlap and setting the new matrix" << std::endl << std::endl;
       }
-      overlap       = std::make_shared<SquareMatrix<MatsT>>(s.memManager(), nDim);
-      forwardTrans  = std::make_shared<SquareMatrix<MatsT>>(s.memManager(), nDim);
-      backwardTrans = std::make_shared<SquareMatrix<MatsT>>(s.memManager(), nDim);
+      overlap       = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
+      forwardTrans  = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
+      backwardTrans = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
     }
     *overlap    = s;
     computeOrtho();
@@ -94,11 +94,11 @@ public:
   // Getter functions for Transformations
   inline void setOrthoType(ORTHO_TYPE o) { orthoType = o; };
   inline ORTHO_TYPE getOrthoType() const {return orthoType; };
-  inline std::shared_ptr<SquareMatrix<MatsT>> forwardPointer() const {
+  inline std::shared_ptr<cqmatrix::Matrix<MatsT>> forwardPointer() const {
     if( not overlap ) CErr("Overlap has not been initialized");
     return forwardTrans;
   };
-  inline std::shared_ptr<SquareMatrix<MatsT>> backwardPointer() const {
+  inline std::shared_ptr<cqmatrix::Matrix<MatsT>> backwardPointer() const {
     if( not overlap ) CErr("Overlap has not been initialized");
     return backwardTrans;
   };
@@ -107,26 +107,26 @@ public:
   void computeOrtho();
 
   // Transform Operators
-  SquareMatrix<MatsT> nonortho2ortho(SquareMatrix<MatsT>&) const;
-  SquareMatrix<MatsT> ortho2nonortho(SquareMatrix<MatsT>&) const;
-  PauliSpinorSquareMatrices<MatsT> nonortho2ortho(PauliSpinorSquareMatrices<MatsT>&) const;
-  PauliSpinorSquareMatrices<MatsT> ortho2nonortho(PauliSpinorSquareMatrices<MatsT>&) const;
+  cqmatrix::Matrix<MatsT> nonortho2ortho(cqmatrix::Matrix<MatsT>&) const;
+  cqmatrix::Matrix<MatsT> ortho2nonortho(cqmatrix::Matrix<MatsT>&) const;
+  cqmatrix::PauliSpinorMatrices<MatsT> nonortho2ortho(cqmatrix::PauliSpinorMatrices<MatsT>&) const;
+  cqmatrix::PauliSpinorMatrices<MatsT> ortho2nonortho(cqmatrix::PauliSpinorMatrices<MatsT>&) const;
 
   // Transform the basis for Coefficients
-  void nonortho2orthoCoeffs(SquareMatrix<MatsT>&) const;
-  void nonortho2orthoCoeffs(std::vector<SquareMatrix<MatsT>>&) const;
-  void nonortho2orthoCoeffs(std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>&) const;
-  void ortho2nonorthoCoeffs(SquareMatrix<MatsT>&) const;
-  void ortho2nonorthoCoeffs(std::vector<SquareMatrix<MatsT>>&) const;
-  void ortho2nonorthoCoeffs(std::vector<std::reference_wrapper<SquareMatrix<MatsT>>>&) const;
+  void nonortho2orthoCoeffs(cqmatrix::Matrix<MatsT>&) const;
+  void nonortho2orthoCoeffs(std::vector<cqmatrix::Matrix<MatsT>>&) const;
+  void nonortho2orthoCoeffs(std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>&) const;
+  void ortho2nonorthoCoeffs(cqmatrix::Matrix<MatsT>&) const;
+  void ortho2nonorthoCoeffs(std::vector<cqmatrix::Matrix<MatsT>>&) const;
+  void ortho2nonorthoCoeffs(std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>>&) const;
 
   // Orthogonalize States e.g. to orthogonalize the occupied MO's but virtual orbitals are not transformed
-  void orthogonalizeStates(SquareMatrix<MatsT>& mo, size_t nStates, size_t disp=0) const;
+  void orthogonalizeStates(cqmatrix::Matrix<MatsT>& mo, size_t nStates, size_t disp=0) const;
     // nStates = number of States to orthogonalize
     // disp    = number of vectors to shift by e.g. NBC/2 to get to the positive energy states for 4C
 
-  void getOrthogonalizationGradients(std::vector<SquareMatrix<MatsT>>&,
-    std::vector<SquareMatrix<MatsT>>&);
+  void getOrthogonalizationGradients(std::vector<cqmatrix::Matrix<MatsT>>&,
+    std::vector<cqmatrix::Matrix<MatsT>>&);
 };
 
 };  // namespace ChronusQ

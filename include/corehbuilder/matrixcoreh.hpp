@@ -38,7 +38,7 @@ namespace ChronusQ {
 
   protected:
 
-    PauliSpinorSquareMatrices<MatsT> coreHMatrix;
+    cqmatrix::PauliSpinorMatrices<MatsT> coreHMatrix;
 
   public:
 
@@ -47,11 +47,11 @@ namespace ChronusQ {
     // Disable default constructor
     MatrixCoreH() = delete;
     MatrixCoreH(Integrals<IntsT> &aoints, HamiltonianOptions hamiltonianOptions,
-                const PauliSpinorSquareMatrices<MatsT> &matrix):
+                const cqmatrix::PauliSpinorMatrices<MatsT> &matrix):
         CoreHBuilder<MatsT,IntsT>(aoints, hamiltonianOptions),
         coreHMatrix(matrix) {}
     MatrixCoreH(Integrals<IntsT> &aoints, HamiltonianOptions hamiltonianOptions,
-                PauliSpinorSquareMatrices<MatsT> &&matrix):
+                cqmatrix::PauliSpinorMatrices<MatsT> &&matrix):
         CoreHBuilder<MatsT,IntsT>(aoints, hamiltonianOptions),
         coreHMatrix(matrix) {}
 
@@ -70,7 +70,7 @@ namespace ChronusQ {
 
     // Compute core Hamitlonian
     virtual void computeCoreH(EMPerturbation&,
-                              std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>);
+                              std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
 
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&,

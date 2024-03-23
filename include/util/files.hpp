@@ -101,8 +101,10 @@ inline H5::CompType H5PredType() {
 
 namespace ChronusQ {
 
+namespace cqmatrix {
   template <typename MatsT>
-  class PauliSpinorSquareMatrices;
+  class PauliSpinorMatrices;
+}
 
   class SafeFile {
   
@@ -171,7 +173,7 @@ namespace ChronusQ {
 
       template <typename T>
       void readData(const std::string &dataSet,
-                    PauliSpinorSquareMatrices<T> &data) {
+                    cqmatrix::PauliSpinorMatrices<T> &data) {
         readData(dataSet + "_SCALAR", data.S().pointer());
         if (data.hasZ())
           readData(dataSet + "_MZ", data.Z().pointer());
@@ -281,7 +283,7 @@ namespace ChronusQ {
 
       template <typename T>
       void safeWriteData(const std::string &dataSet,
-                         PauliSpinorSquareMatrices<T> &data) {
+                         cqmatrix::PauliSpinorMatrices<T> &data) {
         size_t N = data.dimension();
         safeWriteData(dataSet + "_SCALAR", data.S().pointer(), {N,N});
         if (data.hasZ())

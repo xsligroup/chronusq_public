@@ -57,9 +57,9 @@ namespace ChronusQ {
     void buildDiagH(MCWaveFunction<MatsT, IntsT> &, MatsT *);
     void buildSigma(MCWaveFunction<MatsT, IntsT> &, size_t, MatsT *, MatsT *);
     
-    void computeOneRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, SquareMatrix<MatsT> &);
+    void computeOneRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, cqmatrix::Matrix<MatsT> &);
     void computeTwoRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, InCore4indexTPI<MatsT> &);
-    void computeTDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, MatsT *, SquareMatrix<MatsT> &);
+    void computeTDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, MatsT *, cqmatrix::Matrix<MatsT> &);
   }; // class CASCI
 
 }; // namespace ChronusQ

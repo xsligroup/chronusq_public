@@ -82,8 +82,8 @@ namespace ChronusQ {
   template <typename MatsT>
   void mkCrossAuxVar(
     bool check_aux, bool electron,
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM1,
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM2,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM1,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM2,
     double epsScreen, size_t NPts,
     double *dndX1, double *dndY1, double *dndZ1, 
     double *dMxdX1, double *dMxdY1, double *dMxdZ1, 
@@ -299,8 +299,8 @@ namespace ChronusQ {
    */  
   template <typename MatsT>
   void formZ_vxc_epc(
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM1,
-    std::shared_ptr<PauliSpinorSquareMatrices<MatsT>> onePDM2,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM1,
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM2,
     DENSITY_TYPE denTyp, 
     bool isGGA, size_t NPts, size_t NBE, size_t IOff, 
     double epsScreen, std::vector<double> &weights, double *ZrhoVar1,

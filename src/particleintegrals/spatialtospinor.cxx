@@ -202,10 +202,10 @@ namespace ChronusQ {
 
   template <typename IntsT>
   template <typename MatsT>
-  SquareMatrix<MatsT> OnePRelInts<IntsT>::formW() const {
+  cqmatrix::Matrix<MatsT> OnePRelInts<IntsT>::formW() const {
     if (hasSpinOrbit()) {
       size_t NB = this->nBasis();
-      SquareMatrix<MatsT> W(this->ParticleIntegrals::memManager(), 2*NB);
+      cqmatrix::Matrix<MatsT> W(this->ParticleIntegrals::memManager(), 2*NB);
       // W = [ W1  W2 ]
       //     [ W3  W4 ]
       dcomplex *W1 = W.pointer();
@@ -231,9 +231,9 @@ namespace ChronusQ {
 
   template <>
   template <>
-  SquareMatrix<double> OnePRelInts<double>::formW() const {
+  cqmatrix::Matrix<double> OnePRelInts<double>::formW() const {
     if (hasSpinOrbit()) {
-      SquareMatrix<double> dummy(this->ParticleIntegrals::memManager(),1);
+      cqmatrix::Matrix<double> dummy(this->ParticleIntegrals::memManager(),1);
       CErr("W matrix with spin-orbit cannot be real.");
       return dummy;
     } else {
@@ -260,8 +260,8 @@ namespace ChronusQ {
   template InCoreRITPI<dcomplex> InCoreRITPI<double>::spatialToSpinBlock() const;
   template InCoreRITPI<dcomplex> InCoreRITPI<dcomplex>::spatialToSpinBlock() const;
 
-  template SquareMatrix<double> OnePRelInts<double>::formW() const;
-  template SquareMatrix<dcomplex> OnePRelInts<double>::formW() const;
-  template SquareMatrix<dcomplex> OnePRelInts<dcomplex>::formW() const;
+  template cqmatrix::Matrix<double> OnePRelInts<double>::formW() const;
+  template cqmatrix::Matrix<dcomplex> OnePRelInts<double>::formW() const;
+  template cqmatrix::Matrix<dcomplex> OnePRelInts<dcomplex>::formW() const;
 
 }; // namespace ChronusQ

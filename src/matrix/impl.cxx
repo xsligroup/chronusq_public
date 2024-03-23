@@ -25,70 +25,71 @@
 #include <matrix.hpp>
 
 namespace ChronusQ {
+namespace cqmatrix {
 
-  template class SquareMatrix<double>;
-  template class SquareMatrix<dcomplex>;
+template class Matrix<double>;
+template class Matrix<dcomplex>;
 
-  template class PauliSpinorSquareMatrices<double>;
-  template class PauliSpinorSquareMatrices<dcomplex>;
+template class PauliSpinorMatrices<double>;
+template class PauliSpinorMatrices<dcomplex>;
 
-  /**
-   *  \brief The pointer convertor. This static function converts
-   *  the underlying polymorphism correctly to hold a different
-   *  type of matrices. It is called when the corresponding
-   *  SingleSlater object is being converted.
-   */
-  template <typename IntsT>
-  template <typename IntsU>
-  std::shared_ptr<SquareMatrix<IntsU>>
-  SquareMatrix<IntsT>::convert(const std::shared_ptr<SquareMatrix<IntsT>> &mat) {
+/**
+ *  \brief The pointer convertor. This static function converts
+ *  the underlying polymorphism correctly to hold a different
+ *  type of matrices. It is called when the corresponding
+ *  SingleSlater object is being converted.
+ */
+template <typename IntsT>
+template <typename IntsU>
+std::shared_ptr<Matrix<IntsU>>
+Matrix<IntsT>::convert(const std::shared_ptr<Matrix<IntsT>> &mat) {
 
-    if (not mat) return nullptr;
+  if (not mat) return nullptr;
 
-    const std::type_info &tID(typeid(*mat));
+  const std::type_info &tID(typeid(*mat));
 
-    if (tID == typeid(SquareMatrix<IntsT>)) {
-      return std::make_shared<SquareMatrix<IntsU>>(*mat);
+  if (tID == typeid(Matrix<IntsT>)) {
+    return std::make_shared<Matrix<IntsU>>(*mat);
 
-    } else if (tID == typeid(PauliSpinorSquareMatrices<IntsT>)) {
-      return std::make_shared<PauliSpinorSquareMatrices<IntsU>>(
-          *std::dynamic_pointer_cast<PauliSpinorSquareMatrices<IntsT>>(mat));
+  } else if (tID == typeid(PauliSpinorMatrices<IntsT>)) {
+    return std::make_shared<PauliSpinorMatrices<IntsU>>(
+        *std::dynamic_pointer_cast<PauliSpinorMatrices<IntsT>>(mat));
 
-    } else {
-      std::stringstream errMsg;
-      errMsg << "SquareMatrix implementation \"" << tID.name()
-             << "\" not registered in convert." << std::endl;
-      CErr(errMsg.str(),std::cout);
-    }
-
-    return nullptr;
-
+  } else {
+    std::stringstream errMsg;
+    errMsg << "Matrix implementation \"" << tID.name()
+           << "\" not registered in convert." << std::endl;
+    CErr(errMsg.str(),std::cout);
   }
 
-  template <typename MatsT>
-  std::ostream& operator<<(std::ostream &out, const SquareMatrix<MatsT> &mat) {
-    mat.output(out);
-    return out;
-  }
+  return nullptr;
+}
 
-  template std::ostream& operator<<(std::ostream&, const SquareMatrix<double>&);
-  template std::ostream& operator<<(std::ostream&, const SquareMatrix<dcomplex>&);
+template <typename MatsT>
+std::ostream& operator<<(std::ostream &out, const Matrix<MatsT> &mat) {
+  mat.output(out);
+  return out;
+}
 
-  template class ScaledSquareMatrix<double, double>;
-  template class ScaledSquareMatrix<dcomplex, double>;
-  template class ScaledSquareMatrix<double, dcomplex>;
-  template class ScaledSquareMatrix<dcomplex, dcomplex>;
+template std::ostream& operator<<(std::ostream&, const Matrix<double>&);
+template std::ostream& operator<<(std::ostream&, const Matrix<dcomplex>&);
 
-  template SquareMatrix<double>::SquareMatrix(const PauliSpinorSquareMatrices<double>&);
-  template SquareMatrix<dcomplex>::SquareMatrix(const PauliSpinorSquareMatrices<double>&);
-  template SquareMatrix<dcomplex>::SquareMatrix(const PauliSpinorSquareMatrices<dcomplex>&);
+template class ScaledMatrix<double, double>;
+template class ScaledMatrix<dcomplex, double>;
+template class ScaledMatrix<double, dcomplex>;
+template class ScaledMatrix<dcomplex, dcomplex>;
 
-  template PauliSpinorSquareMatrices<double>::PauliSpinorSquareMatrices(const SquareMatrix<double>&, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>::PauliSpinorSquareMatrices(const SquareMatrix<double>&, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>::PauliSpinorSquareMatrices(const SquareMatrix<dcomplex>&, bool, bool);
+template Matrix<double>::Matrix(const PauliSpinorMatrices<double>&);
+template Matrix<dcomplex>::Matrix(const PauliSpinorMatrices<double>&);
+template Matrix<dcomplex>::Matrix(const PauliSpinorMatrices<dcomplex>&);
 
-  template PauliSpinorSquareMatrices<double>::PauliSpinorSquareMatrices(const PauliSpinorSquareMatrices<double>&, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>::PauliSpinorSquareMatrices(const PauliSpinorSquareMatrices<double>&, bool, bool);
-  template PauliSpinorSquareMatrices<dcomplex>::PauliSpinorSquareMatrices(const PauliSpinorSquareMatrices<dcomplex>&, bool, bool);
+template PauliSpinorMatrices<double>::PauliSpinorMatrices(const Matrix<double>&, bool, bool);
+template PauliSpinorMatrices<dcomplex>::PauliSpinorMatrices(const Matrix<double>&, bool, bool);
+template PauliSpinorMatrices<dcomplex>::PauliSpinorMatrices(const Matrix<dcomplex>&, bool, bool);
 
-}; // namespace ChronusQ
+template PauliSpinorMatrices<double>::PauliSpinorMatrices(const PauliSpinorMatrices<double>&, bool, bool);
+template PauliSpinorMatrices<dcomplex>::PauliSpinorMatrices(const PauliSpinorMatrices<double>&, bool, bool);
+template PauliSpinorMatrices<dcomplex>::PauliSpinorMatrices(const PauliSpinorMatrices<dcomplex>&, bool, bool);
+
+} // namespace cqmatrix 
+} // namespace ChronusQ

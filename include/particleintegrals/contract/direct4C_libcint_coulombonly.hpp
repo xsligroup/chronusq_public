@@ -74,7 +74,8 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void GTODirectRelERIContraction<MatsT,IntsT>::directRelScaffoldLibcintCoulombOnly(
     MPI_Comm comm, const bool screen,
-    std::vector<TwoBodyRelContraction<MatsT>> &matList) const {
+    std::vector<TwoBodyRelContraction<MatsT>> &matList,
+    const APPROXIMATION_TYPE_4C approximate4C) const {
     
     const size_t mMat = matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLLL ? 2: 1;
     const size_t nMat = matList.size();
@@ -169,12 +170,12 @@ namespace ChronusQ {
     }
    
     // make copies for each thread
-    std::vector<std::vector<std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>>> AXthreads;
+    std::vector<std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>>> AXthreads;
     for(auto iTh = 0; iTh < nThreads; iTh++) {
       AXthreads.emplace_back();
       for(auto iMat = 0; iMat < nMat; iMat++) {
         AXthreads.back().push_back(
-          std::make_shared<PauliSpinorSquareMatrices<MatsT>>(memManager_, nBasis, 
+          std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, nBasis, 
             matList[iMat].AX->hasZ(), matList[iMat].AX->hasXY())); 
       }
     }
@@ -416,6 +417,7 @@ namespace ChronusQ {
       nERI = 16;
       buffAll = memManager_.malloc<double>(2*nERI*buffN4*nThreads);
       cacheAll = memManager_.malloc<double>(cache_size*nThreads);
+      std::cout << " cache_size = " << cache_size << std::endl;
       
       SchwarzGauge = memManager_.malloc<double>(nShell*nShell);
       memset(SchwarzGauge,0,nShell*nShell*sizeof(double));
@@ -543,6 +545,7 @@ namespace ChronusQ {
               ShBlkNorms_i[l + k*nShell] = mx;
             }
           }
+          // prettyPrintSmart(std::cout, "shBlkNorm[" + std::to_string(iBatch) + "]", ShBlkNorms_i, nShell, nShell, nShell);
         }
         
         SetLAThreads(LAThreads);// Turn threads for LA back on
@@ -555,6 +558,7 @@ namespace ChronusQ {
           ShBlkNorms[i] = std::max(ShBlkNorms_batch[iBatch][i], ShBlkNorms[i]); 
         
       } 
+      // prettyPrintSmart(std::cout, "maxShBlkNormsSymmDenLLMS", ShBlkNorms, nShell, nShell, nShell);
     /******************************************************/
     /*                                                    */
     /*End of Compute shell block norms (∞-norm) of all matList.X */
@@ -668,6 +672,7 @@ namespace ChronusQ {
             continue; 
           }
           
+        // std::cout << "Shell Quads = [" << s1 << ", " << s2 << ", " << s3 << ", " << s4 << "]" << std::endl;
 #ifdef _SEPARATED_SHZ_SCREEN_4C
           nCon = 0;
           for (auto iBatch = 0ul; iBatch < nBatch; iBatch++) {
@@ -801,7 +806,8 @@ namespace ChronusQ {
   
     /******************************************/
     /*                                        */
-    /* Start of Dirac-Coulomb LL and C(2)-SS  */
+    /* Start of Dirac-Coulomb C(2)            */
+    /* includes DC-LLLL and DC-LLSs/SSLL      */      
     /*                                        */
     /******************************************/
     
@@ -893,6 +899,37 @@ namespace ChronusQ {
           #ifdef _OPENMP
           if( s1234 % nThreads != thread_id ) continue;
           #endif
+          
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+            if (not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) {
+              nIntSkipLL[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipLL[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) { 
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) { 
+              nIntSkipLL[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipLL[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) { 
+            if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4)  
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) ) {
+              nIntSkipLL[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipLL[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
 
 #ifdef _SHZ_SCREEN_4C
 
@@ -929,6 +966,7 @@ namespace ChronusQ {
 #ifdef _REPORT_INTEGRAL_TIMINGS
           auto topDirectLLInt = tick();
 #endif
+          
           // Degeneracy factor for s3,s4 pair
           double s34_deg = (s3 == s4) ? 1.0 : 2.0;
 
@@ -1357,6 +1395,37 @@ namespace ChronusQ {
           #ifdef _OPENMP
           if( s1234 % nThreads != thread_id ) continue;
           #endif
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+            if (not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) {
+              nIntSkipSSSS[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipSSSS[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) { 
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) { 
+              nIntSkipSSSS[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipSSSS[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) { 
+            if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) ) {
+              nIntSkipSSSS[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipSSSS[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
 
 #ifdef _SHZ_SCREEN_4C
           double shMax = std::max(ShBlkNorms[s1 + s4*nShell],
@@ -1887,6 +1956,37 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+            if (not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) {
+              nIntSkipGaunt[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGaunt[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) { 
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) { 
+              nIntSkipGaunt[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGaunt[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) { 
+            if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) ) {
+              nIntSkipGaunt[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGaunt[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
 #ifdef _SHZ_SCREEN_4C
   
           double shMax = std::max(ShBlkNorms[s1 + s4*nShell],
@@ -2368,6 +2468,37 @@ namespace ChronusQ {
           if( s1234 % nThreads != thread_id ) continue;
           #endif
   
+          if(approximate4C == APPROXIMATION_TYPE_4C::ThreeCenter) {
+            if (not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) or bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) {
+              nIntSkipGauge[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGauge[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::TwoCenter) { 
+            if(not(bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4))) { 
+              nIntSkipGauge[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGauge[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
+          if(approximate4C == APPROXIMATION_TYPE_4C::OneCenter) { 
+            if(not( bas(ATOM_OF, s1)==bas(ATOM_OF, s2) and bas(ATOM_OF, s3)==bas(ATOM_OF, s4) 
+                 and bas(ATOM_OF, s1)==bas(ATOM_OF, s3) ) ) {
+              nIntSkipGauge[thread_id]++; 
+#ifdef _SEPARATED_SHZ_SCREEN_4C
+              nConSkipGauge[thread_id] += nBatch; 
+#endif            
+              continue;
+            }
+          }
+
 #ifdef _SHZ_SCREEN_4C
   
           double shMax = std::max(ShBlkNorms[s1 + s4*nShell],
@@ -2704,14 +2835,16 @@ namespace ChronusQ {
   template <>
   void GTODirectRelERIContraction<double,double>::directRelScaffoldLibcintCoulombOnly(
     MPI_Comm comm, const bool screen,
-    std::vector<TwoBodyRelContraction<double>> &matList) const {
+    std::vector<TwoBodyRelContraction<double>> &matList,
+    const APPROXIMATION_TYPE_4C approximate4C) const {
     CErr("Dirac-Coulomb + Real is an invalid option",std::cout);  
   }
 
   template <>
   void GTODirectRelERIContraction<dcomplex,dcomplex>::directRelScaffoldLibcintCoulombOnly(
     MPI_Comm comm, const bool screen,
-    std::vector<TwoBodyRelContraction<dcomplex>> &matList) const {
+    std::vector<TwoBodyRelContraction<dcomplex>> &matList,
+    const APPROXIMATION_TYPE_4C approximate4C) const {
     CErr("Complex integral is is an invalid option",std::cout);  
   }
   

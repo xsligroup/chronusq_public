@@ -68,7 +68,7 @@ namespace ChronusQ {
     bool RESET = false;
     
     // Decide list of onePDMs to use
-    PauliSpinorSquareMatrices<MatsT> &contract1PDM
+    cqmatrix::PauliSpinorMatrices<MatsT> &contract1PDM
         = increment ? *ss.deltaOnePDM : *ss.onePDM;
 
     size_t NB1C  = ss.basisSet().nBasis;
@@ -86,11 +86,11 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
 
-    PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
 
     MatsT* Scr1 = mem.malloc<MatsT>(NB1C2);
     MatsT* Scr2 = mem.malloc<MatsT>(NB1C2);
@@ -139,7 +139,7 @@ namespace ChronusQ {
 #endif
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
-      PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+      cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer(),    NB2C,
              contract1PDMLL[c].pointer(), NB1C);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer()+SS, NB2C,
@@ -204,7 +204,7 @@ namespace ChronusQ {
       if (computeExchange)
       for(size_t i = 0; i < ss.exchangeMatrix->nComponent(); i++) {
   
-        PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+        cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
         contractLL.push_back(
           {contract1PDMLL[c].pointer(), exchangeMatrixLL[c].pointer(), HerDen, EXCHANGE}
         );
@@ -223,7 +223,7 @@ namespace ChronusQ {
       // Assemble 4C exchangeMatrix 
       if(computeExchange) {
       for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
-        PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+        cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
         SetMat('N', NB1C, NB1C, MatsT(1.), exchangeMatrixLL[c].pointer(), NB1C,
                (*ss.exchangeMatrix)[c].pointer(), NB2C);
       }
@@ -2755,7 +2755,7 @@ namespace ChronusQ {
         *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ss.TPI);
 
     // Decide list of onePDMs to use
-    PauliSpinorSquareMatrices<MatsT> &contract1PDM
+    cqmatrix::PauliSpinorMatrices<MatsT> &contract1PDM
         = increment ? *ss.deltaOnePDM : *ss.onePDM;
 
     size_t NB1C  = ss.basisSet().nBasis;
@@ -2776,11 +2776,11 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
 
-    PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
 
     MatsT* Scr1 = mem.malloc<MatsT>(NB1C2);
     MatsT* Scr2 = mem.malloc<MatsT>(NB1C2);
@@ -2799,7 +2799,7 @@ namespace ChronusQ {
     dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
-      PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+      cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer(),    NB2C,
              contract1PDMLL[c].pointer(), NB1C);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer()+SS, NB2C,
@@ -2848,7 +2848,7 @@ namespace ChronusQ {
         exchangeMatrixLL.clear();
         for(size_t i = 0; i < ss.exchangeMatrix->nComponent(); i++) {
   
-          PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+          cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
           contractLL.push_back(
             {contract1PDMLL[c].pointer(), exchangeMatrixLL[c].pointer(), HerDen, EXCHANGE}
           );
@@ -2868,7 +2868,7 @@ namespace ChronusQ {
   
       // Assemble 4C exchangeMatrix 
       for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
-        PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+        cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
         SetMat('N', NB1C, NB1C, MatsT(1.), exchangeMatrixLL[c].pointer(), NB1C,
                (*ss.exchangeMatrix)[c].pointer(), NB2C);
       }
@@ -3759,7 +3759,7 @@ namespace ChronusQ {
         *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ss.TPI);
 
     // Decide list of onePDMs to use
-    PauliSpinorSquareMatrices<MatsT> &contract1PDM
+    cqmatrix::PauliSpinorMatrices<MatsT> &contract1PDM
         = increment ? *ss.deltaOnePDM : *ss.onePDM;
 
     size_t NB1C  = ss.basisSet().nBasis;
@@ -3781,12 +3781,12 @@ namespace ChronusQ {
     bool   isNotRoot = mpiRank != 0;
     bool   computeExchange = std::abs(xHFX) >= 1e-12; 
     
-    PauliSpinorSquareMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
 
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    PauliSpinorSquareMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
 
     MatsT* CScrLLMS = mem.malloc<MatsT>(NB1C2);
 
@@ -3848,7 +3848,7 @@ namespace ChronusQ {
     auto C2 = 1./(4*SpeedOfLight*SpeedOfLight);
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
-      PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+      cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer(),    NB2C,
              contract1PDMLL[c].pointer(), NB1C);
       SetMat('N', NB1C, NB1C, MatsT(1.), contract1PDM[c].pointer()+SS, NB2C,
@@ -3944,7 +3944,7 @@ namespace ChronusQ {
           exchangeMatrixLL.clear();
           for(size_t i = 0; i < ss.exchangeMatrix->nComponent(); i++) {
     
-            PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+            cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
             contractLL.push_back(
               {contract1PDMLL[c].pointer(), exchangeMatrixLL[c].pointer(), HerDen, EXCHANGE}
             );
@@ -3964,7 +3964,7 @@ namespace ChronusQ {
         // Assemble 4C exchangeMatrix 
         if(computeExchange) {
           for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
-            PAULI_SPINOR_COMPS c = static_cast<PAULI_SPINOR_COMPS>(i);
+            cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
             SetMat('N', NB1C, NB1C, MatsT(1.), exchangeMatrixLL[c].pointer(), NB1C,
                    (*ss.exchangeMatrix)[c].pointer(), NB2C);
           }

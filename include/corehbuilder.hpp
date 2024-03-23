@@ -70,7 +70,7 @@ namespace ChronusQ {
 
     // Compute various core Hamitlonian
     virtual void computeCoreH(EMPerturbation&,
-        std::shared_ptr<PauliSpinorSquareMatrices<MatsT>>) = 0;
+        std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>) = 0;
 
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&,

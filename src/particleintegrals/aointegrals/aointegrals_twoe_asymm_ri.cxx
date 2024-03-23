@@ -577,7 +577,7 @@ namespace ChronusQ {
 
             // Allocate J matrix (dimension is NBRI1+NBRI2)
             size_t combineNBRI = aux1_->nRIBasis() + aux2_->nRIBasis();
-            SquareMatrix<double> twocenterERI(memManager(), combineNBRI);
+            cqmatrix::Matrix<double> twocenterERI(memManager(), combineNBRI);
 
             auto asymmCopyBegin = tick();
             // Copy (\alpha \vert \beta) to upper left corner of square matrix J

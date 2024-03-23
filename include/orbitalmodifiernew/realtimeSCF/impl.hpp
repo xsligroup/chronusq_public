@@ -95,7 +95,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     normalStep = true;
     if(finalStep or startStep) normalStep = false;
-    std::vector<SquareMatrix<MatsT>> onePDMSquareOrthoSave;
+    std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareOrthoSave;
     if(MPIRank(this->mpiComm) == 0){
       if(normalStep) {
         std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
@@ -113,7 +113,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     this->singleSlaterSystem.computeEnergy(currentPerturbation);
     this->singleSlaterSystem.computeProperties(currentPerturbation);
     this->saveState(currentPerturbation); // Save the current state for every iSave steps
-    std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fock_k = this->singleSlaterSystem.getFock();
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k = this->singleSlaterSystem.getFock();
     formPropagator(fock_k);
     doPropagation();
     if( printLevel > 0 and (MPIRank(this->mpiComm) == 0) ) printIteration();
@@ -129,7 +129,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
       	}
       }
       this->formFock(false, integrationProgress.currentTime + tdSCFOptions.deltaT); // F(k+1)
-      std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fock_k1 = this->singleSlaterSystem.getFock();
+      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k1 = this->singleSlaterSystem.getFock();
       for( size_t i = 0; i < fock_k.size(); i++ )
         *fock_k[i] = 0.5 * (*fock_k[i] + *fock_k1[i]); // compute 0.5 * (F(k) + F(k+1))
       formPropagator(fock_k);
@@ -182,7 +182,7 @@ void RealTimeSCF<singleSlaterT,MatsT, IntsT>::formFock(bool increment, double ti
  *  \f]
  */
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::formPropagator(std::vector<std::shared_ptr<SquareMatrix<MatsT>>> fockSquareAO) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::formPropagator(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO) {
 
   ROOT_ONLY(this->mpiComm);
 
@@ -208,7 +208,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation() {
 
   for( size_t i = 0; i < unitarySquareOrtho.size(); i++ ) {
     size_t NB = this->fockSquareOrtho[i].dimension();
-    SquareMatrix<MatsT> SCR(this->memManager,NB);
+    cqmatrix::Matrix<MatsT> SCR(this->memManager,NB);
 
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),
                unitarySquareOrtho[i].pointer(), NB,
@@ -557,9 +557,9 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printStepDetail() {
       auto &neoSubsystem = neoMap[neoSubsystemLabel];
       if(neoSubsystem.get()->nC == 1) {
         if(neoSubsystem.get()->iCS) {
-          *neoSubsystem.get()->onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
+          *neoSubsystem.get()->onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
         } else {
-          *neoSubsystem.get()->onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
+          *neoSubsystem.get()->onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
           i++;
         }
       } else {
@@ -572,9 +572,9 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printStepDetail() {
   } else for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
     if(this->singleSlaterSystem.nC == 1) {
       if(this->singleSlaterSystem.iCS) {
-        *this->singleSlaterSystem.onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
+        *this->singleSlaterSystem.onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
       } else {
-        *this->singleSlaterSystem.onePDMOrtho = PauliSpinorSquareMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
+        *this->singleSlaterSystem.onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
         i++;
       }
     } else {
