@@ -183,9 +183,9 @@ namespace ChronusQ {
         return order_;
       }
 
-      void saveCurrentState() {
+      void saveCurrentState(bool saveMO = true) {
         // Pass-through to each subsystems 
-        applyToEach([](SubSSPtr& ss){ ss->saveCurrentState(); });
+        applyToEach([saveMO](SubSSPtr& ss){ ss->saveCurrentState(saveMO); });
         ROOT_ONLY(this->comm);
 
         // Save total energy

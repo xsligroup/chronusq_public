@@ -80,7 +80,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
     if(scfControls.energyOnly) this->computeEigenvalues(pert);
 
     // Save current state of the wave function (method specific)
-    this->singleSlaterSystem.saveCurrentState();
+    this->singleSlaterSystem.saveCurrentState(not scfControls.energyOnly);
 
     // Print out iteration information
     if( scfControls.printLevel > 0 and (MPIRank(this->mpiComm) == 0) )
@@ -144,7 +144,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
   ProgramTimer::tock("SCF Total");
 
   // Save final results to bin file
-  this->singleSlaterSystem.saveCurrentState();
+  this->singleSlaterSystem.saveCurrentState(not scfControls.energyOnly);
 
 };   // OrbitalOptimizer<MatsT,IntsT>::SCF()
 

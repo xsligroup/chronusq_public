@@ -38,7 +38,7 @@ namespace ChronusQ {
  *  Saves a copy of the current AO 1PDM and orthonormal Fock
  */
 template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::saveCurrentState() {
+void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
 
   ROOT_ONLY(comm);
 
@@ -69,8 +69,10 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState() {
     savFile.safeWriteData("SCF/ORTHO_INV", orthoSpinor->backwardPointer()->pointer(), {NB, NB});
 
     // Save MOs
-    savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
-    if( this->nC == 1 and not this->iCS ) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
+    if (saveMO) {
+      savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
+      if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
+    }
 
     // Save Energies
     savFile.safeWriteData(prefix + "TOTAL_ENERGY", &this->totalEnergy, {1});

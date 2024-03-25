@@ -296,7 +296,7 @@ namespace ChronusQ {
     // Misc procedural
     void diagOrthoFock();
     void diagAOFock();
-    virtual void saveCurrentState();
+    virtual void saveCurrentState(bool saveMO = true) override;
 
     // Stability and reopt
     virtual std::pair<double,MatsT*> getStab() = 0;

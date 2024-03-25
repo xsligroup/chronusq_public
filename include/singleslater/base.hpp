@@ -128,7 +128,7 @@ namespace ChronusQ {
     virtual void formCoreH(EMPerturbation&, bool) = 0;
 
     //   Save the current state of the wave function
-    virtual void saveCurrentState() = 0;
+    virtual void saveCurrentState(bool saveMO = true) = 0;
 
     //   Print various matricies
     virtual void printFock(std::ostream& )     = 0;
