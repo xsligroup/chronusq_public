@@ -47,7 +47,6 @@ protected:
   size_t nCol_;
   CQMemManager &memManager_; ///< CQMemManager to allocate matricies
   
-  size_t N_ = 0ul;             ///< flatten dimension of the storage
   MatsT *ptr_ = nullptr;     ///< Raw matrix storage (2 index)
 
 public:
@@ -75,7 +74,7 @@ public:
   }
   Matrix( Matrix &&other ):
       nRow_(other.nRow_), nCol_(other.nCol_), memManager_(other.memManager_),
-      ptr_(other.ptr_), N_(other.N_) { other.ptr_ = nullptr; }
+      ptr_(other.ptr_) { other.ptr_ = nullptr; }
   template <typename MatsU>
   Matrix( const PauliSpinorMatrices<MatsU> &other ):
       Matrix(other.memManager_, other.nRow_, other.nCol_) {
@@ -89,7 +88,7 @@ public:
   }
   Matrix( PauliSpinorMatrices<MatsT> &&other ):
       nRow_(other.nRow_), nCol_(other.nCol_), memManager_(other.memManager_),
-      N_(other.N_), ptr_(other.ptr_) {
+      ptr_(other.ptr_) {
     if (other.hasZ())
       CErr("Cannot create a Matrix from a PauliSpinorMatrices"
            " with XYZ components.");
@@ -117,10 +116,13 @@ public:
   }
   
   virtual void resize(size_t nRow, size_t nCol) {
-    nRow_ = nRow;
-    nCol_ = nCol;
-    if (nRow * nCol != N_) {
+    if (nRow * nCol != nRow_ * nCol_) {
+      nRow_ = nRow;
+      nCol_ = nCol;
       malloc();
+    } else {
+      nRow_ = nRow;
+      nCol_ = nCol;
     }
   }
 
@@ -292,13 +294,13 @@ public:
 
   void malloc() {
     if (ptr_) memManager_.free(ptr_);
-    N_ = nRow_ * nCol_;
-    if (N_ != 0) {
-      try { ptr_ = memManager_.malloc<MatsT>(N_); }
+    size_t N = nRow_ * nCol_;
+    if (N != 0) {
+      try { ptr_ = memManager_.malloc<MatsT>(N); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full INTS matrix ("
-                  << (N_ /1e9) * sizeof(double) << " GB)" << std::endl;
+                  << (N /1e9) * sizeof(double) << " GB)" << std::endl;
         std::cout << std::endl << memManager_ << std::endl;
         throw std::bad_alloc();
       }
