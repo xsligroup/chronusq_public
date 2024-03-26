@@ -573,6 +573,20 @@ namespace ChronusQ {
 
         readDiffTypeDenBin(scrBinFileName);
 
+        if( printLevel > 0 )
+          std::cout << "    * Saving prepared 1-PDMs to file "
+            << savFile.fName() << "\n";
+
+        // Saving post-transformed 1-PDMs to restart file
+        if( savFile.exists() ) {
+
+          std::string prefix = "SCF/";
+          if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+
+          savFile.safeWriteData(prefix + "1PDM", *this->onePDM);
+
+        }
+
       }
 
     }
@@ -1026,6 +1040,23 @@ namespace ChronusQ {
             << scrBinFileName << "\n";
 
         readDiffTypeMOBin(scrBinFileName);
+
+        if( printLevel > 0 )
+          std::cout << "    * Saving prepared MOs to file "
+            << savFile.fName() << "\n";
+
+        // Saving post-transformed MOs to restart file
+        if( savFile.exists() ) {
+
+          size_t NB  = this->nAlphaOrbital();
+          size_t NBC = this->nC * NB;
+          std::string prefix = "SCF/";
+          if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+
+          savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
+          if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
+
+        }
 
       }
 
