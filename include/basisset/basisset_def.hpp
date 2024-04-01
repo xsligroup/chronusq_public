@@ -320,8 +320,13 @@ namespace ChronusQ {
     {  "PROT-PB4-D"                , "prot-pb4-d.gbs"                },
     {  "PROT-PB4-F1"               , "prot-pb4-f1.gbs"               },
     {  "PROT-PB4-F2"               , "prot-pb4-f2.gbs"               },
+    {  "PROT-PB5-D"                , "prot-pb5-d.gbs"                },
+    {  "PROT-PB5-F"                , "prot-pb5-f.gbs"                },
     {  "PROT-PB5-G"                , "prot-pb5-g.gbs"                },
-    {  "PROT-PB6-G"                , "prot-pb6-g.gbs"                }
+    {  "PROT-PB6-D"                , "prot-pb6-d.gbs"                },
+    {  "PROT-PB6-F"                , "prot-pb6-f.gbs"                },
+    {  "PROT-PB6-G"                , "prot-pb6-g.gbs"                },
+    {  "PROT-PB6-H"                , "prot-pb6-h.gbs"                }
   };
 
 
