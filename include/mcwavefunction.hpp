@@ -147,6 +147,8 @@ namespace ChronusQ {
     // Properties
     void populationAnalysis(size_t);
     void populationAnalysis();
+    void spinAnalysis(size_t);
+    void spinAnalysis();
     double oscillator_strength(size_t, size_t s1 = 0);
     void computeMultipole(size_t);
     void computeMultipole();

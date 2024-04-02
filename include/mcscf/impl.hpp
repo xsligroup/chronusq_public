@@ -204,6 +204,11 @@ namespace ChronusQ {
       MCWaveFunction<MatsT,IntsT>::populationAnalysis();
     }
 
+    if (this->printRDMs==0 && this->SpinAnalysis) {
+      std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
+      MCWaveFunction<MatsT,IntsT>::spinAnalysis();
+    }    
+
     // oscillator strength
     if (this->NosS1) {
 

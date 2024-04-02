@@ -70,6 +70,7 @@ namespace ChronusQ {
       "FIELD",
       "PRINTMOS",
       "PRINTRDMS",
+      "PRINTSPIN",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
       "PRINTMULT",
@@ -653,6 +654,9 @@ namespace ChronusQ {
 
    // Mulliken charge analysis
    OPTOPT( mcscf->PopulationAnalysis = input.getData<bool>("MCSCF.POPULATION"); )
+
+   // Mulliken charge analysis
+   OPTOPT( mcscf->SpinAnalysis = input.getData<bool>("MCSCF.PRINTSPIN"); )
 
    // Oscillator strength
    OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )

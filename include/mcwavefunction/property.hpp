@@ -65,6 +65,37 @@ namespace ChronusQ {
   }; // MCWaveFunction::populationAnalysis
 
  /*
+  * \brief Spin analysis for each state
+  *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
+  *         2. SingleSlater->populationAnalysis()
+  *
+  */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::spinAnalysis(size_t i) {
+
+    std::cout << std::endl << "Spin Analysis for State " << i+1 << ": " << std::endl;
+    SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
+
+    // transform oneRDM to AO basis
+    rdm2pdm(this->oneRDM[i]);
+
+    ss_ptr->computeSpin();
+    ss_ptr->printSpin(std::cout);
+
+  }; // MCWaveFunction::spinAnalysis
+
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::spinAnalysis() {
+
+    for (auto i = 0ul; i < this->NStates; i++) {
+
+      MCWaveFunction::spinAnalysis(i);
+
+    }
+
+  }; 
+
+ /*
   * \brief Compute multipole moments for states of interest
   *         Only for 1C and 2C
   *         s1: state
