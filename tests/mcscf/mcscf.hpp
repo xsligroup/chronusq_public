@@ -41,13 +41,13 @@ inline void CQNORMALMCSCF( std::string in, std::string ref ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    MCSCF_TEST_REF + ref, "");
+    MCSCF_TEST_REF + ref, "", false);
 
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
     TEST_OUT + in + ".bin",
-    "");
+    "", false);
 
 #endif
 
@@ -58,7 +58,7 @@ inline void CQBINMCSCF( std::string in, std::string ref ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    MCSCF_TEST_REF + ref, "");
+    MCSCF_TEST_REF + ref, "", true);
 
 #else
 
@@ -69,7 +69,7 @@ inline void CQBINMCSCF( std::string in, std::string ref ) {
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
     TEST_OUT + in + ".bin",
-    "");
+    "", true);
 
 #endif
 
@@ -80,13 +80,13 @@ inline void CQSCRMCSCF( std::string in, std::string ref, std::string scr ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    MCSCF_TEST_REF + ref, MCSCF_TEST_REF + scr);
+    MCSCF_TEST_REF + ref, MCSCF_TEST_REF + scr, false);
 
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
     TEST_OUT + in + ".bin",
-    MCSCF_TEST_REF + scr);
+    MCSCF_TEST_REF + scr, false);
 
 #endif
 
@@ -97,7 +97,7 @@ inline void CQBINSCRMCSCF( std::string in, std::string ref, std::string scr ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    MCSCF_TEST_REF + ref, MCSCF_TEST_REF + scr);
+    MCSCF_TEST_REF + ref, MCSCF_TEST_REF + scr, true);
 
 #else
 
@@ -108,7 +108,7 @@ inline void CQBINSCRMCSCF( std::string in, std::string ref, std::string scr ) {
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
     TEST_OUT + in + ".bin",
-    MCSCF_TEST_REF + scr);
+    MCSCF_TEST_REF + scr, true);
 
 #endif
 

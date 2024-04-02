@@ -49,6 +49,8 @@ int main(int argc, char *argv[]) {
 
   std::string oldRstFileName;
 
+  bool rstExist;
+
   // Parse command line options
   if(argc < 2) { // No Options
 
@@ -97,12 +99,19 @@ int main(int argc, char *argv[]) {
   split(tokens,inFileName,".");
 
   if( outFileName.empty() ) outFileName = tokens[0] + ".out";
-  if( rstFileName.empty() ) rstFileName = tokens[0] + ".bin";
+  if( rstFileName.empty() ){
+    rstFileName = tokens[0] + ".bin";
+    rstExist = false;
+  } else {
+    rstExist = true;
+  }
 
   if( rstFileName == oldRstFileName ) 
     CErr("Old (-z) and current (-b) rstFile cannot have the same name!");
 
   if (not oldRstFileName.empty() and rank == 0) {
+
+    rstExist = true;
 
     std::ifstream oldRstFile( oldRstFileName.c_str(), std::ios::binary );
 
@@ -122,7 +131,7 @@ int main(int argc, char *argv[]) {
     rstFile << oldRstFile.rdbuf();
   }
 
-  RunChronusQ(inFileName,outFileName,rstFileName,scrFileName);
+  RunChronusQ(inFileName,outFileName,rstFileName,scrFileName,rstExist);
 
   ChronusQ::finalize();
 

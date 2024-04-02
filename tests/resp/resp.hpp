@@ -45,12 +45,12 @@ static void CQRESPTEST( std::string in, std::string ref ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    RESP_TEST_REF + ref, "");
+    RESP_TEST_REF + ref, "", false);
 
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin","");
+    TEST_OUT + in + ".bin","", false);
 
 #endif
 
@@ -66,7 +66,7 @@ static void CQRESPREFTEST( std::string in, std::string ref ) {
 
   // Assumes user added bin to RESP_TEST_REF
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    RESP_TEST_REF + ref, "");
+    RESP_TEST_REF + ref, "", true);
 
 #else
 
@@ -76,7 +76,7 @@ static void CQRESPREFTEST( std::string in, std::string ref ) {
   dst.flush();
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin","");
+    TEST_OUT + in + ".bin","", true);
 
 #endif
 
@@ -90,12 +90,12 @@ static void CQRESPSCRTEST( std::string in, std::string ref, std::string scr ) {
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    RESP_TEST_REF + ref, RESP_TEST_REF + scr);
+    RESP_TEST_REF + ref, RESP_TEST_REF + scr, false);
 
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin", RESP_TEST_REF + scr);
+    TEST_OUT + in + ".bin", RESP_TEST_REF + scr, false);
 
 #endif
 

@@ -29,7 +29,7 @@ namespace ChronusQ {
 
   void RunChronusQ(std::string inFileName,
     std::string outFileName, std::string rstFileName,
-    std::string scrFileName);
+    std::string scrFileName, bool rstExists = false);
 
   void CQParser(std::string inFileName, std::string outFileName);
 }; // namespace ChronusQ

@@ -88,7 +88,7 @@ namespace ChronusQ {
 
   void RunChronusQ(std::string inFileName,
     std::string outFileName, std::string rstFileName,
-    std::string scrFileName) {
+    std::string scrFileName, bool rstExists) {
 
     // Check to make sure input and output file name are different.
     if( inFileName == outFileName )
@@ -256,9 +256,6 @@ namespace ChronusQ {
       HandleOrbitalSwaps(output, input, *ss);
     }
 
-    bool rstExists = false;
-    if( std::filesystem::exists(rstFileName) and rank == 0 )
-      rstExists = true;
     if( (ss->scfControls.guess == READMO or
          ss->scfControls.guess == READDEN or
          ss->scfControls.prot_guess == READMO or
