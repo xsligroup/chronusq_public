@@ -214,6 +214,7 @@ namespace ChronusQ {
 
     double computeReferenceEnergy(const InCore4indexTPI<MatsT> &moTPI, double nucRepEnergy);
     void getCorrEnergy();
+    void printAnalysis();
     void run();
     void runConventional();
     void printBanner(double Eref) const;

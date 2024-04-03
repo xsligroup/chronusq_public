@@ -307,6 +307,9 @@ namespace ChronusQ{
           double realCoreE = std::real(this->CorrE);
           savFile_.safeWriteData("/CC/CORRELATION_ENERGY",&realCoreE, {1});
         }
+        std::cout << bannerEnd << std::endl;
+
+        printAnalysis();
         
         std::cout << BannerEnd << std::endl;
         
@@ -330,6 +333,21 @@ namespace ChronusQ{
     MatsT CorrETwoBodyT2 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T2_("c,d,k,l"));
     MatsT CorrETwoBodyT1 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T1_("c,k") * T1_("d,l"));
     this->CorrE = CorrEOneBody + 0.25 * (CorrETwoBodyT2 + 2.0 * CorrETwoBodyT1);
+  }
+
+  template <typename MatsT, typename IntsT>
+  void CCSD<MatsT,IntsT>::printAnalysis() {
+    std::cout << bannerTop << std::endl;
+    std::cout << "Coupled Cluster Wave Function Analysis:" << std::endl;
+    std::cout << std::setw(22) << "   max(|t1|)  " << std::setprecision(4) << abs_max(T1_).get() << std::endl;
+    std::cout << std::setw(22) << "   max(|t2|)  " << std::setprecision(4) << abs_max(T2_).get() << std::endl;
+    double normT1Sq = squared_norm(T1_).get();
+    double normT2Sq = squared_norm(T2_).get();
+    std::cout << std::setw(22) << "   sum of t1 weights  " << std::setprecision(4) << normT1Sq << std::endl;
+    std::cout << std::setw(22) << "   sum of t2 weights  " << std::setprecision(4) << normT2Sq << std::endl;
+    std::cout << std::setw(22) << "   T1 diagnostic  " << std::setprecision(4) << sqrt(normT1Sq / intermediates_.nOcc) << std::endl;
+    std::cout << std::setw(22) << "   T2 diagnostic  " << std::setprecision(4) << sqrt(normT2Sq / intermediates_.nOcc) << std::endl;
+    std::cout << bannerEnd << std::endl;
   }
 
   /**
