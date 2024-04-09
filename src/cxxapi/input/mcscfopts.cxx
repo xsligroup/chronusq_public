@@ -236,6 +236,57 @@ namespace ChronusQ {
 
   }
 
+  void set_orbital_index(std::vector<char> &orbindex, std::string inputstring, char C) {
+
+    if (not orbindex.empty()) {
+      std::vector<std::string> moTokens;
+      split(moTokens, inputstring, ", ");
+      for (auto & mo: moTokens) {
+        std::vector<std::string> mo2;
+        split(mo2, mo, "-");
+        if (mo2.size() == 1) {
+          orbindex[std::stoul(mo2[0])-1] = C;
+        } else if (mo2.size() == 2) {
+          for (auto i = std::stoul(mo2[0]); i <= std::stoul(mo2[1]); i++)
+            orbindex[i-1] = C;
+        } else CErr("Unrecogonized pattern in orbital selection"); 
+      }
+    }
+  }
+
+  void fill_default_index(std::vector<char> &orbindex, size_t iter, char C, size_t N) {
+
+    for (auto i = 0ul; i < N; i++) {
+      while (iter < orbindex.size()) {
+        if (orbindex[iter] == 'N') break;
+        iter++;
+      }
+      orbindex[iter] = C;
+    }
+  }
+
+  void print_orbIndices(std::vector<char> orbindex) {
+
+    std::cout << std::endl;
+    std::cout << "    Construct Orbital Indices as:" << std::endl;
+
+    // print 10 per line
+    for (auto i = 0ul, sPerLine = 10ul; i < orbindex.size(); i++) {
+      if (i % sPerLine == 0)
+        std::cout << "      MO " << std::setw(5) << i + 1 << " ~ "
+                  << std::setw(5)
+                  << std::min(i + sPerLine, orbindex.size()) << ":    ";
+
+        std::cout << orbindex[i] << "  ";
+
+        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
+      }
+
+      std::cout << std::endl << std::endl;
+
+  }
+
+
   /**
    *
    * \brief Parse an orbital selection string of comma-separated indices or ranges
@@ -479,14 +530,28 @@ namespace ChronusQ {
     OPTOPT( rasMOStrings[2] = input.getData<std::string>("MCSCF.RAS3ORBITAL"));
     OPTOPT( fcMOStrings     = input.getData<std::string>("MCSCF.INORBITAL"));
     OPTOPT( fvMOStrings     = input.getData<std::string>("MCSCF.FVORBITAL"));
-    
-    #define FILL_DEFAULT_INDEX(ORBINDEX, ITER, C, N) \
-      { for (auto i = 0ul; i < N; i++) { \
-          while (ITER < ORBINDEX.size()) { \
-            if (ORBINDEX[ITER] == 'N') break; \
-            ITER++; \
-          } \
-          ORBINDEX[ITER] = C; }}
+
+//    #define SET_ORBITAL_INDEX(ORBINDEX, INPUTSTRING, C) \
+//      if (not ORBINDEX.empty()) { \
+//        std::vector<std::string> moTokens; \
+//        split(moTokens, INPUTSTRING, ", "); \
+//        for (auto & mo: moTokens)  { \
+//          std::vector<std::string> mo2; \
+//          split(mo2, mo, "-"); \
+//          if (mo2.size() == 1) { \
+//            ORBINDEX[std::stoul(mo2[0])-1] = C; \
+//          } else if (mo2.size() == 2) { \
+//            for (auto i = std::stoul(mo2[0]); i <= std::stoul(mo2[1]); i++) \
+//              ORBINDEX[i-1] = C; \
+//          } else CErr("Unrecogonized pattern in orbital selection"); }}
+//    
+//    #define FILL_DEFAULT_INDEX(ORBINDEX, ITER, C, N) \
+//      { for (auto i = 0ul; i < N; i++) { \
+//          while (ITER < ORBINDEX.size()) { \
+//            if (ORBINDEX[ITER] == 'N') break; \
+//            ITER++; \
+//          } \
+//          ORBINDEX[ITER] = C; }}
 
     bool selectMO = not fcMOStrings.empty() or not fvMOStrings.empty();
     
@@ -506,18 +571,18 @@ namespace ChronusQ {
       std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');
       
       // parse input
-      for (size_t i : parseOrbitalSelectionInput(fcMOStrings))
-        inputOrbIndices[i] = 'I';
-      for (size_t i : parseOrbitalSelectionInput(fvMOStrings))
-        inputOrbIndices[i] = 'S';
+//      SET_ORBITAL_INDEX(inputOrbIndices, fcMOStrings, 'I');
+//      SET_ORBITAL_INDEX(inputOrbIndices, fvMOStrings, 'S');
+      set_orbital_index(inputOrbIndices, fcMOStrings, 'I');
+      set_orbital_index(inputOrbIndices, fvMOStrings, 'S');
       if (isCASJob or isDMRGJob) {
-        for (size_t i : parseOrbitalSelectionInput(casMOStrings))
-          inputOrbIndices[i] = 'A';
+//        SET_ORBITAL_INDEX(inputOrbIndices, casMOStrings, 'A');
+        set_orbital_index(inputOrbIndices, casMOStrings, 'A');
       } else if (isRASJob) {
         for (auto i = 0; i < 3; i++) {
           char i_char = '1' + i;
-          for (size_t i : parseOrbitalSelectionInput(rasMOStrings[i]))
-            inputOrbIndices[i] = i_char;
+//          SET_ORBITAL_INDEX(inputOrbIndices, rasMOStrings[i], i_char);
+          set_orbital_index(inputOrbIndices, rasMOStrings[i], i_char);
         }
       }
       
@@ -525,43 +590,48 @@ namespace ChronusQ {
       size_t mo_iter = fourCOffSet;
       if (fcMOStrings.empty()) {
         size_t n_char = mcscf->MOPartition.nInact;
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
+//        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
+        fill_default_index(inputOrbIndices, mo_iter, 'I', n_char);
       }
       
       if (isCASJob or isDMRGJob) {
         if (casMOStrings.empty()) {
           size_t n_char = mcscf->MOPartition.nCorrO;
-          FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
+//          FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
+          fill_default_index(inputOrbIndices, mo_iter, 'A', n_char);
         }
       } else if (isRASJob) {
         for (auto i = 0; i < 3; i++) { 
           char i_char = '1' + i;
           size_t n_char = mcscf->MOPartition.nActOs[i];
           if (rasMOStrings[i].empty())
-            FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, i_char, n_char);
+//            FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, i_char, n_char);
+            fill_default_index(inputOrbIndices, mo_iter, i_char, n_char);
         }
       }
       if (fvMOStrings.empty()) 
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', mcscf->MOPartition.nFVirt);
-      
-      std::cout << std::endl;
+//        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', mcscf->MOPartition.nFVirt);
+        fill_default_index(inputOrbIndices, mo_iter, 'S', mcscf->MOPartition.nFVirt);
 
-      std::cout << "    Construct Orbital Indices as:" << std::endl;
-      
-      // print 10 per line
-      for (auto i = 0ul, sPerLine = 10ul; i < inputOrbIndices.size(); i++) {
-        
-        if (i % sPerLine == 0) 
-          std::cout << "      MO " << std::setw(5) << i + 1 << " ~ " 
-                    << std::setw(5) 
-                    << std::min(i + sPerLine, inputOrbIndices.size()) << ":    ";
-        
-        std::cout << inputOrbIndices[i] << "  ";
-
-        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
-      } 
-      
-      std::cout << std::endl << std::endl;
+      print_orbIndices(inputOrbIndices);
+//      std::cout << std::endl;
+//
+//      std::cout << "    Construct Orbital Indices as:" << std::endl;
+//      
+//      // print 10 per line
+//      for (auto i = 0ul, sPerLine = 10ul; i < inputOrbIndices.size(); i++) {
+//        
+//        if (i % sPerLine == 0) 
+//          std::cout << "      MO " << std::setw(5) << i + 1 << " ~ " 
+//                    << std::setw(5) 
+//                    << std::min(i + sPerLine, inputOrbIndices.size()) << ":    ";
+//        
+//        std::cout << inputOrbIndices[i] << "  ";
+//
+//        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
+//      } 
+//      
+//      std::cout << std::endl << std::endl;
       
       mcscf->MOPartition.orbIndices = inputOrbIndices;
       mcscf->setActiveSpaceAndReOrder();

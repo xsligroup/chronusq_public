@@ -76,6 +76,12 @@ namespace ChronusQ {
   
   };
 
+  // helper function to parse orbital index
+  void set_orbital_index(std::vector<char> &orbindex, std::string inputstring, char C);
+  void fill_default_index(std::vector<char> &orbindex, size_t iter, char C, size_t N);
+  void print_orbIndices(std::vector<char> orbindex);
+
+
   /**
    *  \brief The MCWaveFunctionBase class. The abstraction of information
    *  relating to the MCWaveFunction class which are independent of storage

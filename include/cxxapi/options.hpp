@@ -35,7 +35,7 @@
 #include <posthartreefock.hpp>
 #include <mcscf.hpp>
 #include <regex>
-
+#include <perturb.hpp>
 
 // Preprocessor directive to aid the digestion of optional 
 // input arguments
@@ -67,7 +67,7 @@ namespace ChronusQ {
     CC,
     EOMCC,
     MR,
-    CI,
+    PT,
     BOMD,
     EHRENFEST
   };
@@ -101,8 +101,8 @@ namespace ChronusQ {
     else if( jobStr == "MCSCF" ) {
       job = JobType::MR;
     }
-    else if( jobStr == "CI" ) {
-      job = JobType::CI;
+    else if( jobStr == "PERTURB" ) {
+      job = JobType::PT;
     }
     else {
       jobStr = "Unrecognized job type \"" + jobStr + "\"!";
@@ -290,6 +290,10 @@ namespace ChronusQ {
   
   // Save reference info
   void saveRefs(SingleSlaterOptions &, std::shared_ptr<SingleSlaterBase> &);
+  // Parse Perturb options
+  std::shared_ptr<MCWaveFunctionBase> CQPerturbOptions(std::ostream &,
+            CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &);
+  void CQPERTURB_VALID(std::ostream &, CQInputFile &);
 
   std::shared_ptr<CQMemManager> CQMiscOptions(std::ostream &,
     CQInputFile &);
@@ -314,6 +318,7 @@ namespace ChronusQ {
     CQDYNAMICS_VALID(out,input);
     CQMCSCF_VALID(out,input);
     CQEOMCC_VALID(out,input);
+    CQPERTURB_VALID(out,input);
     CQCI_VALID(out,input);
 
   }

@@ -42,6 +42,7 @@
 #include <coupledcluster.hpp>
 #include <mcwavefunction.hpp>
 #include <mcscf.hpp>
+#include <perturb.hpp>
 
 #include <findiff/geomgrad.hpp>
 #include <particleintegrals/gradints.hpp>
@@ -479,7 +480,7 @@ namespace ChronusQ {
 #endif
         }
 
-        if ( elecJob == JobType::MR ) {
+        if ( elecJob == JobType::MR or elecJob == JobType::PT ) {
 
           if (doNEO)
             CErr("NEO-MCSCF NYI!",output);
@@ -490,10 +491,21 @@ namespace ChronusQ {
             CErr("Sections for the new and old CI codes are specified. Please specify either [MCSCF] or [CI]!");
           }
 
+          if (input.containsSection("PERTURB") && input.containsSection("CI"))
+            CErr("Currently Perturb codes do not work with new CI codes.");
+          if (input.containsSection("PERTURB") && !input.containsSection("MCSCF"))
+            CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
+            
           if (input.containsSection("MCSCF")) {
             auto mcscf = CQMCSCFOptions(output,input,ss,emPert);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
+            
+            if (input.containsSection("PERTURB")) {
+              auto perturb = CQPerturbOptions(output,input,mcscf);
+              perturb->savFile = rstFile;
+              perturb->run(emPert);  /// LXL: need to change the fields accordingly
+            }
           }
 
           if (input.containsSection("CI")) {

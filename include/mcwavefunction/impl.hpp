@@ -157,7 +157,7 @@ namespace ChronusQ {
     if (detStrBeta) detStrBeta->computeList();  
     std::cout << std::endl;
 
-    if (this->readCI) ReadGuessCIVector({this->savFile.fName()});
+    if (this->readCI) ReadGuessCIVector();
  
   }; // MCWaveFunction<T>::alloc
 

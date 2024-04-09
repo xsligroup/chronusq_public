@@ -184,6 +184,25 @@ namespace ChronusQ {
       printReg("    - Property Evaluation", "Property Eval", mcscfId);
     }
     
+    // PERTURB specific
+    auto perturbId = timer.getLabelId("PERTURB Total");
+    if ( perturbId != 0 ) {
+      printReg("  - PERTURB", "PERTURB Total", perturbId);
+      printReg("    - Integral Transformation", "Integral Trans", perturbId);
+      printReg("    - XMS rotation", "Extend MS", perturbId);
+      printReg("    - Fock build", "Fock build", perturbId);
+      printReg("    - Full LHS build", "Full LHS build", perturbId);
+      printReg("    - LHS diagonal build", "LHS diagonal build", perturbId);
+      printReg("    - RHS build with Sigma", "RHS build", perturbId);
+      printReg("    - Solve Linear System", "Solve Linear System", perturbId);
+      printReg("    - LHS sigma build", "LHS sigma build", perturbId);
+      printReg("    - compute HV with Sigma", "compute HV", perturbId);
+      printReg("    - MS H effective", "MS Heff", perturbId);
+      printSub("      -compute HV with Sigma", "compute HV", "MS Heff", perturbId); 
+      printSub("      -diagonalization", "Heff diag", "MS Heff", perturbId);
+    }
+
+
     auto ciId = timer.getLabelId("Configuration Interaction Total");
     if ( ciId != 0 ) {
       printReg("  - Configuration Interaction", "Configuration Interaction Total", ciId);

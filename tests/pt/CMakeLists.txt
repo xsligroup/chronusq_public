@@ -21,23 +21,31 @@
 #   E-Mail: xsli@uw.edu
 #
 
-set(INPUT_SRC input/parse.cxx input/freeparsers.cxx)
+# Directories for PT tests
+set(PT_TEST_SOURCE_ROOT "${TEST_ROOT}/pt" )
+set(PT_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/pt" )
+  
 
-set(OPT_SRC input/molopts.cxx input/basisopts.cxx 
-    input/singleslateropts.cxx input/scfopts.cxx input/rtopts.cxx
-    input/intsopts.cxx input/miscopts.cxx input/respopts.cxx 
-    input/coupledclusteropts.cxx input/geomopts.cxx input/mcscfopts.cxx
-    input/saverefs.cxx input/perturbopts.cxx
-    input/posthfopts.cxx input/configinteractionopts.cxx
-    input/saverefs.cxx
-    procedural.cxx output.cxx)
+# Set up compilation of PT test exe
+add_executable(pttest ../ut.cxx pt.cxx)
 
-target_sources(cq PRIVATE ${INPUT_SRC} ${OPT_SRC})
+target_include_directories(pttest PUBLIC ${PT_TEST_SOURCE_ROOT} 
+  ${TEST_BINARY_ROOT})
+target_link_libraries(pttest PUBLIC cq)
+target_link_libraries(pttest PUBLIC gtest)
 
-add_executable(chronusq chronusq.cxx)
-target_link_libraries(chronusq PUBLIC cq)
+# Generate directories
+file(MAKE_DIRECTORY ${PT_TEST_BINARY_ROOT}/serial)
+file(MAKE_DIRECTORY ${PT_TEST_BINARY_ROOT}/parallel)
 
-add_custom_target(linkexe ALL
-  ${CMAKE_COMMAND} -E create_symlink ${PROJECT_BINARY_DIR}/src/cxxapi/chronusq ${PROJECT_BINARY_DIR}/chronusq )
 
-install(TARGETS chronusq RUNTIME DESTINATION "bin")
+include( CQTestGeneration )
+
+# PT test
+add_cq_test(MRPT  pttest "MRPT.*")
+
+
+if( CQ_ENABLE_MPI )
+
+endif()
+

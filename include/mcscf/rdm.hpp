@@ -30,7 +30,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT, IntsT>::computeOneRDM(size_t i) {
     MCWaveFunction<MatsT, IntsT>::computeOneRDM(i);
-    *oneRDMSOI = this->oneRDM[i];
+    if (this->settings.doSCF) *oneRDMSOI = this->oneRDM[i];
   }; // MCSCF::computeOneRDM(i)
   
   template <typename MatsT, typename IntsT>
