@@ -4276,70 +4276,105 @@ namespace ChronusQ {
           {contract1PDMSL.Z().pointer(), XScrLSMZ},
 	};
 
-      // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGaunt, pert, 
+
+    if (this->hamiltonianOptions_.updateGaunt == true){
+
+        relERICon.twoBodyContract(ss.comm, true, contractDCGaunt, pert, 
         computeExchange,
         this->hamiltonianOptions_.GauntType,
         this->hamiltonianOptions_.GauntApproximationType);
 
+        ss.gaunttwoeH->clear();
+        ss.gauntexchangeMatrix->clear();
+
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
-                      ss.twoeH->S().pointer()+LS, NB2C,
-                      ss.twoeH->S().pointer()+LS, NB2C);
+                      ss.gaunttwoeH->S().pointer()+LS, NB2C,
+                      ss.gaunttwoeH->S().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMX, NB1C, MatsT(1.0), 
-                      ss.twoeH->X().pointer()+LS, NB2C,
-                      ss.twoeH->X().pointer()+LS, NB2C);
+                      ss.gaunttwoeH->X().pointer()+LS, NB2C,
+                      ss.gaunttwoeH->X().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMY, NB1C, MatsT(1.0), 
-                      ss.twoeH->Y().pointer()+LS, NB2C,
-                      ss.twoeH->Y().pointer()+LS, NB2C);
+                      ss.gaunttwoeH->Y().pointer()+LS, NB2C,
+                      ss.gaunttwoeH->Y().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMZ, NB1C, MatsT(1.0), 
-                      ss.twoeH->Z().pointer()+LS, NB2C,
-                      ss.twoeH->Z().pointer()+LS, NB2C);
+                      ss.gaunttwoeH->Z().pointer()+LS, NB2C,
+                      ss.gaunttwoeH->Z().pointer()+LS, NB2C);
 
       if (computeExchange) {
       // Add (LL|LL) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer(), NB2C,
-                      ss.exchangeMatrix->S().pointer(), NB2C);
+                      ss.gauntexchangeMatrix->S().pointer(), NB2C,
+                      ss.gauntexchangeMatrix->S().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer(), NB2C,
-                      ss.exchangeMatrix->X().pointer(), NB2C);
+                      ss.gauntexchangeMatrix->X().pointer(), NB2C,
+                      ss.gauntexchangeMatrix->X().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer(), NB2C,
-                      ss.exchangeMatrix->Y().pointer(), NB2C);
+                      ss.gauntexchangeMatrix->Y().pointer(), NB2C,
+                      ss.gauntexchangeMatrix->Y().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer(), NB2C,
-                      ss.exchangeMatrix->Z().pointer(), NB2C);
-
+                      ss.gauntexchangeMatrix->Z().pointer(), NB2C,
+                      ss.gauntexchangeMatrix->Z().pointer(), NB2C);
 
       // Add (SS|SS) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->S().pointer()+SS, NB2C);
+                      ss.gauntexchangeMatrix->S().pointer()+SS, NB2C,
+                      ss.gauntexchangeMatrix->S().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->X().pointer()+SS, NB2C);
+                      ss.gauntexchangeMatrix->X().pointer()+SS, NB2C,
+                      ss.gauntexchangeMatrix->X().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->Y().pointer()+SS, NB2C);
+                      ss.gauntexchangeMatrix->Y().pointer()+SS, NB2C,
+                      ss.gauntexchangeMatrix->Y().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->Z().pointer()+SS, NB2C);
+                      ss.gauntexchangeMatrix->Z().pointer()+SS, NB2C,
+                      ss.gauntexchangeMatrix->Z().pointer()+SS, NB2C);
 
       // Add (LL|SS) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->S().pointer()+LS, NB2C);
+                      ss.gauntexchangeMatrix->S().pointer()+LS, NB2C,
+                      ss.gauntexchangeMatrix->S().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->X().pointer()+LS, NB2C);
+                      ss.gauntexchangeMatrix->X().pointer()+LS, NB2C,
+                      ss.gauntexchangeMatrix->X().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->Y().pointer()+LS, NB2C);
+                      ss.gauntexchangeMatrix->Y().pointer()+LS, NB2C,
+                      ss.gauntexchangeMatrix->Y().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->Z().pointer()+LS, NB2C);
+                      ss.gauntexchangeMatrix->Z().pointer()+LS, NB2C,
+                      ss.gauntexchangeMatrix->Z().pointer()+LS, NB2C);
       }
+
+    } 
+
+      // Add gaunt contribution 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaunttwoeH->S().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->S().pointer(), NB2C,
+                    ss.twoeH->S().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaunttwoeH->X().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->X().pointer(), NB2C,
+                    ss.twoeH->X().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaunttwoeH->Y().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->Y().pointer(), NB2C,
+                    ss.twoeH->Y().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaunttwoeH->Z().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->Z().pointer(), NB2C,
+                    ss.twoeH->Z().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->S().pointer(), NB2C,
+                    ss.exchangeMatrix->S().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->X().pointer(), NB2C,
+                    ss.exchangeMatrix->X().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->Y().pointer(), NB2C,
+                    ss.exchangeMatrix->Y().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->Z().pointer(), NB2C,
+                    ss.exchangeMatrix->Z().pointer(), NB2C);
+
+
+
 
 
 #ifdef _PRINT_MATRICES
@@ -4404,70 +4439,103 @@ namespace ChronusQ {
         };
 
       // Call the contraction engine to do the assembly of Gaunt
-      relERICon.twoBodyContract(ss.comm, true, contractDCGauge, pert,
+
+    if (this->hamiltonianOptions_.updateGauge == true){
+        relERICon.twoBodyContract(ss.comm, true, contractDCGauge, pert,
         computeExchange,
         this->hamiltonianOptions_.GaugeType,
         this->hamiltonianOptions_.GaugeApproximationType);
 
+        ss.gaugetwoeH->clear();
+        ss.gaugeexchangeMatrix->clear();
+
       // Add (LL|SS) Coulomb contributions
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMS, NB1C, MatsT(1.0), 
-                      ss.twoeH->S().pointer()+LS, NB2C,
-                      ss.twoeH->S().pointer()+LS, NB2C);
+                      ss.gaugetwoeH->S().pointer()+LS, NB2C,
+                      ss.gaugetwoeH->S().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMX, NB1C, MatsT(1.0), 
-                      ss.twoeH->X().pointer()+LS, NB2C,
-                      ss.twoeH->X().pointer()+LS, NB2C);
+                      ss.gaugetwoeH->X().pointer()+LS, NB2C,
+                      ss.gaugetwoeH->X().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMY, NB1C, MatsT(1.0), 
-                      ss.twoeH->Y().pointer()+LS, NB2C,
-                      ss.twoeH->Y().pointer()+LS, NB2C);
+                      ss.gaugetwoeH->Y().pointer()+LS, NB2C,
+                      ss.gaugetwoeH->Y().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, 2.0*C2, CScrLSMZ, NB1C, MatsT(1.0), 
-                      ss.twoeH->Z().pointer()+LS, NB2C,
-                      ss.twoeH->Z().pointer()+LS, NB2C);
+                      ss.gaugetwoeH->Z().pointer()+LS, NB2C,
+                      ss.gaugetwoeH->Z().pointer()+LS, NB2C);
 
       if (computeExchange) {
       // Add (LL|LL) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer(), NB2C,
-                      ss.exchangeMatrix->S().pointer(), NB2C);
+                      ss.gaugeexchangeMatrix->S().pointer(), NB2C,
+                      ss.gaugeexchangeMatrix->S().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer(), NB2C,
-                      ss.exchangeMatrix->X().pointer(), NB2C);
+                      ss.gaugeexchangeMatrix->X().pointer(), NB2C,
+                      ss.gaugeexchangeMatrix->X().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer(), NB2C,
-                      ss.exchangeMatrix->Y().pointer(), NB2C);
+                      ss.gaugeexchangeMatrix->Y().pointer(), NB2C,
+                      ss.gaugeexchangeMatrix->Y().pointer(), NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLLMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer(), NB2C,
-                      ss.exchangeMatrix->Z().pointer(), NB2C);
+                      ss.gaugeexchangeMatrix->Z().pointer(), NB2C,
+                      ss.gaugeexchangeMatrix->Z().pointer(), NB2C);
 
 
       // Add (SS|SS) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->S().pointer()+SS, NB2C);
+                      ss.gaugeexchangeMatrix->S().pointer()+SS, NB2C,
+                      ss.gaugeexchangeMatrix->S().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->X().pointer()+SS, NB2C);
+                      ss.gaugeexchangeMatrix->X().pointer()+SS, NB2C,
+                      ss.gaugeexchangeMatrix->X().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->Y().pointer()+SS, NB2C);
+                      ss.gaugeexchangeMatrix->Y().pointer()+SS, NB2C,
+                      ss.gaugeexchangeMatrix->Y().pointer()+SS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrSSMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer()+SS, NB2C,
-                      ss.exchangeMatrix->Z().pointer()+SS, NB2C);
+                      ss.gaugeexchangeMatrix->Z().pointer()+SS, NB2C,
+                      ss.gaugeexchangeMatrix->Z().pointer()+SS, NB2C);
 
       // Add (LL|SS) exchange contributions
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMS, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->S().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->S().pointer()+LS, NB2C);
+                      ss.gaugeexchangeMatrix->S().pointer()+LS, NB2C,
+                      ss.gaugeexchangeMatrix->S().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMX, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->X().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->X().pointer()+LS, NB2C);
+                      ss.gaugeexchangeMatrix->X().pointer()+LS, NB2C,
+                      ss.gaugeexchangeMatrix->X().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMY, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Y().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->Y().pointer()+LS, NB2C);
+                      ss.gaugeexchangeMatrix->Y().pointer()+LS, NB2C,
+                      ss.gaugeexchangeMatrix->Y().pointer()+LS, NB2C);
       MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMZ, NB1C, MatsT(1.0), 
-                      ss.exchangeMatrix->Z().pointer()+LS, NB2C,
-                      ss.exchangeMatrix->Z().pointer()+LS, NB2C);
+                      ss.gaugeexchangeMatrix->Z().pointer()+LS, NB2C,
+                      ss.gaugeexchangeMatrix->Z().pointer()+LS, NB2C);
       }
+    } 
 
+      // Add gauge contribution 
+      // Add (LL|SS) Coulomb contributions
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugetwoeH->S().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->S().pointer(), NB2C,
+                    ss.twoeH->S().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugetwoeH->X().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->X().pointer(), NB2C,
+                    ss.twoeH->X().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugetwoeH->Y().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->Y().pointer(), NB2C,
+                    ss.twoeH->Y().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugetwoeH->Z().pointer(), NB2C, MatsT(1.0), 
+                    ss.twoeH->Z().pointer(), NB2C,
+                    ss.twoeH->Z().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->S().pointer(), NB2C,
+                    ss.exchangeMatrix->S().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->X().pointer(), NB2C,
+                    ss.exchangeMatrix->X().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->Y().pointer(), NB2C,
+                    ss.exchangeMatrix->Y().pointer(), NB2C);
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
+                    ss.exchangeMatrix->Z().pointer(), NB2C,
+                    ss.exchangeMatrix->Z().pointer(), NB2C);
+      
 
 #ifdef _PRINT_MATRICES
       std::cout<<"After GAUGE"<<std::endl;

@@ -157,6 +157,11 @@ namespace ChronusQ {
       SPIN_OPERATOR_ALLOC(NB,exchangeMatrix);
       SPIN_OPERATOR_ALLOC(NB,twoeH);
 
+      SPIN_OPERATOR_ALLOC(NB,gauntexchangeMatrix);
+      SPIN_OPERATOR_ALLOC(NB,gaunttwoeH);
+      SPIN_OPERATOR_ALLOC(NB,gaugeexchangeMatrix);
+      SPIN_OPERATOR_ALLOC(NB,gaugetwoeH);
+
       coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager, NB);
     } else {
 
@@ -168,6 +173,10 @@ namespace ChronusQ {
 
       SPIN_OPERATOR_ALLOC(2*NB,exchangeMatrix);
       SPIN_OPERATOR_ALLOC(2*NB,twoeH);
+      SPIN_OPERATOR_ALLOC(2*NB,gauntexchangeMatrix);
+      SPIN_OPERATOR_ALLOC(2*NB,gaunttwoeH);
+      SPIN_OPERATOR_ALLOC(2*NB,gaugeexchangeMatrix);
+      SPIN_OPERATOR_ALLOC(2*NB,gaugetwoeH);
 
       coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager, 2*NB);
     }

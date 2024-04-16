@@ -127,6 +127,12 @@ namespace ChronusQ {
     // Temporary structure to hold x2c picture-changed dipole matrices
     std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> pchgDipole_;
 
+    // 4C gaunt
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaunttwoeH; ///< contributions from gaunt to twoeH
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gauntexchangeMatrix; ///< contributions from gaunt to exchangeMatrix
+    // 4C gauge 
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugetwoeH; ///< contributions from gaunt to twoeH
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugeexchangeMatrix; ///< contributions from gaunt to exchangeMatrix
     // Constructors
       
     /**

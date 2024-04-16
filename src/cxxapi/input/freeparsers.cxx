@@ -554,12 +554,28 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestart, "");
         }
 
-        auto const freeCQInputRtgaunt = std::regex("(RTGaunt)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
-        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRtgaunt) ) {
-          tdSCFControls.Rtgaunt = std::stoi(RTmatch.str(2));
-          std::cout<<"zxc test read in Rtgaunt = "<<tdSCFControls.Rtgaunt<<std::endl;
-          addData("RT.RTGaunt", std::to_string(tdSCFControls.Rtgaunt));
-          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtgaunt, "");
+        auto const freeCQInputrtGaunt = std::regex("(RTGAUNT)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtGaunt) ) {
+          tdSCFControls.rtGaunt = std::stoi(RTmatch.str(2));
+          std::cout<<"zxc test read in rtGaunt = "<<tdSCFControls.rtGaunt<<std::endl;
+          addData("RT.RTGAUNT", std::to_string(tdSCFControls.rtGaunt));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtGaunt, "");
+        }
+
+        auto const freeCQInputrtGauge = std::regex("(RTGAUGE)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtGauge) ) {
+          tdSCFControls.rtGauge = std::stoi(RTmatch.str(2));
+          std::cout<<"zxc test read in rtGauge = "<<tdSCFControls.rtGauge<<std::endl;
+          addData("RT.RTGAUGE", std::to_string(tdSCFControls.rtGauge));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtGauge, "");
+        }
+
+        auto const freeCQInputrtBreit = std::regex("(RTBREIT)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtBreit) ) {
+          tdSCFControls.rtBreit = std::stoi(RTmatch.str(2));
+          std::cout<<"zxc test read in rtBreit = "<<tdSCFControls.rtBreit<<std::endl;
+          addData("RT.RTBREIT", std::to_string(tdSCFControls.rtBreit));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtBreit, "");
         }
 
         auto const freeCQInputRtprintden = std::regex("(RTPRINTDEN)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
@@ -606,9 +622,15 @@ namespace ChronusQ {
       else if (dict.at("RESTARTSTEP") == "FORWARDEULER") restartAlgorithm = RTForwardEuler;
       else if (dict.at("RESTARTSTEP") == "MAGNUS2") restartAlgorithm = RTExplicitMagnus2;
     }
-    if (dict.count("RTGAUNT")) Rtgaunt = std::stoi(dict.at("RTGAUNT"));
+    if (dict.count("RTGAUNT")) rtGaunt = std::stoi(dict.at("RTGAUNT"));
     if (dict.count("RTPRINTDEN")) Rtprintden = std::stoi(dict.at("RTPRINTDEN"));
     if (dict.count("ORBITALPOPFREQ")) orbitalPopFreq = std::stoi(dict.at("ORBITALPOPFREQ"));
+    if (dict.count("RTGAUGE")) rtGauge = std::stoi(dict.at("RTGAUGE"));
+    if (dict.count("RTBREIT")){ 
+      rtBreit = std::stoi(dict.at("RTBREIT"));
+      rtGauge = rtBreit;
+      rtGaunt = rtBreit;
+      }
 
   }
 

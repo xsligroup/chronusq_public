@@ -117,6 +117,9 @@ namespace ChronusQ {
     APPROXIMATION_TYPE_4C GauntApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gaunt approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
     APPROXIMATION_TYPE_4C GaugeApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gauge approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
 
+    bool updateGaunt = true;      //Default true. False if do not update gaunt term at current step 
+    bool updateGauge = true;      //Default true. False if do not update gauge term at current step  
+
   }; // struct HamiltonianOptions
 
   std::ostream& operator<<(std::ostream&, const HamiltonianOptions&);

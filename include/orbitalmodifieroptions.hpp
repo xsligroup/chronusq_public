@@ -220,7 +220,9 @@ namespace ChronusQ {
 
     bool  includeSCFField = true;  ///< Whether to include the SCF field
 
-    size_t Rtgaunt = 1;
+    size_t rtGaunt = 1; /// < Calculate Gaunt every N steps
+    size_t rtGauge = 1; /// < Calculate Gauge every N steps
+    size_t rtBreit = 1; /// < Calculate Breit(gaunt and gauge) every N steps
     size_t Rtprintden = 0;
     size_t orbitalPopFreq = 0; ///< Print orbital population every 'orbitalPopFreq' steps during RT propagation
 
