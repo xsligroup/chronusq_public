@@ -126,7 +126,7 @@ namespace ChronusQ {
 
     CONSTRUCT_RT( KohnSham, double, double     );
     CONSTRUCT_RT( KohnSham, dcomplex, double   );
-  //CONSTRUCT_RT( KohnSham, dcomplex, dcomplex );
+    CONSTRUCT_RT( KohnSham, dcomplex, dcomplex );
 
      // Parse Options
 
