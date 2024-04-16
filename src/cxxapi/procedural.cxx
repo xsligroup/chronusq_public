@@ -268,8 +268,6 @@ namespace ChronusQ {
       ss->fchkFileName = scrFileName;
 
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    if(tdSCFOptions.restoreFromStep!=0) rstExists = true;
 
     // Create the restart and scratch files
     if( not rstExists and rank == 0 ) {
