@@ -34,6 +34,7 @@
 #include <util/threads.hpp>
 #include <util/timer.hpp>
 
+#include <cubegen.hpp>
 #include <cerr.hpp>
 #include <molecule.hpp>
 #include <basisset.hpp>
@@ -72,8 +73,6 @@
 #include <orbitalmodifiernew.hpp>
 //#include <TiledArray/util/bug.h>
 
-
-//#include <cubegen.hpp>
 
 #include <job.hpp>
 
@@ -517,6 +516,60 @@ namespace ChronusQ {
 
       } // Loop over geometries
     } // Loop over different jobs
+
+    // call cubegen
+    CQCUBEOptions(output,input,*ss);
+
+    size_t npts = ss->scfControls.npts;
+    std::array<size_t,3> grid = {npts, npts, npts}; 
+    double steps = ss->scfControls.steps;
+    std::array<double,3> units = {steps, steps, steps};
+    std::string res = ss->scfControls.res;
+
+    auto double_ss = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss);
+    auto dcomplex_ss = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss);
+    std::string cube_name;
+    if(ss->scfControls.CubegenFileName.empty()) {
+      cube_name = "";
+    } else {
+      cube_name = ss->scfControls.CubegenFileName;
+      std::transform(cube_name.begin(), cube_name.end(), cube_name.begin(), ::tolower);
+    }
+
+    // charge density cubegen process 
+    if (ss->scfControls.denCube) { 
+      std::string den_cube_name;
+      den_cube_name = cube_name + "_density.cube";
+      
+      if (!res.empty() || (npts != 0 && npts != 0)) {
+        // case 1 : non - complex numbers
+        if (double_ss) {
+          CubeGen<double, double> cubegen_cd;
+          if (!res.empty()) {
+            cubegen_cd = CubeGen<double, double>(ss, double_ss->onePDM, den_cube_name,
+            res);
+          } else {
+            cubegen_cd = CubeGen<double, double>(ss, double_ss->onePDM, den_cube_name,
+            grid, units);
+          }
+          // create cubefile
+          cubegen_cd.evalCube(CUBE_TYPE::_CHARGE_DENSITY);
+        } // case 2 : complex numbers
+        else if (dcomplex_ss) {
+          CubeGen<dcomplex, double> cubegen_cd;
+          if (!res.empty()) {
+            cubegen_cd = CubeGen<dcomplex, double>(ss, dcomplex_ss->onePDM, den_cube_name,
+            res);
+          } else {
+            cubegen_cd = CubeGen<dcomplex, double>(ss, dcomplex_ss->onePDM, den_cube_name,
+            grid, units);
+          }
+          // create cubefile
+          cubegen_cd.evalCube(CUBE_TYPE::_CHARGE_DENSITY);
+        }
+        
+      }
+    }
 
     memManager->printHighWaterMark(output);
 

@@ -183,6 +183,12 @@ namespace ChronusQ {
       printReg("      - IVO Generation", "Gen IVOs", mcscfId);
       printReg("    - Property Evaluation", "Property Eval", mcscfId);
     }
+
+    // Visualization
+    auto cubeEvalId = timer.getLabelId("Cube Eval");
+    if  ( cubeEvalId != 0 ) {
+      printReg("  - Cubegen Evaluation", "Cube Eval", cubeEvalId);
+    }
     
     // PERTURB specific
     auto perturbId = timer.getLabelId("PERTURB Total");

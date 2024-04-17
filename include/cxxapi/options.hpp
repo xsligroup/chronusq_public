@@ -35,6 +35,7 @@
 #include <posthartreefock.hpp>
 #include <mcscf.hpp>
 #include <regex>
+#include <cubegen.hpp> 
 #include <perturb.hpp>
 
 // Preprocessor directive to aid the digestion of optional 
@@ -300,6 +301,11 @@ namespace ChronusQ {
 
   void CQMISC_VALID(std::ostream&, CQInputFile &);
 
+  void CQCUBEOptions(std::ostream&, CQInputFile&,
+    SingleSlaterBase &);
+
+  void CQCUBE_VALID(std::ostream&, CQInputFile &);
+
 
   inline void CQINPUT_VALID(std::ostream &out, CQInputFile &input) {
 
@@ -313,6 +319,7 @@ namespace ChronusQ {
     CQRT_VALID(out,input);
     CQRESPONSE_VALID(out,input);
     CQMOR_VALID(out,input);
+    CQCUBE_VALID(out,input);
     CQMISC_VALID(out,input);
     CQCC_VALID(out,input);
     CQDYNAMICS_VALID(out,input);
