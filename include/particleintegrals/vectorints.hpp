@@ -285,8 +285,7 @@ namespace ChronusQ {
       VectorInts<IntsU> spinBlockInts(memManager_, NB * 2, order_, symmetric_);
       size_t size = nComponents();
       for (size_t i = 0; i < size; i++) {
-        spinBlockInts.components_[i] = std::make_shared<OnePInts<IntsU>>(*components_[i]);
-        spinBlockInts.components_[i]->template spatialToSpinBlock<IntsU>();
+        *spinBlockInts.components_[i] = components_[i]->template spatialToSpinBlock<IntsU>();
       }
       return spinBlockInts;
     }
