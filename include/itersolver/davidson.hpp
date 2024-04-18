@@ -33,6 +33,7 @@
 #include <cqlinalg/ortho.hpp>
 #include <cqlinalg/eig.hpp>
 #include <cerr.hpp>
+#include <list>
 
 // #define DEBUG_DAVIDSON
 // #define DAVIDSON_PRINT_TIMING
@@ -259,78 +260,95 @@ namespace ChronusQ {
 #endif
 
         // swap high energy roots for energy specific
-        if(!this->energyRefs.empty()) {
+        if(not this->energyRefs.empty()) {
 
 #ifdef DAVIDSON_PRINT_TIMING
           auto SWAPst = tick();
 #endif
 
-          std::vector<size_t> indx(nVCur,0);
-          std::iota(indx.begin(), indx.end(), 0);
-
           std::vector<size_t> sortedIndices;
           sortedIndices.reserve(kG * nR);
 
-          Eigen::Map<
-          Eigen::Matrix<_F,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
-          > XRMap(XR,nVCur,nVCur);
-
-
-          // disable sortByDistance
-//          if ( this->sortByDistance ){
-//            std::stable_sort(indx.begin(), indx.end(),
-//                             [&] (size_t i , size_t j) {
-//              return std::abs(Eig[i] - this->EnergyRef) < std::abs(Eig[j] - this->EnergyRef);
-//            }
-//            );
-//          }
-//          else {
           double Eoffset = this->AbsoluteES? 0. : std::real(Eig[0]); // the lowest eigenvalue
 
-          std::vector<size_t>::iterator curIterBegin = indx.begin() + kG * this->nLowERoots;
-          std::copy(indx.begin(), curIterBegin, std::back_inserter(sortedIndices));
-          size_t missing = 0;
+          // Initialize a candidate list
+          std::list<size_t> candList(nVCur);
+          std::iota(candList.begin(), candList.end(), 0);
+          std::list<size_t> selectedList;
 
-          for (auto & pair: this->energyRefs) {
-            double curERef = pair.first + Eoffset;
-            size_t curNGuess = kG * pair.second;
-
-            if (not missing) {
-              curIterBegin = std::lower_bound(curIterBegin, indx.end(), curERef,
-                                  [&Eig](size_t i, double x){ return std::real(Eig[i]) < x; });
-              if (curIterBegin <= indx.end() - curNGuess) {
-                std::copy_n(curIterBegin, curNGuess, std::back_inserter(sortedIndices));
-                curIterBegin += curNGuess;
-              } else {
-                std::cout << "Not enough element above the reference energy to select," << std::endl;
-                std::cout << " -- Use the closer ones below it." << std::endl;
-                std::copy(curIterBegin, indx.end(), std::back_inserter(sortedIndices));
-                missing = curNGuess - (indx.end()-curIterBegin);
-              }
+          std::vector<size_t> missings(this->energyRefs.size()+1,0);
+          double curERef = std::real(Eig[0]);
+          size_t curRequest = this->nLowERoots;
+          std::list<size_t>::iterator curIt = candList.begin();
+          for (size_t i = 0; i <= this->energyRefs.size(); i++) {
+            // Find the next energy reference
+            double nextERef = 0.0;
+            std::list<size_t>::iterator nextIt;
+            if (i == this->energyRefs.size()) {
+              nextERef = std::numeric_limits<double>::max();
+              nextIt = candList.end();
+            } else {
+              nextERef = this->energyRefs[i].first + Eoffset;
+              nextIt = std::lower_bound(candList.begin(), candList.end(), nextERef,
+                                                                  [&Eig](size_t j, double x){ return std::real(Eig[j]) < x; });
             }
-            else missing += curNGuess;
-          }
 
-          while (missing) {
-            for (auto i = kG * this->nLowERoots; i < curIterBegin - indx.begin(); i++) {
-              if (std::find(sortedIndices.begin(),sortedIndices.end(),indx[i-1]) == sortedIndices.end()) {
-                sortedIndices.insert(sortedIndices.end(), indx[i-1]);
-                missing -= 1;
-              }
+            size_t count = 0;
+            // Moves indices from candList to selectedList until next energy reference begins
+            while (curIt != nextIt and count < curRequest) {
+              selectedList.push_back(*curIt);
+              curIt = candList.erase(curIt);
+              count++;
             }
+            missings[i] = curRequest - count;
+
+            if (i == this->energyRefs.size()) break; // Jump out of the loop if it is the last energy reference
+            curERef = nextERef;
+            curRequest = this->energyRefs[i].second;
+            curIt = nextIt;
           }
 
           if (kG > 1) {
-            std::vector<size_t>::iterator kGBegin = sortedIndices.begin()+this->nLowERoots;
-            curIterBegin = kGBegin;
-            for(auto & pair: this->energyRefs) {
-              double curERef = pair.first + Eoffset;
-              kGBegin = std::lower_bound(kGBegin, sortedIndices.end(), curERef,
-                                [&Eig](size_t i, double x){ return std::real(Eig[i]) < x; });
-              curIterBegin = std::swap_ranges(kGBegin, kGBegin+pair.second, curIterBegin);
+            // Add missing counts
+            missings[0] += this->nLowERoots * (kG - 1);
+            for (size_t i = 1; i <= this->energyRefs.size(); i++) {
+              missings[i] += this->energyRefs[i-1].second * (kG - 1);
             }
-            std::stable_sort(sortedIndices.begin()+nR, sortedIndices.end());
           }
+
+          // Fill in missing eigenvalues with nearby eigenvalues.
+          curIt = candList.begin();
+          std::advance(curIt, missings[0]);
+          selectedList.splice(selectedList.end(), candList, candList.begin(), curIt);
+          missings[0] = 0;
+          for (size_t i = 0; i < this->energyRefs.size(); i++) {
+            curERef = this->energyRefs[i].first + Eoffset;
+            curIt = std::lower_bound(candList.begin(), candList.end(), curERef,
+                                     [&Eig](size_t j, double x){ return std::real(Eig[j]) < x; });
+            while (missings[i+1] > 0) {
+              if (curIt != candList.begin()) {
+                std::list<size_t>::iterator preIt = curIt;
+                preIt--;
+                if (curIt == candList.end() or std::abs(Eig[*curIt] - curERef) > std::abs(Eig[*preIt] - curERef)) {
+                  curIt = preIt;
+                }
+              }
+              if (curIt == candList.end()) {
+                CErr("Error in energy specific Davidson, not enough eigenvalues to select!");
+              }
+              selectedList.push_back(*curIt);
+              curIt = candList.erase(curIt);
+              missings[i+1] -= 1;
+            }
+          }
+
+          sortedIndices.insert(sortedIndices.end(), selectedList.begin(), selectedList.end());
+          sortedIndices.insert(sortedIndices.end(), candList.begin(), candList.end());
+
+          // Reorder eigenvectors
+          Eigen::Map<
+              Eigen::Matrix<_F,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
+          > XRMap(XR,nVCur,nVCur);
 
           for(auto i = 0ul; i < kG*nR; i++){
             size_t ind = sortedIndices[i];
