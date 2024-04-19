@@ -32,7 +32,7 @@ namespace ChronusQ {
 
     const size_t NB = this->basisSet().nBasis;
     MatsT* SCR  = this->memManager.template malloc<MatsT>(NB*NB);
-    MatsT* SCR2 = this->memManager.template malloc<MatsT>(NB*NB);
+    std::fill_n(SCR,NB*NB,MatsT(0.));
 
     // Molecule object to use
     Molecule inputMol = this->molecule();
@@ -72,12 +72,6 @@ namespace ChronusQ {
     // Lowdin population analysis
     lowdinCharges.clear();
 
-/*
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,T(1.),this->aoints_->ortho1,NB,this->onePDM[SCALAR],NB,
-      T(0.),SCR2,NB);
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NB,T(1.),this->aoints_->ortho1,NB,SCR2,NB,T(0.),SCR,NB);
-*/
-
     for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {
 
       size_t iEnd;
@@ -98,7 +92,7 @@ namespace ChronusQ {
     } 
 
 
-    this->memManager.free(SCR,SCR2);
+    this->memManager.free(SCR);
 
 
   };

@@ -318,7 +318,9 @@ namespace ChronusQ {
     else {
       size_t NB = this->basisSet().nBasis;
       MatsT * SCR  = this->memManager.template malloc<MatsT>(NB*NB);
+      std::fill_n(SCR, NB*NB, MatsT(0.));
       MatsT * SCR2 = this->memManager.template malloc<MatsT>(NB*NB);
+      std::fill_n(SCR2, NB*NB, MatsT(0.));
 
 
       // SCR2 = S * D(S) * S

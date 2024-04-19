@@ -53,6 +53,7 @@ void Matrix<MatsT>::subsetTransform(
   
   size_t N_ = nRow_;
   ResultsT* SCR = memManager_.malloc<ResultsT>(N_ * off_sizes[0].second);
+  std::fill_n(SCR, N_ * off_sizes[0].second, ResultsT(0.0));
   MatsT * dummy = nullptr;
 
   // SCR(nu, p) = < mu |O| nu >^H @ T(mu, p)
@@ -149,7 +150,7 @@ dcomplex, double>::type> Matrix<MatsT>::transform(
       dcomplex, double>::type> transInts(memManager_, NT);
   
   if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
-  
+  transInts.clear();
   subsetTransform(TRANS,T,LDT,{{0,NT},{0,NT}},transInts.pointer(),false);
   return transInts;
 }

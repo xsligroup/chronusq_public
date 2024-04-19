@@ -57,6 +57,7 @@ namespace ChronusQ {
 
       // Allocate space for the property
       opMap[op] = memManager_.template malloc<U>(nProp*nVec);
+      std::fill_n(opMap[op],nProp*nVec,U(0.));
 
       // Evaluate the property (ensures proper behaviour for mixed type)
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nProp,nVec,N,U(1.),g,N,V,N,U(0.),opMap[op],nProp);

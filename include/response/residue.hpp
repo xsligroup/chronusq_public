@@ -112,6 +112,8 @@ namespace ChronusQ {
 
     */
 
+    if( fMatUse != fullMatrix_ ) memManager_.free(fMatUse);
+
   };
 
   template <typename T>

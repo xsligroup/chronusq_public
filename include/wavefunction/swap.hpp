@@ -55,6 +55,8 @@ namespace ChronusQ {
       std::copy_n(SCR,      LDMO, second_p);
 
     }
+    
+    this->memManager.free(SCR);
 
   }; // MCWaveFunction:::swapMOs
 

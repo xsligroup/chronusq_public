@@ -102,6 +102,7 @@ namespace ChronusQ {
       if(eo_eo_Polar) mem.free(eo_eo_Polar);
 
       if(md_ed_Polar) mem.free(md_ed_Polar);
+      if(md_md_Polar) mem.free(md_md_Polar);
 
     };
 

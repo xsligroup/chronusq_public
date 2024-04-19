@@ -41,7 +41,7 @@
 // Debug directives
 //#define _DEBUGORTHO
 //#define _DEBUGERI
-
+//#define LIBCINT_FOR_FINITE_NUC
 
 namespace ChronusQ {
 
@@ -743,12 +743,17 @@ namespace ChronusQ {
       break;
     case NUCLEAR_POTENTIAL:
       if (options.finiteWidthNuc) {
+#ifdef LIBCINT_FOR_FINITE_NUC
+        std::cout << "Using Libcint for finite nuclear integrals." << std::endl;
+        OnePDriverLibcint(op, mol, basis, options);
+#else
         OnePDriverLocal<1,true>(
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<double>> {
               return RealGTOIntEngine::computePotentialV(mol.chargeDist,
                   pair,sh1,sh2,mol);
               }, basis.shells,tmp);
+#endif
       }
       else
         OnePDriverLibint(libint2::Operator::nuclear,mol,basis,tmp,options.particle);
@@ -1076,6 +1081,12 @@ namespace ChronusQ {
     if (options.Libcint) {
       OnePRelDriverLibcint(mol, basis, options);
       return;
+#ifdef LIBCINT_FOR_FINITE_NUC
+    } else {
+      std::cout << "Using Libcint for relativistic integrals." << std::endl;
+      OnePRelDriverLibcint(mol, basis, options);
+      return;
+#endif
     }
 
     std::vector<double*> _potential(1, pointer());

@@ -149,7 +149,7 @@ namespace ChronusQ {
     ResponseTBase( const ResponseTBase &other ) : 
       ResponseBase(dynamic_cast<const ResponseBase&>(other)),
       comm_(other.comm_), rcomm_(CreateRootComm(other.comm_)),
-      fullMatrix_(other.fullMatrix_),
+      fullMatrix_(nullptr),
 #ifdef CQ_ENABLE_MPI
       fullMatGrid_(other.fullMatGrid_),
       descFullMat_(other.descFullMat_),
@@ -157,7 +157,14 @@ namespace ChronusQ {
       hasResGuess_(other.hasResGuess_),
       PC_(other.PC_),
       cmplxPC_(other.cmplxPC_),
-      memManager_(other.memManager_){ }
+      memManager_(other.memManager_){
+
+      if (other.fullMatrix_) {
+        size_t fullMatSize = memManager_.getSize(other.fullMatrix_);
+        fullMatrix_ = memManager_.malloc<T>(fullMatSize);
+        std::copy_n(other.fullMatrix_, fullMatSize, fullMatrix_);
+      }
+    }
 
     inline void reset() {
 
@@ -169,6 +176,7 @@ namespace ChronusQ {
       resObs.dealloc(memManager_);
 
       alreadyRan_ = false;
+      if (fullMatrix_) memManager_.free(fullMatrix_);
 
     }
 

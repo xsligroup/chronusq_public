@@ -41,6 +41,8 @@ namespace ChronusQ {
     auto NB = this->nC * this->nAlphaOrbital();
     auto NB2 = NB*NB;
 
+    this->mo[0].clear();
+
     std::string prefix = "/SCF/";
 
     auto MO1dims = scrBin.getDims( prefix + "MO1" );

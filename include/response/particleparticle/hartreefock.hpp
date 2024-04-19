@@ -215,7 +215,7 @@ namespace ChronusQ {
 
     } // loop over groups of vectors
 
-
+    this->memManager_.free(MMat,JMMat,KMMat);
 
   };
   

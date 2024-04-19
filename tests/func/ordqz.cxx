@@ -146,6 +146,9 @@ inline dcomplex RAND_NUMBER(std::default_random_engine &e,
     double maxB = std::abs(*std::max_element(BC,BC+N*N,abs_comp));
 
 
+    mem.free(A, B, VSL, VSR, AC, BC, ALPHA, BETA, SCR);
+
+
     EXPECT_TRUE(maxA < 1e-10) <<  maxA;
     EXPECT_TRUE(maxB < 1e-10) <<  maxB;
 

@@ -32,16 +32,139 @@
 
 namespace ChronusQ {
 
-  class CustomMemManager {
-    
-    void * top;  ///< Pointer to the top of the free list
+  class CQMemBackend {
+  public:
+    virtual void* malloc(size_t) = 0;
+    virtual void free(void *) = 0;
+    /**
+      *  Return the maximum number of objects allocatable
+      *
+      *  \prama [obj_size]      Size of the object to allocate
+      *  \prama [request_max]   Maximum number of objects to allocate
+      *  \returns               Maximum number of objects that can be allocated
+      *                         Return value <= request_max
+      */
+    virtual size_t max_avail_allocatable(size_t obj_size, size_t request_max) = 0;
+    virtual ~CQMemBackend() = default;
+  };
+
+  class OSDirectMemManager : public CQMemBackend {
+
+  public:
+
+    OSDirectMemManager() = default;
+
+    /**
+     * \brief Allocates a contiguous block of memory for N values of the given
+     * type.
+     *
+     * \param [in] N  Number of items of type T to allocate.
+     * \return        Pointer to block large enough to hold N objects of type T
+     */
+    void* malloc(size_t N) override {
+      void* trial_alloc = std::malloc(N);
+      if ( !trial_alloc )
+        throw std::bad_alloc();
+      return trial_alloc;
+
+    }; // malloc
+
+    /**
+     * \brief Frees a pointer previously allocated by OSMemManager
+     *
+     * \param [in] ptr  Pointer to block to free
+     */
+    void free(void * ptr) override {
+
+      std::free(ptr);
+
+    }; // free
+
+    /**
+      *  Return the maximum number of objects allocatable
+      *
+      *  \prama [obj_size]      Size of the object to allocate
+      *  \prama [request_max]   Maximum number of objects to allocate
+      *  \returns               Maximum number of objects that can be allocated
+      *                         Return value <= request_max
+      */
+    size_t max_avail_allocatable(size_t obj_size, size_t request_max) override {
+
+      // First try if request_max is allocatable
+      void * trial_alloc;
+      try {
+        trial_alloc = malloc(request_max * obj_size);
+        free(trial_alloc);
+        return request_max;
+      } catch (std::bad_alloc& ba) {}
+
+      size_t mem_max = request_max;
+      size_t mem_min = 0;
+      size_t trial_mem = 0;
+
+      while(true) {
+        try {
+          trial_mem = (mem_max-mem_min)/2 + mem_min;
+          trial_alloc = malloc(trial_mem * obj_size);
+          free(trial_alloc);
+          mem_min = trial_mem;
+        } catch (std::bad_alloc& ba) {
+          mem_max = trial_mem - 1;
+        }
+        if (mem_max - mem_min == 1 or mem_max == mem_min) break;
+      }
+
+      return mem_min;
+    }
+
+  }; // OSMemManager
+
+  class CustomMemManager : public CQMemBackend {
+
+    std::vector<char> V_;     ///< Internal memory
+    void * top;               ///< Pointer to the top of the free list
     void * origin = nullptr;  ///< Pointer to the historic origin of the free list
     void * bottom = nullptr;  ///< Pointer to the historic bottom of the allocated memory
     size_t align_size; 
       ///< Size to which added and allocated blocks are aligned
     std::unordered_map<void*,size_t> alloc_blocks;
       ///< Maps allocated pointers to their size
-  
+
+      
+    /**
+     *  \brief Ensures that the memory block (N) is divisible by
+     *  the segregation block size (BlockSize)
+     */
+    inline void fixBlockNumber(size_t &N, size_t BlockSize) {
+      if(N % BlockSize) {
+#ifdef MEM_PRINT
+        std::cerr << "Memory Block not Divisible by BlockSize ("
+                    << BlockSize << " Bytes). Increasing allocation by " 
+                    << BlockSize - (N % BlockSize) << " Bytes" << std::endl;
+
+#endif
+        N += BlockSize - (N % BlockSize);
+      }
+    };
+    
+    /**
+     *  Allocates the memory block
+     */
+    void allocMem(size_t N, size_t BlockSize) {
+
+      fixBlockNumber(N, BlockSize); // fix buffer length
+      V_.resize(N);    // allocate the memory
+
+      // segregate (uses functionality from boost::simple_segregated_storage
+      add_ordered_block(&V_.front(),V_.size(),BlockSize);
+
+#ifdef MEM_PRINT
+      std::cerr << "Creating Memory Partition of " << N
+                   << " bytes starting at " << (int*) &V_.front() 
+                   << std::endl;
+#endif
+    };
+    
     /**
      *  \brief Gets the pointer to the next element in the free list
      *
@@ -111,8 +234,12 @@ namespace ChronusQ {
      *
      * \param [in] align_size  The alignment size.
      */
-    CustomMemManager(size_t align_size_ = sizeof(size_t)) :
-      top(nullptr), align_size(align_size_) { };
+    CustomMemManager(size_t N = 0, size_t BlockSize = 2048,
+                     size_t align_size_ = sizeof(size_t)) :
+        top(nullptr), align_size(align_size_) {
+
+      if( N and BlockSize ) allocMem(N, BlockSize);
+    };
   
     /**
      * \brief Adds the block of memory to the free list in an ordered manner
@@ -202,14 +329,13 @@ namespace ChronusQ {
      * \param [in] N  Number of items of type T to allocate.
      * \return        Pointer to block large enough to hold N objects of type T
      */
-    template <typename T>
-    T* malloc(size_t N) {
+    void* malloc(size_t N) override {
 
       // Add padding and make sure block is large enough for the header
       // (for freeing later)
-      size_t mod_size = N * sizeof(T) % align_size;
+      size_t mod_size = N % align_size;
       size_t req_size = mod_size == 0 ?
-                        N * sizeof(T) : N*sizeof(T) + align_size - mod_size;
+                        N : N + align_size - mod_size;
       size_t min_size = sizeof(void*) + sizeof(size_t);
       req_size = req_size > min_size ? req_size : min_size;
     
@@ -260,7 +386,7 @@ namespace ChronusQ {
       // Record that this has been allocated
       alloc_blocks[ptr] = req_size;
     
-      return static_cast<T*>(ptr);
+      return ptr;
     }; 
   
   
@@ -273,7 +399,7 @@ namespace ChronusQ {
      *
      * \param [in] ptr  Pointer to block to free
      */
-    void free(void * ptr) {
+    void free(void * ptr) override {
       auto entry = alloc_blocks.find(ptr);
     
       if (entry == alloc_blocks.end())
@@ -338,10 +464,6 @@ namespace ChronusQ {
       std::cout << "---------------------------------------------------------\n";
     };
   #endif
-    
-    //
-    // Mimic functions for boost::simple_segregated_storage
-    //
 
     /**
      *  Mimic function for boost::simple_segregated_storage::add_ordered_block
@@ -357,34 +479,38 @@ namespace ChronusQ {
     };
 
     /**
-     *  Mimic function for boost::simple_segregated_storage::malloc_n
-     *
-     * \param [in] n           Number of blocks to allocate
-     * \param [in] block_size  Size of block to allocate (in bytes)
-     * \return                 Pointer to memory of size n*block_size
-     */
-    void * malloc_n(size_t n, size_t block_size) {
-      return static_cast<void *>(malloc<char>(n * block_size));
-    };
-
-    /**
-     *  Mimic function for boost::simple_segregated_storage::ordered_free_n
-     *
-     * \param [in] chunks  Pointer to block to free
-     * \param [in] dummy1  Dummy to match call signature
-     * \param [in] dummy2  Dummy to match call signature
-     */
-    void ordered_free_n(void * const chunks, const size_t dummy1,
-      const size_t dummy2) {
-      free(chunks);
-    };
-
-    /**
      *  Return the span of the allocated memory
      */
     size_t alloc_span() const {
       return static_cast<char*>(bottom) - static_cast<char*>(origin);
     };
+
+
+    size_t getTotalAllocation() const {
+      return V_.size();
+    };
+
+
+
+    /**
+      *  Return the maximum number of objects allocatable
+      *
+      *  \prama [obj_size]      Size of the object to allocate
+      *  \prama [request_max]   Maximum number of objects to allocate
+      *  \returns               Maximum number of objects that can be allocated
+      *                         Return value <= request_max
+      */
+    size_t max_avail_allocatable(size_t obj_size, size_t request_max) override {
+
+      size_t avail_max = 0;
+      void * ptr(top);
+      while (ptr) {
+        avail_max = std::max(get_size(ptr), avail_max);
+        ptr = get_next(ptr);
+      }
+
+      return std::min(avail_max/obj_size, request_max);
+    }
   
   }; // MemManager
 

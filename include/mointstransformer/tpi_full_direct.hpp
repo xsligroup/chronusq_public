@@ -472,7 +472,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
 #endif
     
     double *buffERIAll = mem.template malloc<double>(maxShellSize4 * nThreads);
-    size_t availbleMem = mem.template max_avail_allocatable<MatsT>(); 
+    size_t availbleMem = mem.template max_avail_allocatable<MatsT>(1, maxNDenSCR);
     size_t nDenSCR = std::min(maxNDenSCR, availbleMem);
     MatsT *buffDensity =  mem.template malloc<MatsT>(nDenSCR);
     

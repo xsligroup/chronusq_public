@@ -460,6 +460,7 @@ namespace ChronusQ {
 
 
     auto Jtemp = memManager_.malloc<IntsT>(NBRI);
+    std::fill_n(Jtemp, NBRI, IntsT(0.));
     // (ij|Q)S^{-1/2} -> ERI3J
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBRI,1,NB2,IntsT(1.),eri3j.pointer(),NBRI,X,NB2,IntsT(0.),Jtemp,NBRI);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2,1,NBRI,IntsT(1.),eri3j.pointer(),NBRI,Jtemp,NBRI,IntsT(0.),AX,NB2);
@@ -506,6 +507,7 @@ namespace ChronusQ {
     MatsT *AX = C.AX;
 
     auto Ktemp = memManager_.malloc<MatsT>(NB2NBRI);
+    std::fill_n(Ktemp, NB2NBRI, MatsT(0.));
 #if 1
     // (ij|Q)S^{-1/2} -> ERI3J
     size_t LAThreads = GetLAThreads();
@@ -544,8 +546,12 @@ namespace ChronusQ {
     size_t NBNBRI = NB*NBRI;
     size_t NONBRI= NO*NBRI;
 
+    std::fill_n(AX, NB*NB, MatsT(0.));
+
     MatsT *Btemp1 = memManager_.malloc<MatsT>(NBNBRI*NO);
+    std::fill_n(Btemp1, NBNBRI*NO, MatsT(0.));
     MatsT *Btemp2 = memManager_.malloc<MatsT>(NBNBRI*NO);
+    std::fill_n(Btemp2, NBNBRI*NO, MatsT(0.));
 
     // 1. Bt1(i, L | nu) = C(lambda, i)^H @ B(L, lambda | nu)^T
     size_t LAThreads = GetLAThreads();
@@ -582,9 +588,14 @@ namespace ChronusQ {
     size_t NBNBRI = NB*NBRI;
     size_t NONBRI= NO*NBRI;
 
+    std::fill_n(AX, NB*NB, dcomplex(0.));
+
     dcomplex *Btemp1 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    std::fill_n(Btemp1, NBNBRI*NO, dcomplex(0.));
     dcomplex *Btemp2 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    std::fill_n(Btemp2, NBNBRI*NO, dcomplex(0.));
     dcomplex *Btemp3 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    std::fill_n(Btemp3, NBNBRI*NO, dcomplex(0.));
 
     size_t LAThreads = GetLAThreads();
     SetLAThreads(1);
@@ -721,10 +732,11 @@ namespace ChronusQ {
 
     if( allocAXScratch ) {
       AX = memManager_.malloc<IntsT>(NB*NB);
-      std::fill_n(AX,NB*NB,0.);
     }
+    std::fill_n(AX,NB*NB,0.);
 
     auto Jtemp = memManager_.malloc<IntsT>( NBRI );
+    std::fill_n(Jtemp, NBRI, IntsT(0.));
     
     // R3J (NBRI by snNB^2) contracting with density (sbNB^2 by 1), generates a vector of length NBRI. 
     // auto gemm1Begin = tick();
@@ -738,6 +750,7 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,NBRI,IntsT(1.),L3J,NBRI,Jtemp,NBRI,IntsT(0.),AX,NB*NB);
     } else{
       auto Jtemp1 = memManager_.malloc<IntsT>( snNBRI );
+      std::fill_n(Jtemp1, snNBRI, IntsT(0.));
       // Left multiply by M2J (snNBRI by NBRI), to give temp vector (snNBRI by 1)
       if(this->contractSecond){
         blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,snNBRI,1,NBRI,IntsT(1.),M2J,NBRI,Jtemp,NBRI,IntsT(0.),Jtemp1,snNBRI);

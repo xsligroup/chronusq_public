@@ -29,4 +29,5 @@
   else if (not this->iCS) \
     X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false); \
   else \
-    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false, false)
+    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false, false); \
+  X->clear()

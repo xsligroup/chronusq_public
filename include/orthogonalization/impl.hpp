@@ -185,6 +185,8 @@ void Orthogonalization<MatsT>::computeOrtho() {
     overlap->memManager().free(SCR2);   // Free SCR2
 #endif
   }
+
+  overlap->memManager().free(SCR1);
 };
 
   //=======================

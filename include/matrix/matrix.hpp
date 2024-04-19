@@ -292,6 +292,14 @@ public:
     return lapack::lange(norm, nRow_, nCol_, ptr_, nRow_);
   }
 
+  virtual bool hasNaN() const {
+    for (size_t i = 0; i < nRow_ * nCol_; i++) {
+      if (std::isnan(std::real(ptr_[i]))) return true;
+      if (std::isnan(std::imag(ptr_[i]))) return true;
+    }
+    return false;
+  }
+
   void malloc() {
     if (ptr_) memManager_.free(ptr_);
     size_t N = nRow_ * nCol_;
@@ -356,5 +364,13 @@ dcomplex, double>::type> operator-(
 template <typename MatsT>
 std::ostream& operator<<(std::ostream&, const Matrix<MatsT>&);
 
-} // namespace cqmatrix 
+} // namespace cqmatrix
+template <typename MatsT>
+bool hasNaN(MatsT * ptr, size_t N) {
+  for (size_t i = 0; i < N; i++) {
+    if (std::isnan(std::real(ptr[i]))) return true;
+    if (std::isnan(std::imag(ptr[i]))) return true;
+  }
+  return false;
+}
 } // namespace ChronusQ

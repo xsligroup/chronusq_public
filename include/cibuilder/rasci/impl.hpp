@@ -272,15 +272,17 @@ namespace ChronusQ {
       if (DBlk) mem.free(DBlk);
       if (GBlk) mem.free(GBlk);
 
-//      mem.print_free();       
-      maxAvlMem = mem.template max_avail_allocatable<MatsT>();
+//      mem.print_free();
+      size_t totalSCR = ndSCR * nthreads + maxdimD + maxdimG;
+      maxAvlMem = mem.template max_avail_allocatable<MatsT>(1, totalSCR);
       // to determine ndSCR
       if ((maxAvlMem / (ndSCR*2)) < (nrSCR + nthreads))
         ndSCR = std::max(maxAvlMem / ((nrSCR + nthreads)*2), mindSCR);
       Dscr = mem.template malloc<MatsT>(ndSCR*nthreads);
       Gscr = mem.template malloc<MatsT>(ndSCR*nthreads);
       // to determine maxdimD and maxdimG
-      maxAvlMem = mem.template max_avail_allocatable<MatsT>();
+      totalSCR = maxdimD + maxdimG;
+      maxAvlMem = mem.template max_avail_allocatable<MatsT>(1, totalSCR);
 //      std::cout<<"maxAvlMem: "<<maxAvlMem<<std::endl;
       if (maxAvlMem < 2 * maxDetCat) CErr("Not enough memory for RAS sigma.");
       nNZAvl = maxAvlMem / nDetatMD;
@@ -293,7 +295,7 @@ namespace ChronusQ {
 //      std::cout<<"nNZD: "<<nNZD<<", nNZG: "<<nNZG<<std::endl;
       maxdimG = nDetatMD * nNZG;
       GBlk = mem.template malloc<MatsT>(maxdimG);
-      maxdimD = mem.template max_avail_allocatable<MatsT>();
+      maxdimD = mem.template max_avail_allocatable<MatsT>(1, maxdimD);
       if (maxdimD < maxDetCat) CErr("Not enough memory for RAS sigma.");
       DBlk = mem.template malloc<MatsT>(maxdimD);;
 //      std::cout<<"maxdimG: "<<maxdimG<<", maxdimD: "<<maxdimD<<std::endl;

@@ -37,6 +37,7 @@ namespace ChronusQ {
     std::vector<std::string> allowedKeywords = {
       "MEM",
       "MEMBLK",
+      "MEMTYPE",
       "NSMP",
       "TIMER",
       "DEBUGTIMING",
@@ -124,6 +125,21 @@ namespace ChronusQ {
 
     OPTOPT(blkSize = input.getData<size_t>("MISC.MEMBLK");)
 
+    std::string memTypeStr = "DEFAULT";
+    OPTOPT(
+        memTypeStr = input.getData<std::string>("MISC.MEMTYPE");
+        trim(memTypeStr);
+    )
+    CQMemBackendType memType = CQMemBackendType::PREALLOCATED;
+    if (memTypeStr == "PREALLOCATED" or memTypeStr == "DEFAULT") {
+      memType = CQMemBackendType::PREALLOCATED;
+    } else if (memTypeStr == "OS"
+            or memTypeStr == "OS_DIRECT"
+            or memTypeStr == "OSDIRECT") {
+      memType = CQMemBackendType::OS_DIRECT;
+    } else {
+      CErr("Unrecognized memory type " + memTypeStr);
+    }
 
 
     out << "\n\n";
@@ -138,7 +154,7 @@ namespace ChronusQ {
     out << "\n\n";
 
     ProgramTimer::tick("Memory Allocation");
-    auto memManager = std::make_shared<CQMemManager>(mem,blkSize);
+    auto memManager = std::make_shared<CQMemManager>(memType,mem,blkSize);
     ProgramTimer::tock();
     return memManager;
 

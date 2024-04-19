@@ -849,6 +849,7 @@ namespace ChronusQ {
     // Free SCR Mem
     this->memManager_.free(CA);
     this->memManager_.free(CB);
+    this->memManager_.free(Ident);
     this->memManager_.free(G);
 #endif
 

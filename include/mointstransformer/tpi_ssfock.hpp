@@ -73,12 +73,12 @@ namespace ChronusQ {
     
     size_t halfTMOTPISize = nAO * nAO * std::min(npq, nrs); 
     
-    auto nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize);
+    auto nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
     
     // clear cache for more memory 
     if ( nBatch <= 1) {
       ints_cache_.clear();
-      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize);
+      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
     }
 
     // No batch at this level if remaining memory can allocate at 
@@ -93,7 +93,7 @@ namespace ChronusQ {
     // simple batch over s here 
     size_t nsMax = ns;
     halfTMOTPISize = nAO * nAO * nr * nsMax;
-    nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize);
+    nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
     
     while (nBatch < 1) {
       
@@ -103,7 +103,7 @@ namespace ChronusQ {
       
       if (nsMax < 1) {
         std::cout << "Memory not enough to batch over last index" << std::endl;
-        double mem_avail  = this->memManager_.template max_avail_allocatable<double>() 
+        double mem_avail  = this->memManager_.template max_avail_allocatable<double>(1,halfTMOTPISize)
                            * sizeof(double) / 1e9; 
         double mem_needed = nAO * nAO * nr * sizeof(MatsT) / 1e9;
             
@@ -116,12 +116,12 @@ namespace ChronusQ {
       }
       
       halfTMOTPISize = nAO * nAO * nr * nsMax;
-      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize);
+      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
     }
     
     // balance batching inside the work loop
     if (nsMax > 1) {
-      size_t nMatsTAvail = memManager_.max_avail_allocatable<MatsT>();
+      size_t nMatsTAvail = memManager_.max_avail_allocatable<MatsT>(1,halfTMOTPISize*2);
       // with extra memory as 20%
       size_t fockGDSCRSize = ss_.fockBuilder->formRawGDSCRSizePerBatch(ss_, false, false) * 1.2; 
       
@@ -306,7 +306,7 @@ namespace ChronusQ {
       double allow_extra = 0.2;
       
       ALLOCATE_AND_CLEAR_CACHE_IF_NECESSARY(
-        maxNBatch = memManager_.max_avail_allocatable<MatsT>(size_t(fockGDSCRSize*(1.+allow_extra))); 
+        maxNBatch = memManager_.max_avail_allocatable<MatsT>(size_t(fockGDSCRSize*(1.+allow_extra)), 1);
         if(maxNBatch == 0) 
           CErr(" Memory is not enough for 1 density in subsetTransformTPISSFockN6");
       )

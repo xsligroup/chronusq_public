@@ -302,6 +302,7 @@ namespace ChronusQ {
 
     // Transformation matrix
     UK = memManager_.malloc<IntsT>(NP*NPU);
+    std::fill_n(UK,NP*NPU,IntsT(0.0));
 
     // Form UK = S * T
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NP,NPU,NPU,IntsT(1.),overlap,NP,
@@ -366,6 +367,7 @@ namespace ChronusQ {
 
     // Diagonalize the 4C CH
     double *CHEV = memManager_.malloc<double>(4*NPU);
+    std::fill_n(CHEV, 4*NPU, 0.0);
 
     HermetianEigen('V','U',4*NPU,CH4C,4*NPU,CHEV,memManager_);
 
@@ -519,12 +521,15 @@ namespace ChronusQ {
 
     // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
     dcomplex *SCR1  = memManager_.malloc<dcomplex>(8*NP*NP);
+    std::fill_n(SCR1,8*NP*NP,dcomplex(0.));
     dcomplex *CSCR1 = reinterpret_cast<dcomplex*>(SCR1);
 
     // Make a copy of the overlap for later
     dcomplex* SCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    std::fill_n(SCPY,4*NP*NP,dcomplex(0.));
     dcomplex* M = memManager_.malloc<dcomplex>(4*NP*NP);
     dcomplex* VCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    std::fill_n(VCPY,4*NP*NP,dcomplex(0.));
     dcomplex* Ms = memManager_.malloc<dcomplex>(NP*NP);  // Scalar component of M 
 
     // Construct M Matrix
@@ -604,6 +609,7 @@ namespace ChronusQ {
 
     // Singular value storage (initially S then T)
     p = memManager_.malloc<double>(2*NP);
+    std::fill_n(p, 2*NP, 0.0);
     double* SS = p;
     
     // Get SVD of uncontracted overlap
@@ -659,6 +665,7 @@ namespace ChronusQ {
 
     // Transformation matrix
     UK = memManager_.malloc<dcomplex>(2*NP*2*NP);
+    std::fill_n(UK,2*NP*2*NP,dcomplex(0.0));
 
     // Form UK = US (Stored in S) * UT (Stored in M)
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),SCPY,2*NP,
@@ -670,6 +677,7 @@ namespace ChronusQ {
 
     // Allocate and for "P^2" potential
     dcomplex *P2P = memManager_.malloc<dcomplex>(2*NP*2*NP);
+    std::fill_n(P2P,2*NP*2*NP,dcomplex(0.0));
 
     // P2P = UK**H * V * UK  -- Potential in P^2 basis
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
@@ -1327,14 +1335,17 @@ namespace ChronusQ {
 
     // 1.  UP2CSUK = UP2C * S * UK
     IntsT *UP2CS = memManager_.malloc<IntsT>(NB*NP);
+    std::fill_n(UP2CS,NB*NP,IntsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,IntsT(1.),mapPrim2Cont,NB,
       uncontractedInts_.overlap->pointer(),NP,IntsT(0.),UP2CS,NB);
     IntsT *UP2CSUK = memManager_.malloc<IntsT>(4*NP*NPU);
+    std::fill_n(UP2CSUK,4*NP*NPU,IntsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NPU,NP,IntsT(1.),UP2CS,NB,UK,NP,IntsT(0.),UP2CSUK,2*NB);
     SetMatDiag(NB,NPU,UP2CSUK,2*NB,UP2CSUK,2*NB);
 
     // 2. R^T = UP2C * S * UK * Y^T
     MatsT *RT = memManager_.malloc<MatsT>(4*NB*NPU);
+    std::fill_n(RT,4*NB*NPU,MatsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NPU,2*NPU,MatsT(1.),UP2CSUK,2*NB,
                Y->pointer(),Y->dimension(),MatsT(0.),RT,2*NB);
@@ -1357,7 +1368,9 @@ namespace ChronusQ {
 
     // 5. US = UK2c * Xp * RT^T
     UL = memManager_.malloc<MatsT>(4*NP*NB);
+    std::fill_n(UL, 4*NP*NB, MatsT(0.));
     US = memManager_.malloc<MatsT>(4*NP*NB);
+    std::fill_n(US, 4*NP*NB, MatsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NPU,2*NB,2*NPU,MatsT(1.),twoCPinvX,2*NPU,
       RT,2*NB,MatsT(0.),UL,2*NPU);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NB,2*NPU,MatsT(1.),UK2c,2*NP,
@@ -1387,7 +1400,9 @@ namespace ChronusQ {
     // 1. UP2CSUK = UP2C * S * UK  (in 2 component)
     // Compute UP2CS
     dcomplex *UP2CS = memManager_.malloc<dcomplex>(4*NB*NP);
+    std::fill_n(UP2CS,4*NB*NP,dcomplex(0.));
     dcomplex *UP2CSUK = memManager_.malloc<dcomplex>(4*NP*NP);
+    std::fill_n(UP2CSUK,4*NP*NP,dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,
       uncontractedInts_.overlap->pointer(),NP,dcomplex(0.),UP2CS,2*NB);
     SetMatDiag(NB,NP,UP2CS,2*NB,UP2CS,2*NB);
@@ -1397,6 +1412,7 @@ namespace ChronusQ {
 
     // 2. R^T = UP2CSUK * Y^T
     dcomplex *RT = memManager_.malloc<dcomplex>(4*NB*NP);
+    std::fill_n(RT,4*NB*NP,dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NP,2*NP,dcomplex(1.),UP2CSUK,2*NB,
                Y->pointer(),Y->dimension(),dcomplex(0.),RT,2*NB);  
@@ -1414,7 +1430,9 @@ namespace ChronusQ {
 
     // 4. US = UK2c * Xp * RT^T
     UL = memManager_.malloc<dcomplex>(4*NP*NB);
+    std::fill_n(UL, 4*NP*NB, dcomplex(0.));
     US = memManager_.malloc<dcomplex>(4*NP*NB);
+    std::fill_n(US, 4*NP*NB, dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NP,dcomplex(1.),twoCPinvX,2*NP,
       RT,2*NB,dcomplex(0.),UL,2*NP);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NB,2*NP,dcomplex(1.),UK,2*NP,
@@ -1457,6 +1475,7 @@ namespace ChronusQ {
 
     cqmatrix::Matrix<MatsT> Hx2c(memManager_, 2*NB);
     MatsT *SCR = memManager_.malloc<MatsT>(4*NP*NB);
+    std::fill_n(SCR,4*NP*NB,MatsT(0.));
 
     // Hx2c = UL^H * T2c * US
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NB,2*NP,MatsT(1.),T2c.pointer(),2*NP,
@@ -1753,7 +1772,9 @@ namespace ChronusQ {
 
     // Contract transformation matrices with P2C mapping
     UL = memManager_.malloc<MatsT>(4*NP*NB);
+    std::fill_n(UL, 4*NP*NB, MatsT(0.));
     US = memManager_.malloc<MatsT>(4*NP*NB);
+    std::fill_n(US, 4*NP*NB, MatsT(0.));
 
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NP, 2*NB, 2*NP,

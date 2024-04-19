@@ -372,6 +372,14 @@ public:
     }
     return result; 
   }
+
+  // Check if the matrix has NaN
+  virtual bool hasNaN() const {
+    if (Matrix<MatsT>::hasNaN()) return true;
+    if (hasZ() and Z().hasNaN()) return true;
+    if (hasXY() and (Y().hasNaN() or X().hasNaN())) return true;
+    return false;
+  }
   
   virtual ~PauliSpinorMatrices() {}
 

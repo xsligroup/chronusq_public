@@ -106,6 +106,7 @@ namespace ChronusQ {
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
       else
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
+      VXC->clear();
 
 
     }; // KohnSham constructor
@@ -132,6 +133,7 @@ namespace ChronusQ {
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
       else
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
+      VXC->clear();
 
 
     }; // KohnSham constructor

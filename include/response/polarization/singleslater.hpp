@@ -689,8 +689,10 @@ namespace ChronusQ {
 
 
     U* SCR = nullptr;
-    if( nVecLoc and SCRMLoc )
+    if( nVecLoc and SCRMLoc ) {
       SCR = this->memManager_.template malloc<U>(maxNVec * N);
+      std::fill_n(SCR,maxNVec*N,U(0.));
+    }
 
 
     // ScaLAPACK DESC
@@ -1861,6 +1863,7 @@ namespace ChronusQ {
     std::vector<TwoBodyContraction<U>> cList;
 
     auto MOTRANS = [&]( MatsT* CMO, U* X ) {
+      std::fill_n(SCR,NBC2,U(0.0));
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBC,NBC,NBC,U(1.0),CMO,NBC,X  ,NBC,U(0.0),SCR,NBC); 
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NBC,NBC,NBC,U(1.0),CMO,NBC,SCR,NBC,U(0.0),X  ,NBC);
       IMatCopy('C',NBC,NBC,U(1.),X,NBC,NBC);
@@ -2037,6 +2040,7 @@ namespace ChronusQ {
     const size_t iOff = (ss.nC == 2) ? 5 : 3;
 
     auto MOTRANS = [&]( MatsT* CMO, U* X ) {
+      std::fill_n(SCR,NBC2,U(0.0));
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NBC,NBC,NBC,U(1.0),CMO,NBC,X  ,NBC,U(0.0),SCR,NBC); 
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::ConjTrans,NBC,NBC,NBC,U(1.0),CMO,NBC,SCR,NBC,U(0.0),X  ,NBC);
       IMatCopy('C',NBC,NBC,U(1.),X,NBC,NBC);

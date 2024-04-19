@@ -246,8 +246,10 @@ namespace ChronusQ {
   public:
     RawVectors(MPI_Comm c, CQMemManager &mem, size_t len, size_t size)
     : comm_(c), memManager_(mem), len_(len), size_(size) {
-      if (MPIRank(comm_) == 0 and size > 0)
+      if (MPIRank(comm_) == 0 and size > 0) {
         data_ = memManager_.malloc<_F>(len_ * size_);
+        clear();
+      }
     }
     RawVectors(const RawVectors<_F> &other)
     : comm_(other.comm_), memManager_(other.memManager_),

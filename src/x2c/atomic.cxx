@@ -187,7 +187,9 @@ namespace ChronusQ {
     IntsT *V2c = this->memManager_.template malloc<IntsT>(4*maxAtomNP*maxAtomNP);
     MatsT *W2c = this->memManager_.template malloc<MatsT>(4*maxAtomNP*maxAtomNP);
     MatsT *SCR = this->memManager_.template malloc<MatsT>(4*maxAtomNP*maxAtomNB);
+    std::fill_n(SCR, 4*maxAtomNP*maxAtomNB, MatsT(0.));
     MatsT *Hx2c = this->memManager_.template malloc<MatsT>(4*maxAtomNB*maxAtomNB);
+    std::fill_n(Hx2c, 4*maxAtomNB*maxAtomNB, MatsT(0.));
 
     // Allocate memory for the uncontracted spin components
     // of the 2C CH

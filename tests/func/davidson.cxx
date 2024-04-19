@@ -178,12 +178,8 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
-      if( true ) {
-
-        VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
-        AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
-
-      }
+      VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
+      AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
 
       grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
@@ -191,6 +187,9 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
           EigT(0.),AVLOC,1,1,descV);
 
       grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
+
+      mem.free(VLOC);
+      mem.free(AVLOC);
 
     } else 
 #endif
@@ -283,6 +282,8 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
+  mem.free(refW);
+
 #else
 
   dcomplex *ACMPLX = mem.malloc<dcomplex>(N*N);
@@ -296,7 +297,14 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   matFile.safeWriteData("/W",W,{N});
 
+  mem.free(ACMPLX, W, VR, VL);
+
 #endif
+
+  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) mem.free(ALOC);
+  if (AREAD and AREAD != A) mem.free(AREAD);
+  if (DIAG) mem.free(DIAG);
+  if (A) mem.free(A);
 
 }
 
@@ -380,6 +388,8 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
             }
          );
 
+        mem.free(VRaw, AVRaw);
+
       };
 
   typename Davidson<EigT>::LinearTrans_t PC = 
@@ -450,6 +460,8 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
           }
       );
 
+      mem.free(GRaw);
+
     };
 
     davidson.setEnergySpecific(energyRefs);
@@ -487,6 +499,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
+  mem.free(refW);
   if (AREAD) mem.free(AREAD);
   if (ADIAG) mem.free(ADIAG);
 }

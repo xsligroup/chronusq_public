@@ -65,10 +65,11 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
 
     // If we have a guess density in the first step, then we skip formDensity
     // Otherwise, we form density from MO coefficients
-    if( not(this->scfConv.nSCFIter == 0 and skipFormingDensity) ) this->singleSlaterSystem.formDensity();
-
-    // Coefficients and Density represent the same wavefunctions
-    this->singleSlaterSystem.setDenEqCoeff(true);
+    if( not(this->scfConv.nSCFIter == 0 and skipFormingDensity) ) {
+      this->singleSlaterSystem.formDensity();
+      // Coefficients and Density represent the same wavefunctions
+      this->singleSlaterSystem.setDenEqCoeff(true);
+    }
 
     ProgramTimer::timeOp("Form Fock", [&]() { this->singleSlaterSystem.formFock(pert, false); });
 

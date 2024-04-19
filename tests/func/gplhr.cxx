@@ -154,12 +154,8 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
-      if( alloc ) {
-
-        VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
-        AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
-
-      }
+      VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
+      AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
 
       grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
@@ -167,6 +163,9 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
           EigT(0.),AVLOC,1,1,descV);
 
       grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
+
+      mem.free(VLOC);
+      mem.free(AVLOC);
 
     } else 
 #endif
@@ -226,7 +225,7 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
-
+  mem.free(refW);
 
 #else
 
@@ -242,7 +241,14 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
   matFile.safeWriteData("/W",W,{N});
 
+  mem.free(ACMPLX, W, VR, VL);
+
 #endif
+
+  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) mem.free(ALOC);
+  if (AREAD and AREAD != A) mem.free(AREAD);
+  if (DIAG) mem.free(DIAG);
+  if (A) mem.free(A);
 
 }
 

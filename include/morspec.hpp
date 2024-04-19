@@ -237,7 +237,10 @@ namespace ChronusQ {
 
     }
 
-    ~MORSpec() { if(modelBasis1_) this->memManager_.free(modelBasis1_); }
+    ~MORSpec() {
+      if(modelBasis1_) this->memManager_.free(modelBasis1_);
+      if(modelBasis1_LT_) this->memManager_.free(modelBasis1_LT_);
+    }
 
 
 
@@ -293,8 +296,10 @@ namespace ChronusQ {
         std::cout << "  * ALLOCATING MAX SPACE FOR MOR BASIS\n";
         modelBasis1_ = 
           this->memManager_.template malloc<dcomplex>(N*NRHS*nModelMax);
+        std::fill_n(modelBasis1_,N*NRHS*nModelMax,dcomplex(0.));
         modelBasis1_LT_ = 
           this->memManager_.template malloc<dcomplex>(N*NRHS*nModelMax);
+        std::fill_n(modelBasis1_LT_,N*NRHS*nModelMax,dcomplex(0.));
       }
 
 
@@ -423,6 +428,7 @@ namespace ChronusQ {
             std::cout << "    * SENDING " << nVec << " VECTORS TO SVD\n";
 
             double *SVal = this->memManager_.template malloc<double>(nUse);
+            std::fill_n(SVal,nUse,0.);
             dcomplex *DUMMY = nullptr;
 
             lapack::gesvd(lapack::Job::OverwriteVec,lapack::Job::NoVec,
@@ -678,8 +684,10 @@ namespace ChronusQ {
       // Determine if roots are actually roots
       dcomplex *AV = this->memManager_.template malloc<dcomplex>(
           nModel*N);
+      std::fill_n(AV,nModel*N,dcomplex(0.));
       dcomplex *RES = this->memManager_.template malloc<dcomplex>(
           nModel*N);
+      std::fill_n(RES,nModel*N,dcomplex(0.));
 
       // Compute AV
       std::vector<RESPONSE_CONTRACTION<T>> cList(1);
@@ -822,8 +830,10 @@ namespace ChronusQ {
       // Compute the inner product
       dcomplex * SCR = this->memManager_.template malloc<dcomplex>(
           nModel*nModel);
+      std::fill_n(SCR,nModel*nModel,dcomplex(0.));
       dcomplex * SCR2 = this->memManager_.template malloc<dcomplex>(
           nModel*nModel);
+      std::fill_n(SCR2,nModel*nModel,dcomplex(0.));
 
       // SCR = V* S V
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nModel,nModel,N/2,dcomplex(1.),
@@ -938,6 +948,7 @@ namespace ChronusQ {
       this->fullMatrix_ = isRoot ?
         this->memManager_.template malloc<dcomplex>(nModel*nModel) : 
         nullptr ;
+      if( isRoot ) std::fill_n(this->fullMatrix_,nModel*nModel,dcomplex(0.));
     
 
       // Setup contraction
@@ -1026,7 +1037,10 @@ namespace ChronusQ {
 
       dcomplex *KV = nullptr;
       // Alloc space to store KMV and set up contraction
-      if( isRoot ) KV = this->memManager_.template malloc<dcomplex>(nModel*N);
+      if( isRoot ) {
+        KV = this->memManager_.template malloc<dcomplex>(nModel*N);
+        std::fill_n(KV,nModel*N,dcomplex(0.));
+      }
 
       // If distributed...
       if( respFactory_.genSettings.isDist() ) {
@@ -1094,7 +1108,9 @@ namespace ChronusQ {
 
 
         ritzVecR_ = this->memManager_.template malloc<dcomplex>(N*nModel);
+        std::fill_n(ritzVecR_,N*nModel,dcomplex(0.));
         ritzVecL_ = this->memManager_.template malloc<dcomplex>(N*nModel);
+        std::fill_n(ritzVecL_,N*nModel,dcomplex(0.));
 
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nModel,nModel,dcomplex(1.),modelBasis1_,N,
            this->resResults.VR,nModel,dcomplex(0.),ritzVecR_,N);
@@ -1104,8 +1120,10 @@ namespace ChronusQ {
 
 
         resNorms_ = this->memManager_.template malloc<double>(nModel);
+        std::fill_n(resNorms_,nModel,0.);
 
         dcomplex * RES = this->memManager_.template malloc<dcomplex>(nModel*N);
+        std::fill_n(RES,nModel*N,dcomplex(0.));
 
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nModel,nModel,dcomplex(1.),KV,N,
            this->resResults.VR,nModel,dcomplex(0.),RES,N);
@@ -1179,11 +1197,12 @@ namespace ChronusQ {
       dcomplex one(1.);
       dcomplex *VEXP = 
         this->memManager_.template malloc<dcomplex>( 2*nModel*N);
+      std::fill_n(VEXP,2*nModel*N,dcomplex(0.));
       dcomplex *AVEXP = 
         this->memManager_.template malloc<dcomplex>( 2*nModel*N);
+      std::fill_n(AVEXP,2*nModel*N,dcomplex(0.));
 
 
-      std::fill_n(VEXP,2*nModel*N,0.);
 
       std::cout << "    * CONSTRUCTING PAIRED MODEL BASIS" << std::endl;
       SetMat('N',N,nModel,one,modelBasis1_,N,VEXP,N);
@@ -1192,6 +1211,7 @@ namespace ChronusQ {
 
       std::cout << "    * ORTHONORMALIZING PAIRED BASIS via SVD" << std::endl;
       double * SVAL = this->memManager_.template malloc<double>(2*nModel);
+      std::fill_n(SVAL,2*nModel,0.);
       dcomplex * dummy = nullptr;
 
       lapack::gesvd(lapack::Job::OverwriteVec,lapack::Job::NoVec,
@@ -1273,6 +1293,7 @@ namespace ChronusQ {
 
       dcomplex * SCR = 
         this->memManager_.template malloc<dcomplex>(nOrtho*nOrtho);
+      std::fill_n(SCR,nOrtho*nOrtho,dcomplex(0.));
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nOrtho, nOrtho/2, nOrtho, dcomplex(1.),
           this->fullMatrix_, nOrtho, this->resResults.VR, nOrtho,
           dcomplex(0.), SCR,nOrtho);
@@ -1298,6 +1319,7 @@ namespace ChronusQ {
 
       // Compute Ritz Vectors
       ritzVecR_ = this->memManager_.template malloc<dcomplex>(N*nOrtho/2);
+      std::fill_n(ritzVecR_,N*nOrtho/2,dcomplex(0.));
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nOrtho/2,nOrtho,dcomplex(1.),VEXP,N,
          this->resResults.VR,nOrtho,dcomplex(0.),ritzVecR_,N);
 
@@ -1380,6 +1402,7 @@ namespace ChronusQ {
 
     // Allocate subspace RHS
     T* RHS = this->memManager_.template malloc<dcomplex>(NRHS*nModel);
+    std::fill_n(RHS,NRHS*nModel,dcomplex(0.));
 
 
 
@@ -1418,7 +1441,9 @@ namespace ChronusQ {
       if( MLoc and NLoc ) {
 
         cList.back().X  = this->memManager_.template malloc<T>(MLoc*NLoc);
+        std::fill_n(cList.back().X,MLoc*NLoc,T(0.));
         cList.back().AX = this->memManager_.template malloc<T>(MLoc*NLoc);
+        std::fill_n(cList.back().AX,MLoc*NLoc,T(0.));
 
       } else {
 
@@ -1457,9 +1482,12 @@ namespace ChronusQ {
     this->fullMatrix_ = isRoot ? 
       this->memManager_.template malloc<T>(N*N) : nullptr;
 
-    if( isRoot ) 
-    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nModel,nModel,N,T(1.),modelBasis1_,N,modelBasis1_LT_,N,T(0.),
-      this->fullMatrix_,nModel);
+    if( isRoot ) {
+      std::fill_n(this->fullMatrix_,N*N,T(0.));
+      blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, nModel, nModel, N, T(1.), modelBasis1_,
+                 N, modelBasis1_LT_, N, T(0.),
+                 this->fullMatrix_, nModel);
+    }
 
     return this->fullMatrix_;
 
@@ -1483,6 +1511,7 @@ namespace ChronusQ {
       this->memManager_.template malloc<T>(nProp*nModel) : nullptr;
 
     if( isRoot ) {
+      std::fill_n(newG,nProp*nModel,T(0.));
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nProp,nModel,N,dcomplex(1.),g,N,modelBasis1_,N,
         dcomplex(0.),newG,nProp);
       IMatCopy('C',nProp,nModel,dcomplex(1.),newG,nProp,nModel);

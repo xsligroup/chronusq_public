@@ -24,52 +24,26 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
+#include <custom_storage.hpp>
 
 //#define MEM_PRINT
-#define CHRONUSQ_CUSTOM_BACKEND
-
-#ifdef CHRONUSQ_CUSTOM_BACKEND
-#include <custom_storage.hpp>
-#else
-#include <boost/pool/simple_segregated_storage.hpp>
-#endif
-
 
 namespace ChronusQ {
 
-#ifdef CHRONUSQ_CUSTOM_BACKEND
-  typedef CustomMemManager mem_backend;
-#else
-  typedef boost::simple_segregated_storage<size_t> mem_backend;
-#endif
+  enum class CQMemBackendType {
+    PREALLOCATED,
+    OS_DIRECT,
+  };
 
-  class CQMemManager : public mem_backend {
+  class CQMemManager {
 
-    size_t N_;            ///< Total bytes to be allocated
-    size_t NAlloc_;       ///< Number of blocks currently allocated
+    std::unique_ptr<CQMemBackend> mem_backend; ///< Memory backend
     size_t BlockSize_;    ///< Segregation block size
-    std::vector<char> V_; ///< Internal memort
+    size_t NAlloc_;       ///< Number of blocks currently allocated
+    size_t NAllocHigh_;   ///< High-water mark of allocated blocks
 
     std::unordered_map<void*,std::pair<size_t,size_t>> AllocatedBlocks_;
       ///< Map from block pointer to the size of the block
-
-    bool isAllocated_;
-
-    /**
-     *  \brief Ensures that the memory block (N_) is divisible by
-     *  the segregation block size (BlockSize_)
-     */ 
-    inline void fixBlockNumber() {
-      if(N_ % BlockSize_) {
-        #ifdef MEM_PRINT
-          std::cerr << "Memory Block not Divisible by BlockSize ("
-                    << BlockSize_ << " Bytes). Increasing allocation by " 
-                    << BlockSize_ - (N_ % BlockSize_) << " Bytes" << std::endl;
-  
-        #endif
-        N_ += BlockSize_ - (N_ % BlockSize_);
-      }
-    };
 
     public:
 
@@ -92,32 +66,21 @@ namespace ChronusQ {
      *  \param [in] BlockSize  Segregation block size
      *
      */ 
-     CQMemManager(size_t N = 0, size_t BlockSize = 2048) :
-       mem_backend(), N_(N), BlockSize_(BlockSize), isAllocated_(false),
-       NAlloc_(0) {
-       if( N_ and BlockSize_ ) allocMem();
-     };
-
-     /**
-      *  Allocates the memory block
-      */ 
-     void allocMem() {
-       assert(not isAllocated_);
-
-       fixBlockNumber(); // fix buffer length
-       V_.resize(N_);    // allocate the memory
-
-       // segregate (uses functionality from boost::simple_segregated_storage
-       this->add_ordered_block(&V_.front(),V_.size(),BlockSize_);
-
-       isAllocated_ = true; // ensure no additional allocs can be made
-
-       #ifdef MEM_PRINT
-         std::cerr << "Creating Memory Partition of " << N_
-                   << " bytes starting at " << (int*) &V_.front() 
-                   << std::endl;
-       #endif
-     };
+    CQMemManager(CQMemBackendType type, size_t N = 0, size_t BlockSize = 2048) :
+        BlockSize_(BlockSize), NAlloc_(0), NAllocHigh_(0) {
+      switch (type) {
+        case CQMemBackendType::PREALLOCATED:
+          mem_backend = std::make_unique<CustomMemManager>(N, BlockSize);
+          break;
+        case CQMemBackendType::OS_DIRECT:
+          mem_backend = std::make_unique<OSDirectMemManager>();
+          break;
+        default:
+          throw std::runtime_error("Unknown memory backend type");
+      }
+    };
+    CQMemManager(size_t N = 0, size_t BlockSize = 2048) :
+        CQMemManager(CQMemBackendType::PREALLOCATED, N, BlockSize){}
 
 
      /**
@@ -142,7 +105,7 @@ namespace ChronusQ {
        #endif
 
        // Get a pointer from boost::simple_segregated_storage
-       void * ptr = mem_backend::malloc_n(nBlocks,BlockSize_);
+       void * ptr = mem_backend->malloc(nBlocks * BlockSize_);
 
        // Throw an error if boost returned a NULL pointer (many
        // possible causes)
@@ -152,7 +115,8 @@ namespace ChronusQ {
        }
 
        //// Update the number of allocated blocks
-       NAlloc_ += nBlocks; 
+       NAlloc_ += nBlocks;
+       NAllocHigh_ = std::max(NAlloc_,NAllocHigh_);
        
        #ifdef MEM_PRINT
          std::cerr << "  PTR = " << ptr << std::endl;
@@ -165,6 +129,14 @@ namespace ChronusQ {
 
        return static_cast<T*>(ptr); // Return the pointer
      }; // CQMemManager::malloc
+
+    // malloc with default initialization
+    template <typename T>
+    T* calloc(size_t n) {
+      T* ptr = malloc<T>(n);
+      std::fill_n(ptr, n, T());
+      return ptr;
+    }; // CQMemManager::calloc
 
      
      /**
@@ -196,7 +168,7 @@ namespace ChronusQ {
        NAlloc_ -= it->second.second; // deduct block size from allocated memory
   
        // deallocate the memory in an ordered fashion
-       mem_backend::ordered_free_n(ptr,it->second.second,BlockSize_);
+       mem_backend->free(ptr);
 
        // Remove pointer from allocated list
        AllocatedBlocks_.erase(it);
@@ -234,7 +206,7 @@ namespace ChronusQ {
       *  \returns        Size of the allocated block in terms of type T
       */ 
      template <typename T>
-     size_t getSize(T* ptr) {
+     size_t getSize(T* ptr) const {
        // Attempt to find the pointer in the list of 
        // allocated blocks
        auto it = AllocatedBlocks_.find(static_cast<void*>(ptr));
@@ -248,30 +220,16 @@ namespace ChronusQ {
 
 
      /**
-      *  Return the maximum allocatable size
+      *  Return the maximum number of objects allocatable
       *
+      *  \prama [n_elem_each]   How many T type elements are in each object
+      *  \prama [request_max]   Maximum number of objects to allocate
+      *  \returns               Maximum number of objects that can be allocated
+      *                         Return value <= request_max
       */
      template <typename T>
-     size_t max_avail_allocatable(size_t size = 1) {
-
-       size_t mem_max = N_/(sizeof(T) * size);
-       size_t mem_min = 0;
-       size_t trial_mem = 0;
-       T * trial_alloc;
-
-       while(true) {
-         try {
-           trial_mem = (mem_max-mem_min)/2 + mem_min;
-           trial_alloc = CQMemManager::template malloc<T>(trial_mem * size);
-           free(trial_alloc);
-           mem_min = trial_mem;
-         } catch (std::bad_alloc& ba) {
-           mem_max = trial_mem - 1;
-         }
-         if (mem_max - mem_min == 1 or mem_max == mem_min) break;
-       }
-
-       return mem_min;
+     size_t max_avail_allocatable(size_t n_elem_each, size_t request_max) {
+       return mem_backend->max_avail_allocatable(sizeof(T) * n_elem_each, request_max);
      }
 
 
@@ -318,15 +276,19 @@ namespace ChronusQ {
       out << std::setw(30) << " - Block Size: ";
       out << std::setw(10) << mem.BlockSize_ << " B" << std::endl; 
       out << std::endl;
-      
-      outputFunc(" - Total Memory Allocated:", mem.N_, mem.N_ / mem.BlockSize_);
-      out << std::endl;
+
+      if (const CustomMemManager *cmm = dynamic_cast<const CustomMemManager*>(mem.mem_backend.get())) {
+        size_t N = cmm->getTotalAllocation();
+
+        outputFunc(" - Total Memory Allocated:", N, N / mem.BlockSize_);
+        out << std::endl;
+
+        outputFunc(" - Free Memory:", N - mem.NAlloc_ * mem.BlockSize_,
+                   N / mem.BlockSize_ - mem.NAlloc_);
+        out << std::endl;
+      }
 
       outputFunc(" - Reserved Memory:", mem.NAlloc_ * mem.BlockSize_, mem.NAlloc_);
-      out << std::endl;
-
-      outputFunc(" - Free Memory:", mem.N_ - mem.NAlloc_ * mem.BlockSize_, 
-          mem.N_ / mem.BlockSize_ - mem.NAlloc_);
       out << std::endl;
 
       if( mem.NAlloc_ ) {
@@ -347,9 +309,12 @@ namespace ChronusQ {
      */
     void printHighWaterMark(std::ostream &out) const {
       out << std::endl << "MemManager high-water mark: "
-          << std::fixed << std::setprecision(3)
-          << alloc_span() / 1e9
-          << " GB." << std::endl;
+          << std::fixed << std::setprecision(3);
+      if (CustomMemManager *cmm = dynamic_cast<CustomMemManager*>(mem_backend.get()))
+        out << cmm->alloc_span() / 1e9;
+      else
+        out << NAllocHigh_ * BlockSize_ / 1e9;
+      out << " GB." << std::endl;
 
     }; // CQMemManager::printAllocTable
 

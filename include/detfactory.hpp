@@ -160,7 +160,7 @@ public:
       totalMem += l.second->storageSize();
     }
     std::cout << "Total Memory Requirement for Storing Excitation Lists: " << std::fixed<<totalMem/1e9 << " GB" << std::endl;
-    if (totalMem > memManager_.max_avail_allocatable<char>()) CErr();
+    if (totalMem > memManager_.max_avail_allocatable<char>(1,totalMem)) CErr();
   }
 
   // virtual function to do precomputations
