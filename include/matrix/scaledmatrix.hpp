@@ -24,9 +24,19 @@
 #pragma once
 #include <matrix.hpp>
 
+#include <variant>
+#include <functional>
+
 namespace ChronusQ {
 namespace cqmatrix {
 
+/**
+ * Matrix multiply with a scalar
+ * @warning This class is not intended to be used directly.
+ *          Use the overloaded operators instead.
+ * @tparam ScalarT The type of the scalar
+ * @tparam MatsT   The type of the matrix elements
+ */
 template <typename ScalarT, typename MatsT>
 class ScaledMatrix {
 
@@ -34,9 +44,9 @@ class ScaledMatrix {
   friend class ScaledMatrix;
 
 protected:
-  bool isPauli_; // Keep track of declaration type for static binding effect
   ScalarT scalar_;
-  const Matrix<MatsT> &mat_;
+  std::variant<std::reference_wrapper<const Matrix<MatsT>>,
+      std::reference_wrapper<const PauliSpinorMatrices<MatsT>>> mat_;
 
 public:
 
@@ -44,17 +54,38 @@ public:
   ScaledMatrix( const ScaledMatrix& ) = default;
   ScaledMatrix( ScaledMatrix&& ) = default;
   ScaledMatrix(ScalarT scalar, const Matrix<MatsT> &ints, bool isPauli = false):
-      isPauli_(isPauli), scalar_(scalar), mat_(ints) {}
+      scalar_(scalar), mat_(ints) {}
   ScaledMatrix(ScalarT scalar, const PauliSpinorMatrices<MatsT> &ints):
-      isPauli_(true), scalar_(scalar), mat_(ints) {}
+      scalar_(scalar), mat_(ints) {}
   template <typename ScalarT1, typename ScalarT2>
   ScaledMatrix(ScalarT1 scalar,
       const ScaledMatrix<ScalarT2, MatsT> &scaled):
-      isPauli_(scaled.isPauli_), scalar_(scalar * scaled.scalar_), mat_(scaled.mat_) {}
+      scalar_(scalar * scaled.scalar_), mat_(scaled.mat_) {}
 
-  bool isPauli() const { return isPauli_; }
+  bool isPauli() const {
+    return std::holds_alternative<std::reference_wrapper<
+        const PauliSpinorMatrices<MatsT>>>(mat_); }
   ScalarT scalar() const { return scalar_; }
-  const Matrix<MatsT>& matrix() const { return mat_; }
+  const Matrix<MatsT>& getScalarMatrix() const {
+    if (isPauli())
+      return std::get<std::reference_wrapper<
+          const PauliSpinorMatrices<MatsT>>>(mat_).get().S();
+    else
+      return std::get<std::reference_wrapper<
+          const Matrix<MatsT>>>(mat_).get();
+  }
+  const PauliSpinorMatrices<MatsT>& getPauliSpinorMatrices() const {
+    return std::get<std::reference_wrapper<
+        const PauliSpinorMatrices<MatsT>>>(mat_).get();
+  }
+  bool hasZ() const {
+    return isPauli() and std::get<std::reference_wrapper<
+        const PauliSpinorMatrices<MatsT>>>(mat_).get().hasZ();
+  }
+  bool hasXY() const {
+    return isPauli() and std::get<std::reference_wrapper<
+        const PauliSpinorMatrices<MatsT>>>(mat_).get().hasXY();
+  }
 
   ScaledMatrix operator-() const {
     return ScaledMatrix(-1.0, *this);

@@ -374,13 +374,9 @@ namespace ChronusQ {
  
       // Decide if we need to allocate space for real part of the 
       // densities and copy over the real parts
-      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM;
-      if (std::is_same<MatsT,double>::value)
-        Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
-            ss.onePDM);
-      else
-        Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
-           ss.onePDM->real_part());
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM
+          = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
+              ss.onePDM->real_part());
 
 
       // Scratch pointers for auxiliary systems 
@@ -437,13 +433,9 @@ namespace ChronusQ {
             ss.memManager.template malloc<double>(3*NTNPPB);
       }
 
-      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> aux_Re1PDM;
-      if( std::is_same<MatsT,double>::value )
-         aux_Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
-           this->aux_ss->onePDM);
-       else
-         aux_Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
-           this->aux_ss->onePDM->real_part());
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> aux_Re1PDM
+          = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
+              this->aux_ss->onePDM->real_part());
 
 
       // ---------------end NEO------------------------------------------------

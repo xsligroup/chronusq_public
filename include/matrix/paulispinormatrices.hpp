@@ -38,7 +38,7 @@ enum class PAULI_SPINOR_COMPS : size_t {
  *
  */
 template <typename MatsT>
-class PauliSpinorMatrices : public Matrix<MatsT> {
+class PauliSpinorMatrices {
 
   template <typename MatsU>
   friend class PauliSpinorMatrices;
@@ -54,46 +54,53 @@ public:
   PauliSpinorMatrices() = delete;
   PauliSpinorMatrices( const PauliSpinorMatrices & ) = default;
   PauliSpinorMatrices( PauliSpinorMatrices && ) = default;
+  /**
+   *  \brief Constructor for PauliSpinorMatrices
+   *         If memory provided, it will be split evenly into components
+   *
+   *  \param nRow Number of rows
+   *  \param nCol Number of columns
+   *  \param hasXY Flag for XY components
+   *  \param hasZ Flag for Z component
+   */
   PauliSpinorMatrices(CQMemManager &mem, size_t nRow, size_t nCol, 
-      bool hasXY = true, bool hasZ = true):
-      Matrix<MatsT>(mem, nRow, nCol) {
-    size_t nZYX = hasXY ? 3 : hasZ ? 1 : 0;
-    components_.reserve(nZYX);
-    for (size_t i = 0; i < nZYX; i++)
+      bool hasXY = true, bool hasZ = true) {
+    size_t nComp = hasXY ? 4 : hasZ ? 2 : 1;
+    components_.reserve(nComp);
+    for (size_t i = 0; i < nComp; i++)
       components_.emplace_back(mem, nRow, nCol);
   }
   PauliSpinorMatrices(CQMemManager &mem, size_t n, bool hasXY = true, bool hasZ = true):
       PauliSpinorMatrices(mem, n, n, hasXY, hasZ) { }
   template <typename MatsU>
-  PauliSpinorMatrices( const Matrix<MatsU> &other,
-                             bool addXY = false, bool addZ = false ):
-      Matrix<MatsT>(other, 0) {
+  PauliSpinorMatrices(const Matrix<MatsU> &other,
+                      bool addXY = false, bool addZ = false ) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real PauliSpinorMatrices from a Complex one.");
-    size_t nZYX = addXY ? 3 : addZ ? 1 : 0;
-    components_.reserve(nZYX);
-    while (nZYX > 0) {
+    size_t nComp = addXY ? 4 : addZ ? 2 : 1;
+    components_.reserve(nComp--);
+    components_.emplace_back(other, 0);
+    while (nComp > 0) {
       components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
       components_.back().clear();
-      nZYX--;
+      nComp--;
     }
   }
   template <typename MatsU>
-  PauliSpinorMatrices( const PauliSpinorMatrices<MatsU> &other,
-                             bool addXY = false, bool addZ = false ):
-      Matrix<MatsT>(other, 0) {
+  PauliSpinorMatrices(const PauliSpinorMatrices<MatsU> &other,
+                      bool addXY = false, bool addZ = false ) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real PauliSpinorMatrices from a Complex one.");
-    size_t nZYX = std::max(addXY ? 3ul : addZ ? 1ul : 0ul, other.components_.size());
-    components_.reserve(nZYX);
+    size_t nComp = std::max(addXY ? 4ul : addZ ? 2ul : 1ul, other.components_.size());
+    components_.reserve(nComp);
     for (auto &p : other.components_)
       components_.emplace_back(p);
-    while (nZYX > other.components_.size()) {
+    while (nComp > other.components_.size()) {
       components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
       components_.back().clear();
-      nZYX--;
+      nComp--;
     }
   }
   template <typename ScalarT, typename MatsU>
@@ -107,10 +114,10 @@ public:
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real PauliSpinorMatrices from a Complex Matrix.");
-    if (not this->isSameDimension(other))
+    if (not S().isSameDimension(other))
       CErr("Cannot assign a Matrix of different size to PauliSpinorMatrices.");
-    Matrix<MatsT>::operator=(other);
-    for (auto &comp : components_) comp.clear();
+    S() = other;
+    for (size_t i = 1; i < components_.size(); i++) components_[i].clear();
     return *this;
   }
   template <typename MatsU>
@@ -118,10 +125,10 @@ public:
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real PauliSpinorMatrices from a Complex Matrix.");
-    if (not this->isSameDimension(other))
+    if (not S().isSameDimension(other))
       CErr("Cannot assign a Matrix of different size to PauliSpinorMatrices.");
-    Matrix<MatsT>::operator=(std::move(other));
-    for (auto &comp : components_) comp.clear();
+    S() = std::move(other);
+    for (size_t i = 1; i < components_.size(); i++) components_[i].clear();
     return *this;
   }
   template <typename ScalarT, typename MatsU>
@@ -182,12 +189,19 @@ public:
   dcomplex, double>::type>
   operator-( const ScaledMatrix<ScalarT, MatsU>& ) const;
 
-  bool hasXY() const { return components_.size() == 3; }
-  bool hasZ() const { return components_.size() >= 1; }
-  size_t nComponent() const { return components_.size() + 1; }
+  bool hasXY() const { return components_.size() == 4; }
+  bool hasZ() const { return components_.size() >= 2; }
+  size_t nComponent() const { return components_.size(); }
+
+  CQMemManager& memManager() const { return S().memManager(); }
+  size_t dimension() const{ return S().dimension(); }
+  size_t nColumns() const { return S().nColumns(); }
+  size_t nRows() const { return S().nRows(); }
+
+  bool isSquareMatrix() const { return S().isSquareMatrix(); }
   
-  void resize(size_t nRow, size_t nCol) override {
-    Matrix<MatsT>::resize(nRow, nCol);
+  void resize(size_t nRow, size_t nCol) {
+    S().resize(nRow, nCol);
     if (hasZ()) {
       Z().resize(nRow, nCol);
     }
@@ -198,18 +212,14 @@ public:
   }
 
   Matrix<MatsT>& operator[](PAULI_SPINOR_COMPS comp) {
-    if (comp == PAULI_SPINOR_COMPS::S)
-      return *this;
-    size_t i = static_cast<size_t>(comp) - 1;
+    size_t i = static_cast<size_t>(comp);
     if (i >= components_.size())
       CErr("Requested component is NOT in this PauliSpinorMatrices object.");
     return components_[i];
   }
 
   const Matrix<MatsT>& operator[](PAULI_SPINOR_COMPS comp) const {
-    if (comp == PAULI_SPINOR_COMPS::S)
-      return *this;
-    size_t i = static_cast<size_t>(comp) - 1;
+    size_t i = static_cast<size_t>(comp);
     if (i >= components_.size())
       CErr("Requested component is NOT in this PauliSpinorMatrices object.");
     return components_[i];
@@ -224,7 +234,7 @@ public:
   Matrix<MatsT>& Z() { return operator[](PAULI_SPINOR_COMPS::Z); }
   const Matrix<MatsT>& Z() const { return operator[](PAULI_SPINOR_COMPS::Z); }
 
-  virtual std::vector<MatsT*> SZYXPointers() {
+  std::vector<MatsT*> SZYXPointers() {
     if (hasXY())
       return { S().pointer(), Z().pointer(), Y().pointer(), X().pointer() };
     if (hasZ())
@@ -234,19 +244,17 @@ public:
   
   PauliSpinorMatrices<double> real_part() {
     PauliSpinorMatrices<double> realMats(S().real_part(), false, false);
-    realMats.components_.reserve(components_.size());
-    for (Matrix<MatsT> mat : components_)
-      realMats.components_.emplace_back(mat.real_part());
+    for (size_t i = 1; i < components_.size(); i++)
+      realMats.components_.emplace_back(components_[i].real_part());
     return realMats;
   }
 
   void clear() {
-    Matrix<MatsT>::clear();
     for (Matrix<MatsT>& c : components_)
       c.clear();
   }
 
-  virtual void output(std::ostream &out, const std::string &s = "",
+  void output(std::ostream &out, const std::string &s = "",
                       bool printFull = false) const {
     if (printFull) {
       std::string oeiStr;
@@ -280,8 +288,7 @@ public:
     }
   }
 
-  virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
-    Matrix<MatsT>::broadcast(comm, root);
+  void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
     for (Matrix<MatsT>& comp : components_)
       comp.broadcast(comm, root);
   }
@@ -361,10 +368,10 @@ public:
     return transMats;
   }
 
-  double norm(lapack::Norm type) const override {
+  double norm(lapack::Norm type) const {
     if(type == lapack::Norm::Fro)
       CErr("There is a possible error in PauliSpinorMatrix::Norm for Frobenius norms.");
-    double result = Matrix<MatsT>::norm(type);
+    double result = S().norm(type);
     if (hasZ()) result = std::max(result, Z().norm(type));
     if (hasXY()) {
        result = std::max(result, Y().norm(type));
@@ -375,13 +382,13 @@ public:
 
   // Check if the matrix has NaN
   virtual bool hasNaN() const {
-    if (Matrix<MatsT>::hasNaN()) return true;
+    if (S().hasNaN()) return true;
     if (hasZ() and Z().hasNaN()) return true;
     if (hasXY() and (Y().hasNaN() or X().hasNaN())) return true;
     return false;
   }
   
-  virtual ~PauliSpinorMatrices() {}
+  ~PauliSpinorMatrices() {}
 
 }; // class PauliSpinorMatrices
 

@@ -1896,13 +1896,9 @@ namespace ChronusQ {
     double* NBNPSCRD = this->memManager.template malloc<double>(NB*NPPB * NT);
 
 
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM;
-    if (std::is_same<U,double>::value)
-      Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
-          this->onePDM);
-    else
-      Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
-          this->onePDM->real_part());
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM
+        = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
+            this->onePDM->real_part());
 
 
     std::vector<std::vector<U*>> ReTSymm;

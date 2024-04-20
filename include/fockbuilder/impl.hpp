@@ -305,11 +305,8 @@ namespace ChronusQ {
       for(auto i = 0;    i < 3;     i++)
 
         if (ss.nC == 4){
-          if(auto p = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<dcomplex>> (ss.fockMatrix) ){
-              p->S() -= dcomplex(2.0 * dipAmp[i],0) * (*(ss.aoints_->lenElectric4C))[i].S();
-          }else{
-            CErr("Four component Fockmatrix should be complex!");
-          }
+          ss.fockMatrix->S() -= 2.0 * dipAmp[i] * (*(ss.aoints_->lenElectric4C))[i].S();
+
         } else {
         ss.fockMatrix->S() -=
           2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i]->matrix();

@@ -206,16 +206,16 @@ PauliSpinorMatrices<MatsT>::componentGatherBuild(
     
   // get dimension
   size_t nRow, nCol;
-  if (LL.pointer()) {
+  if (LL.S().pointer()) {
     nRow = LL.nRows();
     nCol = LL.nColumns();
-  } else if (LS.pointer()) {
+  } else if (LS.S().pointer()) {
     nRow = LS.nRows();
     nCol = LS.nColumns();
-  } else if (SL.pointer()) {
+  } else if (SL.S().pointer()) {
     nRow = SL.nRows();
     nCol = SL.nColumns();
-  } else if (SS.pointer()) {
+  } else if (SS.S().pointer()) {
     nRow = SS.nRows();
     nCol = SS.nColumns();
   } else {

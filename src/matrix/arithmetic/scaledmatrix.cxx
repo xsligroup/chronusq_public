@@ -120,7 +120,7 @@ PauliSpinorMatrices<typename std::conditional<
  std::is_same<MatsT2, dcomplex>::value),
 dcomplex, double>::type>
 operator+(const ScaledMatrix<ScalarT1, MatsT1> &lhs, const ScaledMatrix<ScalarT2, MatsT2> &rhs) {
-  if (not lhs.matrix().isSameDimension(rhs.matrix()))
+  if (not lhs.getScalarMatrix().isSameDimension(rhs.getScalarMatrix()))
     CErr("Cannot add two Matrix of different size.");
   typedef typename std::conditional<
       (std::is_same<ScalarT1, dcomplex>::value or

@@ -31,10 +31,11 @@ namespace cqmatrix {
 template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 Matrix<MatsT>::Matrix( const ScaledMatrix<ScalarT, MatsU> &scaled ):
-    Matrix(scaled.matrix().memManager(), scaled.matrix().nRows(), scaled.matrix().nColumns()) {
-  if (scaled.isPauli() and dynamic_cast<const PauliSpinorMatrices<MatsU>&>(scaled.matrix()).hasZ())
+    Matrix(scaled.getScalarMatrix().memManager(),
+           scaled.getScalarMatrix().nRows(), scaled.getScalarMatrix().nColumns()) {
+  if (scaled.isPauli() and scaled.getPauliSpinorMatrices().hasZ())
     CErr("Cannot create a Matrix from a PauliSpinorMatrices with XYZ components.");
-  SetMat('N',nRows(),nColumns(),scaled.scalar(),scaled.matrix().pointer(),nRows(),pointer(),nRows());
+  SetMat('N',nRows(),nColumns(),scaled.scalar(),scaled.getScalarMatrix().pointer(),nRows(),pointer(),nRows());
 }
 template Matrix<double>::Matrix( const ScaledMatrix<double, double>& );
 template Matrix<dcomplex>::Matrix( const ScaledMatrix<double, double>& );
@@ -46,14 +47,14 @@ template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 Matrix<MatsT>&
 Matrix<MatsT>::operator=( const ScaledMatrix<ScalarT, MatsU> &scaled ) {
-  if (not isSameDimension(scaled.matrix()))
+  if (not isSameDimension(scaled.getScalarMatrix()))
     CErr("Cannot assign Matrix of different size.");
   if (std::is_same<MatsT, double>::value and
       std::is_same<MatsU, dcomplex>::value)
     CErr("Cannot assign a complex Matrix object to a real one.");
-  if (scaled.isPauli() and dynamic_cast<const PauliSpinorMatrices<MatsU>&>(scaled.matrix()).hasZ())
+  if (scaled.isPauli() and scaled.hasZ())
     CErr("Cannot assign a Matrix from a PauliSpinorMatrices with XYZ components.");
-  SetMat('N',nRows(),nColumns(),scaled.scalar(),scaled.matrix().pointer(),nRows(),pointer(),nRows());
+  SetMat('N',nRows(),nColumns(),scaled.scalar(),scaled.getScalarMatrix().pointer(),nRows(),pointer(),nRows());
   return *this;
 }
 template Matrix<double>&
@@ -150,11 +151,11 @@ template Matrix<dcomplex> Matrix<dcomplex>::operator-( const Matrix<dcomplex>& )
 template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 Matrix<MatsT>& Matrix<MatsT>::operator+=( const ScaledMatrix<ScalarT, MatsU> &scaled ) {
-  if (not isSameDimension(scaled.matrix()))
+  if (not isSameDimension(scaled.getScalarMatrix()))
     CErr("Cannot add two Matrix of different size.");
-  if (scaled.isPauli() and dynamic_cast<const PauliSpinorMatrices<MatsU>&>(scaled.matrix()).hasZ())
+  if (scaled.isPauli() and scaled.hasZ())
     CErr("Cannot assign a Matrix from a PauliSpinorMatrices with XYZ components.");
-  blas::axpy(nRows() * nColumns(), scaled.scalar(), scaled.matrix().pointer(), 1, pointer(), 1);
+  blas::axpy(nRows() * nColumns(), scaled.scalar(), scaled.getScalarMatrix().pointer(), 1, pointer(), 1);
   return *this;
 }
 template Matrix<double>& Matrix<double>::operator+=( const ScaledMatrix<double, double>& );
@@ -169,6 +170,10 @@ Matrix<MatsT>& Matrix<MatsT>::operator-=( const ScaledMatrix<ScalarT, MatsU> &sc
   return operator+=(-scaled);
 }
 template Matrix<double>& Matrix<double>::operator-=( const ScaledMatrix<double, double>& );
+template <> template <> Matrix<double>& Matrix<double>::operator-=( const ScaledMatrix<double, dcomplex>& ) {
+  CErr("Cannot subtract a complex ScaledMatrix from a real Matrix.");
+  return *this;
+}
 template Matrix<dcomplex>& Matrix<dcomplex>::operator-=( const ScaledMatrix<double, double>& );
 template Matrix<dcomplex>& Matrix<dcomplex>::operator-=( const ScaledMatrix<dcomplex, double>& );
 template Matrix<dcomplex>& Matrix<dcomplex>::operator-=( const ScaledMatrix<double, dcomplex>& );

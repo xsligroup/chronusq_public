@@ -33,38 +33,6 @@ template class Matrix<dcomplex>;
 template class PauliSpinorMatrices<double>;
 template class PauliSpinorMatrices<dcomplex>;
 
-/**
- *  \brief The pointer convertor. This static function converts
- *  the underlying polymorphism correctly to hold a different
- *  type of matrices. It is called when the corresponding
- *  SingleSlater object is being converted.
- */
-template <typename IntsT>
-template <typename IntsU>
-std::shared_ptr<Matrix<IntsU>>
-Matrix<IntsT>::convert(const std::shared_ptr<Matrix<IntsT>> &mat) {
-
-  if (not mat) return nullptr;
-
-  const std::type_info &tID(typeid(*mat));
-
-  if (tID == typeid(Matrix<IntsT>)) {
-    return std::make_shared<Matrix<IntsU>>(*mat);
-
-  } else if (tID == typeid(PauliSpinorMatrices<IntsT>)) {
-    return std::make_shared<PauliSpinorMatrices<IntsU>>(
-        *std::dynamic_pointer_cast<PauliSpinorMatrices<IntsT>>(mat));
-
-  } else {
-    std::stringstream errMsg;
-    errMsg << "Matrix implementation \"" << tID.name()
-           << "\" not registered in convert." << std::endl;
-    CErr(errMsg.str(),std::cout);
-  }
-
-  return nullptr;
-}
-
 template <typename MatsT>
 std::ostream& operator<<(std::ostream &out, const Matrix<MatsT> &mat) {
   mat.output(out);

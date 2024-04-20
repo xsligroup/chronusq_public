@@ -232,13 +232,9 @@ namespace ChronusQ {
 
       // Decide if we need to allocate space for real part of the
       // densities and copy over the real parts
-      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM;
-      if (std::is_same<MatsT,double>::value)
-        Re1PDM = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<double>>(
-            this->onePDM);
-      else
-        Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
-            this->onePDM->real_part());
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> Re1PDM
+          = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
+              this->onePDM->real_part());
 
 
       // -------------------------------------------------------------//

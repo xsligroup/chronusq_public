@@ -46,13 +46,18 @@ protected:
   size_t nRow_;
   size_t nCol_;
   CQMemManager &memManager_; ///< CQMemManager to allocate matricies
-  
   MatsT *ptr_ = nullptr;     ///< Raw matrix storage (2 index)
 
 public:
 
   // Constructor
   Matrix() = delete;
+  /**
+   * @brief Construct a new Matrix object
+   *
+   * @param nRow Number of rows
+   * @param nCol Number of columns
+   */
   Matrix(CQMemManager &mem, size_t nRow, size_t nCol):
       nRow_(nRow), nCol_(nCol), memManager_(mem) {
     malloc();
@@ -77,22 +82,20 @@ public:
       ptr_(other.ptr_) { other.ptr_ = nullptr; }
   template <typename MatsU>
   Matrix( const PauliSpinorMatrices<MatsU> &other ):
-      Matrix(other.memManager_, other.nRow_, other.nCol_) {
+      Matrix(other.memManager(), other.nRows(), other.nColumns()) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real Matrix from a Complex one.");
     if (other.hasZ())
       CErr("Cannot create a Matrix from a PauliSpinorMatrices"
            " with XYZ components.");
-    std::copy_n(other.pointer(), nRow_ * nCol_, ptr_);
+    std::copy_n(other.S().pointer(), nRow_ * nCol_, ptr_);
   }
   Matrix( PauliSpinorMatrices<MatsT> &&other ):
-      nRow_(other.nRow_), nCol_(other.nCol_), memManager_(other.memManager_),
-      ptr_(other.ptr_) {
+      Matrix(std::move(other.S())) {
     if (other.hasZ())
       CErr("Cannot create a Matrix from a PauliSpinorMatrices"
            " with XYZ components.");
-    other.ptr_ = nullptr;
   }
   template <typename ScalarT, typename MatsU>
   Matrix( const ScaledMatrix<ScalarT, MatsU>& );
@@ -115,7 +118,7 @@ public:
     return nRow_ == other.nRows() and nCol_ == other.nColumns();
   }
   
-  virtual void resize(size_t nRow, size_t nCol) {
+  void resize(size_t nRow, size_t nCol) {
     if (nRow * nCol != nRow_ * nCol_) {
       nRow_ = nRow;
       nCol_ = nCol;
@@ -176,10 +179,6 @@ public:
   MatsT* pointer() { return ptr_; }
   const MatsT* pointer() const { return ptr_; }
 
-  virtual std::vector<MatsT*> SZYXPointers() {
-    return { pointer() };
-  }
-
   Matrix<double> real_part() {
     Matrix<double> realMat(memManager_, nRow_, nCol_);
     GetMatRE('N', nRow_, nCol_, 1., pointer(), nRow_, realMat.pointer(), nRow_);
@@ -203,7 +202,7 @@ public:
     std::fill_n(ptr_, nRow_ * nCol_, MatsT(0.));
   }
 
-  virtual void output(std::ostream &out, const std::string &s = "",
+  void output(std::ostream &out, const std::string &s = "",
                       bool printFull = false) const {
     std::string matStr;
     if (s == "")
@@ -217,7 +216,7 @@ public:
     }
   }
 
-  virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
+  void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
 
 #ifdef CQ_ENABLE_MPI
     // BCast matrix to all MPI processes
@@ -288,7 +287,7 @@ public:
       OutT* out, bool increment = false) const;
 
   
-  virtual double norm(lapack::Norm norm) const {
+  double norm(lapack::Norm norm) const {
     return lapack::lange(norm, nRow_, nCol_, ptr_, nRow_);
   }
 
@@ -314,11 +313,6 @@ public:
       }
     }
   }
-
-  // Pointer convertor
-  template <typename MatsU>
-  static std::shared_ptr<Matrix<MatsU>>
-  convert(const std::shared_ptr<Matrix<MatsT>>&);
 
   ~Matrix() {
     if(ptr_) memManager_.free(ptr_);

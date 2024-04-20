@@ -131,9 +131,9 @@ class OneCShellBlockMO: public ShellBlockMO<MatsT> {
   // major interfaces
   void genSymmDenLLMS(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
       cqmatrix::PauliSpinorMatrices<MatsT>& symmDenLLMS) const override {
-    this->computeAODensityFromMO(p, q, shell_block_mo_[shell_mu], shell_block_mo_[shell_nu], symmDenLLMS);
+    this->computeAODensityFromMO(p, q, shell_block_mo_[shell_mu], shell_block_mo_[shell_nu], symmDenLLMS.S());
     auto& pauliSCR = pauliSCR_[GetThreadID()];
-    this->computeAODensityFromMO(p, q, shell_block_mo_[shell_nu], shell_block_mo_[shell_mu], pauliSCR);
+    this->computeAODensityFromMO(p, q, shell_block_mo_[shell_nu], shell_block_mo_[shell_mu], pauliSCR.S());
     MatrixAXPY('T', MatsT(1.), pauliSCR.S(), symmDenLLMS.S()); 
   }
   

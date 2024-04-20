@@ -31,29 +31,27 @@ template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 PauliSpinorMatrices<MatsT>::PauliSpinorMatrices(
     const ScaledMatrix<ScalarT, MatsU> &scaled, bool addXY, bool addZ ):
-    Matrix<MatsT>(scaled.matrix().memManager(), scaled.matrix().nRows(), 
-        scaled.matrix().nColumns()) {
-  size_t nZYX = addXY ? 3 : addZ ? 1 : 0;
+    PauliSpinorMatrices(scaled.getScalarMatrix().memManager(),
+                        scaled.getScalarMatrix().nRows(),
+                        scaled.getScalarMatrix().nColumns(), addXY, addZ) {
   if (scaled.isPauli()) {
-    auto scaledMat = dynamic_cast<const PauliSpinorMatrices<MatsU>&>(scaled.matrix());
-    Matrix<MatsT>::operator=(scaled.scalar() * scaledMat.S());
-    nZYX = std::max(nZYX, scaledMat.components_.size());
-    components_.reserve(nZYX);
-    for (auto &mat : scaledMat.components_)
-      components_.emplace_back(scaled.scalar() * mat);
-    while (nZYX > scaledMat.components_.size()) {
+    size_t nZYX = addXY ? 4 : addZ ? 2 : 1;
+    auto scaledMat = scaled.getPauliSpinorMatrices();
+    components_.reserve(std::max(nZYX, scaledMat.components_.size()));
+    size_t nAlloc = nZYX;
+    while (nAlloc < scaledMat.components_.size()){
+      components_.emplace_back(scaled.scalar() * scaledMat.components_[nAlloc++]);
+    }
+    for (size_t i = scaledMat.components_.size(); i < nZYX; i++) {
       components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
       components_.back().clear();
-      nZYX--;
     }
+    size_t nOverlap = std::min(nZYX, scaledMat.components_.size());
+    for (size_t i = 0; i < nOverlap; i++)
+      components_[i] = scaled.scalar() * scaledMat.components_[i];
   } else {
-    Matrix<MatsT>::operator=(scaled);
-    components_.reserve(nZYX);
-    while (nZYX > 0) {
-      components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
-      components_.back().clear();
-      nZYX--;
-    }
+    clear();
+    S()=scaled;
   }
 }
 template PauliSpinorMatrices<double>::PauliSpinorMatrices(
@@ -85,8 +83,7 @@ template <typename ScalarT, typename MatsU>
 PauliSpinorMatrices<MatsT>&
 PauliSpinorMatrices<MatsT>::operator=( const ScaledMatrix<ScalarT, MatsU> &rhs ) {
   if (rhs.isPauli()) {
-    const PauliSpinorMatrices<MatsU>& r =
-        dynamic_cast<const PauliSpinorMatrices<MatsU>&>(rhs.matrix());
+    const PauliSpinorMatrices<MatsU>& r = rhs.getPauliSpinorMatrices();
     S() = rhs.scalar() * r.S();
     if (r.hasZ()) {
       if (not hasZ())
@@ -108,7 +105,7 @@ PauliSpinorMatrices<MatsT>::operator=( const ScaledMatrix<ScalarT, MatsU> &rhs )
     }
   } else {
     S() = rhs;
-    for (auto &mat : components_) mat.clear();
+    for (size_t i = 1; i < components_.size(); i++) components_[i].clear();
   }
   return *this;
 }
@@ -172,7 +169,6 @@ PauliSpinorMatrices<dcomplex>::operator=( PauliSpinorMatrices<dcomplex>&& );
 template <typename MatsT>
 PauliSpinorMatrices<MatsT>&
 PauliSpinorMatrices<MatsT>::operator*=( MatsT scalar ) {
-  S() *= scalar;
   for (Matrix<MatsT> &mat : components_)
     mat *= scalar;
   return *this;
@@ -225,7 +221,7 @@ template <typename MatsT>
 template <typename MatsU>
 PauliSpinorMatrices<MatsT>&
 PauliSpinorMatrices<MatsT>::operator-=( const Matrix<MatsU> &other ) {
-  S() = other;
+  S() -= other;
   return *this;
 }
 template PauliSpinorMatrices<double>&
@@ -357,8 +353,7 @@ template <typename ScalarT, typename MatsU>
 PauliSpinorMatrices<MatsT>&
 PauliSpinorMatrices<MatsT>::operator+=( const ScaledMatrix<ScalarT, MatsU> &scaled ) {
   if (scaled.isPauli()) {
-    const PauliSpinorMatrices<MatsU>& scaledMat =
-        dynamic_cast<const PauliSpinorMatrices<MatsU>&>(scaled.matrix());
+    const PauliSpinorMatrices<MatsU>& scaledMat = scaled.getPauliSpinorMatrices();
     S() += scaled.scalar() * scaledMat.S();
     if (scaledMat.hasZ()) {
       if (hasZ())
