@@ -97,7 +97,6 @@ namespace ChronusQ {
     typedef std::vector<std::vector<int>> int_matrix;
 
     SafeFile savFile;    ///< Data File, for restart
-    CQMemManager & memManager;
     MPI_Comm comm;
 
     MOSpacePartition MOPartition;
@@ -150,8 +149,8 @@ namespace ChronusQ {
      *
      *  \param [in] NS Number of States constructed by MCWaveFunction
      */
-    MCWaveFunctionBase(MPI_Comm c, CQMemManager &mem, size_t NS): 
-      comm(c), memManager(mem), NStates(NS) {
+    MCWaveFunctionBase(MPI_Comm c, size_t NS):
+      comm(c), NStates(NS) {
 
       alloc();
 

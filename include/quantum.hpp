@@ -71,15 +71,14 @@ namespace ChronusQ {
     /**
      *  Quantum Constructor. Constructs a Quantum object.
      *
-     *  \param [in] mem   CQMemManager to handle to allocation of densities
      *  \param [in] _nC   Number of spin components (1 and 2 are supported)
      *  \param [in] _iCS  Whether or not system is closed shell
      *                    (only used when _nC == 1)
      *  \param [in] N     Dimension of the density matricies to be allocated
      */ 
-    Quantum(MPI_Comm c, CQMemManager &mem, size_t _nC = 1, 
+    Quantum(MPI_Comm c, size_t _nC = 1, 
       bool _iCS = true, Particle p = {-1.0, 1.0}, size_t N = 0, bool doAlloc = true): 
-      QuantumBase(c,mem,_nC,_iCS,p) {
+      QuantumBase(c,_nC,_iCS,p) {
 
         // Allocate densities
         if( N != 0 and doAlloc ) alloc(N);

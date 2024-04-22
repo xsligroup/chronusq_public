@@ -25,7 +25,6 @@
 
 
 #include <chronusq_sys.hpp>
-#include <memmanager.hpp>
 #include <detstringmanager/detstring.hpp>
 #include <detstringmanager/excitationlist.hpp>
 #include <util/math.hpp>
@@ -42,7 +41,6 @@ namespace ChronusQ {
   
   protected:  
     
-    CQMemManager & memManager_;
     size_t nE_;
     size_t nOrb_;
     size_t nStr_;
@@ -58,15 +56,15 @@ namespace ChronusQ {
     // and use default copy and move constructors
     DetStringManager() = delete;
     DetStringManager(const DetStringManager & other): 
-        DetStringManager(other.memManager_, other.nOrb_, 
+        DetStringManager(other.nOrb_, 
         other.nE_, other.scheme_) { };
 
     DetStringManager(DetStringManager && other):
-        DetStringManager(other.memManager_, other.nOrb_, 
+        DetStringManager(other.nOrb_, 
         other.nE_, other.scheme_) { };
 
-    DetStringManager(CQMemManager & mem, size_t nOrb, size_t nE,
-        ExcitationScheme scheme): memManager_(mem), 
+    DetStringManager(size_t nOrb, size_t nE,
+        ExcitationScheme scheme):
         nOrb_(nOrb), nE_(nE), scheme_(scheme) {
     };
 
@@ -116,9 +114,9 @@ namespace ChronusQ {
     CASStringManager(const CASStringManager &) = default;
     CASStringManager(CASStringManager &&)      = default;
     
-    CASStringManager(CQMemManager & mem, size_t nOrb, size_t nE,
+    CASStringManager(size_t nOrb, size_t nE,
         ExcitationScheme scheme = PRECOMPUTED_CONFIGURATION_DRIVEN_LIST):
-        DetStringManager(mem, nOrb, nE, scheme) {
+        DetStringManager(nOrb, nE, scheme) {
       addrArray_ = this->buildAddressingArray(nE, nOrb);
     }   
     
@@ -149,11 +147,11 @@ namespace ChronusQ {
     RASStringManager(const RASStringManager &) = default;
     RASStringManager(RASStringManager &&)      = default;
 
-    RASStringManager(CQMemManager & mem, std::vector<size_t> nActO, size_t nE,
+    RASStringManager(std::vector<size_t> nActO, size_t nE,
 	                 size_t mxHole, size_t mxElec,
           ExcitationScheme scheme = PRECOMPUTED_CONFIGURATION_DRIVEN_LIST):
 	  nActO_(nActO), mxHole_(mxHole), mxElec_(mxElec),
-      DetStringManager(mem, std::accumulate(nActO.begin(), nActO.end(), 0),
+      DetStringManager(std::accumulate(nActO.begin(), nActO.end(), 0),
       nE, scheme) {
 
       nCat_ = (mxHole_+1) * (mxElec_+1);

@@ -211,7 +211,7 @@ namespace ChronusQ{
     size_t nV = TAmanager.getRange(vLabel_).extent();
     size_t nO = TAmanager.getRange(oLabel_).extent();
 
-    cqmatrix::Matrix<MatsT> fullMat(memManager_, includeGroundState ? Hbar_dim + 1 : Hbar_dim);
+    cqmatrix::Matrix<MatsT> fullMat(includeGroundState ? Hbar_dim + 1 : Hbar_dim);
     fullMat.clear();
 
     MatsT * Hbar = fullMat.pointer();

@@ -107,14 +107,14 @@ namespace ChronusQ {
     if (MPISize(comm_) > 1) {
       bool localC = C == nullptr;
       if (localC)
-        C = memManager_.template malloc<_F>(ldc * n);
+        C = CQMemManager::get().malloc<_F>(ldc * n);
       if (ldc == m)
         MPIBCast(C, m*n, 0, comm_);
       else
         for (size_t i = 0; i < n; i++)
           MPIBCast(C + i * ldc, m, 0, comm_);
       if (localC)
-        memManager_.free(C);
+        CQMemManager::get().free(C);
     }
 #endif
 
@@ -132,7 +132,7 @@ namespace ChronusQ {
       CErr("Lengths of vectors does not match for dot product.");
 
 #ifdef CQ_ENABLE_MPI
-    _F* CRes = memManager_.template malloc<_F>(m * n);
+    _F* CRes = CQMemManager::get().malloc<_F>(m * n);
 #endif
 
     tryDowncastReferenceTo<DistributedVectors<_F>>(B,
@@ -156,7 +156,7 @@ namespace ChronusQ {
     
 #ifdef CQ_ENABLE_MPI
     bool localC = C == nullptr;
-    if (localC) C = memManager_.template malloc<_F>(ldc * n);
+    if (localC) C = CQMemManager::get().malloc<_F>(ldc * n);
     
     // AllReduce 
     if (m == ldc) {
@@ -167,8 +167,8 @@ namespace ChronusQ {
       }
     }
 
-    memManager_.free(CRes);
-    if (localC) memManager_.free(C);
+    CQMemManager::get().free(CRes);
+    if (localC) CQMemManager::get().free(C);
 #endif
   }
   
@@ -384,11 +384,11 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  size_t SolverVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+  size_t SolverVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                      size_t NRe, double eps) {
     if (Mnew == 0) return Mold;
 
-    _F * SCR = mem.template malloc<_F>(Mold + Mnew);
+    _F * SCR = CQMemManager::get().malloc<_F>(Mold + Mnew);
 
     if( Mold == 0 ) {
       // Normalize the first vector
@@ -421,21 +421,21 @@ namespace ChronusQ {
       }
     }
 
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
     return iOrtho;
 
   }
 
   template <typename _F>
-  size_t RawVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+  size_t RawVectors<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                      size_t NRe, double eps) {
     size_t n = Mold;
 
     if (MPIRank(comm_) == 0 and Mnew > 0) {
       this->sizeCheck(shift + Mold + Mnew, "in RawVectors<_F>::GramSchimit");
 
-      n = ChronusQ::GramSchmidt(length(), Mold, Mnew, getPtr(shift), length(), mem, NRe, eps);
+      n = ChronusQ::GramSchmidt(length(), Mold, Mnew, getPtr(shift), length(), NRe, eps);
     }
 
 #ifdef CQ_ENABLE_MPI
@@ -448,10 +448,10 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  size_t SolverVectorsView<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+  size_t SolverVectorsView<_F>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                             size_t NRe, double eps) {
 
-    return vecs_.GramSchmidt(this->shift() + shift, Mold, Mnew, mem, NRe, eps);
+    return vecs_.GramSchmidt(this->shift() + shift, Mold, Mnew, NRe, eps);
 
   }
 
@@ -478,16 +478,16 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  int RawVectors<_F>::QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R, int LDR) {
+  int RawVectors<_F>::QR(size_t shift, size_t nVec, _F *R, int LDR) {
     int n = 0;
 
     if (MPIRank(comm_) == 0) {
       if (n > 0) this->sizeCheck(shift + nVec, "in RawVectors<_F>::QR"); 
 
       if (R)
-        n = ChronusQ::QR(length(), nVec, getPtr(shift), length(), R, LDR, mem);
+        n = ChronusQ::QR(length(), nVec, getPtr(shift), length(), R, LDR);
       else
-        n = ChronusQ::QR(length(), nVec, getPtr(shift), length(), mem);
+        n = ChronusQ::QR(length(), nVec, getPtr(shift), length());
     }
 
 #ifdef CQ_ENABLE_MPI
@@ -500,15 +500,15 @@ namespace ChronusQ {
   }
 
   template <typename _F>
-  int DistributedVectors<_F>::QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R, int LDR) {
+  int DistributedVectors<_F>::QR(size_t shift, size_t nVec, _F *R, int LDR) {
     CErr("QR NYI for DistributedVectors");
     return 0;
   }
   
   template <typename _F>
-  int SolverVectorsView<_F>::QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R, int LDR) {
+  int SolverVectorsView<_F>::QR(size_t shift, size_t nVec, _F *R, int LDR) {
 
-    return vecs_.QR(this->shift() + shift, nVec, mem, R, LDR);
+    return vecs_.QR(this->shift() + shift, nVec, R, LDR);
 
   }
 

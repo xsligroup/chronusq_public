@@ -52,18 +52,18 @@ protected:
 public:
   // Constructor
   ConventionalSCF() = delete;
-  ConventionalSCF(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> mod, CQMemManager& mem):
-    OrbitalOptimizer<MatsT>(sC, comm, mod, mem) {
+  ConventionalSCF(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> mod):
+    OrbitalOptimizer<MatsT>(sC, comm, mod) {
 
     // Allocate ortho Fock and Den
     vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
     for( auto& f : fock )
-      fockMatrixOrtho.emplace_back(f->memManager(), f->dimension());
+      fockMatrixOrtho.emplace_back(f->dimension());
     vecShrdPtrMat<MatsT> den = this->orbitalModifierDrivers.getOnePDM();
     for( auto& d : den )
-      onePDMOrtho.emplace_back(d->memManager(), d->dimension());
+      onePDMOrtho.emplace_back(d->dimension());
     for( auto& d : den )
-      orbGrad.emplace_back(d->memManager(), d->dimension());
+      orbGrad.emplace_back(d->dimension());
 
     if( this->scfControls.doExtrap ) allocExtrapStorage();
   };

@@ -150,8 +150,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   // Evaluate Error metric/Interpolation matrix
   ediisErrorMetric(iDIIS, nExtrap);
 
-  ENERGYDIIS<double> interp(nExtrap, diisBMat->pointer(), this->scfControls.nKeep, diisEnergy, iDIIS, 0.1 * this->scfControls.eneConvTol,
-                            this->memManager);
+  ENERGYDIIS<double> interp(nExtrap, diisBMat->pointer(), this->scfControls.nKeep, diisEnergy, iDIIS, 0.1 * this->scfControls.eneConvTol);
   bool conv = interp.interpolate();
 
   if( conv ) {
@@ -191,8 +190,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   ediisErrorMetric(iDIIS, nExtrap);
   bool convEDIIS  = true;
   double errorMax = computeFDCConv();
-  ENERGYDIIS<double> interp(nExtrap, diisBMat->pointer(), this->scfControls.nKeep, diisEnergy, iDIIS, 0.1 * this->scfControls.eneConvTol,
-                            this->memManager);
+  ENERGYDIIS<double> interp(nExtrap, diisBMat->pointer(), this->scfControls.nKeep, diisEnergy, iDIIS, 0.1 * this->scfControls.eneConvTol);
   if( errorMax > 1E-3 * diisSwitch ) { convEDIIS = interp.interpolate(); }
 
   // If failed default to fixed step
@@ -237,8 +235,8 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   for( size_t a = 0; a < nMat; a++ ) {
     size_t NB = diisOnePDM[iDIIS][a].dimension();
 
-    cqmatrix::Matrix<MatsT> dF(this->memManager, NB);
-    cqmatrix::Matrix<MatsT> dD(this->memManager, NB);
+    cqmatrix::Matrix<MatsT> dF(NB);
+    cqmatrix::Matrix<MatsT> dD(NB);
 
     // Compute the coupling Matrix for EDIIS
     // (F_i - F_j)\cdot(D_i - D_j)
@@ -296,7 +294,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   diisError.reserve(this->scfControls.nKeep);
   diisEnergy.clear();
   diisEnergy = std::vector<double>(this->scfControls.nKeep, 0.);
-  diisBMat   = std::make_shared<cqmatrix::Matrix<double>>(this->memManager, this->scfControls.nKeep);
+  diisBMat   = std::make_shared<cqmatrix::Matrix<double>>(this->scfControls.nKeep);
   diisBMat->clear();
 
   // Allocate memory to store previous orthonormal Focks and densities for DIIS
@@ -307,9 +305,9 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
       std::vector<cqmatrix::Matrix<MatsT>> d;
       std::vector<cqmatrix::Matrix<MatsT>> e;
       for( auto a = 0; a < fock.size(); a++ ) {
-        f.emplace_back(this->memManager, fock[a]->dimension());
-        d.emplace_back(this->memManager, fock[a]->dimension());
-        e.emplace_back(this->memManager, fock[a]->dimension());
+        f.emplace_back(fock[a]->dimension());
+        d.emplace_back(fock[a]->dimension());
+        e.emplace_back(fock[a]->dimension());
       }
       diisFock.push_back(f);
       diisOnePDM.push_back(d);
@@ -324,8 +322,8 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
     prevFock.reserve(fock.size());
     prevOnePDM.reserve(fock.size());
     for( size_t a = 0; a < fock.size(); a++ ) {
-      prevFock.emplace_back(this->memManager, fock[a]->dimension());
-      prevOnePDM.emplace_back(this->memManager, fock[a]->dimension());
+      prevFock.emplace_back(fock[a]->dimension());
+      prevOnePDM.emplace_back(fock[a]->dimension());
     }
   }
 
@@ -347,7 +345,7 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
   this->ao2orthoDen();
   for(size_t a = 0; a < this->fockSquareOrtho.size(); a++ ) {
     size_t NB = this->fockSquareOrtho[a].dimension();
-    cqmatrix::Matrix<MatsT> SCR(this->memManager, NB);
+    cqmatrix::Matrix<MatsT> SCR(NB);
     FDC[a].clear();
 
     // Compute F*D

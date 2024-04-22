@@ -58,9 +58,9 @@ namespace ChronusQ {
     size_t NB = ss.nAlphaOrbital();
     size_t NO = ss.nOA;
 
-    MatsT* MMat = this->memManager_.template malloc<MatsT>(NB*NB);
-    MatsT* JMMat = this->memManager_.template malloc<MatsT>(NB*NB);
-    MatsT* KMMat = this->memManager_.template malloc<MatsT>(NB*NB);
+    MatsT* MMat = CQMemManager::get().malloc<MatsT>(NB*NB);
+    MatsT* JMMat = CQMemManager::get().malloc<MatsT>(NB*NB);
+    MatsT* KMMat = CQMemManager::get().malloc<MatsT>(NB*NB);
 
     MatsT* MO = ss.mo[0].pointer();
 
@@ -209,13 +209,13 @@ namespace ChronusQ {
 
 
         // Free up transformation memory
-        this->memManager_.free(cList[0].X);
+        CQMemManager::get().free(cList[0].X);
 
       } // loop over vectors
 
     } // loop over groups of vectors
 
-    this->memManager_.free(MMat,JMMat,KMMat);
+    CQMemManager::get().free(MMat,JMMat,KMMat);
 
   };
   

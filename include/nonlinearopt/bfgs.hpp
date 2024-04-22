@@ -58,7 +58,6 @@ namespace ChronusQ
     protected:
         // Function to be Optimized declarations
         size_t N; ///< Dimension of optimization problem
-        CQMemManager &memManager;
         VT *xBFGS; ///< Pointer to variables
         VT *gBFGS; ///< Pointer to Gradient vector
 
@@ -81,7 +80,7 @@ namespace ChronusQ
 
         // Constructor
         BFGS() = delete;
-        BFGS(size_t N, double conv, CQMemManager &mM) : N(N), convergence(conv), memManager(mM), GoldenSectionSearch<VT>(N, 0.01 * conv, mM){
+        BFGS(size_t N, double conv) : N(N), convergence(conv), GoldenSectionSearch<VT>(N, 0.01 * conv){
 
                                                                                                  };
 
@@ -124,13 +123,13 @@ namespace ChronusQ
     template <typename VT>
     bool BFGS<VT>::optimize()
     {
-        VT *invHess = memManager.template malloc<VT>(N * N);
-        VT *gPrev = memManager.template malloc<VT>(N);
-        VT *dx = memManager.template malloc<VT>(N);
-        VT *dg = memManager.template malloc<VT>(N);
-        VT *SCR = memManager.template malloc<VT>(N * N);
-        VT *U = memManager.template malloc<VT>(N * N);
-        VT *hessUpdate = memManager.template malloc<VT>(N * N);
+        VT *invHess = CQMemManager::get().malloc<VT>(N * N);
+        VT *gPrev = CQMemManager::get().malloc<VT>(N);
+        VT *dx = CQMemManager::get().malloc<VT>(N);
+        VT *dg = CQMemManager::get().malloc<VT>(N);
+        VT *SCR = CQMemManager::get().malloc<VT>(N * N);
+        VT *U = CQMemManager::get().malloc<VT>(N * N);
+        VT *hessUpdate = CQMemManager::get().malloc<VT>(N * N);
         VT alpha = VT(0.);
         VT yPrev = VT(0.);
         double ymin;
@@ -284,7 +283,7 @@ namespace ChronusQ
             yPrev = ymin;
         }
 
-        memManager.free(invHess, gPrev, dx, dg, SCR, hessUpdate, U);
+        CQMemManager::get().free(invHess, gPrev, dx, dg, SCR, hessUpdate, U);
         return result;
     };
 

@@ -78,11 +78,11 @@ namespace ChronusQ {
     KohnSham(std::string funcName,
       std::vector<std::shared_ptr<DFTFunctional>> funclist,
       MPI_Comm c, IntegrationParam ip,
-      CQMemManager &mem, Molecule &mol, BasisSet &basis,
+      Molecule &mol, BasisSet &basis,
       std::shared_ptr<Integrals<IntsT>> aoi, Args... args) : 
-      SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
-      WaveFunctionBase(c,mem,mol,basis,args...),
-      QuantumBase(c,mem,args...), isGGA_(false),
+      SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
+      WaveFunctionBase(c,mol,basis,args...),
+      QuantumBase(c,args...), isGGA_(false),
       functionals(std::move(funclist)),intParam(ip){ 
 
       // Append HF tags to reference names
@@ -101,11 +101,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, true);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false);
       else
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false, false);
       VXC->clear();
 
 
@@ -116,11 +116,11 @@ namespace ChronusQ {
     KohnSham(std::string rL, std::string rS, std::string funcName,
       std::vector<std::shared_ptr<DFTFunctional>> funclist,
       MPI_Comm c, IntegrationParam ip, 
-      CQMemManager &mem, Molecule &mol, BasisSet &basis,
+      Molecule &mol, BasisSet &basis,
       std::shared_ptr<Integrals<IntsT>> aoi, Args... args) : 
-      SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
-      WaveFunctionBase(c,mem,mol,basis,args...),
-      QuantumBase(c,mem,args...), isGGA_(false),
+      SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
+      WaveFunctionBase(c,mol,basis,args...),
+      QuantumBase(c,args...), isGGA_(false),
       functionals(std::move(funclist)),intParam(ip) { 
 
       this->refLongName_  += rL + " " + funcName;
@@ -128,11 +128,11 @@ namespace ChronusQ {
 
       size_t NB = this->basisSet().nBasis;
       if(this->nC > 1)
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, true);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, true);
       else if (not this->iCS)
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false);
       else
-        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(this->memManager, NB, false, false);
+        VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false, false);
       VXC->clear();
 
 

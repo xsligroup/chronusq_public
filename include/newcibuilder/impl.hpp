@@ -135,8 +135,8 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
   std::vector<MPI_Status> bcast_status;
   
   if (MPISize(comm_) > 1) {
-    localC_MPIBuff1 = memManager_.malloc<MatsT>(nSCR_.at("MaxLocalKetNDim") * nVec);
-    localC_MPIBuff2 = memManager_.malloc<MatsT>(nSCR_.at("MaxLocalKetNDim") * nVec);
+    localC_MPIBuff1 = CQMemManager::get().malloc<MatsT>(nSCR_.at("MaxLocalKetNDim") * nVec);
+    localC_MPIBuff2 = CQMemManager::get().malloc<MatsT>(nSCR_.at("MaxLocalKetNDim") * nVec);
   }
   
   size_t nTotalDet = detFactory_.braCategoricalSpace()->nDeterminants();
@@ -215,8 +215,8 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
     }
   } // Broadcast C 
   
-  if (localC_MPIBuff1) memManager_.free(localC_MPIBuff1);
-  if (localC_MPIBuff2) memManager_.free(localC_MPIBuff2); 
+  if (localC_MPIBuff1) CQMemManager::get().free(localC_MPIBuff1);
+  if (localC_MPIBuff2) CQMemManager::get().free(localC_MPIBuff2); 
   
   if (MPISize(comm_) > 1) { 
     std::cout << "      * Rank " << MPIRank(comm_) 
@@ -238,7 +238,7 @@ void NewCIBuilder<MatsT>::buildFullH(
   const auto ketCategoricalSpace = detFactory_.ketCategoricalSpace();
   size_t nKetDets = ketCategoricalSpace->nDeterminants();
   
-  auto IdenM = ketCategoricalSpace->template constructDistributedCIVectors<MatsT>(comm_, memManager_, nKetDets);
+  auto IdenM = ketCategoricalSpace->template constructDistributedCIVectors<MatsT>(comm_, nKetDets);
 
   IdenM->clear();
  
@@ -279,7 +279,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
   if (oneTDM and reduceOneTDM) {
     // put the results to reduceOneTDM instead
     reducedOneTDM = std::make_shared<cqmatrix::Matrix<MatsT>>(
-        memManager_, oneTDM->dimension());
+        oneTDM->dimension());
     *reducedOneTDM = *oneTDM;
     oneTDM.swap(reducedOneTDM);
   }
@@ -288,7 +288,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
   if (twoTDM and reduceTwoTDM) {
     // put the results to reduceTwoTDM instead
     reducedTwoTDM = std::make_shared<InCore4indexTPI<MatsT>>(
-        memManager_, twoTDM->nBasis());
+        twoTDM->nBasis());
     *reducedTwoTDM = *twoTDM;
     twoTDM.swap(reducedTwoTDM);
   }
@@ -308,8 +308,8 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
   std::vector<MPI_Status> bcast_status;
   
   if (MPISize(comm_) > 1) {
-    localCKetJ_MPIBuff1 = memManager_.malloc<MatsT>(nSCR_.at("MaxLocalKetNDim"));
-    localCKetJ_MPIBuff2 = memManager_.malloc<MatsT>(nSCR_.at("MaxLocalKetNDim"));
+    localCKetJ_MPIBuff1 = CQMemManager::get().malloc<MatsT>(nSCR_.at("MaxLocalKetNDim"));
+    localCKetJ_MPIBuff2 = CQMemManager::get().malloc<MatsT>(nSCR_.at("MaxLocalKetNDim"));
   }
   
   // only the first broad cast is blocking
@@ -363,8 +363,8 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
       bcast_status = MPIWait(bcast_req);
     }
   } // Broadcast C 
-  if (localCKetJ_MPIBuff1) memManager_.free(localCKetJ_MPIBuff1);
-  if (localCKetJ_MPIBuff2) memManager_.free(localCKetJ_MPIBuff2); 
+  if (localCKetJ_MPIBuff1) CQMemManager::get().free(localCKetJ_MPIBuff1);
+  if (localCKetJ_MPIBuff2) CQMemManager::get().free(localCKetJ_MPIBuff2); 
   
   // data reductions
   if (oneTDM and reduceOneTDM) {

@@ -58,7 +58,7 @@ namespace ChronusQ {
 
       if(nC == 1) {
 
-        cqmatrix::Matrix<MatsT> DA(memManager, NB);
+        cqmatrix::Matrix<MatsT> DA(NB);
 
         //this->mo[0].output(std::cout, "mo1", true);
 
@@ -73,7 +73,7 @@ namespace ChronusQ {
 
         } else {
 
-          cqmatrix::Matrix<MatsT> DB(memManager, NB);
+          cqmatrix::Matrix<MatsT> DB(NB);
 
           // DB = CB * CB**H
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOB, MatsT(1.), this->mo[1].pointer(), NB,
@@ -87,7 +87,7 @@ namespace ChronusQ {
       } else {
 
         // 2C or 4C cases
-        cqmatrix::Matrix<MatsT> spinBlockForm(memManager, NB);
+        cqmatrix::Matrix<MatsT> spinBlockForm(NB);
 
         if( nC == 2 ) {
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer(), NB,
@@ -317,9 +317,9 @@ namespace ChronusQ {
     if( not this->onePDM->hasZ() ) this->SSq = 0;
     else {
       size_t NB = this->basisSet().nBasis;
-      MatsT * SCR  = this->memManager.template malloc<MatsT>(NB*NB);
+      MatsT * SCR  = CQMemManager::get().malloc<MatsT>(NB*NB);
       std::fill_n(SCR, NB*NB, MatsT(0.));
-      MatsT * SCR2 = this->memManager.template malloc<MatsT>(NB*NB);
+      MatsT * SCR2 = CQMemManager::get().malloc<MatsT>(NB*NB);
       std::fill_n(SCR2, NB*NB, MatsT(0.));
 
 
@@ -373,7 +373,7 @@ namespace ChronusQ {
 
       this->SSq *= 0.25;
 
-      this->memManager.free(SCR,SCR2);
+      CQMemManager::get().free(SCR,SCR2);
     }
 
   };
@@ -451,7 +451,7 @@ template <typename MatsT, typename IntsT>
     //ROOT_ONLY(comm);
 
     size_t NB = coeffAO.dimension();
-    cqmatrix::Matrix<MatsT> S(memManager,NB);
+    cqmatrix::Matrix<MatsT> S(NB);
     
     // Obtaining overlap matrix S
     if(this->nC == 1 ) {
@@ -470,8 +470,8 @@ template <typename MatsT, typename IntsT>
       CErr("nC invalid in OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::computeMODensity!");
     }
     
-    cqmatrix::Matrix<MatsT> SCR(memManager,NB);
-    cqmatrix::Matrix<MatsT> SCR1(memManager,NB);
+    cqmatrix::Matrix<MatsT> SCR(NB);
+    cqmatrix::Matrix<MatsT> SCR1(NB);
 
     // SCR  = D^{AO} S
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 

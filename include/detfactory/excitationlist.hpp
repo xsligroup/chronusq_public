@@ -91,10 +91,9 @@ class FullCD1eExList: public NewExcitationList {
  
  public:
   FullCD1eExList() = delete;
-  FullCD1eExList(CQMemManager &mem, size_t nBraDets,
-      size_t nNonZeroKetDets):
+  FullCD1eExList(size_t nBraDets, size_t nNonZeroKetDets):
     nBraDets_(nBraDets), nNonZeroKetDets_(nNonZeroKetDets),
-    exList_pqSign_(mem, 3ul, nNonZeroKetDets, nBraDets) { };
+    exList_pqSign_(3ul, nNonZeroKetDets, nBraDets) { };
   FullCD1eExList(const FullCD1eExList &) = default;
   FullCD1eExList(FullCD1eExList &&) = default;
   ~FullCD1eExList() = default; 

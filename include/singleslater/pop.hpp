@@ -31,7 +31,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::populationAnalysis() {
 
     const size_t NB = this->basisSet().nBasis;
-    MatsT* SCR  = this->memManager.template malloc<MatsT>(NB*NB);
+    MatsT* SCR  = CQMemManager::get().malloc<MatsT>(NB*NB);
     std::fill_n(SCR,NB*NB,MatsT(0.));
 
     // Molecule object to use
@@ -92,7 +92,7 @@ namespace ChronusQ {
     } 
 
 
-    this->memManager.free(SCR);
+    CQMemManager::get().free(SCR);
 
 
   };

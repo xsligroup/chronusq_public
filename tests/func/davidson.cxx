@@ -92,7 +92,7 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   SafeFile matFile(refName,true);
 
-  CQMemManager mem(2e9,256);
+  CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,2e9,256);
   
   
   size_t N = 0;
@@ -122,16 +122,16 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 #endif
 
   // Allocate and read the matrix
-  ReadT * A = (MLoc and NLoc) ? mem.malloc<ReadT>(MLoc * NLoc) : nullptr;
+  ReadT * A = (MLoc and NLoc) ? CQMemManager::get().malloc<ReadT>(MLoc * NLoc) : nullptr;
 
   ReadT *AREAD = nullptr;
   ReadT *DIAG  = nullptr;
   if( isRoot ) {
 
-    AREAD = isMPI ? mem.malloc<ReadT>(N*N) : A;
+    AREAD = isMPI ? CQMemManager::get().malloc<ReadT>(N*N) : A;
     matFile.readData("/matrix",AREAD); 
 
-    DIAG  = mem.malloc<ReadT>(N);
+    DIAG  = CQMemManager::get().malloc<ReadT>(N);
     for( size_t k = 0; k < N; k++ ) DIAG[k] = AREAD[k*(N+1)];
 
   }
@@ -148,13 +148,13 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 #ifdef CQ_ENABLE_MPI
   if( isMPI ) {
 
-    if( AREAD ) mem.free(AREAD);
+    if( AREAD ) CQMemManager::get().free(AREAD);
 
 
     if( not std::is_same<EigT,ReadT>::value ) {
-      ALOC = mem.malloc<EigT>(MLoc * NLoc);
+      ALOC = CQMemManager::get().malloc<EigT>(MLoc * NLoc);
       std::copy_n(A,MLoc*NLoc,ALOC);
-      mem.free(A);
+      CQMemManager::get().free(A);
     }
 
   }
@@ -178,8 +178,8 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
-      VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
-      AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
+      VLOC  = CQMemManager::get().malloc<EigT>(MLoc_V * NLoc_V);
+      AVLOC = CQMemManager::get().malloc<EigT>(MLoc_V * NLoc_V);
 
       grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
@@ -188,8 +188,8 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
       grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
 
-      mem.free(VLOC);
-      mem.free(AVLOC);
+      CQMemManager::get().free(VLOC);
+      CQMemManager::get().free(AVLOC);
 
     } else 
 #endif
@@ -219,8 +219,7 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   size_t nThreads = omp_get_num_threads();
   ProgramTimer::initialize("Davidson test", nThreads);
-  Davidson<EigT> davidson(MPI_COMM_WORLD,mem,N,5,128,conver,nRoots,
-    func,PC);
+  Davidson<EigT> davidson(MPI_COMM_WORLD,N,5,128,conver,nRoots,func,PC);
 
   davidson.setM(m);
   davidson.setkG(kG);
@@ -255,7 +254,7 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   ROOT_ONLY(MPI_COMM_WORLD);
 
-  dcomplex *refW = mem.malloc<dcomplex>(N);
+  dcomplex *refW = CQMemManager::get().malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
   std::vector<size_t> Indices;
@@ -282,29 +281,29 @@ void DAVIDSON_RAWVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
-  mem.free(refW);
+  CQMemManager::get().free(refW);
 
 #else
 
-  dcomplex *ACMPLX = mem.malloc<dcomplex>(N*N);
+  dcomplex *ACMPLX = CQMemManager::get().malloc<dcomplex>(N*N);
   std::copy_n(A,N*N,ACMPLX);
 
-  dcomplex *W = mem.malloc<dcomplex>(N);
-  dcomplex *VR = mem.malloc<dcomplex>(N*N);
-  dcomplex *VL = mem.malloc<dcomplex>(N*N);
+  dcomplex *W = CQMemManager::get().malloc<dcomplex>(N);
+  dcomplex *VR = CQMemManager::get().malloc<dcomplex>(N*N);
+  dcomplex *VL = CQMemManager::get().malloc<dcomplex>(N*N);
 
   GeneralEigen('V','V',N,ACMPLX,N,W,VL,N,VR,N);
 
   matFile.safeWriteData("/W",W,{N});
 
-  mem.free(ACMPLX, W, VR, VL);
+  CQMemManager::get().free(ACMPLX, W, VR, VL);
 
 #endif
 
-  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) mem.free(ALOC);
-  if (AREAD and AREAD != A) mem.free(AREAD);
-  if (DIAG) mem.free(DIAG);
-  if (A) mem.free(A);
+  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) CQMemManager::get().free(ALOC);
+  if (AREAD and AREAD != A) CQMemManager::get().free(AREAD);
+  if (DIAG) CQMemManager::get().free(DIAG);
+  if (A) CQMemManager::get().free(A);
 
 }
 
@@ -330,7 +329,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
 
   SafeFile matFile(refName,true);
 
-  CQMemManager mem(2e9,256);
+  CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,2e9,256);
   MPI_Comm comm(MPI_COMM_WORLD);
 
   size_t N = 0;
@@ -346,10 +345,10 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   size_t N2 = N * N;
 
   ReadT* AREAD = nullptr;
-  EigT* ADIAG = mem.malloc<EigT>(N);
+  EigT* ADIAG = CQMemManager::get().malloc<EigT>(N);
   
   if (isRoot) {
-    AREAD = mem.malloc<ReadT>(N2);
+    AREAD = CQMemManager::get().malloc<ReadT>(N2);
     matFile.readData("/matrix", AREAD);
     
     for( size_t k = 0; k < N; k++ ) ADIAG[k] = AREAD[k*(N+1)];
@@ -363,8 +362,8 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       [&]( size_t nVec, SolverVectors<EigT> &V,
         SolverVectors<EigT> &AV) {
         // copy the V out
-        EigT* VRaw = mem.malloc<EigT>(N*nVec);
-        EigT* AVRaw = mem.malloc<EigT>(N*nVec);
+        EigT* VRaw = CQMemManager::get().malloc<EigT>(N*nVec);
+        EigT* AVRaw = CQMemManager::get().malloc<EigT>(N*nVec);
         
         tryDowncastReferenceTo<DistributedVectors<EigT>>(V,
                                                          [&] (auto& VRef, size_t shiftV) {
@@ -388,7 +387,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
             }
          );
 
-        mem.free(VRaw, AVRaw);
+        CQMemManager::get().free(VRaw, AVRaw);
 
       };
 
@@ -414,12 +413,12 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
    
   std::function<std::shared_ptr<SolverVectors<EigT>>(size_t)> distributedVecsGenerator = 
       [&] (size_t nVec) {
-         return std::make_shared<DistributedVectors<EigT>>(comm, mem, N, nVec);
+         return std::make_shared<DistributedVectors<EigT>>(comm,  N, nVec);
       };
 
   size_t nThreads = omp_get_num_threads();
   ProgramTimer::initialize("Davidson test", nThreads);
-  Davidson<EigT> davidson(MPI_COMM_WORLD,mem,N,5,128,conver,nRoots,
+  Davidson<EigT> davidson(MPI_COMM_WORLD,N,5,128,conver,nRoots,
     func,PC, distributedVecsGenerator);
 
   davidson.setM(m);
@@ -431,7 +430,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
     std::function< void(size_t, SolverVectors<EigT> &, size_t)> GuessES = [&]( size_t nGuess,
         SolverVectors<EigT> &Guess, size_t N) {
 
-      EigT* GRaw = mem.malloc<EigT>(N*nGuess);
+      EigT* GRaw = CQMemManager::get().malloc<EigT>(N*nGuess);
 
       tryDowncastReferenceTo<DistributedVectors<EigT>>(Guess,
                                                          [&] (auto& GRef, size_t shiftG) {
@@ -460,7 +459,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
           }
       );
 
-      mem.free(GRaw);
+      CQMemManager::get().free(GRaw);
 
     };
 
@@ -472,7 +471,7 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
   
   ROOT_ONLY(MPI_COMM_WORLD);
 
-  dcomplex *refW = mem.malloc<dcomplex>(N);
+  dcomplex *refW = CQMemManager::get().malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
   std::vector<size_t> Indices;
@@ -499,9 +498,9 @@ void DAVIDSON_DISTRIBUTEDVECTORS_TEST(size_t nRoots, size_t m, size_t kG,
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
-  mem.free(refW);
-  if (AREAD) mem.free(AREAD);
-  if (ADIAG) mem.free(ADIAG);
+  CQMemManager::get().free(refW);
+  if (AREAD) CQMemManager::get().free(AREAD);
+  if (ADIAG) CQMemManager::get().free(ADIAG);
 }
 
 // 

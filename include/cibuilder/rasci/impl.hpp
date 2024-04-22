@@ -53,7 +53,6 @@
   size_t mxHole = RASString->maxHole(); \
   size_t mxElec = RASString->maxElectron(); \
   std::vector<std::vector<size_t>> LCat = RASString->LCategory(); \
-  CQMemManager & mem = mcwfn.memManager; \
   auto & hCoreP = *(mcwfn.moints.template getIntegral<OnePInts, MatsT>("hCoreP_Correlated_Space")); \
   auto & moERI  = *(mcwfn.moints.template getIntegral<InCore4indexTPI, MatsT>("ERI_Correlated_Space"));
 
@@ -259,30 +258,30 @@ namespace ChronusQ {
 
 //    std::cout << mem << std::endl;
     try{
-      ERIscr = mem.template malloc<MatsT>(maxnNZ*maxnNZ*nthreads);
-      Dscr = mem.template malloc<MatsT>(ndSCR*nthreads);
-      Gscr = mem.template malloc<MatsT>(ndSCR*nthreads);
-      DBlk = mem.template malloc<MatsT>(maxdimD);
-      GBlk = mem.template malloc<MatsT>(maxdimG);
+      ERIscr = CQMemManager::get().malloc<MatsT>(maxnNZ*maxnNZ*nthreads);
+      Dscr = CQMemManager::get().malloc<MatsT>(ndSCR*nthreads);
+      Gscr = CQMemManager::get().malloc<MatsT>(ndSCR*nthreads);
+      DBlk = CQMemManager::get().malloc<MatsT>(maxdimD);
+      GBlk = CQMemManager::get().malloc<MatsT>(maxdimG);
     } catch (std::bad_alloc& ba) {
       if (not ERIscr) CErr ("Not enough memory for RAS sigma.");
       std::cout<<"---- modifying batching ----"<<std::endl;
-      if (Dscr) mem.free(Dscr);
-      if (Gscr) mem.free(Gscr);
-      if (DBlk) mem.free(DBlk);
-      if (GBlk) mem.free(GBlk);
+      if (Dscr) CQMemManager::get().free(Dscr);
+      if (Gscr) CQMemManager::get().free(Gscr);
+      if (DBlk) CQMemManager::get().free(DBlk);
+      if (GBlk) CQMemManager::get().free(GBlk);
 
-//      mem.print_free();
+//      CQMemManager::get().print_free();
       size_t totalSCR = ndSCR * nthreads + maxdimD + maxdimG;
-      maxAvlMem = mem.template max_avail_allocatable<MatsT>(1, totalSCR);
+      maxAvlMem = CQMemManager::get().max_avail_allocatable<MatsT>(1, totalSCR);
       // to determine ndSCR
       if ((maxAvlMem / (ndSCR*2)) < (nrSCR + nthreads))
         ndSCR = std::max(maxAvlMem / ((nrSCR + nthreads)*2), mindSCR);
-      Dscr = mem.template malloc<MatsT>(ndSCR*nthreads);
-      Gscr = mem.template malloc<MatsT>(ndSCR*nthreads);
+      Dscr = CQMemManager::get().malloc<MatsT>(ndSCR*nthreads);
+      Gscr = CQMemManager::get().malloc<MatsT>(ndSCR*nthreads);
       // to determine maxdimD and maxdimG
       totalSCR = maxdimD + maxdimG;
-      maxAvlMem = mem.template max_avail_allocatable<MatsT>(1, totalSCR);
+      maxAvlMem = CQMemManager::get().max_avail_allocatable<MatsT>(1, totalSCR);
 //      std::cout<<"maxAvlMem: "<<maxAvlMem<<std::endl;
       if (maxAvlMem < 2 * maxDetCat) CErr("Not enough memory for RAS sigma.");
       nNZAvl = maxAvlMem / nDetatMD;
@@ -294,10 +293,10 @@ namespace ChronusQ {
       }
 //      std::cout<<"nNZD: "<<nNZD<<", nNZG: "<<nNZG<<std::endl;
       maxdimG = nDetatMD * nNZG;
-      GBlk = mem.template malloc<MatsT>(maxdimG);
-      maxdimD = mem.template max_avail_allocatable<MatsT>(1, maxdimD);
+      GBlk = CQMemManager::get().malloc<MatsT>(maxdimG);
+      maxdimD = CQMemManager::get().max_avail_allocatable<MatsT>(1, maxdimD);
       if (maxdimD < maxDetCat) CErr("Not enough memory for RAS sigma.");
-      DBlk = mem.template malloc<MatsT>(maxdimD);;
+      DBlk = CQMemManager::get().malloc<MatsT>(maxdimD);;
 //      std::cout<<"maxdimG: "<<maxdimG<<", maxdimD: "<<maxdimD<<std::endl;
       DoBatch = true;
 //      std::cout<<"Batching done!"<<std::endl;
@@ -548,7 +547,7 @@ namespace ChronusQ {
 //    std::cout << "\nRAS Sigma single vector - DURATION = " << std::setprecision(8)
 //                << RASSigmaVdur << " s." << std::endl;
     }
-    mem.free(DBlk, GBlk, ERIscr, Dscr, Gscr);
+    CQMemManager::get().free(DBlk, GBlk, ERIscr, Dscr, Gscr);
     SetLAThreads(nLAThreads);
     
 //    double RASSigmaTdur = tock(RASSigmaTSt);
@@ -588,7 +587,7 @@ namespace ChronusQ {
     size_t nThreads = GetNumThreads();
     std::vector<cqmatrix::Matrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++) {
-      SCR.emplace_back(mcwfn.memManager, TDM.dimension());
+      SCR.emplace_back(TDM.dimension());
       SCR.back().clear();
     }
 

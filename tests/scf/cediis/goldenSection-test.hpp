@@ -32,14 +32,13 @@ namespace ChronusQ
     class GoldenSectionTest : public GoldenSectionSearch<double>
     {
     public:
-        CQMemManager &memManager;
         double *x;
         double *dx;
         double *initX;
         double yMin;
         double aMin;
 
-        GoldenSectionTest(CQMemManager &mem) : memManager(mem), GoldenSectionSearch<double>(1, 1E-18, mem)
+        GoldenSectionTest() : GoldenSectionSearch<double>(1, 1E-18)
         {
             // Header
             std::cout << "======================================================" << std::endl;
@@ -48,9 +47,9 @@ namespace ChronusQ
             std::cout << "  Solving for x" << std::endl;
             std::cout << "======================================================" << std::endl;
             // Initialize 
-            x = memManager.template malloc<double>(1);
-            dx = memManager.template malloc<double>(1);
-            initX = memManager.template malloc<double>(1);
+            x = CQMemManager::get().malloc<double>(1);
+            dx = CQMemManager::get().malloc<double>(1);
+            initX = CQMemManager::get().malloc<double>(1);
             GoldenSectionSearch<double>::setXPointer(x);
             x[0] = -3.;
             dx[0] = 1.;
@@ -69,7 +68,6 @@ namespace ChronusQ
             std::cout << std::scientific << std::setprecision(8) << x[0] << std::endl;
             std::cout << std::endl << std::endl;
         };
-        GoldenSectionTest() = delete;
         GoldenSectionTest(const BFGSTest &) = delete;
         GoldenSectionTest(BFGSTest &&) = delete;
 
@@ -83,7 +81,7 @@ namespace ChronusQ
 
         ~GoldenSectionTest()
         {
-            memManager.free(x,initX,dx);
+            CQMemManager::get().free(x,initX,dx);
         };
     };
 }

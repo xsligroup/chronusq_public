@@ -188,7 +188,7 @@ namespace ChronusQ {
     size_t NB2   = NBcomplete*(NBcomplete+1)/2;
     size_t NB3   = NB2*NBRI;
     // S^{-1/2}(Q|ij)
-    auto ijK = memManager().malloc<double>(NB3);
+    auto ijK = CQMemManager::get().malloc<double>(NB3);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
                NBRI,NB2,NBRI,double(1.),aux.twoIndexERI()->pointer(),NBRI,
                pointer(),NBRI,double(0.),ijK,NBRI);
@@ -199,7 +199,7 @@ namespace ChronusQ {
       std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NBcomplete));
     }
 
-    memManager().free(ijK);
+    CQMemManager::get().free(ijK);
 
     double durBuildPartialTPI = tock(beginBuildPartialTPI);
     std::cout<< "  Cholesky-Asymm-Build-PartialTPI duration = " << durBuildPartialTPI << " s " << std::endl;
@@ -360,12 +360,12 @@ namespace ChronusQ {
     const InCoreCholeskyRIERI<double> &aux2 = *std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux2_);
     size_t NBRI2 = aux2.nRIBasis();
 
-    double *SCR = memManager().template malloc<double>(NBRI1 * NBRI2);
+    double *SCR = CQMemManager::get().template malloc<double>(NBRI1 * NBRI2);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                NBRI1, NBRI2, NBRI2, 1., pointer(), NBRI1, aux2.twoIndexERI()->pointer(), NBRI2, 0., SCR, NBRI1);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
                NBRI1, NBRI2, NBRI1, 1., aux1.twoIndexERI()->pointer(), NBRI1, SCR, NBRI1, 0., pointer(), NBRI1);
-    memManager().free(SCR);
+    CQMemManager::get().free(SCR);
 
     double durBuildPartialTPI = tock(beginBuildPartialTPI);
     std::cout<< "  Cholesky-Asymm-Build-PartialTPI duration = " << durBuildPartialTPI << " s " << std::endl;
@@ -465,7 +465,7 @@ namespace ChronusQ {
       std::cout << "     * Building full 4-index ERI for (ee|pp) per user's request" << std::endl;
 
       auto top4I = tick();
-      eri4I_ = std::make_shared<InCore4indexTPI<double>>(this->memManager(),basisSet.nBasis,basisSet2.nBasis);
+      eri4I_ = std::make_shared<InCore4indexTPI<double>>(basisSet.nBasis,basisSet2.nBasis);
       eri4I_->computeAOInts(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
       auto dur4I = tock(top4I);
       std::cout << "       4-Index (ee|pp) evaluation duration   = " << dur4I << " s " << std::endl << std::endl;
@@ -556,9 +556,9 @@ namespace ChronusQ {
                     \end{pmatrix}
 
           *************************************************************/
-            InCoreAsymmRITPI<double> asymmAux1Comp2(memManager(), aux1_, basisSet2.nBasis, ASYMM_CD_ALG::INT1_AUX, build4I_);
+            InCoreAsymmRITPI<double> asymmAux1Comp2(aux1_, basisSet2.nBasis, ASYMM_CD_ALG::INT1_AUX, build4I_);
             asymmAux1Comp2.malloc();
-            InCoreAsymmRITPI<double> asymmAux2Comp1(memManager(), basisSet.nBasis, aux2_, ASYMM_CD_ALG::INT2_AUX, build4I_);
+            InCoreAsymmRITPI<double> asymmAux2Comp1(basisSet.nBasis, aux2_, ASYMM_CD_ALG::INT2_AUX, build4I_);
             asymmAux2Comp1.malloc();
 
             // \kappa,\lambda \in B_c    is the union of     \alpha,beta \in B_e      and       \Gamma,Theta in \B_n
@@ -577,7 +577,7 @@ namespace ChronusQ {
 
             // Allocate J matrix (dimension is NBRI1+NBRI2)
             size_t combineNBRI = aux1_->nRIBasis() + aux2_->nRIBasis();
-            cqmatrix::Matrix<double> twocenterERI(memManager(), combineNBRI);
+            cqmatrix::Matrix<double> twocenterERI(combineNBRI);
 
             auto asymmCopyBegin = tick();
             // Copy (\alpha \vert \beta) to upper left corner of square matrix J
@@ -608,10 +608,10 @@ namespace ChronusQ {
             InCoreRITPI<double>::halfInverse2CenterERI(twocenterERI);
 
             size_t maxNB = std::max(NB, sNB);
-            auto ijK = memManager().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto ijK1 = memManager().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto ijK2 = memManager().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto Scra = memManager().malloc<double>(combineNBRI);
+            auto ijK = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
+            auto ijK1 = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
+            auto ijK2 = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
+            auto Scra = CQMemManager::get().malloc<double>(combineNBRI);
 
             size_t NB2 = NB * (NB+1)/2;
             
@@ -634,7 +634,7 @@ namespace ChronusQ {
             // Expand to full index 
             auto asymmConvertIndex1Begin = tick();
             std::shared_ptr<InCoreRITPI<double>> combineAux1 =
-                std::make_shared<InCoreRITPI<double>>(memManager(), NB, combineNBRI);
+                std::make_shared<InCoreRITPI<double>>(NB, combineNBRI);
             for (size_t pq = 0; pq < NB2; pq++) {
               auto pqAna = anaCompound(pq);
               std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
@@ -665,7 +665,7 @@ namespace ChronusQ {
             // Expand to full index 
             auto asymmConvertIndex2Begin = tick();
             std::shared_ptr<InCoreRITPI<double>> combineAux2 =
-                std::make_shared<InCoreRITPI<double>>(memManager(), sNB, combineNBRI);
+                std::make_shared<InCoreRITPI<double>>(sNB, combineNBRI);
             for (size_t pq = 0; pq < NB2; pq++) {
               auto pqAna = anaCompound(pq);
               std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
@@ -676,7 +676,7 @@ namespace ChronusQ {
             double durConvertIndex2 = tock(asymmConvertIndex2Begin);
             std::cout<< "  Cholesky-Asymm-ConvertIndex2 duration = " << durConvertIndex2 << " s " << std::endl;
 
-            memManager().free(ijK, ijK1, ijK2, Scra);
+            CQMemManager::get().free(ijK, ijK1, ijK2, Scra);
 
             aux1_->clearRawERI();
             aux2_->clearRawERI();

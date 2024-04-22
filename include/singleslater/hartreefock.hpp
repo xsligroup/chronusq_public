@@ -45,11 +45,11 @@ namespace ChronusQ {
     // Trivially inherit ctors from SingleSlater<T>
 
     template <typename... Args>
-    HartreeFock(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
+    HartreeFock(MPI_Comm c, Molecule &mol, BasisSet &basis,
                 std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
-      SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
-      WaveFunctionBase(c,mem,mol,basis,args...),
-      QuantumBase(c,mem,args...) {
+      SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
+      WaveFunctionBase(c,mol,basis,args...),
+      QuantumBase(c,args...) {
 
       // Append HF tags to reference names
       if(this->nC == 1) {
@@ -70,11 +70,11 @@ namespace ChronusQ {
     // Allow for reference name specification
     template <typename... Args>
     HartreeFock(std::string rL, std::string rS, MPI_Comm c,
-                CQMemManager &mem, Molecule &mol, BasisSet &basis,
+                Molecule &mol, BasisSet &basis,
                 std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
-      SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
-      WaveFunctionBase(c,mem,mol,basis,args...),
-      QuantumBase(c,mem,args...) {
+      SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
+      WaveFunctionBase(c,mol,basis,args...),
+      QuantumBase(c,args...) {
 
       this->refLongName_  = rL;
       this->refShortName_ = rS;

@@ -213,7 +213,7 @@ namespace ChronusQ {
     if (this->NosS1) {
 
 
-      this->osc_str = this->memManager.template malloc<double>(this->NosS1*this->NStates);
+      this->osc_str = CQMemManager::get().malloc<double>(this->NosS1*this->NStates);
       for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
 //        if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
@@ -261,8 +261,8 @@ namespace ChronusQ {
       this->cacheHalfTransTPI_ = true;
       
       size_t nCorrO = this->MOPartition.nCorrO;
-      oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager,nCorrO);
-      twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(this->memManager, nCorrO);     
+      oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+      twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
       
       moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(
         dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), settings.ORSettings);

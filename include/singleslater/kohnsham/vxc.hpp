@@ -124,7 +124,7 @@ namespace ChronusQ {
   
       std::vector<std::vector<double*>> integrateVXC;
       double* intVXC_RAW = (nthreads == 1) ? nullptr :
-        this->memManager.template malloc<double>(VXC->nComponent() * NTNB2);
+        CQMemManager::get().malloc<double>(VXC->nComponent() * NTNB2);
   
       std::vector<double*> VXC_SZYX = VXC->SZYXPointers();
       for(auto k = 0; k < VXC_SZYX.size(); k++) {
@@ -148,7 +148,7 @@ namespace ChronusQ {
       // Start Debug quantities
 #if VXC_DEBUG_LEVEL >= 3
       // tmp VXC submat
-      double *tmpS      = this->memManager.template malloc<double>(NB2); 
+      double *tmpS      = CQMemManager::get().malloc<double>(NB2); 
       std::fill_n(tmpS,basis.nBasis*basis.nBasis,0.);
 #endif
 
@@ -164,71 +164,71 @@ namespace ChronusQ {
     
       XCEnergy = 0.;
       double *SCRATCHNBNB = 
-        this->memManager.template malloc<double>(NTNB2); 
+        CQMemManager::get().malloc<double>(NTNB2); 
       double *SCRATCHNBNP = 
-        this->memManager.template malloc<double>(NTNPPB*NB); 
+        CQMemManager::get().malloc<double>(NTNPPB*NB); 
 
       double *DenS, *DenZ, *DenX, *DenY, *Mnorm ;
       double *KScratch;
       double *HScratch;
       bool   *Msmall;
-      DenS = this->memManager.template malloc<double>(NTNPPB);
+      DenS = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( this->onePDM->hasZ() )
-        DenZ = this->memManager.template malloc<double>(NTNPPB);
+        DenZ = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( this->onePDM->hasXY() ) {
-        DenY = this->memManager.template malloc<double>(NTNPPB);
-        DenX = this->memManager.template malloc<double>(NTNPPB);
+        DenY = CQMemManager::get().malloc<double>(NTNPPB);
+        DenX = CQMemManager::get().malloc<double>(NTNPPB);
 
-        Mnorm    = this->memManager.template malloc<double>(NTNPPB);
-        KScratch = this->memManager.template malloc<double>(3*NTNPPB);
-        Msmall   = this->memManager.template malloc<bool>(NTNPPB);
+        Mnorm    = CQMemManager::get().malloc<double>(NTNPPB);
+        KScratch = CQMemManager::get().malloc<double>(3*NTNPPB);
+        Msmall   = CQMemManager::get().malloc<bool>(NTNPPB);
       }
 
-      double *epsEval = this->memManager.template malloc<double>(NTNPPB);
+      double *epsEval = CQMemManager::get().malloc<double>(NTNPPB);
 
       // Density U-Variables
       double *U_n   = 
-        this->memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
       double *dVU_n = 
-        this->memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
 
       double *ZrhoVar1, *ZgammaVar1, *ZgammaVar2;
 
-      ZrhoVar1 = this->memManager.template malloc<double>(NTNPPB);
+      ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
       
       double *GDenS, *GDenZ, *GDenX, *GDenY, *U_gamma, *dVU_gamma;
       if( isGGA ) {
-        GDenS = this->memManager.template malloc<double>(3*NTNPPB);
-        ZgammaVar1 = this->memManager.template malloc<double>(NTNPPB);
-        ZgammaVar2 = this->memManager.template malloc<double>(NTNPPB);
+        GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
 
         if( this->onePDM->hasZ() )
-          GDenZ = this->memManager.template malloc<double>(3*NTNPPB);
+          GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
 
         if( this->onePDM->hasXY() ) {
-          GDenY = this->memManager.template malloc<double>(3*NTNPPB);
-          GDenX = this->memManager.template malloc<double>(3*NTNPPB);
-          HScratch = this->memManager.template malloc<double>(3*NTNPPB);
+          GDenY = CQMemManager::get().malloc<double>(3*NTNPPB);
+          GDenX = CQMemManager::get().malloc<double>(3*NTNPPB);
+          HScratch = CQMemManager::get().malloc<double>(3*NTNPPB);
         }
 
         // Gamma U-Variables
-        U_gamma = this->memManager.template malloc<double>(3*NTNPPB); 
-        dVU_gamma = this->memManager.template malloc<double>(3*NTNPPB); 
+        U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
       }
 
       double *epsSCR, *dVU_n_SCR, *dVU_gamma_SCR;
       if( functionals.size() > 1 ) {
-        epsSCR    = this->memManager.template malloc<double>(NTNPPB);
-        dVU_n_SCR    = this->memManager.template malloc<double>(2*NTNPPB);
+        epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
         if(isGGA) 
           dVU_gamma_SCR = 
-            this->memManager.template malloc<double>(3*NTNPPB);
+            CQMemManager::get().malloc<double>(3*NTNPPB);
       }
  
       // ZMatrix
-      double *ZMAT = this->memManager.template malloc<double>(NTNPPB*NB);
+      double *ZMAT = CQMemManager::get().malloc<double>(NTNPPB*NB);
 
       // Decide if we need to allocate space for real part of the
       // densities and copy over the real parts
@@ -652,7 +652,7 @@ namespace ChronusQ {
 
       // Create the BeckeIntegrator object
       BeckeIntegrator<EulerMac> 
-        integrator(intComm,this->memManager,this->molecule(),basis,
+        integrator(intComm,this->molecule(),basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
           (isGGA ? GRADIENT : NOGRAD), intParam.epsilon);
 
@@ -688,7 +688,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
 
       double* mpiScr;
-      if( mpiRank == 0 ) mpiScr = this->memManager.template malloc<double>(NB*NB);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<double>(NB*NB);
 
       for(auto &V : VXC_SZYX) {
 
@@ -698,7 +698,7 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) this->memManager.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
       XCEnergy = MPIReduce(XCEnergy,0,intComm);
 
@@ -761,29 +761,29 @@ namespace ChronusQ {
 
       // Freeing the memory
       // ------------------------------------------------------------ //
-      this->memManager.free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n,
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n,
         dVU_n, ZrhoVar1,ZMAT);
       if( isGGA )  
-        this->memManager.free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
+        CQMemManager::get().free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
           dVU_gamma);
 
       if( this->onePDM->hasZ() ) {
-        this->memManager.free(DenZ);
-        if( isGGA )  this->memManager.free(GDenZ);
+        CQMemManager::get().free(DenZ);
+        if( isGGA )  CQMemManager::get().free(GDenZ);
       }
 
       if( this->onePDM->hasXY() ) {
-        this->memManager.free(DenX,DenY,Mnorm,KScratch,Msmall);
-        if( isGGA )  this->memManager.free(GDenX,GDenY,HScratch);
+        CQMemManager::get().free(DenX,DenY,Mnorm,KScratch,Msmall);
+        if( isGGA )  CQMemManager::get().free(GDenX,GDenY,HScratch);
       }
 
       if( functionals.size() > 1 ) {
-        this->memManager.free(epsSCR,dVU_n_SCR);
-        if( isGGA ) this->memManager.free(dVU_gamma_SCR);
+        CQMemManager::get().free(epsSCR,dVU_n_SCR);
+        if( isGGA ) CQMemManager::get().free(dVU_gamma_SCR);
       }
 
 
-      if( nthreads != 1 ) this->memManager.free(intVXC_RAW);
+      if( nthreads != 1 ) CQMemManager::get().free(intVXC_RAW);
 
       Re1PDM = nullptr;
       // ------------------------------------------------------------- //
@@ -899,7 +899,7 @@ namespace ChronusQ {
   
       std::vector<std::vector<dcomplex*>> integrateVXC;
       dcomplex* intVXC_RAW = (nthreads == 1) ? nullptr :
-        this->memManager.template malloc<dcomplex>(VXC->nComponent() * NTNB2);
+        CQMemManager::get().malloc<dcomplex>(VXC->nComponent() * NTNB2);
   
       std::vector<dcomplex*> VXC_SZYX = VXC->SZYXPointers();
       for(auto k = 0; k < VXC_SZYX.size(); k++) {
@@ -923,7 +923,7 @@ namespace ChronusQ {
       // Start Debug quantities
 #if VXC_DEBUG_LEVEL >= 3
       // tmp VXC submat
-      double *tmpS      = this->memManager.template malloc<double>(NB2); 
+      double *tmpS      = CQMemManager::get().malloc<double>(NB2); 
       std::fill_n(tmpS,basis.nBasis*basis.nBasis,0.);
 #endif
 
@@ -939,71 +939,71 @@ namespace ChronusQ {
     
       XCEnergy = 0.;
       dcomplex *SCRATCHNBNB = 
-        this->memManager.template malloc<dcomplex>(NTNB2); 
+        CQMemManager::get().malloc<dcomplex>(NTNB2); 
       dcomplex *SCRATCHNBNP = 
-        this->memManager.template malloc<dcomplex>(NTNPPB*NB); 
+        CQMemManager::get().malloc<dcomplex>(NTNPPB*NB); 
 
       double *DenS, *DenZ, *DenX, *DenY, *Mnorm ;
       double *KScratch;
       double *HScratch;
       bool   *Msmall;
-      DenS = this->memManager.template malloc<double>(NTNPPB);
+      DenS = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( this->onePDM->hasZ() )
-        DenZ = this->memManager.template malloc<double>(NTNPPB);
+        DenZ = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( this->onePDM->hasXY() ) {
-        DenY = this->memManager.template malloc<double>(NTNPPB);
-        DenX = this->memManager.template malloc<double>(NTNPPB);
+        DenY = CQMemManager::get().malloc<double>(NTNPPB);
+        DenX = CQMemManager::get().malloc<double>(NTNPPB);
 
-        Mnorm    = this->memManager.template malloc<double>(NTNPPB);
-        KScratch = this->memManager.template malloc<double>(3*NTNPPB);
-        Msmall   = this->memManager.template malloc<bool>(NTNPPB);
+        Mnorm    = CQMemManager::get().malloc<double>(NTNPPB);
+        KScratch = CQMemManager::get().malloc<double>(3*NTNPPB);
+        Msmall   = CQMemManager::get().malloc<bool>(NTNPPB);
       }
 
-      double *epsEval = this->memManager.template malloc<double>(NTNPPB);
+      double *epsEval = CQMemManager::get().malloc<double>(NTNPPB);
 
       // Density U-Variables
       double *U_n   = 
-        this->memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
       double *dVU_n = 
-        this->memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
 
       double *ZrhoVar1, *ZgammaVar1, *ZgammaVar2;
 
-      ZrhoVar1 = this->memManager.template malloc<double>(NTNPPB);
+      ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
       
       double *GDenS, *GDenZ, *GDenX, *GDenY, *U_gamma, *dVU_gamma;
       if( isGGA ) {
-        GDenS = this->memManager.template malloc<double>(3*NTNPPB);
-        ZgammaVar1 = this->memManager.template malloc<double>(NTNPPB);
-        ZgammaVar2 = this->memManager.template malloc<double>(NTNPPB);
+        GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
 
         if( this->onePDM->hasZ() )
-          GDenZ = this->memManager.template malloc<double>(3*NTNPPB);
+          GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
 
         if( this->onePDM->hasXY() ) {
-          GDenY = this->memManager.template malloc<double>(3*NTNPPB);
-          GDenX = this->memManager.template malloc<double>(3*NTNPPB);
-          HScratch = this->memManager.template malloc<double>(3*NTNPPB);
+          GDenY = CQMemManager::get().malloc<double>(3*NTNPPB);
+          GDenX = CQMemManager::get().malloc<double>(3*NTNPPB);
+          HScratch = CQMemManager::get().malloc<double>(3*NTNPPB);
         }
 
         // Gamma U-Variables
-        U_gamma = this->memManager.template malloc<double>(3*NTNPPB); 
-        dVU_gamma = this->memManager.template malloc<double>(3*NTNPPB); 
+        U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
       }
 
       double *epsSCR, *dVU_n_SCR, *dVU_gamma_SCR;
       if( functionals.size() > 1 ) {
-        epsSCR    = this->memManager.template malloc<double>(NTNPPB);
-        dVU_n_SCR    = this->memManager.template malloc<double>(2*NTNPPB);
+        epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
         if(isGGA) 
           dVU_gamma_SCR = 
-            this->memManager.template malloc<double>(3*NTNPPB);
+            CQMemManager::get().malloc<double>(3*NTNPPB);
       }
  
       // ZMatrix
-      dcomplex *ZMAT = this->memManager.template malloc<dcomplex>(NTNPPB*NB);
+      dcomplex *ZMAT = CQMemManager::get().malloc<dcomplex>(NTNPPB*NB);
 
       // Decide if we need to allocate space for real part of the
       // densities and copy over the real parts
@@ -1512,7 +1512,7 @@ namespace ChronusQ {
 
       // Create the BeckeIntegrator object
       BeckeIntegrator<EulerMac> 
-        integrator(intComm,this->memManager,this->molecule(),basis,
+        integrator(intComm,this->molecule(),basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
           (isGGA ? GRADIENT : NOGRAD), intParam.epsilon);
 
@@ -1549,7 +1549,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
 
       dcomplex* mpiScr;
-      if( mpiRank == 0 ) mpiScr = this->memManager.template malloc<dcomplex>(NB*NB);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<dcomplex>(NB*NB);
 
       for(auto &V : VXC_SZYX) {
 
@@ -1559,7 +1559,7 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) this->memManager.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
       XCEnergy = MPIReduce(XCEnergy,0,intComm);
 
@@ -1622,29 +1622,29 @@ namespace ChronusQ {
 
       // Freeing the memory
       // ------------------------------------------------------------ //
-      this->memManager.free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n,
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n,
         dVU_n, ZrhoVar1,ZMAT);
       if( isGGA )  
-        this->memManager.free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
+        CQMemManager::get().free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
           dVU_gamma);
 
       if( this->onePDM->hasZ() ) {
-        this->memManager.free(DenZ);
-        if( isGGA )  this->memManager.free(GDenZ);
+        CQMemManager::get().free(DenZ);
+        if( isGGA )  CQMemManager::get().free(GDenZ);
       }
 
       if( this->onePDM->hasXY() ) {
-        this->memManager.free(DenX,DenY,Mnorm,KScratch,Msmall);
-        if( isGGA )  this->memManager.free(GDenX,GDenY,HScratch);
+        CQMemManager::get().free(DenX,DenY,Mnorm,KScratch,Msmall);
+        if( isGGA )  CQMemManager::get().free(GDenX,GDenY,HScratch);
       }
 
       if( functionals.size() > 1 ) {
-        this->memManager.free(epsSCR,dVU_n_SCR);
-        if( isGGA ) this->memManager.free(dVU_gamma_SCR);
+        CQMemManager::get().free(epsSCR,dVU_n_SCR);
+        if( isGGA ) CQMemManager::get().free(dVU_gamma_SCR);
       }
 
 
-      if( nthreads != 1 ) this->memManager.free(intVXC_RAW);
+      if( nthreads != 1 ) CQMemManager::get().free(intVXC_RAW);
 
       Re1PDM = nullptr;
       // ------------------------------------------------------------- //

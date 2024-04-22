@@ -82,7 +82,6 @@ namespace ChronusQ {
     const size_t nBatch = nMat / mMat;
 
     DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();
 
@@ -116,9 +115,9 @@ namespace ChronusQ {
     int iAtom, iShell, off;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env);
@@ -175,7 +174,7 @@ namespace ChronusQ {
       AXthreads.emplace_back();
       for(auto iMat = 0; iMat < nMat; iMat++) {
         AXthreads.back().push_back(
-          std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, nBasis, 
+          std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(nBasis, 
             matList[iMat].AX->hasZ(), matList[iMat].AX->hasXY())); 
       }
     }
@@ -211,9 +210,9 @@ namespace ChronusQ {
 #endif
   
       nERI = 1;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      SchwarzERI = memManager_.malloc<double>(nShell*nShell);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
+      SchwarzERI = CQMemManager::get().malloc<double>(nShell*nShell);
       memset(SchwarzERI,0,nShell*nShell*sizeof(double));
   
       #pragma omp parallel
@@ -260,7 +259,7 @@ namespace ChronusQ {
   
       };
 
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(buffAll, cacheAll);
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durERIchwarz = tock(topERIchwarz);
@@ -280,9 +279,9 @@ namespace ChronusQ {
 #endif
   
       nERI = 81;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      SchwarzSSSS = memManager_.malloc<double>(nShell*nShell);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
+      SchwarzSSSS = CQMemManager::get().malloc<double>(nShell*nShell);
       memset(SchwarzSSSS,0,nShell*nShell*sizeof(double));
   
       #pragma omp parallel
@@ -330,7 +329,7 @@ namespace ChronusQ {
   
       };
 
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(buffAll, cacheAll);
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durSSSSSchwarz = tock(topSSSSSchwarz);
@@ -348,9 +347,9 @@ namespace ChronusQ {
 #endif
       
       nERI = 9;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      SchwarzGaunt = memManager_.malloc<double>(nShell*nShell);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
+      SchwarzGaunt = CQMemManager::get().malloc<double>(nShell*nShell);
       memset(SchwarzGaunt,0,nShell*nShell*sizeof(double));
     
       #pragma omp parallel
@@ -397,7 +396,7 @@ namespace ChronusQ {
   
       };
       
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(buffAll, cacheAll);
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durGauntSchwarz = tock(topGauntSchwarz);
@@ -415,11 +414,11 @@ namespace ChronusQ {
 #endif
     
       nERI = 16;
-      buffAll = memManager_.malloc<double>(2*nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(2*nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
       std::cout << " cache_size = " << cache_size << std::endl;
       
-      SchwarzGauge = memManager_.malloc<double>(nShell*nShell);
+      SchwarzGauge = CQMemManager::get().malloc<double>(nShell*nShell);
       memset(SchwarzGauge,0,nShell*nShell*sizeof(double));
       
       #pragma omp parallel
@@ -472,7 +471,7 @@ namespace ChronusQ {
   
       };
       
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(buffAll, cacheAll);
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       auto durGaugeSchwarz = tock(topGaugeSchwarz);
@@ -499,11 +498,11 @@ namespace ChronusQ {
     
   
       // check Densitry matrices
-      double * ShBlkNorms_raw = memManager_.malloc<double>((nBatch+1)*nShell*nShell);
+      double * ShBlkNorms_raw = CQMemManager::get().malloc<double>((nBatch+1)*nShell*nShell);
       double * ShBlkNorms = ShBlkNorms_raw;
       std::vector<double*> ShBlkNorms_batch;
       { 
-        double * ShBlkNormsSCR = memManager_.malloc<double>(nShell*nShell*nThreads);
+        double * ShBlkNormsSCR = CQMemManager::get().malloc<double>(nShell*nShell*nThreads);
         std::vector<double*> ShBlkNormsSCR_batch;
         for (auto iBatch = 0ul; iBatch < nBatch; iBatch++) 
           ShBlkNorms_batch.push_back(ShBlkNorms_raw+(iBatch+1)*nShell*nShell);
@@ -549,7 +548,7 @@ namespace ChronusQ {
         }
         
         SetLAThreads(LAThreads);// Turn threads for LA back on
-        memManager_.free(ShBlkNormsSCR);
+        CQMemManager::get().free(ShBlkNormsSCR);
         
         // get the maximum from all batches 
         #pragma omp parallel for 
@@ -586,8 +585,8 @@ namespace ChronusQ {
       std::vector<size_t> nConSkip(nThreads,0);
 #endif    
       nERI = 1;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
       
       #pragma omp parallel
       {
@@ -772,7 +771,7 @@ namespace ChronusQ {
         matList[iMat].AX->S() += scale * (AXthreads[iTh][iMat]->S() + AXthreads[iTh][iMat]->S().T());   
       }
      
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(buffAll, cacheAll);
     
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipAcc = std::accumulate(nIntSkip.begin(),nIntSkip.end(),0);
@@ -831,9 +830,9 @@ namespace ChronusQ {
 
       // 81 is for fourth-derivative; 9 for second derivative
       nERI = 9;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      ERIBuffer = memManager_.malloc<double>(2*4*NB4*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
+      ERIBuffer = CQMemManager::get().malloc<double>(2*4*NB4*nThreads);
 
       // Keeping track of number of integrals skipped
       std::vector<size_t> nIntSkipLL(nThreads,0);
@@ -1166,8 +1165,8 @@ namespace ChronusQ {
         }
       } 
       
-      memManager_.free(ERIBuffer);
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(ERIBuffer);
+      CQMemManager::get().free(buffAll, cacheAll);
     
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipLLAcc = std::accumulate(nIntSkipLL.begin(),nIntSkipLL.end(),0);
@@ -1301,9 +1300,9 @@ namespace ChronusQ {
 #endif
 
       nERI = 81;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
-      ERIBuffer = memManager_.malloc<double>(16*NB4*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
+      ERIBuffer = CQMemManager::get().malloc<double>(16*NB4*nThreads);
 
       // Keeping track of number of integrals skipped
       std::vector<size_t> nIntSkipSSSS(nThreads,0);
@@ -1792,8 +1791,8 @@ namespace ChronusQ {
         }
       } 
 
-      memManager_.free(ERIBuffer);
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(ERIBuffer);
+      CQMemManager::get().free(buffAll, cacheAll);
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipSSSSAcc = std::accumulate(nIntSkipSSSS.begin(),nIntSkipSSSS.end(),0);
@@ -1876,11 +1875,11 @@ namespace ChronusQ {
 #endif
 
       nERI = 9;
-      buffAll = memManager_.malloc<double>(nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
 
       int nSave = 13;
-      ERIBuffer = memManager_.malloc<double>(nSave*NB4*nThreads);
+      ERIBuffer = CQMemManager::get().malloc<double>(nSave*NB4*nThreads);
       
       std::vector<size_t> nIntSkipGaunt(nThreads,0);
 #ifdef _SEPARATED_SHZ_SCREEN_4C
@@ -2274,8 +2273,8 @@ namespace ChronusQ {
         matList[iMat].AX->Z() +=  AXthreads[iTh][iMat]->Z();  
       }
       
-      memManager_.free(ERIBuffer);
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(ERIBuffer);
+      CQMemManager::get().free(buffAll, cacheAll);
 
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipGauntAcc = std::accumulate(nIntSkipGaunt.begin(),nIntSkipGaunt.end(),0);
@@ -2383,11 +2382,11 @@ namespace ChronusQ {
       };
       
       nERI = 16;
-      buffAll = memManager_.malloc<double>(2*nERI*buffN4*nThreads);
-      cacheAll = memManager_.malloc<double>(cache_size*nThreads);
+      buffAll = CQMemManager::get().malloc<double>(2*nERI*buffN4*nThreads);
+      cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
 
       int nSave = 16;
-      ERIBuffer = memManager_.malloc<double>(nSave*NB4*nThreads);
+      ERIBuffer = CQMemManager::get().malloc<double>(nSave*NB4*nThreads);
       
       std::vector<size_t> nIntSkipGauge(nThreads,0);
 #ifdef _SEPARATED_SHZ_SCREEN_4C
@@ -2780,8 +2779,8 @@ namespace ChronusQ {
         matList[iMat].AX->Z() +=  AXthreads[iTh][iMat]->Z();  
       }
 
-      memManager_.free(ERIBuffer);
-      memManager_.free(buffAll, cacheAll);
+      CQMemManager::get().free(ERIBuffer);
+      CQMemManager::get().free(buffAll, cacheAll);
   
 #ifdef _REPORT_INTEGRAL_TIMINGS
       size_t nIntSkipGaugeAcc = std::accumulate(nIntSkipGauge.begin(),nIntSkipGauge.end(),0);
@@ -2816,16 +2815,16 @@ namespace ChronusQ {
 
 
 #ifdef _SHZ_SCREEN_4C
-    if(ShBlkNorms_raw) memManager_.free(ShBlkNorms_raw);
-    if(SchwarzSSSS)    memManager_.free(SchwarzSSSS);
-    if(SchwarzERI)     memManager_.free(SchwarzERI);
-    if(SchwarzGaunt)   memManager_.free(SchwarzGaunt);
-    if(SchwarzGauge)   memManager_.free(SchwarzGauge);
+    if(ShBlkNorms_raw) CQMemManager::get().free(ShBlkNorms_raw);
+    if(SchwarzSSSS)    CQMemManager::get().free(SchwarzSSSS);
+    if(SchwarzERI)     CQMemManager::get().free(SchwarzERI);
+    if(SchwarzGaunt)   CQMemManager::get().free(SchwarzGaunt);
+    if(SchwarzGauge)   CQMemManager::get().free(SchwarzGauge);
 #endif
   
-    memManager_.free(atm);
-    memManager_.free(bas);
-    memManager_.free(env);
+    CQMemManager::get().free(atm);
+    CQMemManager::get().free(bas);
+    CQMemManager::get().free(env);
   
     // Turn threads for LA back on
     // SetLAThreads(LAThreads);
@@ -2913,7 +2912,6 @@ namespace ChronusQ {
     size_t generalSCRSize = 0ul;
   
     DirectTPI<IntsT> &originalERI = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = originalERI.memManager();
     BasisSet& originalBasisSet_ = originalERI.basisSet();
     Molecule& molecule_ = originalERI.molecule();
     
@@ -2937,15 +2935,15 @@ namespace ChronusQ {
                                          return a.size() < b.size();
                                        })->size();
     
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
     
     basisSet_.setLibcintEnv(molecule_, atm, bas, env);
     
     size_t cacheSize = libcintCacheSize(contType, atm, nAtoms, bas, nShells, env);
     
-    memManager_.free(atm, bas, env);
+    CQMemManager::get().free(atm, bas, env);
     
     size_t buffN4 = buffSize*buffSize*buffSize*buffSize;
     

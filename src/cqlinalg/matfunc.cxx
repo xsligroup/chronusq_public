@@ -31,17 +31,17 @@ namespace ChronusQ {
 
   template <typename F, typename _F1, typename _F2>
   void MatDiagFunc(const F &func, size_t N, _F1 *A, size_t LDA, _F2 *B, 
-    size_t LDB, CQMemManager &mem) {
+    size_t LDB) {
 
     // Allocate space for eigenvalues and scratch
-    double *W = mem.malloc<double>(N);
-    _F1* SCR  = mem.malloc<_F1>(N*N);
-    _F2* SCR2  = mem.malloc<_F2>(N*N);
+    double *W = CQMemManager::get().malloc<double>(N);
+    _F1* SCR  = CQMemManager::get().malloc<_F1>(N*N);
+    _F2* SCR2  = CQMemManager::get().malloc<_F2>(N*N);
 
     std::copy_n(A,N*N,SCR); // Copy A to SCR
 
     // A = V * a * V**H
-    HermetianEigen('V','U',N,SCR,N,W,mem);
+    HermetianEigen('V','U',N,SCR,N,W);
 
     // Compute X = V * func(a)
     for(auto j = 0; j < N; j++)
@@ -57,19 +57,19 @@ namespace ChronusQ {
 
     BMap.adjointInPlace(); 
 
-    mem.free(SCR,SCR2,W);
+    CQMemManager::get().free(SCR,SCR2,W);
 
   };
 
   template void MatDiagFunc(const std::function<double(double)> &func, size_t N, dcomplex *A, size_t LDA,
-                            dcomplex *B, size_t LDB, CQMemManager &mem);
+                            dcomplex *B, size_t LDB);
   template void MatDiagFunc(const std::function<double(double)> &func, size_t N, double *A, size_t LDA,
-                            double *B, size_t LDB, CQMemManager &mem);
+                            double *B, size_t LDB);
 
 
   template <typename _FExp, typename _F1, typename _F2>
   void MatExp(char ALG, size_t N, _FExp ALPHA, _F1 *A, size_t LDA, 
-    _F2 *ExpA, size_t LDEXPA, CQMemManager &mem) {
+    _F2 *ExpA, size_t LDEXPA) {
 
     assert(ALG == 'D');
     assert(std::real(ALPHA) < 1e-14);
@@ -78,26 +78,24 @@ namespace ChronusQ {
 
     MatDiagFunc([&](double x) -> _F2 { 
         return dcomplex(std::cos(AIM*x),std::sin(AIM*x)); 
-      }, N,A,LDA,ExpA,LDEXPA,mem);
+      }, N,A,LDA,ExpA,LDEXPA);
 
   };
 
 
-//template void MatExp(char,size_t,double,double*,size_t,double*,size_t,
-//  CQMemManager&);
+//template void MatExp(char,size_t,double,double*,size_t,double*,size_t);
 
-  template void MatExp(char,size_t,dcomplex,dcomplex*,size_t,dcomplex*,size_t,
-    CQMemManager&);
+  template void MatExp(char,size_t,dcomplex,dcomplex*,size_t,dcomplex*,size_t);
 
 
   template <typename MatsU>
   void MatExp(size_t N, MatsU *A, size_t LDA,
-    MatsU *ExpA, size_t LDEXPA, CQMemManager &mem) {
+    MatsU *ExpA, size_t LDEXPA) {
 
     // allocate memory
     size_t N2 = N*N;
-    MatsU * OddTerms  = mem.template malloc<MatsU>(N2);
-    MatsU * EvenTerms = mem.template malloc<MatsU>(N2);
+    MatsU * OddTerms  = CQMemManager::get().template malloc<MatsU>(N2);
+    MatsU * EvenTerms = CQMemManager::get().template malloc<MatsU>(N2);
 
     std::fill_n(ExpA, N2, MatsU(0.));
     // form zero order term
@@ -139,12 +137,12 @@ namespace ChronusQ {
 
     }
 
-    mem.free(OddTerms, EvenTerms);
+    CQMemManager::get().free(OddTerms, EvenTerms);
 
     if(not converged) throw std::runtime_error("Matrix Exponential calculation failed to converge");
   }; // MCSCF::MatExpT
 
-  template void MatExp(size_t N, double *A, size_t LDA, double *ExpA, size_t LDEXPA, CQMemManager &mem);
-  template void MatExp(size_t N, dcomplex *A, size_t LDA, dcomplex *ExpA, size_t LDEXPA, CQMemManager &mem);
+  template void MatExp(size_t N, double *A, size_t LDA, double *ExpA, size_t LDEXPA);
+  template void MatExp(size_t N, dcomplex *A, size_t LDA, dcomplex *ExpA, size_t LDEXPA);
 
 }; // namespace ChronusQ

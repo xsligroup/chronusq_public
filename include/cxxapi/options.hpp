@@ -151,8 +151,7 @@ namespace ChronusQ {
 
   // Parse the options relating to NEOSS
   std::pair<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions> CQNEOSSOptions(
-      std::ostream &, CQInputFile &,
-      CQMemManager &mem, Molecule &mol,
+      std::ostream &, CQInputFile &, Molecule &mol,
       BasisSet &ebasis, BasisSet &pbasis,
       std::shared_ptr<IntegralsBase> eaoints,
       std::shared_ptr<IntegralsBase> paoints,
@@ -181,7 +180,7 @@ namespace ChronusQ {
 
   // Parse integral options
   std::shared_ptr<IntegralsBase> CQIntsOptions(std::ostream &, 
-    CQInputFile &, CQMemManager &, Molecule &,
+    CQInputFile &, Molecule &,
     std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
     std::shared_ptr<BasisSet>, std::string int_sec = "INTS");
 
@@ -296,8 +295,7 @@ namespace ChronusQ {
             CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &);
   void CQPERTURB_VALID(std::ostream &, CQInputFile &);
 
-  std::shared_ptr<CQMemManager> CQMiscOptions(std::ostream &,
-    CQInputFile &);
+  void CQMiscOptions(std::ostream &, CQInputFile &);
 
   void CQMISC_VALID(std::ostream&, CQInputFile &);
 

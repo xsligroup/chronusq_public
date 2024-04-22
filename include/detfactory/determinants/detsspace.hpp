@@ -288,8 +288,8 @@ public:
   // generate CIVector function
   template <typename MatsT>
   std::shared_ptr<DistributedVectors<MatsT>> constructDistributedCIVectors(
-      MPI_Comm comm, CQMemManager& mem, size_t size) const {
-    return std::make_shared<DistributedVectors<MatsT>>(comm, mem, distributedCategoryLengths_, size);  
+      MPI_Comm comm, size_t size) const {
+    return std::make_shared<DistributedVectors<MatsT>>(comm, distributedCategoryLengths_, size);
   }
   
   template <typename MatsT>

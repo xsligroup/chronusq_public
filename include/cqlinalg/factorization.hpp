@@ -37,7 +37,7 @@ namespace ChronusQ {
    *  parameter documentation.
    */ 
   template <typename _F>
-  int LUInv(int N, _F *A, int LDA, CQMemManager &mem);
+  int LUInv(int N, _F *A, int LDA);
 
   /**
    *  \brief Computes the QR factorization of a general matrix A:
@@ -46,7 +46,7 @@ namespace ChronusQ {
    *  depending on the context
    */
   template <typename _F>
-  int QR(int M, int N, _F *A, int LDA, _F *R, int LDR, CQMemManager &mem);
+  int QR(int M, int N, _F *A, int LDA, _F *R, int LDR);
 
 
   /**
@@ -56,14 +56,14 @@ namespace ChronusQ {
    *  depending on the context
    */
   template <typename _F>
-  inline int QR(int M, int N, _F *A, int LDA, CQMemManager &mem) {
+  inline int QR(int M, int N, _F *A, int LDA) {
 
     int LDR = std::min(M,N);
-    _F *R = mem.template malloc<_F>(LDR*LDR);
+    _F *R = CQMemManager::get().malloc<_F>(LDR*LDR);
 
-    int INFO = QR(M,N,A,LDA,R,LDR,mem);
+    int INFO = QR(M,N,A,LDA,R,LDR);
 
-    mem.free(R);
+    CQMemManager::get().free(R);
 
     return INFO;
 
@@ -73,12 +73,12 @@ namespace ChronusQ {
   template <typename _F>
   int OrdQZ(char JOBVSL, char JOBVSR, int N, _F *A, int LDA, _F *B, 
     int LDB, dcomplex *ALPHA, _F *BETA, double SIMGA, _F *VSL, 
-    int LDVSL, _F *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, _F *VSR, int LDVSR);
 
   template <typename _F>
   int OrdQZ2(char JOBVSL, char JOBVSR, int N, _F *A, int LDA, _F *B, 
     int LDB, dcomplex *ALPHA, _F *BETA, double hLim, double SIMGA, _F *VSL, 
-    int LDVSL, _F *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, _F *VSR, int LDVSR);
 
 
   /*
@@ -89,7 +89,7 @@ namespace ChronusQ {
    *          value to be zero.
    */
   template<typename MatsT>
-  void SVDInverse(const size_t N, MatsT* A, const size_t LDA, const double num, CQMemManager& memManager);
+  void SVDInverse(const size_t N, MatsT* A, const size_t LDA, const double num);
   
 }; // namespace ChronusQ
 

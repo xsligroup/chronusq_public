@@ -26,7 +26,6 @@
 //#define UDU_ATOMIC_X2C_ALGORITHM
 
 #include <molecule.hpp>
-#include <memmanager.hpp>
 #include <basisset.hpp>
 #include <fields.hpp>
 #include <integrals.hpp>
@@ -53,7 +52,6 @@ namespace ChronusQ {
 
     Integrals<IntsT>   &aoints_;            ///< AOIntegrals for contracted basis
     SingleSlaterOptions ssOptions_;         ///< Options to build 4C singleslater object
-    CQMemManager       &memManager_;        ///< CQMemManager to allocate matricies
     Molecule            molecule_;          ///< Molecule object for nuclear potential
     BasisSet            basisSet_;          ///< BasisSet for original basis defintion
     BasisSet            uncontractedBasis_; ///< BasisSet for uncontracted basis defintion
@@ -93,15 +91,14 @@ namespace ChronusQ {
      * \brief Constructor
      *
      *  \param [in] aoints             Reference to the global AOIntegrals
-     *  \param [in] memManager         Memory manager for matrix allocation
      *  \param [in] mol                Molecule object for molecular specification
      *  \param [in] basis              The GTO basis for integral evaluation
      *  \param [in] hamiltonianOptions Flags for AO integrals evaluation
      */
-    X2C(Integrals<IntsT> &aoints, CQMemManager &mem,
+    X2C(Integrals<IntsT> &aoints,
         const Molecule &mol, const BasisSet &basis, SingleSlaterOptions ssOptions) :
       aoints_(aoints), ssOptions_(ssOptions),
-      memManager_(mem),molecule_(mol), basisSet_(basis),
+      molecule_(mol), basisSet_(basis),
       uncontractedBasis_(basisSet_.uncontractBasis()) {}
 
     // Different type
@@ -143,7 +140,7 @@ namespace ChronusQ {
         bool incore = true, double threshSchwarz = 1e-12);
     void computeFockX2C_Umatrix(const cqmatrix::Matrix<MatsT> &fourCompMOSpin);
 
-    static void compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+    static void compute_CoreH_Fock(Molecule &mol,
         BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
         EMPerturbation &emPert,
         std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
@@ -156,7 +153,7 @@ namespace ChronusQ {
 
   };
 
-  void compute_X2C_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  void compute_X2C_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);

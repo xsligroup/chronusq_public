@@ -52,7 +52,7 @@ void Matrix<MatsT>::subsetTransform(
   if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
   
   size_t N_ = nRow_;
-  ResultsT* SCR = memManager_.malloc<ResultsT>(N_ * off_sizes[0].second);
+  ResultsT* SCR = CQMemManager::get().malloc<ResultsT>(N_ * off_sizes[0].second);
   std::fill_n(SCR, N_ * off_sizes[0].second, ResultsT(0.0));
   MatsT * dummy = nullptr;
 
@@ -62,7 +62,7 @@ void Matrix<MatsT>::subsetTransform(
     'N', pointer(), N_, N_, 1, 'T', out, off_sizes[0].second, off_sizes[1].second,
     dummy, SCR, increment); 
   
-  memManager_.free(SCR);
+  CQMemManager::get().free(SCR);
 }
 template void Matrix<double>::subsetTransform(
     char TRANS, const double* T, int LDT,
@@ -96,7 +96,7 @@ template void Matrix<dcomplex>::subsetTransform(
 //      else if (TRANS == 'N')
 //        offs.push_back(off_size.first * LDT);
 //    }
-//    dcomplex* SCR = memManager_.malloc<dcomplex>(off_sizes[1].second * N_);
+//    dcomplex* SCR = CQMemManager::get().malloc<dcomplex>(off_sizes[1].second * N_);
 //    if (TRANS == 'T' or TRANS == 'C')
 //      TRANS = 'N';
 //    else if (TRANS == 'N')
@@ -123,7 +123,7 @@ template void Matrix<dcomplex>::subsetTransform(
 //    blas::gemm(blas::Layout::ColMajor,OP_TRANS, blas::Op::ConjTrans, off_sizes[0].second, off_sizes[1].second, N_,
 //        dcomplex(1.), T+offs[0], LDT, SCR, off_sizes[1].second,
 //        outFactor, out, off_sizes[0].second);
-//    memManager_.free(SCR);
+//    CQMemManager::get().free(SCR);
 //  }
 
 /**
@@ -147,7 +147,7 @@ dcomplex, double>::type> Matrix<MatsT>::transform(
   Matrix<typename std::conditional<
       (std::is_same<MatsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(memManager_, NT);
+      dcomplex, double>::type> transInts(NT);
   
   if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
   transInts.clear();

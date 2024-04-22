@@ -120,8 +120,8 @@ namespace ChronusQ {
     TwoPInts( const TwoPInts & ) = default;
     TwoPInts( TwoPInts && ) = default;
 
-    TwoPInts(CQMemManager &mem, size_t nb, size_t snb = 0):
-        ParticleIntegrals(mem, nb), sNB(snb) {
+    TwoPInts(size_t nb, size_t snb = 0):
+        ParticleIntegrals(nb), sNB(snb) {
         
         // if the second basis does not exist, set it to be the same as the first one
         if (snb == 0) 
@@ -130,7 +130,7 @@ namespace ChronusQ {
 
     template <typename IntsU>
     TwoPInts( const TwoPInts<IntsU> &other, int = 0 ):
-        TwoPInts(other.memManager(), other.nBasis(), other.snBasis()) {
+        TwoPInts(other.nBasis(), other.snBasis()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real TwoPInts from a Complex one.");

@@ -45,13 +45,13 @@ namespace ChronusQ {
     basis = CQBasisSetOptions(std::cout,input_,mol,"BASIS");
     prot_basis = CQBasisSetOptions(std::cout,input_,mol,"PBASIS");
 
-    aoints = CQIntsOptions(std::cout,input_,ref_t->memManager,mol,basis,nullptr,prot_basis,"EPINTS");
+    aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EPINTS");
     auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis,aoints);
 
     SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert);
     ssOptions.scfControls = scfControls;
 
-    curr_ = ssOptions.buildSingleSlater(std::cout,ref_t->memManager,mol,*basis,aoints);
+    curr_ = ssOptions.buildSingleSlater(std::cout,mol,*basis,aoints);
 
     curr_->scfControls.guess = READMO;
 
@@ -123,7 +123,7 @@ namespace ChronusQ {
     };
 
     BeckeIntegrator<EulerMac> 
-      integrator(MPI_COMM_NULL,ref_->memManager,mol,basis,
+      integrator(MPI_COMM_NULL,mol,basis,
       EulerMac(nrad), nang, nrad, NOGRAD, 1e-14);
 
     if (doGrad)

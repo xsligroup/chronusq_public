@@ -47,18 +47,18 @@ void Orthogonalization<MatsT>::computeOrtho() {
   backwardTrans->clear();
 
   // Allocate scratch
-  MatsT* SCR1 = overlap->memManager().template malloc<MatsT>(nSQ);
+  MatsT* SCR1 = CQMemManager::get().template malloc<MatsT>(nSQ);
   std::fill_n(SCR1, nSQ, 0.);
 
   if( orthoType == LOWDIN ) {
 
     // Allocate more scratch
-    MatsT* sE   = overlap->memManager().template malloc<MatsT>(NB);
-    MatsT* SCR2 = overlap->memManager().template malloc<MatsT>(nSQ);
+    MatsT* sE   = CQMemManager::get().template malloc<MatsT>(NB);
+    MatsT* SCR2 = CQMemManager::get().template malloc<MatsT>(nSQ);
 
     // Diagonalize the overlap in scratch S = V * s * V**T
     std::copy_n(overlap->pointer(),nSQ,SCR1);
-    HermetianEigen('V', 'U', NB, SCR1, NB, sE, overlap->memManager());
+    HermetianEigen('V', 'U', NB, SCR1, NB, sE);
 
     if( std::abs(sE[0]) < 1e-10 ) CErr("Contracted Basis Set is Linearly Dependent!");
 
@@ -133,7 +133,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 #endif
 
     // Free Scratch Space
-    overlap->memManager().free(sE, SCR2);
+    CQMemManager::get().free(sE, SCR2);
 
   } else if( orthoType == CHOLESKY ) {
 
@@ -165,7 +165,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
     std::cerr << "Debugging Cholesky Orthogonalization" << std::endl;
 
     // Debug code to validate the Cholesky orthogonalization
-    MatsT* SCR2 = overlap->memManager().template malloc<MatsT>(nSQ);
+    MatsT* SCR2 = CQMemManager::get().template malloc<MatsT>(nSQ);
 
     double maxDiff = -1000;
     blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), forwardTrans->pointer(), NB, overlap->pointer(), NB, MatsT(0.), SCR1, NB);
@@ -182,11 +182,11 @@ void Orthogonalization<MatsT>::computeOrtho() {
 
     std::cerr << "Ortho1**T * S ** Ortho1 = I: " << maxDiff << std::endl;
 
-    overlap->memManager().free(SCR2);   // Free SCR2
+    CQMemManager::get().free(SCR2);   // Free SCR2
 #endif
   }
 
-  overlap->memManager().free(SCR1);
+  CQMemManager::get().free(SCR1);
 };
 
   //=======================
@@ -244,10 +244,10 @@ void Orthogonalization<MatsT>::computeOrtho() {
     size_t NB = mo.dimension();
     if( forwardTrans->dimension() != NB ) CErr("Matrices are not the same dimension in nonortho2orthoCoeffs");
 
-    MatsT* SCR = mo.memManager().template malloc<MatsT>(NB * NB);
+    MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), backwardTrans->pointer(), NB, mo.pointer(), NB, MatsT(0.), SCR, NB);
     SetMat('N', NB, NB, MatsT(1.), SCR, NB, mo.pointer(), NB);
-    mo.memManager().free(SCR);
+    CQMemManager::get().free(SCR);
   }
 
   template<typename MatsT>
@@ -258,10 +258,10 @@ void Orthogonalization<MatsT>::computeOrtho() {
     if( forwardTrans->dimension() != NB ) CErr("Matrices are not the same dimension in ortho2nonorthoCoeffs");
 
     // Loop over components
-    MatsT* SCR = mo.memManager().template malloc<MatsT>(NB * NB);
+    MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), forwardTrans->pointer(), NB, mo.pointer(), NB, MatsT(0.), SCR, NB);
     SetMat('N', NB, NB, MatsT(1.), SCR, NB, mo.pointer(), NB);
-    mo.memManager().free(SCR);
+    CQMemManager::get().free(SCR);
   }
 
   template<typename MatsT>
@@ -315,11 +315,11 @@ void Orthogonalization<MatsT>::computeOrtho() {
     Orthogonalization<MatsT> orthoMO(stateOverlap);
 
     // Transform MO's in place
-    MatsT* SCR = mo.memManager().template malloc<MatsT>(NB * NB);
+    MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
     MatsT* transPointer = orthoMO.backwardPointer()->pointer(); 
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, nStates, nStates, MatsT(1.), moPointer, NB, transPointer, nStates, MatsT(0.), SCR, NB);
     SetMat('N', NB, nStates, MatsT(1.), SCR, NB, moPointer, NB);
-    mo.memManager().free(SCR);
+    CQMemManager::get().free(SCR);
 
 #if 0
     // Test that they are orthogonalized
@@ -350,18 +350,17 @@ void Orthogonalization<MatsT>::computeOrtho() {
 
     size_t NB = operators[0].dimension();
     size_t nSQ = NB*NB;
-    CQMemManager& memManager = overlap->memManager();
 
     if( orthoType == LOWDIN ) {
-      MatsT* sVecs   = memManager.malloc<MatsT>(nSQ);
-      MatsT* sE      = memManager.malloc<MatsT>(NB);
-      MatsT* weights = memManager.malloc<MatsT>(nSQ);
-      MatsT* SCR1    = memManager.malloc<MatsT>(nSQ);
-      MatsT* SCR2    = memManager.malloc<MatsT>(nSQ);
+      MatsT* sVecs   = CQMemManager::get().malloc<MatsT>(nSQ);
+      MatsT* sE      = CQMemManager::get().malloc<MatsT>(NB);
+      MatsT* weights = CQMemManager::get().malloc<MatsT>(nSQ);
+      MatsT* SCR1    = CQMemManager::get().malloc<MatsT>(nSQ);
+      MatsT* SCR2    = CQMemManager::get().malloc<MatsT>(nSQ);
 
       // Diagonalize the overlap in scratch S = V * s * V**T
       std::copy_n(overlap->pointer(),nSQ,sVecs);
-      HermetianEigen('V','U',NB,sVecs,NB,sE,memManager);
+      HermetianEigen('V','U',NB,sVecs,NB,sE);
 
       if( std::abs( sE[0] ) < 1e-10 )
         CErr("Contracted Basis Set is Linearly Dependent!");
@@ -397,7 +396,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 
       } 
 
-      memManager.free(sVecs, sE, weights, SCR1, SCR2);
+      CQMemManager::get().free(sVecs, sE, weights, SCR1, SCR2);
 
     }
     else if( orthoType == CHOLESKY ) {

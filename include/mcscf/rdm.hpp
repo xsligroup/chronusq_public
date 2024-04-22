@@ -76,7 +76,7 @@ namespace ChronusQ {
     
     if(this->StateAverage) {
       
-      auto twoRDMtmp = InCore4indexTPI<MatsT>(this->memManager,nCorrO); 
+      auto twoRDMtmp = InCore4indexTPI<MatsT>(nCorrO); 
       auto & weights = this->SAWeight;
       twoRDMSOI->clear();
 

@@ -1072,7 +1072,7 @@ namespace ChronusQ {
    */ 
   std::shared_ptr<SingleSlaterBase>
   SingleSlaterOptions::buildSingleSlater(
-      std::ostream &out, CQMemManager &mem,
+      std::ostream &out,
       Molecule &mol, BasisSet &basis,
       std::shared_ptr<IntegralsBase> aoints) const {
 
@@ -1106,10 +1106,10 @@ namespace ChronusQ {
       CErr("Proton Kohn Sham references require EPC functionals");
 
   #define KS_LIST(T) \
-    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mem,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
+    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
 
   #define HF_LIST(T) \
-    MPI_COMM_WORLD,mem,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
+    MPI_COMM_WORLD,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
 
     // Construct the SS object
     std::shared_ptr<SingleSlaterBase> ss;
@@ -1311,7 +1311,7 @@ namespace ChronusQ {
 
         if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-          TPI = std::make_shared<InCore4indexRelERI<double>>(mem,basis.nBasis,nERI4DCB);
+          TPI = std::make_shared<InCore4indexRelERI<double>>(basis.nBasis,nERI4DCB);
 
           p->TPI = std::make_shared<InCore4indexRelERIContraction<double,double>>(TPI);
 
@@ -1332,7 +1332,7 @@ namespace ChronusQ {
 
         if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-          TPI = std::make_shared<InCore4indexRelERI<double>>(mem,basis.nBasis,nERI4DCB);
+          TPI = std::make_shared<InCore4indexRelERI<double>>(basis.nBasis,nERI4DCB);
 
           p->TPI = std::make_shared<InCore4indexRelERIContraction<dcomplex,double>>(TPI);
 
@@ -1589,7 +1589,7 @@ namespace ChronusQ {
   // NEO SingleSlater wrapper
   std::pair<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions> CQNEOSSOptions(
     std::ostream &out, CQInputFile &input,
-    CQMemManager &mem, Molecule &mol,
+    Molecule &mol,
     BasisSet &ebasis, BasisSet &pbasis,
     std::shared_ptr<IntegralsBase> eaoints, 
     std::shared_ptr<IntegralsBase> paoints,
@@ -1598,13 +1598,13 @@ namespace ChronusQ {
 
     Particle p{-1., 1.};
 #define NEO_LIST(T) \
-    MPI_COMM_WORLD,mem,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
+    MPI_COMM_WORLD,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
 
     SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
     SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., ProtMassPerE}, "PROTQM");
 
-    std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out, mem, mol, ebasis, eaoints);
-    std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out, mem, mol, pbasis, paoints);
+    std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
+    std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
 
     std::shared_ptr<SingleSlaterBase> neoss;
 

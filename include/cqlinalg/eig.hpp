@@ -61,8 +61,7 @@ namespace ChronusQ {
    *  parameter documentation.
    */ 
   template <typename _F>
-  int HermetianEigen(char JOBZ, char UPLO, int N, _F *A, int LDA, double *W,
-    CQMemManager &mem);
+  int HermetianEigen(char JOBZ, char UPLO, int N, _F *A, int LDA, double *W);
 
   /**
    *  \brief Smart wrapper around DSYEV and ZHEEV depending on context.
@@ -77,12 +76,10 @@ namespace ChronusQ {
    *  parameter documentation.
    */ 
   template <typename _F>
-  int HermetianEigen(char JOBZ, char UPLO, int N, _F *A, int LDA, dcomplex *W,
-    CQMemManager &mem);
+  int HermetianEigen(char JOBZ, char UPLO, int N, _F *A, int LDA, dcomplex *W);
 
   template <typename _F>
-  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W,
-    CQMemManager &mem);
+  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W);
 
 
 }; // namespace ChronusQ

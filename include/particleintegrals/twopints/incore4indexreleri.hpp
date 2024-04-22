@@ -56,11 +56,11 @@ namespace ChronusQ {
     InCore4indexRelERI() = delete;
     InCore4indexRelERI( const InCore4indexRelERI & ) = default;
     InCore4indexRelERI( InCore4indexRelERI && ) = default;
-    InCore4indexRelERI(CQMemManager &mem, size_t nb, size_t nRel):
-        InCore4indexTPI<IntsT>(mem, nb) {
+    InCore4indexRelERI(size_t nb, size_t nRel):
+        InCore4indexTPI<IntsT>(nb) {
       components_.reserve(nRel);
       for (size_t i = 0; i < nRel; i++)
-        components_.emplace_back(mem, nb);
+        components_.emplace_back(nb);
     }
 
     template <typename IntsU>
@@ -188,7 +188,7 @@ namespace ChronusQ {
           components_.clear();
           components_.reserve(nRel);
           for (size_t i = 0; i < nRel; i++) {
-            components_.emplace_back(this->memManager_, this->NB);
+            components_.emplace_back(this->NB);
           }
         }
 
@@ -211,8 +211,7 @@ namespace ChronusQ {
       InCore4indexRelERI<typename std::conditional<
       (std::is_same<IntsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(
-          this->ParticleIntegrals::memManager(), NT, nRelComp());
+      dcomplex, double>::type> transInts(NT, nRelComp());
       transInts[REL_INTS_COMPS::O] =
           (*this)[REL_INTS_COMPS::O].transform(TRANS, T, NT, LDT);
       for (size_t i = 0; i < nRelComp(); i++)

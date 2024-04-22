@@ -38,7 +38,6 @@ namespace ChronusQ {
 
   protected:
     
-    CQMemManager & memManager_; ///< CQMemManager to allocate matricies
     bool * ptr_ = nullptr;     ///< Raw string storage
     size_t N_;
     size_t n1s_;
@@ -47,22 +46,19 @@ namespace ChronusQ {
     
     // Constructors
     DetString() = delete;
-    DetString(CQMemManager &mem, size_t n, bool b = 0):
-        N_(n), memManager_(mem) {
+    DetString(size_t n, bool b = 0): N_(n) {
       alloc();
       set(b);
     }
-    DetString(CQMemManager &mem, size_t n, 
-        const std::vector<size_t> & electronLocs):
-        DetString(mem, n) {
+    DetString(size_t n, const std::vector<size_t> & electronLocs):
+        DetString(n) {
       set(electronLocs);
     }
     DetString(const DetString & other):
-        DetString(other.memManager_, other.N_) {
+        DetString(other.N_) {
       std::copy_n(other.ptr_, N_, ptr_);
     }
-    DetString(DetString && other):
-      memManager_(other.memManager_), N_(other.N_),
+    DetString(DetString && other): N_(other.N_),
       ptr_(other.ptr_) { other.ptr_ = nullptr; }
     
     ~DetString() { dealloc(); }
@@ -120,7 +116,7 @@ namespace ChronusQ {
     }
 
     DetString operator+(const DetString & other) const { 
-      DetString joint_str(memManager_, N_ + other.N_); 
+      DetString joint_str(N_ + other.N_); 
       joint_str.n1s_ = n1s_ + other.n1s_; 
       std::copy_n(ptr_, N_, joint_str.ptr_); 
       std::copy_n(other.ptr_, other.N_, joint_str.ptr_ + N_);
@@ -188,14 +184,14 @@ namespace ChronusQ {
     // memory management
     void alloc() {
       dealloc();
-      try { ptr_ =  memManager_.malloc<bool>(N_);}
+      try { ptr_ =  CQMemManager::get().malloc<bool>(N_);}
       catch(...) {
         CErr("need more memory to allocate detString" );
       }
     }
     
     void dealloc() { 
-      if(ptr_) memManager_.free(ptr_); 
+      if(ptr_) CQMemManager::get().free(ptr_); 
     }
   
   }; // ChronusQ::DetString

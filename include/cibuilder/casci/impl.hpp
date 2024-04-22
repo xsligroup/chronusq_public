@@ -49,7 +49,6 @@
   size_t nStr_b = (exList_b) ? exList_b->nString(): 1; \
   size_t nNZa = exList_a->nNonZero(); \
   size_t nNZb = (exList_b) ? exList_b->nNonZero(): 0; \
-  CQMemManager & mem = mcwfn.memManager;
 
 
 namespace ChronusQ {
@@ -67,7 +66,7 @@ namespace ChronusQ {
     // Allocate SCR
     size_t nSCR = std::max(nStr_a, nStr_b);
     size_t nThreads = GetNumThreads();
-    MatsT * SCR  = mcwfn.memManager.template malloc<MatsT>(nSCR * nThreads);
+    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(nSCR * nThreads);
      
     // empty CI Hamiltonian
     std::fill_n(fullH, nStr_a*nStr_a, MatsT(0.));
@@ -120,7 +119,7 @@ namespace ChronusQ {
 #ifdef _DEBUG_CIBUILDER_CASCI_IMPL
     prettyPrintSmart(std::cout,"HH full CASCI Hamiltonian",fullH, NDet, NDet, NDet);
 #endif
-       mcwfn.memManager.free(SCR);
+       CQMemManager::get().free(SCR);
        return;
     } 
     
@@ -128,7 +127,7 @@ namespace ChronusQ {
     //    (Ka, La) -> (Ka, Kb, La, Kb) 
     size_t nStr_a2 = nStr_a * nStr_a;
     size_t nStr_b2 = nStr_b * nStr_b;
-    MatsT * tmpH  = mcwfn.memManager.template malloc<MatsT>(nSCR*nSCR);
+    MatsT * tmpH  = CQMemManager::get().malloc<MatsT>(nSCR*nSCR);
     std::copy_n(fullH, nStr_a2, tmpH);
     std::fill_n(fullH, NDet*NDet, MatsT(0.));
     
@@ -201,7 +200,7 @@ namespace ChronusQ {
     // transpose fullH: ((Kb, La, Lb, Ka) -> (Ka, Kb, La, Lb) 
     IMatCopy('T', nStr_b*NDet, nStr_a, MatsT(1.), fullH, nStr_b*NDet, nStr_a);  
 
-    mcwfn.memManager.free(SCR, tmpH);
+    CQMemManager::get().free(SCR, tmpH);
     
     // 1C Continued: Alpha-Beta and Beta-Aphla Part 
 #pragma omp parallel for schedule(static) default(shared) \
@@ -292,7 +291,7 @@ namespace ChronusQ {
     MatsT * dH = diagH + nStr_a;
     for (Kb = 1; Kb < nStr_b; Kb++, dH+=nStr_a) std::copy_n(diagH, nStr_a, dH);
      
-    MatsT * tmpdH  = mcwfn.memManager.template malloc<MatsT>(nStr_b);
+    MatsT * tmpdH  = CQMemManager::get().malloc<MatsT>(nStr_b);
 
     // 1C Continued: build Beta part
     std::fill_n(tmpdH, nStr_b, MatsT(0.));
@@ -332,7 +331,7 @@ namespace ChronusQ {
     // transpose diagH: (Kb, Ka) -> (Ka, Kb) 
     IMatCopy('T', nStr_b, nStr_a, MatsT(1.), diagH, nStr_b, nStr_a);  
     
-    mcwfn.memManager.free(tmpdH);
+    CQMemManager::get().free(tmpdH);
     
     // 1C Continued: Alpha-Beta and Beta-Aphla Part 
     size_t nActEa = mcwfn.MOPartition.nCorrEA;
@@ -384,7 +383,7 @@ namespace ChronusQ {
     // Allocate SCR
     size_t nSCR = std::max(nStr_a, nStr_b);
     size_t nThreads = GetNumThreads();
-    MatsT * SCR  = mcwfn.memManager.template malloc<MatsT>(nSCR * nThreads);
+    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(nSCR * nThreads);
 
     // empty Sigma
     std::fill_n(Sigma, NDet*nVec, MatsT(0.));
@@ -452,7 +451,7 @@ namespace ChronusQ {
 #ifdef DEBUG_CI_SIGMA
     prettyPrintSmart(std::cout,"HH CASCI Sigma Build -- Sigma", Sigma, NDet, nVec, NDet);
 #endif
-       mcwfn.memManager.free(SCR);
+       CQMemManager::get().free(SCR);
        return;
     } 
     
@@ -517,7 +516,7 @@ namespace ChronusQ {
       IMatCopy('T', nStr_b, nStr_a, MatsT(1.), Ci, nStr_b, nStr_a);  
     }
 
-    mcwfn.memManager.free(SCR);
+    CQMemManager::get().free(SCR);
 
     // 1C Continued: Alpha-Beta and Beta-Aphla Part 
     // TODO: try to vectorized the loop
@@ -585,7 +584,7 @@ namespace ChronusQ {
     std::vector<InCore4indexTPI<MatsT>> SCR;
     auto nDim  = twoRDM.nBasis();
     for (auto i = 0ul; i < nThreads; i++)
-      SCR.emplace_back(mcwfn.memManager, nDim);
+      SCR.emplace_back(nDim);
 
     // alpha-alpha part
     int i, j, k, l, La, Lb, Ka, Kb, Ja, Jb;
@@ -679,7 +678,7 @@ namespace ChronusQ {
     size_t nThreads = GetNumThreads();
     std::vector<cqmatrix::Matrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++)
-      SCR.emplace_back(mcwfn.memManager, TDM.dimension());
+      SCR.emplace_back(TDM.dimension());
 
     // alpha part 
     int k, l, La, Lb, Ka, Kb;

@@ -85,11 +85,11 @@ namespace ChronusQ {
      *  \param [in] _nC  Number of spin components (1 and 2 are supported)
      *  \param [in] iCS  Whether or not to treat as closed shell
      */ 
-    WaveFunction(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
+    WaveFunction(MPI_Comm c, Molecule &mol, BasisSet &basis,
                  std::shared_ptr<Integrals<IntsT>> aoi, size_t _nC, bool iCS, Particle p = {-1.0,1.0}) :
-      QuantumBase(c, mem,_nC,iCS,p),
-      WaveFunctionBase(c, mem, mol, basis,_nC,iCS,p),
-      Quantum<MatsT>(c, mem,_nC,iCS,p,basis.nBasis),
+      QuantumBase(c,_nC,iCS,p),
+      WaveFunctionBase(c, mol, basis,_nC,iCS,p),
+      Quantum<MatsT>(c,_nC,iCS,p,basis.nBasis),
       //molecule_(mol), basisSet_(basis), 
       eps1(nullptr), eps2(nullptr), aoints_(aoi) {
 

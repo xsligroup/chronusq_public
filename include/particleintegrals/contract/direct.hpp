@@ -93,10 +93,10 @@ namespace ChronusQ {
 
   template <typename T>
   double * ShellBlockNorm(std::vector<libint2::Shell> &shSet, T *MAT, 
-    size_t LDM, CQMemManager &mem) {
+    size_t LDM) {
 
     size_t nShell = shSet.size();
-    double *ShBlk = mem.template malloc<double>(nShell*nShell);
+    double *ShBlk = CQMemManager::get().malloc<double>(nShell*nShell);
 
     ShellBlockNorm(shSet,MAT,LDM,ShBlk);
 
@@ -111,7 +111,6 @@ namespace ChronusQ {
     std::vector<TwoBodyContraction<MatsT>> &list,EMPerturbation&) const {
 
     DirectTPI<IntsT> &eri = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
 
     size_t nthreads  = GetNumThreads();
@@ -176,7 +175,7 @@ namespace ChronusQ {
 
 
     double * intBuffer = 
-      memManager_.malloc<double>(nBuffer*lenIntBuffer*nthreads);
+      CQMemManager::get().malloc<double>(nBuffer*lenIntBuffer*nthreads);
    
     double *intBuffer2 = intBuffer + nthreads*lenIntBuffer;
 
@@ -186,7 +185,7 @@ namespace ChronusQ {
     std::vector<std::vector<MatsT*>> AXthreads;
     MatsT *AXRaw = nullptr;
     if(nthreads != 1) {
-      AXRaw = memManager_.malloc<MatsT>(nthreads*NMat*NB*NB);
+      AXRaw = CQMemManager::get().malloc<MatsT>(nthreads*NMat*NB*NB);
       memset(AXRaw,0,nthreads*NMat*NB*NB*sizeof(MatsT));
     }
 
@@ -205,7 +204,7 @@ namespace ChronusQ {
 #ifdef _SHZ_SCREEN
     // Compute shell block norms
     double *ShBlkNorms_raw = 
-      memManager_.malloc<double>(list.size()*NS*NS);
+      CQMemManager::get().malloc<double>(list.size()*NS*NS);
 
     std::vector<double*> ShBlkNorms;
     for(auto iMat = 0, iOff = 0; iMat < NMat; iMat++, 
@@ -792,7 +791,7 @@ namespace ChronusQ {
 
 #ifdef _FULL_DIRECT
 
-    MatsT* SCR = memManager_.malloc<MatsT>(NB*NB);
+    MatsT* SCR = CQMemManager::get().malloc<MatsT>(NB*NB);
     for( auto iMat = 0; iMat < NMat;  iMat++ ) 
     for( auto iTh  = 0; iTh < nthreads; iTh++) {
   
@@ -823,7 +822,7 @@ namespace ChronusQ {
       }
 
     };
-    memManager_.free(SCR);
+    CQMemManager::get().free(SCR);
     
 #else
 
@@ -850,7 +849,7 @@ namespace ChronusQ {
       // the root process
         
       MatsT* mpiScr;
-      if( mpiRank == 0 ) mpiScr = memManager_.malloc<MatsT>(NB*NB);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<MatsT>(NB*NB);
 
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
@@ -862,7 +861,7 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) memManager_.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
     }
 
@@ -876,11 +875,11 @@ namespace ChronusQ {
 #endif
 
     // Free scratch space
-    memManager_.free(intBuffer);
+    CQMemManager::get().free(intBuffer);
 #ifdef _SHZ_SCREEN
-    memManager_.free(ShBlkNorms_raw);
+    CQMemManager::get().free(ShBlkNorms_raw);
 #endif
-    if(AXRaw != nullptr) memManager_.free(AXRaw);
+    if(AXRaw != nullptr) CQMemManager::get().free(AXRaw);
 
 #ifdef _SUB_TIMINGS
     auto botFree = std::chrono::high_resolution_clock::now();
@@ -904,7 +903,6 @@ namespace ChronusQ {
       std::vector<TwoBodyContraction<dcomplex>> &list, EMPerturbation &pert) const {
 
     DirectTPI<dcomplex> &eri = *std::dynamic_pointer_cast<DirectTPI<dcomplex>>(this->ints_);
-    CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
      
 
@@ -932,19 +930,19 @@ namespace ChronusQ {
     size_t nBuffer = 2;
 
     dcomplex * intBuffer = 
-      memManager_.malloc<dcomplex>(nBuffer*lenIntBuffer*nthreads);
+      CQMemManager::get().malloc<dcomplex>(nBuffer*lenIntBuffer*nthreads);
    
     // double *intBuffer2 = intBuffer + nthreads*lenIntBuffer;
 
     dcomplex * alterintBuffer = 
-      memManager_.malloc<dcomplex>(nBuffer*lenIntBuffer*nthreads);
+      CQMemManager::get().malloc<dcomplex>(nBuffer*lenIntBuffer*nthreads);
 
     // Allocate thread local storage to store integral contractions
     // XXX: Don't allocate anything if serial
     std::vector<std::vector<dcomplex*>> AXthreads;
     dcomplex *AXRaw = nullptr;
     if(nthreads != 1) {
-      AXRaw = memManager_.malloc<dcomplex>(nthreads*NMat*NB*NB);    
+      AXRaw = CQMemManager::get().malloc<dcomplex>(nthreads*NMat*NB*NB);    
       memset(AXRaw,0,nthreads*NMat*NB*NB*sizeof(dcomplex));
     }
 
@@ -1322,7 +1320,7 @@ namespace ChronusQ {
 
 #ifdef _FULL_DIRECT
 
-    dcomplex* SCR = memManager_.malloc<dcomplex>(NB*NB);
+    dcomplex* SCR = CQMemManager::get().malloc<dcomplex>(NB*NB);
     for( auto iMat = 0; iMat < NMat;  iMat++ ) 
     for( auto iTh  = 0; iTh < nthreads; iTh++) {
   
@@ -1351,7 +1349,7 @@ namespace ChronusQ {
       }
 
     };
-    memManager_.free(SCR);
+    CQMemManager::get().free(SCR);
     
 
 #endif
@@ -1364,7 +1362,7 @@ namespace ChronusQ {
       // the root process
         
       dcomplex* mpiScr;
-      if( mpiRank == 0 ) mpiScr = memManager_.malloc<dcomplex>(NB*NB);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<dcomplex>(NB*NB);
 
       for( auto &C : list ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,NB,NB,NB);
@@ -1376,7 +1374,7 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) memManager_.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
     }
 
@@ -1384,10 +1382,10 @@ namespace ChronusQ {
 
 
     // Free scratch space
-    memManager_.free(intBuffer);
-    memManager_.free(alterintBuffer);
+    CQMemManager::get().free(intBuffer);
+    CQMemManager::get().free(alterintBuffer);
 
-    if(AXRaw != nullptr) memManager_.free(AXRaw);
+    if(AXRaw != nullptr) CQMemManager::get().free(AXRaw);
 
 
 
@@ -1422,7 +1420,6 @@ namespace ChronusQ {
 //    callLevel = ProgramTimer::getCallLevel();
 
     DirectTPI<IntsT> &tpi = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
 
@@ -1490,7 +1487,7 @@ namespace ChronusQ {
     size_t nBuffer = 2;
 
     double * intBuffer = 
-      memManager_.malloc<double>(nBuffer*lenIntBuffer*nThreads);
+      CQMemManager::get().malloc<double>(nBuffer*lenIntBuffer*nThreads);
    
     double *intBuffer2 = intBuffer + nThreads*lenIntBuffer;
 
@@ -1499,7 +1496,7 @@ namespace ChronusQ {
     std::vector<std::vector<MatsT*>> AXthreads;
     MatsT *AXRaw = nullptr;
     if(nThreads != 1) {
-      AXRaw = memManager_.malloc<MatsT>(nThreads*nMat*nBasis*nBasis);    
+      AXRaw = CQMemManager::get().malloc<MatsT>(nThreads*nMat*nBasis*nBasis);    
       memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
     }
 
@@ -1519,7 +1516,7 @@ namespace ChronusQ {
     // Compute shell block norms (∞-norm) of matList.X
     // for all matrix
     size_t nShBlkNormsMat = nMat + (nMat == 1 ? 0: 1);
-    double *ShBlkNorms_raw = memManager_.malloc<double>(nShBlkNormsMat*snShell*snShell);
+    double *ShBlkNorms_raw = CQMemManager::get().malloc<double>(nShBlkNormsMat*snShell*snShell);
     double *ShBlkNorms = ShBlkNorms_raw; 
     std::vector<double*> ShBlkNorms_Mat(nMat, nullptr);
     
@@ -2038,7 +2035,7 @@ namespace ChronusQ {
 
 #ifdef _FULL_DIRECT
 
-    MatsT* SCR = memManager_.malloc<MatsT>(nBasis * nBasis);
+    MatsT* SCR = CQMemManager::get().malloc<MatsT>(nBasis * nBasis);
     for( auto iMat = 0; iMat < nMat;  iMat++ ) 
     for( auto iTh  = 0; iTh < nThreads; iTh++) {
   
@@ -2066,7 +2063,7 @@ namespace ChronusQ {
       }
 
     };
-    memManager_.free(SCR);
+    CQMemManager::get().free(SCR);
     
 #else
 
@@ -2093,7 +2090,7 @@ namespace ChronusQ {
       // the root process
 
       MatsT* mpiScr;
-      if( mpiRank == 0 ) mpiScr = memManager_.malloc<MatsT>(nBasis*nBasis);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<MatsT>(nBasis*nBasis);
 
       for( auto &C : matList ) {
 //      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,nBasis,nBasis,nBasis);
@@ -2105,18 +2102,18 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) memManager_.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
     }
 
 #endif
 
     // Free scratch space
-    memManager_.free(intBuffer);
+    CQMemManager::get().free(intBuffer);
 #ifdef _SHZ_SCREEN
-    memManager_.free(ShBlkNorms_raw);
+    CQMemManager::get().free(ShBlkNorms_raw);
 #endif
-    if(AXRaw) memManager_.free(AXRaw);
+    if(AXRaw) CQMemManager::get().free(AXRaw);
 
     // Turn threads for LA back on
     SetLAThreads(LAThreads);
@@ -2211,7 +2208,6 @@ namespace ChronusQ {
     //
 
     DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
-    CQMemManager& memManager_ = tpi.memManager();
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
 
@@ -2268,7 +2264,7 @@ namespace ChronusQ {
 
     
     double * intBuffer = 
-      memManager_.malloc<double>(nGrad*nBuffer*lenIntBuffer*nThreads);
+      CQMemManager::get().malloc<double>(nGrad*nBuffer*lenIntBuffer*nThreads);
    
     double *intBuffer2 = intBuffer + nGrad*nThreads*lenIntBuffer;
 
@@ -2277,7 +2273,7 @@ namespace ChronusQ {
     std::vector<std::vector<std::vector<MatsT*>>> AXthreads;
     MatsT *AXRaw = nullptr;
     if(nThreads != 1) {
-      AXRaw = memManager_.malloc<MatsT>(nTotGrad*nThreads*nMat*nBasis*nBasis);    
+      AXRaw = CQMemManager::get().malloc<MatsT>(nTotGrad*nThreads*nMat*nBasis*nBasis);    
       memset(AXRaw,0,nTotGrad*nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
     }
 
@@ -2548,7 +2544,7 @@ namespace ChronusQ {
     
     } // omp parallel
 
-    MatsT* SCR = memManager_.malloc<MatsT>(nBasis * nBasis);
+    MatsT* SCR = CQMemManager::get().malloc<MatsT>(nBasis * nBasis);
     for( auto iGrad = 0; iGrad < nTotGrad; iGrad++ )
     for( auto iMat = 0; iMat < nMat;  iMat++ ) 
     for( auto iTh  = 0; iTh < nThreads; iTh++) {
@@ -2574,10 +2570,10 @@ namespace ChronusQ {
       }
 
     };
-    memManager_.free(SCR);
+    CQMemManager::get().free(SCR);
 
-    memManager_.free(intBuffer);
-    if(AXRaw != nullptr) memManager_.free(AXRaw);
+    CQMemManager::get().free(intBuffer);
+    if(AXRaw != nullptr) CQMemManager::get().free(AXRaw);
     // Turn threads for LA back on
     SetLAThreads(LAThreads);
 

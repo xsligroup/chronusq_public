@@ -39,16 +39,16 @@ void DetFactory_TEST() {
   size_t mem     = 256e6; // Default 256 MB allocation
   size_t blkSize = 2048;  // Default 2KB block size
 
-  CQMemManager memManager(mem,blkSize);
+  CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,mem,blkSize);
   
 #if 1
   std::cout << "/*                           " << std::endl; 
   std::cout << " * TEST SECTION 1: BASIC BITS OPERATIONS" << std::endl; 
   std::cout << " */                          " << std::endl; 
-  uint8_t  * a1 = memManager.malloc<uint8_t>(20);
-  uint16_t * a2 = memManager.malloc<uint16_t>(20);
-  uint32_t * a3 = memManager.malloc<uint32_t>(20);
-  uint64_t * a4 = memManager.malloc<uint64_t>(20);
+  uint8_t  * a1 = CQMemManager::get().malloc<uint8_t>(20);
+  uint16_t * a2 = CQMemManager::get().malloc<uint16_t>(20);
+  uint32_t * a3 = CQMemManager::get().malloc<uint32_t>(20);
+  uint64_t * a4 = CQMemManager::get().malloc<uint64_t>(20);
 
   for (auto i = 0; i < 20; i++) {
     a1[i] = i;
@@ -82,7 +82,7 @@ void DetFactory_TEST() {
   std::cout << "unit64ToString : (" << a4[15]  << "," <<  a4[5] << ") to " 
             << determinantToString(d4, nO4) << std::endl;
   
-  memManager.free(a1, a2, a3, a4);
+  CQMemManager::get().free(a1, a2, a3, a4);
 
   std::cout << "**** Conversion from binary strings to int ****" << std::endl;
   
@@ -278,7 +278,7 @@ void DetFactory_TEST() {
   std::cout << " * TEST SECTION 3: EXCITATIONLIST AND ITERATION" << std::endl; 
   std::cout << " */                          " << std::endl; 
 
-  IntraSpaceFullCD1eExList<uint8_t, uint8_t> test1eIntraSpaceExL(memManager, testG);
+  IntraSpaceFullCD1eExList<uint8_t, uint8_t> test1eIntraSpaceExL(testG);
   std::cout << "computeExctiationList" << std::endl;
   test1eIntraSpaceExL.computeExcitationList();
   
@@ -308,7 +308,7 @@ void DetFactory_TEST() {
   DeterminantGroup testG2(testNE2, testNO2);
   std::string testCAS2 = "CAS(" + std::to_string(testNE2) + ", " + std::to_string(testNO2) + ")";
   
-  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eInterSpaceExL(memManager, testG, testG2, false);
+  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eInterSpaceExL(testG, testG2, false);
   std::cout << "* Test on inter space excitation list, with NDetK = " 
             << test1eInterSpaceExL.braCategory()->nDeterminants() 
             << " NDetL = " 
@@ -338,7 +338,7 @@ void DetFactory_TEST() {
   }
 
 
-  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eInterSpaceExL2(memManager, testG2, testG, true);
+  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eInterSpaceExL2(testG2, testG, true);
   std::cout << "* Test on inter space excitation list, with NDetK = " 
             << test1eInterSpaceExL2.braCategory()->nDeterminants() 
             << " NDetL = " 
@@ -380,13 +380,13 @@ void DetFactory_TEST() {
   contTestNEs = {1,1,2,1,1,1};
   FullDeterminantCategory contCatK(contTestNEs, contTestNOs);
   DeterminantGroup contTestG1(2, 5);
-  IntraSpaceFullCD1eExList<uint8_t, uint8_t> test1eContIntraSpaceExL(memManager, contTestG1);
+  IntraSpaceFullCD1eExList<uint8_t, uint8_t> test1eContIntraSpaceExL(contTestG1);
   test1eContIntraSpaceExL.computeExcitationList();
   
   std::cout << " * " << test1eContIntraSpaceExL << std::endl;
 
   DeterminantGroup contTestG2(1, 4);
-  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eContInterSpaceExL(memManager, contTestG1, contTestG2, false);
+  InterSpaceFullCD1eExList<uint8_t, uint8_t> test1eContInterSpaceExL(contTestG1, contTestG2, false);
   contTestNEs[2]--;
   contTestNEs[4]++;
   FullDeterminantCategory contCatL(contTestNEs, contTestNOs);
@@ -414,7 +414,7 @@ void DetFactory_TEST() {
   std::cout << " */                          " << std::endl; 
   std::cout << "*---Test for DetFactory" << std::endl;
   MPI_Comm comm(MPI_COMM_WORLD);
-  DeterminantFactory detsFac(comm, memManager, 12, actSpaces);
+  DeterminantFactory detsFac(comm, 12, actSpaces);
   
   auto dS = std::make_shared<CategoricalSpace>(detsSpace);
   detsFac.setKetCategoricalSpace(dS);

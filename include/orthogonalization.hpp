@@ -83,9 +83,9 @@ public:
         std::cout << "WARNING: The overlap matrix given to setOverlap is a different dimension" << std::endl;
         std::cout << "WARNING: Changing the dimension of overlap and setting the new matrix" << std::endl << std::endl;
       }
-      overlap       = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
-      forwardTrans  = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
-      backwardTrans = std::make_shared<cqmatrix::Matrix<MatsT>>(s.memManager(), nDim);
+      overlap       = std::make_shared<cqmatrix::Matrix<MatsT>>(nDim);
+      forwardTrans  = std::make_shared<cqmatrix::Matrix<MatsT>>(nDim);
+      backwardTrans = std::make_shared<cqmatrix::Matrix<MatsT>>(nDim);
     }
     *overlap    = s;
     computeOrtho();

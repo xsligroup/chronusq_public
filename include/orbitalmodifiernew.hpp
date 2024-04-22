@@ -45,7 +45,7 @@ using vecShrdPtrOrtho = std::vector<std::shared_ptr<Orthogonalization<MatsT>>>;
 
 struct OrbitalModifierNewBase {
 
-  OrbitalModifierNewBase(MPI_Comm mpiComm, CQMemManager &memManager) : mpiComm(mpiComm), memManager(memManager) {};
+  OrbitalModifierNewBase(MPI_Comm mpiComm) : mpiComm(mpiComm) {};
   ~OrbitalModifierNewBase() = default;
   OrbitalModifierNewBase(const OrbitalModifierNewBase&) = delete;
   OrbitalModifierNewBase& operator=(const OrbitalModifierNewBase&) = delete;
@@ -58,7 +58,6 @@ struct OrbitalModifierNewBase {
 
 protected:
     MPI_Comm mpiComm;         ///< MPI Communication
-    CQMemManager& memManager; ///< Memory Manager
 
 };
 /*
@@ -78,17 +77,17 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
     std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareAO;
 
     OrbitalModifierNew() = delete;
-    OrbitalModifierNew(singleSlaterT<MatsT,IntsT> &ss, MPI_Comm mpiComm, CQMemManager& memManager):
+    OrbitalModifierNew(singleSlaterT<MatsT,IntsT> &ss, MPI_Comm mpiComm):
     singleSlaterSystem(ss),
-    OrbitalModifierNewBase(mpiComm, memManager) {
+    OrbitalModifierNewBase(mpiComm) {
       // Allocate ortho Fock and Den
       vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
-      for( auto& f : fock ) fockSquareOrtho.emplace_back(f->memManager(), f->dimension());
+      for( auto& f : fock ) fockSquareOrtho.emplace_back(f->dimension());
 
       vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
       for( auto& d : onePDM ) {
-        onePDMSquareOrtho.emplace_back(d->memManager(), d->dimension());
-        onePDMSquareAO.emplace_back(d->memManager(), d->dimension());
+        onePDMSquareOrtho.emplace_back(d->dimension());
+        onePDMSquareAO.emplace_back(d->dimension());
       }
     }
 

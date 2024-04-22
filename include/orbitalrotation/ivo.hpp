@@ -42,7 +42,6 @@ namespace ChronusQ {
     cqmatrix::Matrix<MatsT> & oneRDM) {
     
     auto & mopart = mcwfn_.MOPartition;
-    auto & mem    = mcwfn_.memManager;
     auto & ss     = mcwfn_.reference();
     auto & mo     = ss.mo[0];
     
@@ -63,7 +62,7 @@ namespace ChronusQ {
     /**************************************/
     /* Step 1: build scaled AO density    */
     /**************************************/ 
-    cqmatrix::Matrix<MatsT> SCR(mem, nAO); 
+    cqmatrix::Matrix<MatsT> SCR(nAO); 
     SCR.clear();
     
     // Cas contribution
@@ -79,13 +78,13 @@ namespace ChronusQ {
     SCR = ss.fockMatrix->template spinGather<MatsT>(); 
     
     // transform to MO basis only with virtual block
-    cqmatrix::Matrix<MatsT> virtualFock(mem, nFVirt);
+    cqmatrix::Matrix<MatsT> virtualFock(nFVirt);
     auto off_sizes = mcwfn_.mointsTF->parseMOType("ab");
     SCR.subsetTransform('N', mo.pointer(), nAO, off_sizes, virtualFock.pointer());  
     
     // diagonalize virtual fock Matrix
-    dcomplex * EIVOs = mem.template malloc<dcomplex>(nFVirt);
-    MatsT * U = mem.template malloc<MatsT>(nFVirt * nFVirt);
+    dcomplex * EIVOs = CQMemManager::get().malloc<dcomplex>(nFVirt);
+    MatsT * U = CQMemManager::get().malloc<MatsT>(nFVirt * nFVirt);
     MatsT * dummy = nullptr;
     GeneralEigen('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt);
 
@@ -112,7 +111,7 @@ namespace ChronusQ {
     
     std::cout << std::endl << std::endl; 
 
-    mem.free(EIVOs, U);
+    CQMemManager::get().free(EIVOs, U);
 
   }; // OrbitalRotation<MatsT>::generateIVOs
 

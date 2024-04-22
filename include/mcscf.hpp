@@ -161,8 +161,8 @@ namespace ChronusQ {
     /**
      *  \brief MCSCF Constructor.
      *
-     *  Stores references to a "reference" SingleSlater object and
-     *  CQMemManager and makes a copy of the reference into a complex
+     *  Stores references to a "reference" SingleSlater object
+     *  and makes a copy of the reference into a complex
      *  SingleSlater object for the propagation.
      */ 
     template <typename MatsU>

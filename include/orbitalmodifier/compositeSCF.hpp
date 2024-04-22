@@ -42,17 +42,17 @@ protected:
 
 public:
   // Constructor
-  CompositeSCF(std::vector<SCFControls> sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
-    ModifyOrbitals(comm, modOpt, mem) {
+  CompositeSCF(std::vector<SCFControls> sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt):
+    ModifyOrbitals(comm, modOpt) {
 
     for( auto s : scfControls ) {
       if( s.scfAlg == _CONVENTIONAL_SCF ) {
-        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<ConventionalSCF<MatsT>>(s, comm, modOpt, mem)));
+        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<ConventionalSCF<MatsT>>(s, comm, modOpt)));
       } else if( s.scfAlg == _NEWTON_RAPHSON_SCF ) {
         orbitalModifier.emplace_back(
-          std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<NewtonRaphsonSCF<MatsT>>(s, comm, modOpt, mem)));
+          std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<NewtonRaphsonSCF<MatsT>>(s, comm, modOpt)));
       } else {
-        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<SkipSCF<MatsT>>(s, comm, modOpt, mem)));
+        orbitalModifier.emplace_back(std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(std::make_shared<SkipSCF<MatsT>>(s, comm, modOpt)));
       }
     }
   };

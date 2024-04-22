@@ -133,7 +133,7 @@ namespace ChronusQ {
     IntegralsBase() = default;
 
     // Interfaces
-    virtual void computeAOOneP(CQMemManager &mem, Molecule &mol,
+    virtual void computeAOOneP(Molecule &mol,
         BasisSet &basis, EMPerturbation&,
         const std::vector<std::pair<OPERATOR,size_t>>&,
         const HamiltonianOptions&) = 0;
@@ -141,7 +141,7 @@ namespace ChronusQ {
     virtual void computeAOTwoE(BasisSet&, Molecule&, EMPerturbation&) = 0;
     virtual void computeAOTwoE(BasisSet&, BasisSet&, Molecule&, EMPerturbation&) = 0;
 
-    virtual void computeGradInts(CQMemManager&, Molecule&, BasisSet&,
+    virtual void computeGradInts(Molecule&, BasisSet&,
         EMPerturbation&, const std::vector<std::pair<OPERATOR,size_t>>&, const
         HamiltonianOptions&) = 0;
 
@@ -211,7 +211,7 @@ namespace ChronusQ {
 
     // Integral evaluation
     // Evaluate the 1-particle ints (general)
-    virtual void computeAOOneP(CQMemManager &mem, Molecule &mol,
+    virtual void computeAOOneP(Molecule &mol,
         BasisSet &basis, EMPerturbation&,
         const std::vector<std::pair<OPERATOR,size_t>>&,
         const HamiltonianOptions&);
@@ -228,7 +228,7 @@ namespace ChronusQ {
                          options_);
     }
 
-    virtual void computeGradInts(CQMemManager&, Molecule&, BasisSet&,
+    virtual void computeGradInts(Molecule&, BasisSet&,
         EMPerturbation&, const std::vector<std::pair<OPERATOR,size_t>>&, const
         HamiltonianOptions&);
 
@@ -277,17 +277,17 @@ namespace ChronusQ {
     void setTPITransAlg(std::shared_ptr<IntegralsBase> ints) const;
     
     // Build either an symmetric IntegralBase object ( either (ee|ee) or a (pp|pp) )
-    std::shared_ptr<IntegralsBase> buildSymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  
+    std::shared_ptr<IntegralsBase> buildSymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
         std::shared_ptr<BasisSet> dfbasis, std::string s) const;
 
     // Build either an asymmetric IntegralBase object ( (ee|pp) )
-    std::shared_ptr<IntegralsBase> buildAsymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  
+    std::shared_ptr<IntegralsBase> buildAsymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
         std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, 
         std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi) const;
     
     // Build all (ee|ee), (pp|pp), (ee|pp) objects (if needed), and return them in a tuple
     static std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> buildAllIntegrals(
-        std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
+        std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
         std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, IntegralOptions epopts);
   };
 

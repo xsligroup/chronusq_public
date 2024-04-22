@@ -79,13 +79,13 @@ class InCoreAsymmRITPI :
     // Disable defualt constructor
     // InCoreAsymmRITPI() = delete;
     // Constructor for when one aux basis is given
-    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
-        TwoPInts<IntsT>(mem, aux1->nBasis(), sNB), aux1_(aux1), asymmCDalg_(asymmCDalg), build4I_(build4I){}
-    InCoreAsymmRITPI(CQMemManager &mem, size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
-        TwoPInts<IntsT>(mem, NB, aux2->nBasis()), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I){}
+    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
+        TwoPInts<IntsT>(aux1->nBasis(), sNB), aux1_(aux1), asymmCDalg_(asymmCDalg), build4I_(build4I){}
+    InCoreAsymmRITPI(size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
+        TwoPInts<IntsT>(NB, aux2->nBasis()), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I){}
     // Constructor for when two aux basis are given
-    InCoreAsymmRITPI(CQMemManager &mem, std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false, bool combineBasisTruncate = false, double combineBasisThresh=0.0):
-        TwoPInts<IntsT>(mem, aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I),combineBasisTruncate_(combineBasisTruncate),combineBasisThresh_(combineBasisThresh){}
+    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false, bool combineBasisTruncate = false, double combineBasisThresh=0.0):
+        TwoPInts<IntsT>(aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I),combineBasisTruncate_(combineBasisTruncate),combineBasisThresh_(combineBasisThresh){}
 
 
     // COPY CONSTRUCTOR:
@@ -105,7 +105,7 @@ class InCoreAsymmRITPI :
 
     // DESTRUCTOR:
     virtual ~InCoreAsymmRITPI() {
-      if(partialTPI_) this->memManager().free(partialTPI_);
+      if(partialTPI_) CQMemManager::get().free(partialTPI_);
     }
 
     // MOVE CONSTRUCTOR:
@@ -133,7 +133,7 @@ class InCoreAsymmRITPI :
     InCoreAsymmRITPI& operator=( InCoreAsymmRITPI &&other ) {
       if (this != &other) { // self-assignment check expected
         TwoPInts<IntsT>::operator=(std::move(other));
-        this->memManager().free(partialTPI_);
+        CQMemManager::get().free(partialTPI_);
         this->aux1_ = other.getAux1();
         this->aux2_ = other.getAux2();
         build4I_ = other.build4I_;
@@ -179,17 +179,17 @@ class InCoreAsymmRITPI :
       size_t NB1_Squared = NB1 * NB1;
       size_t NB2_Squared = NB2 * NB2;
 
-      InCore4indexTPI<IntsT> eri4i(this->memManager(), NB1, NB2);
+      InCore4indexTPI<IntsT> eri4i(NB1, NB2);
       
       if(aux1_){
         size_t NBRI1 = aux1_->nRIBasis();
         if(aux2_){
           if (asymmCDalg_ == ASYMM_CD_ALG::CONNECTOR) {
             size_t NBRI2 = aux2_->nRIBasis();
-            double *SCR = this->memManager().template malloc<IntsT>(NBRI1 * NB2_Squared);
+            double *SCR = CQMemManager::get().malloc<IntsT>(NBRI1 * NB2_Squared);
             blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans, NBRI1, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI1, aux2_->pointer(), NBRI2, IntsT(0.), SCR, NBRI1);
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans, NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, SCR, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
-            this->memManager().free(SCR);
+            CQMemManager::get().free(SCR);
           } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEAUXBASIS) {
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, aux2_->pointer(), NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
           } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEMATRIX) {
@@ -230,17 +230,17 @@ class InCoreAsymmRITPI :
       
       // delete old partialTPI_ if size is wrong
       if (partialTPI_) {
-        if (this->memManager().getSize(partialTPI_) == sizePartialTPI)
+        if (CQMemManager::get().getSize(partialTPI_) == sizePartialTPI)
           return;
-        this->memManager().free(partialTPI_);
+        CQMemManager::get().free(partialTPI_);
       }
       
-      try { partialTPI_ = this->memManager().template malloc<IntsT>(sizePartialTPI); }
+      try { partialTPI_ = CQMemManager::get().malloc<IntsT>(sizePartialTPI); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full RI-ERI tensor ("
                   << (sizePartialTPI/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << this->memManager() << std::endl;
+        std::cout << std::endl << CQMemManager::get() << std::endl;
         CErr();
       }
     }
@@ -317,13 +317,13 @@ class InCoreAsymmRITPI :
             aux1_->to4indexERI().pointer(), lenTPI);
         
         if(partialTPI_ and debug){
-          IntsT *SCR = this->memManager().template malloc<IntsT>(NB2*NB2*NB2*NB2);
+          IntsT *SCR = CQMemManager::get().malloc<IntsT>(NB2*NB2*NB2*NB2);
           size_t NBRI = aux1_->nRIBasis();
           blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2*NB2,NB2*NB2,NBRI,IntsT(1.),partialTPI_,NBRI,
             partialTPI_,NBRI,IntsT(0.),SCR,NB2*NB2);
           std::cout<< "       - Error of (pp|pp) for debugging" << std::endl;        
           calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, SCR, NB2*NB2*NB2*NB2);
-          this->memManager().free(SCR);
+          CQMemManager::get().free(SCR);
         }
         std::cout << std::endl; 
       }
@@ -336,13 +336,13 @@ class InCoreAsymmRITPI :
             aux2_->to4indexERI().pointer(), lenTPI);
 
         if(partialTPI_ and debug){
-          IntsT *SCR = this->memManager().template malloc<IntsT>(NB1*NB1*NB1*NB1);
+          IntsT *SCR = CQMemManager::get().malloc<IntsT>(NB1*NB1*NB1*NB1);
           size_t NBRI = aux2_->nRIBasis();
           blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1*NB1,NB1*NB1,NBRI,IntsT(1.),partialTPI_,NBRI,
             partialTPI_,NBRI,IntsT(0.),SCR,NB1*NB1);
           std::cout<< "       - Error of (ee|ee) for testing" << std::endl;        
           calculateDifferece(basisSet1, basisSet1, mol, emPert, {-1., 1.}, ELECTRON_REPULSION, SCR, NB1*NB1*NB1*NB1);
-          this->memManager().free(SCR);
+          CQMemManager::get().free(SCR);
         }
         std::cout << std::endl; 
       }
@@ -365,11 +365,11 @@ class InCoreAsymmRITPI :
       // Build Exact TPI:
       HamiltonianOptions temp_opt;
       temp_opt.particle = P;
-      InCore4indexTPI<IntsT> exactTPI(this->memManager(),basisSet1.nBasis,basisSet2.nBasis);
+      InCore4indexTPI<IntsT> exactTPI(basisSet1.nBasis,basisSet2.nBasis);
       exactTPI.computeAOInts(basisSet1, basisSet2, mol, emPert, op, temp_opt);
 
       // Get the difference between approximate TPI and exact TPI
-      IntsT* diff = this->memManager().template malloc<IntsT>(lenTPI);
+      IntsT* diff = CQMemManager::get().malloc<IntsT>(lenTPI);
       std::copy_n(approxTPI,lenTPI,diff);
       blas::axpy(lenTPI, -1.0, exactTPI.pointer(), 1, diff, 1);
 
@@ -388,7 +388,7 @@ class InCoreAsymmRITPI :
       std::cout << "       Max Element in Exact 4-index:     " << maxElementExact << std::endl; 
       std::cout << "       Max Element in Approx 4-index:    " << maxElementApprox << std::endl; 
 
-      this->memManager().free(diff);
+      CQMemManager::get().free(diff);
     }
 
     

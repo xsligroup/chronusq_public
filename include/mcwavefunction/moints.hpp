@@ -57,13 +57,11 @@ namespace ChronusQ {
     size_t nInact = this->MOPartition.nInact;
     size_t nInact2 = nInact * nInact;
     
-    auto & mem   = this->memManager;
-
     /*
      * compute inactive core energy
      */
-    MatsT * h1e_ii  = mem.template malloc<MatsT>(nInact);
-    MatsT * GDjj_ii = mem.template malloc<MatsT>(nInact);
+    MatsT * h1e_ii  = CQMemManager::get().malloc<MatsT>(nInact);
+    MatsT * GDjj_ii = CQMemManager::get().malloc<MatsT>(nInact);
 
     double fc1C = (this->reference().nC == 1) ? 2.0 : 1.0;
     
@@ -76,16 +74,16 @@ namespace ChronusQ {
       ECore += h1e_ii[i] + 0.5 * GDjj_ii[i];
     }
     
-    mem.free(h1e_ii, GDjj_ii);
+    CQMemManager::get().free(h1e_ii, GDjj_ii);
 
     this->InactEnergy = std::real(ECore) * fc1C;
     
     /*
      * compute hCore and ERI in correlated space
      */ 
-    OnePInts<MatsT> hCore_tu(mem, nCorrO);
-    OnePInts<MatsT> hCoreP_tu(mem, nCorrO);
-    InCore4indexTPI<MatsT> ERI_tuvw(mem, nCorrO);
+    OnePInts<MatsT> hCore_tu(nCorrO);
+    OnePInts<MatsT> hCoreP_tu(nCorrO);
+    InCore4indexTPI<MatsT> ERI_tuvw(nCorrO);
     
     mointsTF->transformHCore(pert, hCore_tu.pointer(), "tu", false, 'i');
     mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", this->cacheHalfTransTPI_);
@@ -187,14 +185,14 @@ namespace ChronusQ {
 //    size_t nI = this->MOPartition.nFCore + this->MOPartition.nInact;
 //    size_t nCorrO = this->MOPartition.nCorrO;
 //
-//    this->EFieldDiag = this->memManager.template malloc<MatsT>(NDet*NDet);
+//    this->EFieldDiag = CQMemManager::get().malloc<MatsT>(NDet*NDet);
 //    std::fill_n(this->EFieldDiag,NDet*NDet,MatsT(0.0));
 //
-//    MatsT * dummyCIi = this->memManager.template malloc<MatsT>(NDet);
-//    MatsT * dummyCIj = this->memManager.template malloc<MatsT>(NDet);
-//    SquareMatrix<MatsT> dummyRDM(this->memManager,NDet);
-//    SquareMatrix<MatsT> dummyRDM2(this->memManager,NDet);
-//    SquareMatrix<MatsT> dummyPDM(this->memManager,nAO);
+//    MatsT * dummyCIi = CQMemManager::get().malloc<MatsT>(NDet);
+//    MatsT * dummyCIj = CQMemManager::get().malloc<MatsT>(NDet);
+//    SquareMatrix<MatsT> dummyRDM(NDet);
+//    SquareMatrix<MatsT> dummyRDM2(NDet);
+//    SquareMatrix<MatsT> dummyPDM(nAO);
 //
 //    auto elecDipoleField = pert.getDipoleAmp(Electric);
 //    
@@ -249,9 +247,9 @@ namespace ChronusQ {
 //          auto MOdipole = this->moints.template getIntegral<VectorInts,MatsT>("MOdipole");
 //          if (!MOdipole) {
 //            std::shared_ptr<VectorInts<IntsT>> AOdipole =
-//                      std::make_shared<VectorInts<IntsT>>(this->memManager, nAO, 1, true);
+//                      std::make_shared<VectorInts<IntsT>>( nAO, 1, true);
 //            std::shared_ptr<VectorInts<MatsT>> MOdipole_scr =
-//                      std::make_shared<VectorInts<MatsT>>(this->memManager, nCorrO, 1, true);
+//                      std::make_shared<VectorInts<MatsT>>( nCorrO, 1, true);
 //
 //            std::vector<std::pair<size_t, size_t>> active(2, {this->MOPartition.nFCore+this->MOPartition.nInact, nCorrO});
 //

@@ -57,15 +57,14 @@ namespace ChronusQ {
      * \brief Constructor
      *
      *  \param [in] aoints     Reference to the global AOIntegrals
-     *  \param [in] memManager Memory manager for matrix allocation
      *  \param [in] mol        Molecule object for molecular specification
      *  \param [in] basis      The GTO basis for integral evaluation
      *  \param [in] type       The type of atomic X2C
      */
-    AtomicX2C(Integrals<IntsT> &aoints, CQMemManager &mem,
+    AtomicX2C(Integrals<IntsT> &aoints,
         const Molecule &mol, const BasisSet &basis,
         SingleSlaterOptions ssOptions) :
-      X2C<MatsT,IntsT>(aoints, mem, mol, basis, ssOptions),
+      X2C<MatsT,IntsT>(aoints, mol, basis, ssOptions),
       type_(ssOptions.hamiltonianOptions.AtomicX2CType) {}
 
     // Different type

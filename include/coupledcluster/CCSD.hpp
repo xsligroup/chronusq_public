@@ -31,10 +31,10 @@
 namespace ChronusQ{
 
   template <typename MatsT, typename IntsT>
-  CCSD<MatsT,IntsT>::CCSD(CQMemManager &memManager, const SafeFile &savFile,
+  CCSD<MatsT,IntsT>::CCSD(const SafeFile &savFile,
                           CCIntermediates<MatsT> &intermediates,
                           const CoupledClusterSettings &ccSettings):
-      memManager_(memManager), savFile_(savFile),
+      savFile_(savFile),
       vLabel_(intermediates.vLabel), oLabel_(intermediates.oLabel),
       intermediates_(intermediates), ccSettings_(ccSettings),
       fockMatrix_ta(intermediates.fockMatrix),
@@ -201,7 +201,7 @@ namespace ChronusQ{
 
     std::shared_ptr<DIISTA<MatsT> > diis = nullptr;
     if(this->ccSettings_.useDIIS){
-      diis = std::make_shared<DIISTA<MatsT>>(this->ccSettings_.nDIIS, memManager_);
+      diis = std::make_shared<DIISTA<MatsT>>(this->ccSettings_.nDIIS);
     }
 //#define XLL_ALG
 #ifdef XLL_ALG

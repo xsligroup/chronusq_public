@@ -31,11 +31,11 @@ namespace ChronusQ {
 
   template <typename F, typename _F1, typename _F2>
   void MatDiagFunc(const F &func, size_t N, _F1 *A, size_t LDA, _F2 *B,
-                   size_t LDB, CQMemManager &mem);
+                   size_t LDB);
 
   template <typename _FExp, typename _F1, typename _F2>
   void MatExp(char ALG, size_t N, _FExp ALPHA, _F1 *A, size_t LDA, 
-    _F2 *ExpA, size_t LDEXPA, CQMemManager &mem);
+    _F2 *ExpA, size_t LDEXPA);
 
   template <typename _F1, typename _F2, typename _FC>
   void MatSeries(size_t NC, size_t N, _F1 *A, size_t LDA, _F2 *B,
@@ -47,7 +47,7 @@ namespace ChronusQ {
      */
   template <typename MatsU>
   void MatExp( size_t N, MatsU *A, size_t LDA,
-    MatsU *ExpA, size_t LDEXPA, CQMemManager &mem);
+    MatsU *ExpA, size_t LDEXPA);
 
 
 }; // namespace ChronusQ

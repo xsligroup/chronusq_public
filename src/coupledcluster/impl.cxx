@@ -537,7 +537,7 @@ namespace ChronusQ {
   } // getGuessIndices
 
   void runCoupledCluster(JobType jobType, Molecule &mol, std::shared_ptr<SingleSlaterBase> ss,
-                         std::shared_ptr<IntegralsBase> aoints, CQMemManager &memManager,
+                         std::shared_ptr<IntegralsBase> aoints,
                          SafeFile &rstFile, CQInputFile &input, std::ostream &output) {
     int rank = MPIRank();
 
@@ -573,7 +573,7 @@ namespace ChronusQ {
     std::shared_ptr<MultipoleInts<double>> &aoMU =
         std::dynamic_pointer_cast<Integrals<double>>(aoints)->lenElectric;
     if (aoMU == nullptr) {
-      aoMU = std::make_shared<MultipoleInts<double>>(memManager, ccref->nAlphaOrbital(), 3, true);
+      aoMU = std::make_shared<MultipoleInts<double>>(ccref->nAlphaOrbital(), 3, true);
     }
     aoMU->broadcast();
     intermediates.initializeIntegrals(*ccref->coreH,
@@ -589,7 +589,7 @@ namespace ChronusQ {
     intermediates.T = std::make_shared<EOMCCSDVector<dcomplex>>(intermediates.vLabel, intermediates.oLabel);
 
     // Create CCSD object
-    CCSD<dcomplex, double> cc(memManager, rank == 0 ? rstFile : SafeFile(),
+    CCSD<dcomplex, double> cc(rank == 0 ? rstFile : SafeFile(),
                               intermediates, ccSettings);
     if (MPIRank() == 0) {
       cc.printBanner(intermediates.E_ref);
@@ -614,7 +614,7 @@ namespace ChronusQ {
         intermediates.Lg = std::make_shared<EOMCCSDVector<dcomplex>>(intermediates.vLabel, intermediates.oLabel);
 
       // Create CCSD object
-      EOMCCSD<dcomplex, double> eomcc(memManager, rank == 0 ? rstFile : SafeFile(),
+      EOMCCSD<dcomplex, double> eomcc(rank == 0 ? rstFile : SafeFile(),
                                       intermediates, eomSettings, ccSettings);
 
       // Build EOMCC intermediates
@@ -636,7 +636,7 @@ namespace ChronusQ {
       }
 
       size_t Hbar_dim = eomcc.getHbarDim();
-      dcomplex* eomDiag = memManager.malloc<dcomplex>(Hbar_dim);
+      dcomplex* eomDiag = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
 
       typename Davidson<dcomplex>::VecsGen_t vecsGenerator = Davidson<dcomplex>::VecsGen_t(); // Generator for new vector sets
       typename Davidson<dcomplex>::LinearTrans_t sigmaBuilder; // Sigma vector builder
@@ -647,7 +647,7 @@ namespace ChronusQ {
 
       size_t nGuess = eomSettings.nroots * eomSettings.davidson_guess_multiplier;
       nGuess = std::min(nGuess, eomcc.getHbarDim());
-      dcomplex * curEig = memManager.malloc<dcomplex>(nGuess);
+      dcomplex * curEig = CQMemManager::get().malloc<dcomplex>(nGuess);
       double PCsmall = eomSettings.davidson_preCond_small;
 
       // Algorithm with implicit Hbar matrix
@@ -828,16 +828,16 @@ namespace ChronusQ {
 
       // Algorithm for debug, comparing implicit and explicit
       if (eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        typename Davidson<dcomplex>::VecsGen_t vecsGenRaw = [&Hbar_dim, &memManager](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
+        typename Davidson<dcomplex>::VecsGen_t vecsGenRaw = [&Hbar_dim](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
           return std::make_shared<RawVectors<dcomplex>>(
-              MPI_COMM_WORLD, memManager, Hbar_dim, nVec
+              MPI_COMM_WORLD, Hbar_dim, nVec
               );
         };
 
         typename Davidson<dcomplex>::VecsGen_t vecsGenDebug =
-            [&intermediates, &memManager, &eomcc](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
+            [&intermediates, &eomcc](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
           return std::make_shared<EOMCCSDVectorSetDebug<dcomplex>>(
-              intermediates.vLabel, intermediates.oLabel, nVec, MPI_COMM_WORLD, memManager
+              intermediates.vLabel, intermediates.oLabel, nVec, MPI_COMM_WORLD
               );
         };
 
@@ -938,7 +938,7 @@ namespace ChronusQ {
       std::cout << "Right eigensolver iterations:" << std::endl << std::endl;
       auto beginRightEig = tick();
 
-      Davidson<dcomplex> davidson(MPI_COMM_WORLD, memManager, eomcc.getHbarDim(),
+      Davidson<dcomplex> davidson(MPI_COMM_WORLD, eomcc.getHbarDim(),
                                   eomSettings.davidson_max_macro_iter,
                                   eomSettings.davidson_max_micro_iter,
                                   eomSettings.davidson_residual_conv, eomSettings.nroots,
@@ -993,7 +993,7 @@ namespace ChronusQ {
         std::cout << "Left eigensolver iterations:" << std::endl << std::endl;
         auto beginLeftEig = tick();
 
-        Davidson<dcomplex> davidsonLeft(MPI_COMM_WORLD, memManager, eomcc.getHbarDim(),
+        Davidson<dcomplex> davidsonLeft(MPI_COMM_WORLD, eomcc.getHbarDim(),
                                     eomSettings.davidson_max_macro_iter,
                                     eomSettings.davidson_max_micro_iter,
                                     eomSettings.davidson_residual_conv,
@@ -1062,11 +1062,11 @@ namespace ChronusQ {
             break;
           case EOM_HBAR_TYPE::EXPLICIT:
             VR = std::make_shared<EOMCCSDVectorSet<dcomplex>>(intermediates.vLabel, intermediates.oLabel, eomSettings.nroots);
-            VR->fromRaw(MPI_COMM_WORLD, memManager,
+            VR->fromRaw(MPI_COMM_WORLD,
                         *std::dynamic_pointer_cast<RawVectors<dcomplex>>(davidson.VR()),
                         eomcc, false, 0, 0, eomSettings.nroots);
             VL = std::make_shared<EOMCCSDVectorSet<dcomplex>>(intermediates.vLabel, intermediates.oLabel, eomSettings.nroots);
-            VL->fromRaw(MPI_COMM_WORLD, memManager,
+            VL->fromRaw(MPI_COMM_WORLD,
                         *std::dynamic_pointer_cast<RawVectors<dcomplex>>(davidsonLeft.VR()),
                         eomcc, false, 0, 0, eomSettings.nroots);
             break;
@@ -1083,14 +1083,14 @@ namespace ChronusQ {
           // BiOrthonormalization
           std::cout << "  *** BiOrthonormalize left and right eigenvectors ***" << std::endl;
 
-          biOrthoNormalize(memManager, eomSettings.nroots, *VL, *VR);
-//          RawVectors<dcomplex> rawLex(VL->toRaw(MPI_COMM_WORLD, memManager, eomcc, true, 0, eomSettings.nroots));
-//          RawVectors<dcomplex> rawRex(VR->toRaw(MPI_COMM_WORLD, memManager, eomcc, true, 0, eomSettings.nroots));
+          biOrthoNormalize(eomSettings.nroots, *VL, *VR);
+//          RawVectors<dcomplex> rawLex(VL->toRaw(MPI_COMM_WORLD, eomcc, true, 0, eomSettings.nroots));
+//          RawVectors<dcomplex> rawRex(VR->toRaw(MPI_COMM_WORLD, eomcc, true, 0, eomSettings.nroots));
 //
-//          biOrthoNormalize(memManager, eomcc.getHbarDim(true), eomSettings.nroots, rawLex, rawRex);
+//          biOrthoNormalize(eomcc.getHbarDim(true), eomSettings.nroots, rawLex, rawRex);
 //
-//          VL->fromRaw(MPI_COMM_WORLD, memManager, rawLex, eomcc, true, 0, 0, eomSettings.nroots);
-//          VR->fromRaw(MPI_COMM_WORLD, memManager, rawRex, eomcc, true, 0, 0, eomSettings.nroots);
+//          VL->fromRaw(MPI_COMM_WORLD, rawLex, eomcc, true, 0, 0, eomSettings.nroots);
+//          VR->fromRaw(MPI_COMM_WORLD, rawRex, eomcc, true, 0, 0, eomSettings.nroots);
 
         }
 
@@ -1151,8 +1151,8 @@ namespace ChronusQ {
 
       davidson.clear_scratch();
 
-      memManager.free(eomDiag);
-      if (curEig) memManager.free(curEig);
+      CQMemManager::get().free(eomDiag);
+      if (curEig) CQMemManager::get().free(curEig);
 
       std::cout << BannerEnd << std::endl;
     }

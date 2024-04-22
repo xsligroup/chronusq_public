@@ -57,7 +57,6 @@ namespace ChronusQ
         typedef T *oper_t;
         typedef std::vector<oper_t> oper_t_coll;
         typedef std::vector<oper_t_coll> oper_t_coll2;
-        CQMemManager &memManager;
         T *xOpt; ///< Unconstrained optimization variables
         T *gOpt; ///< gradient of optimization variables
 
@@ -77,15 +76,15 @@ namespace ChronusQ
         /*
         *  DIIS Constructor. Constructs a DIIS object
         */
-        ENERGYDIIS(size_t nInter, double *B, size_t nD, std::vector<T> en, size_t t, double conv, CQMemManager &mem) : 
-            nInter(nInter), B(B), nDimB(nD), energy(en), target(t),memManager(mem), BFGS<T>(nInter, conv, mem)
+        ENERGYDIIS(size_t nInter, double *B, size_t nD, std::vector<T> en, size_t t, double conv) : 
+            nInter(nInter), B(B), nDimB(nD), energy(en), target(t), BFGS<T>(nInter, conv)
         {
             // Allocate data structures
             coeffs.resize(nInter);
             for( size_t i=0; i<nInter; i++ )
                 coeffs[i] = 0.;
-            xOpt = memManager.template malloc<T>(nInter);
-            gOpt = memManager.template malloc<T>(nInter);
+            xOpt = CQMemManager::get().malloc<T>(nInter);
+            gOpt = CQMemManager::get().malloc<T>(nInter);
             BFGS<T> :: setXPointer( xOpt );
             BFGS<T> :: setGPointer( gOpt );
             double eMin = *min_element(energy.begin(),energy.end());
@@ -101,7 +100,7 @@ namespace ChronusQ
         // Destructor
         ~ENERGYDIIS()
         {
-            memManager.free(xOpt, gOpt);
+            CQMemManager::get().free(xOpt, gOpt);
         };
 
         // Getter functions for pointers
@@ -173,7 +172,7 @@ namespace ChronusQ
         for (size_t i = 0; i < nInter; i++)
             this->xOpt[i] = std::sqrt(std::abs(coeffs[i]));
 
-        T *lag = memManager.template malloc<T>(nInter);
+        T *lag = CQMemManager::get().malloc<T>(nInter);
         T sumC = T(0.);
         for (size_t i = 0; i < nInter; i++)
         {
@@ -210,7 +209,7 @@ namespace ChronusQ
         std::cout << std::endl;
 #endif
 
-        memManager.free(lag);
+        CQMemManager::get().free(lag);
     }
 
 
@@ -304,8 +303,8 @@ namespace ChronusQ
                 if (i != target)
                     vmix.push_back(i);
 
-            T *dx = memManager.template malloc<T>(nInter);
-            T *initX = memManager.template malloc<T>(nInter);
+            T *dx = CQMemManager::get().malloc<T>(nInter);
+            T *initX = CQMemManager::get().malloc<T>(nInter);
             double ymin;
             T amin;
             for (auto &iMix : vmix)
@@ -322,7 +321,7 @@ namespace ChronusQ
 
                 vopt.push_back(iMix);
             }
-            memManager.free(dx, initX);
+            CQMemManager::get().free(dx, initX);
 #endif
 
 #ifdef INTERPOLATE_PRINT_COEFFS

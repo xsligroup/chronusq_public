@@ -56,7 +56,7 @@ void KohnSham<MatsT, IntsT>::buildOrbitalModifierOptions() {
   // Make OrbitalModifier based on scfControls
   if( this->scfControls.scfAlg == _CONVENTIONAL_SCF ) {
     this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-        std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+        std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
   } else if( this->scfControls.scfAlg == _NEWTON_RAPHSON_SCF ) {
 
     bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT,IntsT>>(this->fockBuilder) != nullptr);
@@ -68,11 +68,11 @@ void KohnSham<MatsT, IntsT>::buildOrbitalModifierOptions() {
     std::vector<NRRotOptions> rotOpt = this->buildRotOpt();
 
     this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-        std::make_shared<NewtonRaphsonSCF<MatsT>>(rotOpt, this->scfControls, this->comm, modOrbOpt, this->memManager));
+        std::make_shared<NewtonRaphsonSCF<MatsT>>(rotOpt, this->scfControls, this->comm, modOrbOpt));
   } else {
     //this->scfControls.doExtrap = false;
     //this->orbitalModifier       = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-    //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+    //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
   }
 };   // KohnSham<MatsT,IntsT> :: buildOrbitalModifierOptions
 

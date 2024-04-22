@@ -48,22 +48,22 @@ namespace ChronusQ {
     T * tMagQuadrupole_ge  = nullptr;
     T * tMagOctupole_ge    = nullptr; 
 
-    inline void dealloc(CQMemManager &mem) {
+    inline void dealloc() {
 
-      if(W) mem.free(W);
-      if(VR) mem.free(VR);
-      if(VL) mem.free(VL);
+      if(W) CQMemManager::get().free(W);
+      if(VR) CQMemManager::get().free(VR);
+      if(VL) CQMemManager::get().free(VL);
 
-      if(tLenElecDipole_ge    ) mem.free(tLenElecDipole_ge    );
-      if(tLenElecQuadrupole_ge) mem.free(tLenElecQuadrupole_ge);
-      if(tLenElecOctupole_ge  ) mem.free(tLenElecOctupole_ge  ) ;
-      if(tVelElecDipole_ge    ) mem.free(tVelElecDipole_ge    );
-      if(tVelElecQuadrupole_ge) mem.free(tVelElecQuadrupole_ge);
-      if(tVelElecOctupole_ge  ) mem.free(tVelElecOctupole_ge  ) ;
+      if(tLenElecDipole_ge    ) CQMemManager::get().free(tLenElecDipole_ge    );
+      if(tLenElecQuadrupole_ge) CQMemManager::get().free(tLenElecQuadrupole_ge);
+      if(tLenElecOctupole_ge  ) CQMemManager::get().free(tLenElecOctupole_ge  ) ;
+      if(tVelElecDipole_ge    ) CQMemManager::get().free(tVelElecDipole_ge    );
+      if(tVelElecQuadrupole_ge) CQMemManager::get().free(tVelElecQuadrupole_ge);
+      if(tVelElecOctupole_ge  ) CQMemManager::get().free(tVelElecOctupole_ge  ) ;
 
 
-      if(tMagDipole_ge    ) mem.free(tMagDipole_ge    );
-      if(tMagQuadrupole_ge) mem.free(tMagQuadrupole_ge);
+      if(tMagDipole_ge    ) CQMemManager::get().free(tMagDipole_ge    );
+      if(tMagQuadrupole_ge) CQMemManager::get().free(tMagQuadrupole_ge);
     }
 
   };
@@ -89,20 +89,20 @@ namespace ChronusQ {
     U* md_ed_Polar = nullptr;
     U* md_md_Polar = nullptr;
 
-    inline void dealloc(CQMemManager &mem) {
+    inline void dealloc() {
 
-      if(RHS) mem.free(RHS);
-      if(SOL) mem.free(SOL);
+      if(RHS) CQMemManager::get().free(RHS);
+      if(SOL) CQMemManager::get().free(SOL);
 
-      if(ed_ed_Polar) mem.free(ed_ed_Polar);
-      if(eq_ed_Polar) mem.free(eq_ed_Polar);
-      if(eo_ed_Polar) mem.free(eo_ed_Polar);
-      if(eq_eq_Polar) mem.free(eq_eq_Polar);
-      if(eo_eq_Polar) mem.free(eo_eq_Polar);
-      if(eo_eo_Polar) mem.free(eo_eo_Polar);
+      if(ed_ed_Polar) CQMemManager::get().free(ed_ed_Polar);
+      if(eq_ed_Polar) CQMemManager::get().free(eq_ed_Polar);
+      if(eo_ed_Polar) CQMemManager::get().free(eo_ed_Polar);
+      if(eq_eq_Polar) CQMemManager::get().free(eq_eq_Polar);
+      if(eo_eq_Polar) CQMemManager::get().free(eo_eq_Polar);
+      if(eo_eo_Polar) CQMemManager::get().free(eo_eo_Polar);
 
-      if(md_ed_Polar) mem.free(md_ed_Polar);
-      if(md_md_Polar) mem.free(md_md_Polar);
+      if(md_ed_Polar) CQMemManager::get().free(md_ed_Polar);
+      if(md_md_Polar) CQMemManager::get().free(md_md_Polar);
 
     };
 
@@ -115,12 +115,12 @@ namespace ChronusQ {
     double * ecd_len_RM    = nullptr;
     double * ecd_vel_PMQ   = nullptr;
 
-    inline void dealloc(CQMemManager &mem) {
+    inline void dealloc() {
 
-      if(edStrength)   mem.free(edStrength);
-      if(opaCross_eda) mem.free(opaCross_eda);
-      if(ecd_len_RM)   mem.free(ecd_len_RM);
-      if(ecd_vel_PMQ)  mem.free(ecd_vel_PMQ);
+      if(edStrength)   CQMemManager::get().free(edStrength);
+      if(opaCross_eda) CQMemManager::get().free(opaCross_eda);
+      if(ecd_len_RM)   CQMemManager::get().free(ecd_len_RM);
+      if(ecd_vel_PMQ)  CQMemManager::get().free(ecd_vel_PMQ);
 
     }
   };
@@ -131,11 +131,11 @@ namespace ChronusQ {
     double * rotatory_len_RM  = nullptr;
     double * rotatory_vel_PMQ = nullptr;
 
-    inline void dealloc(CQMemManager &mem) {
+    inline void dealloc() {
 
-      if(oscStrength)      mem.free(oscStrength);
-      if(rotatory_len_RM)  mem.free(rotatory_len_RM);
-      if(rotatory_vel_PMQ) mem.free(rotatory_vel_PMQ);
+      if(oscStrength)      CQMemManager::get().free(oscStrength);
+      if(rotatory_len_RM)  CQMemManager::get().free(rotatory_len_RM);
+      if(rotatory_vel_PMQ) CQMemManager::get().free(rotatory_vel_PMQ);
 
     }
 

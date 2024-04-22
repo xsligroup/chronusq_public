@@ -99,7 +99,7 @@ public:
    *  \brief ConfigInteraction Constructor.
    *
    *  Stores references to a "reference" SingleSlater object and
-   *  CQMemManager and makes a copy of the reference into a complex
+   *  makes a copy of the reference into a complex
    *  SingleSlater object for the propagation.
    */ 
   template <typename MatsU>

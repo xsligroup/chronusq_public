@@ -45,7 +45,6 @@ namespace ChronusQ
     protected:
         // Function to be Optimized declarations
         size_t N; ///< Dimension of optimization problem
-        CQMemManager &memManager;
         VT *x;                        ///< Pointer to variables
 
     public:
@@ -56,7 +55,7 @@ namespace ChronusQ
 
         // Constructor
         GoldenSectionSearch() = delete;
-        GoldenSectionSearch(size_t N, double conv, CQMemManager &mM) : N(N), convergence(conv), memManager(mM){};
+        GoldenSectionSearch(size_t N, double conv) : N(N), convergence(conv){};
 
         // Remove copy/move constructors
         GoldenSectionSearch(const GoldenSectionSearch<VT> &) = delete;

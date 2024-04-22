@@ -164,7 +164,6 @@ namespace ChronusQ {
     using TArray = TA::TArray<MatsT>;
   protected:
     // Input parameters
-    CQMemManager &memManager_;
     SafeFile savFile_;
     char vLabel_;
     char oLabel_;
@@ -209,7 +208,7 @@ namespace ChronusQ {
     TArray B_6;
 
   public:    
-    CCSD(CQMemManager &memManager, const SafeFile &savFile,
+    CCSD(const SafeFile &savFile,
          CCIntermediates<MatsT> &intermediates, const CoupledClusterSettings &ccSettings);
 
     double computeReferenceEnergy(const InCore4indexTPI<MatsT> &moTPI, double nucRepEnergy);
@@ -267,7 +266,6 @@ namespace ChronusQ {
   protected:
     using TArray = TA::TArray<MatsT>;
 
-    CQMemManager &memManager_;
     SafeFile savFile_;
     CCIntermediates<MatsT> &intermediates_;
     char vLabel_;
@@ -354,7 +352,7 @@ namespace ChronusQ {
     bool CVSisInBound(size_t idx) const { return idx < CVSoutOfBound_; }
     size_t CVSoneBodySize() const { return nOVshift_; }
 
-    EOMCCSD(CQMemManager &memManager, const SafeFile &savFile,
+    EOMCCSD(const SafeFile &savFile,
             CCIntermediates<MatsT> &intermediates, const EOMSettings &eomSettings,
             const CoupledClusterSettings &ccSettings);
 
@@ -421,8 +419,8 @@ namespace ChronusQ {
     // Get and Set results
     MatsT* getTheta() const { return theta; }
     void setTheta(MatsT *eVals, size_t n) {
-      if (theta) memManager_.free(theta);
-      theta = memManager_.malloc<MatsT>(n);
+      if (theta) CQMemManager::get().free(theta);
+      theta = CQMemManager::get().malloc<MatsT>(n);
       std::copy_n(eVals, n, theta);
     }
     std::shared_ptr<SolverVectors<MatsT>> getR() const { return R_; }
@@ -434,7 +432,7 @@ namespace ChronusQ {
   };
 
   void runCoupledCluster(JobType jobType, Molecule &mol, std::shared_ptr<SingleSlaterBase> ss,
-                         std::shared_ptr<IntegralsBase> aoints, CQMemManager &memManager,
+                         std::shared_ptr<IntegralsBase> aoints,
                          SafeFile &rstFile, CQInputFile &input, std::ostream &output);
 
 }; // namespace ChronusQ

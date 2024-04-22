@@ -58,28 +58,28 @@ namespace ChronusQ {
     GradInts( GradInts && ) = default;
 
     // Main constructor
-    GradInts(CQMemManager &mem, size_t nBasis, size_t nAtoms):
-        ParticleIntegrals(mem, nBasis), nAtoms_(nAtoms) {
+    GradInts(size_t nBasis, size_t nAtoms):
+        ParticleIntegrals(nBasis), nAtoms_(nAtoms) {
 
       components_.reserve(3*nAtoms_);
 
       for (size_t i = 0; i < 3*nAtoms_; i++) {
         components_.emplace_back(
-          std::make_shared<IntClass<IntsT>>(mem, nBasis)
+          std::make_shared<IntClass<IntsT>>(nBasis)
         );
       }
 
     };
 
     // Two basis constructor
-    GradInts(CQMemManager &mem, size_t nBasis, size_t snBasis, size_t nAtoms):
-        ParticleIntegrals(mem, nBasis), nAtoms_(nAtoms) {
+    GradInts(size_t nBasis, size_t snBasis, size_t nAtoms):
+        ParticleIntegrals(nBasis), nAtoms_(nAtoms) {
 
       components_.reserve(3*nAtoms_);
 
       for (size_t i = 0; i < 3*nAtoms_; i++) {
         components_.emplace_back(
-          std::make_shared<IntClass<IntsT>>(mem, nBasis, snBasis)
+          std::make_shared<IntClass<IntsT>>(nBasis, snBasis)
         );
       }
 
@@ -87,9 +87,9 @@ namespace ChronusQ {
 
     // Constructor from a vector of pointers to integrals
     template <template <typename> class IntSubClass>
-    GradInts(CQMemManager &mem, size_t nBasis, size_t nAtoms,
+    GradInts(size_t nBasis, size_t nAtoms,
       std::vector<std::shared_ptr<IntSubClass<IntsT>>> integrals) :
-      ParticleIntegrals(mem, nBasis), nAtoms_(nAtoms)
+      ParticleIntegrals(nBasis), nAtoms_(nAtoms)
     {
 
       components_.reserve(3*nAtoms_);
@@ -215,8 +215,7 @@ namespace ChronusQ {
       GradInts<IntClass, typename std::conditional<
       (std::is_same<IntsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(
-          memManager(), NT, nAtoms_);
+      dcomplex, double>::type> transInts(NT, nAtoms_);
 
       for (size_t i = 0; i < components_.size(); i++)
         transInts[i] = (*this)[i].transform(TRANS, T, NT, LDT);

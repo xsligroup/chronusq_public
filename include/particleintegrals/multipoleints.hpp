@@ -89,13 +89,13 @@ namespace ChronusQ {
     MultipoleInts() = delete;
     MultipoleInts( const MultipoleInts & ) = default;
     MultipoleInts( MultipoleInts && ) = default;
-    MultipoleInts(CQMemManager &mem, size_t nb, size_t order, bool symm):
-        ParticleIntegrals(mem, nb), highOrder_(order), symmetric_(symm) {
+    MultipoleInts(size_t nb, size_t order, bool symm):
+        ParticleIntegrals(nb), highOrder_(order), symmetric_(symm) {
       if (order == 0)
         CErr("MultipoleInts order must be at least 1.");
       components_.reserve(order);
       for (size_t i = 1; i <= order; i++) {
-        components_.emplace_back(mem, nb, i, symm);
+        components_.emplace_back(nb, i, symm);
       }
     }
 
@@ -251,7 +251,7 @@ namespace ChronusQ {
           components_.clear();
           components_.reserve(highOrder_);
           for (size_t i = 1; i <= highOrder_; i++) {
-            components_.emplace_back(memManager_, NB, i, symmetric_);
+            components_.emplace_back(NB, i, symmetric_);
           }
         }
 
@@ -263,7 +263,7 @@ namespace ChronusQ {
 
     template <typename IntsU>
     MultipoleInts<IntsU> spatialToSpinBlock() const {
-      MultipoleInts<IntsU> spinBlockInts(memManager_, NB * 2, highOrder_, symmetric_);
+      MultipoleInts<IntsU> spinBlockInts(NB * 2, highOrder_, symmetric_);
       size_t size = components_.size();
       for (size_t i = 0; i < size; i++) {
         spinBlockInts.components_[i] = components_[i].template spatialToSpinBlock<IntsU>();
@@ -281,7 +281,7 @@ namespace ChronusQ {
       (std::is_same<IntsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
       dcomplex, double>::type> transInts(
-          memManager(), NT, highOrder(), symmetric());
+          NT, highOrder(), symmetric());
       for (size_t i = 0; i < size(); i++) {
         std::shared_ptr<OnePInts<IntsT>> comp = (*this)[i];
         
@@ -299,9 +299,9 @@ namespace ChronusQ {
       return transInts;
     }
 
-    void convert2OnePRelInts(CQMemManager &mem, size_t nb, bool SORelativistic) {
+    void convert2OnePRelInts(size_t nb, bool SORelativistic) {
       for (VectorInts<IntsT>& c : components_)
-        c.convert2OnePRelInts(mem, nb, SORelativistic);
+        c.convert2OnePRelInts(nb, SORelativistic);
     };
 
     // Assemble LL and SS components of 4C Dipole
@@ -320,7 +320,7 @@ namespace ChronusQ {
         if(auto onePRelInt = std::dynamic_pointer_cast<OnePRelInts<double>>((*this)[ixyz])){
           
           // Initialize the returned dipole matrix
-          lenElectric4C->emplace_back(this->ParticleIntegrals::memManager(), 2 * NB, true, true);
+          lenElectric4C->emplace_back(2 * NB, true, true);
           cqmatrix::PauliSpinorMatrices<dcomplex>& dipole_ixyz = (*lenElectric4C)[ixyz];
 
           dipole_ixyz.clear();

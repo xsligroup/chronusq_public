@@ -48,8 +48,8 @@ namespace ChronusQ {
 
     // Constructor
     DASOnePInts() = delete;
-    DASOnePInts(CQMemManager &mem, size_t nb1, size_t nb2):
-        ParticleIntegrals(mem, 0ul), mat_(mem, nb1, nb2), nb1_(nb1), nb2_(nb2){}
+    DASOnePInts(size_t nb1, size_t nb2):
+        ParticleIntegrals(0ul), mat_(nb1, nb2), nb1_(nb1), nb2_(nb2){}
     DASOnePInts(const DASOnePInts &other ) = default;
     DASOnePInts(DASOnePInts &&other ) = default;
     
@@ -126,22 +126,22 @@ namespace ChronusQ {
 
     // Constructor
     GASTwoPInts() = delete;
-    GASTwoPInts(CQMemManager &mem, size_t nb1, size_t nb2,
+    GASTwoPInts(size_t nb1, size_t nb2,
         size_t nb3, size_t nb4):
-        ParticleIntegrals(mem, 0ul), nb1_(nb1), nb2_(nb2),
+        ParticleIntegrals(0ul), nb1_(nb1), nb2_(nb2),
         nb3_(nb3), nb4_(nb4) { 
       nb12_ = nb1_ * nb2_;
       nb123_ = nb12_ * nb3_;
       nb1234_ = nb123_ * nb4_;
-      ptr_ = this->memManager_.template malloc<IntsT>(nb1234_);
+      ptr_ = CQMemManager::get().malloc<IntsT>(nb1234_);
     }
     GASTwoPInts( const GASTwoPInts &other ): 
-        GASTwoPInts(other.memManager(), other.nb1_, other.nb2_,
+        GASTwoPInts(other.nb1_, other.nb2_,
         other.nb3_, other.nb4_) {
       std::copy_n(other.ptr_, nb1234_, ptr_);
     };
     GASTwoPInts( GASTwoPInts &&other ): 
-        ParticleIntegrals(other.memManager(), 0ul), 
+        ParticleIntegrals(0ul), 
         nb1_(other.nb1_), nb2_(other.nb2_),
         nb3_(other.nb3_), nb4_(other.nb4_),
         ptr_(other.ptr_) {
@@ -158,8 +158,8 @@ namespace ChronusQ {
 
     GASTwoPInts& operator=( const GASTwoPInts &other ) {
       if (nb1234_ != other.nb1234_) {
-        this->memManager_.free(ptr_);
-        ptr_ = this->memManager_.template malloc<IntsT>(nb1234_);
+        CQMemManager::get().free(ptr_);
+        ptr_ = CQMemManager::get().malloc<IntsT>(nb1234_);
         nb1_  = other.nb1_;
         nb2_  = other.nb2_;
         nb3_  = other.nb3_;
@@ -219,7 +219,7 @@ namespace ChronusQ {
       }
     }
 
-    ~GASTwoPInts() { this->memManager_.free(ptr_); }
+    ~GASTwoPInts() { CQMemManager::get().free(ptr_); }
 
   }; // class GASTwoPInts
 

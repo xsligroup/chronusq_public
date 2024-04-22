@@ -35,35 +35,34 @@ namespace ChronusQ {
   // Real wraps DGETRF + DGETRI
   // Complex wraps ZGETRF + ZGETRI
   template <typename T>
-  int LUInv(int N, T* A, int LDA, CQMemManager &mem) {
+  int LUInv(int N, T* A, int LDA) {
 
-    int64_t *IPIV = mem.malloc<int64_t>(N);
+    int64_t *IPIV = CQMemManager::get().malloc<int64_t>(N);
 
     int64_t INFO = lapack::getrf(N,N,A,LDA,IPIV);
 
-    if( INFO != 0 ) { mem.free(IPIV); return INFO; }
+    if( INFO != 0 ) { CQMemManager::get().free(IPIV); return INFO; }
 
     lapack::getri(N,A,LDA,IPIV);
     
-    mem.free(IPIV);
+    CQMemManager::get().free(IPIV);
 
     return INFO;
 
   }; // LUInv
 
-  template int LUInv<double>(int N, double* A, int LDA, CQMemManager &mem);
-  template int LUInv<dcomplex>(int N, dcomplex* A, int LDA, CQMemManager &mem);
+  template int LUInv<double>(int N, double* A, int LDA);
+  template int LUInv<dcomplex>(int N, dcomplex* A, int LDA);
 
 
   template <typename T>
-  int QR(int M, int N, T* A, int LDA, T* R, int LDR, 
-    CQMemManager &mem) {
+  int QR(int M, int N, T* A, int LDA, T* R, int LDR) {
 
-    T *TAU = mem.malloc<T>(N);
+    T *TAU = CQMemManager::get().malloc<T>(N);
 
     int INFO = lapack::geqrf(M,N,A,LDA,TAU);
 
-    if( INFO != 0 ) { mem.free(TAU); return INFO; }
+    if( INFO != 0 ) { CQMemManager::get().free(TAU); return INFO; }
 
     int rCol = std::min(M,N);
     std::fill_n(R,rCol*LDR,0.);
@@ -75,15 +74,15 @@ namespace ChronusQ {
 
     INFO = lapack::ungqr(M,N,N,A,LDA,TAU);
 
-    mem.free(TAU); 
+    CQMemManager::get().free(TAU); 
     
     return INFO; 
 
   }
   template int QR<double>(int M, int N, double* A, int LDA, double* R, 
-    int LDR, CQMemManager &mem);
+    int LDR);
   template int QR<dcomplex>(int M, int N, dcomplex* A, int LDA, dcomplex* R, 
-    int LDR, CQMemManager &mem);
+    int LDR);
 
 
 
@@ -91,12 +90,11 @@ namespace ChronusQ {
 
   template <typename _F>
   int TGEXC(bool WANTQ, bool WANTZ, int N, _F *A, int LDA, _F *B, int LDB,
-    _F *Q, int LDQ, _F *Z, int LDZ, int IFST, int ILST, CQMemManager &mem);
+    _F *Q, int LDQ, _F *Z, int LDZ, int IFST, int ILST);
 
   template<>
   int TGEXC(bool WANTQ, bool WANTZ, int N, double *A, int LDA, double *B, 
-    int LDB, double *Q, int LDQ, double *Z, int LDZ, int IFST, int ILST,
-    CQMemManager &mem) {
+    int LDB, double *Q, int LDQ, double *Z, int LDZ, int IFST, int ILST) {
 
     int WANTQ_i = int(WANTQ);
     int WANTZ_i = int(WANTZ);
@@ -108,19 +106,18 @@ namespace ChronusQ {
       Q,&LDQ,Z,&LDZ,&IFST,&ILST,_1,_2,&INFO);
 
     int LWORK = getLWork<double>(gexc);
-    double *WORK = mem.malloc<double>(LWORK);
+    double *WORK = CQMemManager::get().malloc<double>(LWORK);
 
     gexc(WORK,&LWORK);
 
-    mem.free(WORK);
+    CQMemManager::get().free(WORK);
 
     return INFO;
   }
 
   template<>
   int TGEXC(bool WANTQ, bool WANTZ, int N, dcomplex *A, int LDA, dcomplex *B, 
-    int LDB, dcomplex *Q, int LDQ, dcomplex *Z, int LDZ, int IFST, int ILST,
-    CQMemManager &mem) {
+    int LDB, dcomplex *Q, int LDQ, dcomplex *Z, int LDZ, int IFST, int ILST) {
 
     int WANTQ_i = int(WANTQ);
     int WANTZ_i = int(WANTZ);
@@ -151,13 +148,13 @@ namespace ChronusQ {
   template <typename _F>
   TGSEN_OUT TGSEN(int IJOB, bool WANTQ, bool WANTZ, int * SELECT, int N, _F *A, 
     int LDA, _F *B, int LDB, dcomplex *ALPHA, _F *BETA, _F *Q, int LDQ, _F *Z, 
-    int LDZ, CQMemManager &mem);
+    int LDZ);
 
 
   template <>
   TGSEN_OUT TGSEN(int IJOB, bool WANTQ, bool WANTZ, int * SELECT, int N, 
     double *A, int LDA, double *B, int LDB, dcomplex *ALPHA, double *BETA, 
-    double *Q, int LDQ, double *Z, int LDZ, CQMemManager &mem) {
+    double *Q, int LDQ, double *Z, int LDZ) {
 
     if( IJOB != 0 ) CErr("No proper logic for TGSEN.IJOB != 0");
 
@@ -171,8 +168,8 @@ namespace ChronusQ {
 
     TGSEN_OUT out;
 
-    double *ALPHAR = mem.malloc<double>(N); 
-    double *ALPHAI = mem.malloc<double>(N); 
+    double *ALPHAR = CQMemManager::get().malloc<double>(N); 
+    double *ALPHAI = CQMemManager::get().malloc<double>(N); 
 
     using namespace std::placeholders;
     auto gsen = std::bind(dtgsen_,&IJOB,&WANTQ_i,&WANTZ_i,SELECT,&N,A,&LDA,
@@ -180,7 +177,7 @@ namespace ChronusQ {
       &out.DIF,_1,_2,&IWORK,&LIWORK,&INFO);
 
     int LWORK = getLWork<double>(gsen);
-    double *WORK = mem.malloc<double>(LWORK);
+    double *WORK = CQMemManager::get().malloc<double>(LWORK);
 
     gsen(WORK,&LWORK);
 
@@ -188,7 +185,7 @@ namespace ChronusQ {
     for(auto k = 0; k < N; k++)
       ALPHA[k] = dcomplex(ALPHAR[k],ALPHAI[k]);
 
-    mem.free(ALPHAR,ALPHAI,WORK);
+    CQMemManager::get().free(ALPHAR,ALPHAI,WORK);
 
     return out;
   }
@@ -198,8 +195,7 @@ namespace ChronusQ {
   template <>
   TGSEN_OUT TGSEN(int IJOB, bool WANTQ, bool WANTZ, int * SELECT, int N, 
     dcomplex *A, int LDA, dcomplex *B, int LDB, dcomplex *ALPHA, 
-    dcomplex *BETA, dcomplex *Q, int LDQ, dcomplex *Z, int LDZ, 
-    CQMemManager &mem) {
+    dcomplex *BETA, dcomplex *Q, int LDQ, dcomplex *Z, int LDZ) {
 
     if( IJOB != 0 ) CErr("No proper logic for TGSEN.IJOB != 0");
 
@@ -219,11 +215,11 @@ namespace ChronusQ {
       &out.DIF,_1,_2,&IWORK,&LIWORK,&INFO);
 
     int LWORK = getLWork<dcomplex>(gsen);
-    dcomplex *WORK = mem.malloc<dcomplex>(LWORK);
+    dcomplex *WORK = CQMemManager::get().malloc<dcomplex>(LWORK);
 
     gsen(WORK,&LWORK);
 
-    mem.free(WORK);
+    CQMemManager::get().free(WORK);
 
     return out;
   }
@@ -231,7 +227,7 @@ namespace ChronusQ {
   template <typename _F>
   int OrdQZ2(char JOBVSL, char JOBVSR, int N, _F *A, int LDA, _F *B, 
     int LDB, dcomplex *ALPHA, _F *BETA, double hLim, double SIGMA, _F *VSL, int LDVSL, 
-    _F *VSR, int LDVSR, CQMemManager &mem) {
+    _F *VSR, int LDVSR) {
 
     // Aux booleans for reordering functions
     bool WantQ = JOBVSL == 'V';
@@ -260,7 +256,7 @@ namespace ChronusQ {
     
     bool swap = true;
 
-    int * SELECT = mem.malloc<int>(N);
+    int * SELECT = CQMemManager::get().malloc<int>(N);
     std::fill_n(SELECT,N,int(false));
 
 
@@ -296,19 +292,19 @@ namespace ChronusQ {
           int ilst = j;
 
           TGEXC(WantQ,WantZ,N,A,LDA,B,LDA,VSL,LDVSL,VSR,LDVSR,ifst,
-            ilst,mem);
+            ilst);
 
           // Recompute the Generalized eigenvalues from the permuted
           // Shur form
           TGSEN(0,WantQ,WantZ,SELECT,N,A,LDA,B,LDB,ALPHA,BETA,VSL,LDVSL,VSR,
-            LDVSR,mem);
+            LDVSR);
 
         }
 
     }
 
 
-    mem.free(SELECT);
+    CQMemManager::get().free(SELECT);
 
     return INFO;
 
@@ -318,7 +314,7 @@ namespace ChronusQ {
   template <typename _F>
   int OrdQZ(char JOBVSL, char JOBVSR, int N, _F *A, int LDA, _F *B, 
     int LDB, dcomplex *ALPHA, _F *BETA, double SIGMA, _F *VSL, int LDVSL, 
-    _F *VSR, int LDVSR, CQMemManager &mem) {
+    _F *VSR, int LDVSR) {
 
     // Aux booleans for reordering functions
     bool WantQ = JOBVSL == 'V';
@@ -345,7 +341,7 @@ namespace ChronusQ {
     
     bool swap = true;
 
-    int * SELECT = mem.malloc<int>(N);
+    int * SELECT = CQMemManager::get().malloc<int>(N);
     std::fill_n(SELECT,N,int(false));
 
 #if 0
@@ -384,7 +380,7 @@ namespace ChronusQ {
             int ilst = j + 1;
 
             TGEXC(WantQ,WantZ,N,A,LDA,B,LDA,VSL,LDVSL,VSR,LDVSR,ifst,
-              ilst,mem);
+              ilst);
 
           }
         }
@@ -392,7 +388,7 @@ namespace ChronusQ {
         // Recompute the Generalized eigenvalues from the permuted
         // Shur form
         TGSEN(0,WantQ,WantZ,SELECT,N,A,LDA,B,LDB,ALPHA,BETA,VSL,LDVSL,VSR,
-          LDVSR,mem);
+          LDVSR);
 
 
       }
@@ -427,12 +423,12 @@ namespace ChronusQ {
           int ilst = j;
 
           TGEXC(WantQ,WantZ,N,A,LDA,B,LDA,VSL,LDVSL,VSR,LDVSR,ifst,
-            ilst,mem);
+            ilst);
 
           // Recompute the Generalized eigenvalues from the permuted
           // Shur form
           TGSEN(0,WantQ,WantZ,SELECT,N,A,LDA,B,LDB,ALPHA,BETA,VSL,LDVSL,VSR,
-            LDVSR,mem);
+            LDVSR);
 
         }
 
@@ -440,7 +436,7 @@ namespace ChronusQ {
 
 #endif
 
-    mem.free(SELECT);
+    CQMemManager::get().free(SELECT);
 
     return INFO;
 
@@ -449,31 +445,31 @@ namespace ChronusQ {
   template 
   int OrdQZ2(char JOBVSL, char JOBVSR, int N, double *A, int LDA, double *B, 
     int LDB, dcomplex *ALPHA, double *BETA, double hLim, double SIMGA, double *VSL, 
-    int LDVSL, double *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, double *VSR, int LDVSR);
 
   template 
   int OrdQZ2(char JOBVSL, char JOBVSR, int N, dcomplex *A, int LDA, dcomplex *B, 
     int LDB, dcomplex *ALPHA, dcomplex *BETA, double hLim, double SIMGA, dcomplex *VSL, 
-    int LDVSL, dcomplex *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, dcomplex *VSR, int LDVSR);
 
 
   template 
   int OrdQZ(char JOBVSL, char JOBVSR, int N, double *A, int LDA, double *B, 
     int LDB, dcomplex *ALPHA, double *BETA, double SIMGA, double *VSL, 
-    int LDVSL, double *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, double *VSR, int LDVSR);
 
   template 
   int OrdQZ(char JOBVSL, char JOBVSR, int N, dcomplex *A, int LDA, dcomplex *B, 
     int LDB, dcomplex *ALPHA, dcomplex *BETA, double SIMGA, dcomplex *VSL, 
-    int LDVSL, dcomplex *VSR, int LDVSR, CQMemManager &mem);
+    int LDVSL, dcomplex *VSR, int LDVSR);
 
   template<typename MatsT>
-  void SVDInverse(const size_t N, MatsT* A, const size_t LDA, const double num, CQMemManager& memManager) {
+  void SVDInverse(const size_t N, MatsT* A, const size_t LDA, const double num) {
   
     // Compute SVD to determine which vectors are singular
-    MatsT* U = memManager.template malloc<MatsT>(N*N);
-    MatsT* VT = memManager.template malloc<MatsT>(N*N);
-    double* sV = memManager.template malloc<double>(N);
+    MatsT* U = CQMemManager::get().malloc<MatsT>(N*N);
+    MatsT* VT = CQMemManager::get().malloc<MatsT>(N*N);
+    double* sV = CQMemManager::get().malloc<double>(N);
   
     int info = lapack::gesvd(lapack::Job::AllVec, lapack::Job::AllVec, N, N, A, LDA, 
             sV, U, N, VT, N);
@@ -496,10 +492,10 @@ namespace ChronusQ {
         VT, N, 
         MatsT(0.), A, LDA);
   
-    memManager.free(U,VT,sV);
+    CQMemManager::get().free(U,VT,sV);
   }
 
-  template void SVDInverse(const size_t N, double* A, const size_t LDA, const double num, CQMemManager& memManager);
-  template void SVDInverse(const size_t N, dcomplex* A, const size_t LDA, const double num, CQMemManager& memManager);
+  template void SVDInverse(const size_t N, double* A, const size_t LDA, const double num);
+  template void SVDInverse(const size_t N, dcomplex* A, const size_t LDA, const double num);
 
 }; // namespace ChronusQ

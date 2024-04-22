@@ -98,8 +98,7 @@ namespace ChronusQ {
     /**
      *  \brief PERTURB Constructor
      *  
-     *  Obtain references from a "reference" MCSCF object and
-     *  CQMemManager
+     *  Obtain references from a "reference" MCSCF object
      *
      */
     PERTURB(std::shared_ptr<MCSCF<MatsT,IntsT>> refMCwfn, std::vector<size_t> SoI) : 

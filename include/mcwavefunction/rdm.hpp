@@ -65,7 +65,7 @@ namespace ChronusQ {
       TDMs.reserve(NStates);
       for (auto i = 0ul; i < NStates; i++) {
         TDMs.emplace_back(std::vector<cqmatrix::Matrix<MatsT>>(NStates,
-                  cqmatrix::Matrix<MatsT>(memManager, MOPartition.nCorrO)));
+                  cqmatrix::Matrix<MatsT>(MOPartition.nCorrO)));
         for (auto j = 0ul; j < NStates; j++) 
           ciBuilder->computeTDM(*this, CIVecs[i], CIVecs[j], TDMs[i][j]);
       }
@@ -81,7 +81,6 @@ namespace ChronusQ {
   void MCWaveFunction<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale) {
 
     // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq}^* C^*_{qv}
-    auto  &mem = memManager;
     size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t fourCompOffset = (reference().nC == 4) ? reference().nAlphaOrbital() * 2: 0;
     size_t nI = MOPartition.nFCore + MOPartition.nInact;
@@ -89,7 +88,7 @@ namespace ChronusQ {
 
     double fc1C = (reference().nC == 1) ? 2.0 : 1.0;
 
-    cqmatrix::Matrix<MatsT> tmpPDM(mem,nAO);
+    cqmatrix::Matrix<MatsT> tmpPDM(nAO);
     tmpPDM.clear();
 
     // Core

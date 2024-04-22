@@ -53,7 +53,6 @@ inline double getMaxShBlkNorm(const cqmatrix::Matrix<double>& shBlkNorm,
 
 class SchwarzIntegrals {
  private:
-  CQMemManager& memManager_;
   
   // Schwarz Intgrals
   std::shared_ptr<cqmatrix::Matrix<double>> SchwarzERI = nullptr;
@@ -65,8 +64,7 @@ class SchwarzIntegrals {
   SchwarzIntegrals() = delete;
   SchwarzIntegrals(const SchwarzIntegrals&) = delete;
   SchwarzIntegrals(SchwarzIntegrals&&) = delete;
-  SchwarzIntegrals(CQMemManager& mem, const HamiltonianOptions& HOp, 
-      const LibcintEngine& cint): memManager_(mem) {
+  SchwarzIntegrals(const HamiltonianOptions& HOp, const LibcintEngine& cint) {
     computeSchwarzIntegrals(HOp, cint);
   } 
   ~SchwarzIntegrals() { dealloc(); }
@@ -103,8 +101,8 @@ class SchwarzIntegrals {
 
     if (HOp.BareCoulomb or HOp.DiracCoulomb) {
       size_t nERI = 1;
-      double *buffAll = memManager_.malloc<double>(nERI * buffN4 * nThreads);
-      SchwarzERI = std::make_shared<cqmatrix::Matrix<double>>(memManager_, nShells);
+      double *buffAll = CQMemManager::get().malloc<double>(nERI * buffN4 * nThreads);
+      SchwarzERI = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzERI->clear(); 
       auto& SchwarzERIMat = *SchwarzERI;
 
@@ -134,13 +132,13 @@ class SchwarzIntegrals {
           }
         }
       } // parallel region
-      memManager_.free(buffAll);
+      CQMemManager::get().free(buffAll);
     } // SchwarzERI
     
     if (HOp.DiracCoulomb or HOp.DiracCoulombSSSS) {
       size_t nERI = 81;
-      double *buffAll = memManager_.malloc<double>(nERI * buffN4 * nThreads);
-      SchwarzSSSS = std::make_shared<cqmatrix::Matrix<double>>(memManager_, nShells);
+      double *buffAll = CQMemManager::get().malloc<double>(nERI * buffN4 * nThreads);
+      SchwarzSSSS = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzSSSS->clear(); 
       auto& SchwarzSSSSMat = *SchwarzSSSS;
       double C2 = 1. / (4 * SpeedOfLight * SpeedOfLight);
@@ -171,13 +169,13 @@ class SchwarzIntegrals {
           }
         }
       } // parallel region
-      memManager_.free(buffAll);
+      CQMemManager::get().free(buffAll);
     } // SchwarzSSSS
 
     if (HOp.Gaunt) {
       size_t nERI = 9;
-      double *buffAll = memManager_.malloc<double>(nERI * buffN4 * nThreads);
-      SchwarzGaunt = std::make_shared<cqmatrix::Matrix<double>>(memManager_, nShells);
+      double *buffAll = CQMemManager::get().malloc<double>(nERI * buffN4 * nThreads);
+      SchwarzGaunt = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGaunt->clear(); 
       auto& SchwarzGauntMat = *SchwarzGaunt;
       double C1 = 1. / (2 * SpeedOfLight);
@@ -206,13 +204,13 @@ class SchwarzIntegrals {
           }
         }
       } // parallel region
-      memManager_.free(buffAll);
+      CQMemManager::get().free(buffAll);
     } // SchwarzGaunt
 
     if (HOp.Gauge) {
       size_t nERI = 16;
-      double *buffAll = memManager_.malloc<double>(2 * nERI * buffN4 * nThreads);
-      SchwarzGauge = std::make_shared<cqmatrix::Matrix<double>>(memManager_, nShells);
+      double *buffAll = CQMemManager::get().malloc<double>(2 * nERI * buffN4 * nThreads);
+      SchwarzGauge = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGauge->clear(); 
       auto& SchwarzGaugeMat = *SchwarzGauge;
       double C1 = 1. / (2 * SpeedOfLight);
@@ -246,7 +244,7 @@ class SchwarzIntegrals {
           }
         }
       } // parallel region
-      memManager_.free(buffAll);
+      CQMemManager::get().free(buffAll);
     } // SchwarzGauge
   } // computeSchwarzIntegrals
 
@@ -281,7 +279,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
   /************************************/
   /* Get env objects from ss          */
   /************************************/
-  auto& mem = ss_.memManager;
   const auto& mo = ss_.mo[0];
   const auto& nC = ss_.nC;
   auto& HOp = ss_.fockBuilder->hamiltonianOptions_; 
@@ -298,7 +295,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
 
   // Set up LibcintEngine  
   //std::cout << "Set up LibcintEngine" << std::endl;
-  LibcintEngine cint(mem, basisSet, ss_.molecule_);
+  LibcintEngine cint(basisSet, ss_.molecule_);
   cint.allocate_int2e_cache(HOp);
   size_t maxShellSize = cint.maxShellSize();
   size_t maxShellSize2 = maxShellSize * maxShellSize;
@@ -369,9 +366,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
   std::vector<cqmatrix::Matrix<MatsT>> rsERISCRs; 
   for (auto i = 0ul; i < nThreads; ++i) { 
     for (auto j = 0ul; j < rsPairs.size(); ++j) {
-      pauliSpinorMSSCRs.emplace_back(mem, maxShellSize, false, false);
+      pauliSpinorMSSCRs.emplace_back(maxShellSize, false, false);
     }
-    rsERISCRs.emplace_back(mem, np, nq);
+    rsERISCRs.emplace_back(np, nq);
   }
 
   /***********************************/
@@ -380,13 +377,13 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
   
   // compute Schwarz ERIs      
   // std::cout << "compute Schwarz Integrals" << std::endl;
-  SchwarzIntegrals schwarzInts(mem, HOp, cint);
+  SchwarzIntegrals schwarzInts(HOp, cint);
   auto schwarzThreshold = std::dynamic_pointer_cast<DirectTPI<IntsT>>(ss_.aoints_->TPI)->threshSchwarz();  
 
   // compute Matrix Norms
   std::vector<cqmatrix::Matrix<double>> shBlkNormsSymmDenLLMS_rs;
   for (auto i = 0ul; i < rsPairs.size(); ++i) { 
-    shBlkNormsSymmDenLLMS_rs.emplace_back(mem, nShell); 
+    shBlkNormsSymmDenLLMS_rs.emplace_back(nShell); 
   }
   
   
@@ -471,10 +468,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
     std::vector<double> tUpdate_all(nThreads, 0.);
 #endif
     
-    double *buffERIAll = mem.template malloc<double>(maxShellSize4 * nThreads);
-    size_t availbleMem = mem.template max_avail_allocatable<MatsT>(1, maxNDenSCR);
+    double *buffERIAll = CQMemManager::get().malloc<double>(maxShellSize4 * nThreads);
+    size_t availbleMem = CQMemManager::get().max_avail_allocatable<MatsT>(1, maxNDenSCR);
     size_t nDenSCR = std::min(maxNDenSCR, availbleMem);
-    MatsT *buffDensity =  mem.template malloc<MatsT>(nDenSCR);
+    MatsT *buffDensity =  CQMemManager::get().malloc<MatsT>(nDenSCR);
     
     std::vector<std::vector<std::pair<size_t, size_t>>> s34PairsAll;
     std::vector<std::vector<MatsT*>> s43DenPtrsAll; // 
@@ -695,7 +692,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
       } // (s1, s2)    
     } // (s3, s4) Density Batching 
     
-    mem.free(buffERIAll, buffDensity);
+    CQMemManager::get().free(buffERIAll, buffDensity);
     
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     auto printTimings = [] (const std::string& section, 

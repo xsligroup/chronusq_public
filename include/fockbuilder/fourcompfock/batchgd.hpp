@@ -61,8 +61,8 @@ namespace ChronusQ {
         std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ssTwoeH = ss.twoeH;
         
         // allocate scratch space for coulombMatrix and exchangeMatrix 
-        ss.coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(ss.memManager, ss.coulombMatrix->dimension());
-        ss.exchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ss.memManager, ss.exchangeMatrix->dimension());
+        ss.coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(ss.coulombMatrix->dimension());
+        ss.exchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ss.exchangeMatrix->dimension());
 
         for (auto i = 0ul; i < onePDMs.size(); i++) {
           
@@ -107,7 +107,6 @@ namespace ChronusQ {
     // disable libint2
     if (not this->hamiltonianOptions_.Libcint) CErr("4C Integrals Needs Libcint");
     
-    CQMemManager &mem = ss.memManager;
     GTODirectRelERIContraction<MatsT,IntsT> &relERICon =
         *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ss.TPI);
 
@@ -151,7 +150,7 @@ namespace ChronusQ {
     //  XScrLL, XScrSS, XScrLS, XScrSL; 
      
     #define ALLOCATE_PAULISPINOR_SCR(SCR, SCRSIZE, hasXYZ) \
-       SCR.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, SCRSIZE, hasXYZ, hasXYZ)); 
+       SCR.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(SCRSIZE, hasXYZ, hasXYZ)); 
        // no need to intailize those matrices as it will be initialize in twoBodyRelContract
        // SCR.back()->clear();
     
@@ -213,16 +212,16 @@ namespace ChronusQ {
     }
 
     // allocate dummies
-    auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, 0, false, false);
+    auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(0, false, false);
     
     // Compute 1/(2mc)^2
     MatsT C2 = 1./(4*SpeedOfLight*SpeedOfLight);
     
     // make SCRs
-    auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, false, false);
-    auto onePDMSSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
-    auto onePDMLSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
-    auto onePDMSLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(mem, NB1C, true, true);
+    auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB1C, false, false);
+    auto onePDMSSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB1C, true, true);
+    auto onePDMLSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB1C, true, true);
+    auto onePDMSLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB1C, true, true);
     
     // Component Scatter Density
     for (auto i = 0ul; i < mPDM; i++) {

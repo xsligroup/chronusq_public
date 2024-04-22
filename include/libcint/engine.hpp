@@ -31,7 +31,6 @@ namespace ChronusQ {
 
 class LibcintEngine {
  private:
-  CQMemManager& memManager_;
   
   int nAtoms_ = 0;
   int nShells_ = 0;
@@ -50,13 +49,13 @@ class LibcintEngine {
   LibcintEngine(const LibcintEngine&) = delete;
   LibcintEngine(LibcintEngine &&) = delete;
   
-  LibcintEngine(CQMemManager& mem, const BasisSet& basisSet, const Molecule& molecule): 
-      memManager_(mem), nAtoms_(molecule.nAtoms), nShells_(basisSet.nShell) {
+  LibcintEngine(const BasisSet& basisSet, const Molecule& molecule): 
+      nAtoms_(molecule.nAtoms), nShells_(basisSet.nShell) {
     
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    atom_ = memManager_.template malloc<int>(nAtoms_ * ATM_SLOTS);
-    basis_ = memManager_.template malloc<int>(nShells_ * BAS_SLOTS);
-    env_ = memManager_.template malloc<double>(basisSet.getLibcintEnvLength(molecule));
+    atom_ = CQMemManager::get().malloc<int>(nAtoms_ * ATM_SLOTS);
+    basis_ = CQMemManager::get().malloc<int>(nShells_ * BAS_SLOTS);
+    env_ = CQMemManager::get().malloc<double>(basisSet.getLibcintEnvLength(molecule));
     basisSet.setLibcintEnv(molecule, atom_, basis_, env_);
     
     shellSizes_.reserve(basisSet.nShell);
@@ -71,11 +70,11 @@ class LibcintEngine {
   }
 
   ~LibcintEngine() {
-    if (atom_) memManager_.free(atom_);
-    if (basis_) memManager_.free(basis_);
-    if (env_) memManager_.free(env_);
+    if (atom_) CQMemManager::get().free(atom_);
+    if (basis_) CQMemManager::get().free(basis_);
+    if (env_) CQMemManager::get().free(env_);
     for (auto & c : cache_) {
-      if (c) memManager_.free(c);
+      if (c) CQMemManager::get().free(c);
     }
   }
   
@@ -115,11 +114,11 @@ class LibcintEngine {
     
     //std::cout << " cache_size = " << cache_size << std::endl;
     for (auto & c : cache_) {
-      if (c) memManager_.free(c);
+      if (c) CQMemManager::get().free(c);
     }
     cache_.clear();
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      cache_.push_back(memManager_.template malloc<double>(cache_size));
+      cache_.push_back(CQMemManager::get().malloc<double>(cache_size));
     }
   } // allocate_int2e_cache
 

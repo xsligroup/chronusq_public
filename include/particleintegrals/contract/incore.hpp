@@ -122,7 +122,6 @@ namespace ChronusQ {
     ProgramTimer::tick("J Contract");
 
     InCore4indexTPI<IntsT> &tpi4I = *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = tpi4I.memManager();
     size_t NB   = tpi4I.nBasis();
     size_t NB2  = NB*NB;
     size_t sNB  = tpi4I.snBasis();
@@ -153,13 +152,13 @@ namespace ChronusQ {
 
       if( extractRealPartX ) {
 
-      X = memManager_.malloc<IntsT>(sNB2);
+      X = CQMemManager::get().malloc<IntsT>(sNB2);
       for(auto k = 0ul; k < sNB2; k++) X[k] = std::real(C.X[k]);
     }
 
       if( allocAXScratch ) {
 
-        AX = memManager_.malloc<IntsT>(NB2);
+        AX = CQMemManager::get().malloc<IntsT>(NB2);
         std::fill_n(AX,NB2,0.);
 
       }
@@ -200,11 +199,11 @@ namespace ChronusQ {
       #endif
 
       // Cleanup temporaries
-      if( extractRealPartX ) memManager_.free(X);
+      if( extractRealPartX ) CQMemManager::get().free(X);
       if( allocAXScratch ) {
 
         std::copy_n(AX,NB2,C.AX);
-        memManager_.free(AX);
+        CQMemManager::get().free(AX);
 
       }
     
@@ -428,7 +427,6 @@ namespace ChronusQ {
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
     InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NB2 = NB*NB;
     size_t NBRI = eri3j.nRIBasis();
@@ -446,25 +444,25 @@ namespace ChronusQ {
 
     if( extractRealPartX ) {
 
-      X = memManager_.malloc<IntsT>(NB2);
+      X = CQMemManager::get().malloc<IntsT>(NB2);
       for(auto k = 0ul; k < NB2; k++) X[k] = std::real(C.X[k]);
 
     }
 
     if( allocAXScratch ) {
 
-      AX = memManager_.malloc<IntsT>(NB2);
+      AX = CQMemManager::get().malloc<IntsT>(NB2);
       std::fill_n(AX,NB2,0.);
 
     }
 
 
-    auto Jtemp = memManager_.malloc<IntsT>(NBRI);
+    auto Jtemp = CQMemManager::get().malloc<IntsT>(NBRI);
     std::fill_n(Jtemp, NBRI, IntsT(0.));
     // (ij|Q)S^{-1/2} -> ERI3J
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBRI,1,NB2,IntsT(1.),eri3j.pointer(),NBRI,X,NB2,IntsT(0.),Jtemp,NBRI);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2,1,NBRI,IntsT(1.),eri3j.pointer(),NBRI,Jtemp,NBRI,IntsT(0.),AX,NB2);
-    memManager_.free(Jtemp);
+    CQMemManager::get().free(Jtemp);
 
     // if Complex ints + Hermitian, conjugate
 //    if( std::is_same<IntsT,dcomplex>::value and C.HER )
@@ -478,11 +476,11 @@ namespace ChronusQ {
 //    }
 
     // Cleanup temporaries
-    if( extractRealPartX ) memManager_.free(X);
+    if( extractRealPartX ) CQMemManager::get().free(X);
     if( allocAXScratch ) {
 
       std::copy_n(AX,NB2,C.AX);
-      memManager_.free(AX);
+      CQMemManager::get().free(AX);
 
     }
 
@@ -497,7 +495,6 @@ namespace ChronusQ {
       MPI_Comm, TwoBodyContraction<MatsT> &C) const {
 
     InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
     size_t NBNBRI = NB*NBRI;
@@ -506,7 +503,7 @@ namespace ChronusQ {
     MatsT *X  = C.X;
     MatsT *AX = C.AX;
 
-    auto Ktemp = memManager_.malloc<MatsT>(NB2NBRI);
+    auto Ktemp = CQMemManager::get().malloc<MatsT>(NB2NBRI);
     std::fill_n(Ktemp, NB2NBRI, MatsT(0.));
 #if 1
     // (ij|Q)S^{-1/2} -> ERI3J
@@ -526,7 +523,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NB,NB,NBNBRI,IntsT(1.),Ktemp,NB,ERI3J,NB2,IntsT(0.),AX,NB);
     IMatCopy('T',NBNBRI,NB,IntsT(1.),ERI3J,NBNBRI,NB);
 #endif
-    memManager_.free(Ktemp);
+    CQMemManager::get().free(Ktemp);
 
   }; // InCoreRIERIContraction::KContract
 
@@ -540,7 +537,6 @@ namespace ChronusQ {
     ROOT_ONLY(comm);
 
     InCoreRITPI<IntsT> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
     size_t NBNBRI = NB*NBRI;
@@ -548,9 +544,9 @@ namespace ChronusQ {
 
     std::fill_n(AX, NB*NB, MatsT(0.));
 
-    MatsT *Btemp1 = memManager_.malloc<MatsT>(NBNBRI*NO);
+    MatsT *Btemp1 = CQMemManager::get().malloc<MatsT>(NBNBRI*NO);
     std::fill_n(Btemp1, NBNBRI*NO, MatsT(0.));
-    MatsT *Btemp2 = memManager_.malloc<MatsT>(NBNBRI*NO);
+    MatsT *Btemp2 = CQMemManager::get().malloc<MatsT>(NBNBRI*NO);
     std::fill_n(Btemp2, NBNBRI*NO, MatsT(0.));
 
     // 1. Bt1(i, L | nu) = C(lambda, i)^H @ B(L, lambda | nu)^T
@@ -572,7 +568,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB,NB,NONBRI,MatsT(1.),Btemp2,NONBRI,Btemp1,NONBRI,
          MatsT(0.),AX,NB);
 
-    memManager_.free(Btemp1, Btemp2);
+    CQMemManager::get().free(Btemp1, Btemp2);
 
   }; // InCoreRIERIContraction::KCoefContract
 
@@ -582,7 +578,6 @@ namespace ChronusQ {
     ROOT_ONLY(comm);
 
     InCoreRITPI<double> &eri3j = *std::dynamic_pointer_cast<InCoreRITPI<double>>(this->ints_);
-    CQMemManager& memManager_ = eri3j.memManager();
     size_t NB = eri3j.nBasis();
     size_t NBRI = eri3j.nRIBasis();
     size_t NBNBRI = NB*NBRI;
@@ -590,11 +585,11 @@ namespace ChronusQ {
 
     std::fill_n(AX, NB*NB, dcomplex(0.));
 
-    dcomplex *Btemp1 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    dcomplex *Btemp1 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
     std::fill_n(Btemp1, NBNBRI*NO, dcomplex(0.));
-    dcomplex *Btemp2 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    dcomplex *Btemp2 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
     std::fill_n(Btemp2, NBNBRI*NO, dcomplex(0.));
-    dcomplex *Btemp3 = memManager_.malloc<dcomplex>(NBNBRI*NO);
+    dcomplex *Btemp3 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
     std::fill_n(Btemp3, NBNBRI*NO, dcomplex(0.));
 
     size_t LAThreads = GetLAThreads();
@@ -621,7 +616,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB,NB,NONBRI,dcomplex(1.),Btemp2,NONBRI,Btemp1,NONBRI,
          dcomplex(0.),AX,NB);
 
-    memManager_.free(Btemp1, Btemp2, Btemp3);
+    CQMemManager::get().free(Btemp1, Btemp2, Btemp3);
 
   }; // InCoreRIERIContraction::KCoefContract
 
@@ -665,8 +660,7 @@ namespace ChronusQ {
 
     // Obtain info from original (ee|pp) ints
     InCoreAsymmRITPI<IntsT> &asymmInts = *std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = asymmInts.memManager();
-    size_t NB = asymmInts.nBasis(); 
+    size_t NB = asymmInts.nBasis();
     size_t snNB = asymmInts.snBasis();
     std::shared_ptr<InCoreRITPI<IntsT>> aux1 = asymmInts.getAux1();
     std::shared_ptr<InCoreRITPI<IntsT>> aux2 = asymmInts.getAux2();
@@ -726,16 +720,16 @@ namespace ChronusQ {
     const bool allocAXScratch = not std::is_same<IntsT,MatsT>::value;
 
     if( extractRealPartX ) {
-      X = memManager_.malloc<IntsT>(snNB*snNB);
+      X = CQMemManager::get().malloc<IntsT>(snNB*snNB);
       for(auto k = 0ul; k < snNB*snNB; k++) X[k] = std::real(C.X[k]);
     }
 
     if( allocAXScratch ) {
-      AX = memManager_.malloc<IntsT>(NB*NB);
+      AX = CQMemManager::get().malloc<IntsT>(NB*NB);
     }
     std::fill_n(AX,NB*NB,0.);
 
-    auto Jtemp = memManager_.malloc<IntsT>( NBRI );
+    auto Jtemp = CQMemManager::get().malloc<IntsT>( NBRI );
     std::fill_n(Jtemp, NBRI, IntsT(0.));
     
     // R3J (NBRI by snNB^2) contracting with density (sbNB^2 by 1), generates a vector of length NBRI. 
@@ -749,7 +743,7 @@ namespace ChronusQ {
       // Left multiply by L3J.T (NB^2 by NBRI), to give output matrix (NB^2 by 1). 
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,NBRI,IntsT(1.),L3J,NBRI,Jtemp,NBRI,IntsT(0.),AX,NB*NB);
     } else{
-      auto Jtemp1 = memManager_.malloc<IntsT>( snNBRI );
+      auto Jtemp1 = CQMemManager::get().malloc<IntsT>( snNBRI );
       std::fill_n(Jtemp1, snNBRI, IntsT(0.));
       // Left multiply by M2J (snNBRI by NBRI), to give temp vector (snNBRI by 1)
       if(this->contractSecond){
@@ -759,11 +753,11 @@ namespace ChronusQ {
       }
       // Left multiply by L3J.T (NB^2 by snNBRI), to give output matrix (NB^2 by 1). 
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB*NB,1,snNBRI,IntsT(1.),L3J,snNBRI,Jtemp1,snNBRI,IntsT(0.),AX,NB*NB);
-      memManager_.free(Jtemp1);
+      CQMemManager::get().free(Jtemp1);
     }
     // double durGemm2 = tock(gemm2Begin);
     // std::cout << "  Asymm L3J X R3JXDensity GEMM duration: " << durGemm2 << " s" << std::endl;
-    memManager_.free(Jtemp);
+    CQMemManager::get().free(Jtemp);
 
     // if Complex ints + Hermitian, conjugate
 //    if( std::is_same<IntsT,dcomplex>::value and C.HER )
@@ -777,11 +771,11 @@ namespace ChronusQ {
 //    }
 
     // Cleanup temporaries
-    if( extractRealPartX ) memManager_.free(X);
+    if( extractRealPartX ) CQMemManager::get().free(X);
     if( allocAXScratch ) {
 
       std::copy_n(AX,NB*NB,C.AX);
-      memManager_.free(AX);
+      CQMemManager::get().free(AX);
 
     }
 

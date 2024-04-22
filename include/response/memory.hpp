@@ -42,13 +42,13 @@ namespace ChronusQ {
 
     //std::cerr << " NV " << nVec << std::endl;
 
-    resResults.W  = memManager_.template malloc<double>(nVec);
+    resResults.W  = CQMemManager::get().malloc<double>(nVec);
 
     if( isRoot ) { // Don't allocate the vector results on non-root process
       resResults.VR = resSettings.needVR ? 
-        memManager_.template malloc<T>(nVec*N) : nullptr;
+        CQMemManager::get().malloc<T>(nVec*N) : nullptr;
       resResults.VL = resSettings.needVL ? 
-        memManager_.template malloc<T>(nVec*N) : nullptr;
+        CQMemManager::get().malloc<T>(nVec*N) : nullptr;
     }
 
 
@@ -76,12 +76,12 @@ namespace ChronusQ {
     // RHS allocated delagated to formRHS
     if( fdrSettings.dampFactor == 0. and not fdrSettings.forceDamp ) {
 
-      fdrResults.SOL = memManager_.template malloc<T>(nRHSN*nOmega);
+      fdrResults.SOL = CQMemManager::get().malloc<T>(nRHSN*nOmega);
 
     } else {
 
       dfdrResults.SOL = 
-        memManager_.template malloc<dcomplex>(nRHSN*nOmega);
+        CQMemManager::get().malloc<dcomplex>(nRHSN*nOmega);
 
     }
 

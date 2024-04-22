@@ -330,9 +330,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env, options.finiteWidthNuc);
@@ -364,8 +364,8 @@ namespace ChronusQ {
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
 
-    double *buffAll = memManager_.template malloc<double>(buffSize*nthreads);
-    double *cacheAll = memManager_.template malloc<double>(cache_size*nthreads);
+    double *buffAll = CQMemManager::get().template malloc<double>(buffSize*nthreads);
+    double *cacheAll = CQMemManager::get().template malloc<double>(cache_size*nthreads);
 
     clear();
     Eigen::Map<
@@ -410,7 +410,7 @@ namespace ChronusQ {
 
     } // end OpenMP context
 
-    memManager_.free(cacheAll, buffAll, env, bas, atm);
+    CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
 
     // Symmetrize the matricies
@@ -458,9 +458,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env, options.finiteWidthNuc);
@@ -500,8 +500,8 @@ namespace ChronusQ {
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
 
-    double *buffAll = memManager_.template malloc<double>(buffSize*nthreads);
-    double *cacheAll = memManager_.template malloc<double>(cache_size*nthreads);
+    double *buffAll = CQMemManager::get().template malloc<double>(buffSize*nthreads);
+    double *cacheAll = CQMemManager::get().template malloc<double>(cache_size*nthreads);
 
 
     #pragma omp parallel
@@ -565,7 +565,7 @@ namespace ChronusQ {
 
     } // end OpenMP context
 
-    memManager_.free(cacheAll, buffAll, env, bas, atm);
+    CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
 
     // Symmetrize the matricies
@@ -886,9 +886,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
     
     basisSet_.setLibcintEnv(molecule_, atm, bas, env, options.finiteWidthNuc);
 
@@ -926,8 +926,8 @@ namespace ChronusQ {
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
 
-    double *buffAll = memManager_.template malloc<double>(buffSize*nthreads);
-    double *cacheAll = memManager_.template malloc<double>(cache_size*nthreads);
+    double *buffAll = CQMemManager::get().template malloc<double>(buffSize*nthreads);
+    double *cacheAll = CQMemManager::get().template malloc<double>(cache_size*nthreads);
 
     #pragma omp parallel
     {
@@ -998,7 +998,7 @@ namespace ChronusQ {
 
     } // end OpenMP context
 
-    memManager_.free(cacheAll, buffAll, env, bas, atm);
+    CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
     //Currently, did not scale dipole by particle charge
   };
@@ -1032,12 +1032,12 @@ namespace ChronusQ {
            " they are implemented in TwoEInts",std::cout);
       break;
     case LEN_ELECTRIC_MULTIPOLE:
-      try { _multipole[0] = memManager().malloc<double>(nBasis()*nBasis()); }
+      try { _multipole[0] = CQMemManager::get().malloc<double>(nBasis()*nBasis()); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full INTS tensor ("
                   << (nBasis()*nBasis()/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << this->memManager() << std::endl;
+        std::cout << std::endl << CQMemManager::get() << std::endl;
         CErr();
       }
       if (highOrder() >= 1) {
@@ -1054,7 +1054,7 @@ namespace ChronusQ {
         }
       }
       OnePInts<double>::OnePDriverLibint(libOp,mol,basis,_multipole,options.particle);
-      memManager().free(_multipole[0]);
+      CQMemManager::get().free(_multipole[0]);
       break;
     case VEL_ELECTRIC_MULTIPOLE:
     case MAGNETIC_MULTIPOLE:
@@ -1207,12 +1207,12 @@ namespace ChronusQ {
 
 
   template void Integrals<double>::computeAOOneP(
-      CQMemManager&, Molecule&, BasisSet&, EMPerturbation&,
+      Molecule&, BasisSet&, EMPerturbation&,
       const std::vector<std::pair<OPERATOR,size_t>>&,
       const HamiltonianOptions&);
 
   template void Integrals<double>::computeGradInts(
-      CQMemManager&, Molecule&, BasisSet&, EMPerturbation&,
+      Molecule&, BasisSet&, EMPerturbation&,
       const std::vector<std::pair<OPERATOR,size_t>>&,
       const HamiltonianOptions&);
 

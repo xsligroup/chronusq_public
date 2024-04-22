@@ -31,8 +31,8 @@
   
 #define WaveFunction_COLLECTIVE_OP(OP_MEMBER,OP_OP) \
   /* Handle densities */\
-  OP_OP(double,this,other,this->memManager,eps1); \
-  OP_OP(double,this,other,this->memManager,eps2); \
+  OP_OP(double,this,other,eps1); \
+  OP_OP(double,this,other,eps2); \
 
 
 
@@ -126,12 +126,12 @@ namespace ChronusQ {
     size_t NB = this->nC * this->nAlphaOrbital();
 
     mo.reserve(2);
-    mo.emplace_back(memManager, NB);
-    eps1 = memManager.malloc<double>(NB);
+    mo.emplace_back(NB);
+    eps1 = CQMemManager::get().malloc<double>(NB);
 
     if( this->nC == 1 and (not this->iCS) ) {
-      mo.emplace_back(memManager, NB);
-      eps2 = this->memManager.template malloc<double>(NB);
+      mo.emplace_back(NB);
+      eps2 = CQMemManager::get().malloc<double>(NB);
     }
 
   }; // WaveFunction<T>::alloc

@@ -23,7 +23,6 @@
  */
 #pragma once
 #include <chronusq_sys.hpp>
-#include <memmanager.hpp>
 #include <basisset.hpp>
 #include <molecule.hpp>
 #include <fields.hpp>
@@ -58,7 +57,6 @@ namespace ChronusQ {
 
   protected:
     size_t NB;
-    CQMemManager &memManager_; ///< CQMemManager to allocate matricies
 
   public:
 
@@ -66,10 +64,8 @@ namespace ChronusQ {
     ParticleIntegrals() = delete;
     ParticleIntegrals( const ParticleIntegrals & ) = default;
     ParticleIntegrals( ParticleIntegrals && ) = default;
-    ParticleIntegrals(CQMemManager &mem, size_t nb):
-        NB(nb), memManager_(mem) {}
+    ParticleIntegrals(size_t nb): NB(nb) {}
 
-    CQMemManager& memManager() const { return memManager_; }
     size_t nBasis() const{ return NB; }
 
     // Computation interfaces

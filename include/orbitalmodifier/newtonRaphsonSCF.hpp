@@ -75,8 +75,8 @@ private:
 public:
   // Constructor
   NewtonRaphsonSCF() = delete;
-  NewtonRaphsonSCF(std::vector<NRRotOptions> nrrot, SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
-    OrbitalOptimizer<MatsT>(sC, comm, modOpt, mem), rotOpt(nrrot) {
+  NewtonRaphsonSCF(std::vector<NRRotOptions> nrrot, SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt):
+    OrbitalOptimizer<MatsT>(sC, comm, modOpt), rotOpt(nrrot) {
 
     sanityChecks();
 
@@ -91,13 +91,13 @@ public:
 
   // Destructor
   ~NewtonRaphsonSCF() {
-    this->memManager.free(orbRot, orbGrad, orbDiagHess);
+    CQMemManager::get().free(orbRot, orbGrad, orbDiagHess);
 
     if( this->scfControls.nrAlg == QUASI_BFGS or this->scfControls.nrAlg == QUASI_SR1 ) {
       for( auto* p : qnOrbRot )
-        this->memManager.free(p);
+        CQMemManager::get().free(p);
       for( auto* p : qnOrbGrad )
-        this->memManager.free(p);
+        CQMemManager::get().free(p);
     }
   }
 

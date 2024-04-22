@@ -38,8 +38,8 @@
 namespace ChronusQ{
 
   template <typename MatsT>
-  void swapVectorToFirst(CQMemManager &memManager_, size_t groundIndex, MatsT* M, size_t ldm) {
-    MatsT* tmpVec = memManager_.template malloc<MatsT>(ldm);
+  void swapVectorToFirst(size_t groundIndex, MatsT* M, size_t ldm) {
+    MatsT* tmpVec = CQMemManager::get().malloc<MatsT>(ldm);
 
     SetMat('N', ldm, 1, 1.0, M + groundIndex * ldm, ldm, tmpVec, ldm);
     while (groundIndex > 0) {
@@ -48,11 +48,11 @@ namespace ChronusQ{
     }
     SetMat('N', ldm, 1, 1.0, tmpVec, ldm, M, ldm);
 
-    memManager_.template free(tmpVec);
+    CQMemManager::get().free(tmpVec);
   }
 
   template <typename MatsT>
-  void findTrueGroundStateEOMCCEigen(CQMemManager &memManager_, size_t Hbar_dim_w0,
+  void findTrueGroundStateEOMCCEigen(size_t Hbar_dim_w0,
                                      MatsT* theta_w0, MatsT* VL_w0, MatsT* VR_w0, double e_conv) {
 
     size_t groundIndex = 0;
@@ -77,9 +77,9 @@ namespace ChronusQ{
 
       std::cout << "Swap ground state to index 0 ..." << std::endl;
 
-      swapVectorToFirst(memManager_, groundIndex, theta_w0, 1);
-      swapVectorToFirst(memManager_, groundIndex, VL_w0, Hbar_dim_w0);
-      swapVectorToFirst(memManager_, groundIndex, VR_w0, Hbar_dim_w0);
+      swapVectorToFirst(groundIndex, theta_w0, 1);
+      swapVectorToFirst(groundIndex, VL_w0, Hbar_dim_w0);
+      swapVectorToFirst(groundIndex, VR_w0, Hbar_dim_w0);
 
       std::cout << "Swap finished" << std::endl;
 
@@ -87,14 +87,14 @@ namespace ChronusQ{
   }
 
   template <typename _F>
-  void biOrthoNormalize(CQMemManager &memManager_, size_t N, size_t nR, RawVectors<_F> &VL, RawVectors<_F> &VR) {
+  void biOrthoNormalize(size_t N, size_t nR, RawVectors<_F> &VL, RawVectors<_F> &VR) {
 
     // Biorthonomalize VR_ and VL_
     // VL_^\dagger*VR_ = P*L*U
     // VL_^\dagger = L^{-1}*P^{T}*VL_\dagger
     // VR_ = VR_ * U^{-1}
     std::vector<int64_t> IPIV(nR);
-    cqmatrix::Matrix<_F> LUMat(memManager_, nR);
+    cqmatrix::Matrix<_F> LUMat(nR);
 
 //    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
 //               nR,nR,N,_F(1.),VL,N,VR,N,_F(0.),LUMat,nR);
@@ -154,14 +154,14 @@ namespace ChronusQ{
   }
 
   template <typename _F>
-  void biOrthoNormalize(CQMemManager &memManager_, size_t nR, EOMCCSDVectorSet<_F> &VL, EOMCCSDVectorSet<_F> &VR) {
+  void biOrthoNormalize(size_t nR, EOMCCSDVectorSet<_F> &VL, EOMCCSDVectorSet<_F> &VR) {
 
     // Biorthonomalize VR_ and VL_
     // VL_^\dagger*VR_ = P*L*U
     // VL_^\dagger = L^{-1}*P^{T}*VL_\dagger
     // VR_ = VR_ * U^{-1}
     std::vector<int64_t> IPIV(nR);
-    cqmatrix::Matrix<_F> LUMat(memManager_, nR);
+    cqmatrix::Matrix<_F> LUMat(nR);
 
     //    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
     //               nR,nR,N,_F(1.),VL,N,VR,N,_F(0.),LUMat,nR);
@@ -255,11 +255,11 @@ namespace ChronusQ{
   }
 
   template <typename MatsT, typename IntsT>
-  EOMCCSD<MatsT,IntsT>::EOMCCSD(CQMemManager &memManager, const SafeFile &savFile,
+  EOMCCSD<MatsT,IntsT>::EOMCCSD(const SafeFile &savFile,
                                 CCIntermediates<MatsT> &intermediates,
                                 const EOMSettings &eomSettings,
                                 const CoupledClusterSettings &ccSettings):
-      memManager_(memManager), savFile_(savFile),
+      savFile_(savFile),
       intermediates_(intermediates), eomSettings(eomSettings),
       ccSettings_(ccSettings),
       vLabel_(intermediates.vLabel), oLabel_(intermediates.oLabel),
@@ -307,9 +307,9 @@ namespace ChronusQ{
   template <typename MatsT, typename IntsT>
   void EOMCCSD<MatsT,IntsT>::full_diagonalization() {
 
-    theta = memManager_.malloc<MatsT>(Hbar_dim);
-    RawVectors<MatsT> VL(MPI_COMM_WORLD, memManager_, Hbar_dim, Hbar_dim);
-    RawVectors<MatsT> VR(MPI_COMM_WORLD, memManager_, Hbar_dim, Hbar_dim);
+    theta = CQMemManager::get().malloc<MatsT>(Hbar_dim);
+    RawVectors<MatsT> VL(MPI_COMM_WORLD, Hbar_dim, Hbar_dim);
+    RawVectors<MatsT> VR(MPI_COMM_WORLD, Hbar_dim, Hbar_dim);
 
     std::cout << " Start building the full matrix " << std::endl;
 
@@ -321,12 +321,12 @@ namespace ChronusQ{
 
 //#define TEST_AGAINST_SIGMA
 #ifdef TEST_AGAINST_SIGMA
-    MatsT* diag = memManager_.malloc<MatsT>(Hbar_dim);
+    MatsT* diag = CQMemManager::get().malloc<MatsT>(Hbar_dim);
     beginBuild = tick();
     buildDiag(diag);
     std::cout << "buildDiag spend " << tock(beginBuild) << " s." << std::endl;
 
-    MatsT* fullMat2 = memManager_.malloc<MatsT>(Hbar_dim * Hbar_dim);
+    MatsT* fullMat2 = CQMemManager::get().malloc<MatsT>(Hbar_dim * Hbar_dim);
     beginBuild = tick();
     buildHbar_sigma(fullMat2, false);
     std::cout << "buildHbar_sigma spend " << tock(beginBuild) << " s." << std::endl;
@@ -347,7 +347,7 @@ namespace ChronusQ{
     std::cout << std::scientific << std::setprecision(12);
     std::cout << "Error Norm = " << errorNorm << std::endl;
 
-    memManager_.free(diag, fullMat2);
+    CQMemManager::get().free(diag, fullMat2);
 #endif
 
     std::cout << " Finished building the full matrix " << std::endl;
@@ -369,10 +369,10 @@ namespace ChronusQ{
 //    prettyPrintSmart(std::cout, "VL", VL, Hbar_dim, Hbar_dim, Hbar_dim);
 //    prettyPrintSmart(std::cout, "VR", VR, Hbar_dim, Hbar_dim, Hbar_dim);
 
-//    MatsT* VLVR = memManager_.malloc<MatsT>(Hbar_dim * Hbar_dim);
+//    MatsT* VLVR = CQMemManager::get().malloc<MatsT>(Hbar_dim * Hbar_dim);
 //    VL.dot_product(0, VR, 0, Hbar_dim, Hbar_dim, VLVR, Hbar_dim);
 //    prettyPrintSmart(std::cout, "VLVR", VLVR, Hbar_dim, Hbar_dim, Hbar_dim);
-//    memManager_.free(VLVR);
+//    CQMemManager::get().free(VLVR);
       SetLAThreads(1);
     } // ROOT_ONLY section
 
@@ -385,10 +385,10 @@ namespace ChronusQ{
     // Building Hbar matrix including H0S H0D blocks
     size_t Hbar_dim_w0 = Hbar_dim + 1;
     MatsT* theta_w0 = nullptr;
-    RawVectors<MatsT> VL_w0(MPI_COMM_WORLD, memManager_, Hbar_dim_w0, Hbar_dim_w0);
-    RawVectors<MatsT> VR_w0(MPI_COMM_WORLD, memManager_, Hbar_dim_w0, Hbar_dim_w0);
+    RawVectors<MatsT> VL_w0(MPI_COMM_WORLD, Hbar_dim_w0, Hbar_dim_w0);
+    RawVectors<MatsT> VR_w0(MPI_COMM_WORLD, Hbar_dim_w0, Hbar_dim_w0);
 
-    theta_w0 = memManager_.malloc<MatsT>(Hbar_dim_w0);
+    theta_w0 = CQMemManager::get().malloc<MatsT>(Hbar_dim_w0);
 
     std::cout << " Start building the full matrix " << std::endl;
 
@@ -412,7 +412,7 @@ namespace ChronusQ{
 
     beginBuild_w0 = tick();
     GeneralEigen('V', 'V', Hbar_dim_w0, fullMat_w0.pointer(), Hbar_dim_w0, theta_w0, VL_w0.getPtr(), Hbar_dim_w0, VR_w0.getPtr(), Hbar_dim_w0);
-    findTrueGroundStateEOMCCEigen(memManager_, Hbar_dim_w0, theta_w0, VL_w0.getPtr(), VR_w0.getPtr(), ccSettings_.eConv);
+    findTrueGroundStateEOMCCEigen(Hbar_dim_w0, theta_w0, VL_w0.getPtr(), VR_w0.getPtr(), ccSettings_.eConv);
     std::cout << "GeneralEigen spend " << tock(beginBuild_w0) << " s." << std::endl;
 
     std::cout << " Eigenvalues from the full matrix: " << std::endl;
@@ -429,7 +429,7 @@ namespace ChronusQ{
 
       // Begin Lambda check
       // Convert L1 and L2 amplitudes to a vector
-      MatsT* L0p1 = memManager_.malloc<MatsT>(this->getHbarDim(true));
+      MatsT* L0p1 = CQMemManager::get().malloc<MatsT>(this->getHbarDim(true));
       Lg_.toRaw(L0p1, *this, true);
 
       if (MPIRank() == 0) {
@@ -439,7 +439,7 @@ namespace ChronusQ{
 
 
       // Check if L0 is an eigenvector of Hbar with eigenvalue 0
-      MatsT* L0p1Hbar = memManager_.malloc<MatsT>(Hbar_dim + 1);
+      MatsT* L0p1Hbar = CQMemManager::get().malloc<MatsT>(Hbar_dim + 1);
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                  1, Hbar_dim_w0, Hbar_dim_w0, 1.0, L0p1, 1, fullMat_w0_copy.pointer(), Hbar_dim_w0, 0.0, L0p1Hbar, 1);
 //      prettyPrintSmart(std::cout, "L0p1Hbar", L0p1Hbar, 1, Hbar_dim_w0, 1);
@@ -448,7 +448,7 @@ namespace ChronusQ{
 
 
       // Get L0 from VL_w0
-      MatsT* L0_w0 = memManager_.malloc<MatsT>(Hbar_dim);
+      MatsT* L0_w0 = CQMemManager::get().malloc<MatsT>(Hbar_dim);
       SetMat('R', Hbar_dim, 1, 1.0/VL_w0.getPtr()[0], VL_w0.getPtr() + 1, Hbar_dim_w0, L0_w0, Hbar_dim);
 //      prettyPrintSmart(std::cout, "L0_w0", L0_w0, 1, Hbar_dim, 1);
 
@@ -456,19 +456,19 @@ namespace ChronusQ{
       std::cout << "L0 check diff norm = " << std::scientific << std::setprecision(4)
                 << blas::nrm2(Hbar_dim, L0_w0, 1) << std::endl;
 
-      MatsT *L0VR = memManager_.malloc<MatsT>(Hbar_dim);
+      MatsT *L0VR = CQMemManager::get().malloc<MatsT>(Hbar_dim);
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                  1, Hbar_dim, Hbar_dim, 1.0, L0raw, 1, VR.getPtr(), Hbar_dim, 0.0, L0VR, 1);
 //      prettyPrintSmart(std::cout, "L0VR", L0VR, 1, Hbar_dim, 1);
 
       // Get Hbar 0S and 0D blocks, this has to be done before diagonalize Hbar
       // because ZGEEV destroys Hbar
-      MatsT *H0 = memManager_.malloc<MatsT>(Hbar_dim);
+      MatsT *H0 = CQMemManager::get().malloc<MatsT>(Hbar_dim);
       SetMat('N', 1, Hbar_dim, 1.0, fullMat_w0_copy.pointer() + Hbar_dim_w0, Hbar_dim_w0, H0, 1);
 //      prettyPrintSmart(std::cout, "H0", H0, 1, Hbar_dim, 1);
 
       // Solve for R0
-      MatsT *H0VR = memManager_.malloc<MatsT>(Hbar_dim);
+      MatsT *H0VR = CQMemManager::get().malloc<MatsT>(Hbar_dim);
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                  1, Hbar_dim, Hbar_dim, 1.0, H0, 1, VR.getPtr(), Hbar_dim, 0.0, H0VR, 1);
 //      prettyPrintSmart(std::cout, "H0VR", H0VR, 1, Hbar_dim, 1);
@@ -486,33 +486,33 @@ namespace ChronusQ{
 //      }
 //      prettyPrintSmart(std::cout, "H0VR/theta after normalization", H0VR, 1, Hbar_dim, 1);
 
-      memManager_.free(L0p1, L0p1Hbar, L0_w0, L0VR, H0, H0VR);
+      CQMemManager::get().free(L0p1, L0p1Hbar, L0_w0, L0VR, H0, H0VR);
       } // END ROOT_ONLY section
       else {
-        memManager_.free(L0p1);
+        CQMemManager::get().free(L0p1);
       }
     }
 #endif
 
 
-    MatsT* VLVR_w0 = memManager_.malloc<MatsT>(Hbar_dim_w0 * Hbar_dim_w0);
+    MatsT* VLVR_w0 = CQMemManager::get().malloc<MatsT>(Hbar_dim_w0 * Hbar_dim_w0);
     VL_w0.dot_product(0, VR_w0, 0, Hbar_dim_w0, Hbar_dim_w0, VLVR_w0, Hbar_dim_w0);
 //    prettyPrintSmart(std::cout, "VLVR_w0", VLVR_w0, Hbar_dim_w0, Hbar_dim_w0, Hbar_dim_w0);
 
-    MatsT* VRVR_w0 = memManager_.malloc<MatsT>(Hbar_dim_w0 * Hbar_dim_w0);
+    MatsT* VRVR_w0 = CQMemManager::get().malloc<MatsT>(Hbar_dim_w0 * Hbar_dim_w0);
     VR_w0.dot_product(0, VR_w0, 0, Hbar_dim_w0, Hbar_dim_w0, VRVR_w0, Hbar_dim_w0);
 //    prettyPrintSmart(std::cout, "VRVR_w0", VRVR_w0, Hbar_dim_w0, Hbar_dim_w0, Hbar_dim_w0);
 
     // biOrthoNormalize and check
     std::cout << "Start biorthonormalization ..." << std::endl;
     VL_w0.conjugate();
-    biOrthoNormalize(memManager_, Hbar_dim_w0, Hbar_dim_w0, VL_w0, VR_w0);
+    biOrthoNormalize(Hbar_dim_w0, Hbar_dim_w0, VL_w0, VR_w0);
     VL_w0.conjugate();
 
 //    VL_w0.print(std::cout, "New VL after biOrthoNormalize");
 //    VR_w0.print(std::cout, "New VR after biOrthoNormalize");
 
-    MatsT *SCR = memManager_.template malloc<MatsT>(Hbar_dim_w0*Hbar_dim_w0);
+    MatsT *SCR = CQMemManager::get().malloc<MatsT>(Hbar_dim_w0*Hbar_dim_w0);
     VL_w0.dot_product(0, VR_w0, 0, Hbar_dim_w0, Hbar_dim_w0, SCR, Hbar_dim_w0);
 //    prettyPrintSmart(std::cout,"New VLVR",SCR,Hbar_dim_w0,Hbar_dim_w0,Hbar_dim_w0);
     for (size_t i = 0; i < Hbar_dim_w0; i++)
@@ -557,16 +557,16 @@ namespace ChronusQ{
     // Convert Lg from the first vector of VL_w0
     MatsT* rawPtr = const_cast<MatsT*>(VL_w0.getPtr(0));
     if (MPIRank() != 0)
-      rawPtr = memManager_.template malloc<MatsT>(this->getHbarDim(true));
+      rawPtr = CQMemManager::get().malloc<MatsT>(this->getHbarDim(true));
     TA::get_default_world().gop.template broadcast(rawPtr, this->getHbarDim(true), 0);
     Lg_.fromRaw(rawPtr, *this, true);
     if (MPIRank() != 0)
-      memManager_.free(rawPtr);
+      CQMemManager::get().free(rawPtr);
 
     L_ = std::make_shared<EOMCCSDVectorSet<MatsT>>(vLabel_, oLabel_, eomSettings.nroots);
-    std::dynamic_pointer_cast<EOMCCSDVectorSet<MatsT>>(L_)->fromRaw(MPI_COMM_WORLD, memManager_, VL_w0, *this, true, 0, 1, eomSettings.nroots);
+    std::dynamic_pointer_cast<EOMCCSDVectorSet<MatsT>>(L_)->fromRaw(MPI_COMM_WORLD, VL_w0, *this, true, 0, 1, eomSettings.nroots);
     R_ = std::make_shared<EOMCCSDVectorSet<MatsT>>(vLabel_, oLabel_, eomSettings.nroots);
-    std::dynamic_pointer_cast<EOMCCSDVectorSet<MatsT>>(R_)->fromRaw(MPI_COMM_WORLD, memManager_, VR_w0, *this, true, 0, 1, eomSettings.nroots);
+    std::dynamic_pointer_cast<EOMCCSDVectorSet<MatsT>>(R_)->fromRaw(MPI_COMM_WORLD, VR_w0, *this, true, 0, 1, eomSettings.nroots);
     initilizeDensity();
     std::vector<double> oscStrength;
     std::vector<double> excitationE;
@@ -585,7 +585,7 @@ namespace ChronusQ{
       savFile_.safeWriteData("/CC/OSCILLATOR_STRENGTHS", oscStrength.data(), {eomSettings.nroots});
     }
 
-    memManager_.free(theta_w0, VLVR_w0, VRVR_w0, SCR);
+    CQMemManager::get().free(theta_w0, VLVR_w0, VRVR_w0, SCR);
 
   }
 
@@ -1091,7 +1091,7 @@ namespace ChronusQ{
 
   template <typename MatsT, typename IntsT>
   EOMCCSD<MatsT,IntsT>::~EOMCCSD() {
-    if (theta) memManager_.free(theta);
+    if (theta) CQMemManager::get().free(theta);
 
     TAManager &TAmanager = TAManager::get();
 

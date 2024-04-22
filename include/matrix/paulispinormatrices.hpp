@@ -63,15 +63,15 @@ public:
    *  \param hasXY Flag for XY components
    *  \param hasZ Flag for Z component
    */
-  PauliSpinorMatrices(CQMemManager &mem, size_t nRow, size_t nCol, 
+  PauliSpinorMatrices(size_t nRow, size_t nCol,
       bool hasXY = true, bool hasZ = true) {
     size_t nComp = hasXY ? 4 : hasZ ? 2 : 1;
     components_.reserve(nComp);
     for (size_t i = 0; i < nComp; i++)
-      components_.emplace_back(mem, nRow, nCol);
+      components_.emplace_back(nRow, nCol);
   }
-  PauliSpinorMatrices(CQMemManager &mem, size_t n, bool hasXY = true, bool hasZ = true):
-      PauliSpinorMatrices(mem, n, n, hasXY, hasZ) { }
+  PauliSpinorMatrices(size_t n, bool hasXY = true, bool hasZ = true):
+      PauliSpinorMatrices(n, n, hasXY, hasZ) { }
   template <typename MatsU>
   PauliSpinorMatrices(const Matrix<MatsU> &other,
                       bool addXY = false, bool addZ = false ) {
@@ -82,7 +82,7 @@ public:
     components_.reserve(nComp--);
     components_.emplace_back(other, 0);
     while (nComp > 0) {
-      components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+      components_.emplace_back(this->nRows(), this->nColumns());
       components_.back().clear();
       nComp--;
     }
@@ -98,7 +98,7 @@ public:
     for (auto &p : other.components_)
       components_.emplace_back(p);
     while (nComp > other.components_.size()) {
-      components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+      components_.emplace_back(this->nRows(), this->nColumns());
       components_.back().clear();
       nComp--;
     }
@@ -193,7 +193,6 @@ public:
   bool hasZ() const { return components_.size() >= 2; }
   size_t nComponent() const { return components_.size(); }
 
-  CQMemManager& memManager() const { return S().memManager(); }
   size_t dimension() const{ return S().dimension(); }
   size_t nColumns() const { return S().nColumns(); }
   size_t nRows() const { return S().nRows(); }
@@ -357,7 +356,7 @@ public:
     PauliSpinorMatrices<typename std::conditional<
     (std::is_same<MatsT, dcomplex>::value or
      std::is_same<TransT, dcomplex>::value),
-    dcomplex, double>::type> transMats(this->memManager(), NT, hasXY(), hasZ());
+    dcomplex, double>::type> transMats(NT, hasXY(), hasZ());
     transMats.S() = S().transform(TRANS, T, NT, LDT);
     if (hasZ())
       transMats.Z() = Z().transform(TRANS, T, NT, LDT);

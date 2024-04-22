@@ -151,7 +151,7 @@ namespace ChronusQ {
   DetString DetStringManager::address2DetString(size_t addr, size_t nOrb, 
       int_matrix & addr_array, int_matrix & de_addr_array) const {
    
-    return DetString(this->memManager_, nOrb, address2DetString(addr, addr_array, de_addr_array));
+    return DetString(nOrb, address2DetString(addr, addr_array, de_addr_array));
      
   }; // DetStringManager::address2DetString
   
@@ -270,8 +270,7 @@ namespace ChronusQ {
      
     size_t nNZ = nE * (nOrb - nE + 1);
     size_t nStr = Comb(nOrb, nE);
-    CQMemManager & mem = this->memManager_;
-    ExcitationList exList(mem, 4, nNZ, nStr);
+    ExcitationList exList(4, nNZ, nStr);
     
     StringPermutator strList(nOrb, nE);
     
@@ -281,7 +280,7 @@ namespace ChronusQ {
     while (iStr != nStr) { 
       
       const std::vector<size_t> & eLocs = strList.permutedPositions();  
-      DetString L(mem, nOrb, eLocs); 
+      DetString L(nOrb, eLocs); 
       
       computeSingleString1eExcitationList(L, 
         exList.pointerAtDet(iStr), nOrb, nE, addrArray);
@@ -307,13 +306,12 @@ namespace ChronusQ {
                  int Sgnoff, bool pqseq, int_matrix & addr_array_pK,
                  int_matrix & addr_array_qK) const {
 
-    CQMemManager & mem = this->memManager_;
     size_t nVp = nOp - nEp;
     size_t nNZ = nEq * nVp;
     size_t nStrp = Comb(nOp, nEp);
     size_t nStrq = Comb(nOq, nEq);
 
-    ExcitationList exList(mem, 5, nNZ, nStrp, nStrq);
+    ExcitationList exList(5, nNZ, nStrp, nStrq);
     
     StringPermutator strList_qL(nOq, nEq); // SOqL
     StringPermutator strList_pL(nOp, nEp); // SOpL
@@ -324,14 +322,14 @@ namespace ChronusQ {
     // TODO: Parallel this loop
     while (iStr_qL != nStrq) {
       const std::vector<size_t> & eLocs_qL = strList_qL.permutedPositions();
-      DetString tmpQ(mem, nOq, eLocs_qL);
+      DetString tmpQ(nOq, eLocs_qL);
 
       strList_pL.reset_seed();
       iStr_pL = 0;
       
       while (iStr_pL != nStrp) {
         const std::vector<size_t> & eLocs_pL = strList_pL.permutedPositions();
-        DetString tmpP(mem, nOp, eLocs_pL);
+        DetString tmpP(nOp, eLocs_pL);
 
         computeTwoString1eExcitationList(tmpP, tmpQ,
           exList.pointerAtDet(iStr_pL, iStr_qL),

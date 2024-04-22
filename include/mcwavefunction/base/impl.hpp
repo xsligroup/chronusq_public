@@ -87,7 +87,7 @@ namespace ChronusQ {
   
     #define CONSTRUCT_CASSTRINGMANAGER(M_, N_) \
       std::dynamic_pointer_cast<DetStringManager>( \
-        std::make_shared<CASStringManager>(this->memManager, M_, N_))
+        std::make_shared<CASStringManager>(M_, N_))
 
     // Initialize String Engine
     if (mopart.scheme == CAS) {
@@ -113,9 +113,9 @@ namespace ChronusQ {
         if(mopart.nCorrEA < meRas3)
           CErr("RAS1 is too small to generate full MxElec.");
         std::shared_ptr<RASStringManager> rasStr = std::make_shared<RASStringManager>(
-            this->memManager, nActO, mopart.nCorrEA, mopart.mxHole, mopart.mxElec);
+            nActO, mopart.nCorrEA, mopart.mxHole, mopart.mxElec);
         std::shared_ptr<RASStringManager> rasStrBeta = (wfn.iCS) ? rasStr:
-            std::make_shared<RASStringManager>(this->memManager, nActO, mopart.nCorrEB,
+            std::make_shared<RASStringManager>(nActO, mopart.nCorrEB,
             mopart.mxHole, mopart.mxElec);
         mopart.fCat = genfCat(rasStr->LCategory(), rasStrBeta->LCategory(),
             rasStr->nCategory(), rasStrBeta->nCategory());
@@ -132,7 +132,7 @@ namespace ChronusQ {
         if(mopart.nCorrE < meRas3)
           CErr("RAS1 is too small to generate full MxElec.");
         std::shared_ptr<RASStringManager> rasStr = std::make_shared<RASStringManager>(
-               this->memManager, nActO, nCorrE, mopart.mxHole, mopart.mxElec);
+               nActO, nCorrE, mopart.mxHole, mopart.mxElec);
         mopart.fCat = genfCat(rasStr->LCategory(), rasStr->nCategory());
         this->NDet = rasStr->nString();
         this->detStr = std::dynamic_pointer_cast<DetStringManager>(rasStr);

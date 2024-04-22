@@ -318,7 +318,7 @@ namespace ChronusQ {
     std::fill_n(this->CIVecs[i], NDet, MatsT(0.));
     std::copy_n(refMCwfn->CIVecs[SoI_[i]], CIsize, this->CIVecs[i]);
 
-    MatsT * scr = this->memManager.template malloc<MatsT>(NDet);
+    MatsT * scr = CQMemManager::get().malloc<MatsT>(NDet);
 
     this->ciBuilder->buildSigma(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), 1,
                                     this->CIVecs[i], scr);
@@ -328,7 +328,7 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"LL PT2 RHS --", RHS, SDsize, 1, SDsize);
 #endif
 
-    this->memManager.free(scr);
+    CQMemManager::get().free(scr);
 
     ProgramTimer::tock("RHS build");
 
@@ -346,13 +346,13 @@ namespace ChronusQ {
 
     ProgramTimer::tick("compute HV");
     size_t NDet = this->NDet;
-    MatsT * P = this->memManager.template malloc<MatsT>(NDet);
+    MatsT * P = CQMemManager::get().malloc<MatsT>(NDet);
 
     for (auto i = 0ul; i < CIsize; i++) P[i] = MatsT(0.);
     for (auto i = CIsize; i < NDet; i++) P[i] = C[i];
     this->ciBuilder->buildSigma(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), 1, P, HV);
 
-    this->memManager.free(P);
+    CQMemManager::get().free(P);
     ProgramTimer::tock("compute HV");
 
   } // PERTRUB::computeHV
@@ -406,13 +406,13 @@ namespace ChronusQ {
     MatsT correction = MatsT(0.);
 
     if (PTopts.imaginaryShift) {
-      MatsT *scr = this->memManager.template malloc<MatsT>(this->SDsize);
+      MatsT *scr = CQMemManager::get().malloc<MatsT>(this->SDsize);
       // scr_i = C_i * shift;
       for (auto i = 0ul; i < SDsize; i++) {
         scr[i] = C_pt[i] * computeShift(i, E0_[state]);
       }
       correction +=  blas::dot(SDsize,C_pt,1,scr,1);
-      this->memManager.free(scr);
+      CQMemManager::get().free(scr);
     }
     else if (PTopts.levelShift)
       correction += MatsT(PTopts.levelShift) * blas::dot(SDsize,C_pt,1,C_pt,1);

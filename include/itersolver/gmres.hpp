@@ -390,8 +390,8 @@ namespace ChronusQ {
     double durGMRES = tock(topGMRES);
 
     // Cleanup memory
-//    if( VContract )  this->memManager_.free(VContract);
-//    if( AVContract ) this->memManager_.free(AVContract);
+//    if( VContract )  CQMemManager::get().free(VContract);
+//    if( AVContract ) CQMemManager::get().free(AVContract);
 
     if( isRoot )
       std::cout << "\n    * GMRES Converged in " << iMicro  
@@ -411,9 +411,9 @@ namespace ChronusQ {
       int nMicro = mDim[iDo];
 
       // Linear Solve
-      int64_t* IPIV = this->memManager_.template malloc<int64_t>(nMicro);
+      int64_t* IPIV = CQMemManager::get().malloc<int64_t>(nMicro);
       lapack::gesv(nMicro,1,curR,this->mSS_,IPIV,curW,this->mSS_+1);
-      this->memManager_.free(IPIV);
+      CQMemManager::get().free(IPIV);
 
       curHHR->set_data(0, 1, *curU, nMicro-1);
 

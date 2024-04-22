@@ -67,11 +67,10 @@ class InterSpaceFullCD1eExList: public FullCD1eExList {
   InterSpaceFullCD1eExList(InterSpaceFullCD1eExList && other)      = default;
   ~InterSpaceFullCD1eExList() = default;  
     
-  InterSpaceFullCD1eExList(CQMemManager & mem,
-                           const DeterminantGroup& tBraGroup, const DeterminantGroup& uBraGroup,
+  InterSpaceFullCD1eExList(const DeterminantGroup& tBraGroup, const DeterminantGroup& uBraGroup,
                            bool reversedSpaceOrder): reversedSpaceOrder_(reversedSpaceOrder),
-                                                     FullCD1eExList(mem, tBraGroup.nDeterminants() * uBraGroup.nDeterminants(),
-                                                                    tBraGroup.nElectrons() * uBraGroup.nHoles()), exList_Ket_(mem) {
+                                                     FullCD1eExList(tBraGroup.nDeterminants() * uBraGroup.nDeterminants(),
+                                                                    tBraGroup.nElectrons() * uBraGroup.nHoles()), exList_Ket_() {
     
     exList_Ket_.resize(2, this->nNonZeroKetDets_, this->nBraDets_);
 
@@ -232,7 +231,7 @@ class InterSpaceFullCD1eExListGenerator: public FullCD1eExListGenerator {
  */
 template <typename DetsT>
 std::shared_ptr<NewExcitationList>
-constructInterSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& tBraGroup,
+constructInterSpaceFullCD1eExList(const DeterminantGroup& tBraGroup,
                                   const DeterminantGroup& uBraGroup, const bool reversedOrder) {
  
   size_t nDets = std::max(tBraGroup.nDetsAfterExcitation(-1),
@@ -241,21 +240,21 @@ constructInterSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& tB
   // The second data type is the integer address converted from bit-string.
   if (nDets <= std::numeric_limits<uint8_t>::max()) {
     return std::make_shared<InterSpaceFullCD1eExList<DetsT, uint8_t>>(
-      mem, tBraGroup, uBraGroup, reversedOrder);
+      tBraGroup, uBraGroup, reversedOrder);
   } else if (nDets <= std::numeric_limits<uint16_t>::max()) {
     return std::make_shared<InterSpaceFullCD1eExList<DetsT, uint16_t>>(
-      mem, tBraGroup, uBraGroup, reversedOrder);
+      tBraGroup, uBraGroup, reversedOrder);
   } else if (nDets <= std::numeric_limits<uint32_t>::max()) {
     return std::make_shared<InterSpaceFullCD1eExList<DetsT, uint32_t>>(
-      mem, tBraGroup, uBraGroup, reversedOrder);
+      tBraGroup, uBraGroup, reversedOrder);
   }
   
   return std::make_shared<InterSpaceFullCD1eExList<DetsT, uint64_t>>(
-    mem, tBraGroup, uBraGroup, reversedOrder);
+    tBraGroup, uBraGroup, reversedOrder);
 }
 
 inline std::shared_ptr<NewExcitationList> 
- constructInterSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& tBraGroup,
+ constructInterSpaceFullCD1eExList(const DeterminantGroup& tBraGroup,
                                   const DeterminantGroup& uBraGroup, const bool reversedOrder) {
   
    size_t nOrbs = std::max(tBraGroup.nOrbitals(), uBraGroup.nOrbitals());
@@ -264,13 +263,13 @@ inline std::shared_ptr<NewExcitationList>
   // In the new framework, this may not be necessary since bit-strings are never saved.
   // It will be converted and saved as an integer address.
   if (nOrbs <= 8) {
-    return constructInterSpaceFullCD1eExList<uint8_t>(mem, tBraGroup, uBraGroup, reversedOrder);
+    return constructInterSpaceFullCD1eExList<uint8_t>(tBraGroup, uBraGroup, reversedOrder);
   } else if (nOrbs <= 16) {
-    return constructInterSpaceFullCD1eExList<uint16_t>(mem, tBraGroup, uBraGroup, reversedOrder);
+    return constructInterSpaceFullCD1eExList<uint16_t>(tBraGroup, uBraGroup, reversedOrder);
   } else if (nOrbs <= 32) {
-    return constructInterSpaceFullCD1eExList<uint32_t>(mem, tBraGroup, uBraGroup, reversedOrder);
+    return constructInterSpaceFullCD1eExList<uint32_t>(tBraGroup, uBraGroup, reversedOrder);
   } else if (nOrbs <= 64) {
-    return constructInterSpaceFullCD1eExList<uint64_t>(mem, tBraGroup, uBraGroup, reversedOrder);
+    return constructInterSpaceFullCD1eExList<uint64_t>(tBraGroup, uBraGroup, reversedOrder);
   }
   CErr("number of orbitals in DeterminantGroup is too large to be represented in fundamental data types");
   return nullptr;

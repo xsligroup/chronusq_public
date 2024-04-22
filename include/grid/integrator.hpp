@@ -475,7 +475,6 @@ namespace ChronusQ {
  
     MPI_Comm         comm;
 
-    CQMemManager     &memManager_; ///< Memory managment
     Molecule         &molecule_;   ///< Molecule object for nuclear potential
     BasisSet         &basisSet_;   ///< BasisSet for the GTO basis defintion
     SHELL_EVAL_TYPE  typ_      ;   ///< Specification of basis evaluatio requirements
@@ -500,10 +499,10 @@ namespace ChronusQ {
      *  Constructs a BeckeIntegrator object from a Quadrature scheme for the
      *  radial integration
      */ 
-    BeckeIntegrator(MPI_Comm c, CQMemManager &mem, Molecule &mol,
+    BeckeIntegrator(MPI_Comm c, Molecule &mol,
       BasisSet &basis, _QTyp1 g, size_t NAng, size_t NRadPerMacroBatch, 
       SHELL_EVAL_TYPE typ, double epsScreen) :
-      comm(c), memManager_(mem),molecule_(mol),basisSet_(basis),typ_(typ),
+      comm(c),molecule_(mol),basisSet_(basis),typ_(typ),
       basisSet2_(basis),epsScreen_(epsScreen),
       SphereIntegrator<_QTyp1>(g,NAng,{0.,0.,0.},1.,NRadPerMacroBatch),
       NDer((typ_ == GRADIENT) ? 4:1){ };
@@ -514,10 +513,10 @@ namespace ChronusQ {
      *  Constructs a BeckeIntegrator object from a Quadrature scheme for the
      *  radial integration by taking two basis sets as input
      */
-    BeckeIntegrator(MPI_Comm c, CQMemManager &mem, Molecule &mol,
+    BeckeIntegrator(MPI_Comm c, Molecule &mol,
       BasisSet &basis1, BasisSet &basis2, _QTyp1 g, size_t NAng, size_t NRadPerMacroBatch, 
       SHELL_EVAL_TYPE typ1, SHELL_EVAL_TYPE typ2, double epsScreen) : 
-      comm(c), memManager_(mem),molecule_(mol),basisSet_(basis1),typ_(typ1),
+      comm(c),molecule_(mol),basisSet_(basis1),typ_(typ1),
       epsScreen_(epsScreen),basisSet2_(basis2),typ2_(typ2),
       SphereIntegrator<_QTyp1>(g,NAng,{0.,0.,0.},1.,NRadPerMacroBatch),
       NDer((typ_ == GRADIENT) ? 4:1),NDer2((typ2_ == GRADIENT) ? 4:1),
@@ -775,13 +774,13 @@ namespace ChronusQ {
 
       // Allocate Basis scratch
       double *BasisEval = 
-        memManager_.template malloc<double>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
+        CQMemManager::get().malloc<double>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
 
       // Allocate Basis2 scratch
       double *Basis2Eval;
       //std::cout << "In integrate " << Int2nd << std::endl;
       if (Int2nd) 
-        Basis2Eval = memManager_.template malloc<double>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
+        Basis2Eval = CQMemManager::get().malloc<double>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
 
       // Allocate Basis scratch (shell cartisian)
       int LMax = 0;
@@ -790,7 +789,7 @@ namespace ChronusQ {
 
       size_t shSizeCar = ((LMax+1)*(LMax+2))/2; 
       double * SCR_Car = 
-        memManager_.template malloc<double>(nthreads*NDer*shSizeCar);
+        CQMemManager::get().malloc<double>(nthreads*NDer*shSizeCar);
 
       // Allocate Basis2 scratch (shell cartisian)
       int LMax2 = 0;
@@ -801,13 +800,13 @@ namespace ChronusQ {
       size_t shSizeCar2 = ((LMax2+1)*(LMax2+2))/2; 
       double * SCR_Car2;
       if (Int2nd) 
-        SCR_Car2 = memManager_.template malloc<double>(nthreads*NDer2*shSizeCar2);
+        SCR_Car2 = CQMemManager::get().malloc<double>(nthreads*NDer2*shSizeCar2);
 
       // Allocate scratch for Point Distances (squared and components) from each atomic center
 
-      double * cenRSq = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
-      double * cenR   = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
-      double * cenXYZ = memManager_.template malloc<double>(nthreads * 3*maxBatchSizeAtoms);
+      double * cenRSq = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenR   = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenXYZ = CQMemManager::get().malloc<double>(nthreads * 3*maxBatchSizeAtoms);
 
 
       // Populate cutoff Map (for each shell the distance beyond which the shell contribution is negligeble
@@ -1132,10 +1131,10 @@ namespace ChronusQ {
       res *= 4.* M_PI;
 
       // clean memory
-      memManager_.free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
+      CQMemManager::get().free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
 
       if (Int2nd)
-       memManager_.free(Basis2Eval,SCR_Car2);
+       CQMemManager::get().free(Basis2Eval,SCR_Car2);
 
 #if INT_DEBUG_LEVEL >= 1
       //TIMING
@@ -1187,13 +1186,13 @@ namespace ChronusQ {
 
       // Allocate Basis scratch
       dcomplex *BasisEval = 
-        memManager_.template malloc<dcomplex>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
+        CQMemManager::get().malloc<dcomplex>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
 
       // Allocate Basis2 scratch
       dcomplex *Basis2Eval;
       //std::cout << "In integrate " << Int2nd << std::endl;
       if (Int2nd) 
-        Basis2Eval = memManager_.template malloc<dcomplex>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
+        Basis2Eval = CQMemManager::get().malloc<dcomplex>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
 
       // Allocate Basis scratch (shell cartisian)
       int LMax = 0;
@@ -1202,7 +1201,7 @@ namespace ChronusQ {
 
       size_t shSizeCar = ((LMax+1)*(LMax+2))/2; 
       dcomplex * SCR_Car = 
-        memManager_.template malloc<dcomplex>(nthreads*NDer*shSizeCar);
+        CQMemManager::get().malloc<dcomplex>(nthreads*NDer*shSizeCar);
 
       // Allocate Basis2 scratch (shell cartisian)
       int LMax2 = 0;
@@ -1213,13 +1212,13 @@ namespace ChronusQ {
       size_t shSizeCar2 = ((LMax2+1)*(LMax2+2))/2; 
       dcomplex * SCR_Car2;
       if (Int2nd) 
-        SCR_Car2 = memManager_.template malloc<dcomplex>(nthreads*NDer2*shSizeCar2);
+        SCR_Car2 = CQMemManager::get().malloc<dcomplex>(nthreads*NDer2*shSizeCar2);
 
       // Allocate scratch for Point Distances (squared and components) from each atomic center
 
-      double * cenRSq = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
-      double * cenR   = memManager_.template malloc<double>(nthreads * maxBatchSizeAtoms);
-      double * cenXYZ = memManager_.template malloc<double>(nthreads * 3*maxBatchSizeAtoms);
+      double * cenRSq = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenR   = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenXYZ = CQMemManager::get().malloc<double>(nthreads * 3*maxBatchSizeAtoms);
 
 
       // Populate cutoff Map (for each shell the distance beyond which the shell contribution is negligeble
@@ -1545,10 +1544,10 @@ namespace ChronusQ {
       res *= 4.* M_PI;
 
       // clean memory
-      memManager_.free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
+      CQMemManager::get().free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
 
       if (Int2nd)
-       memManager_.free(Basis2Eval,SCR_Car2);
+        CQMemManager::get().free(Basis2Eval,SCR_Car2);
 
 #if INT_DEBUG_LEVEL >= 1
       //TIMING

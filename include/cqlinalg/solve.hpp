@@ -48,26 +48,15 @@ namespace ChronusQ {
   inline int64_t LinSolve(const int64_t N, const int64_t NRHS, _F *A, 
     const int64_t IA, const int64_t JA, const scalapackpp::scalapack_desc DESCA, 
     _F *B, const int64_t IB, const int64_t JB,
-    const scalapackpp::scalapack_desc DESCB, CQMemManager &mem) {
+    const scalapackpp::scalapack_desc DESCB) {
 
-    int64_t* iPIV = mem.malloc<int64_t>(DESCA[8] + DESCA[4]); // LLD + MB
+    int64_t* iPIV = CQMemManager::get().calloc<int64_t>(DESCA[8] + DESCA[4]); // LLD + MB
 
     int64_t INFO = LinSolve(N,NRHS,A,IA,JA,DESCA,B,IB,JB,DESCB,iPIV);
 
-    mem.free(iPIV);
+    CQMemManager::get().free(iPIV);
 
     return INFO;
-  }
-
-  template <typename _F>
-  inline int64_t LinSolve(const int64_t N, const int64_t NRHS, _F *A, 
-    const int64_t IA, const int64_t JA, const scalapackpp::scalapack_desc DESCA, 
-    _F *B, const int64_t IB, const int64_t JB,
-    const scalapackpp::scalapack_desc DESCB) {
-
-    std::vector<int64_t> iPIV(DESCA[8] + DESCA[4],0); // LLD + MB
-    return LinSolve(N,NRHS,A,IA,JA,DESCA,B,IB,JB,DESCB,&iPIV[0]);
-
   }
 
 

@@ -437,14 +437,14 @@ namespace ChronusQ {
       std::shared_ptr<Integrals<IntsT>> aointsAtom =
           std::make_shared<Integrals<IntsT>>();
       aointsAtom->TPI = std::make_shared<InCore4indexTPI<IntsT>>(
-          memManager,basis.nBasis);
+          basis.nBasis);
 
       SingleSlaterOptions guessSSOptions(ssOptions);
       guessSSOptions.refOptions.iCS = defaultMultip == 1;
 
       std::shared_ptr<SingleSlater<MatsT,IntsT>> ss =
           std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(
-              guessSSOptions.buildSingleSlater(std::cout, memManager,
+              guessSSOptions.buildSingleSlater(std::cout, 
                   atom, basis, aointsAtom));
 
       ss->comm = rcomm;
@@ -872,7 +872,7 @@ namespace ChronusQ {
       // onePDM on scr bin file
       // assume square and same dimension between S,X,Y,Z
       std::shared_ptr<cqmatrix::PauliSpinorMatrices<ScrMatsT>> onePDMtmp;
-      onePDMtmp = std::make_shared<cqmatrix::PauliSpinorMatrices<ScrMatsT>>(memManager,DSdims[0],hasDY,hasDZ);
+      onePDMtmp = std::make_shared<cqmatrix::PauliSpinorMatrices<ScrMatsT>>(DSdims[0],hasDY,hasDZ);
 
       // Errors in 1PDM SCALAR
       if( not hasDS )
@@ -1277,17 +1277,17 @@ namespace ChronusQ {
     auto NB2 = NB*NB;
 
     // Reorders shells of mo1 to Chronus ordering
-    MatsT* mo1tmp = memManager.malloc<MatsT>(NB2);
+    MatsT* mo1tmp = CQMemManager::get().malloc<MatsT>(NB2);
     SetMat('N',NB,NB,MatsT(1.),this->mo[0].pointer(),NB,mo1tmp,NB);
     reorderAngMO(shellList,mo1tmp,0);
-    memManager.free(mo1tmp);
+    CQMemManager::get().free(mo1tmp);
 
     // Reorders shells of mo2 to Chronus ordering
     if( this->nC == 1 and not this->iCS){
-      MatsT* mo2tmp = memManager.malloc<MatsT>(NB2);
+      MatsT* mo2tmp = CQMemManager::get().malloc<MatsT>(NB2);
       SetMat('N',NB,NB,MatsT(1.),this->mo[1].pointer(),NB,mo2tmp,NB);
       reorderAngMO(shellList,mo2tmp,1);
-      memManager.free(mo2tmp);
+      CQMemManager::get().free(mo2tmp);
     }
 
     // Reorder spin components
@@ -1357,7 +1357,7 @@ namespace ChronusQ {
     // Create temporary singleslater object to converge a classical calculation
     std::shared_ptr<SingleSlater<MatsT,IntsT>> classicalSS =
         std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(
-            classicalSSOptions.buildSingleSlater(std::cout, memManager, tempMol, 
+            classicalSSOptions.buildSingleSlater(std::cout,  tempMol, 
                 this->basisSet(), tempaoints));
 
     classicalSS->printLevel = 1;
@@ -1405,11 +1405,11 @@ namespace ChronusQ {
     if( this->nC == 1 ){
       // Allocate Local Matrices
       std::vector<cqmatrix::Matrix<MatsT>> SCR = this->onePDMOrtho->template spinGatherToBlocks<MatsT>(false);
-      double* eVals = this->memManager.template malloc<double>(NBC);
+      double* eVals = CQMemManager::get().malloc<double>(NBC);
 
 
       // Diagonalize Density
-      int INFO  = HermetianEigen('V', 'L', NBC, SCR[0].pointer(), NBC, eVals, this->memManager);
+      int INFO  = HermetianEigen('V', 'L', NBC, SCR[0].pointer(), NBC, eVals);
       if( INFO != 0 )
         CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
 
@@ -1430,7 +1430,7 @@ namespace ChronusQ {
 
       // Compute Beta Orbitals for Unrestricted
       if( not (this->iCS) ){
-        INFO  = HermetianEigen('V', 'L', NBC, SCR[1].pointer(), NBC, eVals, this->memManager);
+        INFO  = HermetianEigen('V', 'L', NBC, SCR[1].pointer(), NBC, eVals);
         if( INFO != 0 )
           CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
 
@@ -1447,16 +1447,16 @@ namespace ChronusQ {
       prettyPrintSmart(std::cout, "Natural Orbitals (Beta)", this->mo[1].pointer(),NBC,NBC,NBC);
 #endif
       }
-      this->memManager.free(eVals);
+      CQMemManager::get().free(eVals);
 
     // 2C and 4C
     } else {
 
       cqmatrix::Matrix<MatsT> SCR = this->onePDMOrtho->template spinGather<MatsT>();
-      double* eVals = this->memManager.template malloc<double>(NBC);
+      double* eVals = CQMemManager::get().malloc<double>(NBC);
 
       // Diagonalize Density
-      int INFO  = HermetianEigen('V', 'L', NBC, SCR.pointer(), NBC, eVals, this->memManager);
+      int INFO  = HermetianEigen('V', 'L', NBC, SCR.pointer(), NBC, eVals);
       if( INFO != 0 )
         CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
 
@@ -1487,7 +1487,7 @@ namespace ChronusQ {
         std::cout << "  " << eVals[i] << std::endl;
       prettyPrintSmart(std::cout, "Natural Orbitals", this->mo[0].pointer(),NBC,NBC,NBC);
 #endif
-      this->memManager.free(eVals);
+      CQMemManager::get().free(eVals);
     }
     } // MPIRank == 0
     ortho2aoMOs();

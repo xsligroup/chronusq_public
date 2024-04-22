@@ -157,9 +157,9 @@ namespace ChronusQ {
       auto other_NB = x.second->basisSet().nBasis;
 
       // Add a new coulomb matrix to the new system
-      newCoulombs.insert({x.first, cqmatrix::Matrix<MatsT>(ss->memManager, NB)});
+      newCoulombs.insert({x.first, cqmatrix::Matrix<MatsT>(NB)});
       // Add a new coulomb matrix to the other system
-      interCoulomb.at(x.first).insert({label, cqmatrix::Matrix<MatsT>(ss->memManager, other_NB)});
+      interCoulomb.at(x.first).insert({label, cqmatrix::Matrix<MatsT>(other_NB)});
 
       HamiltonianOptions this_options = ss->aoints_->options_;
       HamiltonianOptions other_options = x.second->aoints_->options_;
@@ -391,7 +391,7 @@ namespace ChronusQ {
     if( this->scfControls.scfAlg == _CONVENTIONAL_SCF ) {
       // Conventional SCF
       this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-          std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+          std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
     } else if( this->scfControls.scfAlg == _NEWTON_RAPHSON_SCF ) {
       // Newton-Raphson SCF
       CErr("Newton-Raphson SCF NYI for NEO methods!");
@@ -399,7 +399,7 @@ namespace ChronusQ {
       // SKIP SCF
       // this->scfControls.doExtrap = false;
       // this->orbitalModifier       = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-      //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+      //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
     }
 
   }

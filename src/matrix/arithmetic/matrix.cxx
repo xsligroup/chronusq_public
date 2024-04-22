@@ -31,8 +31,7 @@ namespace cqmatrix {
 template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 Matrix<MatsT>::Matrix( const ScaledMatrix<ScalarT, MatsU> &scaled ):
-    Matrix(scaled.getScalarMatrix().memManager(),
-           scaled.getScalarMatrix().nRows(), scaled.getScalarMatrix().nColumns()) {
+    Matrix(scaled.getScalarMatrix().nRows(), scaled.getScalarMatrix().nColumns()) {
   if (scaled.isPauli() and scaled.getPauliSpinorMatrices().hasZ())
     CErr("Cannot create a Matrix from a PauliSpinorMatrices with XYZ components.");
   SetMat('N',nRows(),nColumns(),scaled.scalar(),scaled.getScalarMatrix().pointer(),nRows(),pointer(),nRows());
@@ -85,7 +84,7 @@ Matrix<MatsT>& Matrix<MatsT>::operator=( Matrix<MatsT> &&other ) {
   if (this != &other) { // self-assignment check expected
     if (not isSameDimension(other))
       CErr("Cannot assign Matrix of different size.");
-    memManager_.free(ptr_);
+    CQMemManager::get().free(ptr_);
     ptr_ = other.ptr_;
     other.ptr_ = nullptr;
   }
@@ -272,7 +271,7 @@ Matrix<MatsT> Matrix<MatsT>::scaleT(_FScale scale, char TRANS) const {
   size_t outNRow = nRows();
   size_t outNCol = nColumns();
   if (TRANS == 'T' or TRANS == 'C') std::swap(outNRow, outNCol);
-  Matrix<MatsT> out(memManager(), outNRow, outNCol);
+  Matrix<MatsT> out(outNRow, outNCol);
   SetMat(TRANS, nRows(), nColumns(), scale, pointer(), nRows(), out.pointer(), outNRow);
   return out;
 }

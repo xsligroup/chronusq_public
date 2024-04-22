@@ -55,12 +55,12 @@ namespace ChronusQ {
     OnePRelInts() = delete;
     OnePRelInts( const OnePRelInts & ) = default;
     OnePRelInts( OnePRelInts && ) = default;
-    OnePRelInts(CQMemManager &mem, size_t nb, bool SORelativistic):
-        OnePInts<IntsT>(mem, nb) {
+    OnePRelInts(size_t nb, bool SORelativistic):
+        OnePInts<IntsT>(nb) {
       size_t nRel = SORelativistic ? 4 : 1;
       components_.reserve(nRel);
       for (size_t i = 0; i < nRel; i++)
-        components_.emplace_back(mem, nb);
+        components_.emplace_back(nb);
     }
 
     template <typename IntsU>
@@ -178,7 +178,7 @@ namespace ChronusQ {
           components_.clear();
           components_.reserve(nRel);
           for (size_t i = 0; i < nRel; i++) {
-            components_.emplace_back(this->memManager_, this->NB);
+            components_.emplace_back(this->NB);
           }
         }
 
@@ -197,8 +197,7 @@ namespace ChronusQ {
       OnePRelInts<typename std::conditional<
       (std::is_same<IntsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(
-          this->ParticleIntegrals::memManager(), NT, hasSpinOrbit());
+      dcomplex, double>::type> transInts(NT, hasSpinOrbit());
       transInts[REL_INTS_COMPS::O] =
           (*this)[REL_INTS_COMPS::O].transform(TRANS, T, NT, LDT);
       transInts.scalar() = scalar().transform(TRANS, T, NT, LDT);

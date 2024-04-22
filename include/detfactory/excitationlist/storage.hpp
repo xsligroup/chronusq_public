@@ -36,8 +36,6 @@ template <typename DetsT,
           typename std::enable_if<std::is_fundamental_v<DetsT>, int>::type = 0>
 class ExcitationListStorage {
  private:
-  CQMemManager & memManager_;
-
   DetsT * data_ = nullptr;
    
   size_t n1_ = 0;
@@ -47,22 +45,19 @@ class ExcitationListStorage {
   size_t n123_ = 0;
  
  public:
-  ExcitationListStorage() = delete; 
-  
-  ExcitationListStorage(CQMemManager &mem): memManager_(mem) { };
+  ExcitationListStorage() = default; 
 
-  ExcitationListStorage(CQMemManager &mem, size_t n1, size_t n2, size_t n3):
-      ExcitationListStorage(mem) {
+  ExcitationListStorage(size_t n1, size_t n2, size_t n3) {
     resize(n1, n2, n3);
   }
 
   ExcitationListStorage(const ExcitationListStorage& other):
-      ExcitationListStorage(other.memManager_, other.n1_, other.n2_, other.n3_) {
+      ExcitationListStorage(other.n1_, other.n2_, other.n3_) {
     std::copy_n(other.data_, n123_, data_);
   }
      
   ExcitationListStorage(ExcitationListStorage&& other):
-      memManager_(other.memManager_), n1_(other.n1_), n2_(other.n2_), 
+      n1_(other.n1_), n2_(other.n2_), 
       n3_(other.n3_), n12_(other.n12_), n123_(other.n123_) {
     data_ = other.data_;
     other.data_ = nullptr;
@@ -75,20 +70,20 @@ class ExcitationListStorage {
   void tryAlloc() {
     if (not data_) {
       try {
-        data_ = memManager_.template malloc<DetsT>(n123_);
+        data_ = CQMemManager::get().malloc<DetsT>(n123_);
       } catch (...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for ExcitationListStorage" 
                   <<  " (" << (n123_ / 1e9) * sizeof(DetsT) << " GB)" 
                   << std::endl;
-        std::cout << memManager_ << std::endl;
+        std::cout << CQMemManager::get() << std::endl;
         CErr();
       }
     } 
   }
 
   void dealloc() {
-    if (data_) memManager_.free(data_);
+    if (data_) CQMemManager::get().free(data_);
   }
   
   void resize(size_t n1, size_t n2, size_t n3) {

@@ -47,9 +47,8 @@ namespace ChronusQ {
     ProgramTimer::tick("Form Gradient");
     
     auto & mopart = mcwfn_.MOPartition;
-    auto & mem    = mcwfn_.memManager;
     if (not orbitalGradient_) 
-      orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(mem, mopart.nMO);
+      orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(mopart.nMO);
 
     size_t nTOrb   = mopart.nMO;
     size_t nCorrO  = mopart.nCorrO;
@@ -59,8 +58,8 @@ namespace ChronusQ {
     size_t SCRDim  = std::max(nCorrO, std::max(nInact, nFVirt));
     
     // Allocate SCR
-    MatsT * SCR  = mem.template malloc<MatsT>(SCRDim*SCRDim);
-    MatsT * SCR2 = mem.template malloc<MatsT>(nCorrO*nInact);
+    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(SCRDim*SCRDim);
+    MatsT * SCR2 = CQMemManager::get().malloc<MatsT>(nCorrO*nInact);
 
     // zero out G
     std::fill_n(orbitalGradient_->pointer(), nTOrb * nTOrb, MatsT(0.));
@@ -111,7 +110,7 @@ namespace ChronusQ {
       SetMat('T', nCorrO, nFVirt,  MatsT(1.), SCR, nCorrO, G + nTOrb * nInact + nINCO, nTOrb);
     } 
   
-    mem.free(SCR, SCR2);
+    CQMemManager::get().free(SCR, SCR2);
     
     // repointing to the begining
     G = orbitalGradient_->pointer();
@@ -120,7 +119,7 @@ namespace ChronusQ {
     // which is the formualed similarly as IN-FV block and CO-FV block
     if (settings.rotate_negative_positive) {
       size_t nNegMO = mopart.nNegMO;
-      SCR  = mem.template malloc<MatsT>(nNegMO * std::max(nInact, nCorrO)); 
+      SCR  = CQMemManager::get().malloc<MatsT>(nNegMO * std::max(nInact, nCorrO)); 
       
       // IN-NA block
       if (nInact > 0) {
@@ -134,7 +133,7 @@ namespace ChronusQ {
       SetMat('R', nCorrO, nNegMO, -MatsT(1.), SCR, nCorrO, G + nNegMO + nInact, nTOrb);
       SetMat('T', nCorrO, nNegMO,  MatsT(1.), SCR, nCorrO, G + (nNegMO + nInact) * nTOrb, nTOrb);
       
-      mem.free(SCR);
+      CQMemManager::get().free(SCR);
     }
 
     double orbitalGradientNorm =  lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, G, nTOrb); 

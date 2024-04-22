@@ -140,7 +140,7 @@ namespace ChronusQ{
 
     std::shared_ptr<DIISTA<MatsT>> ldiis = nullptr;
     if(ccSettings_.useDIIS){
-      ldiis = std::make_shared<DIISTA<MatsT>>(ccSettings_.nDIIS, memManager_);
+      ldiis = std::make_shared<DIISTA<MatsT>>(ccSettings_.nDIIS);
     }
 
     MatsT pseudoEnergy = 0.0;

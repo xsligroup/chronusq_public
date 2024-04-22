@@ -32,7 +32,6 @@ namespace ChronusQ
     class InterpolateTest 
     {
     public:
-        CQMemManager &memManager;
         size_t nInter = 2;
         std::vector<double> energy;
         double *B;
@@ -42,7 +41,7 @@ namespace ChronusQ
         double *gOpt;
 
 
-        InterpolateTest(CQMemManager &mem) : memManager(mem), energy(nInter,0.), coeffs(nInter,0.)
+        InterpolateTest() : energy(nInter,0.), coeffs(nInter,0.)
         {
             // Print Header output
             std::cout << "======================================================" << std::endl;
@@ -53,14 +52,14 @@ namespace ChronusQ
             std::cout << "                     [2., 0.] " << std::endl;
             std::cout << "======================================================" << std::endl;
             // Initialize 
-            B = memManager.template malloc<double>(nInter*nInter);
+            B = CQMemManager::get().malloc<double>(nInter*nInter);
             energy[1] = 1.;
             for(size_t i=0; i<nInter*nInter; i++ )
                 B[i] = 0.;
             B[1] = 2.;
             B[2] = 2.;
 
-            ENERGYDIIS<double> interp(nInter, B, nInter, energy, 0, convergence, memManager);
+            ENERGYDIIS<double> interp(nInter, B, nInter, energy, 0, convergence);
             
 
             // Change optimization options
@@ -80,7 +79,7 @@ namespace ChronusQ
             for( size_t i=0; i<nInter; i++)
                 coeffs[i] = interp.coeffs[i];
 
-            gOpt = memManager.template malloc<double>(2);
+            gOpt = CQMemManager::get().malloc<double>(2);
             interp.gradFunc();
             std::copy_n(interp.gPointer(),2,gOpt);
             std::cout << "Gradient:" << std::endl;
@@ -88,13 +87,12 @@ namespace ChronusQ
             std::cout << std::scientific << std::setprecision(8) << gOpt[1] << std::endl;
             std::cout << std::endl << std::endl;
         };
-        InterpolateTest() = delete;
         InterpolateTest(const BFGSTest &) = delete;
         InterpolateTest(BFGSTest &&) = delete;
 
         ~InterpolateTest()
         {
-            memManager.free(B,gOpt);
+            CQMemManager::get().free(B,gOpt);
         };
     };
 }

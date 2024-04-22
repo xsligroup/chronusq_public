@@ -24,7 +24,6 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
-#include <memmanager.hpp>
 #include <mcwavefunction.hpp>
 #include <matrix/matrix.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>

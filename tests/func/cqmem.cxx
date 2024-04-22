@@ -35,12 +35,12 @@ void CQMemManager_TEST(size_t size = 1) {
   size_t mem     = 256e6; // Default 256 MB allocation
   size_t blkSize = 2048;  // Default 2KB block size
 
-  CQMemManager memManager(mem,blkSize);
+  CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,mem,blkSize);
 
   size_t  trial_mem = 112e6/sizeof(T);
-  memManager.template malloc<T>(trial_mem);
+  CQMemManager::get().malloc<T>(trial_mem);
 
-  size_t find_max = memManager.template max_avail_allocatable<T>(size);
+  size_t find_max = CQMemManager::get().max_avail_allocatable<T>(size);
   size_t max_mem = (mem - 112e6 - 1024)/(sizeof(T) * size);
 
   EXPECT_TRUE(find_max == max_mem);

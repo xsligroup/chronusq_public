@@ -80,11 +80,11 @@ namespace ChronusQ {
     } else {
 
       if(not iCS and nC == 1 and basisSet().basisType == COMPLEX_GIAO)
-        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false);
       else if(nC == 2 or nC == 4)
-        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, true);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true);
       else
-        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false, false);
+        coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false, false);
 
     }
 
@@ -122,7 +122,7 @@ namespace ChronusQ {
       hamiltonianOptions.OneESpinOrbit = false;
     }
 
-    this->aoints_->computeAOOneP(memManager,this->molecule(),
+    this->aoints_->computeAOOneP(this->molecule(),
         this->basisSet(),emPert, ops, hamiltonianOptions); // compute the necessary 1e ints
 
     // Compute core Hamiltonian
@@ -202,7 +202,7 @@ namespace ChronusQ {
 
 
     // Core H contribution
-    this->aoints_->computeGradInts(memManager, this->molecule_, basisSet_, pert,
+    this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
       {{OVERLAP, 1},
        {KINETIC, 1},
        {NUCLEAR_POTENTIAL, 1}
@@ -216,7 +216,7 @@ namespace ChronusQ {
 
 
     // 2e contribution
-    this->aoints_->computeGradInts(memManager, this->molecule_, basisSet_, pert,
+    this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
       {{ELECTRON_REPULSION, 1}},
       opts
     );
@@ -237,9 +237,9 @@ namespace ChronusQ {
       auto orthoForward = orthoAB->forwardPointer();
 
       // Allocate
-      cqmatrix::Matrix<MatsT> vdv(memManager, NB);
-      cqmatrix::Matrix<MatsT> dvv(memManager, NB);
-      cqmatrix::PauliSpinorMatrices<MatsT> SCR(memManager, NB, hasXY, hasZ);
+      cqmatrix::Matrix<MatsT> vdv(NB);
+      cqmatrix::Matrix<MatsT> dvv(NB);
+      cqmatrix::PauliSpinorMatrices<MatsT> SCR(NB, hasXY, hasZ);
 
       // XXX: This requires copying the overlap gradients, but it is for
       //      copying to MatsT != IntsT
@@ -253,7 +253,7 @@ namespace ChronusQ {
       std::vector<cqmatrix::Matrix<MatsT>> gradOrtho;
       gradOrtho.reserve(nGrad);
       for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-        gradOrtho.emplace_back(memManager, NB);
+        gradOrtho.emplace_back(NB);
       }
       orthoAB->getOrthogonalizationGradients(gradOrtho, gradOverlap);
 
@@ -333,9 +333,9 @@ namespace ChronusQ {
     size_t NBC = this->nC*basisSet().nBasis;
 
     // Allocate scratch
-    cqmatrix::Matrix<MatsT> overlapSpinor(memManager, NB);
+    cqmatrix::Matrix<MatsT> overlapSpinor(NB);
     overlapSpinor.clear();
-    cqmatrix::Matrix<MatsT> overlapAB(memManager, NBC);
+    cqmatrix::Matrix<MatsT> overlapAB(NBC);
     overlapAB.clear();
 
     // Copy the overlap over to scratch space
@@ -373,9 +373,9 @@ namespace ChronusQ {
     const size_t NBC  = nC * NB;
 
     if( fockMO.empty() ) {
-      fockMO.emplace_back(memManager, NBC);
+      fockMO.emplace_back(NBC);
       if( nC == 1 and not iCS )
-        fockMO.emplace_back(memManager, NBC);
+        fockMO.emplace_back(NBC);
     }
 
     if( MPIRank(comm) == 0 ) {

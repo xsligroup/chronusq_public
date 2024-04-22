@@ -144,12 +144,12 @@ namespace ChronusQ {
      *                   for details. 
      */ 
     template <typename... Args>
-    SingleSlater(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
+    SingleSlater(MPI_Comm c, Molecule &mol, BasisSet &basis,
                  std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
-      SingleSlaterBase(c,mem,mol,basis,args...),
-      WaveFunctionBase(c,mem,mol,basis,args...),
-      QuantumBase(c,mem,args...),
-      WaveFunction<MatsT,IntsT>(c,mem,mol,basis,aoi,args...)
+      SingleSlaterBase(c,mol,basis,args...),
+      WaveFunctionBase(c,mol,basis,args...),
+      QuantumBase(c,args...),
+      WaveFunction<MatsT,IntsT>(c,mol,basis,aoi,args...)
       //, basisSet_(basis)
       //, coreType(NON_RELATIVISTIC), orthoType(LOWDIN)
     {

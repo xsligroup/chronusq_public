@@ -292,7 +292,7 @@ bool OrbitalOptimizer<MatsT>::evaluateProgress(EMPerturbation& pert) {
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->orbitalModifierDrivers.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->memManager(), onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->dimension());
           prevOnePDM[a] = *onePDM[a];
         }
       } else {

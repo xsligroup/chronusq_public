@@ -68,7 +68,6 @@ namespace ChronusQ {
     size_t nq  = off_sizes[1].second;
     size_t nr  = off_sizes[2].second;
     size_t ns  = off_sizes[3].second;
-    CQMemManager &mem = this->memManager();
     std::vector<size_t> LDT;
     std::vector<const TransT*> T;
     
@@ -82,8 +81,8 @@ namespace ChronusQ {
       }
     }
     
-    ResultsT* SCR  = mem.malloc<ResultsT>(NB * std::max(NB2*np, np*nq*nr)); 
-    ResultsT* SCR2 = mem.malloc<ResultsT>(NB2 * np * nq); 
+    ResultsT* SCR  = CQMemManager::get().malloc<ResultsT>(NB * std::max(NB2*np, np*nq*nr)); 
+    ResultsT* SCR2 = CQMemManager::get().malloc<ResultsT>(NB2 * np * nq); 
     IntsT * intsTdummy = nullptr;
     ResultsT * resultsTdummy = nullptr;
     
@@ -101,7 +100,7 @@ namespace ChronusQ {
       T[3], LDT[3], off_sizes[3].first, 'N', SCR2, NB, NB, np * nq, 
       'T', out, nr, ns, resultsTdummy, SCR, increment); 
     
-    mem.free(SCR, SCR2);
+    CQMemManager::get().free(SCR, SCR2);
   };
 
   template void InCore4indexRelERI<double>::subsetTransformWithLSComps(
@@ -148,7 +147,6 @@ namespace ChronusQ {
          std::is_same<TransT, dcomplex>::value),
         dcomplex, double>::type ResultsT;
     
-    CQMemManager &mem = this->memManager();
     size_t NB  = this->nBasis();
     size_t NB2 = NB * NB; 
     size_t np  = off_sizes[0].second;
@@ -156,8 +154,8 @@ namespace ChronusQ {
     size_t nr  = off_sizes[2].second;
     size_t ns  = off_sizes[3].second;
      
-    ResultsT* SCR  = mem.malloc<ResultsT>(NB * std::max(NB2*np, np*nq*nr)); 
-    ResultsT* SCR2 = mem.malloc<ResultsT>(NB2 * np * nq); 
+    ResultsT* SCR  = CQMemManager::get().malloc<ResultsT>(NB * std::max(NB2*np, np*nq*nr)); 
+    ResultsT* SCR2 = CQMemManager::get().malloc<ResultsT>(NB2 * np * nq); 
     IntsT * intsTdummy = nullptr;
     ResultsT * resultsTdummy = nullptr;
 
@@ -173,7 +171,7 @@ namespace ChronusQ {
     PairTransformation(TRANS, T, LDT, off_sizes[2].first, off_sizes[3].first,
       'N', SCR2, NB, NB, np * nq, 'T', out, nr, ns, resultsTdummy, SCR, increment); 
     
-    mem.free(SCR, SCR2);
+    CQMemManager::get().free(SCR, SCR2);
   }
   template void InCore4indexTPI<double>::subsetTransform(
       char TRANS, const double* T, int LDT,
@@ -198,7 +196,6 @@ namespace ChronusQ {
   //    char TRANS, const double* T, int LDT,
   //    const std::vector<std::pair<size_t,size_t>> &off_sizes,
   //    dcomplex* out, bool increment) const {
-  //  CQMemManager &mem = this->memManager();
   //  size_t NB = this->nBasis();
   //  std::vector<size_t> offs(4), SCR_nRows{NB * NB * NB};
   //  for (int i = 3; i >= 0; i--) {
@@ -208,8 +205,8 @@ namespace ChronusQ {
   //    else if (TRANS == 'N')
   //      offs[i] = off_sizes[i].first * LDT;
   //  }
-  //  dcomplex* SCR  = mem.malloc<dcomplex>(NB * std::max(SCR_nRows[1], SCR_nRows[3]));
-  //  dcomplex* SCR2 = mem.malloc<dcomplex>(NB * SCR_nRows[2]);
+  //  dcomplex* SCR  = CQMemManager::get().malloc<dcomplex>(NB * std::max(SCR_nRows[1], SCR_nRows[3]));
+  //  dcomplex* SCR2 = CQMemManager::get().malloc<dcomplex>(NB * SCR_nRows[2]);
   //  
   //  if (TRANS == 'T' or TRANS == 'C')
   //    TRANS = 'N';
@@ -244,7 +241,7 @@ namespace ChronusQ {
   //  blas::gemm(blas::Layout::ColMajor,OP_TRANS, blas::Op::ConjTrans, off_sizes[0].second, SCR_nRows[3], NB,
   //      dcomplex(1.), T+offs[0], LDT, SCR, SCR_nRows[3],
   //      outFactor,    out, off_sizes[0].second);
-  //  mem.free(SCR, SCR2);
+  //  CQMemManager::get().free(SCR, SCR2);
   //}
  
  /**
@@ -272,7 +269,6 @@ namespace ChronusQ {
     // else if TRANS = 'T' or 'C' --> the other dimension is 2*NB 
     size_t NB  = this->nBasis();
     size_t NB2 = NB*NB; 
-    CQMemManager &mem = this->memManager();
 
     std::vector<size_t> TColLeft, TColRight;
     for (const auto &off_size : off_sizes) {
@@ -289,8 +285,8 @@ namespace ChronusQ {
       TCol_off_sizes.push_back({off_size.first - TColMin, off_size.second});
     
     // copy over large and small MOs
-    TransT* TLarge = mem.template malloc<TransT>(NB*NTCol);
-    TransT* TSmall = mem.template malloc<TransT>(NB*NTCol);
+    TransT* TLarge = CQMemManager::get().template malloc<TransT>(NB*NTCol);
+    TransT* TSmall = CQMemManager::get().template malloc<TransT>(NB*NTCol);
     
     size_t NBHalf = NB / 2;
     if (TRANS == 'N' or TRANS == 'R') { 
@@ -322,7 +318,7 @@ namespace ChronusQ {
       auto & spinor = components_[0];
       
 //      if (outSymm) {
-//        OutT * SCR = mem.template malloc<OutT>(out_LDA*out_LDA);
+//        OutT * SCR = CQMemManager::get().template malloc<OutT>(out_LDA*out_LDA);
 //        
 //        // SSLL Transformation
 //        subsetTransformWithLSComps("SSLL", TRANS, TLarge, NB, TSmall, NB, 
@@ -334,9 +330,9 @@ namespace ChronusQ {
 //        MatAdd('N', 'T', out_LDA, out_LDA, OutT(1.), out, out_LDA,
 //          OutT(1.), SCR, out_LDA, out, out_LDA);
 //        
-//        mem.free(SCR);
+//        CQMemManager::get().free(SCR);
 //      } else {
-        IntsT * SCR = mem.template malloc<IntsT>(NB2*NB2);
+        IntsT * SCR = CQMemManager::get().template malloc<IntsT>(NB2*NB2);
         
         // SSLL Transformation
         // std::cout << "----Transform SSLL " << std::endl;
@@ -349,7 +345,7 @@ namespace ChronusQ {
         subsetTransformWithLSComps("LLSS", TRANS, TLarge, NB, TSmall, NB, 
           TCol_off_sizes, SCR, out, true);
         
-        mem.free(SCR);
+        CQMemManager::get().free(SCR);
 //      }
     }
 
@@ -357,7 +353,7 @@ namespace ChronusQ {
       CErr("Guant terms AO to MO transformation is not implemented");
     }      
 
-    mem.free(TLarge, TSmall);
+    CQMemManager::get().free(TLarge, TSmall);
   }; // InCore4indexRelERI::subsetTransform
   
   template void InCore4indexRelERI<double>::subsetTransform(
@@ -400,7 +396,7 @@ namespace ChronusQ {
     InCore4indexTPI<typename std::conditional<
         (std::is_same<IntsT, dcomplex>::value or
          std::is_same<TransT, dcomplex>::value),
-        dcomplex, double>::type> transInts(this->memManager(), NT);
+        dcomplex, double>::type> transInts(NT);
     subsetTransform(TRANS,T,LDT,{{0,NT},{0,NT},{0,NT},{0,NT}},
                     transInts.pointer(),false);
     return transInts;
@@ -434,9 +430,8 @@ namespace ChronusQ {
     size_t nq  = off_sizes[1].second;
     size_t NB   = this->nBasis();
     size_t NBRI = nRIBasis();
-    CQMemManager &mem = this->memManager();
-    IntsT* SCR = mem.malloc<IntsT>(NB * NB * NBRI);
-    ResultsT* SCR2 = mem.malloc<ResultsT>(NB * NBRI * np);
+    IntsT* SCR = CQMemManager::get().malloc<IntsT>(NB * NB * NBRI);
+    ResultsT* SCR2 = CQMemManager::get().malloc<ResultsT>(NB * NBRI * np);
     
     // SCR(mu nu, L) = ( L | mu nu )^T
     // SCR2(nu L, p) = SCR(mu, nu L)^H @ T(mu, p)
@@ -444,7 +439,7 @@ namespace ChronusQ {
     PairTransformation(TRANS, T, LDT, off_sizes[0].first, off_sizes[1].first,
       'T', pointer(), NB, NB, NBRI, 'T', out, np, nq, SCR, SCR2, increment); 
     
-    mem.free(SCR, SCR2);
+    CQMemManager::get().free(SCR, SCR2);
   }
   template void InCoreRITPI<double>::subsetTransform(
       char TRANS, const double* T, int LDT,
@@ -476,11 +471,10 @@ namespace ChronusQ {
   //    else if (TRANS == 'N')
   //      offs.push_back(off_size.first * LDT);
   //  }
-  //  CQMemManager &mem = this->memManager();
   //  size_t NB   = this->nBasis();
   //  size_t NBRI = nRIBasis();
-  //  dcomplex* SCR  = mem.malloc<dcomplex>(off_sizes[1].second * NBRI * NB);
-  //  dcomplex* SCR2 = mem.malloc<dcomplex>(
+  //  dcomplex* SCR  = CQMemManager::get().malloc<dcomplex>(off_sizes[1].second * NBRI * NB);
+  //  dcomplex* SCR2 = CQMemManager::get().malloc<dcomplex>(
   //        off_sizes[0].second * off_sizes[1].second * NBRI);
   //  if (TRANS == 'T' or TRANS == 'C')
   //    TRANS = 'N';
@@ -513,7 +507,7 @@ namespace ChronusQ {
   //  else
   //    MatAdd('T', 'N', NBRI, pq_size, dcomplex(1.), SCR2, pq_size,
   //           dcomplex(1.), out, NBRI, out, NBRI);
-  //  mem.free(SCR, SCR2);
+  //  CQMemManager::get().free(SCR, SCR2);
   //}
 
   /**
@@ -537,7 +531,7 @@ namespace ChronusQ {
     InCoreRITPI<typename std::conditional<
         (std::is_same<IntsT, dcomplex>::value or
          std::is_same<TransT, dcomplex>::value),
-        dcomplex, double>::type> transInts(this->memManager(), NT, nRIBasis());
+        dcomplex, double>::type> transInts(NT, nRIBasis());
     subsetTransform(TRANS,T,LDT,{{0,NT},{0,NT}},transInts.pointer(),false);
     return transInts;
   }

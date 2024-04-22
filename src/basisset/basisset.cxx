@@ -485,7 +485,7 @@ namespace ChronusQ {
 
 
   template <> 
-  void BasisSet::makeMapPrim2Cont(const double *SUn, double *MAP, CQMemManager &mem) const {
+  void BasisSet::makeMapPrim2Cont(const double *SUn, double *MAP) const {
 
     memset(MAP,0,nPrimitive * nBasis * sizeof(double));
 
@@ -518,7 +518,7 @@ namespace ChronusQ {
 
  
     // Compute SUn * MAP
-    double *SCR = mem.malloc<double>(nBasis*nPrimitive);
+    double *SCR = CQMemManager::get().malloc<double>(nBasis*nPrimitive);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nPrimitive,nBasis,nPrimitive,static_cast<double>(1.),SUn,nPrimitive,
       MAP,nBasis,static_cast<double>(0.),SCR,nPrimitive);
 
@@ -557,14 +557,14 @@ namespace ChronusQ {
 
       } // for size_t i = 0
     } // for size_t s1 = 0
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
   };  // BasisSet::makeMapPrim2Cont
 
 
 // make tempelate for makeMapPrim2Cont for real and complex
   template <> 
-  void BasisSet::makeMapPrim2Cont(const dcomplex *SUn, dcomplex *MAP, CQMemManager &mem) const {
+  void BasisSet::makeMapPrim2Cont(const dcomplex *SUn, dcomplex *MAP) const {
 
     memset(MAP,0,nPrimitive * nBasis * sizeof(dcomplex));
 
@@ -586,7 +586,7 @@ namespace ChronusQ {
 
  
     // Compute SUn * MAP
-    dcomplex *SCR = mem.malloc<dcomplex>(nBasis*nPrimitive);
+    dcomplex *SCR = CQMemManager::get().malloc<dcomplex>(nBasis*nPrimitive);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nPrimitive,nBasis,nPrimitive,static_cast<dcomplex>(1.),SUn,nPrimitive,
       MAP,nBasis,static_cast<dcomplex>(0.),SCR,nPrimitive);
 
@@ -626,7 +626,7 @@ namespace ChronusQ {
 
       } // for size_t i = 0
     } // for size_t s1 = 0
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
   };  // BasisSet::makeMapPrim2Cont Complex
 

@@ -162,9 +162,9 @@ namespace ChronusQ {
     std::vector<double> gradient;
 
     // Allocate scratch (NRCH is SCALAR only)
-    cqmatrix::Matrix<MatsT> vdv(ss.memManager, NB);
-    cqmatrix::Matrix<MatsT> dvv(ss.memManager, NB);
-    cqmatrix::Matrix<MatsT> coreHGrad(ss.memManager,NB);
+    cqmatrix::Matrix<MatsT> vdv(NB);
+    cqmatrix::Matrix<MatsT> dvv(NB);
+    cqmatrix::Matrix<MatsT> coreHGrad(NB);
     
     // Loop over gradient components
     for ( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {

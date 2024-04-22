@@ -53,9 +53,9 @@ namespace ChronusQ {
       if( not PTopts.doIter ) {
         //std::cout<<"PT2 lapack solver."<<std::endl;
         
-        int64_t* IPIV = this->memManager.template malloc<int64_t>(SDsize);
+        int64_t* IPIV = CQMemManager::get().malloc<int64_t>(SDsize);
         lapack::gesv(SDsize,1,LHS_->pointer(),SDsize,IPIV,Sol,SDsize);
-        this->memManager.free(IPIV);
+        CQMemManager::get().free(IPIV);
 
       }
     }
@@ -98,7 +98,7 @@ namespace ChronusQ {
     bool isRoot = MPIRank(this->comm) == 0;
 
     //build diagLHS for preconditioner
-    MatsT  * currdiag = this->memManager.template malloc<MatsT>(SDsize);
+    MatsT  * currdiag = CQMemManager::get().malloc<MatsT>(SDsize);
     std::copy_n(diagLHS, SDsize, currdiag);
     for (auto I = 0ul; I < SDsize; I++) currdiag[I] += E0 - computeShift(I, E0);
 
@@ -130,7 +130,7 @@ namespace ChronusQ {
     };
 
 
-    GMRES<MatsT> gmres(this->comm,this->memManager,this->SDsize,
+    GMRES<MatsT> gmres(this->comm,this->SDsize,
       PTopts.maxIter,PTopts.convCrit,lt,pc);
 
     gmres.setRHS(1,Sol,this->SDsize);
@@ -147,7 +147,7 @@ namespace ChronusQ {
 
     std::cout<<"itersolve done."<<std::endl;
 
-    this->memManager.free(currdiag);
+    CQMemManager::get().free(currdiag);
   } // PERTRUB::solveLinear
 
 } // namespace ChronusQ
