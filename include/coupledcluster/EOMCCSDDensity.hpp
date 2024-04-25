@@ -204,6 +204,7 @@ namespace ChronusQ{
       mu_g2x[j] += dot(muMatrix[static_cast<char>('X' + j) + std::string("vo")]("a,i"), Rho_ai("a,i")).get();
       mu_g2x[j] += dot(muMatrix[static_cast<char>('X' + j) + std::string("vv")]("a,b"), Rho_ab("a,b")).get();
     }
+    TA::get_default_world().gop.fence();
 
     TAManager &TAmanager = TAManager::get();
     TArray Rg1 = TAmanager.malloc<MatsT>("vo");
@@ -220,6 +221,7 @@ namespace ChronusQ{
       mu_x2g[j] += dot(muMatrix[static_cast<char>('X' + j) + std::string("vo")]("a,i"), Rho_ai("a,i")).get();
       mu_x2g[j] += dot(muMatrix[static_cast<char>('X' + j) + std::string("vv")]("a,b"), Rho_ab("a,b")).get();
     }
+    TA::get_default_world().gop.fence();
     TAmanager.free("vo", std::move(Rg1));
     TAmanager.free("vvoo", std::move(Rg2));
 

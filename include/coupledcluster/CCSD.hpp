@@ -329,9 +329,10 @@ namespace ChronusQ{
 
   template <typename MatsT, typename IntsT>
   void CCSD<MatsT,IntsT>::getCorrEnergy() {
-    MatsT CorrEOneBody = fockMatrix_ta["ov"]("i,a").dot(T1_("a,i"));
-    MatsT CorrETwoBodyT2 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T2_("c,d,k,l"));
-    MatsT CorrETwoBodyT1 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T1_("c,k") * T1_("d,l"));
+    MatsT CorrEOneBody = fockMatrix_ta["ov"]("i,a").dot(T1_("a,i")).get();
+    MatsT CorrETwoBodyT2 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T2_("c,d,k,l")).get();
+    MatsT CorrETwoBodyT1 = conj(antiSymMoints["vvoo"]("c,d,k,l")).dot(T1_("c,k") * T1_("d,l")).get();
+    TA::get_default_world().gop.fence();
     this->CorrE = CorrEOneBody + 0.25 * (CorrETwoBodyT2 + 2.0 * CorrETwoBodyT1);
   }
 

@@ -193,9 +193,10 @@ namespace ChronusQ{
       }
       
       MatsT PE_old = pseudoEnergy;
-      MatsT PEOneBody = fockMatrix_ta["vo"]("a,i").dot(L1_("a,i"));
-      MatsT PETwoBodyL2 = antiSymMoints["vvoo"]("a,b,i,j").dot(L2_("a,b,i,j"));
-      MatsT PETwoBodyL1 = antiSymMoints["vvoo"]("c,d,k,l").dot(L1_("c,k") * L1_("d,l"));
+      MatsT PEOneBody = fockMatrix_ta["vo"]("a,i").dot(L1_("a,i")).get();
+      MatsT PETwoBodyL2 = antiSymMoints["vvoo"]("a,b,i,j").dot(L2_("a,b,i,j")).get();
+      MatsT PETwoBodyL1 = antiSymMoints["vvoo"]("c,d,k,l").dot(L1_("c,k") * L1_("d,l")).get();
+      TA::get_default_world().gop.fence();
       pseudoEnergy = PEOneBody + 0.25 * (PETwoBodyL2 + 2.0 * PETwoBodyL1);
 
       double dPE = std::abs(pseudoEnergy - PE_old);

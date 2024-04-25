@@ -772,8 +772,9 @@ namespace ChronusQ{
     std::shared_ptr<EOMCCSDVectorSet<MatsT>> VR = std::dynamic_pointer_cast<EOMCCSDVectorSet<dcomplex>>(R_);
 
     for (size_t i = 0; i < nVec; i++) {
-      MatsT r0_1 = F_me("i,a").dot(VR->get(i).oneBody()("a,i"));
-      MatsT r0_2 = conj(antiSymMoints["vvoo"]("a,b,i,j")).dot(VR->get(i).twoBody()("a,b,i,j"));
+      MatsT r0_1 = F_me("i,a").dot(VR->get(i).oneBody()("a,i")).get();
+      MatsT r0_2 = conj(antiSymMoints["vvoo"]("a,b,i,j")).dot(VR->get(i).twoBody()("a,b,i,j")).get();
+      TA::get_default_world().gop.fence();
       VR->get(i).zeroBody() = (r0_1 + 0.25 * r0_2) / theta[i];
     }
   }
