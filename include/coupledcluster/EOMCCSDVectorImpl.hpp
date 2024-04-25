@@ -122,6 +122,7 @@ namespace ChronusQ{
       oneBodyDot = V1_("a,i").dot(other.V1_("a,i")).get();
       zeroBodyDot = V0_ * other.V0_;
     }
+    TA::get_default_world().gop.fence();
 
     return zeroBodyDot + oneBodyDot + 0.25 * twoBodyDot;
   }

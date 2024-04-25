@@ -1967,6 +1967,7 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void X2C<MatsT, IntsT>::saveX2C(std::shared_ptr<SingleSlaterBase> ss) {
+    ROOT_ONLY(ss->comm);
 
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;

@@ -279,7 +279,9 @@ protected:
 
     template <typename T>
     T DIISTA<T>::diis_dot(int i, int j){
-        return histerr[i].dot(histerr[j]);
+        T res = histerr[i].dot(histerr[j]);
+	TA::get_default_world().gop.fence();
+	return res;
     }
 
     template <typename T>

@@ -444,9 +444,10 @@ namespace ChronusQ {
     for (size_t i = 0; i < nO; i++)
       EF += eps[i];
 
-    if (rebuildFock)
+    if (rebuildFock) {
       EG = 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen("i,j")).dot(moDen("k,l")).get();
-    else {
+      TA::get_default_world().gop.fence();
+    } else {
 
       cqmatrix::Matrix<MatsT> moTwoeH = aoTwoeH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
       for (size_t i = 0; i < nO; i++)
