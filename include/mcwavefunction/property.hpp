@@ -222,7 +222,7 @@ namespace ChronusQ {
 
       std::vector<dcomplex> tdxyz(3);
       for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-        tdxyz[iXYZ] = blas::dot(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ]->pointer(),1);
+        tdxyz[iXYZ] = blas::dotu(nCorrO*nCorrO,tmpTDM1.pointer(),1,(*MOdipole)[iXYZ]->pointer(),1);
       }
 
       savFile.safeWriteData(nameoftdm, &tdxyz[0], {3});
