@@ -89,16 +89,16 @@ namespace ChronusQ {
   for ( auto i = 0; i < mol.atoms.size() * 3; i++ ) {\
     auto newg = ss2 ? \
       std::make_shared<InCore4indexTPI<T>>( \
-        ss1->memManager, ss1->basisSet().nBasis, \
+        ss1->basisSet().nBasis, \
         ss2->basisSet().nBasis) : \
       std::make_shared<InCore4indexTPI<T>>( \
-        ss1->memManager, ss1->basisSet().nBasis); \
+        ss1->basisSet().nBasis); \
     gints.push_back(newg); \
   } \
     \
   auto casted = dynamic_cast<Integrals<T>*>(ints); \
   casted->gradERI = std::make_shared<GradInts<TwoPInts,T>>( \
-    ss1->memManager, ss1->basisSet().nBasis, mol.atoms.size(), gints \
+    ss1->basisSet().nBasis, mol.atoms.size(), gints \
   );
 
 #define ADD_GRAD_DIRECT(T) \
@@ -106,15 +106,15 @@ namespace ChronusQ {
   for ( auto i = 0; i < mol.atoms.size() * 3; i++ ) {\
     auto newg = ss2 ? \
       std::make_shared<DirectTPI<T>>( \
-        ss1->memManager, ss1->basisSet(), ss2->basisSet(), mol, 1e-12) :  \
+        ss1->basisSet(), ss2->basisSet(), mol, 1e-12) :  \
       std::make_shared<DirectTPI<T>>( \
-        ss1->memManager, ss1->basisSet(), ss1->basisSet(), mol, 1e-12); \
+        ss1->basisSet(), ss1->basisSet(), mol, 1e-12); \
     gints.push_back(newg); \
   } \
     \
   auto casted = dynamic_cast<Integrals<T>*>(ints); \
   casted->gradERI = std::make_shared<GradInts<TwoPInts,T>>( \
-    ss1->memManager, ss1->basisSet().nBasis, mol.atoms.size(), gints \
+    ss1->basisSet().nBasis, mol.atoms.size(), gints \
   );
 
 

@@ -53,16 +53,14 @@ namespace ChronusQ {
   template <typename IntsT>
   void DirectTPI<IntsT>::computeSchwarz() {
 
-    CQMemManager &memManager_ = this->memManager();
-
-    if( schwarz() != nullptr ) memManager_.free(schwarz());
-    if( schwarz2() != nullptr ) memManager_.free(schwarz2());
+    if( schwarz() != nullptr ) CQMemManager::get().free(schwarz());
+    if( schwarz2() != nullptr ) CQMemManager::get().free(schwarz2());
 
     // Allocate the schwarz tensor
     size_t nShell = basisSet().nShell;
-    schwarz() = memManager_.malloc<double>(nShell*nShell);
+    schwarz() = CQMemManager::get().malloc<double>(nShell*nShell);
     if (&basisSet() != &basisSet2())
-      schwarz2() = memManager_.malloc<double>(basisSet2().nShell*basisSet2().nShell);
+      schwarz2() = CQMemManager::get().malloc<double>(basisSet2().nShell*basisSet2().nShell);
 
     // Define the libint2 integral engine
     libint2::Engine engine(libint2::Operator::coulomb,
@@ -94,7 +92,7 @@ namespace ChronusQ {
       if(buf_vec[0] == nullptr) continue;
 
       // Allocate space to hold the diagonals
-      double* diags = memManager_.malloc<double>(n1*n2);
+      double* diags = CQMemManager::get().malloc<double>(n1*n2);
 
       for(auto i(0), ij(0); i < n1; i++)
       for(auto j(0); j < n2; j++, ij++)
@@ -105,7 +103,7 @@ namespace ChronusQ {
         std::sqrt(lapack::lange(lapack::Norm::Inf,n1,n2,diags,n1));
 
       // Free up space
-      memManager_.free(diags);
+      CQMemManager::get().free(diags);
 
     } // loop s2
     } // loop s1
@@ -130,7 +128,7 @@ namespace ChronusQ {
         if(buf_vec[0] == nullptr) continue;
 
         // Allocate space to hold the diagonals
-        double* diags = memManager_.malloc<double>(n1*n2);
+        double* diags = CQMemManager::get().malloc<double>(n1*n2);
 
         for(auto i(0), ij(0); i < n1; i++)
         for(auto j(0); j < n2; j++, ij++)
@@ -141,7 +139,7 @@ namespace ChronusQ {
           std::sqrt(lapack::lange(lapack::Norm::Inf,n1,n2,diags,n1));
 
         // Free up space
-        memManager_.free(diags);
+        CQMemManager::get().free(diags);
 
       } // loop s2
       } // loop s1

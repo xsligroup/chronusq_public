@@ -102,11 +102,11 @@ namespace ChronusQ {
       // Main constructor
       // XXX: Does NOT construct electronic or protonic wavefunctions
       template <typename... Args>
-      NEOSS(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
+      NEOSS(MPI_Comm c, Molecule &mol, BasisSet &basis,
                 std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
-        SingleSlater<MatsT,IntsT>(c,mem,mol,basis,aoi,args...),
-        WaveFunctionBase(c,mem,mol,basis,args...),
-        QuantumBase(c,mem,args...) { };
+        SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
+        WaveFunctionBase(c,mol,basis,args...),
+        QuantumBase(c,args...) { };
 
       // Copy/move constructors
       template <typename MatsU>

@@ -24,7 +24,6 @@
 #pragma once
 
 #include <libint2/shell.h>
-#include <memmanager.hpp>
 #include <basisset/basisset_def.hpp>
 #include <fields.hpp> 
 
@@ -46,12 +45,12 @@ namespace ChronusQ {
    *  \brief Level 1 Basis Set Evaluation Function
    *  \brief Evaluates a shell set over a specified number of cartesian points.
    */ 
-  void evalShellSet(CQMemManager &,SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, double *, size_t, double *, bool);
+  void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, double *, size_t, double *, bool);
 
-  inline void evalShellSet(CQMemManager &memManager,SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
+  inline void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells,
     std::vector<std::array<double,3>> &pts, double *eval, bool &forceCart){
 
-    evalShellSet(memManager,typ,shells,&(pts[0][0]),pts.size(),eval,forceCart);
+    evalShellSet(typ,shells,&(pts[0][0]),pts.size(),eval,forceCart);
 
   }; // evalShellSet (over vector of arrays)
 
@@ -89,7 +88,7 @@ namespace ChronusQ {
   void CarToSpDEval(SHELL_EVAL_TYPE, size_t , double *, double*, size_t, size_t, bool);
   void CarToSpDEval(SHELL_EVAL_TYPE, size_t , dcomplex *, dcomplex*, size_t, size_t, bool); //GIAO
 
-  void testEval(CQMemManager &,double *, std::vector<libint2::Shell> &, bool);
+  void testEval(double *, std::vector<libint2::Shell> &, bool);
 
 
 

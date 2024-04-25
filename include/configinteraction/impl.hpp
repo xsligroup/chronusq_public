@@ -194,7 +194,7 @@ void ConfigrationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
     
     ProgramTimer::tick("Property Eval");
     
-    this->osc_str = this->memManager.template malloc<double>(this->NosS1*this->NStates);
+    this->osc_str = CQMemManager::get().malloc<double>(this->NosS1*this->NStates);
     for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
     for (size_t s2 = 0ul; s2 < this->NStates; s2++){
       if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
@@ -243,7 +243,6 @@ void ConfigrationInteraction<MatsT, IntsT>::initialization() {
   // TODO: add automate mechanism of break down large space to smaller spaces
   // Initialize a DetFactory object with the reference active spaces
   detFactory = std::make_shared<DeterminantFactory>(this->comm,
-                                                    this->memManager,
                                                     this->corrSpace.nCorrE, ciSettings.activeSpaces);
   
   // make sure the active space partitioning in CategoricalSpace is in reference to
@@ -290,17 +289,17 @@ void ConfigrationInteraction<MatsT, IntsT>::initialization() {
   // allocate CI vector
   size_t NS = this->NStates;
 
-  CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, this->memManager, NS);
+  CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, NS);
 
-  auto dasciBuilder = std::make_shared<DASCIBuilder<MatsT>>(this->comm, this->memManager, this->moints, *detFactory);
+  auto dasciBuilder = std::make_shared<DASCIBuilder<MatsT>>(this->comm, this->moints, *detFactory);
   dasciBuilder->setSigma2eContractionAlgorithm(ciSettings.ciSigma2eContAlg);
 
   ciBuilder = dasciBuilder;
 
   if (this->ciSettings.doSCF) {
     size_t nCorrO = this->corrSpace.nCorrO;
-    oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager,nCorrO);
-    twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(this->memManager, nCorrO);     
+    oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);     
     moRotator = std::make_shared<NewOrbitalRotation<MatsT, IntsT>>(
       dynamic_cast<PostHartreeFock<MatsT,IntsT>&>(*this), ciSettings.ORSettings);
   }

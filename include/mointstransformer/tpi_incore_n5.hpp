@@ -82,7 +82,7 @@ namespace ChronusQ {
         size_t nq = off_sizes[1].second;
         size_t nr = off_sizes[2].second;
         size_t ns = off_sizes[3].second;
-        SCR = memManager_.malloc<MatsT>(np*nq*nr*ns);
+        SCR = CQMemManager::get().malloc<MatsT>(np*nq*nr*ns);
       } else { 
         SCR = MOTPI; 
       }
@@ -165,7 +165,7 @@ namespace ChronusQ {
             MOTPI[p + r*np] = SCR[p*(1+npqr) + r*(1+nr)*np];
         }
         
-        memManager_.free(SCR);
+        CQMemManager::get().free(SCR);
       }
 
       return; 

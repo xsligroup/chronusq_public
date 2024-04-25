@@ -311,7 +311,7 @@ namespace ChronusQ {
     int acount = 0, bcount = NB - 1;
 
     // mo scratch
-    MatsT* mo1tmp = memManager.malloc<MatsT>(NBC2);
+    MatsT* mo1tmp = CQMemManager::get().malloc<MatsT>(NBC2);
     SetMat('N',NBC,NBC,MatsT(1.),this->mo[0].pointer(),NBC,mo1tmp,NBC);
 
     // Loop over mo1
@@ -333,7 +333,7 @@ namespace ChronusQ {
       }
     }
 
-    memManager.free(mo1tmp);
+    CQMemManager::get().free(mo1tmp);
 
   } // SingleSlater<T>::reorderSpinMO()
 

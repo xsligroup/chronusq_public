@@ -92,7 +92,7 @@ namespace ChronusQ {
     
     coulombMatrices.push_back(
       std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
-      ss.memManager, ss.coulombMatrix->dimension(), false, false)
+      ss.coulombMatrix->dimension(), false, false)
     );
 
     formRawGDInBatches(ss, pert, increment, xHFX, HerDen, onePDMs, coulombMatrices, exchangeMatrices, twoeHs);
@@ -158,7 +158,7 @@ namespace ChronusQ {
       // Use Coefficients to do K contraction
       auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
 
-      cqmatrix::Matrix<MatsT> AAblock(exchangeMatrices[0]->memManager(), NB);
+      cqmatrix::Matrix<MatsT> AAblock(NB);
       
       auto riKCoeffBegin = tick();
       ritpi->KCoefContract(ss.comm, ss.nOA, ss.mo[0].pointer(), AAblock.pointer());
@@ -169,7 +169,7 @@ namespace ChronusQ {
       
       } else {
         
-        cqmatrix::Matrix<MatsT> BBblock(exchangeMatrices[0]->memManager(), NB);
+        cqmatrix::Matrix<MatsT> BBblock(NB);
         if (ss.nOB > 0){
           ritpi->KCoefContract(ss.comm, ss.nOB, ss.mo[1].pointer(), BBblock.pointer());
         } else {
@@ -376,7 +376,6 @@ namespace ChronusQ {
 
     size_t NB = ss.basisSet().nBasis;
     size_t nGrad = 3*ss.molecule().nAtoms;
-    CQMemManager& mem = ss.memManager;
 
     bool hasXY = ss.exchangeMatrix->hasXY();
     bool hasZ = ss.exchangeMatrix->hasZ();
@@ -411,7 +410,7 @@ namespace ChronusQ {
       std::vector<TwoBodyContraction<MatsT>> tempCont;
 
       // Coulomb
-      JList.emplace_back(mem, NB);
+      JList.emplace_back(NB);
       JList.back().clear();
       tempCont.push_back(
          {ss.onePDM->S().pointer(), JList.back().pointer(), true, COULOMB}
@@ -420,7 +419,7 @@ namespace ChronusQ {
       // Exchange
       if( std::abs(xHFX) > 1e-12 ) {
 
-        KList.emplace_back(mem, NB, hasXY, hasZ);
+        KList.emplace_back(NB, hasXY, hasZ);
         KList.back().clear();
 
         tempCont.push_back(
@@ -451,7 +450,7 @@ namespace ChronusQ {
 
     // Contract to gradient
     std::vector<double> gradient;
-    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(mem, NB, hasXY, hasZ);
+    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(NB, hasXY, hasZ);
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
 

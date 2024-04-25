@@ -58,14 +58,13 @@ namespace ChronusQ {
     size_t nR   = mcwfn.NStates;
     auto & StateEnergy = mcwfn.StateEnergy;
     auto & CIVecs = mcwfn.CIVecs;
-    auto & mem    = mcwfn.memManager;
 
     if (alg_ == CI_FULL_MATRIX) {
       
       std::cout << "  Diagonalize CI Full Hamitonian Matrix ... \n" << std::endl;
-      dcomplex * Energy = mem.template malloc<dcomplex>(NDet);
-      MatsT * fullH     = mem.template malloc<MatsT>(NDet*NDet); 
-      MatsT * EigVec    = mem.template malloc<MatsT>(NDet*NDet);
+      dcomplex * Energy = CQMemManager::get().malloc<dcomplex>(NDet);
+      MatsT * fullH     = CQMemManager::get().malloc<MatsT>(NDet*NDet); 
+      MatsT * EigVec    = CQMemManager::get().malloc<MatsT>(NDet*NDet);
       MatsT * dummy     = nullptr;
       
       ProgramTimer::tick("Full Matrix");
@@ -84,7 +83,7 @@ namespace ChronusQ {
         std::cout << "Magnetic field detected. GeneralEigen will be used." << std::endl;
         GeneralEigen('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet);
       } else {
-        HermetianEigen('V', 'L', NDet, fullH, NDet, Energy, mem);
+        HermetianEigen('V', 'L', NDet, fullH, NDet, Energy);
         std::copy_n(fullH,NDet*NDet,EigVec);
       }
       
@@ -98,12 +97,12 @@ namespace ChronusQ {
         StateEnergy[i] = std::real(Energy[i]);
         std::copy_n(EigVec+i*NDet, NDet, CIVecs[i]);
       }
-      mem.free(Energy, fullH, EigVec);
+      CQMemManager::get().free(Energy, fullH, EigVec);
 
     } else if (alg_ == CI_DAVIDSON) {
       
       // build diagonal H
-      MatsT  * diagH  = mem.template malloc<MatsT>(NDet); 
+      MatsT  * diagH  = CQMemManager::get().malloc<MatsT>(NDet); 
       mcwfn.ciBuilder->buildDiagH(mcwfn, diagH);
       
 #ifdef _DEBUG_CISOLVER_IMPL
@@ -115,7 +114,7 @@ namespace ChronusQ {
       size_t m  = std::max(maxDavidsonSpace_, kG);
       size_t nG = kG*nR;
 
-      dcomplex * curEig = mem.template malloc<dcomplex>(nG);
+      dcomplex * curEig = CQMemManager::get().malloc<dcomplex>(nG);
       
       using LinearTrans_t = typename IterDiagonalizer<MatsT>::LinearTrans_t;
       
@@ -146,7 +145,7 @@ namespace ChronusQ {
       
       std::cout << "  Use Davidson Diagonalization ... \n" << std::endl;
 
-      Davidson<MatsT> davidson(mcwfn.comm, mem, NDet, 5, maxIter_,
+      Davidson<MatsT> davidson(mcwfn.comm, NDet, 5, maxIter_,
         vectorConv_, nR, func, PC);
        
       davidson.setM(m);
@@ -180,7 +179,7 @@ namespace ChronusQ {
 	    }
       }
 
-      mem.free(curEig, diagH);
+      CQMemManager::get().free(curEig, diagH);
 
     } else{
       CErr("Haven't Inplement Other Diagonalization yet");

@@ -112,7 +112,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
   input.parse();
   
   // Memory
-  auto memManager = CQMiscOptions(std::cout,input); 
+  CQMiscOptions(std::cout,input); 
   // Dummy scrName since READGEOM=INPUTFILE
   std::string scrName;
   
@@ -124,13 +124,13 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
   // AOIntegrals object
   Integrals<double> aoints;
   aoints.TPI =
-      std::make_shared<DirectTPI<double>>(*memManager,*basis,*basis,mol,1e-12);
+      std::make_shared<DirectTPI<double>>(*basis,*basis,mol,1e-12);
   
   // Scratch memory
   size_t NB = basis->nBasis;
-  FIELD *SX  = memManager->malloc<FIELD>(NB*NB); 
-  FIELD *SX2 = memManager->malloc<FIELD>(NB*NB); 
-  FIELD *Rand = memManager->malloc<FIELD>(NB*NB); 
+  FIELD *SX  = CQMemManager::get().malloc<FIELD>(NB*NB); 
+  FIELD *SX2 = CQMemManager::get().malloc<FIELD>(NB*NB); 
+  FIELD *Rand = CQMemManager::get().malloc<FIELD>(NB*NB); 
 
   // Set up direct contraction
   std::vector<TwoBodyContraction<FIELD>> cont = 
@@ -180,7 +180,7 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
 
 #endif
 
-  memManager->free(SX,SX2,Rand);
+  CQMemManager::get().free(SX,SX2,Rand);
 
 
 }

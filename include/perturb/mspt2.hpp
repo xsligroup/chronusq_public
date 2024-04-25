@@ -80,8 +80,8 @@ namespace ChronusQ {
     auto & nActO = mopart.nActOs;
 
     // build zero-order H_eff
-    cqmatrix::Matrix<MatsT> MfN(this->memManager, nStates);
-    cqmatrix::Matrix<MatsT> TDMscr(this->memManager, mopart.nCorrO);
+    cqmatrix::Matrix<MatsT> MfN(nStates);
+    cqmatrix::Matrix<MatsT> TDMscr(mopart.nCorrO);
     MfN.clear();
     for (auto m = 0ul; m < nStates; m++)
     for (auto n = 0ul; n < nStates; n++) {
@@ -103,26 +103,26 @@ namespace ChronusQ {
 #endif
 
     // diagonalize zero-order H_eff
-    //MatsT * U = this->memManager.template malloc<MatsT>(nStates*nStates);
-    dcomplex * Heff_diag = this->memManager.template malloc<dcomplex>(nStates); 
+    //MatsT * U = CQMemManager::get().malloc<MatsT>(nStates*nStates);
+    dcomplex * Heff_diag = CQMemManager::get().malloc<dcomplex>(nStates); 
     MatsT * dummy = nullptr;
     // TODO: GeneralEigen VS HermetianEigen?
     //GeneralEigen('N','V',nStates,MfN.pointer(),nStates,Heff_diag,dummy,1,U,nStates);
-    HermetianEigen('V','L',nStates,MfN.pointer(),nStates,Heff_diag,this->memManager);
+    HermetianEigen('V','L',nStates,MfN.pointer(),nStates,Heff_diag);
 
 #ifdef _DEBUG_PT2_impl
     prettyPrintSmart(std::cout,"PT2 H_eff_0 eigenvectors", U, nStates, nStates, nStates);
     prettyPrintSmart(std::cout,"PT2 H_eff_0 diagonal", Heff_diag, nStates, 1, nStates);
     //testing
-    MatsT * UU = this->memManager.template malloc<MatsT>(nStates*nStates);
+    MatsT * UU = CQMemManager::get().malloc<MatsT>(nStates*nStates);
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nStates,nStates,
                nStates,MatsT(1.),U,nStates,U,nStates,MatsT(0.),UU,nStates);
     prettyPrintSmart(std::cout,"PT2 U^U",UU, nStates, nStates, nStates);
-    this->memManager.free(UU);
+    CQMemManager::get().free(UU);
 #endif
 
-    MatsT * CIVref = this->memManager.template malloc<MatsT>(nStates*CIsize);
-    MatsT * CIVpt = this->memManager.template malloc<MatsT>(nStates*CIsize);
+    MatsT * CIVref = CQMemManager::get().malloc<MatsT>(nStates*CIsize);
+    MatsT * CIVpt = CQMemManager::get().malloc<MatsT>(nStates*CIsize);
     std::fill_n(CIVref, nStates*CIsize, MatsT(0.));
     // save diagonalized H_eff into E0_
     for (auto i = 0ul; i < nStates; i++) {
@@ -149,8 +149,8 @@ namespace ChronusQ {
       prettyPrintSmart(std::cout,"PT2 CI Vecs after rotation", refMCwfn->CIVecs[i], CIsize,1,CIsize);
 #endif
     }
-    //this->memManager.free(U, Heff_diag,CIVref,CIVpt);
-    this->memManager.free(Heff_diag,CIVref,CIVpt);
+    //CQMemManager::get().free(U, Heff_diag,CIVref,CIVpt);
+    CQMemManager::get().free(Heff_diag,CIVref,CIVpt);
 
   } // PERTURB::rotateCIVecs
 
@@ -171,7 +171,7 @@ namespace ChronusQ {
     H.clear();    
     std::vector<MatsT*> HV(nStates);
     for (auto i = 0ul; i < nStates; i++) {
-      HV[i] = this->memManager.template malloc<MatsT>(this->NDet);
+      HV[i] = CQMemManager::get().malloc<MatsT>(this->NDet);
       computeHV(HV[i], this->CIVecs[i]);
     }
     for (auto m = 0ul; m < nStates; m++)
@@ -208,26 +208,26 @@ namespace ChronusQ {
     size_t nStates = this->NStates;
 
     // GeneralEigen and HermetianEigen give the same results, but not the same eigvec.
-//    MatsT * eigvec = this->memManager.template malloc<MatsT>(nStates*nStates);
-    double * energy = this->memManager.template malloc<double>(nStates);
-//    dcomplex * energy = this->memManager.template malloc<dcomplex>(nStates);
+//    MatsT * eigvec = CQMemManager::get().malloc<MatsT>(nStates*nStates);
+    double * energy = CQMemManager::get().malloc<double>(nStates);
+//    dcomplex * energy = CQMemManager::get().malloc<dcomplex>(nStates);
 //    MatsT * dummy = nullptr;
-    HermetianEigen('V','L',nStates,H.pointer(),nStates,energy,this->memManager);
-//    GeneralEigen('N','V',nStates,H.pointer(),nStates,energy,dummy,1,eigvec,nStates,this->memManager);
+    HermetianEigen('V','L',nStates,H.pointer(),nStates,energy);
+//    GeneralEigen('N','V',nStates,H.pointer(),nStates,energy,dummy,1,eigvec,nStates);
 #ifdef _DEBUG_PT2_impl
-    MatsT * test = this->memManager.template malloc<MatsT>(nStates*nStates);
+    MatsT * test = CQMemManager::get().malloc<MatsT>(nStates*nStates);
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,nStates,nStates,
                nStates,MatsT(1.),H.pointer(),nStates,H.pointer(),nStates,MatsT(0.),test,nStates);
     prettyPrintSmart(std::cout,"test H_eff diag vector", test,nStates,nStates,nStates);
-    this->memManager.free(test);
+    CQMemManager::get().free(test);
 #endif
 
     for (auto i = 0ul; i < nStates; i++) {
       this->StateEnergy[i] = std::real(energy[i]);
 //      std::cout<<"state: "<<i<<" energy raw: "<< std::setprecision(12)<<energy[i]<<std::endl;
     }
-    this->memManager.free(energy);
-//    this->memManager.free(eigvec, energy);    
+    CQMemManager::get().free(energy);
+//    CQMemManager::get().free(eigvec, energy);    
     ProgramTimer::tock("Heff diag");
   } //PERTURB::diagHeff
 

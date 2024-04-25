@@ -43,7 +43,7 @@ void DASCIBuilder<MatsT>::build1TDM(
   
   std::vector<cqmatrix::Matrix<MatsT>> SCR;
   for (auto i = 0ul; i < GetNumThreads() - 1; i++) {
-    SCR.emplace_back(this->memManager_, oneTDM.dimension());
+    SCR.emplace_back(oneTDM.dimension());
     SCR.back().clear();
   }
 
@@ -148,7 +148,7 @@ void DASCIBuilder<MatsT>::build2TDM(
   // TODO: break down the SCR storage in the future
   std::vector<InCore4indexTPI<MatsT>> SCR;
   for (auto i = 0ul; i < GetNumThreads() - 1; i++) {
-    SCR.emplace_back(this->memManager_, twoTDM.nBasis());
+    SCR.emplace_back(twoTDM.nBasis());
     SCR.back().clear();
   }
   

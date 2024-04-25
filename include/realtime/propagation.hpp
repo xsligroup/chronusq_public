@@ -293,7 +293,7 @@ namespace ChronusQ {
     if( not UH[idx]->hasZ() ) {
       // See docs for factor of 2
       MatExp('D',NB,dcomplex(0.,-curState.stepSize/2.),
-        systems_[idx]->fockMatrixOrtho->S().pointer(),NB,UH[idx]->S().pointer(),NB,memManager_);
+        systems_[idx]->fockMatrixOrtho->S().pointer(),NB,UH[idx]->S().pointer(),NB);
 
       blas::scal(NB*NB,dcomplex(2.),UH[idx]->S().pointer(),1);
 
@@ -305,13 +305,13 @@ namespace ChronusQ {
           systems_[idx]->fockMatrixOrtho->template spinGatherToBlocks<dcomplex>(false);
       std::vector<cqmatrix::Matrix<dcomplex>> UHblocks;
       UHblocks.reserve(2);
-      UHblocks.emplace_back(memManager_, NB);
-      UHblocks.emplace_back(memManager_, NB);
+      UHblocks.emplace_back(NB);
+      UHblocks.emplace_back(NB);
 
       MatExp('D',NB,dcomplex(0.,-curState.stepSize),
-        Fblocks[0].pointer(),NB,UHblocks[0].pointer(),NB,memManager_);
+        Fblocks[0].pointer(),NB,UHblocks[0].pointer(),NB);
       MatExp('D',NB,dcomplex(0.,-curState.stepSize),
-        Fblocks[1].pointer(),NB,UHblocks[1].pointer(),NB,memManager_);
+        Fblocks[1].pointer(),NB,UHblocks[1].pointer(),NB);
 
       // Transform ALPHA / BETA -> SCALAR / MZ
       *UH[idx] = cqmatrix::PauliSpinorMatrices<dcomplex>::
@@ -322,10 +322,10 @@ namespace ChronusQ {
 
       size_t nC = systems_[idx]->nC;
       cqmatrix::Matrix<dcomplex> FnC(systems_[idx]->fockMatrixOrtho->template spinGather<dcomplex>());
-      cqmatrix::Matrix<dcomplex> UHnC(memManager_, nC*NB);
+      cqmatrix::Matrix<dcomplex> UHnC(nC*NB);
 
       MatExp('D',nC*NB,dcomplex(0.,-curState.stepSize),
-             FnC.pointer(),nC*NB,UHnC.pointer(),nC*NB, memManager_);
+             FnC.pointer(),nC*NB,UHnC.pointer(),nC*NB);
 
       *UH[idx] = UHnC.template spinScatter<dcomplex>();
 
@@ -352,8 +352,8 @@ namespace ChronusQ {
 
     size_t NB = systems_[idx]->nAlphaOrbital();
     size_t NC = systems_[idx]->nC;
-    dcomplex *SCR  = memManager_.template malloc<dcomplex>(NC*NC*NB*NB);
-    dcomplex *SCR1 = memManager_.template malloc<dcomplex>(NC*NC*NB*NB);
+    dcomplex *SCR  = CQMemManager::get().malloc<dcomplex>(NC*NC*NB*NB);
+    dcomplex *SCR1 = CQMemManager::get().malloc<dcomplex>(NC*NC*NB*NB);
 
     if( not UH[idx]->hasXY() ) {
 
@@ -448,7 +448,7 @@ namespace ChronusQ {
 
     systems_[idx]->ortho2aoDen();
 
-    memManager_.free(SCR,SCR1);
+    CQMemManager::get().free(SCR,SCR1);
 
     ProgramTimer::tock("Propagate WFN");
 
@@ -498,7 +498,7 @@ namespace ChronusQ {
     } catch(...) { }
 
     // Find last time step that was checkpointed
-    double* timeData = memManager_.template malloc<double>(maxPoints);
+    double* timeData = CQMemManager::get().malloc<double>(maxPoints);
     savFile.readData("RT/TIME", timeData);
     int offset = *timeData < 1e-10 ? -1 : 0;
     size_t restoreStep = offset + std::distance( timeData, 
@@ -506,7 +506,7 @@ namespace ChronusQ {
         [](double x){ return x < 1e-10; }
       )
     );
-    memManager_.free(timeData);
+    CQMemManager::get().free(timeData);
 
     if( printLevel > 0 ) {
       std::cout << "  *** Restoring from step " << restoreStep << " (";
@@ -673,7 +673,7 @@ namespace ChronusQ {
     
     // Allocation
     size_t fullDim = fullDen.dimension();
-    cqmatrix::Matrix<dcomplex> orthoTrans(memManager_, fullDim); 
+    cqmatrix::Matrix<dcomplex> orthoTrans(fullDim); 
     orthoTrans.clear();
     auto& mos = propagator_.mo;
 

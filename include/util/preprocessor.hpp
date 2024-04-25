@@ -31,52 +31,52 @@
 
 // Macros for the deallocation of raw memory using the 
 // CQMemManager
-#define DEALLOC_OP(mem,PTR) if(PTR != nullptr) mem.free(PTR);
-#define DEALLOC_VEC_OP(mem, VEC_PTR) \
+#define DEALLOC_OP(PTR) if(PTR != nullptr) CQMemManager::get().free(PTR);
+#define DEALLOC_VEC_OP( VEC_PTR) \
   for(auto i = 0; i < VEC_PTR.size(); i++) \
-    if(VEC_PTR[i] != nullptr) DEALLOC_OP(mem,VEC_PTR[i]); \
+    if(VEC_PTR[i] != nullptr) DEALLOC_OP(VEC_PTR[i]); \
   VEC_PTR.clear();
 
 // Some common wrappers around the deallocation macros for
 // consistant calling signatures
 
 // For consistant calling signiture with MOVE and COPY macros
-#define DEALLOC_OP_5(X,Y,Z,mem,PTR) DEALLOC_OP(mem,PTR);
-#define DEALLOC_VEC_OP_5(X,Y,Z,mem,PTR) DEALLOC_VEC_OP(mem,PTR);
+#define DEALLOC_OP_5(X,Y,Z,PTR) DEALLOC_OP(PTR);
+#define DEALLOC_VEC_OP_5(X,Y,Z,PTR) DEALLOC_VEC_OP(PTR);
 
 
 // COPY preprocessor macros
 #define COPY_OTHER_MEMBER(this,other,X) this->X = other.X;
-#define COPY_OTHER_MEMBER_OP(T,this,other,mem,PTR) \
+#define COPY_OTHER_MEMBER_OP(T,this,other,PTR) \
   if(other.PTR != nullptr) { \
-    size_t OPSZ = mem.getSize(other.PTR); \
-    this->PTR    = mem.template malloc<T>(OPSZ); \
+    size_t OPSZ = CQMemManager::get().getSize(other.PTR); \
+    this->PTR    = CQMemManager::get().malloc<T>(OPSZ); \
     std::copy_n(other.PTR, OPSZ, this->PTR); \
   } else this->PTR = nullptr;
 
-#define COPY_OTHER_MEMBER_VEC_OP(T,this,other,mem,VEC_PTR) \
+#define COPY_OTHER_MEMBER_VEC_OP(T,this,other,VEC_PTR) \
   this->VEC_PTR.clear(); \
   for(auto i = 0; i < other.VEC_PTR.size(); i++) { \
     this->VEC_PTR.push_back(nullptr); \
-    COPY_OTHER_MEMBER_OP(T,this,other,mem,VEC_PTR[i]); \
+    COPY_OTHER_MEMBER_OP(T,this,other,VEC_PTR[i]); \
   }
 
 
 // MOVE preprocessor macros
 #define MOVE_OTHER_MEMBER(this,other,X) this->X = std::move(other.X);
-#define MOVE_OTHER_MEMBER_OP(T,this,other,mem,PTR) \
+#define MOVE_OTHER_MEMBER_OP(T,this,other,PTR) \
   if(other.PTR != nullptr) { \
-    size_t OPSZ = mem.getSize(other.PTR); \
-    this->PTR    = mem.template malloc<T>(OPSZ); \
+    size_t OPSZ = CQMemManager::get().getSize(other.PTR); \
+    this->PTR    = CQMemManager::get().malloc<T>(OPSZ); \
     std::copy_n(other.PTR, OPSZ, this->PTR); \
-    DEALLOC_OP(mem,other.PTR); \
+    DEALLOC_OP(other.PTR); \
   } else this->PTR = nullptr;
 
-#define MOVE_OTHER_MEMBER_VEC_OP(T,this,other,mem,VEC_PTR) \
+#define MOVE_OTHER_MEMBER_VEC_OP(T,this,other,VEC_PTR) \
   this->VEC_PTR.clear(); \
   for(auto i = 0; i < other.VEC_PTR.size(); i++) { \
     this->VEC_PTR.push_back(nullptr); \
-    MOVE_OTHER_MEMBER_OP(T,this,other,mem,VEC_PTR[i]); \
+    MOVE_OTHER_MEMBER_OP(T,this,other,VEC_PTR[i]); \
   } \
   other.VEC_PTR.clear();
 

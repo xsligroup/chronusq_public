@@ -59,15 +59,13 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock1(EMPerturbation & per
   // populate F1 as hCore_pq
   postHF_.mointsTF->transformHCore(pert, F1, moType, deltaPQ, 'i');
   
-  auto & mem = postHF_.memManager;
-  
   const auto tsize  = postHF_.mointsTF->parseMOType("t");
   const size_t toff = tsize[0].first;
   const size_t nt   = tsize[0].second;
   const size_t nAO  = postHF_.reference()->nAlphaOrbital() * postHF_.reference()->nC;
   
-  cqmatrix::Matrix<MatsT> Den(mem, nAO);
-  MatsT * SCR = mem.template malloc<MatsT>(std::max(nAO*nt, npqDim)); 
+  cqmatrix::Matrix<MatsT> Den(nAO);
+  MatsT * SCR = CQMemManager::get().malloc<MatsT>(std::max(nAO*nt, npqDim)); 
   MatsT * tMO = postHF_.reference()->mo[0].pointer() + toff*nAO;
 
   // form densty D(nu,mu) = C(nu, u) 1PDM_{tu} C(mu, t)^*
@@ -84,7 +82,7 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock1(EMPerturbation & per
   if (postHF_.reference()->nC == 1) blas::scal(npqDim, MatsT(2.), F1, 1);
   blas::axpy(npqDim, MatsT(1.), SCR, 1, F1, 1);
   
-  mem.free(SCR);
+  CQMemManager::get().free(SCR);
 } // NewOrbitalRotation<MatsT>::formGeneralizedFock1
 
 /* 
@@ -105,7 +103,7 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock2(EMPerturbation & per
   const size_t nCorrO2 = nCorrO * nCorrO;
   const size_t nCorrO3 = nCorrO2 * nCorrO;
   
-  MatsT * SCR = postHF_.memManager.template malloc<MatsT>(nq * nCorrO3); 
+  MatsT * SCR = CQMemManager::get().malloc<MatsT>(nq * nCorrO3); 
   
   // populate SCR as hCore_qu 
   postHF_.mointsTF->transformHCore(pert, SCR, moType + "u", false, 'i');
@@ -121,7 +119,7 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock2(EMPerturbation & per
     nCorrO, nq, nCorrO3, MatsT(1.), twoRDM.pointer(), nCorrO,
     SCR, nq, MatsT(1.), F2, nCorrO);
   
-  postHF_.memManager.free(SCR);
+  CQMemManager::get().free(SCR);
   
 } // NewOrbitalRotation<MatsT>::formGeneralizedFock2
 

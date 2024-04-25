@@ -44,7 +44,7 @@ namespace ChronusQ {
    *
    */
   template <typename IntsT>
-  void Integrals<IntsT>::computeAOOneP(CQMemManager &mem,
+  void Integrals<IntsT>::computeAOOneP(
       Molecule &mol, BasisSet &basis, EMPerturbation &emPert,
       const std::vector<std::pair<OPERATOR,size_t>> &ops,
       const HamiltonianOptions &options) {
@@ -86,14 +86,14 @@ namespace ChronusQ {
     for (const std::pair<OPERATOR,size_t> &op : ops)
       switch (op.first) {
       case OVERLAP:
-        overlap = std::make_shared<OnePInts<IntsT>>(mem, NB);
+        overlap = std::make_shared<OnePInts<IntsT>>(NB);
         overlap->computeAOInts(basis, mol, emPert, OVERLAP, options);
         if( savFile.exists() )
           savFile.safeWriteData(prefix + "OVERLAP", overlap->pointer(), {NB,NB});
         break;
 
       case KINETIC:
-        kinetic = std::make_shared<OnePInts<IntsT>>(mem, NB);
+        kinetic = std::make_shared<OnePInts<IntsT>>(NB);
         kinetic->computeAOInts(basis, mol, emPert, KINETIC, options);
         if( savFile.exists() )
           savFile.safeWriteData(prefix + "KINETIC", kinetic->pointer(), {NB,NB});
@@ -103,9 +103,9 @@ namespace ChronusQ {
         // Use Libint for point nuclei, in-house for Gaussian nuclei
         if (options.OneEScalarRelativity)
           potential = std::make_shared<OnePRelInts<IntsT>>(
-              mem, NB, options.OneESpinOrbit);
+              NB, options.OneESpinOrbit);
         else
-          potential = std::make_shared<OnePInts<IntsT>>(mem, NB);
+          potential = std::make_shared<OnePInts<IntsT>>(NB);
         potential->computeAOInts(basis, mol, emPert, NUCLEAR_POTENTIAL, options);
         if( savFile.exists() ) {
           std::string potentialTag = options.finiteWidthNuc ? "_FINITE_WIDTH" : "";
@@ -114,9 +114,9 @@ namespace ChronusQ {
         break;
 
       case LEN_ELECTRIC_MULTIPOLE:
-        lenElectric = std::make_shared<MultipoleInts<IntsT>>(mem, NB, op.second, true);
+        lenElectric = std::make_shared<MultipoleInts<IntsT>>(NB, op.second, true);
         // If 4C, we convert OnePInts stored in MultipoleInts object to be OnePRelInts (only handles dipole)
-        if(op.second == 1 and options.OneEScalarRelativity) lenElectric->convert2OnePRelInts(mem, NB, options.OneESpinOrbit);
+        if(op.second == 1 and options.OneEScalarRelativity) lenElectric->convert2OnePRelInts(NB, options.OneESpinOrbit);
         lenElectric->computeAOInts(basis, mol, emPert, LEN_ELECTRIC_MULTIPOLE, options);
 
         // If 4C, we gather all components of dipole integralsa (only handles dipole)
@@ -143,7 +143,7 @@ namespace ChronusQ {
         break;
 
       case VEL_ELECTRIC_MULTIPOLE:
-        velElectric = std::make_shared<MultipoleInts<IntsT>>(mem, NB, op.second, true);
+        velElectric = std::make_shared<MultipoleInts<IntsT>>(NB, op.second, true);
         velElectric->computeAOInts(basis, mol, emPert, VEL_ELECTRIC_MULTIPOLE, options);
         if( savFile.exists() ) {
           // Velocity Gauge electric dipole
@@ -166,7 +166,7 @@ namespace ChronusQ {
         break;
 
       case MAGNETIC_MULTIPOLE:
-        magnetic = std::make_shared<MultipoleInts<IntsT>>(mem, NB, op.second, false);
+        magnetic = std::make_shared<MultipoleInts<IntsT>>(NB, op.second, false);
         magnetic->computeAOInts(basis, mol, emPert, MAGNETIC_MULTIPOLE, options);
         if( savFile.exists() ) {
           // Magnetic Dipole
@@ -185,7 +185,7 @@ namespace ChronusQ {
       // Calculate additional integrals, if using GIAO + X2C
       case MAGNETIC_4COMP_rVr:
         if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
-          rVr = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, true);
+          rVr = std::make_shared<VectorInts<IntsT>>(NB, 2, true);
           rVr->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_rVr, options);
         } else {
           CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
@@ -193,7 +193,7 @@ namespace ChronusQ {
         break;
       case MAGNETIC_4COMP_PVrprVP:
         if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
-          PVrprVP = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, false);
+          PVrprVP = std::make_shared<VectorInts<IntsT>>(NB, 2, false);
           PVrprVP->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_PVrprVP, options); 
         } else {
           CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
@@ -201,7 +201,7 @@ namespace ChronusQ {
         break;
       case MAGNETIC_4COMP_PVrmrVP:
         if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {
-          PVrmrVP = std::make_shared<VectorInts<IntsT>>(mem, NB, 2, false);
+          PVrmrVP = std::make_shared<VectorInts<IntsT>>(NB, 2, false);
           PVrmrVP->computeAOInts(basis, mol, emPert, MAGNETIC_4COMP_PVrmrVP, options);  
         } else {
           CErr("Case MAGNETIC_4COMP only for GIAO + X2CCH!",std::cout);
@@ -222,7 +222,7 @@ namespace ChronusQ {
 
   // Computes the integrals necessary for the gradients
   template <typename IntsT>
-  void Integrals<IntsT>::computeGradInts(CQMemManager &mem,
+  void Integrals<IntsT>::computeGradInts(
     Molecule &mol, BasisSet &basis, EMPerturbation &emPert,
     const std::vector<std::pair<OPERATOR,size_t>> &ops,
     const HamiltonianOptions &options) {
@@ -232,7 +232,7 @@ namespace ChronusQ {
 
     auto computeOneE = [&](std::shared_ptr<GradInts<OnePInts,IntsT>>& p, OPERATOR o) {
       if (p == nullptr)
-        p = std::make_shared<GradInts<OnePInts,IntsT>>(mem, NB, NAt);
+        p = std::make_shared<GradInts<OnePInts,IntsT>>(NB, NAt);
       else
         p->clear();
 

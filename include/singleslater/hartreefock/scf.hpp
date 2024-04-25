@@ -48,7 +48,7 @@ void HartreeFock<MatsT, IntsT>::computeFullNRStep(MatsT* orbRot) {
 
   // Make sure that the Hessian gets deallocated
   MatsT* FM = resp.fullMatrix();
-  this->memManager.free(FM);
+  CQMemManager::get().free(FM);
 
   MatsT* C = resp.fdrResults.SOL;
 
@@ -88,7 +88,7 @@ void HartreeFock<MatsT, IntsT>::buildOrbitalModifierOptions() {
     // Conventional SCF
 
     this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-        std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+        std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
 
   } else if( this->scfControls.scfAlg == _NEWTON_RAPHSON_SCF ) {
     // Newton-Raphson SCF
@@ -101,13 +101,13 @@ void HartreeFock<MatsT, IntsT>::buildOrbitalModifierOptions() {
     std::vector<NRRotOptions> rotOpt = this->buildRotOpt();
 
     this->orbitalModifier = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-        std::make_shared<NewtonRaphsonSCF<MatsT>>(rotOpt,this->scfControls, this->comm, modOrbOpt, this->memManager));
+        std::make_shared<NewtonRaphsonSCF<MatsT>>(rotOpt,this->scfControls, this->comm, modOrbOpt));
 
   } else {
     // SKIP SCF
     //this->scfControls.doExtrap = false;
     //this->orbitalModifier       = std::dynamic_pointer_cast<OrbitalModifier<MatsT>>(
-    //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt, this->memManager));
+    //    std::make_shared<SkipSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
   }
 };   // HartreeFock<MatsT,IntsT> :: buildOrbitalModifierOptions
 
@@ -128,12 +128,12 @@ std::pair<double, MatsT*> HartreeFock<MatsT, IntsT>::getStab() {
 
   // Make sure that the Hessian gets deallocated
   MatsT* FM = resp.fullMatrix();
-  this->memManager.free(FM);
+  CQMemManager::get().free(FM);
 
   MatsT* C = resp.resResults.VR;
 
   size_t N = resp.getNSingleDim(false);
-  CCPY     = this->memManager.template malloc<MatsT>(N);
+  CCPY     = CQMemManager::get().malloc<MatsT>(N);
   std::copy_n(C, N, CCPY);
 
   W = resp.resResults.W[0];

@@ -613,7 +613,7 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  int EOMCCSDVectorSet<MatsT>::QR(size_t shift, size_t nVec, CQMemManager &mem, MatsT *R, int LDR) {
+  int EOMCCSDVectorSet<MatsT>::QR(size_t shift, size_t nVec, MatsT *R, int LDR) {
     CErr("EOMCCSDVectorSet::QR NYI.");
     abort();
   }
@@ -652,8 +652,8 @@ namespace ChronusQ{
 
   template <typename MatsT>
   RawVectors<MatsT> EOMCCSDVectorSet<MatsT>::toRaw(
-      MPI_Comm c, CQMemManager &mem, bool includeZeroBody, size_t shift, size_t nVec) const {
-    if (nVec == 0) return RawVectors<MatsT>(c, mem, length(includeZeroBody), nVec);
+      MPI_Comm c, bool includeZeroBody, size_t shift, size_t nVec) const {
+    if (nVec == 0) return RawVectors<MatsT>(c, length(includeZeroBody), nVec);
 
     if (nVec == std::numeric_limits<size_t>::max()) {
       this->sizeCheck(shift, "EOMCCSDVectorSet<MatsT>::toRaw");
@@ -663,10 +663,10 @@ namespace ChronusQ{
 
 //    print(std::cout, "EOMCCSDVectorSet::toRaw::EOM", shift, nVec);
 
-    RawVectors<MatsT> raw(c, mem, length(includeZeroBody), nVec);
+    RawVectors<MatsT> raw(c, length(includeZeroBody), nVec);
     MatsT* rawPtr = raw.getPtr();
     if (MPIRank(c) != 0)
-      rawPtr = mem.template malloc<MatsT>(nVec * length(includeZeroBody));
+      rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(includeZeroBody));
 
     for (size_t i = 0; i < nVec; i++)
       get(shift + i).toRaw(rawPtr + i * length(includeZeroBody), includeZeroBody);
@@ -674,7 +674,7 @@ namespace ChronusQ{
 //    raw.print(std::cout, "EOMCCSDVectorSet::toRaw::Raw", 0, nVec);
 
     if (MPIRank(c) != 0)
-      mem.free(rawPtr);
+      CQMemManager::get().free(rawPtr);
 
     return raw;
 
@@ -683,9 +683,9 @@ namespace ChronusQ{
   template <typename MatsT>
   template <typename IntsT>
   RawVectors<MatsT> EOMCCSDVectorSet<MatsT>::toRaw(
-      MPI_Comm c, CQMemManager &mem, const EOMCCSD<MatsT,IntsT> &eom,
+      MPI_Comm c, const EOMCCSD<MatsT,IntsT> &eom,
       bool includeZeroBody, size_t shift, size_t nVec) const {
-    if (nVec == 0) return RawVectors<MatsT>(c, mem, length(eom, includeZeroBody), nVec);
+    if (nVec == 0) return RawVectors<MatsT>(c, length(eom, includeZeroBody), nVec);
 
     if (nVec == std::numeric_limits<size_t>::max()) {
       this->sizeCheck(shift, "EOMCCSDVectorSet<MatsT>::toRaw");
@@ -695,10 +695,10 @@ namespace ChronusQ{
 
 //    print(std::cout, "EOMCCSDVectorSet::toRaw::EOM", shift, nVec);
 
-    RawVectors<MatsT> raw(c, mem, length(eom, includeZeroBody), nVec);
+    RawVectors<MatsT> raw(c, length(eom, includeZeroBody), nVec);
     MatsT* rawPtr = raw.getPtr();
     if (MPIRank(c) != 0)
-      rawPtr = mem.template malloc<MatsT>(nVec * length(eom, includeZeroBody));
+      rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(eom, includeZeroBody));
 
     for (size_t i = 0; i < nVec; i++)
       get(shift + i).toRaw(rawPtr + i * length(eom, includeZeroBody), eom, includeZeroBody);
@@ -706,7 +706,7 @@ namespace ChronusQ{
 //    raw.print(std::cout, "EOMCCSDVectorSet::toRaw::Raw", 0, nVec);
 
     if (MPIRank(c) != 0)
-      mem.free(rawPtr);
+      CQMemManager::get().free(rawPtr);
 
     return raw;
 
@@ -714,7 +714,7 @@ namespace ChronusQ{
 
   template <typename MatsT>
   template <typename IntsT>
-  void EOMCCSDVectorSet<MatsT>::fromRaw(MPI_Comm c, CQMemManager &mem,
+  void EOMCCSDVectorSet<MatsT>::fromRaw(MPI_Comm c,
                                         const RawVectors<MatsT> &raw, const EOMCCSD<MatsT,IntsT> &eom,
                                         bool hasZeroBody, size_t shiftThis, size_t shiftRaw, size_t nVec) {
     if (nVec == 0) return;
@@ -732,7 +732,7 @@ namespace ChronusQ{
 
     MatsT* rawPtr = const_cast<MatsT*>(raw.getPtr(shiftRaw));
     if (MPIRank(c) != 0)
-      rawPtr = mem.template malloc<MatsT>(nVec * length(eom, hasZeroBody));
+      rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(eom, hasZeroBody));
 
     TA::get_default_world().gop.template broadcast(rawPtr, nVec * length(eom, hasZeroBody), 0);
 
@@ -742,12 +742,12 @@ namespace ChronusQ{
 //    print(std::cout, "EOMCCSDVectorSet::fromRaw::EOM", shiftThis, nVec);
 
     if (MPIRank(c) != 0)
-      mem.free(rawPtr);
+      CQMemManager::get().free(rawPtr);
 
   }
 
   template <typename MatsT>
-  void EOMCCSDVectorSet<MatsT>::fromRaw(MPI_Comm c, CQMemManager &mem, const RawVectors<MatsT> &raw,
+  void EOMCCSDVectorSet<MatsT>::fromRaw(MPI_Comm c, const RawVectors<MatsT> &raw,
                                         bool hasZeroBody, size_t shiftThis, size_t shiftRaw, size_t nVec) {
     if (nVec == 0) return;
 
@@ -764,7 +764,7 @@ namespace ChronusQ{
 
     MatsT* rawPtr = const_cast<MatsT*>(raw.getPtr(shiftRaw));
     if (MPIRank(c) != 0)
-      rawPtr = mem.template malloc<MatsT>(nVec * length(hasZeroBody));
+      rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(hasZeroBody));
 
     TA::get_default_world().gop.template broadcast(rawPtr, nVec * length(hasZeroBody), 0);
 
@@ -774,7 +774,7 @@ namespace ChronusQ{
     //    print(std::cout, "EOMCCSDVectorSet::fromRaw::EOM", shiftThis, nVec);
 
     if (MPIRank(c) != 0)
-      mem.free(rawPtr);
+      CQMemManager::get().free(rawPtr);
 
   }
 
@@ -791,7 +791,7 @@ namespace ChronusQ{
       rawSet_.sizeCheck(shift + nVec, "EOMCCSDVectorSetDebug<MatsT>::compareDebug");
     }
 
-    RawVectors<MatsT> raw = eomccSet_.toRaw(rawSet_.getMPIcomm(), rawSet_.getMem(), false, shift, nVec);
+    RawVectors<MatsT> raw = eomccSet_.toRaw(rawSet_.getMPIcomm(), false, shift, nVec);
 
     raw.axpy(0, nVec, -1.0, rawSet_, shift);
 
@@ -827,7 +827,7 @@ namespace ChronusQ{
           shiftB += extraShiftB;
           eomccSet_.dot_product(shiftA, B_debug.eomccSet_, shiftB, m, n, C, ldc, conjA);
 
-          MatsT *C_ref = B_debug.rawSet_.getMem().template malloc<MatsT>(m * n);
+          MatsT *C_ref = CQMemManager::get().malloc<MatsT>(m * n);
 
           TA::get_default_world().gop.fence();
           rawSet_.dot_product(shiftA, B_debug.rawSet_, shiftB, m, n, C_ref, m, conjA);
@@ -925,14 +925,14 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  size_t EOMCCSDVectorSetDebug<MatsT>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+  size_t EOMCCSDVectorSetDebug<MatsT>::GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                                    size_t NRe, double eps) {
     double vecDiffBefore = compareDebug(shift, Mold + Mnew);
 
     std::cout << "EOMCCSDVectorSetDebug::GramSchmidt before error = "
               << vecDiffBefore << std::endl;
 
-    size_t iOrtho = SolverVectors<MatsT>::GramSchmidt(shift, Mold, Mnew, mem, NRe, eps);
+    size_t iOrtho = SolverVectors<MatsT>::GramSchmidt(shift, Mold, Mnew, NRe, eps);
 
     double vecDiffAfter = compareDebug(shift, Mold + Mnew);
 
@@ -956,11 +956,11 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  int EOMCCSDVectorSetDebug<MatsT>::QR(size_t shift, size_t nVec, CQMemManager &mem, MatsT *R, int LDR) {
-    int iOrtho = eomccSet_.QR(shift, nVec, mem, R, LDR);
+  int EOMCCSDVectorSetDebug<MatsT>::QR(size_t shift, size_t nVec, MatsT *R, int LDR) {
+    int iOrtho = eomccSet_.QR(shift, nVec, R, LDR);
 
     TA::get_default_world().gop.fence();
-    int iOrthoRaw = rawSet_.QR(shift, nVec, mem, R, LDR);
+    int iOrthoRaw = rawSet_.QR(shift, nVec, R, LDR);
 
     std::cout << "EOMCCSDVectorSetDebug::QR error = "
               << compareDebug(shift, nVec) << std::endl;

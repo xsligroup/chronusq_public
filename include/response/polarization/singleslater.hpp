@@ -569,10 +569,10 @@ namespace ChronusQ {
 
     if( not this->genSettings.matIsHer ) {
       if( not doReduced )
-        GramSchmidt(N,0,nRoots,V,N,tdInner,tdMatInner,this->memManager_,1);
+        GramSchmidt(N,0,nRoots,V,N,tdInner,tdMatInner,1);
       else
         GramSchmidt(N,0,nRoots,this->resResults.VL,N,V,N,tdMatInner,
-          this->memManager_,1);
+          1);
     } else {
 
       if( not this->fullMatrix_ ) 
@@ -690,7 +690,7 @@ namespace ChronusQ {
 
     U* SCR = nullptr;
     if( nVecLoc and SCRMLoc ) {
-      SCR = this->memManager_.template malloc<U>(maxNVec * N);
+      SCR = CQMemManager::get().malloc<U>(maxNVec * N);
       std::fill_n(SCR,maxNVec*N,U(0.));
     }
 
@@ -724,7 +724,7 @@ namespace ChronusQ {
       if( std::is_same<U,MatsT>::value ) 
         FM = reinterpret_cast<U*>(this->fullMatrix_);
       else {
-        FM = this->memManager_.template malloc<U>(MLoc*NLoc);
+        FM = CQMemManager::get().malloc<U>(MLoc*NLoc);
         std::copy_n(reinterpret_cast<double*>(this->fullMatrix_),MLoc*NLoc,FM);
       }
 
@@ -835,9 +835,9 @@ namespace ChronusQ {
 
     }
   
-    if( SCR ) this->memManager_.free(SCR);
+    if( SCR ) CQMemManager::get().free(SCR);
     if( FM and (reinterpret_cast<MatsT*>(FM) != this->fullMatrix_) ) 
-      this->memManager_.free(FM);
+      CQMemManager::get().free(FM);
   
   };
 
@@ -943,7 +943,7 @@ namespace ChronusQ {
 
 
     // Allocate space for identity for contraction
-    MatsT* V  = this->memManager_.template malloc<MatsT>(N*nForm);
+    MatsT* V  = CQMemManager::get().malloc<MatsT>(N*nForm);
     std::fill_n(V ,N*nForm ,0.);
     
     // Form the identity in V
@@ -967,7 +967,7 @@ namespace ChronusQ {
     // other processes
     MatsT* HV = nullptr;
     if( isRootMatComm ) {
-      HV = this->memManager_.template malloc<MatsT>(N*nStore);
+      HV = CQMemManager::get().malloc<MatsT>(N*nStore);
       //std::fill_n(HV,N*nStore,0.);
     }
   
@@ -985,7 +985,7 @@ namespace ChronusQ {
     });
 
 
-    this->memManager_.free(V); // Free up some memory
+    CQMemManager::get().free(V); // Free up some memory
 
     ProgramTimer::timeOp("Hessian Transform", [&](){
       if( not this->genSettings.doTDA ) {
@@ -1053,7 +1053,7 @@ namespace ChronusQ {
       // Allocate local buffers
       this->fullMatrix_ = nullptr;
       if( MLoc and NLoc )
-        this->fullMatrix_ = this->memManager_.template malloc<MatsT>(MLoc*NLoc);
+        this->fullMatrix_ = CQMemManager::get().malloc<MatsT>(MLoc*NLoc);
 
       if( this->genSettings.distMatFromRoot )
         this->fullMatGrid_->scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
@@ -1091,7 +1091,7 @@ namespace ChronusQ {
       }
 
 
-      if( HV ) this->memManager_.free(HV);
+      if( HV ) CQMemManager::get().free(HV);
 
     } else 
 #endif
@@ -1188,7 +1188,7 @@ namespace ChronusQ {
 #endif
 
 
-      MatsT* full = this->memManager_.template malloc<MatsT>(NLoc*MLoc);
+      MatsT* full = CQMemManager::get().malloc<MatsT>(NLoc*MLoc);
 
       // Serial offsets
       MatsT* M = this->fullMatrix_;
@@ -1263,7 +1263,7 @@ namespace ChronusQ {
 #endif
 
 
-      MatsT* full = this->memManager_.template malloc<MatsT>(MLoc*NLoc);
+      MatsT* full = CQMemManager::get().malloc<MatsT>(MLoc*NLoc);
 
       std::fill_n(full,MLoc*NLoc,0.);
 
@@ -1527,14 +1527,14 @@ namespace ChronusQ {
     int NV = (ss.nC == 1) ? ss.nVA : ss.nV;
     int NO = (ss.nC == 1) ? ss.nOA : ss.nO;
 
-    MatsT* grad  = ss.memManager.template malloc<MatsT>(this->nSingleDim_*nVec);
+    MatsT* grad  = CQMemManager::get().malloc<MatsT>(this->nSingleDim_*nVec);
 
     MatsT* SCR(nullptr);
     if( needTrans ) {
-      SCR   = ss.memManager.template malloc<MatsT>(NBC*NBC);
-      opT.emplace_back(ss.memManager.template malloc<MatsT>(NBC*NBC));
+      SCR   = CQMemManager::get().malloc<MatsT>(NBC*NBC);
+      opT.emplace_back(CQMemManager::get().malloc<MatsT>(NBC*NBC));
       if( ss.nC == 1 and not ss.iCS)
-        opT.emplace_back(ss.memManager.template malloc<MatsT>(NBC*NBC));
+        opT.emplace_back(CQMemManager::get().malloc<MatsT>(NBC*NBC));
     }
 
     for(auto iVec = 0; iVec < nVec; iVec++) {
@@ -1619,9 +1619,9 @@ namespace ChronusQ {
 
     }
 
-    if(SCR) ss.memManager.free(SCR);
+    if(SCR) CQMemManager::get().free(SCR);
     if( needTrans )
-      for(auto &X : opT ) ss.memManager.free(X);
+      for(auto &X : opT ) CQMemManager::get().free(X);
 
 
     // Transform to proper form form
@@ -1693,7 +1693,7 @@ namespace ChronusQ {
 
     MatsT* RHSa = nullptr;
     if( isRoot )
-      RHSa = this->memManager_.template malloc<MatsT>(this->fdrSettings.nRHS * N);
+      RHSa = CQMemManager::get().malloc<MatsT>(this->fdrSettings.nRHS * N);
 
     // Space for distributed RHS and property gradient
     int64_t NLoc = N, NRHSLoc = this->fdrSettings.nRHS;
@@ -1708,7 +1708,7 @@ namespace ChronusQ {
       std::tie(NLoc,NRHSLoc) = this->fullMatGrid_->get_local_dims(NLoc,NRHSLoc);
 
       if( NLoc and NRHSLoc )
-        distRHS = this->memManager_.template malloc<MatsT>(NLoc * NRHSLoc);
+        distRHS = CQMemManager::get().malloc<MatsT>(NLoc * NRHSLoc);
 
       DescRHS = 
         this->fullMatGrid_->descinit_noerror(N,this->fdrSettings.nRHS,NLoc);
@@ -1730,7 +1730,7 @@ namespace ChronusQ {
         std::tie(NLoc,NPropLoc) = this->fullMatGrid_->get_local_dims(N,nProp);
 
         if( NLoc and NPropLoc )
-          distG = this->memManager_.template malloc<MatsT>(NLoc*NPropLoc);
+          distG = CQMemManager::get().malloc<MatsT>(NLoc*NPropLoc);
         
         DescG = this->fullMatGrid_->descinit_noerror(N,nProp,NLoc);
 
@@ -1796,8 +1796,8 @@ namespace ChronusQ {
 
       RHS += nProp*N;
 
-      if( g ) this->memManager_.free(g);
-      if( distG ) this->memManager_.free(distG);
+      if( g ) CQMemManager::get().free(g);
+      if( distG ) CQMemManager::get().free(distG);
  
     }
 
@@ -1807,7 +1807,7 @@ namespace ChronusQ {
       this->dfdrResults.RHS = RHSa;
 
 
-    if( distRHS ) this->memManager_.free(distRHS);
+    if( distRHS ) CQMemManager::get().free(distRHS);
 
   }
   
@@ -1856,8 +1856,8 @@ namespace ChronusQ {
     const size_t NBC_AX = ss2.nC * NB_AX;
     const size_t NBC2_AX = NBC_AX * NBC_AX;
 
-    U* MOT  = this->memManager_.template malloc<U>(NBC2);
-    U* SCR  = trans ? this->memManager_.template malloc<U>(NBC2) : nullptr;
+    U* MOT  = CQMemManager::get().malloc<U>(NBC2);
+    U* SCR  = trans ? CQMemManager::get().malloc<U>(NBC2) : nullptr;
 
 
     std::vector<TwoBodyContraction<U>> cList;
@@ -1877,7 +1877,7 @@ namespace ChronusQ {
     size_t nAlloc = nVec * nSpacePVec;
     //std::cerr << "MO2AO " << nAlloc*sizeof(MatsT) / 1e9 << std::endl;
 
-    U * first = this->memManager_.template malloc<U>(nAlloc);
+    U * first = CQMemManager::get().malloc<U>(nAlloc);
 
     for(size_t iVec = 0; iVec < nVec; iVec++) {
 
@@ -2003,8 +2003,8 @@ namespace ChronusQ {
     }
 
 
-    this->memManager_.free(MOT);
-    if( SCR ) this->memManager_.free(SCR);
+    CQMemManager::get().free(MOT);
+    if( SCR ) CQMemManager::get().free(SCR);
 
 
     return cList;
@@ -2034,8 +2034,8 @@ namespace ChronusQ {
     const size_t nOAVA = ss.nOA * ss.nVA;
     const size_t nOBVB = ss.nOB * ss.nVB;
 
-    U* MOT  = this->memManager_.template malloc<U>(NBC2);
-    U* SCR  = this->memManager_.template malloc<U>(NBC2);
+    U* MOT  = CQMemManager::get().malloc<U>(NBC2);
+    U* SCR  = CQMemManager::get().malloc<U>(NBC2);
 
     const size_t iOff = (ss.nC == 2) ? 5 : 3;
 
@@ -2127,7 +2127,7 @@ namespace ChronusQ {
 
     }
 
-    this->memManager_.free(MOT,SCR);
+    CQMemManager::get().free(MOT,SCR);
 
   }; 
 
@@ -2190,11 +2190,11 @@ namespace ChronusQ {
       dcomplex* FCMPLX = nullptr, *FBCMPLX = nullptr;
       if( std::is_same<U,dcomplex>::value and std::is_same<MatsT,double>::value) {
 
-        FCMPLX = this->memManager_.template malloc<dcomplex>(NBC2);
+        FCMPLX = CQMemManager::get().malloc<dcomplex>(NBC2);
         std::copy_n(ss.fockMO[0].pointer(),NBC2,FCMPLX);
 
         if(ss.nC == 1 and not ss.iCS) {
-          FBCMPLX = this->memManager_.template malloc<dcomplex>(NBC2);
+          FBCMPLX = CQMemManager::get().malloc<dcomplex>(NBC2);
           std::copy_n(ss.fockMO[1].pointer(),NBC2,FBCMPLX);
         }
       }
@@ -2255,8 +2255,8 @@ namespace ChronusQ {
 
       }
 
-      if( FCMPLX ) this->memManager_.free(FCMPLX);
-      if( FBCMPLX ) this->memManager_.free(FBCMPLX);
+      if( FCMPLX ) CQMemManager::get().free(FCMPLX);
+      if( FBCMPLX ) CQMemManager::get().free(FBCMPLX);
 
     }
 

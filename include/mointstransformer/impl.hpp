@@ -249,7 +249,7 @@ void MOIntsTransformer<MatsT,IntsT>::transformTPI(EMPerturbation & pert,
       else if (C_delta == KRONECKER_DELTA_RS) SCRSize = npqr;
       else if (C_delta == KRONECKER_DELTA_PQ) SCRSize = nprs;
       else if (C_delta == KRONECKER_DELTA_PQ_RS) SCRSize = npr;
-      MatsT * SCR = memManager_.malloc<MatsT>(SCRSize);
+      MatsT * SCR = CQMemManager::get().malloc<MatsT>(SCRSize);
 
       transformTPI(pert, SCR, X_moType, true, false, X_delta); 
 
@@ -301,8 +301,8 @@ void MOIntsTransformer<MatsT,IntsT>::transformTPI(EMPerturbation & pert,
         MatAdd('N', 'N', np, nr, MatsT(1.), C_term, np, MatsT(-fc), X_term, np, MOTPI, np);
       
       }// delta
-    
-      memManager_.free(SCR);
+
+      CQMemManager::get().free(SCR);
     } 
   } // with Exchange  
 

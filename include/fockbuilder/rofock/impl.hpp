@@ -50,11 +50,11 @@ namespace ChronusQ {
     //pc = dmb * S
     //po = (dma - dmb) * S
     //pv = I - dma * S
-    MatsT* pc  = ss.memManager.template malloc<MatsT>(NB*NB);
-    MatsT* po  = ss.memManager.template malloc<MatsT>(NB*NB);
-    MatsT* pv  = ss.memManager.template malloc<MatsT>(NB*NB);
-    cqmatrix::Matrix<MatsT> tmp(ss.memManager,NB);
-    MatsT* tmp2 = ss.memManager.template malloc<MatsT>(NB*NB);
+    MatsT* pc  = CQMemManager::get().malloc<MatsT>(NB*NB);
+    MatsT* po  = CQMemManager::get().malloc<MatsT>(NB*NB);
+    MatsT* pv  = CQMemManager::get().malloc<MatsT>(NB*NB);
+    cqmatrix::Matrix<MatsT> tmp(NB);
+    MatsT* tmp2 = CQMemManager::get().malloc<MatsT>(NB*NB);
 
     //overlap matrix
     tmp = 0.5 * (ss.onePDM->S() - ss.onePDM->Z());
@@ -97,7 +97,7 @@ namespace ChronusQ {
     MatAdd('C','N',NB,NB,MatsT(1.),tmp.pointer(),NB,MatsT(1.),
            tmp.pointer(),NB,ss.fockMatrix->S().pointer(),NB);
 
-    ss.memManager.free(pc,po,pv,tmp2);
+    CQMemManager::get().free(pc,po,pv,tmp2);
   }; // ROFock<MatsT, IntsT>::rohfFock
 
   /**

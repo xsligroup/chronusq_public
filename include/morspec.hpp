@@ -228,7 +228,7 @@ namespace ChronusQ {
 
 
     MORSpec( MPI_Comm c, std::shared_ptr<Reference> ref ) : 
-      ResponseTBase<dcomplex>(c,FDR,ref->memManager), ref_(ref),
+      ResponseTBase<dcomplex>(c,FDR), ref_(ref),
       respFactory_(c,FDR,ref) { 
     
       this->fdrSettings.dampFactor  = 0.01; // Default the damping factor
@@ -238,8 +238,8 @@ namespace ChronusQ {
     }
 
     ~MORSpec() {
-      if(modelBasis1_) this->memManager_.free(modelBasis1_);
-      if(modelBasis1_LT_) this->memManager_.free(modelBasis1_LT_);
+      if(modelBasis1_) CQMemManager::get().free(modelBasis1_);
+      if(modelBasis1_LT_) CQMemManager::get().free(modelBasis1_LT_);
     }
 
 
@@ -295,10 +295,10 @@ namespace ChronusQ {
         // Allocate max amount of space that could be required for MOR
         std::cout << "  * ALLOCATING MAX SPACE FOR MOR BASIS\n";
         modelBasis1_ = 
-          this->memManager_.template malloc<dcomplex>(N*NRHS*nModelMax);
+          CQMemManager::get().malloc<dcomplex>(N*NRHS*nModelMax);
         std::fill_n(modelBasis1_,N*NRHS*nModelMax,dcomplex(0.));
         modelBasis1_LT_ = 
-          this->memManager_.template malloc<dcomplex>(N*NRHS*nModelMax);
+          CQMemManager::get().malloc<dcomplex>(N*NRHS*nModelMax);
         std::fill_n(modelBasis1_LT_,N*NRHS*nModelMax,dcomplex(0.));
       }
 
@@ -427,7 +427,7 @@ namespace ChronusQ {
           if( doSVD ) {
             std::cout << "    * SENDING " << nVec << " VECTORS TO SVD\n";
 
-            double *SVal = this->memManager_.template malloc<double>(nUse);
+            double *SVal = CQMemManager::get().malloc<double>(nUse);
             std::fill_n(SVal,nUse,0.);
             dcomplex *DUMMY = nullptr;
 
@@ -440,7 +440,7 @@ namespace ChronusQ {
        
             //prettyPrintSmart(std::cout,"S",SVal,nUse,1,nUse);
 
-            this->memManager_.free(SVal);
+            CQMemManager::get().free(SVal);
 
             std::cout << "    * SVD PRODUCED " << nOrtho 
               << " ORTHONORMAL VECTORS\n";
@@ -449,7 +449,7 @@ namespace ChronusQ {
             std::cout << "    * SENDING " << nVec << " VECTORS TO QR" 
               << std::endl;
             nOrtho = nVec;
-            QR(N,nVec,modelBasis1_,N,this->memManager_);
+            QR(N,nVec,modelBasis1_,N);
 
           }
 
@@ -466,7 +466,7 @@ namespace ChronusQ {
         this->nSingleDim_  = this->morSettings.nModel;
         this->reset();
         if( iLevel > 0 ) { 
-          if(this->fullMatrix_) this->memManager_.free(this->fullMatrix_);
+          if(this->fullMatrix_) CQMemManager::get().free(this->fullMatrix_);
           this->fullMatrix_ = nullptr;
         }
 
@@ -649,7 +649,7 @@ namespace ChronusQ {
       respFactory_.configOptions();
 
       formModelBasis();
-      //modelBasis1_ = this->memManager_.malloc<dcomplex>(N*N);
+      //modelBasis1_ = CQMemManager::get().malloc<dcomplex>(N*N);
       //std::fill_n(modelBasis1_,N*N,0.);
       //for(auto k = 0; k < N; k++)
       //  modelBasis1_[k*(N+1)] = 1.;
@@ -676,16 +676,16 @@ namespace ChronusQ {
 
 
       this->reset();
-      if(this->fullMatrix_) this->memManager_.free(this->fullMatrix_);
+      if(this->fullMatrix_) CQMemManager::get().free(this->fullMatrix_);
       this->fullMatrix_ = nullptr;
 
       ResponseTBase<dcomplex>::run();
 
       // Determine if roots are actually roots
-      dcomplex *AV = this->memManager_.template malloc<dcomplex>(
+      dcomplex *AV = CQMemManager::get().malloc<dcomplex>(
           nModel*N);
       std::fill_n(AV,nModel*N,dcomplex(0.));
-      dcomplex *RES = this->memManager_.template malloc<dcomplex>(
+      dcomplex *RES = CQMemManager::get().malloc<dcomplex>(
           nModel*N);
       std::fill_n(RES,nModel*N,dcomplex(0.));
 
@@ -708,7 +708,7 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nModel,nModel,dcomplex(1.),AV,N,
           this->resResults.VR,nModel,dcomplex(1.),RES,N);
 
-      double * rNorms = this->memManager_.template malloc<double>(nModel);
+      double * rNorms = CQMemManager::get().malloc<double>(nModel);
       for(auto k = 0; k < nModel; k++)
         rNorms[k] = blas::nrm2(N,RES+k*N,1);
 
@@ -828,10 +828,10 @@ namespace ChronusQ {
 
       // Orthonormalize the basis
       // Compute the inner product
-      dcomplex * SCR = this->memManager_.template malloc<dcomplex>(
+      dcomplex * SCR = CQMemManager::get().malloc<dcomplex>(
           nModel*nModel);
       std::fill_n(SCR,nModel*nModel,dcomplex(0.));
-      dcomplex * SCR2 = this->memManager_.template malloc<dcomplex>(
+      dcomplex * SCR2 = CQMemManager::get().malloc<dcomplex>(
           nModel*nModel);
       std::fill_n(SCR2,nModel*nModel,dcomplex(0.));
 
@@ -879,8 +879,8 @@ namespace ChronusQ {
 
       /*
 
-      double * O = this->memManager_.template malloc<double>(nRoots);
-      HermetianEigen('V','L',nRoots,SCR,nRoots,O,this->memManager_);
+      double * O = CQMemManager::get().malloc<double>(nRoots);
+      HermetianEigen('V','L',nRoots,SCR,nRoots,O);
 
       prettyPrintSmart(std::cout,"O",O,nRoots,1,nRoots);
 
@@ -942,11 +942,11 @@ namespace ChronusQ {
 
       // Reset the Response job
       this->reset();
-      if(this->fullMatrix_) this->memManager_.free(this->fullMatrix_);
+      if(this->fullMatrix_) CQMemManager::get().free(this->fullMatrix_);
     
       // Allocate full matrix
       this->fullMatrix_ = isRoot ?
-        this->memManager_.template malloc<dcomplex>(nModel*nModel) : 
+        CQMemManager::get().malloc<dcomplex>(nModel*nModel) : 
         nullptr ;
       if( isRoot ) std::fill_n(this->fullMatrix_,nModel*nModel,dcomplex(0.));
     
@@ -969,8 +969,8 @@ namespace ChronusQ {
 
         if( MLoc and NLoc ) {
 
-          cList.back().X  = this->memManager_.template malloc<T>(MLoc*NLoc);
-          cList.back().AX = this->memManager_.template malloc<T>(MLoc*NLoc);
+          cList.back().X  = CQMemManager::get().malloc<T>(MLoc*NLoc);
+          cList.back().AX = CQMemManager::get().malloc<T>(MLoc*NLoc);
 
         } else {
 
@@ -1005,8 +1005,8 @@ namespace ChronusQ {
         grid->gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
 
         // Dealloc memory if need be
-        //if( cList.back().X )  this->memManager_.free(cList.back().X );
-        //if( cList.back().AX ) this->memManager_.free(cList.back().AX);
+        //if( cList.back().X )  CQMemManager::get().free(cList.back().X );
+        //if( cList.back().AX ) CQMemManager::get().free(cList.back().AX);
 
       }
 #endif
@@ -1038,7 +1038,7 @@ namespace ChronusQ {
       dcomplex *KV = nullptr;
       // Alloc space to store KMV and set up contraction
       if( isRoot ) {
-        KV = this->memManager_.template malloc<dcomplex>(nModel*N);
+        KV = CQMemManager::get().malloc<dcomplex>(nModel*N);
         std::fill_n(KV,nModel*N,dcomplex(0.));
       }
 
@@ -1073,8 +1073,8 @@ namespace ChronusQ {
         grid->gather(N,nModel,KV,N,cList.back().AX,MLoc,0,0);
 
         // Dealloc memory if need be
-        if( cList.back().X )  this->memManager_.free(cList.back().X );
-        if( cList.back().AX ) this->memManager_.free(cList.back().AX);
+        if( cList.back().X )  CQMemManager::get().free(cList.back().X );
+        if( cList.back().AX ) CQMemManager::get().free(cList.back().AX);
 
       }
 #endif
@@ -1107,9 +1107,9 @@ namespace ChronusQ {
         }
 
 
-        ritzVecR_ = this->memManager_.template malloc<dcomplex>(N*nModel);
+        ritzVecR_ = CQMemManager::get().malloc<dcomplex>(N*nModel);
         std::fill_n(ritzVecR_,N*nModel,dcomplex(0.));
-        ritzVecL_ = this->memManager_.template malloc<dcomplex>(N*nModel);
+        ritzVecL_ = CQMemManager::get().malloc<dcomplex>(N*nModel);
         std::fill_n(ritzVecL_,N*nModel,dcomplex(0.));
 
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nModel,nModel,dcomplex(1.),modelBasis1_,N,
@@ -1119,10 +1119,10 @@ namespace ChronusQ {
 
 
 
-        resNorms_ = this->memManager_.template malloc<double>(nModel);
+        resNorms_ = CQMemManager::get().malloc<double>(nModel);
         std::fill_n(resNorms_,nModel,0.);
 
-        dcomplex * RES = this->memManager_.template malloc<dcomplex>(nModel*N);
+        dcomplex * RES = CQMemManager::get().malloc<dcomplex>(nModel*N);
         std::fill_n(RES,nModel*N,dcomplex(0.));
 
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nModel,nModel,dcomplex(1.),KV,N,
@@ -1138,7 +1138,7 @@ namespace ChronusQ {
 
         }
 
-        this->memManager_.free(RES,KV);
+        CQMemManager::get().free(RES,KV);
 
 
 
@@ -1191,15 +1191,15 @@ namespace ChronusQ {
         dynamic_cast<PolarizationPropagator<SingleSlater<RefT,IntsT>>&>(respFactory_);
 
       this->reset();
-      if(this->fullMatrix_) this->memManager_.free(this->fullMatrix_);
+      if(this->fullMatrix_) CQMemManager::get().free(this->fullMatrix_);
       this->fullMatrix_ = nullptr;
 
       dcomplex one(1.);
       dcomplex *VEXP = 
-        this->memManager_.template malloc<dcomplex>( 2*nModel*N);
+        CQMemManager::get().malloc<dcomplex>( 2*nModel*N);
       std::fill_n(VEXP,2*nModel*N,dcomplex(0.));
       dcomplex *AVEXP = 
-        this->memManager_.template malloc<dcomplex>( 2*nModel*N);
+        CQMemManager::get().malloc<dcomplex>( 2*nModel*N);
       std::fill_n(AVEXP,2*nModel*N,dcomplex(0.));
 
 
@@ -1210,7 +1210,7 @@ namespace ChronusQ {
       SetMat('R',N/2,nModel,one,modelBasis1_+(N/2),N,VEXP + nModel*N,N);
 
       std::cout << "    * ORTHONORMALIZING PAIRED BASIS via SVD" << std::endl;
-      double * SVAL = this->memManager_.template malloc<double>(2*nModel);
+      double * SVAL = CQMemManager::get().malloc<double>(2*nModel);
       std::fill_n(SVAL,2*nModel,0.);
       dcomplex * dummy = nullptr;
 
@@ -1292,7 +1292,7 @@ namespace ChronusQ {
         VEXP+N/2,N,VEXP+N/2,N,dcomplex(1.),this->fullMatrix_,nOrtho);
 
       dcomplex * SCR = 
-        this->memManager_.template malloc<dcomplex>(nOrtho*nOrtho);
+        CQMemManager::get().malloc<dcomplex>(nOrtho*nOrtho);
       std::fill_n(SCR,nOrtho*nOrtho,dcomplex(0.));
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nOrtho, nOrtho/2, nOrtho, dcomplex(1.),
           this->fullMatrix_, nOrtho, this->resResults.VR, nOrtho,
@@ -1318,7 +1318,7 @@ namespace ChronusQ {
 
 
       // Compute Ritz Vectors
-      ritzVecR_ = this->memManager_.template malloc<dcomplex>(N*nOrtho/2);
+      ritzVecR_ = CQMemManager::get().malloc<dcomplex>(N*nOrtho/2);
       std::fill_n(ritzVecR_,N*nOrtho/2,dcomplex(0.));
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N,nOrtho/2,nOrtho,dcomplex(1.),VEXP,N,
          this->resResults.VR,nOrtho,dcomplex(0.),ritzVecR_,N);
@@ -1326,7 +1326,7 @@ namespace ChronusQ {
 
       // Compute Residuals
       dcomplex *RES = 
-        this->memManager_.template malloc<dcomplex>(N*nOrtho/2);
+        CQMemManager::get().malloc<dcomplex>(N*nOrtho/2);
       std::copy_n(ritzVecR_,N*nOrtho/2,RES);
 
       for(auto k = 0; k < nOrtho/2; k++)
@@ -1337,7 +1337,7 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,N/2,nOrtho/2,nOrtho,dcomplex(-1.),AVEXP+N/2,N,
          this->resResults.VR,nOrtho,dcomplex(1.),RES + N/2,N);
 
-      resNorms_ = this->memManager_.template malloc<double>(nOrtho/2);
+      resNorms_ = CQMemManager::get().malloc<double>(nOrtho/2);
       for(auto k = 0; k < nOrtho/2; k++)
         resNorms_[k] = blas::nrm2(N,RES+k*N,1);
 
@@ -1345,7 +1345,7 @@ namespace ChronusQ {
       this->resSettings.nRoots = nOrtho/2;
       this->morSettings.nModel = nOrtho;
       this->genSettings.evalProp = true;
-      this->memManager_.free(modelBasis1_, modelBasis1_LT_); // Freeup mem
+      CQMemManager::get().free(modelBasis1_, modelBasis1_LT_); // Freeup mem
       modelBasis1_    = VEXP;
       modelBasis1_LT_ = AVEXP;
       residueProperties();
@@ -1394,14 +1394,14 @@ namespace ChronusQ {
     ROOT_ONLY(this->comm_);
 
     // If subspace RHS already allocated, remove it
-    if( this->dfdrResults.RHS ) this->memManager_.free(this->dfdrResults.RHS);
+    if( this->dfdrResults.RHS ) CQMemManager::get().free(this->dfdrResults.RHS);
 
     size_t N      = respFactory_.getNSingleDim(respFactory_.genSettings.doTDA);
     size_t NRHS   = respFactory_.fdrSettings.nRHS;
     size_t nModel = this->morSettings.nModel;
 
     // Allocate subspace RHS
-    T* RHS = this->memManager_.template malloc<dcomplex>(NRHS*nModel);
+    T* RHS = CQMemManager::get().malloc<dcomplex>(NRHS*nModel);
     std::fill_n(RHS,NRHS*nModel,dcomplex(0.));
 
 
@@ -1440,9 +1440,9 @@ namespace ChronusQ {
 
       if( MLoc and NLoc ) {
 
-        cList.back().X  = this->memManager_.template malloc<T>(MLoc*NLoc);
+        cList.back().X  = CQMemManager::get().malloc<T>(MLoc*NLoc);
         std::fill_n(cList.back().X,MLoc*NLoc,T(0.));
-        cList.back().AX = this->memManager_.template malloc<T>(MLoc*NLoc);
+        cList.back().AX = CQMemManager::get().malloc<T>(MLoc*NLoc);
         std::fill_n(cList.back().AX,MLoc*NLoc,T(0.));
 
       } else {
@@ -1471,8 +1471,8 @@ namespace ChronusQ {
       auto * grid = respFactory_.fullMatGrid();
       grid->gather(N,nModel,modelBasis1_LT_,N,cList.back().AX,MLoc,0,0);
 
-      if( cList.back().X )  this->memManager_.free(cList.back().X );
-      if( cList.back().AX ) this->memManager_.free(cList.back().AX);
+      if( cList.back().X )  CQMemManager::get().free(cList.back().X );
+      if( cList.back().AX ) CQMemManager::get().free(cList.back().AX);
 
     }
 #endif
@@ -1480,7 +1480,7 @@ namespace ChronusQ {
 
 
     this->fullMatrix_ = isRoot ? 
-      this->memManager_.template malloc<T>(N*N) : nullptr;
+      CQMemManager::get().malloc<T>(N*N) : nullptr;
 
     if( isRoot ) {
       std::fill_n(this->fullMatrix_,N*N,T(0.));
@@ -1508,7 +1508,7 @@ namespace ChronusQ {
 
 
     T* newG = isRoot ? 
-      this->memManager_.template malloc<T>(nProp*nModel) : nullptr;
+      CQMemManager::get().malloc<T>(nProp*nModel) : nullptr;
 
     if( isRoot ) {
       std::fill_n(newG,nProp*nModel,T(0.));
@@ -1518,7 +1518,7 @@ namespace ChronusQ {
     }
 
 
-    if( g ) this->memManager_.free(g);
+    if( g ) CQMemManager::get().free(g);
 
     return {nProp, newG};
 

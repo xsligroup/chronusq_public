@@ -64,12 +64,12 @@ public:
    *  \brief PostHartreeFock Constructor by PostHartreeFock
    *
    *  Stores references to a "reference" PostHartreeFock object and
-   *  CQMemManager and makes a copy of the reference into a complex
+   *  makes a copy of the reference into a complex
    *  PostHartreeFock object for the propagation.
    */ 
   template <typename MatsU>
   PostHartreeFock(std::shared_ptr<SingleSlater<MatsU,IntsT>> ref, size_t NS):
-    PostHartreeFockBase(ref->comm, ref->memManager, ref, NS),
+    PostHartreeFockBase(ref->comm, ref, NS),
     ref_(ref) {
     
     if (std::is_same<IntsT, dcomplex>::value) 

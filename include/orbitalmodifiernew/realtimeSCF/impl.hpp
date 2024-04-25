@@ -207,7 +207,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::formPropagator(std::vector<std::sha
   for( size_t i = 0; i < this->fockSquareOrtho.size(); i++ ) {
     size_t NB = this->fockSquareOrtho[i].dimension();
     MatExp('D',NB,dcomplex(0.,-integrationProgress.currentDeltaT),
-           this->fockSquareOrtho[i].pointer(),NB,unitarySquareOrtho[i].pointer(),NB, this->memManager);
+           this->fockSquareOrtho[i].pointer(),NB,unitarySquareOrtho[i].pointer(),NB);
   }
   ProgramTimer::tock("Propagator Formation");
 #if 0
@@ -224,7 +224,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation() {
 
   for( size_t i = 0; i < unitarySquareOrtho.size(); i++ ) {
     size_t NB = this->fockSquareOrtho[i].dimension();
-    cqmatrix::Matrix<MatsT> SCR(this->memManager,NB);
+    cqmatrix::Matrix<MatsT> SCR(NB);
 
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),
                unitarySquareOrtho[i].pointer(), NB,

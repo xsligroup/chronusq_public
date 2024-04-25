@@ -100,7 +100,7 @@ Matrix<MatsT> Matrix<MatsT>::componentGatherBuild(const Matrix<MatsU> & LL,
   } else {
     CErr("Nothing to build in componentGatherBuild");
   }
-  Matrix<MatsT> mat(LL.memManager(), nRow * 2, nCol * 2);
+  Matrix<MatsT> mat(nRow * 2, nCol * 2);
   mat.componentGather(LL, LS, SL, SS, false);
   
   return mat;
@@ -138,7 +138,7 @@ void PauliSpinorMatrices<MatsT>::componentScatter(
     
   this->S().componentScatter(LL.S(), LS.S(), SL.S(), SS.S(), increment); 
   
-  Matrix<MatsU> dummy(this->memManager(), 0);
+  Matrix<MatsU> dummy(0);
   if (this->hasZ()) {
     Matrix<MatsU> & LLZ = LL.hasZ() ? LL.Z(): dummy;
     Matrix<MatsU> & LSZ = LS.hasZ() ? LS.Z(): dummy;
@@ -172,7 +172,7 @@ void PauliSpinorMatrices<MatsT>::componentGather(
   
   this->S().componentGather(LL.S(), LS.S(), SL.S(), SS.S(), increment); 
   
-  Matrix<MatsU> dummy(this->memManager(), 0);
+  Matrix<MatsU> dummy(0);
   if (this->hasZ()) {
     const Matrix<MatsU> & LLZ = LL.hasZ() ? LL.Z(): dummy;
     const Matrix<MatsU> & LSZ = LS.hasZ() ? LS.Z(): dummy;
@@ -225,7 +225,7 @@ PauliSpinorMatrices<MatsT>::componentGatherBuild(
   bool any_hasZ  = LL.hasZ()  or LS.hasZ()  or SL.hasZ()  or SS.hasZ();
   bool any_hasXY = LL.hasXY() or LS.hasXY() or SL.hasXY() or SS.hasXY();
   
-  PauliSpinorMatrices<MatsT> pauli(LL.memManager(), 2 * nRow, 2 * nCol, any_hasXY, any_hasZ);
+  PauliSpinorMatrices<MatsT> pauli(2 * nRow, 2 * nCol, any_hasXY, any_hasZ);
 
   pauli.S() = Matrix<MatsT>::componentGatherBuild(LL.S(), LS.S(), SL.S(), SS.S());
   

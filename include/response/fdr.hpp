@@ -72,7 +72,7 @@ namespace ChronusQ {
     U* shiftedMat = nullptr;
 
     if( localDimM and localDimN )
-      shiftedMat = memManager_.template malloc<U>(localDimM*localDimN);
+      shiftedMat = CQMemManager::get().malloc<U>(localDimM*localDimN);
 
 
     U* distSOL = nullptr;
@@ -84,7 +84,7 @@ namespace ChronusQ {
       // Allocate space for distributed RHS / Solution
       std::tie(localDimM, localRHS) = fullMatGrid_->get_local_dims(N,nRHS);
       if( localDimM and localRHS)
-        distSOL = memManager_.template malloc<U>(localDimM*localRHS);
+        distSOL = CQMemManager::get().malloc<U>(localDimM*localRHS);
 
 
       DescB = fullMatGrid_->descinit_noerror(N,nRHS,localDimM);
@@ -157,9 +157,9 @@ namespace ChronusQ {
       else
 #endif
       { 
-        int64_t* IPIV = memManager_.malloc<int64_t>(N);
+        int64_t* IPIV = CQMemManager::get().malloc<int64_t>(N);
         lapack::gesv(N,nRHS,shiftedMat,N,IPIV,SOL,N);
-        memManager_.free(IPIV);
+        CQMemManager::get().free(IPIV);
       }
       
       ProgramTimer::tock("Solve Linear System");
@@ -179,9 +179,9 @@ namespace ChronusQ {
     }
 
 
-    if( shiftedMat ) memManager_.free(shiftedMat);
-    if( fMatUse and (fMatUse != fullMatrix_) ) memManager_.free(fMatUse);
-    if( isDist and distSOL ) memManager_.free(distSOL);
+    if( shiftedMat ) CQMemManager::get().free(shiftedMat);
+    if( fMatUse and (fMatUse != fullMatrix_) ) CQMemManager::get().free(fMatUse);
+    if( isDist and distSOL ) CQMemManager::get().free(distSOL);
 
 
     ProgramTimer::tock("Full FDR");
@@ -218,7 +218,7 @@ namespace ChronusQ {
     MPI_Comm gmresComm = (isDist or not genSettings.formFullMat) 
       ? comm_ : rcomm_;
     
-    GMRES<U> gmres(gmresComm,this->memManager_,nSingleDim_,
+    GMRES<U> gmres(gmresComm,nSingleDim_,
       genSettings.maxIter,genSettings.convCrit,lt,pc);
 
 

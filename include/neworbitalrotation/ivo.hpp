@@ -42,7 +42,6 @@ void NewOrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
   cqmatrix::Matrix<MatsT> & oneRDM) {
   
   const auto& mopart = postHF_.corrSpace;
-  auto& mem    = postHF_.memManager;
   auto& ss     = *postHF_.reference();
   auto& mo     = ss.mo[0];
   
@@ -63,7 +62,7 @@ void NewOrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
   /**************************************/
   /* Step 1: build scaled AO density    */
   /**************************************/ 
-  cqmatrix::Matrix<MatsT> SCR(mem, nAO); 
+  cqmatrix::Matrix<MatsT> SCR(nAO); 
   SCR.clear();
   
   // Cas contribution
@@ -79,13 +78,13 @@ void NewOrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
   SCR = ss.fockMatrix->template spinGather<MatsT>(); 
   
   // transform to MO basis only with virtual block
-  cqmatrix::Matrix<MatsT> virtualFock(mem, nSVirt);
+  cqmatrix::Matrix<MatsT> virtualFock(nSVirt);
   auto off_sizes = postHF_.mointsTF->parseMOType("ab");
   SCR.subsetTransform('N', mo.pointer(), nAO, off_sizes, virtualFock.pointer());  
   
   // diagonalize virtual fock Matrix
-  dcomplex * EIVOs = mem.template malloc<dcomplex>(nSVirt);
-  MatsT * U = mem.template malloc<MatsT>(nSVirt * nSVirt);
+  dcomplex * EIVOs = CQMemManager::get().malloc<dcomplex>(nSVirt);
+  MatsT * U = CQMemManager::get().malloc<MatsT>(nSVirt * nSVirt);
   MatsT * dummy = nullptr;
   GeneralEigen('N','V', nSVirt, virtualFock.pointer(), nSVirt, EIVOs, dummy, 1, U, nSVirt);
 
@@ -112,7 +111,7 @@ void NewOrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
   
   std::cout << std::endl << std::endl; 
 
-  mem.free(EIVOs, U);
+  CQMemManager::get().free(EIVOs, U);
 
 } // NewOrbitalRotation<MatsT>::generateIVOs
 

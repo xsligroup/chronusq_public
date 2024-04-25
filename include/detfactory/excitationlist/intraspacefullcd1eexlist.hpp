@@ -66,9 +66,9 @@ class IntraSpaceFullCD1eExList: public FullCD1eExList {
   IntraSpaceFullCD1eExList(IntraSpaceFullCD1eExList && other)      = default;
   ~IntraSpaceFullCD1eExList() = default;  
   
-  IntraSpaceFullCD1eExList(CQMemManager &mem, const DeterminantGroup& detGroup):
-    FullCD1eExList(mem, detGroup.nDeterminants(),
-                   detGroup.nElectrons() * (detGroup.nHoles() + 1)), exList_Ket_(mem) {
+  IntraSpaceFullCD1eExList(const DeterminantGroup& detGroup):
+    FullCD1eExList(detGroup.nDeterminants(),
+                   detGroup.nElectrons() * (detGroup.nHoles() + 1)), exList_Ket_() {
     
     exList_Ket_.resize(1, this->nNonZeroKetDets_, this->nBraDets_);
     
@@ -216,24 +216,24 @@ class IntraSpaceFullCD1eExListGenerator: public FullCD1eExListGenerator {
  */
 template <typename DetStringT>
 std::shared_ptr<NewExcitationList>
-constructIntraSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& detGroup) {
+constructIntraSpaceFullCD1eExList(const DeterminantGroup& detGroup) {
  
   size_t nDets = detGroup.nDeterminants();
 
   // The second data type is the integer address converted from bit-string.
   if (nDets <= std::numeric_limits<uint8_t>::max()) {
-    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint8_t>>(mem, detGroup);
+    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint8_t>>(detGroup);
   } else if (nDets <= std::numeric_limits<uint16_t>::max()) {
-    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint16_t>>(mem, detGroup);
+    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint16_t>>(detGroup);
   } else if (nDets <= std::numeric_limits<uint32_t>::max()) {
-    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint32_t>>(mem, detGroup);
+    return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint32_t>>(detGroup);
   }
   
-  return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint64_t>>(mem, detGroup);
+  return std::make_shared<IntraSpaceFullCD1eExList<DetStringT, uint64_t>>(detGroup);
 }
 
 inline std::shared_ptr<NewExcitationList> 
-constructIntraSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& detGroup) {
+constructIntraSpaceFullCD1eExList(const DeterminantGroup& detGroup) {
   
   size_t nOrbs = detGroup.nOrbitals();
 
@@ -241,13 +241,13 @@ constructIntraSpaceFullCD1eExList(CQMemManager & mem, const DeterminantGroup& de
   // In the new framework, this may not be necessary since bit-strings are never saved.
   // It will be converted and saved as an integer address.
   if (nOrbs <= 8) {
-    return constructIntraSpaceFullCD1eExList<uint8_t>(mem, detGroup);
+    return constructIntraSpaceFullCD1eExList<uint8_t>(detGroup);
   } else if (nOrbs <= 16) {
-    return constructIntraSpaceFullCD1eExList<uint16_t>(mem, detGroup);
+    return constructIntraSpaceFullCD1eExList<uint16_t>(detGroup);
   } else if (nOrbs <= 32) {
-    return constructIntraSpaceFullCD1eExList<uint32_t>(mem, detGroup);
+    return constructIntraSpaceFullCD1eExList<uint32_t>(detGroup);
   } else if (nOrbs <= 64) {
-    return constructIntraSpaceFullCD1eExList<uint64_t>(mem, detGroup);
+    return constructIntraSpaceFullCD1eExList<uint64_t>(detGroup);
   }
   CErr("number of orbitals in DeterminantGroup is too large to be represented in fundamental data types");
   return nullptr;

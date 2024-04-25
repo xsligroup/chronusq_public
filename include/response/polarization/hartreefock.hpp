@@ -99,7 +99,7 @@ namespace ChronusQ {
         }
 
         // Free up transformation memory
-        this->memManager_.free(cList[0].X);
+        CQMemManager::get().free(cList[0].X);
 
       }
 

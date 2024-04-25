@@ -49,7 +49,6 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
   bool cacheHalfTransTPI) {
   
   // TODO: expand to RI
-  auto & mem   = this->memManager;
   
   // build object and allocate memory
   size_t nCorrO  = this->corrSpace.nCorrO;
@@ -63,8 +62,8 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
    
   ProgramTimer::tick("MOINTSTRANSFORM CORE ENERGY");
   if (MPIRank(this->comm) == 0) {
-    MatsT * h1e_II  = mem.template malloc<MatsT>(nCoreO);
-    MatsT * GD_JJII = mem.template malloc<MatsT>(nCoreO);
+    MatsT * h1e_II  = CQMemManager::get().malloc<MatsT>(nCoreO);
+    MatsT * GD_JJII = CQMemManager::get().malloc<MatsT>(nCoreO);
     
     mointsTF->transformHCore(pert, h1e_II, "II", true);
     mointsTF->transformGD(pert, 'I', GD_JJII, "JJ", true, true, "WithInactive-I");  
@@ -75,7 +74,7 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
       ECore += h1e_II[i] + 0.5 * GD_JJII[i];
     }
   
-    mem.free(h1e_II, GD_JJII);
+    CQMemManager::get().free(h1e_II, GD_JJII);
 
     this->coreEnergy = std::real(ECore) * fc1C;
   }
@@ -86,8 +85,8 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
   /*
    * compute hCore and ERI in correlated space
    */ 
-  OnePInts<MatsT> hCore_tu(mem, nCorrO);
-  InCore4indexTPI<MatsT> ERI_tuvw(mem, nCorrO);
+  OnePInts<MatsT> hCore_tu(nCorrO);
+  InCore4indexTPI<MatsT> ERI_tuvw(nCorrO);
   
   // TODO: MPI-Parallel this
   ProgramTimer::tick("MOINTSTRANSFORM OPI TRANS");
@@ -116,8 +115,8 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
   // for diagonal elements 
   // can also form this using direct transformation
   // TODO: What is this for one component?
-  OnePInts<MatsT> antiSymmetricERI_ttuu(mem, nCorrO);
-  DASOnePInts<MatsT> hCore_tt(mem, nCorrO, 1ul); 
+  OnePInts<MatsT> antiSymmetricERI_ttuu(nCorrO);
+  DASOnePInts<MatsT> hCore_tt(nCorrO, 1ul); 
   #pragma omp parallel for schedule(static) default(shared)       
   for (auto u = 0ul; u < nCorrO; u++) {
     hCore_tt(u, 0) = hCore_tu(u, u);
@@ -174,7 +173,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
     // std::cout << "    - wOff = " << wOff << ", nw = " << nw << std::endl;
     // std::cout << "    - vOff = " << vOff << ", nv = " << nv << std::endl;
 
-    GASTwoPInts<MatsT> ERI_sub(this->memManager, nt, nu, nw, nv);
+    GASTwoPInts<MatsT> ERI_sub(nt, nu, nw, nv);
 
     if (termVec.size() == 1) {
 #pragma omp parallel for schedule(static) collapse(2) default(shared)       
@@ -216,7 +215,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
     tOff = activeSpaces[span[0]].MOOffset - corrSpaceOff; 
     uOff = activeSpaces[span[1]].MOOffset - corrSpaceOff; 
     
-    DASOnePInts<MatsT> h1e_sub(this->memManager, nt, nu);
+    DASOnePInts<MatsT> h1e_sub(nt, nu);
     #pragma omp parallel for schedule(static) collapse(2) default(shared)       
     for (auto uu = 0ul; uu < nu; uu++)
     for (auto tt = 0ul; tt < nt; tt++) {

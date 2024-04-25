@@ -36,7 +36,7 @@ namespace ChronusQ {
     
     auto MO = mo[spin].pointer();
     size_t LDMO = mo[spin].dimension();
-    MatsT * SCR = this->memManager.template malloc<MatsT>(LDMO);
+    MatsT * SCR = CQMemManager::get().malloc<MatsT>(LDMO);
 
     if( spin==0 ) std::cout << "  * the following MOs are swapped" << std::endl;
     
@@ -56,7 +56,7 @@ namespace ChronusQ {
 
     }
     
-    this->memManager.free(SCR);
+    CQMemManager::get().free(SCR);
 
   }; // MCWaveFunction:::swapMOs
 

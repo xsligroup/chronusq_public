@@ -36,7 +36,7 @@ namespace ChronusQ {
       
 
       size_t nAO  = ss_.nAlphaOrbital() * ss_.nC;
-      auto Den = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, nAO);
+      auto Den = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
       
       auto off_size = parseMOType(coreIndex);
       size_t ioff = off_size.first;
@@ -130,11 +130,11 @@ namespace ChronusQ {
             size_t NB = ss_.basisSet().nBasis;
             if (ss_.nC == 4 ) NB = 2 * NB;
             if(ss_.nC > 1)
-              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, true);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true);
             else if (not ss_.iCS)
-              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, false);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false);
             else
-              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NB, false, false);
+              pertContributions = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false, false);
             pertContributions->clear();
           // FIXME: the magnetic field contribution is currently absorbed into HCore but that is planned to change
           // https://github.com/xsligroup/chronusq_dev/blob/56c94dfac7a1c28e7fdb4e217052f38ea7d9013a/include/fockbuilder/impl.hpp#L296
@@ -167,7 +167,7 @@ namespace ChronusQ {
           auto AOGD = formAOGD(pert, *Den, true, true, cacheAOGDStr); 
           size_t nAO  = ss_.nAlphaOrbital() * ss_.nC;
           
-          AOHCore = std::make_shared<OnePInts<MatsT>>(memManager_, nAO);
+          AOHCore = std::make_shared<OnePInts<MatsT>>(nAO);
           AOHCore->matrix() = AOGD->matrix() + AOH1e->matrix(); 
           
           if (cacheAOHCore) ints_cache_.addIntegral(cacheAOHCoreStr, AOHCore);
@@ -192,7 +192,7 @@ namespace ChronusQ {
         
         size_t poff = off_sizes[0].first; 
         size_t np   = off_sizes[0].second; 
-        MatsT * SCR = memManager_.malloc<MatsT>(nAO); 
+        MatsT * SCR = CQMemManager::get().malloc<MatsT>(nAO); 
 
         for (auto p = 0ul; p < np; p++) {
 
@@ -206,7 +206,7 @@ namespace ChronusQ {
           // MOTPI(p,p) = SCR(nu) MO(nu, p)
           MOOPI[p] = blas::dotu(nAO, SCR, 1, pMO, 1);
         }
-        memManager_.free(SCR);
+        CQMemManager::get().free(SCR);
       } 
   
   }; // MOIntsTransformer::subsetTransformOPI

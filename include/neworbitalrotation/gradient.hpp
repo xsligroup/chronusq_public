@@ -48,9 +48,8 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
   std::cout << "Compute Orbital Gradient" << std::endl;
 
   const auto& corrS = postHF_.corrSpace;
-  auto& mem = postHF_.memManager;
   if (not orbitalGradient_) 
-    orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(mem, corrS.nMO);
+    orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(corrS.nMO);
 
   size_t nTOrb   = corrS.nMO;
   size_t nCorrO  = corrS.nCorrO;
@@ -60,8 +59,8 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
   size_t SCRDim  = std::max(nCorrO, std::max(nInact, nSVirt));
   
   // Allocate SCR
-  MatsT * SCR  = mem.template malloc<MatsT>(SCRDim*SCRDim);
-  MatsT * SCR2 = mem.template malloc<MatsT>(nCorrO*nInact);
+  MatsT * SCR  = CQMemManager::get().malloc<MatsT>(SCRDim*SCRDim);
+  MatsT * SCR2 = CQMemManager::get().malloc<MatsT>(nCorrO*nInact);
   
   // zero out G
   std::fill_n(orbitalGradient_->pointer(), nTOrb * nTOrb, MatsT(0.));
@@ -111,7 +110,7 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
     SetMat('T', nCorrO, nSVirt,  MatsT(1.), SCR, nCorrO, G + nTOrb * nInact + nINCO, nTOrb);
   } 
 
-  mem.free(SCR, SCR2);
+  CQMemManager::get().free(SCR, SCR2);
   
   // repointing to the begining
   G = orbitalGradient_->pointer();
@@ -120,7 +119,7 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
   // which is the formualed similarly as IN-FV block and CO-FV block
   if (settings.rotate_negative_positive) {
     size_t nNegMO = corrS.nNegMO;
-    SCR  = mem.template malloc<MatsT>(nNegMO * std::max(nInact, nCorrO)); 
+    SCR  = CQMemManager::get().malloc<MatsT>(nNegMO * std::max(nInact, nCorrO)); 
     
     // IN-NA block
     if (nInact > 0) {
@@ -134,7 +133,7 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
     SetMat('R', nCorrO, nNegMO, -MatsT(1.), SCR, nCorrO, G + nNegMO + nInact, nTOrb);
     SetMat('T', nCorrO, nNegMO,  MatsT(1.), SCR, nCorrO, G + (nNegMO + nInact) * nTOrb, nTOrb);
     
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
   }
 
   double orbitalGradientNorm =  lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, G, nTOrb); 

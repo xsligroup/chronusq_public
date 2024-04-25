@@ -90,7 +90,7 @@ namespace ChronusQ {
     std::shared_ptr<SolverVectors<_F>> VSCR = nullptr, VSCR2 = nullptr;
 
       // V  = [V W S1...Sm P]
-//      V = this->memManager_.template malloc<_F>(NMSS);
+//      V = CQMemManager::get().malloc<_F>(NMSS);
       V = this->vecGen_(MSS);
       W = std::make_shared<SolverVectorsView<_F>>(*V, nR);
       S = std::make_shared<SolverVectorsView<_F>>(*W, nR);
@@ -118,19 +118,19 @@ namespace ChronusQ {
 //      if( isRoot ) {
 
       // EVAL(I) = ALPHA(I) / BETA(I)
-      ALPHA = this->memManager_.template malloc<dcomplex>(MSS);
-      BETA  = this->memManager_.template malloc<_F>(MSS);
-      //double *RITZ  = this->memManager_.template malloc<double>(MSS);
-      //double *nRITZ = this->memManager_.template malloc<double>(nR);
+      ALPHA = CQMemManager::get().malloc<dcomplex>(MSS);
+      BETA  = CQMemManager::get().malloc<_F>(MSS);
+      //double *RITZ  = CQMemManager::get().malloc<double>(MSS);
+      //double *nRITZ = CQMemManager::get().malloc<double>(nR);
 
-      RMAT = this->memManager_.template malloc<_F>(MSS2); 
-      PHI  = this->memManager_.template malloc<_F>(MSS2); 
-      PSI  = this->memManager_.template malloc<_F>(MSS2); 
+      RMAT = CQMemManager::get().malloc<_F>(MSS2); 
+      PHI  = CQMemManager::get().malloc<_F>(MSS2); 
+      PSI  = CQMemManager::get().malloc<_F>(MSS2); 
 
-      VSR = this->memManager_.template malloc<_F>(MSS2);
-      VSL = this->memManager_.template malloc<_F>(MSS2);
-      MA  = this->memManager_.template malloc<_F>(MSS2);
-      MB  = this->memManager_.template malloc<_F>(MSS2);
+      VSR = CQMemManager::get().malloc<_F>(MSS2);
+      VSL = CQMemManager::get().malloc<_F>(MSS2);
+      MA  = CQMemManager::get().malloc<_F>(MSS2);
+      MB  = CQMemManager::get().malloc<_F>(MSS2);
 
 //    } // ROOT only
 
@@ -161,7 +161,7 @@ namespace ChronusQ {
 
 
       // V <- QR(V)
-      V->QR(0, nR, this->memManager_);
+      V->QR(0, nR);
 
 //    } // ROOT only
 
@@ -197,7 +197,7 @@ namespace ChronusQ {
       Q->axpy(0, nR, -sigma, *V, 0);
 
       // Q <- QR(Q)
-      Q->QR(0, nR, this->memManager_);
+      Q->QR(0, nR);
         
 
 
@@ -211,7 +211,7 @@ namespace ChronusQ {
 
       // VSR, VSL, ALPHA, BETA <- ORDQZ(PHI,PSI,sigma)
       OrdQZ2('V','V',nR,PHI,nR,PSI,nR,ALPHA,BETA,hardLimD,sigmaD,
-             VSL,nR,VSR,nR,this->memManager_);
+             VSL,nR,VSR,nR);
 
 
       // Update eigs with ALPHA/BETA
@@ -319,20 +319,20 @@ namespace ChronusQ {
         std::cout << "    GPLHRIter " << std::setw(5) << iter+1;
     
         // V, RMAT <- QR(V)
-        V->QR(0, nR, this->memManager_, RMAT, nR);
+        V->QR(0, nR, RMAT, nR);
 
         // AV <- X : [X * RMAT = AV]
         AV->trsm(0, nR,_F(1.),RMAT,nR);
 
         // Q <- QR(Q)
-        Q->QR(0, nR, this->memManager_);
+        Q->QR(0, nR);
 
 
         // W = (I - V * V**H) * T * (I - V * V**H) * W 
         newSMatrix(nR,*V,*V,*W,RMAT,nR);
 
         // W <- QR(W)
-        W->QR(0, nR, this->memManager_);
+        W->QR(0, nR);
 
 //      } // ROOT only
 
@@ -391,7 +391,7 @@ namespace ChronusQ {
        
 
           // S(k) = QR(S(k))
-          Scur->QR(0, nR, this->memManager_);
+          Scur->QR(0, nR);
 
 //        }
 
@@ -431,7 +431,7 @@ namespace ChronusQ {
           halfProj2(M_NR,nR,*S,*AS,*P,*AP,RMAT,M_NR); // Project out S
 
           // P, RMAT <- QR(P)
-          P->QR(0, nR, this->memManager_, RMAT, nR);
+          P->QR(0, nR, RMAT, nR);
 
           // AP <- X : [X * RMAT = AP]
           AP->trsm(0, nR,_F(1.),RMAT,nR);
@@ -450,14 +450,14 @@ namespace ChronusQ {
         // Q1 = (I - Q * Q**H) * Q1
         // Q1 = QR(Q1)
         halfProj(nR,*Q,*Q1,RMAT,nR);
-        Q1->QR(0, nR, this->memManager_);
+        Q1->QR(0, nR);
 
         // Q2 = (I - Q  * Q**H ) * Q2
         // Q2 = (I - Q1 * Q1**H) * Q2
         // Q2 = QR(Q2)
         halfProj(nR,M_NR,*Q,*Q2,RMAT,nR);
         halfProj(nR,M_NR,*Q1,*Q2,RMAT,nR);
-        Q2->QR(0, M_NR, this->memManager_);
+        Q2->QR(0, M_NR);
 
 
         if( Q3 ) {
@@ -468,7 +468,7 @@ namespace ChronusQ {
           halfProj(nR,*Q,*Q3,RMAT,nR);
           halfProj(nR,*Q1,*Q3,RMAT,nR);
           halfProj(M_NR,nR,*Q2,*Q3,RMAT,M_NR);
-          Q3->QR(0, nR, this->memManager_);
+          Q3->QR(0, nR);
         }
 
 
@@ -480,7 +480,7 @@ namespace ChronusQ {
 
         // VSR, VSL, ALPHA, BETA <- ORDQZ(PHI,PSI,sigma)
         OrdQZ2('V','V',nQ*nR,PHI,nQ*nR,PSI,nQ*nR,ALPHA,BETA,hardLimD,sigmaD,
-          VSL,nQ*nR,VSR,nQ*nR,this->memManager_);
+          VSL,nQ*nR,VSR,nQ*nR);
 
 
         // VSRt is thick-restart
@@ -712,15 +712,15 @@ namespace ChronusQ {
 
     // Free Scratch space
 
-    if(ALPHA)  this->memManager_.free(ALPHA);
-    if(BETA)   this->memManager_.free(BETA);
-    if(RMAT)   this->memManager_.free(RMAT);
-    if(PHI)    this->memManager_.free(PHI);
-    if(PSI)    this->memManager_.free(PSI);
-    if(VSL)    this->memManager_.free(VSL);
-    if(VSR)    this->memManager_.free(VSR);
-    if(MA)     this->memManager_.free(MA);
-    if(MB)     this->memManager_.free(MB);
+    if(ALPHA)  CQMemManager::get().free(ALPHA);
+    if(BETA)   CQMemManager::get().free(BETA);
+    if(RMAT)   CQMemManager::get().free(RMAT);
+    if(PHI)    CQMemManager::get().free(PHI);
+    if(PSI)    CQMemManager::get().free(PSI);
+    if(VSL)    CQMemManager::get().free(VSL);
+    if(VSR)    CQMemManager::get().free(VSR);
+    if(MA)     CQMemManager::get().free(MA);
+    if(MB)     CQMemManager::get().free(MB);
 
     if( isRoot ) {
 
@@ -806,10 +806,10 @@ namespace ChronusQ {
 #else
 
     // Initialize CA and CB as identity FIXME: memory
-    _F *CA    = this->memManager_.template malloc<_F>(N*N);
-    _F *CB    = this->memManager_.template malloc<_F>(N*N);
-    _F *Ident = this->memManager_.template malloc<_F>(N*N);
-    _F *G     = this->memManager_.template malloc<_F>(N*N);
+    _F *CA    = CQMemManager::get().malloc<_F>(N*N);
+    _F *CB    = CQMemManager::get().malloc<_F>(N*N);
+    _F *Ident = CQMemManager::get().malloc<_F>(N*N);
+    _F *G     = CQMemManager::get().malloc<_F>(N*N);
     std::fill_n(CA,N*N,_F(0.)); 
     std::fill_n(CB,N*N,_F(0.)); 
     std::fill_n(Ident,N*N,_F(0.)); 
@@ -847,10 +847,10 @@ namespace ChronusQ {
 
 
     // Free SCR Mem
-    this->memManager_.free(CA);
-    this->memManager_.free(CB);
-    this->memManager_.free(Ident);
-    this->memManager_.free(G);
+    CQMemManager::get().free(CA);
+    CQMemManager::get().free(CB);
+    CQMemManager::get().free(Ident);
+    CQMemManager::get().free(G);
 #endif
 
 

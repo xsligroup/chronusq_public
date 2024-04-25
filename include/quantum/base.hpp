@@ -29,7 +29,6 @@
 #include <util/timer.hpp>
 #include <util/typedefs.hpp>
 
-#include <memmanager.hpp>
 #include <cqlinalg/blas1.hpp>
 
 #include <fields.hpp>
@@ -66,9 +65,7 @@ namespace ChronusQ {
   public:
 
     MPI_Comm      comm; ///< MPI Communicator
-
-    CQMemManager& memManager; ///< Memory manager for matrix allocation
-
+    
     int   nC;   ///< Number of spin components
     bool  iCS;  ///< is closed shell?
     Particle particle; ///< Particle Type
@@ -107,13 +104,12 @@ namespace ChronusQ {
     /**
      *  QuantumBase Constructor. Constructs a QuantumBase object.
      *
-     *  \param [in] mem   CQMemManager to handle to allocation of densities
      *  \param [in] _nC   Number of spin components (1 and 2 are supported)
      *  \param [in] _iCS  Whether or not system is closed shell
      *                    (only used when _nC == 1)
      */ 
-    QuantumBase(MPI_Comm c, CQMemManager &mem, size_t _nC, bool _iCS, Particle p): 
-      memManager(mem), nC(_nC), iCS(_iCS), particle(p), comm(c),
+    QuantumBase(MPI_Comm c, size_t _nC, bool _iCS, Particle p): 
+      nC(_nC), iCS(_iCS), particle(p), comm(c),
       elecDipole({0.,0.,0.}),
       elecQuadrupole{{{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}}},
       elecOctupole{

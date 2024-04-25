@@ -87,11 +87,11 @@ void NewtonRaphsonSCF<MatsT>::NewtonRaphsonIteration() {
 template<typename MatsT>
 void NewtonRaphsonSCF<MatsT>::gradDescentStep(){
 
-    MatsT* dx = this->memManager.template malloc<MatsT>(nParam);
+    MatsT* dx = CQMemManager::get().malloc<MatsT>(nParam);
     for( size_t i=0; i<nParam; ++i )
         dx[i] = orbGrad[i] / orbDiagHess[i];
     takeStep(dx);
-    this->memManager.free(dx);
+    CQMemManager::get().free(dx);
 
 }
 
@@ -189,16 +189,16 @@ std::pair<std::set<size_t>,std::set<size_t>> ssNRRotIndices( size_t nOcc, size_t
  */
 template<typename MatsT>
 void NewtonRaphsonSCF<MatsT>::alloc() {
-  orbRot  = this->memManager.template malloc<MatsT>(nParam);
-  orbGrad = this->memManager.template malloc<MatsT>(nParam);
-  orbDiagHess = this->memManager.template malloc<MatsT>(nParam);
+  orbRot  = CQMemManager::get().malloc<MatsT>(nParam);
+  orbGrad = CQMemManager::get().malloc<MatsT>(nParam);
+  orbDiagHess = CQMemManager::get().malloc<MatsT>(nParam);
   std::fill_n(orbRot, nParam, MatsT(0.));
   std::fill_n(orbGrad, nParam, MatsT(0.));
   std::fill_n(orbDiagHess, nParam, MatsT(0.));
   if( this->scfControls.nrAlg == QUASI_BFGS or this->scfControls.nrAlg == QUASI_SR1 ) {
     for( size_t i = 0; i < this->scfControls.nKeep; i++ ) {
-      qnOrbRot.emplace_back(this->memManager.template malloc<MatsT>(nParam));
-      qnOrbGrad.emplace_back(this->memManager.template malloc<MatsT>(nParam));
+      qnOrbRot.emplace_back(CQMemManager::get().malloc<MatsT>(nParam));
+      qnOrbGrad.emplace_back(CQMemManager::get().malloc<MatsT>(nParam));
       std::fill_n(qnOrbRot[i], nParam, MatsT(0.));
       std::fill_n(qnOrbGrad[i], nParam, MatsT(0.));
     }

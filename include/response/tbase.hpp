@@ -90,9 +90,7 @@ namespace ChronusQ {
 
     MPI_Comm      comm_;
     MPI_Comm      rcomm_;
-
-    CQMemManager& memManager_;
-
+    
 
     std::function< void(size_t,T,SolverVectors<T>&,SolverVectors<T>&) >       PC_;
     std::function< void(size_t,dcomplex,SolverVectors<dcomplex>&,SolverVectors<dcomplex>&) > cmplxPC_;
@@ -128,10 +126,10 @@ namespace ChronusQ {
     FDResponseResults<T,T>        fdrResults;
     FDResponseResults<T,dcomplex> dfdrResults;
 
-    ResponseTBase( MPI_Comm c, ResponseType job, CQMemManager &mem, 
+    ResponseTBase( MPI_Comm c, ResponseType job, 
       T* fullMatrix = nullptr ) : ResponseBase(job),
         comm_(c), rcomm_(CreateRootComm(c)),
-        memManager_(mem), nSingleDim_(0), 
+        nSingleDim_(0), 
         fullMatrix_(fullMatrix) {
 
         if(fullMatrix) genSettings.doFull = true; 
@@ -156,27 +154,26 @@ namespace ChronusQ {
 #endif
       hasResGuess_(other.hasResGuess_),
       PC_(other.PC_),
-      cmplxPC_(other.cmplxPC_),
-      memManager_(other.memManager_){
+      cmplxPC_(other.cmplxPC_) {
 
       if (other.fullMatrix_) {
-        size_t fullMatSize = memManager_.getSize(other.fullMatrix_);
-        fullMatrix_ = memManager_.malloc<T>(fullMatSize);
+        size_t fullMatSize = CQMemManager::get().getSize(other.fullMatrix_);
+        fullMatrix_ = CQMemManager::get().malloc<T>(fullMatSize);
         std::copy_n(other.fullMatrix_, fullMatSize, fullMatrix_);
       }
     }
 
     inline void reset() {
 
-      resResults. dealloc(memManager_);
-      fdrResults. dealloc(memManager_);
-      dfdrResults.dealloc(memManager_);
+      resResults. dealloc();
+      fdrResults. dealloc();
+      dfdrResults.dealloc();
 
-      fdObs. dealloc(memManager_);
-      resObs.dealloc(memManager_);
+      fdObs. dealloc();
+      resObs.dealloc();
 
       alreadyRan_ = false;
-      if (fullMatrix_) memManager_.free(fullMatrix_);
+      if (fullMatrix_) CQMemManager::get().free(fullMatrix_);
 
     }
 
@@ -610,8 +607,8 @@ namespace ChronusQ {
       std::tie(MLoc,NLoc) = fullMatGrid_->get_local_dims(nSingleDim_, nVec);
       if( MLoc and NLoc ) {
 
-        cList.back().X  = this->memManager_.template malloc<U>(MLoc*NLoc);
-        cList.back().AX = this->memManager_.template malloc<U>(MLoc*NLoc);
+        cList.back().X  = CQMemManager::get().malloc<U>(MLoc*NLoc);
+        cList.back().AX = CQMemManager::get().malloc<U>(MLoc*NLoc);
 
       } else {
 
@@ -636,8 +633,8 @@ namespace ChronusQ {
       fullMatGrid_->gather(nSingleDim_,nVec,tryGetRawVectorsPointer(AV),nSingleDim_,cList.back().AX,
         MLoc,0,0);
 
-      if( cList.back().X  ) this->memManager_.free(cList.back().X );
-      if( cList.back().AX ) this->memManager_.free(cList.back().AX);
+      if( cList.back().X  ) CQMemManager::get().free(cList.back().X );
+      if( cList.back().AX ) CQMemManager::get().free(cList.back().AX);
 
     }
 #endif
@@ -683,7 +680,7 @@ namespace ChronusQ {
 
     ResponseRefBase( MPI_Comm c, ResponseType job, 
       std::shared_ptr<Reference> ref, T* fullMatrix = nullptr ) : 
-      ResponseTBase<T>(c,job,ref->memManager,fullMatrix), ref_(ref){ }
+      ResponseTBase<T>(c,job,fullMatrix), ref_(ref){ }
 
     ResponseRefBase( const ResponseRefBase &other ) : 
       ResponseTBase<T>(dynamic_cast<const ResponseTBase<T>&>(other)),

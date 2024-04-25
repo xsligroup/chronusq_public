@@ -33,10 +33,10 @@ namespace ChronusQ {
 
   template <typename F, typename _VecNorm, typename _MatInner>
   size_t GramSchmidt(size_t N, size_t Mold, size_t Mnew, F *V, size_t LDV, 
-    _VecNorm vecNorm, _MatInner matInner, CQMemManager &mem, size_t NRe = 0,
+    _VecNorm vecNorm, _MatInner matInner, size_t NRe = 0,
     double eps = 1e-12) {
 
-    F * SCR = mem.template malloc<F>(Mold + Mnew);
+    F * SCR = CQMemManager::get().malloc<F>(Mold + Mnew);
 
     if( Mold == 0 ) {
       // Normalize the first vector
@@ -72,19 +72,19 @@ namespace ChronusQ {
       }
     }
 
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
 
 #if 0
 
     size_t M = iOrtho;
-    F* tInner = mem.template malloc<F>(M*M);
+    F* tInner = CQMemManager::get().malloc<F>(M*M);
     matInner(M,M,V,LDV,V,LDV,tInner);
     for(auto k = 0ul; k < M; k++) tInner[k*(M+1)] -= 1.;
     std::cerr << "Error after " << blas::nrm2(M*M,tInner,1) 
               << std::endl;
 
-    mem.free(tInner);
+    CQMemManager::get().free(tInner);
 
 #endif
 
@@ -96,7 +96,7 @@ namespace ChronusQ {
 
   template <typename F>
   size_t GramSchmidt(size_t N, size_t Mold, size_t Mnew, F *V, size_t LDV, 
-    CQMemManager &mem, size_t NRe = 0, double eps = 1e-12) {
+    size_t NRe = 0, double eps = 1e-12) {
 
     return
     GramSchmidt(N,Mold,Mnew,V,LDV,
@@ -105,7 +105,7 @@ namespace ChronusQ {
         F* inner){
         blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,i,j,N,F(1.),Vi,LDVi,Vj,LDVj,F(0.),inner,i);
       },
-      mem,NRe,eps);
+      NRe,eps);
 
   };
 
@@ -117,9 +117,9 @@ namespace ChronusQ {
 
   template <typename F, typename _MatInner>
   void GramSchmidt(size_t N, size_t Mold, size_t Mnew, F *VL, size_t LDVL, 
-    F *VR, size_t LDVR, _MatInner matInner, CQMemManager &mem, size_t NRe = 0) {
+    F *VR, size_t LDVR, _MatInner matInner, size_t NRe = 0) {
 
-    F * SCR = mem.template malloc<F>(Mold + Mnew);
+    F * SCR = CQMemManager::get().malloc<F>(Mold + Mnew);
 
     if( Mold == 0 ) {
       // Normalize the first vector of each set
@@ -156,19 +156,19 @@ namespace ChronusQ {
 
     }
 
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
 
 #if 0
 
     size_t M = Mold + Mnew;
-    F* tInner = mem.template malloc<F>(M*M);
+    F* tInner = CQMemManager::get().malloc<F>(M*M);
     matInner(M,M,VL,LDVL,VR,LDVR,tInner);
     for(auto k = 0ul; k < M; k++) tInner[k*(M+1)] -= 1.;
     std::cerr << "Error after " << blas::nrm2(M*M,tInner,1) 
               << std::endl;
 
-    mem.free(tInner);
+    CQMemManager::get().free(tInner);
 
 #endif
 

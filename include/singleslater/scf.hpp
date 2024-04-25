@@ -108,7 +108,7 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
       std::cout << "  * LOWEST STABILITY EIGENVALUE POSITIVE: " 
         << "WAVE FUNCTION 2nd ORDER STABLE\n";
 
-      this->memManager.free(J); return true; 
+      CQMemManager::get().free(J); return true; 
 
     }
 
@@ -123,8 +123,8 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     const size_t nOBVB = this->nOB * this->nVB;
 
 
-    MatsT* ROT    = this->memManager.template malloc<MatsT>(NBC2);
-    MatsT* EXPROT = this->memManager.template malloc<MatsT>(NBC2);
+    MatsT* ROT    = CQMemManager::get().malloc<MatsT>(NBC2);
+    MatsT* EXPROT = CQMemManager::get().malloc<MatsT>(NBC2);
     std::fill_n(ROT,NBC2,0.);
 
     for(auto i = 0ul, ai = 0ul; i < NO;  i++)
@@ -137,7 +137,7 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
 
     // FIXME: need to generalize MatExp to take non-hermetian and real
     // matricies
-    //MatExp('D',NBC,T(-1.),ROT,NBC,EXPROT,NBC,this->memManager);
+    //MatExp('D',NBC,T(-1.),ROT,NBC,EXPROT,NBC);
 
     // Taylor
     MatsT s = 1.;
@@ -145,8 +145,8 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     blas::scal(NBC2,-s,EXPROT,1);
     for(auto j = 0; j < NBC; j++) EXPROT[j*(NBC+1)] += 1.; // n = 0
 
-    MatsT* SCR  = this->memManager.template malloc<MatsT>(NBC2);
-    MatsT* SCR2 = this->memManager.template malloc<MatsT>(NBC2);
+    MatsT* SCR  = CQMemManager::get().malloc<MatsT>(NBC2);
+    MatsT* SCR2 = CQMemManager::get().malloc<MatsT>(NBC2);
     std::copy_n(ROT,NBC2,SCR);
 
     size_t tayMax = 30; 
@@ -186,7 +186,7 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
 
     orthoAOMO();
     this->formDensity();
-    this->memManager.free(J,ROT,EXPROT);
+    CQMemManager::get().free(J,ROT,EXPROT);
 
     return false;
 
@@ -225,16 +225,14 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     }
 
     // Diagonalize the Fock Matrix
-    int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1,
-      memManager );
+    int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
     if( INFO != 0 ) CErr("HermetianEigen failed in Fock1",std::cout);
 
     if(iRO) {
       this->mo[1] = this->mo[0]; // for ROHF
       std::copy_n(this->eps1, NB, this->eps2);
     } else if(nC == 1 and not iCS) {
-      INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2,
-        memManager );
+      INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
       if( INFO != 0 ) CErr("HermetianEigen failed in Fock2",std::cout);
     }
 
@@ -274,14 +272,14 @@ void SingleSlater<MatsT, IntsT>::diagAOFock() {
   }
 
   // Diagonalize the Fock Matrix
-  int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1, memManager);
+  int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
   if( INFO != 0 ) CErr("HermetianEigen failed in Fock1", std::cout);
 
   if( iRO ) {
     this->mo[1] = this->mo[0];   // for ROHF
     std::copy_n(this->eps1, NB, this->eps2);
   } else if( nC == 1 and not iCS ) {
-    INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2, memManager);
+    INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
     if( INFO != 0 ) CErr("HermetianEigen failed in Fock2", std::cout);
   }
 
@@ -379,8 +377,8 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
     // Check proper orthonormalized wrt overlap
 
     size_t NB = basisSet().nBasis;
-    MatsT* SCR2 = this->memManager.template malloc<MatsT>(this->nC*this->nC*NB*NB);
-    MatsT* SCR3 = this->memManager.template malloc<MatsT>(this->nC*this->nC*NB*NB);
+    MatsT* SCR2 = CQMemManager::get().malloc<MatsT>(this->nC*this->nC*NB*NB);
+    MatsT* SCR3 = CQMemManager::get().malloc<MatsT>(this->nC*this->nC*NB*NB);
 
 
     // MO1 inner product
@@ -414,7 +412,7 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
         << lapack::lange(lapack::Norm::Fro,NB,NB,SCR3,NB) << std::endl;
     }
 
-    this->memManager.free(SCR2,SCR3);
+    CQMemManager::get().free(SCR2,SCR3);
 
 #endif
 
@@ -674,8 +672,8 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
   void SingleSlater<MatsT,IntsT>::MOIntsTransformationTest(EMPerturbation &pert) {
    
     // test on MO integral transfromations
-    // MOIntsTransformer<MatsT, IntsT> N5TF(memManager, *this, INCORE_N5);
-    MOIntsTransformer<MatsT, IntsT> N6TF(memManager, *this, INCORE_N6);  
+    // MOIntsTransformer<MatsT, IntsT> N5TF(*this, INCORE_N5);
+    MOIntsTransformer<MatsT, IntsT> N6TF(*this, INCORE_N6);  
 
     std::cout << "\n --------- Test on MO Ints Transformation----- \n" << std::endl;
     
@@ -683,9 +681,9 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
     size_t nMO = (this->nC == 4) ? NB / 2: NB;
     size_t nOcc = (this->nC == 1) ? this->nO/2: this->nO; 
 
-    InCore4indexTPI<MatsT> N6MOERI(memManager, nOcc); 
-    // InCore4indexTPI<MatsT> N5MOERI(memManager, nMO); 
-    OnePInts<MatsT> hCore(memManager, nOcc); 
+    InCore4indexTPI<MatsT> N6MOERI(nOcc); 
+    // InCore4indexTPI<MatsT> N5MOERI(nMO); 
+    OnePInts<MatsT> hCore(nOcc); 
 
 #if 1
     std::cout << "---- Test: Reconstruct SCF Energy" << std::endl; 
@@ -715,8 +713,8 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
 
     std::cout << " - Time (N6) for transforming ijkl " <<  " = " << timeDur << " s\n"; 
 
-    MatsT * h1e_ii  = this->memManager.template malloc<MatsT>(nOcc);
-    MatsT * GDjj_ii = this->memManager.template malloc<MatsT>(nOcc);
+    MatsT * h1e_ii  = CQMemManager::get().malloc<MatsT>(nOcc);
+    MatsT * GDjj_ii = CQMemManager::get().malloc<MatsT>(nOcc);
 
     double fc1C = (this->nC == 1) ? 2.0 : 1.0;
 
@@ -776,7 +774,7 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
   template <typename MatsT, typename IntsT>
   std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> 
     SingleSlater<MatsT, IntsT>::generateMOIntsTransformer() {
-      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(memManager, *this, this->aoints_->TPITransAlg);
+      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(*this, this->aoints_->TPITransAlg);
   }
 
 /**

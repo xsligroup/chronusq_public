@@ -59,15 +59,13 @@ namespace ChronusQ {
     // populate F1 as hCore_pq
     mcwfn_.mointsTF->transformHCore(pert, F1, moType, deltaPQ, 'i');
     
-    auto & mem = mcwfn_.memManager;
-    
     auto tsize  = mcwfn_.mointsTF->parseMOType("t");
     size_t toff = tsize[0].first;
     size_t nt   = tsize[0].second;
     size_t nAO  = mcwfn_.reference().nAlphaOrbital() * mcwfn_.reference().nC;
     
-    cqmatrix::Matrix<MatsT> Den(mem, nAO);
-    MatsT * SCR = mem.template malloc<MatsT>(std::max(nAO*nt, npqDim)); 
+    cqmatrix::Matrix<MatsT> Den(nAO);
+    MatsT * SCR = CQMemManager::get().malloc<MatsT>(std::max(nAO*nt, npqDim)); 
     MatsT * tMO = mcwfn_.reference().mo[0].pointer() + toff*nAO;
 
     // form densty D(nu,mu) = C(nu, u) 1PDM_{tu} C(mu, t)^*
@@ -84,7 +82,7 @@ namespace ChronusQ {
     if (mcwfn_.reference().nC == 1) blas::scal(npqDim, MatsT(2.), F1, 1);
     blas::axpy(npqDim, MatsT(1.), SCR, 1, F1, 1);
     
-    mem.free(SCR);
+    CQMemManager::get().free(SCR);
 
   }; // OrbitalRotation<MatsT>::formGeneralizedFock1
 
@@ -106,7 +104,7 @@ namespace ChronusQ {
     size_t nCorrO2 = nCorrO * nCorrO;
     size_t nCorrO3 = nCorrO2 * nCorrO;
     
-    MatsT * SCR = mcwfn_.memManager.template malloc<MatsT>(nq * nCorrO3); 
+    MatsT * SCR = CQMemManager::get().malloc<MatsT>(nq * nCorrO3); 
     
     // populate SCR as hCore_qu 
     mcwfn_.mointsTF->transformHCore(pert, SCR, moType + "u", false, 'i');
@@ -122,7 +120,7 @@ namespace ChronusQ {
       nCorrO, nq, nCorrO3, MatsT(1.), twoRDM.pointer(), nCorrO,
       SCR, nq, MatsT(1.), F2, nCorrO);
     
-    mcwfn_.memManager.free(SCR);
+    CQMemManager::get().free(SCR);
     
   }; // OrbitalRotation<MatsT>::formGeneralizedFock2
 

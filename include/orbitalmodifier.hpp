@@ -109,12 +109,11 @@ class OrbitalModifier {
 
   protected:
     MPI_Comm comm;   ///< MPI Communication
-    CQMemManager& memManager;
     OrbitalModifierDrivers<MatsT> orbitalModifierDrivers;   ///< Options struct for Modify Orbitals
 
   public:
     OrbitalModifier() = delete;
-    OrbitalModifier(MPI_Comm c, OrbitalModifierDrivers<MatsT> m, CQMemManager& mem): comm(c), orbitalModifierDrivers(m), memManager(mem) {
+    OrbitalModifier(MPI_Comm c, OrbitalModifierDrivers<MatsT> m): comm(c), orbitalModifierDrivers(m) {
         // Check that Essential functions are bound
         if( not orbitalModifierDrivers.printProperties ) CErr("printProperties was not bound in ModifyOrbitalOptions");
         if( not orbitalModifierDrivers.saveCurrentState ) CErr("saveCurrentState was not bound in ModifyOrbitalOptions");

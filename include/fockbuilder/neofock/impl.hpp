@@ -92,7 +92,6 @@ namespace ChronusQ {
 
     size_t NB = ss.basisSet().nBasis;
     size_t nGrad = 3*ss.molecule().nAtoms;
-    CQMemManager& mem = ss.memManager;
 
     // Form contraction
     std::unique_ptr<GradContractions<MatsT,IntsT>> contract = nullptr;
@@ -118,7 +117,7 @@ namespace ChronusQ {
       std::vector<TwoBodyContraction<MatsT>> tempCont;
 
       // Coulomb
-      JList.emplace_back(mem, NB);
+      JList.emplace_back(NB);
       JList.back().clear();
       tempCont.push_back(
          {this->aux_ss->onePDM->S().pointer(), JList.back().pointer(), true, COULOMB}
@@ -132,7 +131,7 @@ namespace ChronusQ {
 
     // Contract to gradient
     std::vector<double> gradient;
-    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(mem, NB, false, false);
+    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(NB, false, false);
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
 
@@ -277,7 +276,7 @@ namespace ChronusQ {
           VXC = ks->VXC;
         } else {
           VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(
-            ss.memManager, NB, ss.nC > 1, !ss.iCS
+            NB, ss.nC > 1, !ss.iCS
           );
         }
       }
@@ -287,7 +286,7 @@ namespace ChronusQ {
   
       std::vector<std::vector<double*>> integrateVXC;
       double* intVXC_RAW = (nthreads == 1) ? nullptr :
-        ss.memManager.template malloc<double>(VXC->nComponent() * NTNB2);
+        CQMemManager::get().malloc<double>(VXC->nComponent() * NTNB2);
   
       std::vector<double*> VXC_SZYX = VXC->SZYXPointers(); 
       for(auto k = 0; k < VXC_SZYX.size(); k++) {
@@ -314,63 +313,63 @@ namespace ChronusQ {
       if( ks ) ks->XCEnergy = 0.;
       XCEnergy = 0.;
       double *SCRATCHNBNB = 
-        ss.memManager.template malloc<double>(NTNB2); 
+        CQMemManager::get().malloc<double>(NTNB2); 
       double *SCRATCHNBNP = 
-        ss.memManager.template malloc<double>(NTNPPB*NB); 
+        CQMemManager::get().malloc<double>(NTNPPB*NB); 
 
       double *DenS, *DenZ, *DenX ;
-      DenS = ss.memManager.template malloc<double>(NTNPPB);
+      DenS = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( ss.onePDM->hasZ() )
-        DenZ = ss.memManager.template malloc<double>(NTNPPB);
+        DenZ = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( ss.onePDM->hasXY() )
         CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
-      double *epsEval = ss.memManager.template malloc<double>(NTNPPB);
-      double *epcEval = ss.memManager.template malloc<double>(NTNPPB);
+      double *epsEval = CQMemManager::get().malloc<double>(NTNPPB);
+      double *epcEval = CQMemManager::get().malloc<double>(NTNPPB);
       std::fill_n(epcEval, NTNPPB, 0.);
 
       // Density U-Variables
       double *U_n   = 
-        ss.memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
       double *dVU_n = 
-        ss.memManager.template malloc<double>(2*NTNPPB); 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
 
       double *ZrhoVar1, *ZgammaVar1, *ZgammaVar2;
 
-      ZrhoVar1 = ss.memManager.template malloc<double>(NTNPPB);
+      ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
       
       // These quantities are only used for GGA functionals
       double *GDenS, *GDenZ, *U_gamma, *dVU_gamma;
       if( isGGA || epcisGGA ) {
-        GDenS = ss.memManager.template malloc<double>(3*NTNPPB);
-        ZgammaVar1 = ss.memManager.template malloc<double>(NTNPPB);
-        ZgammaVar2 = ss.memManager.template malloc<double>(NTNPPB);
+        GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
 
         if( ss.onePDM->hasZ() )
-          GDenZ = ss.memManager.template malloc<double>(3*NTNPPB);
+          GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
 
         if( ss.onePDM->hasXY() )
           CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
         // Gamma U-Variables
-        U_gamma = ss.memManager.template malloc<double>(3*NTNPPB); 
-        dVU_gamma = ss.memManager.template malloc<double>(3*NTNPPB); 
+        U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
       }
 
       // These quantities are used when there are multiple xc functionals
       double *epsSCR, *dVU_n_SCR, *dVU_gamma_SCR;
       if( ks && ks->functionals.size() > 1 ) {
-        epsSCR    = ss.memManager.template malloc<double>(NTNPPB);
-        dVU_n_SCR    = ss.memManager.template malloc<double>(2*NTNPPB);
+        epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
         if(isGGA || epcisGGA) 
           dVU_gamma_SCR = 
-            ss.memManager.template malloc<double>(3*NTNPPB);
+            CQMemManager::get().malloc<double>(3*NTNPPB);
       }
 
       // ZMatrix
-      double *ZMAT = ss.memManager.template malloc<double>(NTNPPB*NB);
+      double *ZMAT = CQMemManager::get().malloc<double>(NTNPPB*NB);
  
       // Decide if we need to allocate space for real part of the 
       // densities and copy over the real parts
@@ -382,55 +381,55 @@ namespace ChronusQ {
       // Scratch pointers for auxiliary systems 
       // ---------------NEO------------------------------------------------
       double *AUX_SCRATCHNBNB = 
-        ss.memManager.template malloc<double>(aux_NTNB2);
+        CQMemManager::get().malloc<double>(aux_NTNB2);
       double *AUX_SCRATCHNBNP = 
-        ss.memManager.template malloc<double>(NTNPPB*aux_NB);        
+        CQMemManager::get().malloc<double>(NTNPPB*aux_NB);        
 
       // Density pointers for auxiliary system
       double *aux_DenS, *aux_DenZ;
-      aux_DenS = ss.memManager.template malloc<double>(NTNPPB);
+      aux_DenS = CQMemManager::get().malloc<double>(NTNPPB);
 
         if ( this->aux_ss->onePDM->hasZ() )
-          aux_DenZ = ss.memManager.template malloc<double>(NTNPPB);
+          aux_DenZ = CQMemManager::get().malloc<double>(NTNPPB);
 
         if ( this->aux_ss->onePDM->hasXY() )
           CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
       // NEO auxiliary Density U-Variables
       double *aux_U_n   = 
-        ss.memManager.template malloc<double>(2*NTNPPB);
+        CQMemManager::get().malloc<double>(2*NTNPPB);
       double *aux_dVU_n  = 
-        ss.memManager.template malloc<double>(2*NTNPPB);
+        CQMemManager::get().malloc<double>(2*NTNPPB);
 
       double *aux_ZrhoVar1, *aux_ZgammaVar1, *aux_ZgammaVar2;
       // These quantities are only used for GGA functionals
       double *aux_GDenS, *aux_GDenZ, *aux_U_gamma, *aux_dVU_gamma;
 
-      aux_ZrhoVar1 = ss.memManager.template malloc<double>(NTNPPB);
+      aux_ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
 
       if( epcisGGA ) {
-        aux_GDenS = ss.memManager.template malloc<double>(3*NTNPPB);
-        aux_ZgammaVar1 = ss.memManager.template malloc<double>(NTNPPB);
-        aux_ZgammaVar2 = ss.memManager.template malloc<double>(NTNPPB);
+        aux_GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        aux_ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        aux_ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
 
         if( this->aux_ss->onePDM->hasZ() )
-          aux_GDenZ = ss.memManager.template malloc<double>(3*NTNPPB);
+          aux_GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
 
         if( this->aux_ss->onePDM->hasXY() )
           CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
         // Gamma U-Variables
-        aux_U_gamma = ss.memManager.template malloc<double>(3*NTNPPB); 
-        aux_dVU_gamma = ss.memManager.template malloc<double>(3*NTNPPB); 
+        aux_U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        aux_dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
       }
 
       double *aux_epsSCR, *aux_dVU_n_SCR, *aux_dVU_gamma_SCR;
       if( epc_functionals.size() > 1 ) {
-        aux_epsSCR    = ss.memManager.template malloc<double>(NTNPPB);
-        aux_dVU_n_SCR    = ss.memManager.template malloc<double>(2*NTNPPB);
+        aux_epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        aux_dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
         if(epcisGGA) 
           aux_dVU_gamma_SCR = 
-            ss.memManager.template malloc<double>(3*NTNPPB);
+            CQMemManager::get().malloc<double>(3*NTNPPB);
       }
 
       std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> aux_Re1PDM
@@ -443,9 +442,9 @@ namespace ChronusQ {
       // --------------Cross Memory--------------------------------------------
       double *cross_U_gamma, *cross_dVU_gamma, *ZgammaVar3;
       if (epcisGGA) {
-        cross_U_gamma = ss.memManager.template malloc<double>(4*NTNPPB); 
-        cross_dVU_gamma = ss.memManager.template malloc<double>(4*NTNPPB);
-        ZgammaVar3 = ss.memManager.template malloc<double>(NTNPPB);
+        cross_U_gamma = CQMemManager::get().malloc<double>(4*NTNPPB); 
+        cross_dVU_gamma = CQMemManager::get().malloc<double>(4*NTNPPB);
+        ZgammaVar3 = CQMemManager::get().malloc<double>(NTNPPB);
       }
       // --------------end cross-----------------------------------------------
  
@@ -805,7 +804,7 @@ namespace ChronusQ {
       else if( auto aux_ks = dynamic_cast<KohnSham<MatsT,IntsT>*>( this->aux_ss ) )
         intParam = aux_ks->intParam;
       BeckeIntegrator<EulerMac> 
-        integrator(intComm,ss.memManager,ss.molecule(),basis,aux_basis,
+        integrator(intComm,ss.molecule(),basis,aux_basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
           (isGGA ? GRADIENT : NOGRAD), (epcisGGA ? GRADIENT : NOGRAD), 
           intParam.epsilon);
@@ -843,7 +842,7 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
 
       double* mpiScr;
-      if( mpiRank == 0 ) mpiScr = ss.memManager.template malloc<double>(NB*NB);
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<double>(NB*NB);
 
       for(auto &V : VXC_SZYX) {
 
@@ -853,7 +852,7 @@ namespace ChronusQ {
 
       }
 
-      if( mpiRank == 0 ) ss.memManager.free(mpiScr);
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
       if(ks) ks->XCEnergy = MPIReduce(ks->XCEnergy,0,intComm);
 
@@ -862,48 +861,48 @@ namespace ChronusQ {
 
       // Freeing the memory
       // ----------------Main System-------------------------------------------- //
-      ss.memManager.free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,epcEval,U_n,
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,epcEval,U_n,
         dVU_n, ZrhoVar1,ZMAT);
       if( isGGA || epcisGGA )  
-        ss.memManager.free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
+        CQMemManager::get().free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
           dVU_gamma);
 
       if( ss.onePDM->hasZ() ) {
-        ss.memManager.free(DenZ);
-        if( isGGA || epcisGGA )  ss.memManager.free(GDenZ);
+        CQMemManager::get().free(DenZ);
+        if( isGGA || epcisGGA )  CQMemManager::get().free(GDenZ);
       }
 
       if( ss.onePDM->hasXY() )
         CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
       if( ks && ks->functionals.size() > 1 ) {
-        ss.memManager.free(epsSCR,dVU_n_SCR);
-        if( isGGA || epcisGGA ) ss.memManager.free(dVU_gamma_SCR);
+        CQMemManager::get().free(epsSCR,dVU_n_SCR);
+        if( isGGA || epcisGGA ) CQMemManager::get().free(dVU_gamma_SCR);
       }
 
-      if( nthreads != 1 ) ss.memManager.free(intVXC_RAW);
+      if( nthreads != 1 ) CQMemManager::get().free(intVXC_RAW);
 
       Re1PDM = nullptr;
 
       // -----------------End Main System-------------------------------------------- //
 
       // ----------------Auxiliary System-------------------------------------------- //
-      ss.memManager.free(AUX_SCRATCHNBNB,AUX_SCRATCHNBNP,aux_DenS,aux_U_n,aux_dVU_n,aux_ZrhoVar1);
+      CQMemManager::get().free(AUX_SCRATCHNBNB,AUX_SCRATCHNBNP,aux_DenS,aux_U_n,aux_dVU_n,aux_ZrhoVar1);
       if(epcisGGA )  
-        ss.memManager.free(aux_ZgammaVar1,aux_ZgammaVar2,aux_GDenS,aux_U_gamma,
+        CQMemManager::get().free(aux_ZgammaVar1,aux_ZgammaVar2,aux_GDenS,aux_U_gamma,
           aux_dVU_gamma);
 
       if( this->aux_ss->onePDM->hasZ() ) {
-        ss.memManager.free(aux_DenZ);
-        if ( epcisGGA ) ss.memManager.free(aux_GDenZ);
+        CQMemManager::get().free(aux_DenZ);
+        if ( epcisGGA ) CQMemManager::get().free(aux_GDenZ);
       }
 
       if( this->aux_ss->onePDM->hasXY() )
         CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
 
       if( epc_functionals.size() > 1 ) {
-        ss.memManager.free(aux_epsSCR,aux_dVU_n_SCR);
-        if( epcisGGA ) ss.memManager.free(aux_dVU_gamma_SCR);
+        CQMemManager::get().free(aux_epsSCR,aux_dVU_n_SCR);
+        if( epcisGGA ) CQMemManager::get().free(aux_dVU_gamma_SCR);
       }
 
       aux_Re1PDM = nullptr;
@@ -911,7 +910,7 @@ namespace ChronusQ {
       // -----------------End Aux-------------------------------------------- //
       // -----------------Cross---------------------------------------------- //
       if(epcisGGA)
-        ss.memManager.free(cross_U_gamma, cross_dVU_gamma, ZgammaVar3);
+        CQMemManager::get().free(cross_U_gamma, cross_dVU_gamma, ZgammaVar3);
       // -----------------End Cross------------------------------------------ //
       // End freeing the memory
 

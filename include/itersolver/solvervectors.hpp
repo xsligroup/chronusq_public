@@ -168,12 +168,11 @@ namespace ChronusQ {
      * @param shift Beginning vector index
      * @param Mold  Number of vectors that are already orthonormal
      * @param Mnew  Number of vectors to be orthonormalize
-     * @param mem   MemManager referece
      * @param NRe   Number of repeats of projection
      * @param eps   Threshold for linear dependency
      * @return
      */
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                size_t NRe = 0, double eps = 1e-12);
 
     /**
@@ -192,15 +191,14 @@ namespace ChronusQ {
     /**
      * QR factorization
      * A wrapper for
-     * ChronusQ::QR(length(), nVec, getPtr(), length(), R, LDR, mem);
+     * ChronusQ::QR(length(), nVec, getPtr(), length(), R, LDR);
      * @param shift Beginning vector index
      * @param nVec  Number of vectors
-     * @param mem   Reference to CQMemManager
      * @param R     returns R
      * @param LDR   Leading dimension of R
      * @return      Lapack information
      */
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) = 0;
+    virtual int QR(size_t shift, size_t nVec, _F *R = nullptr, int LDR = 0) = 0;
 
     /**
      * 2-norm of vector this[shift] or F-norm of matrix this[shift : shift+nVec]
@@ -238,35 +236,33 @@ namespace ChronusQ {
   protected:
 
     MPI_Comm      comm_;
-    CQMemManager &memManager_;
     _F* data_ = nullptr;
     size_t len_;
     size_t size_ = 0;
 
   public:
-    RawVectors(MPI_Comm c, CQMemManager &mem, size_t len, size_t size)
-    : comm_(c), memManager_(mem), len_(len), size_(size) {
+    RawVectors(MPI_Comm c, size_t len, size_t size)
+    : comm_(c), len_(len), size_(size) {
       if (MPIRank(comm_) == 0 and size > 0) {
-        data_ = memManager_.malloc<_F>(len_ * size_);
+        data_ = CQMemManager::get().malloc<_F>(len_ * size_);
         clear();
       }
     }
     RawVectors(const RawVectors<_F> &other)
-    : comm_(other.comm_), memManager_(other.memManager_),
+    : comm_(other.comm_),
     len_(other.len_), size_(other.size_) {
       if (MPIRank(comm_) == 0 and size_ > 0 and other.data_ != nullptr) {
-        data_ = memManager_.malloc<_F>(len_ * size_);
+        data_ = CQMemManager::get().malloc<_F>(len_ * size_);
         std::copy_n(other.data_, len_ * size_, data_);
       }
     }
     RawVectors(RawVectors<_F> &&other)
-    : comm_(other.comm_), memManager_(other.memManager_),
+    : comm_(other.comm_),
     data_(other.data_), len_(other.len_), size_(other.size_) {
       other.data_ = nullptr;
     }
 
     MPI_Comm getMPIcomm() const { return comm_; }
-    CQMemManager& getMem() const { return memManager_; }
 
     virtual size_t length() const override { return len_; }
     virtual size_t size() const override { return size_; }
@@ -341,12 +337,12 @@ namespace ChronusQ {
 
     virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
 
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                size_t NRe = 0, double eps = 1e-12) override;
 
     virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
 
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
+    virtual int QR(size_t shift, size_t nVec, _F *R = nullptr, int LDR = 0) override;
 
     using SolverVectors<_F>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;
@@ -356,7 +352,7 @@ namespace ChronusQ {
 
     virtual ~RawVectors() {
       if (data_)
-        memManager_.free(data_);
+        CQMemManager::get().free(data_);
     }
 
   }; // class RawVectors
@@ -376,7 +372,6 @@ namespace ChronusQ {
   protected:
 
     MPI_Comm comm_;
-    CQMemManager &memManager_;
     size_t len_;
     size_t size_ = 0;
     
@@ -392,9 +387,9 @@ namespace ChronusQ {
   public:
     
     // dividing the vector evenly 
-    explicit DistributedVectors(MPI_Comm c, CQMemManager& mem,
+    explicit DistributedVectors(MPI_Comm c,
                                 size_t len, size_t size) :
-        comm_(c), memManager_(mem), len_(len), size_(size) {
+        comm_(c), len_(len), size_(size) {
       
       size_t nNodes = MPISize(comm_);
       
@@ -413,9 +408,9 @@ namespace ChronusQ {
     }
      
     // dividing the vector with inputs
-    explicit DistributedVectors(MPI_Comm c, CQMemManager& mem,
+    explicit DistributedVectors(MPI_Comm c,
                                 const std::vector<size_t>& lens, size_t size):
-        comm_(c), memManager_(mem), lens_(lens), size_(size) {
+        comm_(c), lens_(lens), size_(size) {
       
       size_t nNodes = MPISize(comm_);
 
@@ -481,7 +476,7 @@ namespace ChronusQ {
     }
 
     explicit DistributedVectors(const RawVectors<_F>& vecs, size_t shift, size_t nVec):
-        DistributedVectors(vecs.getMPIcomm(), vecs.getMem(), vecs.length(), nVec) {
+        DistributedVectors(vecs.getMPIcomm(), vecs.length(), nVec) {
       fromRawVectors(0ul, vecs, shift, nVec); 
     }
    
@@ -489,7 +484,7 @@ namespace ChronusQ {
         DistributedVectors(vecs, 0ul, vecs.size()) { }
      
     RawVectors<_F> toRawVectors(size_t shift, size_t nVec) const {
-      RawVectors<_F> vecs(comm_, memManager_, length(), nVec);
+      RawVectors<_F> vecs(comm_, length(), nVec);
       setRawVectors(0ul, vecs, shift, nVec);
       return vecs;
     }
@@ -505,37 +500,36 @@ namespace ChronusQ {
     }
 
     DistributedVectors(const DistributedVectors<_F> &other):
-        DistributedVectors(other.comm_, other.memManager_, other.lens_, other.size_) {
+        DistributedVectors(other.comm_, other.other.lens_, other.size_) {
       set_data(0, size_, other, 0ul, false);
     }
 
     DistributedVectors(DistributedVectors<_F> &&other):
-        comm_(other.comm_), memManager_(other.memManager_),
+        comm_(other.comm_),
         data_(std::move(other.data_)), len_(other.len_), lens_(other.lens_), 
         accLens_(other.accLens_), size_(other.size_) { }
 
     virtual ~DistributedVectors() { dealloc(); }
 
     MPI_Comm getMPIcomm() const { return comm_; }
-    CQMemManager& getMem() const { return memManager_; }
 
     void dealloc() {
-      if (data_) memManager_.free(data_);
+      if (data_) CQMemManager::get().free(data_);
     }
     
     void alloc() {
       dealloc();
       //std::cout << "Allocating local data, with localLen_ = " << localLen_ << std::endl;
-      // data_ = memManager_.malloc<_F>(localLength() * size_);
+      // data_ = CQMemManager::get().malloc<_F>(localLength() * size_);
       if (not data_) {
         try {
-          data_ = memManager_.malloc<_F>(localLength() * size_);;
+          data_ = CQMemManager::get().malloc<_F>(localLength() * size_);;
         } catch (...) {
           std::cout << std::fixed;
           std::cout << "Insufficient memory for DistributedVectors object, "
                     <<  " (" << (localLength() * size_ / 1e9) * sizeof(_F) << " GB)"
                     << std::endl;
-          std::cout << memManager_ << std::endl;
+          std::cout << CQMemManager::get() << std::endl;
           CErr();
         }
       }
@@ -602,7 +596,7 @@ namespace ChronusQ {
       
       this->sizeCheck(shift + nVec, "DistributedVectors<_F>::copy");
       
-      DistributedVectors<_F> vecs(comm_, memManager_, lens_, nVec);
+      DistributedVectors<_F> vecs(comm_, lens_, nVec);
       std::copy_n(getLocalPtr(shift), localLength() * nVec, vecs.getLocalPtr(0ul));
       
       return vecs;
@@ -645,12 +639,12 @@ namespace ChronusQ {
 
     virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
 
-    // virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    // virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
     //                           size_t NRe = 0, double eps = 1e-12) override;
 
     virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
 
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
+    virtual int QR(size_t shift, size_t nVec, _F *R = nullptr, int LDR = 0) override;
 
     using SolverVectors<_F>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;
@@ -801,12 +795,12 @@ namespace ChronusQ {
 
     virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
 
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                size_t NRe = 0, double eps = 1e-12) override;
 
     virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
 
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, _F *R = nullptr, int LDR = 0) override;
+    virtual int QR(size_t shift, size_t nVec, _F *R = nullptr, int LDR = 0) override;
 
     using SolverVectors<_F>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;

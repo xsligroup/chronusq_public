@@ -65,8 +65,8 @@ namespace ChronusQ {
 
     // MOs on scr bin file
     std::vector<cqmatrix::Matrix<ScrMatsT>> motmp;
-    motmp.emplace_back(memManager, MO1dims[0]);
-    if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) motmp.emplace_back(memManager, MO2dims[0]);
+    motmp.emplace_back(MO1dims[0]);
+    if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) motmp.emplace_back(MO2dims[0]);
 
     // Read in MO1
     std::cout << "    * Found SCF/MO1 !" << std::endl;
@@ -343,8 +343,8 @@ namespace ChronusQ {
 
     if( Urow != Ucol ) CErr("Only implemented for uncontracted basis set");
 
-    MatsT *readUL = memManager.malloc<MatsT>(Urow*Ucol);
-    MatsT *readUS = memManager.malloc<MatsT>(Urow*Ucol);
+    MatsT *readUL = CQMemManager::get().malloc<MatsT>(Urow*Ucol);
+    MatsT *readUS = CQMemManager::get().malloc<MatsT>(Urow*Ucol);
 
     // Read in U matrices
     std::string prefix = "X2C/";
@@ -373,7 +373,7 @@ namespace ChronusQ {
       if( scrMOSize != Urow or scrMOSize != Ucol ) CErr("2c MO and U matrix need to have same dimensions!");
 
       // Make a temporary copy for 2c transformed MO
-      cqmatrix::Matrix<MatsT> tmpMO(this->memManager,scrMOSize);
+      cqmatrix::Matrix<MatsT> tmpMO(scrMOSize);
 
 //    prettyPrintSmart(std::cout, "phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
 
@@ -416,7 +416,7 @@ namespace ChronusQ {
 
     }
 
-    memManager.free(readUL,readUS);
+    CQMemManager::get().free(readUL,readUS);
 
   } // SingleSlater<MatsT,IntsT>::convert2CUto4CU
 

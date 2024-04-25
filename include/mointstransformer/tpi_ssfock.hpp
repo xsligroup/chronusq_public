@@ -73,12 +73,12 @@ namespace ChronusQ {
     
     size_t halfTMOTPISize = nAO * nAO * std::min(npq, nrs); 
     
-    auto nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
+    auto nBatch = CQMemManager::get().max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
     
     // clear cache for more memory 
     if ( nBatch <= 1) {
       ints_cache_.clear();
-      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
+      nBatch = CQMemManager::get().max_avail_allocatable<MatsT>(halfTMOTPISize, 2);
     }
 
     // No batch at this level if remaining memory can allocate at 
@@ -93,7 +93,7 @@ namespace ChronusQ {
     // simple batch over s here 
     size_t nsMax = ns;
     halfTMOTPISize = nAO * nAO * nr * nsMax;
-    nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
+    nBatch = CQMemManager::get().max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
     
     while (nBatch < 1) {
       
@@ -103,7 +103,7 @@ namespace ChronusQ {
       
       if (nsMax < 1) {
         std::cout << "Memory not enough to batch over last index" << std::endl;
-        double mem_avail  = this->memManager_.template max_avail_allocatable<double>(1,halfTMOTPISize)
+        double mem_avail  = CQMemManager::get().template max_avail_allocatable<double>(1,halfTMOTPISize)
                            * sizeof(double) / 1e9; 
         double mem_needed = nAO * nAO * nr * sizeof(MatsT) / 1e9;
             
@@ -116,12 +116,12 @@ namespace ChronusQ {
       }
       
       halfTMOTPISize = nAO * nAO * nr * nsMax;
-      nBatch = memManager_.max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
+      nBatch = CQMemManager::get().max_avail_allocatable<MatsT>(halfTMOTPISize, 1);
     }
     
     // balance batching inside the work loop
     if (nsMax > 1) {
-      size_t nMatsTAvail = memManager_.max_avail_allocatable<MatsT>(1,halfTMOTPISize*2);
+      size_t nMatsTAvail = CQMemManager::get().max_avail_allocatable<MatsT>(1,halfTMOTPISize*2);
       // with extra memory as 20%
       size_t fockGDSCRSize = ss_.fockBuilder->formRawGDSCRSizePerBatch(ss_, false, false) * 1.2; 
       
@@ -284,10 +284,10 @@ namespace ChronusQ {
 #endif
 
       ALLOCATE_AND_CLEAR_CACHE_IF_NECESSARY(
-        halfTMOTPI = std::make_shared<InCoreRITPI<MatsT>>(memManager_, nAO, npqDim);
+        halfTMOTPI = std::make_shared<InCoreRITPI<MatsT>>(nAO, npqDim);
       )
 
-      cqmatrix::Matrix<MatsT> SCR(memManager_, nAO);
+      cqmatrix::Matrix<MatsT> SCR(nAO);
       std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> pq1PDMs, pqMOTPIs, dummy;
       MatsT *MOTPIpq_ptr = nullptr, *density_ptr = nullptr; 
       bool is4C = ss_.nC == 4;
@@ -306,7 +306,7 @@ namespace ChronusQ {
       double allow_extra = 0.2;
       
       ALLOCATE_AND_CLEAR_CACHE_IF_NECESSARY(
-        maxNBatch = memManager_.max_avail_allocatable<MatsT>(size_t(fockGDSCRSize*(1.+allow_extra)), 1);
+        maxNBatch = CQMemManager::get().max_avail_allocatable<MatsT>(size_t(fockGDSCRSize*(1.+allow_extra)), 1);
         if(maxNBatch == 0) 
           CErr(" Memory is not enough for 1 density in subsetTransformTPISSFockN6");
       )
@@ -349,11 +349,11 @@ namespace ChronusQ {
           p = pqJobs[i + NJobComplete].first; 
           q = pqJobs[i + NJobComplete].second; 
           
-          pq1PDMs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
+          pq1PDMs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(pqSCRSize, is4C, is4C));  
           
           // 4C will reuse pq1PDM as densities are component scattered anyways
           if (is4C) pqMOTPIs.push_back(pq1PDMs.back());
-          else pqMOTPIs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, pqSCRSize, is4C, is4C));  
+          else pqMOTPIs.push_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(pqSCRSize, is4C, is4C));  
           
           if (is1C) {
             density_ptr = pq1PDMs.back()->S().pointer();
@@ -420,7 +420,7 @@ namespace ChronusQ {
     else if (delta == KRONECKER_DELTA_PQ_RS) SCRSize = nAO*np;  
     else if (delta == KRONECKER_DELTA_PS_RQ) SCRSize = nAO*npr;  
     
-    SCR = memManager_.malloc<MatsT>(SCRSize);
+    SCR = CQMemManager::get().malloc<MatsT>(SCRSize);
     
     if (delta == NO_KRONECKER_DELTA or delta == KRONECKER_DELTA_PQ) {
       
@@ -459,7 +459,7 @@ namespace ChronusQ {
         ss_.mo[0].pointer() + roff*nAO, nAO, MatsT(0.), SCR, nAO*npq);
     
       MatsT * SCR2 = nullptr;
-      SCR2 = memManager_.malloc<MatsT>(nAO*nq*nr);
+      SCR2 = CQMemManager::get().malloc<MatsT>(nAO*nq*nr);
       
       size_t nqr = nq*nr;
 
@@ -485,7 +485,7 @@ namespace ChronusQ {
       // MOTPI(q r, p) -> MOTPI(r,p,q)
       else                IMatCopy('T', nq, nr*np, MatsT(1.), MOTPI, nq, nr*np);  
 
-      if (SCR2) memManager_.free(SCR2);
+      if (SCR2) CQMemManager::get().free(SCR2);
     
     } else if (delta == KRONECKER_DELTA_RQ or delta == KRONECKER_DELTA_PS_RQ) {
       
@@ -509,7 +509,7 @@ namespace ChronusQ {
        } else if (delta == KRONECKER_DELTA_PS_RQ) {
        
          MatsT * SCR2 = nullptr;
-         SCR2 = memManager_.malloc<MatsT>(nAO*nr);
+         SCR2 = CQMemManager::get().malloc<MatsT>(nAO*nr);
          
          for (auto p = 0ul; p < np; p++) {
            
@@ -529,14 +529,14 @@ namespace ChronusQ {
          // MOTPI(r,p) -> MOTPI(p,r)
          if (not swap_pq_rs) IMatCopy('T', nr, np, MatsT(1.), MOTPI, nr, np);
          
-         if (SCR2) memManager_.free(SCR2);
+         if (SCR2) CQMemManager::get().free(SCR2);
        }
 
     } // delta 
     
     // free memories
     halfTMOTPI = nullptr;
-    if (SCR) memManager_.free(SCR);
+    if (SCR) CQMemManager::get().free(SCR);
  
   }; // MOIntsTransformer::perfromSubsetTransformTPISSFockN6
   

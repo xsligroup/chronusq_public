@@ -117,14 +117,14 @@ class OneCShellBlockMO: public ShellBlockMO<MatsT> {
     size_t nMO = mo.nColumns();
     size_t maxShellSize = 0ul;
     for (const auto& shSize : shellSizes) {
-      shell_block_mo_.emplace_back(mo.memManager(), shSize, nMO);
+      shell_block_mo_.emplace_back(shSize, nMO);
       SetMat('N', shSize, nMO, MatsT(1.), mo_ptr, nAO, shell_block_mo_.back().pointer(), shSize); 
       mo_ptr += shSize;
       maxShellSize = std::max(maxShellSize, shSize);
     }
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(mo.memManager(), maxShellSize, maxTransfromSize);
-      pauliSCR_.emplace_back(mo.memManager(), maxShellSize, false, false);
+      interSCR_.emplace_back(maxShellSize, maxTransfromSize);
+      pauliSCR_.emplace_back(maxShellSize, false, false);
     }
   }
   
@@ -171,7 +171,7 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
     size_t maxShellSize = 0ul;
     for (const auto& shSize1C : shellSizes) {
       size_t shSize = shSize1C * 2;
-      shell_block_mo_.emplace_back(mo.memManager(), shSize, nMO);
+      shell_block_mo_.emplace_back(shSize, nMO);
       // alpha part
       SetMat('N', shSize1C, nMO, MatsT(1.), mo_ptr, nAO, shell_block_mo_.back().pointer(), shSize); 
       // beta part
@@ -180,9 +180,9 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
       maxShellSize = std::max(maxShellSize, shSize1C);
     } 
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(mo.memManager(), maxShellSize * 2, maxTransfromSize);
-      spinorSCR_.emplace_back(mo.memManager(), maxShellSize * 2);  
-      pauliSCR_.emplace_back(mo.memManager(), maxShellSize, false, false);
+      interSCR_.emplace_back(maxShellSize * 2, maxTransfromSize);
+      spinorSCR_.emplace_back(maxShellSize * 2);  
+      pauliSCR_.emplace_back(maxShellSize, false, false);
     }
   }
   
@@ -250,8 +250,8 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     size_t maxShellSize = 0ul;
     for (const auto& shSize1C : shellSizes) {
       size_t shSize2C = shSize1C * 2;
-      shell_block_large_mo_.emplace_back(mo.memManager(), shSize2C, nMO);
-      shell_block_small_mo_.emplace_back(mo.memManager(), shSize2C, nMO);
+      shell_block_large_mo_.emplace_back(shSize2C, nMO);
+      shell_block_small_mo_.emplace_back(shSize2C, nMO);
       // alpha part
       SetMat('N', shSize1C, nMO, MatsT(1.), mo_ptr, nAO, shell_block_large_mo_.back().pointer(), shSize2C); 
       SetMat('N', shSize1C, nMO, MatsT(1.), mo_ptr + nAO1C, nAO, shell_block_small_mo_.back().pointer(), shSize2C); 
@@ -263,9 +263,9 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     } 
     
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(mo.memManager(), maxShellSize * 2, maxTransfromSize);
-      spinorSCR_.emplace_back(mo.memManager(), maxShellSize * 2);  
-      pauliSCR_.emplace_back(mo.memManager(), maxShellSize, true, true);
+      interSCR_.emplace_back(maxShellSize * 2, maxTransfromSize);
+      spinorSCR_.emplace_back(maxShellSize * 2);  
+      pauliSCR_.emplace_back(maxShellSize, true, true);
     }
   }
   

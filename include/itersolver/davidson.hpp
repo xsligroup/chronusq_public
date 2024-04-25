@@ -127,20 +127,20 @@ namespace ChronusQ {
       R    = this->vecGen_(nExam);
     if (not S or S->size() < nExam)
       S    = this->vecGen_(nExam);
-    SubA   = this->memManager_.template malloc<_F>(MSS2);
+    SubA   = CQMemManager::get().malloc<_F>(MSS2);
     if(this->DoLeftEigVec) {
       VL   = this->vecGen_(MSS);
     }
 
-    XR     = this->memManager_.template malloc<_F>(MSS2);
-    XRPrev = this->memManager_.template malloc<_F>(MSS2);
-    Eig    = this->memManager_.template malloc<dcomplex>(MSS);
-    EPrev  = this->memManager_.template malloc<dcomplex>(MSS);
-    Ovlp   = this->memManager_.template malloc<_F>(MSS2);
-    SCR    = this->memManager_.template malloc<_F>(MSS2);
+    XR     = CQMemManager::get().malloc<_F>(MSS2);
+    XRPrev = CQMemManager::get().malloc<_F>(MSS2);
+    Eig    = CQMemManager::get().malloc<dcomplex>(MSS);
+    EPrev  = CQMemManager::get().malloc<dcomplex>(MSS);
+    Ovlp   = CQMemManager::get().malloc<_F>(MSS2);
+    SCR    = CQMemManager::get().malloc<_F>(MSS2);
 
     if(this->DoLeftEigVec) {
-      XL   = this->memManager_.template malloc<_F>(MSS2);
+      XL   = CQMemManager::get().malloc<_F>(MSS2);
     }
 
     // generate guess
@@ -151,7 +151,7 @@ namespace ChronusQ {
 #ifndef DEBUG_DAVIDSON
       std::cout.setstate(std::ios_base::failbit);
 #endif
-      nVCur = VR->GramSchmidt(0,0,nDo,this->memManager_,GramSchmidt_NRe,GramSchmidt_eps);
+      nVCur = VR->GramSchmidt(0,0,nDo,GramSchmidt_NRe,GramSchmidt_eps);
 #ifndef DEBUG_DAVIDSON
       std::cout.clear();
 #endif
@@ -246,7 +246,7 @@ namespace ChronusQ {
           auto EIGst = tick();
 #endif
           if( DoHerm ){
-            HermetianEigen('V', 'L', nVCur, SCR, nVCur, Eig, this->memManager_);
+            HermetianEigen('V', 'L', nVCur, SCR, nVCur, Eig);
             std::copy_n(SCR,nVCur*nVCur,XR);
           }else
             GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);
@@ -711,7 +711,7 @@ namespace ChronusQ {
 #ifdef DEBUG_DAVIDSON
           VR->print(std::cout, "VR before GramSchmidt");
 #endif
-          nVCur = VR->GramSchmidt(0, nVCur,nDo,this->memManager_,GramSchmidt_NRe,GramSchmidt_eps);
+          nVCur = VR->GramSchmidt(0, nVCur,nDo,GramSchmidt_NRe,GramSchmidt_eps);
 #ifdef DEBUG_DAVIDSON
           VR->print(std::cout, "VR after GramSchmidt");
 #endif
@@ -785,14 +785,14 @@ namespace ChronusQ {
 
     // Free Scratch space
 
-    if(XR)       this->memManager_.template free(XR);    
-    if(XRPrev)   this->memManager_.template free(XRPrev);
-    if(SubA)     this->memManager_.template free(SubA);
-    if(Eig)      this->memManager_.template free(Eig);
-    if(EPrev)    this->memManager_.template free(EPrev); 
-    if(Ovlp)     this->memManager_.template free(Ovlp);
-    if(SCR)      this->memManager_.template free(SCR);
-    if(XL)       this->memManager_.template free(XL);    
+    if(XR)       CQMemManager::get().free(XR);    
+    if(XRPrev)   CQMemManager::get().free(XRPrev);
+    if(SubA)     CQMemManager::get().free(SubA);
+    if(Eig)      CQMemManager::get().free(Eig);
+    if(EPrev)    CQMemManager::get().free(EPrev); 
+    if(Ovlp)     CQMemManager::get().free(Ovlp);
+    if(SCR)      CQMemManager::get().free(SCR);
+    if(XL)       CQMemManager::get().free(XL);    
     
     return isConverged;
   

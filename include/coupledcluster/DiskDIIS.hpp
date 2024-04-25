@@ -48,9 +48,8 @@ namespace ChronusQ {
        *  \param [in]  n           Dimension of extrapolation space. Two temporary arrays of length n will be created
        *  \param [in]  maxdiis     Maximum number of error vectors
        *  \param [in]  savFile     File manager
-       *  \param [in]  memManager  Memory manager
        */ 
-      DiskDIIS(int n, int maxdiis, SafeFile savFile, CQMemManager & memManager);
+      DiskDIIS(int n, int maxdiis, SafeFile savFile);
   
       ~DiskDIIS();
   
@@ -95,9 +94,6 @@ namespace ChronusQ {
       /// file manager
       SafeFile savFile_;
   
-      /// memory manager
-      CQMemManager & memManager_;
-  
       /// write current error vector to disk
       void write_error_vector(T * vector);
   
@@ -131,23 +127,23 @@ namespace ChronusQ {
   };
   
   template <typename T>
-  DiskDIIS<T>::DiskDIIS(int n, int maxdiis, SafeFile savFile, CQMemManager & memManager):
-    savFile_(savFile), memManager_(memManager)
+  DiskDIIS<T>::DiskDIIS(int n, int maxdiis, SafeFile savFile):
+    savFile_(savFile)
   {
     dimdiis_           = n;
     maxdiis_           = maxdiis;
     diis_iter_         = 0;
     replace_diis_iter_ = 1;
-    diisvec_           = memManager_.template malloc<T>(maxdiis_+1);
-    tmp1_              = memManager_.template malloc<T>(dimdiis_);
-    tmp2_              = memManager_.template malloc<T>(dimdiis_);
+    diisvec_           = CQMemManager::get().malloc<T>(maxdiis_+1);
+    tmp1_              = CQMemManager::get().malloc<T>(dimdiis_);
+    tmp2_              = CQMemManager::get().malloc<T>(dimdiis_);
   }
   
   template <typename T>
   DiskDIIS<T>::~DiskDIIS(){
-    memManager_.free(diisvec_);
-    memManager_.free(tmp1_);
-    memManager_.free(tmp2_);
+    CQMemManager::get().free(diisvec_);
+    CQMemManager::get().free(tmp1_);
+    CQMemManager::get().free(tmp2_);
   }
   
   // Write current solution vector to disk
@@ -157,7 +153,7 @@ namespace ChronusQ {
     // Name the entry in according to the current DiskDIIS iteration.
     // If we already have maxdiis_ vectors, then replace one.
   
-    char * oldvector = memManager_.template malloc<char>(1000);
+    char * oldvector = CQMemManager::get().malloc<char>(1000);
   
     if ( diis_iter_ <= maxdiis_ ){
       sprintf(oldvector,"/DIIS/VECTOR%i",diis_iter_);
@@ -169,7 +165,7 @@ namespace ChronusQ {
     // Write the current solution vector.
     savFile_.safeWriteData(oldvector, vector, {dimdiis_});
   
-    memManager_.free(oldvector);
+    CQMemManager::get().free(oldvector);
   }
   
   template <typename T>
@@ -194,7 +190,7 @@ namespace ChronusQ {
     // Name the entry in according to the current DiskDIIS iteration.
     // If we already have maxdiis_ vectors, then replace one.
   
-    char * evector = memManager_.template malloc<char>(1000);
+    char * evector = CQMemManager::get().malloc<char>(1000);
     if ( diis_iter_ <= maxdiis_ ){
       sprintf(evector,"/DIIS/ERROR%i",diis_iter_);
     }
@@ -213,7 +209,7 @@ namespace ChronusQ {
     // Write current error vector.
     savFile_.safeWriteData(evector, vector, {dimdiis_});
   
-    memManager_.free(evector);
+    CQMemManager::get().free(evector);
   }
   
   // Perform DIIS extrapolation. solution in tmp1_
@@ -230,7 +226,7 @@ namespace ChronusQ {
    
       memset((void*)tmp1_,'\0',dimdiis_*sizeof(T));
     
-      char * oldvector = memManager_.template malloc<char>(1000);
+      char * oldvector = CQMemManager::get().malloc<char>(1000);
     
       int max = diis_iter_;
       if (max > maxdiis_) max = maxdiis_;
@@ -244,7 +240,7 @@ namespace ChronusQ {
         // Accumulate extrapolated vector.
         blas::axpy(dimdiis_,diisvec_[j-1],tmp2_,1,tmp1_,1);
       }
-      memManager_.free(oldvector);
+      CQMemManager::get().free(oldvector);
   
     }
     
@@ -256,7 +252,7 @@ namespace ChronusQ {
     //    // the largest error as the one to replace.
     //    int jmax   = 1;
     //    double max = -1.0e99;
-    //    char * evector = memManager_.template malloc<char>(1000);
+    //    char * evector = CQMemManager::get().malloc<char>(1000);
     //    for (int j = 1; j <= maxdiis_; j++){
     //        sprintf(evector,"/DIIS/ERROR%i",j);
     //        savFile_.readData(evector,tmp2_);
@@ -267,7 +263,7 @@ namespace ChronusQ {
     //        }
     //    }
     //    replace_diis_iter_ = jmax;
-    //    memManager_.free(evector);
+    //    CQMemManager::get().free(evector);
     //}
     else if (replace_diis_iter_ < maxdiis_) {
       replace_diis_iter_++;
@@ -282,18 +278,18 @@ namespace ChronusQ {
   void DiskDIIS<T>::DIISCoefficients(int nvec){
   
     // Allocate memory for small matrices/vectors.
-    int64_t * ipiv    = memManager_.template malloc<int64_t>(nvec+1);
+    int64_t * ipiv    = CQMemManager::get().malloc<int64_t>(nvec+1);
     
-    T * temp = memManager_.template malloc<T>(maxdiis_*maxdiis_);
-    T * A    = memManager_.template malloc<T>((nvec+1)*(nvec+1));
-    T * B    = memManager_.template malloc<T>(nvec+1);
+    T * temp = CQMemManager::get().malloc<T>(maxdiis_*maxdiis_);
+    T * A    = CQMemManager::get().malloc<T>((nvec+1)*(nvec+1));
+    T * B    = CQMemManager::get().malloc<T>(nvec+1);
     
     memset((void*)A,'\0',(nvec+1)*(nvec+1)*sizeof(T));
     memset((void*)B,'\0',(nvec+1)*sizeof(T));
     
     B[nvec] = -1.0;
     
-    char * evector = memManager_.template malloc<char>(1000);
+    char * evector = CQMemManager::get().malloc<char>(1000);
     
     // Read in the previous error matrix, so we don't have 
     // to build the entire thing each iteration.
@@ -355,8 +351,8 @@ namespace ChronusQ {
     }
     savFile_.safeWriteData("/DIIS/ERROR_MATRIX", temp, {maxdiis_*maxdiis_});
     
-    memManager_.free(temp);
-    memManager_.free(evector);
+    CQMemManager::get().free(temp);
+    CQMemManager::get().free(evector);
     
     // Solve the set of linear equations for the extrapolation coefficients
     int nrhs = 1;
@@ -365,9 +361,9 @@ namespace ChronusQ {
     lapack::gesv(nvec+1,nrhs,A,lda,ipiv,B,ldb);
     std::copy_n(B,nvec,diisvec_);
     
-    memManager_.free(A);
-    memManager_.free(B);
-    memManager_.free(ipiv);
+    CQMemManager::get().free(A);
+    CQMemManager::get().free(B);
+    CQMemManager::get().free(ipiv);
   }
 
 } // end of namespace

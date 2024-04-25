@@ -49,22 +49,22 @@ namespace ChronusQ {
 
     // Constructor
     OnePInts() = delete;
-    OnePInts(CQMemManager &mem, size_t nb):
-        ParticleIntegrals(mem, nb), mat_(mem, nb) {}
+    OnePInts(size_t nb):
+        ParticleIntegrals(nb), mat_(nb) {}
     OnePInts( const OnePInts &other ) = default;
     template <typename IntsU>
     OnePInts( const OnePInts<IntsU> &other, int = 0 ):
         ParticleIntegrals(other), mat_(other.mat_) {}
     OnePInts( OnePInts &&other ) = default;
     OnePInts( const cqmatrix::Matrix<IntsT> &other ):
-        ParticleIntegrals(other.memManager(), other.dimension()), 
+        ParticleIntegrals(other.dimension()),
         mat_(other) {}
     template <typename IntsU>
     OnePInts( const cqmatrix::Matrix<IntsU> &other, int = 0 ):
-        ParticleIntegrals(other.memManager(), other.dimension()),
+        ParticleIntegrals(other.dimension()),
         mat_(other) {}
     OnePInts( cqmatrix::Matrix<IntsT> &&other ):
-        ParticleIntegrals(other.memManager(), other.dimension()),
+        ParticleIntegrals(other.dimension()),
         mat_(std::move(other)) {}
 
     OnePInts& operator=( const OnePInts &other ) {

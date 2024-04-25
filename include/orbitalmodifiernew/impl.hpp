@@ -87,7 +87,7 @@ void OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::diagOrthoFock() {
     size_t NB = this->singleSlaterSystem.moCoefficients[i].get().dimension();
     if(NB != fockSquareOrtho[i].dimension() ) CErr("Ortho Fock and MO dimensions do not match");
     std::copy_n(fockSquareOrtho[i].pointer(), NB * NB, this->singleSlaterSystem.moCoefficients[i].get().pointer());
-    int INFO  = HermetianEigen('V', 'L', NB, this->singleSlaterSystem.moCoefficients[i].get().pointer(), NB, this->singleSlaterSystem.moEigenvalues[i], this->memManager);
+    int INFO  = HermetianEigen('V', 'L', NB, this->singleSlaterSystem.moCoefficients[i].get().pointer(), NB, this->singleSlaterSystem.moEigenvalues[i]);
     if( INFO != 0 ) {
       std::cout << "Attempted to diagonalize " << i << "the Fock Matrix" << std::endl;
       CErr("HermetianEigen failed in Fock", std::cout);

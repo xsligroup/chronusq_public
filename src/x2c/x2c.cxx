@@ -256,25 +256,25 @@ namespace ChronusQ {
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
-    uncontractedInts_.computeAOOneP(memManager_,
+    uncontractedInts_.computeAOOneP(
         molecule_, uncontractedBasis_, emPert,
         {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}},
         ssOptions_.hamiltonianOptions);
 
     // Make copy of integrals
-    IntsT *overlap   = memManager_.malloc<IntsT>(NP*NP);
+    IntsT *overlap   = CQMemManager::get().malloc<IntsT>(NP*NP);
     std::copy_n(uncontractedInts_.overlap->pointer(), NP*NP, overlap);
 
     // Compute the mappings from primitives to CGTOs
-    mapPrim2Cont = memManager_.malloc<IntsT>(NP*NB);
-    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont,memManager_);
+    mapPrim2Cont = CQMemManager::get().malloc<IntsT>(NP*NB);
+    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont);
 
     // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
-    IntsT *SCR1  = memManager_.malloc<IntsT>(8*NP*NP);
+    IntsT *SCR1  = CQMemManager::get().malloc<IntsT>(8*NP*NP);
     MatsT *CSCR1 = reinterpret_cast<MatsT*>(SCR1);
 
     // Singular value storage (initially S then T)
-    p = memManager_.malloc<double>(NP);
+    p = CQMemManager::get().malloc<double>(NP);
     IntsT* SS = p;
 
     // Get SVD of uncontracted overlap
@@ -301,7 +301,7 @@ namespace ChronusQ {
       NPU,NPU,kinetic->pointer(),NPU,SS,XXX,NPU,XXX,NPU);
 
     // Transformation matrix
-    UK = memManager_.malloc<IntsT>(NP*NPU);
+    UK = CQMemManager::get().malloc<IntsT>(NP*NPU);
     std::fill_n(UK,NP*NPU,IntsT(0.0));
 
     // Form UK = S * T
@@ -327,7 +327,7 @@ namespace ChronusQ {
 
     // CH = [ V    cp       ]
     //      [ cp   W - 2mc^2]
-    MatsT *CH4C = memManager_.malloc<MatsT>(16*NPU*NPU);
+    MatsT *CH4C = CQMemManager::get().malloc<MatsT>(16*NPU*NPU);
     std::fill_n(CH4C,16*NPU*NPU,MatsT(0.));
 
     // Allocate W separately  as it's needed later
@@ -366,10 +366,10 @@ namespace ChronusQ {
     }
 
     // Diagonalize the 4C CH
-    double *CHEV = memManager_.malloc<double>(4*NPU);
+    double *CHEV = CQMemManager::get().malloc<double>(4*NPU);
     std::fill_n(CHEV, 4*NPU, 0.0);
 
-    HermetianEigen('V','U',4*NPU,CH4C,4*NPU,CHEV,memManager_);
+    HermetianEigen('V','U',4*NPU,CH4C,4*NPU,CHEV);
 
 
     // Get pointers to "L" and "S" components of eigenvectors
@@ -378,13 +378,13 @@ namespace ChronusQ {
 
 
     // Invert "L"; L -> L^-1
-    LUInv(2*NPU,L,4*NPU,memManager_);
+    LUInv(2*NPU,L,4*NPU);
 
 
     // Reuse the charge conjugated space for X and Y
-    X = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NPU);
+    X = std::make_shared<cqmatrix::Matrix<MatsT>>(2*NPU);
     X->clear();
-    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NPU);
+    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(2*NPU);
     Y->clear();
 
     // Form X = S * L^-1
@@ -406,10 +406,10 @@ namespace ChronusQ {
 
     // Y = Y^-0.5
     MatDiagFunc(std::function<double(double)>([](double x){ return std::pow(x, -0.5); }),
-                2*NPU, Y->pointer(), Y->dimension(), Y->pointer(), Y->dimension(), memManager_);
+                2*NPU, Y->pointer(), Y->dimension(), Y->pointer(), Y->dimension());
 
     // Build the effective two component CH in "L"
-    cqmatrix::Matrix<MatsT> FullCH2C(memManager_, 2*NPU);
+    cqmatrix::Matrix<MatsT> FullCH2C(2*NPU);
 
     // Copy potential into spin diagonal blocks of 2C CH
     SetMatDiag(NPU,NPU,potential->pointer(),NPU,FullCH2C.pointer(),2*NPU);
@@ -473,7 +473,7 @@ namespace ChronusQ {
     // Transform the spin components of the 2C CH into R-space
     *coreH = HUn.transform('C', CPSUK, NB, NB);
 
-    memManager_.free(overlap, SCR1, CH4C, CHEV);
+    CQMemManager::get().free(overlap, SCR1, CH4C, CHEV);
 
 
   }
@@ -500,7 +500,7 @@ namespace ChronusQ {
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
-    uncontractedInts_.computeAOOneP(memManager_,
+    uncontractedInts_.computeAOOneP(
         molecule_, uncontractedBasis_, emPert,
         {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}, 
          {LEN_ELECTRIC_MULTIPOLE,2}, {MAGNETIC_MULTIPOLE,1},
@@ -512,25 +512,25 @@ namespace ChronusQ {
     std::cout << " Building GIAO core Hamiltonian." << std::endl;
     
     // Make copy of integrals
-    dcomplex *overlap   = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *overlap   = CQMemManager::get().malloc<dcomplex>(NP*NP);
     std::copy_n(uncontractedInts_.overlap->pointer(), NP*NP, overlap);
 
     // Compute the mappings from primitives to GIAOs
-    mapPrim2Cont = memManager_.malloc<dcomplex>(NP*NB);
-    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont,memManager_);
+    mapPrim2Cont = CQMemManager::get().malloc<dcomplex>(NP*NB);
+    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont);
 
     // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
-    dcomplex *SCR1  = memManager_.malloc<dcomplex>(8*NP*NP);
+    dcomplex *SCR1  = CQMemManager::get().malloc<dcomplex>(8*NP*NP);
     std::fill_n(SCR1,8*NP*NP,dcomplex(0.));
     dcomplex *CSCR1 = reinterpret_cast<dcomplex*>(SCR1);
 
     // Make a copy of the overlap for later
-    dcomplex* SCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex* SCPY = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
     std::fill_n(SCPY,4*NP*NP,dcomplex(0.));
-    dcomplex* M = memManager_.malloc<dcomplex>(4*NP*NP);
-    dcomplex* VCPY = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex* M = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
+    dcomplex* VCPY = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
     std::fill_n(VCPY,4*NP*NP,dcomplex(0.));
-    dcomplex* Ms = memManager_.malloc<dcomplex>(NP*NP);  // Scalar component of M 
+    dcomplex* Ms = CQMemManager::get().malloc<dcomplex>(NP*NP);  // Scalar component of M 
 
     // Construct M Matrix
     // M = 1/2 * (\sigma\dot\pi) * (\sigma\dot\pi)
@@ -608,7 +608,7 @@ namespace ChronusQ {
     SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.potential->pointer(),NP,VCPY+2*NP*NP+NP,2*NP);
 
     // Singular value storage (initially S then T)
-    p = memManager_.malloc<double>(2*NP);
+    p = CQMemManager::get().malloc<double>(2*NP);
     std::fill_n(p, 2*NP, 0.0);
     double* SS = p;
     
@@ -664,7 +664,7 @@ namespace ChronusQ {
 #endif
 
     // Transformation matrix
-    UK = memManager_.malloc<dcomplex>(2*NP*2*NP);
+    UK = CQMemManager::get().malloc<dcomplex>(2*NP*2*NP);
     std::fill_n(UK,2*NP*2*NP,dcomplex(0.0));
 
     // Form UK = US (Stored in S) * UT (Stored in M)
@@ -676,7 +676,7 @@ namespace ChronusQ {
 #endif
 
     // Allocate and for "P^2" potential
-    dcomplex *P2P = memManager_.malloc<dcomplex>(2*NP*2*NP);
+    dcomplex *P2P = CQMemManager::get().malloc<dcomplex>(2*NP*2*NP);
     std::fill_n(P2P,2*NP*2*NP,dcomplex(0.0));
 
     // P2P = UK**H * V * UK  -- Potential in P^2 basis
@@ -702,11 +702,11 @@ namespace ChronusQ {
 
     // need to copy a block instead of the whole matrix
     // Components of 1/(4c^2)*(\sigma\dot)V(\sigma\dot)
-    dcomplex *AVA     = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *DOT     = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *CROSSx  = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *CROSSy  = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *CROSSz  = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *AVA     = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *DOT     = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSx  = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSy  = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *CROSSz  = CQMemManager::get().malloc<dcomplex>(NP*NP);
 
     // calculate AVA part
     memset(AVA,0,NP*NP*sizeof(dcomplex));
@@ -980,7 +980,7 @@ namespace ChronusQ {
 
     // CH = [ V    cp       ]
     //      [ cp   W - 2mc^2]
-    dcomplex *CH4C = memManager_.malloc<dcomplex>(16*NP*NP);
+    dcomplex *CH4C = CQMemManager::get().malloc<dcomplex>(16*NP*NP);
     memset(CH4C,0,16*NP*NP*sizeof(dcomplex));
 
     // Copy W into the 4C CH storage
@@ -1011,8 +1011,8 @@ namespace ChronusQ {
 #endif
 
     // Diagonalize the 4C CH
-    double *CHEV = memManager_.malloc<double>(4*NP);
-    HermetianEigen('V','U',4*NP,CH4C,4*NP,CHEV,memManager_);
+    double *CHEV = CQMemManager::get().malloc<double>(4*NP);
+    HermetianEigen('V','U',4*NP,CH4C,4*NP,CHEV);
 
 #ifdef DebugX2Cprint
     prettyPrintSmart(std::cout,"4C eigen values",CHEV,4*NP,1,4*NP);
@@ -1027,7 +1027,7 @@ namespace ChronusQ {
     dcomplex *S = L + 2*NP;
 
     // Invert "L"; L -> L^-1
-    LUInv(2*NP,L,4*NP,memManager_);
+    LUInv(2*NP,L,4*NP);
 
     // Reuse the charge conjugated space for X and Y
     dcomplex *X = CH4C;
@@ -1048,7 +1048,7 @@ namespace ChronusQ {
 
     // Y -> V * y * V**H 
     // XXX: Store the eigenvalues of Y in CHEV
-    HermetianEigen('V','U',2*NP,Y,4*NP,CHEV,memManager_);
+    HermetianEigen('V','U',2*NP,Y,4*NP,CHEV);
 
     // SCR1 -> V * y^-0.25
     for(auto j = 0ul; j < 2*NP; j++)
@@ -1105,10 +1105,10 @@ namespace ChronusQ {
       CSCR1,2*NP,dcomplex(0.),FullCH2C,4*NP);
 
     // Allocate memory for the uncontracted spin components of the 2C CH
-    dcomplex *HUnS = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *HUnZ = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *HUnX = memManager_.malloc<dcomplex>(NP*NP);
-    dcomplex *HUnY = memManager_.malloc<dcomplex>(NP*NP);
+    dcomplex *HUnS = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *HUnZ = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *HUnX = CQMemManager::get().malloc<dcomplex>(NP*NP);
+    dcomplex *HUnY = CQMemManager::get().malloc<dcomplex>(NP*NP);
 
     // first half of the scratch space is SUK(2*NP x 2*NP) 
     // matrix
@@ -1120,7 +1120,7 @@ namespace ChronusQ {
     SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.overlap->pointer(),NP,SCPY,2*NP);
     SetMat('N',NP,NP,dcomplex(1.),uncontractedInts_.overlap->pointer(),NP,SCPY+2*NP*NP+NP,2*NP);
 
-    LUInv(2*NP,UK,2*NP,memManager_);
+    LUInv(2*NP,UK,2*NP);
 
     // Transform the spin components of the 2C CH into R-space
     //
@@ -1180,12 +1180,12 @@ namespace ChronusQ {
     dcomplex *S = L + 2*NP;
 
     // Invert "L"; L -> L^-1
-    LUInv(2*NP,L,4*NP,memManager_);
+    LUInv(2*NP,L,4*NP);
 
     // Save X and Y
-    X = std::make_shared<cqmatrix::Matrix<dcomplex>>(memManager_, 2*NP);
+    X = std::make_shared<cqmatrix::Matrix<dcomplex>>(2*NP);
     X->clear();
-    Y = std::make_shared<cqmatrix::Matrix<dcomplex>>(memManager_, 2*NP);
+    Y = std::make_shared<cqmatrix::Matrix<dcomplex>>(2*NP);
     Y->clear();
 
     // Form X = S * L^-1
@@ -1203,7 +1203,7 @@ namespace ChronusQ {
 
     // Y -> V * y * V**H 
     // XXX: Store the eigenvalues of Y in CHEV
-    HermetianEigen('V','U',2*NP,Y->pointer(),Y->dimension(),CHEV,memManager_);
+    HermetianEigen('V','U',2*NP,Y->pointer(),Y->dimension(),CHEV);
 
     // SCR1 -> V * y^-0.25
     for(auto j = 0ul; j < 2*NP; j++)
@@ -1215,7 +1215,7 @@ namespace ChronusQ {
       CSCR1,2*NP,dcomplex(0.),Y->pointer(),Y->dimension());
 
     // Build the effective two component CH 
-    cqmatrix::Matrix<dcomplex> FullCH2C(memManager_, 2*NP);
+    cqmatrix::Matrix<dcomplex> FullCH2C(2*NP);
     FullCH2C.clear();
 
     // Copy P2P into spin diagonal blocks of 2C CH
@@ -1273,7 +1273,7 @@ namespace ChronusQ {
     dcomplex * CSCR2 = SUK+4*NP*NP;
 
     // Recover R-Space
-    LUInv(2*NP,UK,2*NP,memManager_);
+    LUInv(2*NP,UK,2*NP);
 
     // SCR2 = SUK**H * CH2C 
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),UK,2*NP,
@@ -1310,7 +1310,7 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"CHz no Boettger",coreH->Z().pointer(),NB,NB,NB);
 #endif
 
-    memManager_.free(overlap, SCR1, SCPY, VCPY, CH4C, CHEV,
+    CQMemManager::get().free(overlap, SCR1, SCPY, VCPY, CH4C, CHEV,
                      M, Ms, P2P, AVA, DOT, CROSSx, CROSSy, CROSSz);
 
 #endif
@@ -1334,17 +1334,17 @@ namespace ChronusQ {
     // US = 2 * SpeedOfLight * UK * p^-1 * X * Y * UK^-1 * UP2C
 
     // 1.  UP2CSUK = UP2C * S * UK
-    IntsT *UP2CS = memManager_.malloc<IntsT>(NB*NP);
+    IntsT *UP2CS = CQMemManager::get().malloc<IntsT>(NB*NP);
     std::fill_n(UP2CS,NB*NP,IntsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,IntsT(1.),mapPrim2Cont,NB,
       uncontractedInts_.overlap->pointer(),NP,IntsT(0.),UP2CS,NB);
-    IntsT *UP2CSUK = memManager_.malloc<IntsT>(4*NP*NPU);
+    IntsT *UP2CSUK = CQMemManager::get().malloc<IntsT>(4*NP*NPU);
     std::fill_n(UP2CSUK,4*NP*NPU,IntsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NPU,NP,IntsT(1.),UP2CS,NB,UK,NP,IntsT(0.),UP2CSUK,2*NB);
     SetMatDiag(NB,NPU,UP2CSUK,2*NB,UP2CSUK,2*NB);
 
     // 2. R^T = UP2C * S * UK * Y^T
-    MatsT *RT = memManager_.malloc<MatsT>(4*NB*NPU);
+    MatsT *RT = CQMemManager::get().malloc<MatsT>(4*NB*NPU);
     std::fill_n(RT,4*NB*NPU,MatsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NPU,2*NPU,MatsT(1.),UP2CSUK,2*NB,
@@ -1352,9 +1352,9 @@ namespace ChronusQ {
 
     // 3. Xp = 2 c p^-1 X
     double twoC = 2 * SpeedOfLight;
-    double *twoCPinv = memManager_.malloc<double>(NPU);
+    double *twoCPinv = CQMemManager::get().malloc<double>(NPU);
     for(size_t i = 0; i < NPU; i++) twoCPinv[i] = twoC/p[i];
-    MatsT *twoCPinvX = memManager_.malloc<MatsT>(4*NPU*NPU);
+    MatsT *twoCPinvX = CQMemManager::get().malloc<MatsT>(4*NPU*NPU);
     for(size_t j = 0; j < 2*NPU; j++)
     for(size_t i = 0; i < NPU; i++) {
       twoCPinvX[i + 2*NPU*j] = twoCPinv[i] * (*X)(i,j);
@@ -1367,9 +1367,9 @@ namespace ChronusQ {
     SetMatDiag(NP,NPU,UK,NP,UK2c,2*NP);
 
     // 5. US = UK2c * Xp * RT^T
-    UL = memManager_.malloc<MatsT>(4*NP*NB);
+    UL = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(UL, 4*NP*NB, MatsT(0.));
-    US = memManager_.malloc<MatsT>(4*NP*NB);
+    US = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(US, 4*NP*NB, MatsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NPU,2*NB,2*NPU,MatsT(1.),twoCPinvX,2*NPU,
       RT,2*NB,MatsT(0.),UL,2*NPU);
@@ -1380,7 +1380,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NPU,MatsT(1.),UK2c,2*NP,
       RT,2*NB,MatsT(0.),UL,2*NP);
 
-    memManager_.free(UP2CS, UP2CSUK, RT, twoCPinv, twoCPinvX);
+    CQMemManager::get().free(UP2CS, UP2CSUK, RT, twoCPinv, twoCPinvX);
 
   }
 
@@ -1399,19 +1399,19 @@ namespace ChronusQ {
 
     // 1. UP2CSUK = UP2C * S * UK  (in 2 component)
     // Compute UP2CS
-    dcomplex *UP2CS = memManager_.malloc<dcomplex>(4*NB*NP);
+    dcomplex *UP2CS = CQMemManager::get().malloc<dcomplex>(4*NB*NP);
     std::fill_n(UP2CS,4*NB*NP,dcomplex(0.));
-    dcomplex *UP2CSUK = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex *UP2CSUK = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
     std::fill_n(UP2CSUK,4*NP*NP,dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,
       uncontractedInts_.overlap->pointer(),NP,dcomplex(0.),UP2CS,2*NB);
     SetMatDiag(NB,NP,UP2CS,2*NB,UP2CS,2*NB);
     // Recover UK
-    LUInv(2*NP,UK,2*NP,memManager_);
+    LUInv(2*NP,UK,2*NP);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NB,2*NP,2*NP,dcomplex(1.),UP2CS,2*NB,UK,2*NP,dcomplex(0.),UP2CSUK,2*NB);
 
     // 2. R^T = UP2CSUK * Y^T
-    dcomplex *RT = memManager_.malloc<dcomplex>(4*NB*NP);
+    dcomplex *RT = CQMemManager::get().malloc<dcomplex>(4*NB*NP);
     std::fill_n(RT,4*NB*NP,dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NP,2*NP,dcomplex(1.),UP2CSUK,2*NB,
@@ -1420,18 +1420,18 @@ namespace ChronusQ {
     // 3. Xp = 2 c p^-1 X
     // Mind that p is reverted by the end of computeOneEX2C 
     double twoC = 2 * SpeedOfLight;
-    double *twoCPinv = memManager_.malloc<double>(2*NP);
+    double *twoCPinv = CQMemManager::get().malloc<double>(2*NP);
     for(size_t i = 0; i < 2*NP; i++) twoCPinv[i] = twoC/p[i];
-    dcomplex *twoCPinvX = memManager_.malloc<dcomplex>(4*NP*NP);
+    dcomplex *twoCPinvX = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
     for(size_t j = 0; j < 2*NP; j++)
     for(size_t i = 0; i < 2*NP; i++) {
       twoCPinvX[i + 2*NP*j] = twoCPinv[i] * (*X)(i,j);
     }
 
     // 4. US = UK2c * Xp * RT^T
-    UL = memManager_.malloc<dcomplex>(4*NP*NB);
+    UL = CQMemManager::get().malloc<dcomplex>(4*NP*NB);
     std::fill_n(UL, 4*NP*NB, dcomplex(0.));
-    US = memManager_.malloc<dcomplex>(4*NP*NB);
+    US = CQMemManager::get().malloc<dcomplex>(4*NP*NB);
     std::fill_n(US, 4*NP*NB, dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NP,dcomplex(1.),twoCPinvX,2*NP,
       RT,2*NB,dcomplex(0.),UL,2*NP);
@@ -1442,7 +1442,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NB,2*NP,dcomplex(1.),UK,2*NP,
       RT,2*NB,dcomplex(0.),UL,2*NP);
 
-    memManager_.free(UP2CS, UP2CSUK, RT, twoCPinv, twoCPinvX);
+    CQMemManager::get().free(UP2CS, UP2CSUK, RT, twoCPinv, twoCPinvX);
     
   }
 
@@ -1473,8 +1473,8 @@ namespace ChronusQ {
     const OnePInts<IntsT> &V2c = uncontractedInts_.potential->
         template spatialToSpinBlock<IntsT>();
 
-    cqmatrix::Matrix<MatsT> Hx2c(memManager_, 2*NB);
-    MatsT *SCR = memManager_.malloc<MatsT>(4*NP*NB);
+    cqmatrix::Matrix<MatsT> Hx2c(2*NB);
+    MatsT *SCR = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(SCR,4*NP*NB,MatsT(0.));
 
     // Hx2c = UL^H * T2c * US
@@ -1507,7 +1507,7 @@ namespace ChronusQ {
     *coreH = Hx2c.template spinScatter<MatsT>(
         ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
 
-    memManager_.free(SCR);
+    CQMemManager::get().free(SCR);
   }
 
   template void X2C<dcomplex,double>::computeOneEX2C_UDU(EMPerturbation&,
@@ -1534,7 +1534,7 @@ namespace ChronusQ {
     size_t NB = basisSet_.nBasis;
 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> NRcoreH =
-        std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager_, NP);
+        std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NP);
     NRcoreH->clear();
 
     NRCoreH<MatsT, IntsT>(uncontractedInts_, ssOptions_.hamiltonianOptions)
@@ -1580,18 +1580,18 @@ namespace ChronusQ {
     std::shared_ptr<Integrals<IntsT>> fourCInts = std::make_shared<Integrals<IntsT>>(uncontractedInts_);
     if (incore) {
       fourCInts->TPI =
-          std::make_shared<InCore4indexTPI<IntsT>>(memManager_, NP);
+          std::make_shared<InCore4indexTPI<IntsT>>(NP);
     } else {
       fourCInts->TPI =
           std::make_shared<DirectTPI<IntsT>>(
-              memManager_,uncontractedBasis_,uncontractedBasis_,
+              uncontractedBasis_,uncontractedBasis_,
               molecule_,threshSchwarz);
     }
 
     // Construct 4C single slater object
     std::shared_ptr<SingleSlaterBase> ss =
         fourCoptions.buildSingleSlater(
-            std::cout, memManager_, molecule_, uncontractedBasis_, fourCInts);
+            std::cout, molecule_, uncontractedBasis_, fourCInts);
 
     std::shared_ptr<SingleSlater<MatsT,IntsT>> ptr = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(ss);
     SingleSlater<MatsT,IntsT> &fourCompSS = *ptr;
@@ -1623,7 +1623,7 @@ namespace ChronusQ {
     computeFockX2C_Umatrix(fourCompSS.mo[0]);
 
     // Construct U matrix
-    MatsT *U = memManager_.malloc<MatsT>(8*NP*NB);
+    MatsT *U = CQMemManager::get().malloc<MatsT>(8*NP*NB);
     SetMat('N', NP, 2*NB, 1.0, UL, 2*NP, U, 4*NP);
     SetMat('N', NP, 2*NB, 1.0, US, 2*NP, U + NP, 4*NP);
     SetMat('N', NP, 2*NB, 1.0, UL + NP, 2*NP, U + 2*NP, 4*NP);
@@ -1656,7 +1656,7 @@ namespace ChronusQ {
 
     }
 
-    memManager_.free(U);
+    CQMemManager::get().free(U);
 
   } // X2C::computeFockX2C
 
@@ -1692,7 +1692,7 @@ namespace ChronusQ {
     cqmatrix::Matrix<IntsT> T2c(uncontractedInts_.kinetic->matrix().template spatialToSpinBlock<IntsT>());
 
     // Get and reorganize coefficients
-    cqmatrix::Matrix<MatsT> fourCompMO(memManager_, fourCompMOSpin.dimension());
+    cqmatrix::Matrix<MatsT> fourCompMO(fourCompMOSpin.dimension());
     fourCompMO.clear();
     ReOrganizeMOSpin(fourCompMOSpin, fourCompMO);
 
@@ -1704,10 +1704,10 @@ namespace ChronusQ {
 
 
     // Invert "L"; L -> L^-1
-    LUInv(2*NP, L, ldCoef, memManager_);
+    LUInv(2*NP, L, ldCoef);
 
     // Compute X
-    X = std::make_shared<cqmatrix::Matrix<MatsT>>(memManager_, 2*NP);
+    X = std::make_shared<cqmatrix::Matrix<MatsT>>(2*NP);
 
     // Form X = S * L^-1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
@@ -1717,15 +1717,15 @@ namespace ChronusQ {
     // Compute UL and US
 
     // UL = S^-1/2 ( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2 S^1/2
-    cqmatrix::Matrix<IntsT> Shalf(memManager_, 2*NP);
-    cqmatrix::Matrix<IntsT> SinvHalf(memManager_, 2*NP);
+    cqmatrix::Matrix<IntsT> Shalf(2*NP);
+    cqmatrix::Matrix<IntsT> SinvHalf(2*NP);
 
     MatDiagFunc(std::function<double(double)>([](double x){ return std::sqrt(x); }),
                 S2c.dimension(), S2c.pointer(), S2c.dimension(),
-                Shalf.pointer(), Shalf.dimension(), memManager_);
+                Shalf.pointer(), Shalf.dimension());
     MatDiagFunc(std::function<double(double)>([](double x){ return 1.0/std::sqrt(x); }),
                 S2c.dimension(), S2c.pointer(), S2c.dimension(),
-                SinvHalf.pointer(), SinvHalf.dimension(), memManager_);
+                SinvHalf.pointer(), SinvHalf.dimension());
 
     // S + 1/2c^2 X^H T X
     const double TFact = 0.5 / (SpeedOfLight * SpeedOfLight);
@@ -1737,9 +1737,9 @@ namespace ChronusQ {
     // ( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2
     MatDiagFunc(std::function<double(double)>([](double x){ return 1.0/std::sqrt(x); }),
                 Y->dimension(), Y->pointer(), Y->dimension(),
-                Y->pointer(), Y->dimension(), memManager_);
+                Y->pointer(), Y->dimension());
 
-    cqmatrix::Matrix<MatsT> SCR(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> SCR(2*NP);
 
     // CSCR1 = (( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2 S^1/2)^T
     blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
@@ -1749,7 +1749,7 @@ namespace ChronusQ {
                MatsT(0.0), SCR.pointer(), SCR.dimension());
 
     // compute UL
-    cqmatrix::Matrix<MatsT> ULsub(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> ULsub(2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans,
                2*NP, 2*NP, 2*NP,
                MatsT(1.0), SinvHalf.pointer(), SinvHalf.dimension(),
@@ -1757,7 +1757,7 @@ namespace ChronusQ {
                MatsT(0.0), ULsub.pointer(), ULsub.dimension());
 
     // compute US = X UL
-    cqmatrix::Matrix<MatsT> USsub(memManager_, 2*NP);
+    cqmatrix::Matrix<MatsT> USsub(2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                2*NP, 2*NP, 2*NP,
                MatsT(1.0), X->pointer(), X->dimension(),
@@ -1765,15 +1765,15 @@ namespace ChronusQ {
                MatsT(0.0), USsub.pointer(), USsub.dimension());
 
     // Compute the mappings from primitives to CGTOs
-    mapPrim2Cont = memManager_.malloc<IntsT>(NB*NP);
-    basisSet_.makeMapPrim2Cont(uncontractedInts_.overlap->pointer(), mapPrim2Cont,memManager_);
-    MatsT *P2C2c = memManager_.malloc<MatsT>(4*NB*NP);
+    mapPrim2Cont = CQMemManager::get().malloc<IntsT>(NB*NP);
+    basisSet_.makeMapPrim2Cont(uncontractedInts_.overlap->pointer(), mapPrim2Cont);
+    MatsT *P2C2c = CQMemManager::get().malloc<MatsT>(4*NB*NP);
     SetMatDiag(NB, NP, mapPrim2Cont, NB, P2C2c, 2*NB);
 
     // Contract transformation matrices with P2C mapping
-    UL = memManager_.malloc<MatsT>(4*NP*NB);
+    UL = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(UL, 4*NP*NB, MatsT(0.));
-    US = memManager_.malloc<MatsT>(4*NP*NB);
+    US = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(US, 4*NP*NB, MatsT(0.));
 
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
@@ -1802,7 +1802,7 @@ namespace ChronusQ {
    *  \brief Compute the X2C Core Hamiltonian in real space
    */
   template <typename MatsT, typename IntsT>
-  void X2C<MatsT, IntsT>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  void X2C<MatsT, IntsT>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions) {
@@ -1826,22 +1826,22 @@ namespace ChronusQ {
         nonRelHoption.OneESpinOrbit = false;
 
         std::vector<std::pair<OPERATOR,size_t>> ops{{KINETIC,0}, {NUCLEAR_POTENTIAL,0}};
-        aoints->computeAOOneP(mem, mol, basis, emPert, ops, nonRelHoption);
+        aoints->computeAOOneP(mol, basis, emPert, ops, nonRelHoption);
       }
 
       x2c = std::make_shared<AtomicX2C<MatsT,IntsT>>(
           *std::dynamic_pointer_cast<Integrals<IntsT>>(aoints),
-          mem, mol, basis, ssOptions);
+          mol, basis, ssOptions);
     } else {
       x2c = std::make_shared<X2C<MatsT,IntsT>>(
           *std::dynamic_pointer_cast<Integrals<IntsT>>(aoints),
-          mem, mol, basis, ssOptions);
+          mol, basis, ssOptions);
     }
 
     SingleSlater<MatsT, IntsT> &ref = *std::dynamic_pointer_cast<SingleSlater<MatsT, IntsT>>(ss);
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH =
         std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
-            mem, basis.nBasis,
+            basis.nBasis,
             ssOptions.hamiltonianOptions.OneESpinOrbit,
             ssOptions.hamiltonianOptions.OneESpinOrbit);
 
@@ -1883,9 +1883,9 @@ namespace ChronusQ {
         threshSchwarz = tpi->threshSchwarz();
 
       // Initialize the returned dipole matrix
-      ref.pchgDipole_[0] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
-      ref.pchgDipole_[1] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
-      ref.pchgDipole_[2] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(mem, basis.nBasis, true, true);
+      ref.pchgDipole_[0] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(basis.nBasis, true, true);
+      ref.pchgDipole_[1] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(basis.nBasis, true, true);
+      ref.pchgDipole_[2] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(basis.nBasis, true, true);
 
       x2c->computeFockX2C(emPert, coreH, ref.fockMatrix, ref.pchgDipole_, incore, threshSchwarz);
 
@@ -1918,24 +1918,24 @@ namespace ChronusQ {
   }
 
 // TangDD Add X2C + GIAO
-  template void X2C<dcomplex, dcomplex>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  template void X2C<dcomplex, dcomplex>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
     //CErr("X2C + Complex Ints NYI",std::cout);
 
-  template void X2C<dcomplex, double>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  template void X2C<dcomplex, double>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
 
-  template void X2C<double, double>::compute_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  template void X2C<double, double>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
 
 
-  void compute_X2C_CoreH_Fock(CQMemManager &mem, Molecule &mol,
+  void compute_X2C_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
       std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions) {
@@ -1943,17 +1943,17 @@ namespace ChronusQ {
     if(auto p = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
 
       X2C<double, double>::compute_CoreH_Fock(
-          mem, mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions);
 
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
       X2C<dcomplex, double>::compute_CoreH_Fock(
-          mem, mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions);
 
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
       X2C<dcomplex, dcomplex>::compute_CoreH_Fock(
-          mem, mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions);
 
     } else {
 

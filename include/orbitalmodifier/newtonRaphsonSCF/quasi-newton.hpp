@@ -34,10 +34,10 @@ template<typename MatsT>
 void NewtonRaphsonSCF<MatsT>::fullNRStep() {
 
   if( this->orbitalModifierDrivers.computeFullNRStep ) {
-    MatsT* dx = this->memManager.template malloc<MatsT>(nParam);
+    MatsT* dx = CQMemManager::get().malloc<MatsT>(nParam);
     this->orbitalModifierDrivers.computeFullNRStep(dx);
     takeStep(dx);
-    this->memManager.free(dx);
+    CQMemManager::get().free(dx);
   } else {
     CErr("Full Newton-Raphson Step for this method is not yet implemented");
   }
@@ -52,10 +52,10 @@ void NewtonRaphsonSCF<MatsT>::qnBFGSStep() {
   qnSetup();
 
   size_t nExtrap = std::min(this->scfConv.nSCFIter + 1, this->scfControls.nKeep);
-  MatsT* dx      = this->memManager.template malloc<MatsT>(nParam);
+  MatsT* dx      = CQMemManager::get().malloc<MatsT>(nParam);
   computeBFGS(nExtrap, qnOrbRot, qnOrbGrad, dx);
   takeStep(dx);
-  this->memManager.free(dx);
+  CQMemManager::get().free(dx);
 };
 
 /*
@@ -67,10 +67,10 @@ void NewtonRaphsonSCF<MatsT>::qnSR1Step() {
   qnSetup();
 
   size_t nExtrap = std::min(this->scfConv.nSCFIter + 1, this->scfControls.nKeep);
-  MatsT* dx      = this->memManager.template malloc<MatsT>(nParam);
+  MatsT* dx      = CQMemManager::get().malloc<MatsT>(nParam);
   computeSR1(nExtrap, qnOrbRot, qnOrbGrad, dx);
   takeStep(dx);
-  this->memManager.free(dx);
+  CQMemManager::get().free(dx);
 };
 
 /*
@@ -125,8 +125,8 @@ void NewtonRaphsonSCF<MatsT>::computeBFGS(size_t N, const std::vector<MatsT*>& x
   std::vector<MatsT*> s;   // s_k = x_k+1 - x_k
   std::vector<MatsT*> y;   // y_k = g_k+1 - g_k
   for( size_t i = 0; i < N - 1; i++ ) {
-    s.emplace_back(this->memManager.template malloc<MatsT>(nParam));
-    y.emplace_back(this->memManager.template malloc<MatsT>(nParam));
+    s.emplace_back(CQMemManager::get().malloc<MatsT>(nParam));
+    y.emplace_back(CQMemManager::get().malloc<MatsT>(nParam));
     std::copy_n(x[i + 1], nParam, s[i]);
     std::copy_n(g[i + 1], nParam, y[i]);
     blas::axpy(nParam, MatsT(-1.), x[i], 1, s[i], 1);
@@ -164,9 +164,9 @@ void NewtonRaphsonSCF<MatsT>::computeBFGS(size_t N, const std::vector<MatsT*>& x
 
   // Clean up memory
   for( auto* sP : s )
-    this->memManager.free(sP);
+    CQMemManager::get().free(sP);
   for( auto* yP : y )
-    this->memManager.free(yP);
+    CQMemManager::get().free(yP);
 };
 
 
@@ -191,8 +191,8 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
 
   // Compute S and Y Matrices
   size_t nUpdate = N - 1;
-  MatsT* s       = this->memManager.template malloc<MatsT>(nParam * nUpdate);
-  MatsT* y       = this->memManager.template malloc<MatsT>(nParam * nUpdate);
+  MatsT* s       = CQMemManager::get().malloc<MatsT>(nParam * nUpdate);
+  MatsT* y       = CQMemManager::get().malloc<MatsT>(nParam * nUpdate);
   size_t disp    = 0;
   for( size_t i = 0; i < nUpdate; i++ ) {
     std::copy_n(x[i + 1], nParam, s + disp);
@@ -207,11 +207,11 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
   }
 
   // Compute S - H_0 Y
-  MatsT* SCR = this->memManager.template malloc<MatsT>(nParam*nUpdate);
+  MatsT* SCR = CQMemManager::get().malloc<MatsT>(nParam*nUpdate);
   for( size_t i=0; i<nUpdate; ++i )
     for( size_t j=0; j<nParam; ++j ) 
         SCR[j + i*nParam] = y[j + i*nParam] / orbDiagHess[j];
-  MatsT* shy = this->memManager.template malloc<MatsT>(nParam * nUpdate);
+  MatsT* shy = CQMemManager::get().malloc<MatsT>(nParam * nUpdate);
   std::copy_n(s, nParam * nUpdate, shy);
   blas::axpy(nParam * nUpdate, MatsT(-1.), SCR, 1, shy, 1);
 
@@ -220,7 +220,7 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
       dx[i] = g[N-1][i] / orbDiagHess[i];
 
   // Compute (R - Y^T H_0 Y)
-  MatsT* r = this->memManager.template malloc<MatsT>(nUpdate * nUpdate);
+  MatsT* r = CQMemManager::get().malloc<MatsT>(nUpdate * nUpdate);
   blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, nUpdate, nUpdate, nParam, MatsT(1.), s, nParam, y, nParam, MatsT(0.), r, nUpdate);
   if( nUpdate > 1){
 	  for( size_t i=0; i<nUpdate-1; i++ )
@@ -231,13 +231,13 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
 
 #ifdef _NRSCF_DEBUG_SR1
   prettyPrintSmart(std::cout, "R", r, nUpdate, nUpdate, nUpdate);
-  cqmatrix::Matrix<MatsT> rCopy(this->memManager, nUpdate);
+  cqmatrix::Matrix<MatsT> rCopy(nUpdate);
   std::copy_n(r, nUpdate * nUpdate, rCopy.pointer());
 #endif
 
   double normSHY = blas::nrm2(nParam, shy + (nUpdate - 1) * nParam, 1);
   try{
-    SVDInverse(nUpdate, r, nUpdate, normSHY*1.E-8,this->memManager);
+    SVDInverse(nUpdate, r, nUpdate, normSHY*1.E-8);
   } catch (...){
     CErr("SVD Failed in computing L-SR1");
   }
@@ -248,8 +248,8 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
 #endif
 
   // Compute shy * r * shy^T g
-  MatsT* vec1 = this->memManager.template malloc<MatsT>(nUpdate);
-  MatsT* vec2 = this->memManager.template malloc<MatsT>(nUpdate);
+  MatsT* vec1 = CQMemManager::get().malloc<MatsT>(nUpdate);
+  MatsT* vec2 = CQMemManager::get().malloc<MatsT>(nUpdate);
   blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, nUpdate, 1, nParam, MatsT(1.), shy, nParam, g[N - 1], nParam, MatsT(0.), vec1, nUpdate);
   blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, nUpdate, 1, nUpdate, MatsT(1.), r, nUpdate, vec1, nUpdate, MatsT(0.), vec2, nUpdate);
   blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, nParam, 1, nUpdate, MatsT(1.), shy, nParam, vec2, nUpdate, MatsT(1.), dx, nParam);
@@ -258,7 +258,7 @@ void NewtonRaphsonSCF<MatsT>::computeSR1(size_t N, const std::vector<MatsT*>& x,
   printParamVec("dx Final", dx);
 #endif
 
-  this->memManager.free(s, y, shy, r, vec1, vec2, SCR);
+  CQMemManager::get().free(s, y, shy, r, vec1, vec2, SCR);
 };
 
 

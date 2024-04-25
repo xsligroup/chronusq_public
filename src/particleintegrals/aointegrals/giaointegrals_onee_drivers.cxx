@@ -427,14 +427,14 @@ namespace ChronusQ {
   };
 
   template void Integrals<dcomplex>::computeAOOneP(
-      CQMemManager&, Molecule&, BasisSet&, EMPerturbation&,
+      Molecule&, BasisSet&, EMPerturbation&,
       const std::vector<std::pair<OPERATOR,size_t>>&,
       const HamiltonianOptions&);
 
 
   template <>
   void Integrals<dcomplex>::computeGradInts(
-      CQMemManager&, Molecule&, BasisSet&, EMPerturbation&,
+      Molecule&, BasisSet&, EMPerturbation&,
       const std::vector<std::pair<OPERATOR,size_t>>&,
       const HamiltonianOptions&) {
     CErr("Gradient integrals for GIAOs not yet implemented");

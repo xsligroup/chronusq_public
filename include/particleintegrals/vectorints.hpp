@@ -130,14 +130,14 @@ namespace ChronusQ {
     VectorInts() = delete;
     VectorInts( const VectorInts & ) = default;
     VectorInts( VectorInts && ) = default;
-    VectorInts(CQMemManager &mem, size_t nb, size_t order, bool symm):
-        ParticleIntegrals(mem, nb), order_(order), symmetric_(symm) {
+    VectorInts(size_t nb, size_t order, bool symm):
+        ParticleIntegrals(nb), order_(order), symmetric_(symm) {
       if (order == 0)
         CErr("VectorInts order must be at least 1.");
       size_t size = nComponents();
       components_.reserve(size);
       for (size_t i = 0; i < size; i++) {
-        components_.emplace_back(std::make_shared<OnePInts<IntsT>>(mem, nb));
+        components_.emplace_back(std::make_shared<OnePInts<IntsT>>(nb));
       }
     }
 
@@ -270,7 +270,7 @@ namespace ChronusQ {
           size_t size = nComponents();
           components_.reserve(size);
           for (size_t i = 0; i < size; i++) {
-            components_.emplace_back(std::make_shared<OnePInts<IntsT>>(memManager_, NB));
+            components_.emplace_back(std::make_shared<OnePInts<IntsT>>(NB));
           }
         }
 
@@ -282,7 +282,7 @@ namespace ChronusQ {
 
     template <typename IntsU>
     VectorInts<IntsU> spatialToSpinBlock() const {
-      VectorInts<IntsU> spinBlockInts(memManager_, NB * 2, order_, symmetric_);
+      VectorInts<IntsU> spinBlockInts(NB * 2, order_, symmetric_);
       size_t size = nComponents();
       for (size_t i = 0; i < size; i++) {
         *spinBlockInts.components_[i] = components_[i]->template spatialToSpinBlock<IntsU>();
@@ -299,8 +299,7 @@ namespace ChronusQ {
       VectorInts<typename std::conditional<
       (std::is_same<IntsT, dcomplex>::value or
        std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(
-          memManager(), NT, order(), symmetric());
+      dcomplex, double>::type> transInts(NT, order(), symmetric());
       for (size_t i = 0; i < size(); i++){
         std::shared_ptr<OnePInts<IntsT>> comp = (*this)[i];
         
@@ -318,12 +317,12 @@ namespace ChronusQ {
       return transInts;
     }
 
-    void convert2OnePRelInts(CQMemManager &mem, size_t nb, bool SORelativistic){
+    void convert2OnePRelInts(size_t nb, bool SORelativistic){
       size_t originalSize = this->size();
       components_.clear();
       components_.reserve(originalSize);
       for (size_t i = 0; i < originalSize; i++) 
-        components_.emplace_back(std::make_shared<OnePRelInts<IntsT>>(mem, nb, SORelativistic));
+        components_.emplace_back(std::make_shared<OnePRelInts<IntsT>>(nb, SORelativistic));
     }
 
     ~VectorInts() {}

@@ -72,9 +72,9 @@ DeterminantFactory::constructFullCD1eExList(
     try {
       if (tSpace == uSpace)  {
         if (tGroup.nElectrons() == 0) return nullptr;
-        exList = constructIntraSpaceFullCD1eExList(memManager_, tGroup);
+        exList = constructIntraSpaceFullCD1eExList(tGroup);
       } else {
-        exList = constructInterSpaceFullCD1eExList(memManager_, tGroup, uGroup, tSpace > uSpace);
+        exList = constructInterSpaceFullCD1eExList(tGroup, uGroup, tSpace > uSpace);
       }
       exLists_.emplace(id, exList);
     } catch (const std::invalid_argument& e) {

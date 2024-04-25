@@ -96,7 +96,7 @@ void ConventionalSCF<MatsT>::diagOrthoFock(vecMORef<MatsT>& mo, vecEPtr& eps) {
     size_t NB = mo[i].get().dimension();
     if( NB != fockMatrixOrtho[i].dimension() ) CErr("Ortho Fock and MO dimensions do not match");
     std::copy_n(fockMatrixOrtho[i].pointer(),NB*NB,mo[i].get().pointer());
-    int INFO  = HermetianEigen('V', 'L', NB, mo[i].get().pointer(), NB, eps[i], this->memManager);
+    int INFO  = HermetianEigen('V', 'L', NB, mo[i].get().pointer(), NB, eps[i]);
     if( INFO != 0 ) {
       std::cout << "Attempted to diagonalize " << i << "the Fock Matrix" << std::endl;
       CErr("HermetianEigen failed in Fock", std::cout);

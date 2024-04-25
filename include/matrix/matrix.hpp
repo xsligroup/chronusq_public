@@ -45,7 +45,6 @@ class Matrix {
 protected:
   size_t nRow_;
   size_t nCol_;
-  CQMemManager &memManager_; ///< CQMemManager to allocate matricies
   MatsT *ptr_ = nullptr;     ///< Raw matrix storage (2 index)
 
 public:
@@ -58,31 +57,31 @@ public:
    * @param nRow Number of rows
    * @param nCol Number of columns
    */
-  Matrix(CQMemManager &mem, size_t nRow, size_t nCol):
-      nRow_(nRow), nCol_(nCol), memManager_(mem) {
+  Matrix(size_t nRow, size_t nCol):
+      nRow_(nRow), nCol_(nCol) {
     malloc();
   }
-  Matrix(CQMemManager &mem, size_t n):
-      Matrix(mem, n, n) { }
-  
+  Matrix(size_t n):
+      Matrix(n, n) { }
+
   Matrix( const Matrix &other ):
-      Matrix(other.memManager_, other.nRow_, other.nCol_) {
+      Matrix(other.nRow_, other.nCol_) {
     std::copy_n(other.ptr_, nRow_ * nCol_, ptr_);
   }
   template <typename MatsU>
   Matrix( const Matrix<MatsU> &other, int = 0 ):
-      Matrix(other.memManager_, other.nRow_, other.nCol_) {
+      Matrix(other.nRow_, other.nCol_) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real Matrix from a Complex one.");
     std::copy_n(other.ptr_, nRow_ * nCol_, ptr_);
   }
   Matrix( Matrix &&other ):
-      nRow_(other.nRow_), nCol_(other.nCol_), memManager_(other.memManager_),
+      nRow_(other.nRow_), nCol_(other.nCol_),
       ptr_(other.ptr_) { other.ptr_ = nullptr; }
   template <typename MatsU>
   Matrix( const PauliSpinorMatrices<MatsU> &other ):
-      Matrix(other.memManager(), other.nRows(), other.nColumns()) {
+      Matrix(other.nRows(), other.nColumns()) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real Matrix from a Complex one.");
@@ -106,7 +105,6 @@ public:
   template <typename ScalarT, typename MatsU>
   Matrix& operator=( const ScaledMatrix<ScalarT, MatsU>& );
 
-  CQMemManager& memManager() const { return memManager_; }
   size_t dimension() const{ return nRow_; }
   size_t nColumns() const { return nCol_; }
   size_t nRows() const { return nRow_; }
@@ -180,7 +178,7 @@ public:
   const MatsT* pointer() const { return ptr_; }
 
   Matrix<double> real_part() {
-    Matrix<double> realMat(memManager_, nRow_, nCol_);
+    Matrix<double> realMat(nRow_, nCol_);
     GetMatRE('N', nRow_, nCol_, 1., pointer(), nRow_, realMat.pointer(), nRow_);
     return realMat;
   }
@@ -300,22 +298,22 @@ public:
   }
 
   void malloc() {
-    if (ptr_) memManager_.free(ptr_);
+    if (ptr_) CQMemManager::get().free(ptr_);
     size_t N = nRow_ * nCol_;
     if (N != 0) {
-      try { ptr_ = memManager_.malloc<MatsT>(N); }
+      try { ptr_ = CQMemManager::get().malloc<MatsT>(N); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full INTS matrix ("
                   << (N /1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << memManager_ << std::endl;
+        std::cout << std::endl << CQMemManager::get() << std::endl;
         throw std::bad_alloc();
       }
     }
   }
 
   ~Matrix() {
-    if(ptr_) memManager_.free(ptr_);
+    if(ptr_) CQMemManager::get().free(ptr_);
   }
 
 }; // class Matrix

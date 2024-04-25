@@ -56,7 +56,7 @@ namespace ChronusQ {
     // Check for disallowed combinations (if any)
   }
 
-  std::shared_ptr<CQMemManager> CQMiscOptions(std::ostream &out,
+  void CQMiscOptions(std::ostream &out,
     CQInputFile &input) {
 
     size_t mem     = 256e6; // Default 256 MB allocation
@@ -154,9 +154,8 @@ namespace ChronusQ {
     out << "\n\n";
 
     ProgramTimer::tick("Memory Allocation");
-    auto memManager = std::make_shared<CQMemManager>(memType,mem,blkSize);
+    CQMemManager::get().initialize(memType,mem,blkSize);
     ProgramTimer::tock();
-    return memManager;
 
   }; // CQMiscOptions
 

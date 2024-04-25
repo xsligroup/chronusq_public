@@ -66,7 +66,6 @@ class MOIntsTransformer {
 
 protected:
 
-  CQMemManager &memManager_; ///< CQMemManager to allocate matricies
   TPI_TRANSFORMATION_ALG TPITransAlg_;
   MPI_Comm comm_;
   SingleSlater<MatsT,IntsT> & ss_;
@@ -88,14 +87,13 @@ public:
   /**
    *  MOIntsTransformer Constructor. Constructs a MOIntsTransformer object
    *
-   *  \param [in] mem ... CQ Memory Mamanger
    *  \param [in] ss  ... SingleSlater reference, which provides AO integrals
    *                      for transformation into MO basis via Direc or InCore
    *  \param [in] alg ... Algorithm for two particle integral transformation 
    *                      options see include/integrals.hpp
    */                      
-  MOIntsTransformer( CQMemManager &mem, SingleSlater<MatsT,IntsT> & ss,
-    TPI_TRANSFORMATION_ALG alg = DIRECT_N6): memManager_(mem), comm_(ss.comm),
+  MOIntsTransformer(SingleSlater<MatsT,IntsT> & ss,
+    TPI_TRANSFORMATION_ALG alg = DIRECT_N6): comm_(ss.comm),
     ss_(ss), TPITransAlg_(alg) {
       
       if (ss.nC == 4 and alg == INCORE_N5) {

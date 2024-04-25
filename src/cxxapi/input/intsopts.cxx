@@ -272,7 +272,7 @@ namespace ChronusQ {
    *
    */  
   std::shared_ptr<IntegralsBase> 
-  IntegralOptions::buildSymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, 
+  IntegralOptions::buildSymmIntegral(std::ostream &out, Molecule &mol, 
       std::shared_ptr<BasisSet> basis, std::shared_ptr<BasisSet> dfbasis, std::string s) const{
     
     out << "Building integral object for the " << s << " subsystem:\n";
@@ -286,21 +286,21 @@ namespace ChronusQ {
       if(basicintsoptions.RI.compare("FALSE")) {
         if(not basicintsoptions.RI.compare("AUXBASIS"))
           aoint->TPI =
-              std::make_shared<InCoreAuxBasisRIERI<double>>(mem,basis->nBasis,dfbasis);
+              std::make_shared<InCoreAuxBasisRIERI<double>>(basis->nBasis,dfbasis);
         else
           aoint->TPI =
               std::make_shared<InCoreCholeskyRIERI<double>>(
-                  mem, basis->nBasis, cdriintsoptions.CDRI_thresh, cdriintsoptions.CDalg, 
+                  basis->nBasis, cdriintsoptions.CDRI_thresh, cdriintsoptions.CDalg, 
                   cdriintsoptions.CDRI_genContr, cdriintsoptions.CDRI_sigma, 
                   cdriintsoptions.CDRI_max_qual, cdriintsoptions.CDRI_minShrinkCycle, 
                   cdriintsoptions.CDRI_build4I);
       } else if (basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE) {
         aoint->TPI =
-            std::make_shared<InCore4indexTPI<double>>(mem,basis->nBasis);
+            std::make_shared<InCore4indexTPI<double>>(basis->nBasis);
       }
       else {
         aoint->TPI =
-            std::make_shared<DirectTPI<double>>(mem,*basis,*basis,mol,basicintsoptions.threshSchwarz);
+            std::make_shared<DirectTPI<double>>(*basis,*basis,mol,basicintsoptions.threshSchwarz);
       }
       aoi = std::dynamic_pointer_cast<IntegralsBase>(aoint);
     } else if(basis->basisType == COMPLEX_GIAO) {
@@ -310,11 +310,11 @@ namespace ChronusQ {
         CErr("GIAO resolution of identity ERI NYI",std::cout);
       else if (basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE) {
         giaoint->TPI =
-            std::make_shared<InCore4indexTPI<dcomplex>>(mem,basis->nBasis);
+            std::make_shared<InCore4indexTPI<dcomplex>>(basis->nBasis);
       }
       else {
         giaoint->TPI =
-            std::make_shared<DirectTPI<dcomplex>>(mem,*basis,*basis,mol,basicintsoptions.threshSchwarz);
+            std::make_shared<DirectTPI<dcomplex>>(*basis,*basis,mol,basicintsoptions.threshSchwarz);
       }
       aoi = std::dynamic_pointer_cast<IntegralsBase>(giaoint);
     }
@@ -340,7 +340,7 @@ namespace ChronusQ {
    *
    */  
   std::shared_ptr<IntegralsBase> 
-  IntegralOptions::buildAsymmIntegral(std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  
+  IntegralOptions::buildAsymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
       std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts,
       std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi) const{
     
@@ -356,11 +356,11 @@ namespace ChronusQ {
 
         // If nothing is set for EPINTS, by default (ee|pp) integrals will be evaluated on the fly using direct algorithm
         if(basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::DIRECT) {
-          epaoint->TPI = std::make_shared<DirectTPI<double>>(mem,*basis,*basis2,mol,basicintsoptions.threshSchwarz);
+          epaoint->TPI = std::make_shared<DirectTPI<double>>(*basis,*basis2,mol,basicintsoptions.threshSchwarz);
         } else {
           // If user set EPINTS.RI to be FALSE, incore algorithm uses 4-index for (ee|pp)
           if(not basicintsoptions.RI.compare("FALSE")){
-            epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(mem,basis->nBasis,basis2->nBasis);
+            epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(basis->nBasis,basis2->nBasis);
           } else{
             // The default EPINTS.RI option is "AUTO", where we dynamically detect what aux basis is avalibale and use corresponding aux basis for asymm approximation 
             // If the user specified an algorithm for NEO CD, then need to create corresponding IncoreAsymmRITPI object 
@@ -387,7 +387,7 @@ namespace ChronusQ {
                   out << "       Will use CD to build aux basis on the fly at " << eopts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl; 
                   aux1 = 
                       std::make_shared<InCoreCholeskyRIERI<double>>(
-                      mem, basis->nBasis, eopts.cdriintsoptions.CDRI_thresh, eopts.cdriintsoptions.CDalg, 
+                      basis->nBasis, eopts.cdriintsoptions.CDRI_thresh, eopts.cdriintsoptions.CDalg, 
                       eopts.cdriintsoptions.CDRI_genContr, eopts.cdriintsoptions.CDRI_sigma, 
                       eopts.cdriintsoptions.CDRI_max_qual, eopts.cdriintsoptions.CDRI_minShrinkCycle, 
                       eopts.cdriintsoptions.CDRI_build4I);
@@ -414,7 +414,7 @@ namespace ChronusQ {
                   out << "       Will use CD to build aux basis on the fly at " << popts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl;
                   aux2 = 
                       std::make_shared<InCoreCholeskyRIERI<double>>(
-                      mem, basis2->nBasis, popts.cdriintsoptions.CDRI_thresh, popts.cdriintsoptions.CDalg, 
+                      basis2->nBasis, popts.cdriintsoptions.CDRI_thresh, popts.cdriintsoptions.CDalg, 
                       popts.cdriintsoptions.CDRI_genContr, popts.cdriintsoptions.CDRI_sigma, 
                       popts.cdriintsoptions.CDRI_max_qual, popts.cdriintsoptions.CDRI_minShrinkCycle, 
                       popts.cdriintsoptions.CDRI_build4I);
@@ -451,11 +451,11 @@ namespace ChronusQ {
             }
 
             if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or auto_int1_aux){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I);
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use electronic aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or auto_int2_aux){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I);
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use protonic aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR 
@@ -467,12 +467,12 @@ namespace ChronusQ {
               // If truncate linear dependency for COMBINEAUXBASIS, set default value to be sqrt{tau_e * tau_p}
               double combineBasisThresh = (cdriintsoptions.CDRI_combineBasisTruncate and cdriintsoptions.CDRI_combineBasisThresh == 0.0) ?
                   sqrt(eopts.cdriintsoptions.CDRI_thresh * popts.cdriintsoptions.CDRI_thresh) : cdriintsoptions.CDRI_combineBasisThresh;
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(mem, aux1, aux2, two_aux_alg, cdriintsoptions.CDRI_build4I,
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, aux2, two_aux_alg, cdriintsoptions.CDRI_build4I,
                   cdriintsoptions.CDRI_combineBasisTruncate, combineBasisThresh);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use both electronic and protonic aux basis. " << std::endl;
             } else if (auto_4I) {
-              epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(mem, basis->nBasis, basis2->nBasis);
+              epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(basis->nBasis, basis2->nBasis);
               out << "Built 4-index (ee|pp) object. " << std::endl;
             } else {
               CErr ("aux basis for (ee|pp) is set up wrong. Can't build IncoreAsymmRITPI object!! ");
@@ -506,20 +506,20 @@ namespace ChronusQ {
    */  
     std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> 
     IntegralOptions::buildAllIntegrals(
-        std::ostream &out, CQMemManager &mem, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
+        std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
         std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, IntegralOptions epopts){
 
       out << BannerTop << std::endl;
       out << std::endl;
 
       // Build Electronic Integrals (ee|ee):
-      std::shared_ptr<IntegralsBase> aoi = eopts.buildSymmIntegral(out, mem, mol, basis, dfbasis, "electronic");
+      std::shared_ptr<IntegralsBase> aoi = eopts.buildSymmIntegral(out, mol, basis, dfbasis, "electronic");
 
       // Build Protonic Integrals (pp|pp) if we have protonic basis:
-      std::shared_ptr<IntegralsBase> paoi = basis2 ? popts.buildSymmIntegral(out, mem, mol, basis2, dfbasis, "protonic") : nullptr;
+      std::shared_ptr<IntegralsBase> paoi = basis2 ? popts.buildSymmIntegral(out, mol, basis2, dfbasis, "protonic") : nullptr;
 
       // Build Electron/Proton Coulumb Integrals (ee|pp) if we have protonic basis:
-      std::shared_ptr<IntegralsBase> epaoi = basis2 ? epopts.buildAsymmIntegral(out, mem, mol, basis, dfbasis,basis2, eopts, popts, aoi, paoi) : nullptr;
+      std::shared_ptr<IntegralsBase> epaoi = basis2 ? epopts.buildAsymmIntegral(out, mol, basis, dfbasis,basis2, eopts, popts, aoi, paoi) : nullptr;
 
       return  std::make_tuple(aoi, paoi, epaoi);
     }
@@ -537,7 +537,7 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<IntegralsBase> CQIntsOptions(std::ostream &out, 
-      CQInputFile &input, CQMemManager &mem, Molecule &mol,
+      CQInputFile &input, Molecule &mol,
       std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
       std::shared_ptr<BasisSet> basis2, std::string int_sec) {
 
@@ -621,27 +621,27 @@ namespace ChronusQ {
           CErr("AUXBASIS or CHOLESKY with NEO NYI");
         if(not RI.compare("AUXBASIS"))
           aoint->TPI =
-              std::make_shared<InCoreAuxBasisRIERI<double>>(mem,basis->nBasis,dfbasis);
+              std::make_shared<InCoreAuxBasisRIERI<double>>(basis->nBasis,dfbasis);
         else
           aoint->TPI =
               std::make_shared<InCoreCholeskyRIERI<double>>(
-                  mem, basis->nBasis, CDRI_thresh, CDalg, CDRI_genContr,
+                  basis->nBasis, CDRI_thresh, CDalg, CDRI_genContr,
                   CDRI_sigma, CDRI_max_qual, CDRI_minShrinkCycle, CDRI_build4I);
       } else if (contrAlg == CONTRACTION_ALGORITHM::INCORE) {
         if (not basis2)
           aoint->TPI =
-              std::make_shared<InCore4indexTPI<double>>(mem,basis->nBasis);
+              std::make_shared<InCore4indexTPI<double>>(basis->nBasis);
         else
           aoint->TPI = 
-              std::make_shared<InCore4indexTPI<double>>(mem,basis->nBasis,basis2->nBasis);
+              std::make_shared<InCore4indexTPI<double>>(basis->nBasis,basis2->nBasis);
       }
       else {
         if (not basis2)
           aoint->TPI =
-              std::make_shared<DirectTPI<double>>(mem,*basis,*basis,mol,threshSchwarz);
+              std::make_shared<DirectTPI<double>>(*basis,*basis,mol,threshSchwarz);
         else
           aoint->TPI = 
-              std::make_shared<DirectTPI<double>>(mem,*basis,*basis2,mol,threshSchwarz);
+              std::make_shared<DirectTPI<double>>(*basis,*basis2,mol,threshSchwarz);
       }
 
       aoi = std::dynamic_pointer_cast<IntegralsBase>(aoint);
@@ -654,13 +654,13 @@ namespace ChronusQ {
         if (basis2)
           CErr("GIAO with NEO NYI",std::cout);
         giaoint->TPI =
-            std::make_shared<InCore4indexTPI<dcomplex>>(mem,basis->nBasis);
+            std::make_shared<InCore4indexTPI<dcomplex>>(basis->nBasis);
       }
       else {
         if (basis2)
           CErr("GIAO with NEO NYI",std::cout);
         giaoint->TPI =
-            std::make_shared<DirectTPI<dcomplex>>(mem,*basis,*basis,mol,threshSchwarz);
+            std::make_shared<DirectTPI<dcomplex>>(*basis,*basis,mol,threshSchwarz);
       }
 
       aoi = std::dynamic_pointer_cast<IntegralsBase>(giaoint);

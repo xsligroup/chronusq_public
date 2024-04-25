@@ -68,7 +68,6 @@ namespace ChronusQ {
     std::vector<TwoBodyContraction<MatsT>> &matList) const {
 
     DirectTPI<IntsT> &eri = *std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->ints_);
-    CQMemManager& memManager_ = eri.memManager();
     BasisSet& basisSet_ = eri.basisSet();
 
  
@@ -153,7 +152,7 @@ namespace ChronusQ {
     size_t NB3 = NB2*NB;
     size_t NB4 = NB2*NB2;
 
-    double *ERIBuffer = memManager_.malloc<double>(2*4*NB4*nThreads);
+    double *ERIBuffer = CQMemManager::get().malloc<double>(2*4*NB4*nThreads);
  
     // Create a vector of libint2::Engines for possible threading
     std::vector<libint2::Engine> engines(nThreads);
@@ -192,7 +191,7 @@ namespace ChronusQ {
     std::vector<std::vector<MatsT*>> AXthreads;
     MatsT *AXRaw = nullptr;
     if(nThreads != 1) {
-      AXRaw = memManager_.malloc<MatsT>(nThreads*nMat*nBasis*nBasis);    
+      AXRaw = CQMemManager::get().malloc<MatsT>(nThreads*nMat*nBasis*nBasis);    
       memset(AXRaw,0,nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
     }
 
@@ -211,7 +210,7 @@ namespace ChronusQ {
 #ifdef _SHZ_SCREEN_4C
     // Compute shell block norms (∞-norm) of matList.X
     if(eri.schwarz() == nullptr) eri.computeSchwarz();
-    double *ShBlkNorms_raw = memManager_.malloc<double>(nMat*nShell*nShell);
+    double *ShBlkNorms_raw = CQMemManager::get().malloc<double>(nMat*nShell*nShell);
     std::vector<double*> ShBlkNorms;
     for(auto iMat = 0, iOff = 0; iMat < nMat; iMat++, iOff += nShell*nShell ) {
       ShellBlockNorm(basisSet_.shells,matList[iMat].X,nBasis,ShBlkNorms_raw + iOff);
@@ -916,11 +915,11 @@ namespace ChronusQ {
     
 
 #ifdef _SHZ_SCREEN_4C
-    memManager_.free(ShBlkNorms_raw);
+    CQMemManager::get().free(ShBlkNorms_raw);
 #endif
 
-    if(AXRaw != nullptr) memManager_.free(AXRaw);
-    if(ERIBuffer != nullptr) memManager_.free(ERIBuffer);
+    if(AXRaw != nullptr) CQMemManager::get().free(AXRaw);
+    if(ERIBuffer != nullptr) CQMemManager::get().free(ERIBuffer);
 
     // Turn threads for LA back on
     SetLAThreads(LAThreads);

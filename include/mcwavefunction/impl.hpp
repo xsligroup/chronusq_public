@@ -35,7 +35,7 @@
   
 #define MCWaveFunction_COLLECTIVE_OP(OP_OP,OP_VEC_OP) \
   /* Handle densities and vectors*/\
-  OP_VEC_OP(MatsT,this,other,this->memManager,CIVecs); 
+  OP_VEC_OP(MatsT,this,other,CIVecs); 
 
 namespace ChronusQ {
 
@@ -143,8 +143,8 @@ namespace ChronusQ {
 
     try {
       for (auto i = 0ul; i < NS; i++) {
-        CIVecs[i] = this->memManager.template malloc<MatsT>(NDet);
-        oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(this->memManager, nCorrO)); 
+        CIVecs[i] = CQMemManager::get().malloc<MatsT>(NDet);
+        oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(nCorrO)); 
       }
     } catch (...) {
       CErr("Not enough Memory to allocate CIVector for the specified number of determiants");

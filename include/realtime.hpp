@@ -25,7 +25,6 @@
 
 #include <chronusq_sys.hpp>
 #include <cerr.hpp>
-#include <memmanager.hpp>
 #include <singleslater.hpp>
 #include <singleslater/neoss.hpp>
 
@@ -111,12 +110,10 @@ namespace ChronusQ {
     
     bool restart   = false; ///< Restarting calc from bin file
 
-    RealTimeBase()                     = delete;
+    RealTimeBase()                     = default;
     RealTimeBase(const RealTimeBase &) = delete;
     RealTimeBase(RealTimeBase &&)      = delete;
 
-
-    RealTimeBase( CQMemManager &memManager): memManager_(memManager){ }
 
 
     // RealTimeBase procedural functions
@@ -147,10 +144,6 @@ namespace ChronusQ {
     inline void setSCFPerturbation( EMPerturbation& scfp ) {
       scfPert = scfp;
     }
-
-  protected:
-
-    CQMemManager     &memManager_; ///< Memory manager
 
   };
 
@@ -183,12 +176,11 @@ namespace ChronusQ {
      *  \brief RealTime Constructor.
      *
      *  Stores references to a "reference" SingleSlater object and
-     *  CQMemManager and makes a copy of the reference into a complex
+     *  makes a copy of the reference into a complex
      *  SingleSlater object for the propagation.
      */ 
     template <typename RefMatsT>
-    RealTime(_SSTyp<RefMatsT,IntsT> &reference) : 
-      RealTimeBase(reference.memManager),
+    RealTime(_SSTyp<RefMatsT,IntsT> &reference) :
       reference_(&reference), propagator_(reference) { 
 
       alloc<RefMatsT>(); 

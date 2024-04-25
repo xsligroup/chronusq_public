@@ -121,12 +121,10 @@ namespace ChronusQ {
       std::shared_ptr<Integrals<IntsT>> aointsAtom;
       if (type_.isolateAtom) {
         aointsAtom = std::make_shared<Integrals<IntsT>>();
-        atoms_.emplace_back(*aointsAtom, this->memManager_, atomMol, basis,
-                            this->ssOptions_);
+        atoms_.emplace_back(*aointsAtom, atomMol, basis, this->ssOptions_);
       } else {
         aointsAtom = std::make_shared<Integrals<IntsT>>();
-        atoms_.emplace_back(*aointsAtom, this->memManager_, this->molecule_, basis,
-                            this->ssOptions_);
+        atoms_.emplace_back(*aointsAtom, this->molecule_, basis, this->ssOptions_);
       }
 
     }
@@ -135,11 +133,11 @@ namespace ChronusQ {
       size_t atomNB = atoms_[k].basisSet_.nBasis;
       std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> atomCoreH;
       if (coreH->hasXY())
-        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, true);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(atomNB, true);
       else if (coreH->hasZ())
-        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, false);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(atomNB, false);
       else
-        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(this->memManager_, atomNB, false, false);
+        atomCoreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(atomNB, false, false);
       atomCoreH->clear();
       if (type_.diagonalOnly) {
         atoms_[k].computeOneEX2C_corr(emPert, atomCoreH);
@@ -170,7 +168,7 @@ namespace ChronusQ {
     ///   2> Compute Hx2c = U * D * U
 #ifdef UDU_ATOMIC_X2C_ALGORITHM
     computeOneEX2C_Umatrix();
-    this->uncontractedInts_.computeAOOneP(this->memManager_,
+    this->uncontractedInts_.computeAOOneP(
         this->molecule_, this->uncontractedBasis_, emPert,
         {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}},
         this->ssOptions_.hamiltonianOptions);
@@ -183,22 +181,22 @@ namespace ChronusQ {
     ///   Hx2c_AB = U_A * D_AB * U_B
 
     // Allocate memory
-    IntsT *T2c = this->memManager_.template malloc<IntsT>(4*maxAtomNP*maxAtomNP);
-    IntsT *V2c = this->memManager_.template malloc<IntsT>(4*maxAtomNP*maxAtomNP);
-    MatsT *W2c = this->memManager_.template malloc<MatsT>(4*maxAtomNP*maxAtomNP);
-    MatsT *SCR = this->memManager_.template malloc<MatsT>(4*maxAtomNP*maxAtomNB);
+    IntsT *T2c = CQMemManager::get().malloc<IntsT>(4*maxAtomNP*maxAtomNP);
+    IntsT *V2c = CQMemManager::get().malloc<IntsT>(4*maxAtomNP*maxAtomNP);
+    MatsT *W2c = CQMemManager::get().malloc<MatsT>(4*maxAtomNP*maxAtomNP);
+    MatsT *SCR = CQMemManager::get().malloc<MatsT>(4*maxAtomNP*maxAtomNB);
     std::fill_n(SCR, 4*maxAtomNP*maxAtomNB, MatsT(0.));
-    MatsT *Hx2c = this->memManager_.template malloc<MatsT>(4*maxAtomNB*maxAtomNB);
+    MatsT *Hx2c = CQMemManager::get().malloc<MatsT>(4*maxAtomNB*maxAtomNB);
     std::fill_n(Hx2c, 4*maxAtomNB*maxAtomNB, MatsT(0.));
 
     // Allocate memory for the uncontracted spin components
     // of the 2C CH
-    MatsT *HUnS = this->memManager_.template malloc<MatsT>(maxAtomNB*maxAtomNB);
-    MatsT *HUnZ = this->memManager_.template malloc<MatsT>(maxAtomNB*maxAtomNB);
-    MatsT *HUnX = this->memManager_.template malloc<MatsT>(maxAtomNB*maxAtomNB);
-    MatsT *HUnY = this->memManager_.template malloc<MatsT>(maxAtomNB*maxAtomNB);
+    MatsT *HUnS = CQMemManager::get().malloc<MatsT>(maxAtomNB*maxAtomNB);
+    MatsT *HUnZ = CQMemManager::get().malloc<MatsT>(maxAtomNB*maxAtomNB);
+    MatsT *HUnX = CQMemManager::get().malloc<MatsT>(maxAtomNB*maxAtomNB);
+    MatsT *HUnY = CQMemManager::get().malloc<MatsT>(maxAtomNB*maxAtomNB);
 
-    this->uncontractedInts_.computeAOOneP(this->memManager_,
+    this->uncontractedInts_.computeAOOneP(
         this->molecule_, this->uncontractedBasis_, emPert,
         {{KINETIC,0}, {NUCLEAR_POTENTIAL,0}},
         this->ssOptions_.hamiltonianOptions);
@@ -319,7 +317,7 @@ namespace ChronusQ {
       cumeINB += atomINB;
     }
 
-    this->memManager_.free(T2c, V2c, W2c, SCR, Hx2c, HUnS, HUnZ, HUnY, HUnX);
+    CQMemManager::get().free(T2c, V2c, W2c, SCR, Hx2c, HUnS, HUnZ, HUnY, HUnX);
 
   }
 
@@ -337,9 +335,9 @@ namespace ChronusQ {
     size_t NP = this->uncontractedBasis_.nPrimitive;
     size_t NB = this->basisSet_.nBasis;
 
-    this->UL = this->memManager_.template malloc<MatsT>(4*NP*NB);
+    this->UL = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(this->UL,4*NP*NB,MatsT(0.));
-    this->US = this->memManager_.template malloc<MatsT>(4*NP*NB);
+    this->US = CQMemManager::get().malloc<MatsT>(4*NP*NB);
     std::fill_n(this->US,4*NP*NB,MatsT(0.));
 
     size_t cumeNP = 0, cumeNB = 0;

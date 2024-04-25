@@ -67,20 +67,20 @@ inline dcomplex RAND_NUMBER(std::default_random_engine &e,
 
     std::random_device r; 
     std::default_random_engine e(r());
-    std::uniform_real_distribution<> dis(-50,68); 
+    std::uniform_real_distribution<> dis(-50,68);
 
 
-    CQMemManager mem(256e6,256);
+    CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,256e6,256);
 
-    T* A   = mem.template malloc<T>(N*N);
-    T* B   = mem.template malloc<T>(N*N);
-    T* VSL = mem.template malloc<T>(N*N);
-    T* VSR = mem.template malloc<T>(N*N);
+    T* A   = CQMemManager::get().template malloc<T>(N*N);
+    T* B   = CQMemManager::get().template malloc<T>(N*N);
+    T* VSL = CQMemManager::get().template malloc<T>(N*N);
+    T* VSR = CQMemManager::get().template malloc<T>(N*N);
 
 
 
-    T* AC = mem.template malloc<T>(N*N);
-    T* BC = mem.template malloc<T>(N*N);
+    T* AC = CQMemManager::get().template malloc<T>(N*N);
+    T* BC = CQMemManager::get().template malloc<T>(N*N);
 
     for(auto j = 0ul; j < N*N; j++) {
 
@@ -93,11 +93,11 @@ inline dcomplex RAND_NUMBER(std::default_random_engine &e,
     std::copy_n(B,N*N,BC);
 
 
-    dcomplex *ALPHA = mem.template malloc<dcomplex>(N);
-    T        *BETA  = mem.template malloc<T>(N);
+    dcomplex *ALPHA = CQMemManager::get().template malloc<dcomplex>(N);
+    T        *BETA  = CQMemManager::get().template malloc<T>(N);
 
     // Compute QZ factorization
-    OrdQZ('V','V',N,A,N,B,N,ALPHA,BETA,SIGMA,VSL,N,VSR,N,mem);
+    OrdQZ('V','V',N,A,N,B,N,ALPHA,BETA,SIGMA,VSL,N,VSR,N);
 
 
     // Overwrite ALPHA with W - SIGMA
@@ -124,7 +124,7 @@ inline dcomplex RAND_NUMBER(std::default_random_engine &e,
       EXPECT_EQ(indx[j],indx_c[j]);
 
 
-    T* SCR = mem.template malloc<T>(N*N);
+    T* SCR = CQMemManager::get().template malloc<T>(N*N);
 
 
     // Compute AC = AC - VSL * S * VSR**H
@@ -146,7 +146,7 @@ inline dcomplex RAND_NUMBER(std::default_random_engine &e,
     double maxB = std::abs(*std::max_element(BC,BC+N*N,abs_comp));
 
 
-    mem.free(A, B, VSL, VSR, AC, BC, ALPHA, BETA, SCR);
+    CQMemManager::get().free(A, B, VSL, VSR, AC, BC, ALPHA, BETA, SCR);
 
 
     EXPECT_TRUE(maxA < 1e-10) <<  maxA;

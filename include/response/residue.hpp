@@ -65,8 +65,7 @@ namespace ChronusQ {
         mat = resResults.VR;
       }
 
-      HermetianEigen(JOBVR,'U',nSingleDim_,mat,nSingleDim_,
-        resResults.W,memManager_);
+      HermetianEigen(JOBVR,'U',nSingleDim_,mat,nSingleDim_,resResults.W);
 
     } else {
 
@@ -74,7 +73,7 @@ namespace ChronusQ {
       //std::cerr << " FM " << fMatUse << std::endl;
 
       dcomplex *W = 
-        memManager_.template malloc<dcomplex>(nSingleDim_);
+        CQMemManager::get().malloc<dcomplex>(nSingleDim_);
 
       GeneralEigen(JOBVL, JOBVR, nSingleDim_, fMatUse, nSingleDim_,
                    W, resResults.VL, nSingleDim_, resResults.VR, nSingleDim_);
@@ -82,7 +81,7 @@ namespace ChronusQ {
       for(auto k = 0; k < nSingleDim_; k++)
         resResults.W[k] = std::real(W[k]);
 
-      memManager_.free(W);
+      CQMemManager::get().free(W);
 
       //CErr();
 
@@ -96,7 +95,7 @@ namespace ChronusQ {
     eigVecNorm();
 
 
-    if( fMatUse != fullMatrix_ ) memManager_.free(fMatUse);
+    if( fMatUse != fullMatrix_ ) CQMemManager::get().free(fMatUse);
 
     // Write the eigensystem to disk
     if( savFile.exists() ) {
@@ -112,7 +111,7 @@ namespace ChronusQ {
 
     */
 
-    if( fMatUse != fullMatrix_ ) memManager_.free(fMatUse);
+    if( fMatUse != fullMatrix_ ) CQMemManager::get().free(fMatUse);
 
   };
 
@@ -148,7 +147,7 @@ namespace ChronusQ {
     MPI_Comm gplhrComm = (isDist or not genSettings.formFullMat) 
       ? comm_ : rcomm_;
     
-    GPLHR<T> gplhr(gplhrComm,this->memManager_,nSingleDim_,
+    GPLHR<T> gplhr(gplhrComm,nSingleDim_,
       genSettings.maxIter,genSettings.convCrit,
       resSettings.nRoots,lt,pc);
 

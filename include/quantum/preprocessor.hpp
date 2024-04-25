@@ -25,9 +25,9 @@
 
 #define SPIN_OPERATOR_ALLOC(NB,X) \
   if(this->nC > 1) \
-    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, true); \
+    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true); \
   else if (not this->iCS) \
-    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false); \
+    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false); \
   else \
-    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(memManager, NB, false, false); \
+    X = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false, false); \
   X->clear()

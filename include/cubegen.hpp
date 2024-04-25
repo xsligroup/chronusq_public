@@ -1,4 +1,4 @@
-/* 
+/*
  *  This file is part of the Chronus Quantum (ChronusQ) software package
  *  
  *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
@@ -367,7 +367,7 @@ namespace ChronusQ {
 
               MatsT val = 0;
 
-              evalShellSet(ref_->memManager,NOGRAD,ref_->basisSet().shells,&pt[0],1,&BASIS[0],false);
+              evalShellSet(NOGRAD,ref_->basisSet().shells,&pt[0],1,&BASIS[0],false);
 
               blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans, 1, NB, NB,1.,
               &BASIS[0], NB, onePDM_->S().pointer(), NB,0., &SCR[0], 1);

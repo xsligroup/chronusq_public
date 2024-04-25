@@ -56,9 +56,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env);
@@ -79,7 +79,7 @@ namespace ChronusQ {
     // Get threads result buffer
     int buffSize = (basisSet_.maxL+1)*(basisSet_.maxL+2)/2;
     size_t buffN4 = buffSize*buffSize*buffSize*buffSize;
-    double *buffAll = memManager_.malloc<double>(buffN4*nthreads);
+    double *buffAll = CQMemManager::get().malloc<double>(buffN4*nthreads);
 
     std::cout<<"Using Libcint "<<std::endl;
 
@@ -170,7 +170,7 @@ namespace ChronusQ {
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
 #endif
 
-    memManager_.free(buffAll, atm, bas, env);
+    CQMemManager::get().free(buffAll, atm, bas, env);
 
 #ifdef __DEBUGERI__
     // Debug output of the ERIs
@@ -216,9 +216,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env);
@@ -298,10 +298,10 @@ namespace ChronusQ {
       buffN4 *= 9;
 
     double *buffAll;
-    if(hamiltonianOptions.Gauge) buffAll = memManager_.malloc<double>(buffN4*nthreads*2);
-    else buffAll = memManager_.malloc<double>(buffN4*nthreads);
+    if(hamiltonianOptions.Gauge) buffAll = CQMemManager::get().malloc<double>(buffN4*nthreads*2);
+    else buffAll = CQMemManager::get().malloc<double>(buffN4*nthreads);
 
-    double *cacheAll = memManager_.malloc<double>(cache_size*nthreads);
+    double *cacheAll = CQMemManager::get().malloc<double>(cache_size*nthreads);
 
     std::cout<<"Using Libcint "<<std::endl;
 
@@ -1840,7 +1840,7 @@ namespace ChronusQ {
 
 
 
-    memManager_.free(cacheAll, buffAll, env, bas, atm);
+    CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
 
 
@@ -1901,9 +1901,9 @@ namespace ChronusQ {
     int nShells = basisSet_.nShell;
 
     // ATM_SLOTS = 6; BAS_SLOTS = 8;
-    int *atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-    int *bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-    double *env = memManager_.template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+    int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
 
 
     basisSet_.setLibcintEnv(molecule_, atm, bas, env);
@@ -1935,8 +1935,8 @@ namespace ChronusQ {
 
     // Get threads result buffer
     size_t buffN4 = buffSize*buffSize*buffSize*buffSize;
-    double *buffAll = memManager_.malloc<double>(buffN4*nthreads);
-    double *cacheAll = memManager_.malloc<double>(cache_size*nthreads);
+    double *buffAll = CQMemManager::get().malloc<double>(buffN4*nthreads);
+    double *cacheAll = CQMemManager::get().malloc<double>(cache_size*nthreads);
 
     std::cout<<"Using Libcint "<<std::endl;
 
@@ -2029,7 +2029,7 @@ namespace ChronusQ {
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
 #endif
 
-    memManager_.free(cacheAll, buffAll, env, bas, atm);
+    CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
 #ifdef __DEBUGERI__
     // Debug output of the ERIs

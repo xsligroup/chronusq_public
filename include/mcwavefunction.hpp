@@ -91,12 +91,12 @@ namespace ChronusQ {
      *  \brief MCWaveFunction Constructor by MCWaveFunction
      *
      *  Stores references to a "reference" MCWaveFunction object and
-     *  CQMemManager and makes a copy of the reference into a complex
+     *  makes a copy of the reference into a complex
      *  MCWaveFunction object for the propagation.
      */ 
     template <typename MatsU>
     MCWaveFunction(SingleSlater<MatsU,IntsT> &ref, size_t NS):
-      MCWaveFunctionBase(ref.comm, ref.memManager, NS), 
+      MCWaveFunctionBase(ref.comm, NS),
       ref_(ref) {
       
       //if (std::is_same<IntsT, dcomplex>::value) 

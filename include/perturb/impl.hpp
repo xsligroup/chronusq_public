@@ -86,7 +86,7 @@ namespace ChronusQ {
       if (not PTopts.doGVV) {
         // build H_eff full matrix
         std::shared_ptr<cqmatrix::Matrix<MatsT>> H_eff =
-                            std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager, nStates);
+                            std::make_shared<cqmatrix::Matrix<MatsT>>(nStates);
         buildHeff(*H_eff); 
         // diagonalize H_eff
         diagHeff(*H_eff);
@@ -99,13 +99,13 @@ namespace ChronusQ {
 
     else { // single state perturbed energy
 
-      MatsT * HV = this->memManager.template malloc<MatsT>(this->NDet);
+      MatsT * HV = CQMemManager::get().malloc<MatsT>(this->NDet);
       computeHV(HV, this->CIVecs[0]);
 
       this->StateEnergy[0] = refMCwfn->StateEnergy[SoI_[0]]
                         + std::real(computeCHV(this->CIVecs[0], HV))
                         - std::real(computeShiftCorrection(0));
-      this->memManager.free(HV);
+      CQMemManager::get().free(HV);
     }
 
     this->saveCurrentStates();
@@ -135,7 +135,7 @@ namespace ChronusQ {
     if (not PTopts.extendMS) E0_[i] = computeZeroE(*ptFock_, oneRDM);
     
     // build RHS
-    MatsT * RHS = this->memManager.template malloc<MatsT>(SDsize);
+    MatsT * RHS = CQMemManager::get().malloc<MatsT>(SDsize);
     buildRHS(RHS, i);
 
     // solve the linear equation
@@ -148,7 +148,7 @@ namespace ChronusQ {
 #endif
 
 
-    this->memManager.free(RHS);
+    CQMemManager::get().free(RHS);
 
   } // PERTURB::run()
     
@@ -175,7 +175,7 @@ namespace ChronusQ {
         std::cout<<"state "<<i<<" weight: "<<refMCwfn->SAWeight[i]<<std::endl;
       }
       if ( not refMCwfn->oneRDMSOI)
-        refMCwfn->oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager,mopart_ref.nCorrO);
+        refMCwfn->oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(mopart_ref.nCorrO);
     }
 
     this->FourCompNoPair = refMCwfn->FourCompNoPair;
@@ -257,14 +257,14 @@ namespace ChronusQ {
 
     size_t nCorrO = this->MOPartition.nCorrO;
 
-    E0_ = this->memManager.template malloc<MatsT>(this->NStates);
-    ptFock_ = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager, nCorrO);
+    E0_ = CQMemManager::get().malloc<MatsT>(this->NStates);
+    ptFock_ = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
 
     if (PTopts.doFull)
       // LHS = F - E_0  dimension: SDsize x SDsize
-      LHS_ = std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager, SDsize);
+      LHS_ = std::make_shared<cqmatrix::Matrix<MatsT>>(SDsize);
 
-    if (PTopts.doIter) diagLHS = this->memManager.template malloc<MatsT>(SDsize);
+    if (PTopts.doIter) diagLHS = CQMemManager::get().malloc<MatsT>(SDsize);
     
     std::cout<<"Perturb allocation finished."<<std::endl;
 
@@ -274,12 +274,12 @@ namespace ChronusQ {
   void PERTURB<MatsT,IntsT>::dealloc() {
 
     refMCwfn = nullptr;
-    this->memManager.free(E0_);
+    CQMemManager::get().free(E0_);
     E0_ = nullptr;
     LHS_ = nullptr;
     ptFock_ = nullptr;
     if (diagLHS) {
-      this->memManager.free(diagLHS);
+      CQMemManager::get().free(diagLHS);
       diagLHS = nullptr;
     }
   }

@@ -36,16 +36,20 @@ namespace ChronusQ {
   };
 
   class CQMemManager {
+  private:
 
     std::unique_ptr<CQMemBackend> mem_backend; ///< Memory backend
-    size_t BlockSize_;    ///< Segregation block size
-    size_t NAlloc_;       ///< Number of blocks currently allocated
-    size_t NAllocHigh_;   ///< High-water mark of allocated blocks
+    size_t BlockSize_ = 2048; ///< Segregation block size
+    size_t NAlloc_ = 0;       ///< Number of blocks currently allocated
+    size_t NAllocHigh_ = 0;   ///< High-water mark of allocated blocks
 
     std::unordered_map<void*,std::pair<size_t,size_t>> AllocatedBlocks_;
       ///< Map from block pointer to the size of the block
 
-    public:
+    // Private default constructor
+    CQMemManager() = default;
+
+  public:
 
     // Disable copy and move construction and assignment
     CQMemManager(const CQMemManager &)            = delete;
@@ -53,21 +57,30 @@ namespace ChronusQ {
     CQMemManager& operator=(const CQMemManager &) = delete;
     CQMemManager& operator=(CQMemManager &&)      = delete;
 
+    static CQMemManager& get() {
+      static CQMemManager instance;
+      return instance;
+    }
+
     /**
-     *  \brief Constructor.
+     *  \brief initializer.
      *
-     *  Constructs a CQMemManager object with optionally defaulted values.
+     *  Initialize a CQMemManager object with OS-direct memmanager or
+     *  with preallocated chuck of memory. The latter has optionally defaulted values.
      *  If no paramemters are set, it will default to no memory (0 bytes)
      *  allocated and a 256 byte segregation length. If the requested
      *  memory and segregation legnth are not 0 , it will allocate and
      *  segregate the block
      *
+     *  \param [in] type       Memory backend type
      *  \param [in] N          Total memory (in bytes) to be allocated
      *  \param [in] BlockSize  Segregation block size
      *
      */ 
-    CQMemManager(CQMemBackendType type, size_t N = 0, size_t BlockSize = 2048) :
-        BlockSize_(BlockSize), NAlloc_(0), NAllocHigh_(0) {
+    void initialize(CQMemBackendType type, size_t N = 0, size_t BlockSize = 2048) {
+      BlockSize_ = BlockSize;
+      NAlloc_ = 0;
+      NAllocHigh_ = 0;
       switch (type) {
         case CQMemBackendType::PREALLOCATED:
           mem_backend = std::make_unique<CustomMemManager>(N, BlockSize);
@@ -79,8 +92,6 @@ namespace ChronusQ {
           throw std::runtime_error("Unknown memory backend type");
       }
     };
-    CQMemManager(size_t N = 0, size_t BlockSize = 2048) :
-        CQMemManager(CQMemBackendType::PREALLOCATED, N, BlockSize){}
 
 
      /**

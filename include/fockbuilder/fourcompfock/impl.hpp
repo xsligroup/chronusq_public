@@ -59,7 +59,6 @@ namespace ChronusQ {
 
     InCore4indexRelERI<IntsT> &relERI =
         *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss.aoints_->TPI);
-    CQMemManager &mem = ss.memManager;
 
     bool computeExchange = std::abs(xHFX) >= 1e-12; 
     
@@ -86,16 +85,16 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
 
-    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(NB1C);
 
-    MatsT* Scr1 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr2 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr3 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr4 = mem.malloc<MatsT>(NB1C2);
+    MatsT* Scr1 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr2 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr3 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr4 = CQMemManager::get().malloc<MatsT>(NB1C2);
     memset(Scr1,0.,NB1C2*sizeof(MatsT));
     memset(Scr2,0.,NB1C2*sizeof(MatsT));
     memset(Scr3,0.,NB1C2*sizeof(MatsT));
@@ -111,8 +110,8 @@ namespace ChronusQ {
 
 
 #if 0
-    MatsT* DEN_GATHER = mem.malloc<MatsT>(NB4C2);
-    MatsT* LS_GATHER = mem.malloc<MatsT>(NB2C2);
+    MatsT* DEN_GATHER = CQMemManager::get().malloc<MatsT>(NB4C2);
+    MatsT* LS_GATHER = CQMemManager::get().malloc<MatsT>(NB2C2);
 
     for(auto i = 0; i< NB2C2; i++) {
       LS_GATHER[i] = dcomplex(std::cos(i), std::sin(i));
@@ -134,8 +133,8 @@ namespace ChronusQ {
 		    NB2C,contract1PDM.Z().pointer(), NB2C,contract1PDM.Y().pointer(),
 		    NB2C,contract1PDM.X().pointer(), NB2C);
 
-    mem.free(DEN_GATHER);
-    mem.free(LS_GATHER);
+    CQMemManager::get().free(DEN_GATHER);
+    CQMemManager::get().free(LS_GATHER);
 #endif
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
@@ -2685,10 +2684,10 @@ namespace ChronusQ {
     // G[D] += 2*J[D]
     *ss.twoeH += 2.0 * *ss.coulombMatrix;
 
-    mem.free(Scr1);
-    mem.free(Scr2);
-    mem.free(Scr3);
-    mem.free(Scr4);
+    CQMemManager::get().free(Scr1);
+    CQMemManager::get().free(Scr2);
+    CQMemManager::get().free(Scr3);
+    CQMemManager::get().free(Scr4);
 
 
 #ifdef _PRINT_MATRICES
@@ -2699,8 +2698,8 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"twoeH MZ",ss.twoeH->Z().pointer(),NB2C,NB2C,NB2C);
 
 
-    MatsT* TEMP_GATHER1 = mem.malloc<MatsT>(NB4C2);
-    MatsT* TEMP_GATHER2 = mem.malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER1 = CQMemManager::get().malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER2 = CQMemManager::get().malloc<MatsT>(NB4C2);
 
     memset(TEMP_GATHER1,0.,NB4C2*sizeof(MatsT));
     memset(TEMP_GATHER2,0.,NB4C2*sizeof(MatsT));
@@ -2716,8 +2715,8 @@ namespace ChronusQ {
     SpinGather(NB2C,TEMP_GATHER1,NB4C,ss.coreH->S().pointer(),NB2C,ss.coreH->Z().pointer(),NB2C,ss.coreH->Y().pointer(),NB2C,ss.coreH->X().pointer(),NB2C);
     prettyPrintSmart(std::cout,"coreH Gather",TEMP_GATHER1,NB4C,NB4C,NB4C,1,12,16);
  
-    mem.free(TEMP_GATHER1);
-    mem.free(TEMP_GATHER2);
+    CQMemManager::get().free(TEMP_GATHER1);
+    CQMemManager::get().free(TEMP_GATHER2);
 
 #endif //_PRINT_MATRICES
 
@@ -2750,7 +2749,6 @@ namespace ChronusQ {
   void FourCompFock<MatsT,IntsT>::formGD3Index(SingleSlater<MatsT,IntsT> &ss,
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen) {
 
-    CQMemManager &mem = ss.memManager;
     GTODirectRelERIContraction<MatsT,IntsT> &relERICon =
         *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ss.TPI);
 
@@ -2776,16 +2774,16 @@ namespace ChronusQ {
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
 
-    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(NB1C);
 
-    MatsT* Scr1 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr2 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr3 = mem.malloc<MatsT>(NB1C2);
-    MatsT* Scr4 = mem.malloc<MatsT>(NB1C2);
+    MatsT* Scr1 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr2 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr3 = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* Scr4 = CQMemManager::get().malloc<MatsT>(NB1C2);
     memset(Scr1,0.,NB1C2*sizeof(MatsT));
     memset(Scr2,0.,NB1C2*sizeof(MatsT));
     memset(Scr3,0.,NB1C2*sizeof(MatsT));
@@ -3706,10 +3704,10 @@ namespace ChronusQ {
     *ss.twoeH += 2.0 * *ss.coulombMatrix;
 
 
-    mem.free(Scr1);
-    mem.free(Scr2);
-    mem.free(Scr3);
-    mem.free(Scr4);
+    CQMemManager::get().free(Scr1);
+    CQMemManager::get().free(Scr2);
+    CQMemManager::get().free(Scr3);
+    CQMemManager::get().free(Scr4);
 
 
 #ifdef _PRINT_MATRICES
@@ -3720,8 +3718,8 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"twoeH MX",ss.twoeH->X().pointer(),NB2C,NB2C,NB2C);
 
 
-    MatsT* TEMP_GATHER1 = mem.malloc<MatsT>(NB4C2);
-    MatsT* TEMP_GATHER2 = mem.malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER1 = CQMemManager::get().malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER2 = CQMemManager::get().malloc<MatsT>(NB4C2);
 
     memset(TEMP_GATHER1,0.,NB4C2*sizeof(MatsT));
     memset(TEMP_GATHER2,0.,NB4C2*sizeof(MatsT));
@@ -3737,8 +3735,8 @@ namespace ChronusQ {
     SpinGather(NB2C,TEMP_GATHER1,NB4C,ss.coreH->S().pointer(),NB2C,ss.coreH->Z().pointer(),NB2C,ss.coreH->Y().pointer(),NB2C,ss.coreH->X().pointer(),NB2C);
     prettyPrintSmart(std::cout,"coreH Gather",TEMP_GATHER1,NB4C,NB4C,NB4C,1,12,16);
  
-    mem.free(TEMP_GATHER1);
-    mem.free(TEMP_GATHER2);
+    CQMemManager::get().free(TEMP_GATHER1);
+    CQMemManager::get().free(TEMP_GATHER2);
 
 #endif //_PRINT_MATRICES
 
@@ -3754,7 +3752,6 @@ namespace ChronusQ {
   void FourCompFock<MatsT,IntsT>::formGDDirect(SingleSlater<MatsT,IntsT> &ss,
     EMPerturbation &pert, bool increment, double xHFX, bool HerDen) {
 
-    CQMemManager &mem = ss.memManager;
     GTODirectRelERIContraction<MatsT,IntsT> &relERICon =
         *std::dynamic_pointer_cast<GTODirectRelERIContraction<MatsT,IntsT>>(ss.TPI);
 
@@ -3781,39 +3778,39 @@ namespace ChronusQ {
     bool   isNotRoot = mpiRank != 0;
     bool   computeExchange = std::abs(xHFX) >= 1e-12; 
     
-    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(NB1C);
 
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(mem, NB1C);
-    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(mem, NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLS(NB1C);
+    cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMSL(NB1C);
 
-    MatsT* CScrLLMS = mem.malloc<MatsT>(NB1C2);
+    MatsT* CScrLLMS = CQMemManager::get().malloc<MatsT>(NB1C2);
 
-    MatsT* CScrSSMS = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrSSMX = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrSSMY = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrSSMZ = mem.malloc<MatsT>(NB1C2);
+    MatsT* CScrSSMS = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrSSMX = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrSSMY = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrSSMZ = CQMemManager::get().malloc<MatsT>(NB1C2);
 
-    MatsT* CScrLSMS = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrLSMX = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrLSMY = mem.malloc<MatsT>(NB1C2);
-    MatsT* CScrLSMZ = mem.malloc<MatsT>(NB1C2);
+    MatsT* CScrLSMS = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrLSMX = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrLSMY = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* CScrLSMZ = CQMemManager::get().malloc<MatsT>(NB1C2);
 
-    MatsT* XScrLLMS = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLLMX = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLLMY = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLLMZ = mem.malloc<MatsT>(NB1C2);
+    MatsT* XScrLLMS = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLLMX = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLLMY = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLLMZ = CQMemManager::get().malloc<MatsT>(NB1C2);
 
-    MatsT* XScrSSMS = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrSSMX = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrSSMY = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrSSMZ = mem.malloc<MatsT>(NB1C2);
+    MatsT* XScrSSMS = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrSSMX = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrSSMY = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrSSMZ = CQMemManager::get().malloc<MatsT>(NB1C2);
 
-    MatsT* XScrLSMS = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLSMX = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLSMY = mem.malloc<MatsT>(NB1C2);
-    MatsT* XScrLSMZ = mem.malloc<MatsT>(NB1C2);
+    MatsT* XScrLSMS = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLSMX = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLSMY = CQMemManager::get().malloc<MatsT>(NB1C2);
+    MatsT* XScrLSMZ = CQMemManager::get().malloc<MatsT>(NB1C2);
 
 
     memset(CScrLLMS,0.,NB1C2*sizeof(MatsT));
@@ -4581,28 +4578,28 @@ namespace ChronusQ {
     if(computeExchange) *ss.twoeH -= xHFX * *ss.exchangeMatrix;
 
 
-    mem.free(CScrLLMS);
-    mem.free(CScrSSMS);
-    mem.free(CScrSSMX);
-    mem.free(CScrSSMY);
-    mem.free(CScrSSMZ);
-    mem.free(CScrLSMS);
-    mem.free(CScrLSMX);
-    mem.free(CScrLSMY);
-    mem.free(CScrLSMZ);
+    CQMemManager::get().free(CScrLLMS);
+    CQMemManager::get().free(CScrSSMS);
+    CQMemManager::get().free(CScrSSMX);
+    CQMemManager::get().free(CScrSSMY);
+    CQMemManager::get().free(CScrSSMZ);
+    CQMemManager::get().free(CScrLSMS);
+    CQMemManager::get().free(CScrLSMX);
+    CQMemManager::get().free(CScrLSMY);
+    CQMemManager::get().free(CScrLSMZ);
 
-    mem.free(XScrLLMS);
-    mem.free(XScrLLMX);
-    mem.free(XScrLLMY);
-    mem.free(XScrLLMZ);
-    mem.free(XScrSSMS);
-    mem.free(XScrSSMX);
-    mem.free(XScrSSMY);
-    mem.free(XScrSSMZ);
-    mem.free(XScrLSMS);
-    mem.free(XScrLSMX);
-    mem.free(XScrLSMY);
-    mem.free(XScrLSMZ);
+    CQMemManager::get().free(XScrLLMS);
+    CQMemManager::get().free(XScrLLMX);
+    CQMemManager::get().free(XScrLLMY);
+    CQMemManager::get().free(XScrLLMZ);
+    CQMemManager::get().free(XScrSSMS);
+    CQMemManager::get().free(XScrSSMX);
+    CQMemManager::get().free(XScrSSMY);
+    CQMemManager::get().free(XScrSSMZ);
+    CQMemManager::get().free(XScrLSMS);
+    CQMemManager::get().free(XScrLSMX);
+    CQMemManager::get().free(XScrLSMY);
+    CQMemManager::get().free(XScrLSMZ);
 
 
 #ifdef _PRINT_MATRICES
@@ -4613,8 +4610,8 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"twoeH MZ",ss.twoeH->Z().pointer(),NB2C,NB2C,NB2C);
 
 
-    MatsT* TEMP_GATHER1 = mem.malloc<MatsT>(NB4C2);
-    MatsT* TEMP_GATHER2 = mem.malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER1 = CQMemManager::get().malloc<MatsT>(NB4C2);
+    MatsT* TEMP_GATHER2 = CQMemManager::get().malloc<MatsT>(NB4C2);
 
     memset(TEMP_GATHER1,0.,NB4C2*sizeof(MatsT));
     memset(TEMP_GATHER2,0.,NB4C2*sizeof(MatsT));
@@ -4630,8 +4627,8 @@ namespace ChronusQ {
     SpinGather(NB2C,TEMP_GATHER1,NB4C,ss.coreH->S().pointer(),NB2C,ss.coreH->Z().pointer(),NB2C,ss.coreH->Y().pointer(),NB2C,ss.coreH->X().pointer(),NB2C);
     prettyPrintSmart(std::cout,"coreH Gather",TEMP_GATHER1,NB4C,NB4C,NB4C,1,12,16);
  
-    mem.free(TEMP_GATHER1);
-    mem.free(TEMP_GATHER2);
+    CQMemManager::get().free(TEMP_GATHER1);
+    CQMemManager::get().free(TEMP_GATHER2);
 
 #endif //_PRINT_MATRICES
 

@@ -47,9 +47,8 @@ public:
        *  TADIIS Constructor. Constructs a TADIIS object
        *
        *  \param [in]  maxdiis     Maximum number of error vectors
-       *  \param [in]  memManager  Memory manager
        */
-    DIISTA(int maxdiis, CQMemManager & memManager);
+    DIISTA(int maxdiis);
 
     ~DIISTA();
 
@@ -79,9 +78,6 @@ public:
     void restart();
 
 protected:
-
-    /// memory manager
-    CQMemManager & memManager_;
 
     /// stores history of amplitude matrix
     std::vector<EOMCCSDVector<T>> hist;
@@ -115,14 +111,13 @@ protected:
 };
 
     template <typename T>
-    DIISTA<T>::DIISTA(int maxdiis, CQMemManager & memManager) :
-      memManager_(memManager) {
+    DIISTA<T>::DIISTA(int maxdiis) {
 
         maxdiis_           = maxdiis;
         diis_iter_         = 0;
         replace_diis_iter_ = 1;
-        diisvec_           = memManager_.template malloc<T>(maxdiis_+1);
-        errmtx             = memManager_.template malloc<T>(maxdiis_*maxdiis_);
+        diisvec_           = CQMemManager::get().malloc<T>(maxdiis_+1);
+        errmtx             = CQMemManager::get().malloc<T>(maxdiis_*maxdiis_);
         memset((void*)errmtx,'\0',maxdiis_*maxdiis_*sizeof(T));
 
         hist.reserve(maxdiis_ + 1);
@@ -131,8 +126,8 @@ protected:
 
     template <typename T>
     DIISTA<T>::~DIISTA() {
-        memManager_.free(diisvec_);
-        memManager_.free(errmtx);
+        CQMemManager::get().free(diisvec_);
+        CQMemManager::get().free(errmtx);
     }
 
 // reset diis solver (without freeing memory).
@@ -217,9 +212,9 @@ protected:
     void DIISTA<T>::DIISCoefficients(int nvec){
 
         // Allocate memory for small matrices/vectors.
-        int64_t * ipiv    = memManager_.template malloc<int64_t>(nvec+1);
-        T * A    = memManager_.template malloc<T>((nvec+1)*(nvec+1));
-        T * B    = memManager_.template malloc<T>(nvec+1);
+        int64_t * ipiv    = CQMemManager::get().malloc<int64_t>(nvec+1);
+        T * A    = CQMemManager::get().malloc<T>((nvec+1)*(nvec+1));
+        T * B    = CQMemManager::get().malloc<T>(nvec+1);
         memset((void*)A,'\0',(nvec+1)*(nvec+1)*sizeof(T));
         memset((void*)B,'\0',(nvec+1)*sizeof(T));
         B[nvec] = -1.0;
@@ -277,9 +272,9 @@ protected:
         lapack::gesv(nvec+1,nrhs,A,lda,ipiv,B,ldb);
         std::copy_n(B,nvec,diisvec_);
 
-        memManager_.free(A);
-        memManager_.free(B);
-        memManager_.free(ipiv);
+        CQMemManager::get().free(A);
+        CQMemManager::get().free(B);
+        CQMemManager::get().free(ipiv);
     }
 
     template <typename T>

@@ -54,13 +54,13 @@ class OrbitalOptimizerNew : public OrbitalModifierNew<singleSlaterT, MatsT, Ints
     bool doingDamp;                                ///< Whether damping is currently on or off (only used for printing)
 
     // Constructor
-    OrbitalOptimizerNew(SCFControls sC, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm, CQMemManager& mem):
-      scfControls(sC), OrbitalModifierNew<singleSlaterT,MatsT,IntsT>(referenceSS, comm, mem) {
+    OrbitalOptimizerNew(SCFControls sC, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm):
+      scfControls(sC), OrbitalModifierNew<singleSlaterT,MatsT,IntsT>(referenceSS, comm) {
 
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->memManager(), onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->dimension());
           prevOnePDM[a] = *onePDM[a];
         }
     };

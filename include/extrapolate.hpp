@@ -93,7 +93,7 @@ namespace ChronusQ {
     int N          = nExtrap + 1;
     int NRHS       = 1;
     bool InvFail   = false;
-    cqmatrix::Matrix<T> B(errorMetric[0][0].memManager(), N);
+    cqmatrix::Matrix<T> B(N);
     B.clear();
 
     // Build the B matrix
@@ -133,10 +133,9 @@ namespace ChronusQ {
     std::fill_n(&coeffs[0],N,0.);
     coeffs[nExtrap] = -1.0;
  
-    CQMemManager &mem = errorMetric[0][0].memManager();
-    int64_t* IPIV = mem.malloc<int64_t>(N);
+    int64_t* IPIV = CQMemManager::get().malloc<int64_t>(N);
     int INFO = lapack::gesv(N, 1, B.pointer(), N, IPIV, &coeffs[0], N);
-    mem.free(IPIV);
+    CQMemManager::get().free(IPIV);
 
 //  for(auto i = 0ul; i < N; i++)
 //    std::cout << "coeff = " << coeffs[i] << std::endl;

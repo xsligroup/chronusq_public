@@ -113,8 +113,6 @@ namespace ChronusQ {
         if (basis.forceCart)
           CErr("Libcint + cartesian GTO NYI.");
         
-        CQMemManager &mem = directTPI.memManager();
-
         std::set<std::array<double, 3>> shellCenters;
         std::vector<size_t> mapBf2Sh(basis.nBasis, 0);
         for (size_t i = 0, bf = 0; i < basis.shells.size(); i++) {
@@ -134,9 +132,9 @@ namespace ChronusQ {
         size_t nShells = basis.nShell;
 
         // ATM_SLOTS = 6; BAS_SLOTS = 8;
-        int *atm = mem.template malloc<int>(nAtoms * ATM_SLOTS);
-        int *bas = mem.template malloc<int>(nShells * BAS_SLOTS);
-        double *env = mem.template malloc<double>(basis.getLibcintEnvLength(mol));
+        int *atm = CQMemManager::get().malloc<int>(nAtoms * ATM_SLOTS);
+        int *bas = CQMemManager::get().malloc<int>(nShells * BAS_SLOTS);
+        double *env = CQMemManager::get().malloc<double>(basis.getLibcintEnvLength(mol));
 
         basis.setLibcintEnv(mol, atm, bas, env);
 
@@ -185,7 +183,7 @@ namespace ChronusQ {
         });
 
         TA::get_default_world().gop.fence();
-        mem.free(env, bas, atm);
+        CQMemManager::get().free(env, bas, atm);
         return aoTPIta;
       } catch (const std::bad_cast&) {}
 

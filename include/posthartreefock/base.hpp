@@ -43,7 +43,6 @@ class PostHartreeFockBase {
 public:
 
   SafeFile savFile;    ///< Data File, for restart
-  CQMemManager& memManager;
   MPI_Comm comm;
 
   std::shared_ptr<WaveFunctionBase> wfnRef_;
@@ -77,9 +76,9 @@ public:
    *
    *  \param [in] NS Number of States constructed by MCWaveFunction
    */
-  PostHartreeFockBase(MPI_Comm c, CQMemManager &mem, 
+  PostHartreeFockBase(MPI_Comm c,
     std::shared_ptr<WaveFunctionBase> wfnRef, size_t NS):
-    comm(c), memManager(mem), wfnRef_(wfnRef), NStates(NS) {
+    comm(c), wfnRef_(wfnRef), NStates(NS) {
 
     alloc();
 

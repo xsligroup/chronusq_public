@@ -369,13 +369,13 @@ namespace ChronusQ {
 
 
     /*
-    MatsT* inner = this->memManager_.template malloc<MatsT>(nRoots*nRoots);
+    MatsT* inner = CQMemManager::get().malloc<MatsT>(nRoots*nRoots);
 
     tdMatInner(N,N,V,N,V,N,inner);
     prettyPrintSmart(std::cout,"BEFORE",inner,N,N,N);
     */
 
-    GramSchmidt(N,0,nRoots,V,N,tdInner,tdMatInner,this->memManager_,1);
+    GramSchmidt(N,0,nRoots,V,N,tdInner,tdMatInner,1);
 
     /*
     tdMatInner(N,N,V,N,V,N,inner);
@@ -442,7 +442,7 @@ namespace ChronusQ {
       if( std::is_same<U,MatsT>::value ) 
         FM = reinterpret_cast<U*>(this->fullMatrix_);
       else {
-        FM = this->memManager_.template malloc<U>(MLoc*NLoc);
+        FM = CQMemManager::get().malloc<U>(MLoc*NLoc);
         std::copy_n(reinterpret_cast<double*>(this->fullMatrix_),MLoc*NLoc,FM);
       }
 
@@ -479,7 +479,7 @@ namespace ChronusQ {
     }
   
     if( FM and (reinterpret_cast<MatsT*>(FM) != this->fullMatrix_) ) 
-      this->memManager_.free(FM);
+      CQMemManager::get().free(FM);
   
   };
 
@@ -579,7 +579,7 @@ namespace ChronusQ {
 
 
     // Allocate space for identity for contraction
-    MatsT* V  = this->memManager_.template malloc<MatsT>(N*nForm);
+    MatsT* V  = CQMemManager::get().malloc<MatsT>(N*nForm);
     std::fill_n(V ,N*nForm ,0.);
     
     // Form the identity in V
@@ -601,7 +601,7 @@ namespace ChronusQ {
     // other processes
     MatsT* HV = nullptr;
     if( isRootMatComm ) {
-      HV = this->memManager_.template malloc<MatsT>(N*nStore);
+      HV = CQMemManager::get().malloc<MatsT>(N*nStore);
       //std::fill_n(HV,N*nStore,0.);
     }
   
@@ -620,7 +620,7 @@ namespace ChronusQ {
     auto durContract = tock(topContract);
 
 
-    this->memManager_.free(V); // Free up some memory
+    CQMemManager::get().free(V); // Free up some memory
 
     auto topTrans = tick();
     if( not this->genSettings.formMatDist  and isRootMatComm ){ 
@@ -675,7 +675,7 @@ namespace ChronusQ {
       // Allocate local buffers
       this->fullMatrix_ = nullptr;
       if( MLoc and NLoc )
-        this->fullMatrix_ = this->memManager_.template malloc<MatsT>(MLoc*NLoc);
+        this->fullMatrix_ = CQMemManager::get().malloc<MatsT>(MLoc*NLoc);
 
       if( this->genSettings.distMatFromRoot )
         this->fullMatGrid_->scatter(N,nStoreP,HV,N,this->fullMatrix_,MLoc,0,0);
@@ -697,7 +697,7 @@ namespace ChronusQ {
       }
 
 
-      if( HV ) this->memManager_.free(HV);
+      if( HV ) CQMemManager::get().free(HV);
 
     } else 
 #endif
@@ -1036,8 +1036,8 @@ namespace ChronusQ {
     const auto bmax = [&](size_t a){ return doLT ? a : NV2; };
     const auto jmax = [&](size_t i){ return doLT ? i : NO2; };
     
-    U* MOT  = this->memManager_.template malloc<U>(NBC2);
-    U* SCR  = trans ? this->memManager_.template malloc<U>(NBC2) : nullptr;
+    U* MOT  = CQMemManager::get().malloc<U>(NBC2);
+    U* SCR  = trans ? CQMemManager::get().malloc<U>(NBC2) : nullptr;
 
 
     std::vector<TwoBodyContraction<U>> cList;
@@ -1054,7 +1054,7 @@ namespace ChronusQ {
     size_t nAlloc = nVec * nMatPVec * NB2;
     //std::cerr << "MO2AO " << nAlloc*sizeof(MatsT) / 1e9 << std::endl;
 
-    U * first = this->memManager_.template malloc<U>(nAlloc);
+    U * first = CQMemManager::get().malloc<U>(nAlloc);
 
     MatsT *mo1 = nullptr; 
     MatsT *mo2 = nullptr;
@@ -1188,8 +1188,8 @@ namespace ChronusQ {
     }
 
 
-    this->memManager_.free(MOT);
-    if( SCR ) this->memManager_.free(SCR);
+    CQMemManager::get().free(MOT);
+    if( SCR ) CQMemManager::get().free(SCR);
 
 
     return cList;
@@ -1234,8 +1234,8 @@ namespace ChronusQ {
     const auto bmax = [&](size_t a){ return doLT ? a : NV2; };
     const auto jmax = [&](size_t i){ return doLT ? i : NO2; };
     
-    U* MOT  = this->memManager_.template malloc<U>(NBC2);
-    U* SCR  = this->memManager_.template malloc<U>(NBC2);
+    U* MOT  = CQMemManager::get().malloc<U>(NBC2);
+    U* SCR  = CQMemManager::get().malloc<U>(NBC2);
   
     auto MOTRANS = [&]( MatsT* CMO1, MatsT* CMO2, U* X ) {
       blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NBC,NBC,NBC,U(1.0),CMO1,NBC,X  ,NBC,U(0.0),SCR,NBC); 
@@ -1333,7 +1333,7 @@ namespace ChronusQ {
 
     }
 
-    this->memManager_.free(MOT,SCR);
+    CQMemManager::get().free(MOT,SCR);
 
   }; 
 

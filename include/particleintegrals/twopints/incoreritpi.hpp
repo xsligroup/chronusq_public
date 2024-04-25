@@ -72,20 +72,20 @@ namespace ChronusQ {
 
     // Constructor
     InCoreRITPI() = delete;
-    InCoreRITPI(CQMemManager &mem, size_t nb):
-        TwoPInts<IntsT>(mem, nb), NBRI(0), NBNBRI(0) {}
-    InCoreRITPI(CQMemManager &mem, size_t nb, size_t nbri):
-        TwoPInts<IntsT>(mem, nb), NBRI(nbri) {
+    InCoreRITPI(size_t nb):
+        TwoPInts<IntsT>(nb), NBRI(0), NBNBRI(0) {}
+    InCoreRITPI(size_t nb, size_t nbri):
+        TwoPInts<IntsT>(nb), NBRI(nbri) {
       NBNBRI = this->nBasis()*nRIBasis();
       malloc();
     }
     InCoreRITPI( const InCoreRITPI &other ):
-        InCoreRITPI(other.memManager(), other.nBasis(), other.nRIBasis()) {
+        InCoreRITPI(other.nBasis(), other.nRIBasis()) {
       std::copy_n(other.ERI3J, this->nBasis()*NBNBRI, ERI3J);
     }
     template <typename IntsU>
     InCoreRITPI( const InCoreRITPI<IntsU> &other, int = 0 ):
-        InCoreRITPI(other.memManager(), other.nBasis(), other.nRIBasis()) {
+        InCoreRITPI(other.nBasis(), other.nRIBasis()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real InCoreRITPI from a Complex one.");
@@ -110,7 +110,7 @@ namespace ChronusQ {
     }
     InCoreRITPI& operator=( InCoreRITPI &&other ) {
       if (this != &other) { // self-assignment check expected
-        this->memManager().free(ERI3J);
+        CQMemManager::get().free(ERI3J);
         this->NB = other.NB;
         NBRI = other.NBRI;
         NBNBRI = other.NBNBRI;
@@ -149,7 +149,7 @@ namespace ChronusQ {
 
     // Raw ERI access
     void setSaveRawERI(bool save) { saveRawERI_ = save; }
-    void clearRawERI() { this->memManager().free(rawERI3J_); rawERI2C_ = nullptr; }
+    void clearRawERI() { CQMemManager::get().free(rawERI3J_); rawERI2C_ = nullptr; }
     IntsT* rawERI3J() { return rawERI3J_; }
     const IntsT* rawERI3J() const { return rawERI3J_; }
     std::shared_ptr<cqmatrix::Matrix<IntsT>> rawERI2C() const { return rawERI2C_; }
@@ -224,7 +224,7 @@ namespace ChronusQ {
 
     InCore4indexTPI<IntsT> to4indexERI() {
 
-      InCore4indexTPI<IntsT> eri4i(this->memManager(), this->nBasis());
+      InCore4indexTPI<IntsT> eri4i(this->nBasis());
       
       size_t NB2 = this->nBasis() * this->nBasis();
       blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2,NB2,NBRI,IntsT(1.),pointer(),NBRI,
@@ -251,22 +251,22 @@ namespace ChronusQ {
     void malloc() {
       size_t NB3 = this->nBasis()*NBNBRI;
       if (ERI3J) {
-        if (this->memManager().getSize(ERI3J) == NB3)
+        if (CQMemManager::get().getSize(ERI3J) == NB3)
           return;
-        this->memManager().free(ERI3J);
+        CQMemManager::get().free(ERI3J);
       }
-      try { ERI3J = this->memManager().template malloc<IntsT>(NB3); }
+      try { ERI3J = CQMemManager::get().template malloc<IntsT>(NB3); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full RI-ERI tensor ("
                   << (NB3/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << this->memManager() << std::endl;
+        std::cout << std::endl << CQMemManager::get() << std::endl;
         CErr();
       }
     }
 
     virtual ~InCoreRITPI() {
-      if(ERI3J) this->memManager().free(ERI3J);
+      if(ERI3J) CQMemManager::get().free(ERI3J);
     }
 
   }; // class InCoreRITPI
@@ -284,13 +284,13 @@ namespace ChronusQ {
 
     // Constructor
     InCoreAuxBasisRIERI() = delete;
-    InCoreAuxBasisRIERI(CQMemManager &mem, size_t nb):
-        InCoreRITPI<IntsT>(mem, nb) {}
-    InCoreAuxBasisRIERI(CQMemManager &mem, size_t nb, size_t nbri):
-        InCoreRITPI<IntsT>(mem, nb, nbri) {}
-    InCoreAuxBasisRIERI(CQMemManager &mem, size_t nb,
+    InCoreAuxBasisRIERI(size_t nb):
+        InCoreRITPI<IntsT>(nb) {}
+    InCoreAuxBasisRIERI(size_t nb, size_t nbri):
+        InCoreRITPI<IntsT>(nb, nbri) {}
+    InCoreAuxBasisRIERI(size_t nb,
         std::shared_ptr<BasisSet> auxBasisSet):
-        InCoreRITPI<IntsT>(mem, nb, auxBasisSet->nBasis),
+        InCoreRITPI<IntsT>(nb, auxBasisSet->nBasis),
         auxBasisSet_(auxBasisSet) {}
     InCoreAuxBasisRIERI( const InCoreAuxBasisRIERI& ) = default;
     template <typename IntsU>
@@ -384,11 +384,11 @@ namespace ChronusQ {
 
     // Constructor
     InCoreCholeskyRIERI() = delete;
-    InCoreCholeskyRIERI(CQMemManager &mem, size_t nb, double tau,
+    InCoreCholeskyRIERI(size_t nb, double tau,
         CHOLESKY_ALG alg = CHOLESKY_ALG::DYNAMIC_ERI, bool genContr = true,
         double sigma = 0.01, size_t maxQual = 1000, size_t minShrink = 10,
         bool build4I = false):
-        InCoreRITPI<IntsT>(mem, nb), alg_(alg), tau_(tau),
+        InCoreRITPI<IntsT>(nb), alg_(alg), tau_(tau),
         sigma_(sigma), maxQual_(maxQual), minShrinkCycle_(minShrink),
         generalContraction_(genContr), build4I_(build4I) {}
 

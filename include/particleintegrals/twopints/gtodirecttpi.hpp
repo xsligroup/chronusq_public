@@ -45,26 +45,26 @@ namespace ChronusQ {
 
     // Constructor
     DirectTPI() = delete;
-    DirectTPI(CQMemManager &mem, BasisSet &basis, BasisSet &basis2, Molecule &mol, double threshSchwarz):
-        TwoPInts<IntsT>(mem, basis.nBasis, basis2.nBasis), 
+    DirectTPI(BasisSet &basis, BasisSet &basis2, Molecule &mol, double threshSchwarz):
+        TwoPInts<IntsT>(basis.nBasis, basis2.nBasis), 
         basisSet_(basis), basisSet2_(basis2),molecule_(mol),
         threshSchwarz_(threshSchwarz) {}
     DirectTPI( const DirectTPI &other ):
-        DirectTPI(other.memManager(), other.basisSet(), other.basisSet2(), other.molecule(), other.threshSchwarz_) {
+        DirectTPI(other.basisSet(), other.basisSet2(), other.molecule(), other.threshSchwarz_) {
       std::copy_n(other.schwarz_, basisSet_.nShell*basisSet_.nShell, schwarz_);
       std::copy_n(other.schwarz2_, basisSet2_.nShell*basisSet2_.nShell, schwarz2_);
     }
     template <typename IntsU>
     DirectTPI( const DirectTPI<IntsU> &other, int = 0 ):
-        DirectTPI(other.memManager_, other.basisSet_, other.basisSet2_, other.molecule_, other.threshSchwarz_) {
+        DirectTPI(other.basisSet_, other.basisSet2_, other.molecule_, other.threshSchwarz_) {
       if (other.schwarz_) {
         size_t NS = basisSet().nShell;
-        schwarz_ = this->memManager().template malloc<double>(NS*NS);
+        schwarz_ = CQMemManager::get().malloc<double>(NS*NS);
         std::copy_n(other.schwarz_, NS*NS, schwarz_);
       }
       if (other.schwarz2_) {
         size_t NS = basisSet2().nShell;
-        schwarz2_ = this->memManager().template malloc<double>(NS*NS);
+        schwarz2_ = CQMemManager::get().malloc<double>(NS*NS);
         std::copy_n(other.schwarz2_, NS*NS, schwarz2_);
       }
     }
@@ -134,8 +134,8 @@ namespace ChronusQ {
     }
 
     virtual ~DirectTPI() {
-      if(schwarz_)  this->memManager().free(schwarz_);
-      if(schwarz2_) this->memManager().free(schwarz2_);
+      if(schwarz_)  CQMemManager::get().free(schwarz_);
+      if(schwarz2_) CQMemManager::get().free(schwarz2_);
     }
 
   }; // class DirectTPI

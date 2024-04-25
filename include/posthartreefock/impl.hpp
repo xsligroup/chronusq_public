@@ -125,7 +125,7 @@ void PostHartreeFock<MatsT,IntsT>::alloc() {
 
   oneRDM.reserve(NS);
   for (auto i = 0ul; i < NS; i++) {
-    oneRDM.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(this->memManager, nCorrO)); 
+    oneRDM.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO)); 
   }
 
 } // PostHartreeFock<T>::alloc

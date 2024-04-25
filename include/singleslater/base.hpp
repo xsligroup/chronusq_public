@@ -49,7 +49,7 @@ namespace ChronusQ {
     SCFControls scfControls;
 
     std::shared_ptr<SingleSlaterBase> buildSingleSlater(
-        std::ostream &out, CQMemManager &mem,
+        std::ostream &out,
         Molecule &mol, BasisSet &basis,
         std::shared_ptr<IntegralsBase> aoints) const;
 
@@ -101,9 +101,9 @@ namespace ChronusQ {
 
     SingleSlaterBase() = delete;
 
-    SingleSlaterBase(MPI_Comm c, CQMemManager &mem, Molecule &mol, BasisSet &basis,
+    SingleSlaterBase(MPI_Comm c, Molecule &mol, BasisSet &basis,
       size_t _nC, bool iCS, Particle p) : 
-      WaveFunctionBase(c, mem,mol,basis,_nC,iCS,p), QuantumBase(c, mem,_nC,iCS,p),
+      WaveFunctionBase(c,mol,basis,_nC,iCS,p), QuantumBase(c,_nC,iCS,p),
       printLevel((MPIRank(c) == 0) ? 2 : 0) { };
       
 

@@ -440,12 +440,12 @@ namespace ChronusQ {
 
       // Compute the mappings from primitives to CGTOs
       BasisSet primitives(originalBasisSet.uncontractBasis());
-      OnePInts<double> overlap(memManager_, primitives.nBasis);
+      OnePInts<double> overlap(primitives.nBasis);
 
       overlap.computeAOInts(primitives, mol, emPert, OVERLAP, options);
 
-      double *mapPrim2Cont = memManager_.malloc<double>(primitives.nBasis*originalBasisSet.nBasis);
-      originalBasisSet.makeMapPrim2Cont(overlap.pointer(), mapPrim2Cont, memManager_);
+      double *mapPrim2Cont = CQMemManager::get().malloc<double>(primitives.nBasis*originalBasisSet.nBasis);
+      originalBasisSet.makeMapPrim2Cont(overlap.pointer(), mapPrim2Cont);
 
       coefBlocks.resize(basisSet.nShell, nullptr);
       shellPrims.reserve(basisSet.nShell);
@@ -459,7 +459,7 @@ namespace ChronusQ {
         if (pContrSize == 1) {
           maxNprimAMSize = std::max(maxNprimAMSize, pAMSize);
           shellPrims.emplace_back(1, shellP);
-          coefBlocks[P] = memManager_.malloc<double>(1);
+          coefBlocks[P] = CQMemManager::get().malloc<double>(1);
           coefBlocks[P][0] = 1.0;
           continue;
         }
@@ -481,7 +481,7 @@ namespace ChronusQ {
         maxNprimAMSize = std::max(maxNprimAMSize, pNprim * pAMSize);
 
         size_t pBegin = basisSet.mapSh2Bf[P];
-        coefBlocks[P] = memManager_.malloc<double>(pContrSize * pNprim);
+        coefBlocks[P] = CQMemManager::get().malloc<double>(pContrSize * pNprim);
         for (size_t c = 0; c < pContrSize; c++) {
           for (size_t i = 0; i < pNprim; i++) {
             coefBlocks[P][i + c * pNprim]
@@ -491,7 +491,7 @@ namespace ChronusQ {
         }
         shellPrims.push_back(std::move(primsP));
       }
-      memManager_.free(mapPrim2Cont);
+      CQMemManager::get().free(mapPrim2Cont);
 
       workBlocks.resize(nthreads, nullptr);
 
@@ -510,7 +510,7 @@ namespace ChronusQ {
           + maxNprimAMSize * maxAMSize
           * maxAMSize * maxAMSize;
       for (size_t i = 0; i < nthreads; i++) {
-        workBlocks[i] = memManager_.malloc<double>(primAllocSize);
+        workBlocks[i] = CQMemManager::get().malloc<double>(primAllocSize);
       }
     }
 
@@ -683,13 +683,13 @@ namespace ChronusQ {
     //std::cout << "  Libint-ERI4 duration   = " << durERI4 << std::endl;
 
     for (double *p : coefBlocks) {
-      if (p) memManager_.free(p);
+      if (p) CQMemManager::get().free(p);
     }
     coefBlocks.clear();
 
     if (not segmented)
       for (size_t i = 0; i < nthreads; i++) {
-        memManager_.free(workBlocks[i]);
+        CQMemManager::get().free(workBlocks[i]);
       }
 
     // Debug output of the ERIs
@@ -1619,16 +1619,16 @@ namespace ChronusQ {
 
 
 //SS start
-//    double *gaugeSLSLACxx = memManager_.malloc<double>(pow(NB,4)*16); // 9 elements, xx, xy ... component of derivatives, xx of gauge
+//    double *gaugeSLSLACxx = CQMemManager::get().malloc<double>(pow(NB,4)*16); // 9 elements, xx, xy ... component of derivatives, xx of gauge
 // this piece is fake, ignore
 
-    double *gaugeLSSLACsymm = memManager_.malloc<double>(
+    double *gaugeLSSLACsymm = CQMemManager::get().malloc<double>(
       pow(NB, 4) * 16); // 9 elements, xx, xy ... component of derivatives, xx of gauge
-    double *gaugeSLSLACxxtrue = memManager_.malloc<double>(
+    double *gaugeSLSLACxxtrue = CQMemManager::get().malloc<double>(
       pow(NB, 4) * 16); // 9 elements, xx, xy ... component of derivatives, xx of gauge
-    double *gaugeSLLSsymm = memManager_.malloc<double>(
+    double *gaugeSLLSsymm = CQMemManager::get().malloc<double>(
       pow(NB, 4) * 16); // 9 elements, xx, xy .. component of derivatives, xx of gauge
-    double *gaugeLSLSsymm = memManager_.malloc<double>(
+    double *gaugeLSLSsymm = CQMemManager::get().malloc<double>(
       pow(NB, 4) * 16); // 9 elements, xx, xy .. component of derivatives, xx of gauge
 
 //SS end
@@ -3613,12 +3613,12 @@ namespace ChronusQ {
 
 
 
-    memManager_.free<double>(gaugeLSSLACsymm);
-    memManager_.free<double>(gaugeSLLSsymm);
-    memManager_.free<double>(gaugeLSLSsymm);
+    CQMemManager::get().free<double>(gaugeLSSLACsymm);
+    CQMemManager::get().free<double>(gaugeSLLSsymm);
+    CQMemManager::get().free<double>(gaugeLSLSsymm);
 
 // deallocate SLSL after assigning the integrals
-    //memManager_.free<double>(gaugeSLSLACxx);
+    //CQMemManager::get().free<double>(gaugeSLSLACxx);
 
 
 
@@ -3739,14 +3739,14 @@ namespace ChronusQ {
     size_t nERI3 = 37;
 
     if(ERI4DCB!=nullptr)
-      ints()->memManager().free(ERI4DCB);
+      CQMemManager::get().free(ERI4DCB);
 
-    try { ERI4DCB = ints()->memManager().malloc<double>(nERI3*NB3*n1); }
+    try { ERI4DCB = CQMemManager::get().malloc<double>(nERI3*NB3*n1); }
     catch(...) {
       std::cout << std::fixed;
       std::cout << "Insufficient memory for the full ERI Dirac-Coulomb-Gaunt tensor ("
                 << (nERI3*NB3*n1/1e9) * sizeof(double) << " GB)" << std::endl;
-      std::cout << std::endl << ints()->memManager() << std::endl;
+      std::cout << std::endl << CQMemManager::get() << std::endl;
       CErr();
     }
     memset(ERI4DCB, 0.,nERI3*NB3*n1*sizeof(double));

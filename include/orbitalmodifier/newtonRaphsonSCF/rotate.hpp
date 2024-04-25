@@ -39,7 +39,7 @@ void NewtonRaphsonSCF<MatsT>::saveRefMOs(vecMORef<MatsT>& mo) {
     refMO.reserve(nMO);
     for( size_t i = 0; i < nMO; i++ ) {
       size_t NBC = mo[i].get().dimension();
-      refMO.emplace_back(this->memManager, NBC);
+      refMO.emplace_back(NBC);
     }
   }
 
@@ -87,7 +87,7 @@ std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
   std::vector<cqmatrix::Matrix<MatsT>> A;
   A.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
-    A.emplace_back(this->memManager,den[i]->dimension());
+    A.emplace_back(den[i]->dimension());
   for( auto& a : A ) a.clear();
 
   // Parse parameters to make antisymmetric matrices
@@ -106,7 +106,7 @@ std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
   std::vector<cqmatrix::Matrix<MatsT>> U;
   U.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
-    U.emplace_back(this->memManager,den[i]->dimension());
+    U.emplace_back(den[i]->dimension());
   for( auto& u : U ) u.clear();
 
   // Compute either exp(A) or Cayley transform
@@ -114,14 +114,14 @@ std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
     size_t N = U[i].dimension();
     // Try to compute exp(A) or use Cayley transform if failed
     try{
-      MatExp(N,A[i].pointer(),N,U[i].pointer(),N,this->memManager);
+      MatExp(N,A[i].pointer(),N,U[i].pointer(),N);
     }
     catch(...){
         CErr("Matrix Exponential failed to converge");
     }
 #ifdef _NRSCF_DEBUG_UNITARY
     prettyPrintSmart(std::cout, "Unitary Matrix", U[i].pointer(),N,N,N);
-    cqmatrix::Matrix<MatsT> SCR(this->memManager,N);
+    cqmatrix::Matrix<MatsT> SCR(N);
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
         N, N, N, 
         MatsT(1.), U[i].pointer(), N, 

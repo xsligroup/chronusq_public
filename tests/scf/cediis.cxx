@@ -32,8 +32,8 @@
 TEST( CEDIIS, BFGS_Solver_Test ) {
 
   {
-    CQMemManager memManager(256e6,2048);
-    BFGSTest bfgsTest(memManager);
+    CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,256e6,2048);
+    BFGSTest bfgsTest;
     ASSERT_TRUE( bfgsTest.converged ) << "BFGS Solver Test did not converge";
     EXPECT_NEAR(bfgsTest.x[0],  1., 1E-8) << "BFGS Solver Test Failed for first variable";
     EXPECT_NEAR(bfgsTest.x[1],  0., 1E-8) << "BFGS Solver Test Failed for second variable";
@@ -48,8 +48,8 @@ TEST( CEDIIS, BFGS_Solver_Test ) {
 TEST( CEDIIS, GoldenSection_Solver_Test ) {
 
   {
-    CQMemManager memManager(256e6,2048);
-    GoldenSectionTest goldenSectionTest(memManager);
+    CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,256e6,2048);
+    GoldenSectionTest goldenSectionTest;
     EXPECT_NEAR(goldenSectionTest.x[0], 0., 1E-8) << "Golden Section Search Solver Test Failed for variable";
     EXPECT_NEAR(goldenSectionTest.yMin, 0., 1E-8) << "Golden Section Search Solver Test Failed for ordinate";
   }
@@ -60,8 +60,8 @@ TEST( CEDIIS, GoldenSection_Solver_Test ) {
 TEST( CEDIIS, Interpolate_2D_Test ) {
 
   {
-    CQMemManager memManager(256e6,2048);
-    InterpolateTest interpolateTest(memManager);
+    CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,256e6,2048);
+    InterpolateTest interpolateTest;
     ASSERT_TRUE( interpolateTest.converged ) << "Interpolate Test did not converge";
     EXPECT_NEAR(interpolateTest.coeffs[0], 0.75, 1E-6) << "Interpolate Test Failed for first coefficient";
     EXPECT_NEAR(interpolateTest.coeffs[1], 0.25, 1E-6) << "Interpolate Test Failed for second coefficient";

@@ -76,7 +76,7 @@ namespace ChronusQ {
       char TRANS1, char TRANS2) const {
     
     size_t NB = this->nBasis();
-    InCore4indexTPI<IntsU> spinor(this->memManager(), 2*NB);
+    InCore4indexTPI<IntsU> spinor(2*NB);
     spinor.clear();
 
     //Try all the combinations
@@ -107,7 +107,7 @@ namespace ChronusQ {
       char TRANS1, char TRANS2) const {
     
     size_t NB = this->nBasis();
-    InCore4indexTPI<double> spinor(this->memManager(), 2*NB);
+    InCore4indexTPI<double> spinor(2*NB);
     spinor.clear();
     
     //Try all the combinations with out Y
@@ -143,7 +143,7 @@ namespace ChronusQ {
     else if (this->nRelComp() == 23) nSpinorRelComp = 2; // + Gaunt (LS |dot SL) ??
     else CErr("Unrecognizable nRelComponent");
   
-    InCore4indexRelERI<IntsU> spinor(this->memManager(), twoNB, nSpinorRelComp);    
+    InCore4indexRelERI<IntsU> spinor(twoNB, nSpinorRelComp);    
     
     // LLLL part
     {
@@ -187,7 +187,7 @@ namespace ChronusQ {
   template <typename IntsU>
   InCoreRITPI<IntsU> InCoreRITPI<IntsT>::spatialToSpinBlock() const {
     size_t NB = this->nBasis();
-    InCoreRITPI<IntsU> spinor(this->memManager(), 2*NB, NBRI);
+    InCoreRITPI<IntsU> spinor(2*NB, NBRI);
 /*
     for ( auto sp = 0ul; sp < 2; sp++)
     for ( auto nu = 0ul; nu < NB; nu++)
@@ -205,7 +205,7 @@ namespace ChronusQ {
   cqmatrix::Matrix<MatsT> OnePRelInts<IntsT>::formW() const {
     if (hasSpinOrbit()) {
       size_t NB = this->nBasis();
-      cqmatrix::Matrix<MatsT> W(this->ParticleIntegrals::memManager(), 2*NB);
+      cqmatrix::Matrix<MatsT> W(2*NB);
       // W = [ W1  W2 ]
       //     [ W3  W4 ]
       dcomplex *W1 = W.pointer();
@@ -233,7 +233,7 @@ namespace ChronusQ {
   template <>
   cqmatrix::Matrix<double> OnePRelInts<double>::formW() const {
     if (hasSpinOrbit()) {
-      cqmatrix::Matrix<double> dummy(this->ParticleIntegrals::memManager(),1);
+      cqmatrix::Matrix<double> dummy(1);
       CErr("W matrix with spin-orbit cannot be real.");
       return dummy;
     } else {

@@ -152,6 +152,9 @@ namespace ChronusQ {
     SingleSlaterGuessOptions ssGuestOptions;
     input.parse();
 
+    // Misc options initializes CQMemManager
+    CQMiscOptions(output,input);
+
     if (input.containsSection("SCF")) {
       ssGuestOptions.parseSection(input.getSection("SCF"));
     }
@@ -208,8 +211,6 @@ namespace ChronusQ {
       } catch(...) { ; }
     }
 
-    auto memManager = CQMiscOptions(output,input);
-
     Molecule mol(std::move(CQMoleculeOptions(output,input,scrFileName))); // Create Molecule object
 
     std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS"); // Create BasisSet object
@@ -223,7 +224,7 @@ namespace ChronusQ {
     
     // Build all integral objects. Each is in a shared pointer of IntegralBase
     auto [aoints, prot_aoints, ep_aoints] = 
-        IntegralOptions::buildAllIntegrals(output, *memManager, mol, basis, dfbasis, prot_basis,
+        IntegralOptions::buildAllIntegrals(output, mol, basis, dfbasis, prot_basis,
         aoints_options, prot_aoints_options, ep_aoints_options);
 
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
@@ -238,7 +239,7 @@ namespace ChronusQ {
 
     // Create the SingleSlater object
     if (doNEO) {
-      std::tie(ss, ssOptions) = CQNEOSSOptions(output,input,*memManager,mol,
+      std::tie(ss, ssOptions) = CQNEOSSOptions(output,input,mol,
                                               *basis,*prot_basis,
                                                aoints, prot_aoints,
                                                ep_aoints, scfControls);
@@ -249,7 +250,7 @@ namespace ChronusQ {
     } else {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
-      ss = ssOptions.buildSingleSlater(output,*memManager,mol,*basis,aoints);
+      ss = ssOptions.buildSingleSlater(output,mol,*basis,aoints);
       ss->buildOrbitalModifierOptions();
 
       // MO swapping
@@ -305,7 +306,7 @@ namespace ChronusQ {
       std::shared_ptr<RealTimeBase> rt = nullptr;
 
 //      if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
-//        compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
+//        compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
 //      }
 
       JobType elecJob = CQGeometryOptions(output, input, job.jobType, mol, ss, rt,
@@ -339,7 +340,7 @@ namespace ChronusQ {
               CErr("NEO with complex integrals NYI!",output);
             }
 
-            //ep_aoints = ep_aoints_options.buildAsymmIntegral(output, *memManager, mol, basis, dfbasis, prot_basis,
+            //ep_aoints = ep_aoints_options.buildAsymmIntegral(output,  mol, basis, dfbasis, prot_basis,
             //    aoints_options, prot_aoints_options, aoints, prot_aoints);
 
             if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints)){
@@ -359,7 +360,7 @@ namespace ChronusQ {
         if( elecJob == JobType::SCF ) {
 
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
-            compute_X2C_CoreH_Fock(*memManager, mol, *basis, aoints, emPert, ss, ssOptions);
+            compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
           }
           ss->formCoreH(emPert, true);
           //if(firstStep) ss->formGuess(guessSSOptions);
@@ -373,7 +374,7 @@ namespace ChronusQ {
             conventionalSCF = \
             std::make_shared<ConventionalSCFNew<_ssT,_MatsT,_IntsT>>(  \
               ss->scfControls, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
-              ,MPI_COMM_WORLD,*memManager) ;                                       \
+              ,MPI_COMM_WORLD) ;                                       \
             found = true;                                \
           } catch(...) { };
 
@@ -422,7 +423,7 @@ namespace ChronusQ {
             realtimeSCF = \
             std::make_shared<RealTimeSCF<_ssT,_MatsT,_IntsT>>(  \
             tdSCFOptions, rt->pert, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
-            ,MPI_COMM_WORLD,*memManager) ;                                       \
+            ,MPI_COMM_WORLD) ;                                       \
             found = true;                                \
           } catch(...) { }
 
@@ -468,7 +469,7 @@ namespace ChronusQ {
 
 #ifdef CQ_HAS_TA
 
-          runCoupledCluster(jobType, mol, ss, aoints, *memManager, rstFile, input, output);
+          runCoupledCluster(jobType, mol, ss, aoints,  rstFile, input, output);
           TAManager::get().discard_cache();
           std::cout << TAManager::get() << std::endl;
 
@@ -571,7 +572,7 @@ namespace ChronusQ {
       }
     }
 
-    memManager->printHighWaterMark(output);
+    CQMemManager::get().printHighWaterMark(output);
 
     ProgramTimer::tock("Chronus Quantum");
     printTimerSummary(std::cout);

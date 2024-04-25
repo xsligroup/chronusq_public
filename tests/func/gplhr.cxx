@@ -57,7 +57,7 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 
   SafeFile matFile(refName,true);
 
-  CQMemManager mem(2e9,256);
+  CQMemManager::get().initialize(CQMemBackendType::PREALLOCATED,2e9,256);
 
   size_t N = 0;
 
@@ -96,16 +96,16 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 
 
   // Allocate and read the matrix
-  ReadT * A = (MLoc and NLoc) ? mem.malloc<ReadT>(MLoc * NLoc) : nullptr;
+  ReadT * A = (MLoc and NLoc) ? CQMemManager::get().malloc<ReadT>(MLoc * NLoc) : nullptr;
 
   ReadT *AREAD = nullptr;
   ReadT *DIAG  = nullptr;
   if( isRoot ) {
 
-    AREAD = isMPI ? mem.malloc<ReadT>(N*N) : A;
+    AREAD = isMPI ? CQMemManager::get().malloc<ReadT>(N*N) : A;
     matFile.readData("/matrix",AREAD); 
 
-    DIAG  = mem.malloc<ReadT>(N);
+    DIAG  = CQMemManager::get().malloc<ReadT>(N);
     for( size_t k = 0; k < N; k++ ) DIAG[k] = AREAD[k*(N+1)];
 
   }
@@ -121,13 +121,13 @@ void GPLHR_TEST(size_t nRoots, size_t m, dcomplex sigma,
 #ifdef CQ_ENABLE_MPI
   if( isMPI ) {
 
-    if( AREAD ) mem.free(AREAD);
+    if( AREAD ) CQMemManager::get().free(AREAD);
 
 
     if( not std::is_same<EigT,ReadT>::value ) {
-      ALOC = mem.malloc<EigT>(MLoc * NLoc);
+      ALOC = CQMemManager::get().malloc<EigT>(MLoc * NLoc);
       std::copy_n(A,MLoc*NLoc,ALOC);
-      mem.free(A);
+      CQMemManager::get().free(A);
     }
 
   }
@@ -154,8 +154,8 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
       EigT *VLOC = nullptr, *AVLOC = nullptr;
 
-      VLOC  = mem.malloc<EigT>(MLoc_V * NLoc_V);
-      AVLOC = mem.malloc<EigT>(MLoc_V * NLoc_V);
+      VLOC  = CQMemManager::get().malloc<EigT>(MLoc_V * NLoc_V);
+      AVLOC = CQMemManager::get().malloc<EigT>(MLoc_V * NLoc_V);
 
       grid->scatter(N,nVec,V_ptr,N,VLOC,MLoc_V,0,0);
 
@@ -164,8 +164,8 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
       grid->gather(N,nVec,AV_ptr,N,AVLOC,MLoc_V,0,0);
 
-      mem.free(VLOC);
-      mem.free(AVLOC);
+      CQMemManager::get().free(VLOC);
+      CQMemManager::get().free(AVLOC);
 
     } else 
 #endif
@@ -196,8 +196,7 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
   size_t nThreads = omp_get_num_threads();
   ProgramTimer::initialize("GPLHR test", nThreads);
-  GPLHR<EigT> gplhr(MPI_COMM_WORLD,mem,N,300,conver,nRoots,
-    func,PC);
+  GPLHR<EigT> gplhr(MPI_COMM_WORLD,N,300,conver,nRoots,func,PC);
 
 
   gplhr.setM(m);
@@ -207,7 +206,7 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
 
   ROOT_ONLY(MPI_COMM_WORLD);
 
-  dcomplex *refW = mem.malloc<dcomplex>(N);
+  dcomplex *refW = CQMemManager::get().malloc<dcomplex>(N);
   matFile.readData("/W",refW);
 
   std::stable_sort(refW,refW + N,
@@ -225,30 +224,30 @@ typename GPLHR<EigT>::LinearTrans_t func = [&]( size_t nVec, SolverVectors<EigT>
       "DIFF1 = " << diff1 << ", DIFF2 = " << diff2;
   }
 
-  mem.free(refW);
+  CQMemManager::get().free(refW);
 
 #else
 
 
-  dcomplex *ACMPLX = mem.malloc<dcomplex>(N*N);
+  dcomplex *ACMPLX = CQMemManager::get().malloc<dcomplex>(N*N);
   std::copy_n(A,N*N,ACMPLX);
 
-  dcomplex *W = mem.malloc<dcomplex>(N);
-  dcomplex *VR = mem.malloc<dcomplex>(N*N);
-  dcomplex *VL = mem.malloc<dcomplex>(N*N);
+  dcomplex *W = CQMemManager::get().malloc<dcomplex>(N);
+  dcomplex *VR = CQMemManager::get().malloc<dcomplex>(N*N);
+  dcomplex *VL = CQMemManager::get().malloc<dcomplex>(N*N);
 
   GeneralEigen('V','V',N,ACMPLX,N,W,VL,N,VR,N);
 
   matFile.safeWriteData("/W",W,{N});
 
-  mem.free(ACMPLX, W, VR, VL);
+  CQMemManager::get().free(ACMPLX, W, VR, VL);
 
 #endif
 
-  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) mem.free(ALOC);
-  if (AREAD and AREAD != A) mem.free(AREAD);
-  if (DIAG) mem.free(DIAG);
-  if (A) mem.free(A);
+  if (ALOC and ALOC != reinterpret_cast<EigT*>(A)) CQMemManager::get().free(ALOC);
+  if (AREAD and AREAD != A) CQMemManager::get().free(AREAD);
+  if (DIAG) CQMemManager::get().free(DIAG);
+  if (A) CQMemManager::get().free(A);
 
 }
 

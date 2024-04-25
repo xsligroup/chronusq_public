@@ -63,10 +63,9 @@ public:
   // default constructors
   DASCIBuilder() = delete;
   DASCIBuilder(MPI_Comm comm,
-    CQMemManager& memManager,
     const IntegralsCollection& moints,
     const DeterminantFactory& detF):
-    NewCIBuilder<MatsT>(comm, memManager, moints, detF) {};
+    NewCIBuilder<MatsT>(comm, moints, detF) {};
 
   DASCIBuilder(const DASCIBuilder<MatsT>& other) = default;
   DASCIBuilder(DASCIBuilder<MatsT>&& other)      = default;

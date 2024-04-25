@@ -23,7 +23,6 @@
  */
 #pragma once
 
-#include <memmanager.hpp>
 #include <cqlinalg.hpp>
 #include <cerr.hpp>
 
@@ -43,7 +42,6 @@ namespace ChronusQ {
     typedef std::function< void(size_t,SolverVectors<_F>&,SolverVectors<_F>&) >    LinearTrans_t;
     typedef std::function< void(size_t,_F,SolverVectors<_F>&,SolverVectors<_F>&) > Shift_t;
 
-    CQMemManager &memManager_;
     MPI_Comm     comm_;
 
     size_t N_;       ///< Problem dimension
@@ -65,7 +63,7 @@ namespace ChronusQ {
 
     inline std::shared_ptr<SolverVectors<_F>> rawVecsGenerator_(size_t nVec) {
 
-      return std::make_shared<RawVectors<_F>>(comm_, this->memManager_, this->N_, nVec);
+      return std::make_shared<RawVectors<_F>>(comm_, this->N_, nVec);
 
     };
 
@@ -87,7 +85,6 @@ namespace ChronusQ {
     // Constructor (unshifted preconditioner)
     IterSolver(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -97,7 +94,7 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-        comm_(c), memManager_(mem), N_(N), mSS_(MSS), maxMacroIter_(MAXMACRO),
+        comm_(c), N_(N), mSS_(MSS), maxMacroIter_(MAXMACRO),
         maxMicroIter_(MAXMICRO), convCrit_(conv), vecGen_(vecGen),
         linearTrans_(linearTrans), shiftVec_(shiftVec),
         preCondNoShift_(preNoShift) {
@@ -121,7 +118,6 @@ namespace ChronusQ {
     // Constructor (shifted preconditioner)
     IterSolver(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -131,7 +127,7 @@ namespace ChronusQ {
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-        comm_(c), memManager_(mem), N_(N), mSS_(MSS), maxMacroIter_(MAXMACRO),
+        comm_(c), N_(N), mSS_(MSS), maxMacroIter_(MAXMACRO),
         maxMicroIter_(MAXMICRO), convCrit_(conv), vecGen_(vecGen),
         linearTrans_(linearTrans), shiftVec_(shiftVec),
         preCondWShift_(preShift) {
@@ -185,7 +181,6 @@ namespace ChronusQ {
 
     IterLinearSolver(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -195,12 +190,11 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-     IterSolver<_F>(c,mem,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,preNoShift,
+     IterSolver<_F>(c,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,preNoShift,
                     vecGen,shiftVec){ }
 
     IterLinearSolver(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -210,7 +204,7 @@ namespace ChronusQ {
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-     IterSolver<_F>(c,mem,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,preShift,
+     IterSolver<_F>(c,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,preShift,
                     vecGen,shiftVec){ }
 
 
@@ -316,7 +310,6 @@ namespace ChronusQ {
 
     IterDiagonalizer(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -328,13 +321,12 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-      IterSolver<_F>(c,mem,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,
+      IterSolver<_F>(c,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,
                      preNoShift,vecGen,shiftVec),
         nRoots_(nR), nGuess_(nG){ }
 
     IterDiagonalizer(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       const size_t MAXMACRO,
@@ -346,18 +338,18 @@ namespace ChronusQ {
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-     IterSolver<_F>(c,mem,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,
+     IterSolver<_F>(c,N,MSS,MAXMACRO,MAXMICRO,conv,linearTrans,
                     preShift,vecGen,shiftVec),
        nRoots_(nR), nGuess_(nG){ }
 
 
     ~IterDiagonalizer() {
 
-      if(VL_)   this->memManager_.free(VL_);
-      if(AVL_)  this->memManager_.free(AVL_);
-      if(RESR_) this->memManager_.free(RESR_);
-      if(RESL_) this->memManager_.free(RESL_);
-      if(eigVal_) this->memManager_.free(eigVal_);
+      if(VL_)   CQMemManager::get().free(VL_);
+      if(AVL_)  CQMemManager::get().free(AVL_);
+      if(RESR_) CQMemManager::get().free(RESR_);
+      if(RESL_) CQMemManager::get().free(RESL_);
+      if(eigVal_) CQMemManager::get().free(eigVal_);
 
     };
 
@@ -373,9 +365,9 @@ namespace ChronusQ {
 
 //      size_t NNR = this->N_ * this->mSS_;
 
-      eigVal_ = this->memManager_.template malloc<dcomplex>(this->nRoots_);
-      //AVR_    = this->memManager_.template malloc<_F>(NNR);
-      //RESR_   = this->memManager_.template malloc<_F>(NNR);
+      eigVal_ = CQMemManager::get().malloc<dcomplex>(this->nRoots_);
+      //AVR_    = CQMemManager::get().malloc<_F>(NNR);
+      //RESR_   = CQMemManager::get().malloc<_F>(NNR);
 
     }
 
@@ -472,7 +464,6 @@ namespace ChronusQ {
 
     GPLHR(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MAXITER,
       double conv,
@@ -481,12 +472,11 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-      IterDiagonalizer<_F>(c,mem,N,2 + m*nR,1,MAXITER,conv,nR,nR,
+      IterDiagonalizer<_F>(c,N,2 + m*nR,1,MAXITER,conv,nR,nR,
                            linearTrans,preNoShift,vecGen,shiftVec){ }
 
     GPLHR(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MAXITER,
       double conv,
@@ -495,12 +485,12 @@ namespace ChronusQ {
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-      IterDiagonalizer<_F>(c,mem,N,2 + m*nR,1,MAXITER,conv,nR,nR,
+      IterDiagonalizer<_F>(c,N,2 + m*nR,1,MAXITER,conv,nR,nR,
                            linearTrans,preShift,vecGen,shiftVec){ }
 
     ~GPLHR() {
 
-      if( RelRes ) this->memManager_.free(RelRes);
+      if( RelRes ) CQMemManager::get().free(RelRes);
 
     }
 
@@ -521,7 +511,7 @@ namespace ChronusQ {
 
       // Allocate GPLHR specific Memory
 
-      this->RelRes = this->memManager_.template malloc<double>(this->nRoots_);
+      this->RelRes = CQMemManager::get().malloc<double>(this->nRoots_);
 
     }
 
@@ -601,7 +591,6 @@ namespace ChronusQ {
 
     Davidson(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MAXMACROITER,
       const size_t MAXMICROITER,
@@ -611,7 +600,7 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()):
-      IterDiagonalizer<_F>(c,mem,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
+      IterDiagonalizer<_F>(c,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
                            linearTrans,preNoShift,vecGen,shiftVec){
       eigenVectorCrit = conv;
       eigenValueCrit = 1e-2 * conv;
@@ -619,7 +608,7 @@ namespace ChronusQ {
 
     ~Davidson() {
 
-      if( RelRes  ) this->memManager_.free(RelRes);
+      if( RelRes  ) CQMemManager::get().free(RelRes);
 
     }
 
@@ -657,7 +646,7 @@ namespace ChronusQ {
 
     void setEigForT(dcomplex * _Eig) {
 
-      if( this->memManager_.getSize(_Eig) < this->nGuess_ )
+      if( CQMemManager::get().getSize(_Eig) < this->nGuess_ )
         CErr("Davison EigForT requires a memory block with size at least nGuess ",std::cout);
 
       EigForT = _Eig;
@@ -702,7 +691,7 @@ namespace ChronusQ {
       // ROOT_ONLY(this->comm_);
 
       // Allocate Davidson specific Memory
-      this->RelRes  = this->memManager_.template malloc<double>(this->nGuess_);
+      this->RelRes  = CQMemManager::get().malloc<double>(this->nGuess_);
     }
 
     bool runMicro();
@@ -778,7 +767,6 @@ namespace ChronusQ {
 
     GMRES(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       double conv,
@@ -786,12 +774,11 @@ namespace ChronusQ {
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-     IterLinearSolver<_F>(c,mem,N,MSS,1,MSS,conv,linearTrans,preNoShift,
+     IterLinearSolver<_F>(c,N,MSS,1,MSS,conv,linearTrans,preNoShift,
                           vecGen,shiftVec){ }
 
     GMRES(
       MPI_Comm c,
-      CQMemManager &mem,
       const size_t N,
       const size_t MSS,
       double conv,
@@ -799,15 +786,15 @@ namespace ChronusQ {
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
       const Shift_t &shiftVec = Shift_t()) :
-     IterLinearSolver<_F>(c,mem,N,MSS,1,MSS,conv,linearTrans,preShift,
+     IterLinearSolver<_F>(c,N,MSS,1,MSS,conv,linearTrans,preShift,
                           vecGen,shiftVec){ }
 
 
     ~GMRES() {
 
-      if(W_  )  this->memManager_.free(W_);
-      if(J_  )  this->memManager_.free(J_);
-      if(R_  )  this->memManager_.free(R_);
+      if(W_  )  CQMemManager::get().free(W_);
+      if(J_  )  CQMemManager::get().free(J_);
+      if(R_  )  CQMemManager::get().free(R_);
 
     }
 
@@ -826,9 +813,9 @@ namespace ChronusQ {
       // No MPI for GMRES
       // ROOT_ONLY(this->comm_);
 
-      J_   = this->memManager_.template malloc<_F>(2 * MSSnBatch);
-      R_   = this->memManager_.template malloc<_F>(MSSnBatch * this->mSS_);
-      W_   = this->memManager_.template malloc<_F>(MSSnBatch + nBatch);
+      J_   = CQMemManager::get().malloc<_F>(2 * MSSnBatch);
+      R_   = CQMemManager::get().malloc<_F>(MSSnBatch * this->mSS_);
+      W_   = CQMemManager::get().malloc<_F>(MSSnBatch + nBatch);
 
     }
 

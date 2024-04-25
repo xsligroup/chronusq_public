@@ -32,13 +32,12 @@ namespace ChronusQ
     class BFGSTest : public BFGS<double>
     {
     public:
-        CQMemManager &memManager;
         double *x;
         double *gx;
         double yMin;
         bool converged = false;
 
-        BFGSTest(CQMemManager &mem) : memManager(mem), BFGS<double>(2, 1E-18, mem)
+        BFGSTest() : BFGS<double>(2, 1E-18)
         {
 
             // Print Header output
@@ -48,8 +47,8 @@ namespace ChronusQ
             std::cout << "  Solving for x,y" << std::endl;
             std::cout << "======================================================" << std::endl;
             // Initialize 
-            x = memManager.template malloc<double>(2);
-            gx = memManager.template malloc<double>(2);
+            x = CQMemManager::get().malloc<double>(2);
+            gx = CQMemManager::get().malloc<double>(2);
             BFGS<double>::setXPointer(x);
             BFGS<double>::setGPointer(gx);
             x[0] = 3.;
@@ -76,7 +75,6 @@ namespace ChronusQ
 
             std::cout << std::endl << std::endl;
         };
-        BFGSTest() = delete;
         BFGSTest(const BFGSTest &) = delete;
         BFGSTest(BFGSTest &&) = delete;
 
@@ -93,7 +91,7 @@ namespace ChronusQ
 
         ~BFGSTest()
         {
-            memManager.free(x,gx);
+            CQMemManager::get().free(x,gx);
         };
     };
 }

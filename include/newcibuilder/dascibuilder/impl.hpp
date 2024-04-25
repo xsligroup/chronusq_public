@@ -158,10 +158,10 @@ void DASCIBuilder<MatsT>::buildSigma2e(
   size_t nVec = C.size();
   
   // allocate intermediates memory
-  SharedMemoryScratch<MatsT> SCR1(this->memManager_);
-  SharedMemoryScratch<MatsT> SCR2(this->memManager_);
-  SharedMemoryScratch<MatsT> SCR3(this->memManager_);
-  SharedMemoryScratch<MatsT> SCRSigma(this->memManager_);
+  SharedMemoryScratch<MatsT> SCR1;
+  SharedMemoryScratch<MatsT> SCR2;
+  SharedMemoryScratch<MatsT> SCR3;
+  SharedMemoryScratch<MatsT> SCRSigma;
   auto nSCR1 = this->nSCR_.at("SCR1");
   auto nSCR2 = this->nSCR_.at("SCR2");
   auto nSCR3 = this->nSCR_.at("SCR3");

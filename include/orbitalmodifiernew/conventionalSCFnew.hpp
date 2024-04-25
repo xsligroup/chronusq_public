@@ -50,12 +50,12 @@ protected:
 public:
   // Constructor
   ConventionalSCFNew() = delete;
-  ConventionalSCFNew(SCFControls sC, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm, CQMemManager& mem):
-  OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>(sC, referenceSS, comm, mem) {
+  ConventionalSCFNew(SCFControls sC, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm):
+  OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>(sC, referenceSS, comm) {
 
     vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
     for( auto& d : onePDM )
-      orbGrad.emplace_back(d->memManager(), d->dimension());
+      orbGrad.emplace_back(d->dimension());
 
     if( this->scfControls.doExtrap ) allocExtrapStorage();
   };

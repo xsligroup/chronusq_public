@@ -31,8 +31,7 @@ template <typename MatsT>
 template <typename ScalarT, typename MatsU>
 PauliSpinorMatrices<MatsT>::PauliSpinorMatrices(
     const ScaledMatrix<ScalarT, MatsU> &scaled, bool addXY, bool addZ ):
-    PauliSpinorMatrices(scaled.getScalarMatrix().memManager(),
-                        scaled.getScalarMatrix().nRows(),
+    PauliSpinorMatrices(scaled.getScalarMatrix().nRows(),
                         scaled.getScalarMatrix().nColumns(), addXY, addZ) {
   if (scaled.isPauli()) {
     size_t nZYX = addXY ? 4 : addZ ? 2 : 1;
@@ -43,7 +42,7 @@ PauliSpinorMatrices<MatsT>::PauliSpinorMatrices(
       components_.emplace_back(scaled.scalar() * scaledMat.components_[nAlloc++]);
     }
     for (size_t i = scaledMat.components_.size(); i < nZYX; i++) {
-      components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+      components_.emplace_back(this->nRows(), this->nColumns());
       components_.back().clear();
     }
     size_t nOverlap = std::min(nZYX, scaledMat.components_.size());
@@ -87,15 +86,15 @@ PauliSpinorMatrices<MatsT>::operator=( const ScaledMatrix<ScalarT, MatsU> &rhs )
     S() = rhs.scalar() * r.S();
     if (r.hasZ()) {
       if (not hasZ())
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
       Z() = rhs.scalar() * r.Z();
     } else if (hasZ()) {
       Z().clear();
     }
     if (r.hasXY()) {
       if (not hasXY()) {
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
       }
       Y() = rhs.scalar() * r.Y();
       X() = rhs.scalar() * r.X();
@@ -359,7 +358,7 @@ PauliSpinorMatrices<MatsT>::operator+=( const ScaledMatrix<ScalarT, MatsU> &scal
       if (hasZ())
         Z() += scaled.scalar() * scaledMat.Z();
       else {
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
         Z() = scaled.scalar() * scaledMat.Z();
       }
     }
@@ -368,9 +367,9 @@ PauliSpinorMatrices<MatsT>::operator+=( const ScaledMatrix<ScalarT, MatsU> &scal
         Y() += scaled.scalar() * scaledMat.Y();
         X() += scaled.scalar() * scaledMat.X();
       } else {
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
         Y() = scaled.scalar() * scaledMat.Y();
-        components_.emplace_back(this->memManager(), this->nRows(), this->nColumns());
+        components_.emplace_back(this->nRows(), this->nColumns());
         X() = scaled.scalar() * scaledMat.X();
       }
     }

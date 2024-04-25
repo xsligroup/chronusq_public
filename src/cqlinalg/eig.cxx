@@ -499,8 +499,7 @@ namespace ChronusQ {
   }; // GeneralEigen (complex)
   
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, double *W,
-    CQMemManager &mem){
+  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, double *W){
 
     lapack::Job JZ;
     lapack::Uplo UL;
@@ -518,8 +517,7 @@ namespace ChronusQ {
   }; // HermetianEigen (real / real eigenvalues)
   
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, 
-    double *W, CQMemManager &mem){
+  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, double *W){
 
     lapack::Job JZ;
     lapack::Uplo UL;
@@ -537,34 +535,32 @@ namespace ChronusQ {
   }; // HermetianEigen (complex / real eigenvalues)
 
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, 
-    dcomplex *W, CQMemManager &mem){
+  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, dcomplex *W){
   
     int INFO;
-    double *WReal = mem.malloc<double>(N);
+    double *WReal = CQMemManager::get().malloc<double>(N);
   
-    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal,mem);
+    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal);
     
     for(auto i = 0; i < N; i++) W[i] = WReal[i];
 
-    mem.free(WReal);
+    CQMemManager::get().free(WReal);
   
     return INFO;
   
   }; // HermetianEigen (complex / complex eigenvalues )
 
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA,
-    dcomplex *W, CQMemManager &mem){
+  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W){
 
     int INFO;
-    double *WReal = mem.malloc<double>(N);
+    double *WReal = CQMemManager::get().malloc<double>(N);
 
-    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal,mem);
+    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal);
 
     for(auto i = 0; i < N; i++) W[i] = WReal[i];
 
-    mem.free(WReal);
+    CQMemManager::get().free(WReal);
 
     return INFO;
 

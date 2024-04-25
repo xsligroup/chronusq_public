@@ -50,7 +50,6 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   cqmatrix::Matrix<MatsT> & oneRDM, InCore4indexTPI<MatsT> & twoRDM) {
   
   const auto& corrS = postHF_.corrSpace;
-  auto& mem    = postHF_.memManager;
   auto& mo     = postHF_.reference()->mo[0];
   const size_t nTOrb  = corrS.nMO;
   const size_t nTOrb2 = nTOrb * nTOrb;
@@ -64,14 +63,14 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   MatsT * G = orbitalGradient_->pointer();
 
   // allocate memory    
-  MatsT * X = mem.template malloc<MatsT>(nTOrb2);
-  MatsT * U = mem.template malloc<MatsT>(nTOrb2);
+  MatsT * X = CQMemManager::get().malloc<MatsT>(nTOrb2);
+  MatsT * U = CQMemManager::get().malloc<MatsT>(nTOrb2);
 
   MatsT * H = nullptr; 
   if (settings.alg == ORB_ROT_2ND_ORDER) {
-    H = mem.template malloc<MatsT>(nTOrb2*nTOrb2); 
+    H = CQMemManager::get().malloc<MatsT>(nTOrb2*nTOrb2); 
   } else {
-    H = mem.template malloc<MatsT>(nTOrb2); 
+    H = CQMemManager::get().malloc<MatsT>(nTOrb2); 
   }
   
   ProgramTimer::tick("Form Hessian");
@@ -105,7 +104,7 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   }
   
   // U = exp(X)
-  MatExp(nTOrb, X, nTOrb, U, nTOrb, mem);
+  MatExp(nTOrb, X, nTOrb, U, nTOrb);
   
 #ifdef DEBUG_ORBITALROTATION_IMPL
   double HNorm = lapack::lange(lapack::Norm::Fro, nTOrb, nTOrb, H, nTOrb); 
@@ -121,7 +120,7 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
 
   // Orthonormalized U and disable GramSchmidt printining
   std::cout.setstate(std::ios_base::failbit);
-  size_t NUOrtho = GramSchmidt(nTOrb, 0, nTOrb, U, nTOrb, mem);   
+  size_t NUOrtho = GramSchmidt(nTOrb, 0, nTOrb, U, nTOrb);   
   std::cout.clear();
   
   if(NUOrtho != nTOrb) CErr("Failed at Orthonormalizing Rotation U Matix.");
@@ -138,9 +137,9 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   
   // free memory
   if(orbitalGradient_) orbitalGradient_ = nullptr;
-  if(H) mem.free(H);
-  if(X) mem.free(X);
-  if(U) mem.free(U);
+  if(H) CQMemManager::get().free(H);
+  if(X) CQMemManager::get().free(X);
+  if(U) CQMemManager::get().free(U);
 
 } // NewOrbitalRotation::rotateOrbitals()
 

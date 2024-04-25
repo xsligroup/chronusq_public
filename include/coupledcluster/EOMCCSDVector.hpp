@@ -191,20 +191,20 @@ namespace ChronusQ {
       }
     }
 
-    RawVectors<MatsT> toRaw(MPI_Comm c, CQMemManager &mem,
+    RawVectors<MatsT> toRaw(MPI_Comm c,
                             bool includeZeroBody = false, size_t shift = 0,
                             size_t nVec = std::numeric_limits<size_t>::max()) const;
 
     template <typename IntsT>
-    RawVectors<MatsT> toRaw(MPI_Comm c, CQMemManager &mem, const EOMCCSD<MatsT,IntsT> &eom,
+    RawVectors<MatsT> toRaw(MPI_Comm c, const EOMCCSD<MatsT,IntsT> &eom,
                             bool includeZeroBody = false, size_t shift = 0,
                             size_t nVec = std::numeric_limits<size_t>::max()) const;
 
-    void fromRaw(MPI_Comm c, CQMemManager &mem, const RawVectors<MatsT> &raw, bool hasZeroBody = false,
+    void fromRaw(MPI_Comm c, const RawVectors<MatsT> &raw, bool hasZeroBody = false,
                  size_t shiftThis = 0, size_t shiftRaw = 0, size_t nVec = std::numeric_limits<size_t>::max());
 
     template <typename IntsT>
-    void fromRaw(MPI_Comm c, CQMemManager &mem, const RawVectors<MatsT> &raw,
+    void fromRaw(MPI_Comm c, const RawVectors<MatsT> &raw,
                  const EOMCCSD<MatsT,IntsT> &eom, bool hasZeroBody = false,
                  size_t shiftThis = 0, size_t shiftRaw = 0, size_t nVec = std::numeric_limits<size_t>::max());
 
@@ -227,12 +227,12 @@ namespace ChronusQ {
 
     virtual void axpy(size_t shiftY, size_t nVec, MatsT alpha, const SolverVectors<MatsT> &X, size_t shiftX) override;
 
-//    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+//    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
 //                               size_t NRe = 0, double eps = 1e-12) override;
 
     virtual void trsm(size_t shift, int64_t n, MatsT alpha, MatsT const *A, int64_t lda) override;
 
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, MatsT *R = nullptr, int LDR = 0) override;
+    virtual int QR(size_t shift, size_t nVec, MatsT *R = nullptr, int LDR = 0) override;
 
     using SolverVectors<MatsT>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;
@@ -256,9 +256,9 @@ namespace ChronusQ {
 
   public:
     EOMCCSDVectorSetDebug(char vLabel, char oLabel, size_t nVec,
-                          MPI_Comm c, CQMemManager &mem):
+                          MPI_Comm c):
                           eomccSet_(vLabel, oLabel, nVec),
-                          rawSet_(c, mem, eomccSet_.length(), nVec) {}
+                          rawSet_(c, eomccSet_.length(), nVec) {}
 
     double compareDebug(size_t shift = 0, size_t nVec = std::numeric_limits<size_t>::max());
 
@@ -314,12 +314,12 @@ namespace ChronusQ {
 
     virtual void axpy(size_t shiftY, size_t nVec, MatsT alpha, const SolverVectors<MatsT> &X, size_t shiftX) override;
 
-    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew, CQMemManager &mem,
+    virtual size_t GramSchmidt(size_t shift, size_t Mold, size_t Mnew,
                                size_t NRe = 0, double eps = 1e-12) override;
 
     virtual void trsm(size_t shift, int64_t n, MatsT alpha, MatsT const *A, int64_t lda) override;
 
-    virtual int QR(size_t shift, size_t nVec, CQMemManager &mem, MatsT *R = nullptr, int LDR = 0) override;
+    virtual int QR(size_t shift, size_t nVec, MatsT *R = nullptr, int LDR = 0) override;
 
     using SolverVectors<MatsT>::norm2F;
     virtual double norm2F(size_t shift, size_t nVec) const override;

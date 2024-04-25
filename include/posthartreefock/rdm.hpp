@@ -49,7 +49,6 @@ namespace ChronusQ {
   void PostHartreeFock<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale) {
 
     // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq} C^*_{qv}
-    auto  &mem = memManager;
     size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
     size_t fourCompOffset = (ref_->nC == 4) ? ref_->nAlphaOrbital() * 2: 0;
     size_t nCoreO = corrSpace.nFCore + corrSpace.nInact;
@@ -57,7 +56,7 @@ namespace ChronusQ {
 
     double fc1C = (ref_->nC == 1) ? 2.0 : 1.0;
 
-    cqmatrix::Matrix<MatsT> tmpPDM(mem, nAO);
+    cqmatrix::Matrix<MatsT> tmpPDM(nAO);
     tmpPDM.clear();
 
     // Core

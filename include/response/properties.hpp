@@ -56,7 +56,7 @@ namespace ChronusQ {
 
 
       // Allocate space for the property
-      opMap[op] = memManager_.template malloc<U>(nProp*nVec);
+      opMap[op] = CQMemManager::get().malloc<U>(nProp*nVec);
       std::fill_n(opMap[op],nProp*nVec,U(0.));
 
       // Evaluate the property (ensures proper behaviour for mixed type)
@@ -65,7 +65,7 @@ namespace ChronusQ {
 
 
       // Free scratch space
-      memManager_.free(g);
+      CQMemManager::get().free(g);
 
     }
 
@@ -235,7 +235,7 @@ namespace ChronusQ {
     if( resResults.tLenElecDipole_ge ) {
 
       resObs.oscStrength = 
-        memManager_.template malloc<double>(nRoots);
+        CQMemManager::get().malloc<double>(nRoots);
 
       for(auto iO = 0; iO < nRoots; iO++) {
 
@@ -266,7 +266,7 @@ namespace ChronusQ {
     if( resResults.tLenElecDipole_ge and resResults.tMagDipole_ge ) {
 
       resObs.rotatory_len_RM = 
-        memManager_.template malloc<double>(nRoots);
+        CQMemManager::get().malloc<double>(nRoots);
 
       for(auto iO = 0; iO < nRoots; iO++) {
 
@@ -356,7 +356,7 @@ namespace ChronusQ {
 
 
       results.ed_ed_Polar = 
-        memManager_.template malloc<U>(9*nOmega);
+        CQMemManager::get().malloc<U>(9*nOmega);
 
       for(auto iOmega = 0; iOmega < nOmega; iOmega++) 
 
@@ -375,7 +375,7 @@ namespace ChronusQ {
 
 
       results.eq_ed_Polar = 
-        memManager_.template malloc<U>(3*6*nOmega);
+        CQMemManager::get().malloc<U>(3*6*nOmega);
 
       for(auto iOmega = 0; iOmega < nOmega; iOmega++) {
 
@@ -419,7 +419,7 @@ namespace ChronusQ {
 
 
       results.md_ed_Polar = 
-        memManager_.template malloc<U>(9*nOmega);
+        CQMemManager::get().malloc<U>(9*nOmega);
 
       for(auto iOmega = 0; iOmega < nOmega; iOmega++){ 
 
@@ -442,7 +442,7 @@ namespace ChronusQ {
 
 
       results.md_md_Polar = 
-        memManager_.template malloc<U>(9*nOmega);
+        CQMemManager::get().malloc<U>(9*nOmega);
 
       for(auto iOmega = 0; iOmega < nOmega; iOmega++){ 
 
@@ -463,7 +463,7 @@ namespace ChronusQ {
 
 
     // Free up the full memory
-    for(auto &op : opMap) memManager_.free(op.second);
+    for(auto &op : opMap) CQMemManager::get().free(op.second);
 
     
   };
@@ -481,10 +481,10 @@ namespace ChronusQ {
     if( results.ed_ed_Polar ) {
 
       fdObs.edStrength = 
-        memManager_.template malloc<double>(nOmega);
+        CQMemManager::get().malloc<double>(nOmega);
 
       fdObs.opaCross_eda = 
-        memManager_.template malloc<double>(nOmega);
+        CQMemManager::get().malloc<double>(nOmega);
 
       for(auto iOmega = 0; iOmega < nOmega; iOmega++) {
 

@@ -58,13 +58,13 @@ class OrbitalOptimizer : public OrbitalModifier<MatsT> {
     bool doingDamp;                                ///< Whether damping is currently on or off (only used for printing)
 
     // Constructor
-    OrbitalOptimizer(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt, CQMemManager& mem):
-      scfControls(sC), OrbitalModifier<MatsT>(comm, modOpt, mem) {
+    OrbitalOptimizer(SCFControls sC, MPI_Comm comm, OrbitalModifierDrivers<MatsT> modOpt):
+      scfControls(sC), OrbitalModifier<MatsT>(comm, modOpt) {
 
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->orbitalModifierDrivers.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->memManager(), onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->dimension());
           prevOnePDM[a] = *onePDM[a];
         }
     };

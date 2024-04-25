@@ -44,20 +44,20 @@ namespace ChronusQ {
 
     // Constructor
     InCore4indexTPI() = delete;
-    InCore4indexTPI(CQMemManager &mem, size_t nb, size_t snb = 0):
-        TwoPInts<IntsT>(mem, nb, snb) {
+    InCore4indexTPI(size_t nb, size_t snb = 0):
+        TwoPInts<IntsT>(nb, snb) {
       NB2  = this->nBasis()*this->nBasis();
       sNB2 = this->snBasis()*this->snBasis();
       NB3  = NB2 * this->snBasis();
       malloc();
     }
     InCore4indexTPI( const InCore4indexTPI &other ):
-        InCore4indexTPI(other.memManager(), other.nBasis(), other.snBasis()) {
+        InCore4indexTPI(other.nBasis(), other.snBasis()) {
       std::copy_n(other.TPI, NB2*sNB2, TPI);
     }
     template <typename IntsU>
     InCore4indexTPI( const InCore4indexTPI<IntsU> &other, int = 0 ):
-        InCore4indexTPI(other.memManager(), other.nBasis(), other.snBasis()) {
+        InCore4indexTPI(other.nBasis(), other.snBasis()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real InCore4indexTPI from a Complex one.");
@@ -84,7 +84,7 @@ namespace ChronusQ {
     }
     InCore4indexTPI& operator=( InCore4indexTPI &&other ) {
       if (this != &other) { // self-assignment check expected
-        this->memManager().free(TPI);
+        CQMemManager::get().free(TPI);
         this->NB  = other.NB;
         this->sNB = other.sNB;
         NB2  = other.NB2;
@@ -203,14 +203,14 @@ namespace ChronusQ {
     }
 
     void malloc() {
-      if(TPI) this->memManager().free(TPI);
+      if(TPI) CQMemManager::get().free(TPI);
       size_t NB4 = NB2*sNB2;
-      try { TPI = this->memManager().template malloc<IntsT>(NB4); }
+      try { TPI = CQMemManager::get().template malloc<IntsT>(NB4); }
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full TPI tensor ("
                   << (NB4/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << this->memManager() << std::endl;
+        std::cout << std::endl << CQMemManager::get() << std::endl;
         CErr();
       }
     }
@@ -232,7 +232,7 @@ namespace ChronusQ {
         OutT* out, bool increment = false) const;
 
     virtual ~InCore4indexTPI() {
-      if(TPI) this->memManager().free(TPI);
+      if(TPI) CQMemManager::get().free(TPI);
     }
 
   }; // class InCore4indexTPI

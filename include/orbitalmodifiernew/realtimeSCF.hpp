@@ -96,11 +96,11 @@ public:
    *  \brief RealTime Constructor.
    *
    *  Stores references to a "reference" SingleSlater object and
-   *  CQMemManager and makes a copy of the reference into a complex
+   *  makes a copy of the reference into a complex
    *  SingleSlater object for the propagation.
    */
-  RealTimeSCF(TDSCFOptions sC, TDEMPerturbation &tdPert, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm, CQMemManager& mem):
-          tdSCFOptions(sC), tdEMPerturbation(tdPert), OrbitalModifierNew<singleSlaterT,MatsT,IntsT>(referenceSS, comm, mem) {
+  RealTimeSCF(TDSCFOptions sC, TDEMPerturbation &tdPert, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm):
+          tdSCFOptions(sC), tdEMPerturbation(tdPert), OrbitalModifierNew<singleSlaterT,MatsT,IntsT>(referenceSS, comm) {
 
     if(!std::is_same<MatsT, std::complex<double>>::value) {
       throw std::runtime_error("RealTimeSCF: MatsT must be dcomplex");
@@ -167,11 +167,11 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::initialize(size_t maxPoints) {
   std::cout<<"xsli test RealTimeSCF initialize 2"<<std::endl;
 
   std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDM = this->singleSlaterSystem.getOnePDM();
-  for (auto &d: onePDM) previousOnePDMSquareOrtho.emplace_back(d->memManager(), d->dimension());
+  for (auto &d: onePDM) previousOnePDMSquareOrtho.emplace_back(d->dimension());
   std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
   for (auto &f: fock) {
-    previousFockSquareOrtho.emplace_back(f->memManager(), f->dimension());
-    unitarySquareOrtho.emplace_back(f->memManager(), f->dimension());
+    previousFockSquareOrtho.emplace_back(f->dimension());
+    unitarySquareOrtho.emplace_back(f->dimension());
   }
 
   // XSLI: number of max steps should be calculated when the tdSCFOptions is set up

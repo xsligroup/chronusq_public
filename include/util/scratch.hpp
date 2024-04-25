@@ -35,7 +35,6 @@ namespace ChronusQ {
 template <typename T>
 class SharedMemoryScratch {
  private:
-  CQMemManager& memManager_;
   const size_t nThreads_ = GetNumThreads();
   
   // actual storage of scratch
@@ -43,11 +42,10 @@ class SharedMemoryScratch {
   std::vector<T*> scratch_;
   
  public:
-  SharedMemoryScratch() = delete;
   SharedMemoryScratch(const SharedMemoryScratch&) = delete;
   SharedMemoryScratch(SharedMemoryScratch&&) = delete;
 
-  SharedMemoryScratch(CQMemManager& mem): memManager_(mem) {
+  SharedMemoryScratch() {
     scratch_ = std::vector<T*>(nThreads_, nullptr); 
   }
   ~SharedMemoryScratch() { dealloc(); }
@@ -56,7 +54,7 @@ class SharedMemoryScratch {
     // root only
     if (GetThreadID() == 0) {
       for (auto& scr : scratch_) {
-        if (scr) memManager_.free(scr);
+        if (scr) CQMemManager::get().free(scr);
       }
     }
   }
@@ -66,14 +64,14 @@ class SharedMemoryScratch {
     if (GetThreadID() == 0) {
       try {
         for (auto& scr : scratch_) {
-          scr = memManager_.template malloc<T>(n);
+          scr = CQMemManager::get().malloc<T>(n);
         }
       } catch (...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for " << badAllocStr 
                   <<  " (" << (n / 1e9) * GetNumThreads() * sizeof(T) << " GB)" 
                   << std::endl;
-        std::cout << memManager_ << std::endl;
+        std::cout << CQMemManager::get() << std::endl;
         throw std::bad_alloc();
       }
     }

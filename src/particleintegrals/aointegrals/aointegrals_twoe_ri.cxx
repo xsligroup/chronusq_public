@@ -89,16 +89,16 @@ namespace ChronusQ {
 
     size_t NB3 = NBRI * this->nBasis()*(this->nBasis() + 1) / 2;
     if (rawERI3J_) {
-      if (this->memManager().getSize(rawERI3J_) == NB3)
+      if (CQMemManager::get().getSize(rawERI3J_) == NB3)
         return;
-      this->memManager().free(rawERI3J_);
+      CQMemManager::get().free(rawERI3J_);
     }
-    try { rawERI3J_ = this->memManager().template malloc<IntsT>(NB3); }
+    try { rawERI3J_ = CQMemManager::get().malloc<IntsT>(NB3); }
     catch(...) {
       std::cout << std::fixed;
       std::cout << "Insufficient memory for the full RI-ERI tensor ("
       << (NB3/1e9) * sizeof(double) << " GB)" << std::endl;
-      std::cout << std::endl << this->memManager() << std::endl;
+      std::cout << std::endl << CQMemManager::get() << std::endl;
       CErr();
     }
     std::copy_n(ERI3J, NB3, rawERI3J_);
@@ -168,7 +168,7 @@ namespace ChronusQ {
     size_t NB2   = NB*(NB+1)/2;
     size_t NB3   = NB2*NBRI;
     // S^{-1/2}(Q|ij)
-    auto ijK = memManager().malloc<double>(NB3);
+    auto ijK = CQMemManager::get().malloc<double>(NB3);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBRI,NB2,NBRI,double(1.),S,NBRI,pointer(),NBRI,double(0.),ijK,NBRI);
 
     auto durGemm = tock(topGemm);
@@ -176,7 +176,7 @@ namespace ChronusQ {
 
 #ifdef __DEBUGERI__
     // Debug output of the ERIs
-    auto TempERI4 = memManager_.malloc<double>(NB2*NB2);
+    auto TempERI4 = CQMemManager::get().malloc<double>(NB2*NB2);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NB2,NB2,NBRI,double(1.),ijK,NB2,ijK,NB2,double(0.),TempERI4,NB2);
     std::cout << "Two-Electron Integrals (ERIs)" << std::endl;
     for(auto i = 0ul; i < NB; i++)
@@ -186,7 +186,7 @@ namespace ChronusQ {
       std::cout << "(" << i << "," << j << "|" << k << "," << l << ")  ";
       std::cout << TempERI4[i + j*NB  + k*NB2 + l*NB2*NB] << std::endl;
     };
-    memManager_.free<double>(TempERI4);
+    CQMemManager::get().free<double>(TempERI4);
 #endif
 
     auto topCopy = tick();
@@ -197,7 +197,7 @@ namespace ChronusQ {
       std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NB));
     }
 
-    memManager().free(ijK);
+    CQMemManager::get().free(ijK);
 
     auto durCopy = tock(topCopy);
     std::cout << "  RI-ERI3-Transformation-Copy duration     = " << durCopy << " s " << std::endl;
@@ -417,7 +417,7 @@ namespace ChronusQ {
     compute3CenterERI(basisSet, *auxBasisSet_);
     saveRawERI3J();
 
-    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(memManager(), NBRI);
+    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(NBRI);
 
     compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
     if (saveRawERI_)
@@ -613,9 +613,7 @@ namespace ChronusQ {
   std::map<std::pair<size_t, size_t>, double*>
   InCoreCholeskyRIERI<double>::computeDiagonalLibcint(
       BasisSet &basisSet, double *diag, bool saveDiagBlocks) {
-
-    CQMemManager &mem = this->memManager();
-
+    
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
 
     if (eri4I_) {
@@ -630,7 +628,7 @@ namespace ChronusQ {
         for (size_t Q = P; Q < basisSet.nShell; Q++, PQ++) {
 
           size_t pqSize(basisSet.shells[P].size() * basisSet.shells[Q].size());
-          diagBlocks[std::make_pair(P,Q)] = mem.malloc<double>(pqSize * pqSize);
+          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().malloc<double>(pqSize * pqSize);
         }
       }
     }
@@ -725,9 +723,7 @@ namespace ChronusQ {
   std::map<std::pair<size_t, size_t>, double*>
   InCoreCholeskyRIERI<double>::computeDiagonalLibint(
       BasisSet &basisSet, double *diag, bool saveDiagBlocks) {
-
-    CQMemManager &mem = this->memManager();
-
+    
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
 
     if (eri4I_) {
@@ -742,7 +738,7 @@ namespace ChronusQ {
 
         if (saveDiagBlocks or basisSet.shells[P].ncontr() > 1 or basisSet.shells[Q].ncontr() > 1) {
           size_t pqSize(basisSet.shells[P].size() * basisSet.shells[Q].size());
-          diagBlocks[std::make_pair(P,Q)] = mem.malloc<double>(pqSize * pqSize);
+          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().malloc<double>(pqSize * pqSize);
         }
       }
     }
@@ -909,7 +905,7 @@ namespace ChronusQ {
 
     if (not saveDiagBlocks) {
       for (auto &kv : diagBlocks) {
-        mem.free(kv.second);
+        CQMemManager::get().free(kv.second);
       }
       diagBlocks.clear();
     }
@@ -1232,10 +1228,9 @@ namespace ChronusQ {
 
     auto topCholesky = tick();
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*(NB+1)/2;
 
-    double *diag = mem.malloc<double>(NB2);
+    double *diag = CQMemManager::get().malloc<double>(NB2);
 
     if (libcint_)
       computeDiagonalLibcint(basisSet, diag);
@@ -1278,7 +1273,7 @@ namespace ChronusQ {
 
       // If here, we're really going to add this row
       if (NBRI % NB == 0)
-        allocs.push_back(mem.malloc<double>(NB * NB2));
+        allocs.push_back(CQMemManager::get().malloc<double>(NB * NB2));
       L.push_back(allocs.back() + (NBRI % NB) * NB2);
 
       beginERIvec = tick();
@@ -1348,9 +1343,9 @@ namespace ChronusQ {
       }
     }
 
-    mem.free(diag);
+    CQMemManager::get().free(diag);
     for (double *p : allocs) {
-      mem.free(p);
+      CQMemManager::get().free(p);
     }
 
   }; // InCoreCholeskyRIERI<double>::computeCD_Traditional
@@ -1875,7 +1870,6 @@ namespace ChronusQ {
 
     auto topEffCDPivots = tick();
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*NB;
 
 
@@ -1886,8 +1880,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = mem.malloc<double>(NB2);
-    double *diagCompound = mem.malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().malloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -1909,7 +1903,7 @@ namespace ChronusQ {
     if (D.empty())
       CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
 
-    mem.free(diagCompound);
+    CQMemManager::get().free(diagCompound);
 
     std::sort(D.begin(), D.end(),
         [&diag](size_t pq, size_t rs){ return diag[pq] > diag[rs]; });
@@ -1956,7 +1950,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << D.size() << std::endl;
 #endif
 
-    L = mem.malloc<double>(D.size() * std::min(D.size(), maxQual_));
+    L = CQMemManager::get().malloc<double>(D.size() * std::min(D.size(), maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginCDalgMM = topEffCDPivots;
@@ -2006,7 +2000,7 @@ namespace ChronusQ {
 
 
       // 5. Build Mpq (New version build in inner loop)
-      double *M = mem.malloc<double>(D.size() * lenQ);
+      double *M = CQMemManager::get().malloc<double>(D.size() * lenQ);
       curERIdur = t1ERI;
       curERIcount = c1ERI;
       beginERIvec = tick();
@@ -2132,7 +2126,7 @@ namespace ChronusQ {
       std::cout << "    InnerLoop duration = " << durInner << " s " << std::endl;
 #endif
 
-      mem.free(M);
+      CQMemManager::get().free(M);
 
 
       // 7. Merge C to pivots_
@@ -2245,7 +2239,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << D.size() << std::endl;
 #endif
 
-      double *Lnew = mem.malloc<double>(D.size() * (pivots_.size() + std::min(D.size(), maxQual_)));
+      double *Lnew = CQMemManager::get().malloc<double>(D.size() * (pivots_.size() + std::min(D.size(), maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -2256,7 +2250,7 @@ namespace ChronusQ {
         }
       }
 
-      mem.free(L);
+      CQMemManager::get().free(L);
 
       L = Lnew;
 
@@ -2272,9 +2266,9 @@ namespace ChronusQ {
 
 
 
-    mem.free(diag, L);
+    CQMemManager::get().free(diag, L);
     for (auto &kv : diagBlocks) {
-      mem.free(kv.second);
+      CQMemManager::get().free(kv.second);
     }
 
     auto durEffCDPivots = tock(topEffCDPivots);
@@ -2309,7 +2303,6 @@ namespace ChronusQ {
 
     auto topEffCDPivots = tick();
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*NB;
 
 
@@ -2320,8 +2313,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = mem.malloc<double>(NB2);
-    double *diagCompound = mem.malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().malloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -2343,7 +2336,7 @@ namespace ChronusQ {
     if (D.empty())
       CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
 
-    mem.free(diagCompound);
+    CQMemManager::get().free(diagCompound);
 
     std::sort(D.begin(), D.end(),
         [&diag](size_t pq, size_t rs){ return diag[pq] > diag[rs]; });
@@ -2373,7 +2366,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-    L = mem.malloc<double>(lenD * std::min(lenD, maxQual_));
+    L = CQMemManager::get().malloc<double>(lenD * std::min(lenD, maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginERIcopy = topEffCDPivots;
@@ -2440,7 +2433,7 @@ namespace ChronusQ {
     std::cout << "    SevalBegin = " << nERIvec << std::endl;
 #endif
 
-    double *ERIvecAlloc = mem.malloc<double>(lenD * nERIvec);
+    double *ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
     double curERIvec = 0.0, curCDalgMM = 0.0, curShrink = 0.0;
     double curERIcopy = 0.0, curERItranspose = 0.0, curERIdur = 0.0;
     size_t curERIcount = 0;
@@ -2452,7 +2445,7 @@ namespace ChronusQ {
 #endif
 
       // 5. Build Mpq (New version build in inner loop)
-      double *M = mem.malloc<double>(lenD * lenQ);
+      double *M = CQMemManager::get().malloc<double>(lenD * lenQ);
       curERIdur = t1ERI;
       curERIcount = c1ERI;
       beginERIvec = tick();
@@ -2587,7 +2580,7 @@ namespace ChronusQ {
       std::cout << "    InnerLoop duration = " << durInner << " s " << std::endl;
 #endif
 
-      mem.free(M);
+      CQMemManager::get().free(M);
 
 
       // 7. Merge C to pivots_
@@ -2748,7 +2741,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-      double *Lnew = mem.malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
+      double *Lnew = CQMemManager::get().malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -2759,11 +2752,11 @@ namespace ChronusQ {
         }
       }
 
-      mem.free(L);
+      CQMemManager::get().free(L);
       L = Lnew;
 
       double *preERIvecAlloc = ERIvecAlloc;
-      ERIvecAlloc = mem.malloc<double>(lenD * nERIvec);
+      ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
 
       #pragma omp parallel for
       for (size_t p = 0; p < nERIvec; p++) {
@@ -2777,7 +2770,7 @@ namespace ChronusQ {
         }
       }
 
-      mem.free(preERIvecAlloc);
+      CQMemManager::get().free(preERIvecAlloc);
 
       shrinkCount++;
       curShrink = tock(beginShrink);
@@ -2841,9 +2834,9 @@ namespace ChronusQ {
 
 
 
-    mem.free(diag, L, ERIvecAlloc);
+    CQMemManager::get().free(diag, L, ERIvecAlloc);
     for (auto &kv : diagBlocks) {
-      mem.free(kv.second);
+      CQMemManager::get().free(kv.second);
     }
 
     auto durEffCDPivots = tock(topEffCDPivots);
@@ -2881,7 +2874,6 @@ namespace ChronusQ {
 
     auto topEffCDPivots = tick();
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*NB;
 
 
@@ -2892,8 +2884,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = mem.malloc<double>(NB2);
-    double *diagCompound = mem.malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().malloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -2915,7 +2907,7 @@ namespace ChronusQ {
     if (D.empty())
       CErr("Cholesky decomposition threshold is greater than all TPI diagonal elements.");
 
-    mem.free(diagCompound);
+    CQMemManager::get().free(diagCompound);
 
     std::sort(D.begin(), D.end(),
         [&diag](size_t pq, size_t rs){ return diag[pq] > diag[rs]; });
@@ -2945,7 +2937,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-    L = mem.malloc<double>(lenD * std::min(lenD, maxQual_));
+    L = CQMemManager::get().malloc<double>(lenD * std::min(lenD, maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginERIcopy = topEffCDPivots;
@@ -3012,7 +3004,7 @@ namespace ChronusQ {
     std::cout << "    SevalBegin = " << nERIvec << std::endl;
 #endif
 
-    double *ERIvecAlloc = mem.malloc<double>(lenD * nERIvec);
+    double *ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
     double curERIvec = 0.0, curCDalgMM = 0.0, curShrink = 0.0;
     double curERIcopy = 0.0, curERItranspose = 0.0, curERIdur = 0.0;
     size_t curERIcount = 0;
@@ -3341,7 +3333,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-      double *Lnew = mem.malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
+      double *Lnew = CQMemManager::get().malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -3352,11 +3344,11 @@ namespace ChronusQ {
         }
       }
 
-      mem.free(L);
+      CQMemManager::get().free(L);
       L = Lnew;
 
       double *preERIvecAlloc = ERIvecAlloc;
-      ERIvecAlloc = mem.malloc<double>(lenD * nERIvec);
+      ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
 
       #pragma omp parallel for
       for (size_t p = 0; p < nERIvec; p++) {
@@ -3370,7 +3362,7 @@ namespace ChronusQ {
         }
       }
 
-      mem.free(preERIvecAlloc);
+      CQMemManager::get().free(preERIvecAlloc);
 
       shrinkCount++;
       curShrink = tock(beginShrink);
@@ -3433,9 +3425,9 @@ namespace ChronusQ {
 
 
 
-    mem.free(diag, L, ERIvecAlloc);
+    CQMemManager::get().free(diag, L, ERIvecAlloc);
     for (auto &kv : diagBlocks) {
-      mem.free(kv.second);
+      CQMemManager::get().free(kv.second);
     }
 
     auto durEffCDPivots = tock(topEffCDPivots);
@@ -3469,7 +3461,6 @@ namespace ChronusQ {
   template <typename T>
   class BisectMemManager {
   protected:
-    CQMemManager &mem_;
     std::vector<T*> rawPtrs_;
     std::vector<std::vector<size_t>> memPtrs_;
     std::set<T*> freePtrs_;
@@ -3518,8 +3509,8 @@ namespace ChronusQ {
   public:
     // Constructor
     BisectMemManager() = delete;
-    BisectMemManager(CQMemManager &mem, size_t memVecLen, size_t nVec):
-        mem_(mem), initialMemVecLen_(memVecLen-1), initialNVec_(nVec) {
+    BisectMemManager(size_t memVecLen, size_t nVec):
+        initialMemVecLen_(memVecLen-1), initialNVec_(nVec) {
       // Find the smallest power of 2 not less than memVecLen
       // Invalid for memVecLen > 2^32
       initialMemVecLen_ |= initialMemVecLen_ >> 1;
@@ -3571,7 +3562,7 @@ namespace ChronusQ {
 
       }
 
-      T* ptr = mem_.malloc<T>(memBlockSize_);
+      T* ptr = CQMemManager::get().malloc<T>(memBlockSize_);
       rawPtrs_.push_back(ptr);
       memPtrs_.push_back({{1}});
 
@@ -3633,7 +3624,7 @@ namespace ChronusQ {
 
     ~BisectMemManager() {
       for (T* p : rawPtrs_) {
-        mem_.free(p);
+        CQMemManager::get().free(p);
       }
     }
 
@@ -4061,7 +4052,6 @@ namespace ChronusQ {
     std::cout << "Dynamic-All Pivots Determination:" << std::endl;
     std::cout << bannerMid << std::endl;
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*(NB+1)/2;
 
 
@@ -4074,7 +4064,7 @@ namespace ChronusQ {
 
     // 2.1. Compute diagonal ERI elements
     // 2.2. Select all diagonals greater than the threshold
-    double *diag = mem.malloc<double>(NB2);
+    double *diag = CQMemManager::get().malloc<double>(NB2);
 
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
 
@@ -4141,7 +4131,7 @@ namespace ChronusQ {
 
 
     // 2.5. Free memory
-    mem.free(diag);
+    CQMemManager::get().free(diag);
     DindicesByShell.clear();
 
 
@@ -4151,13 +4141,13 @@ namespace ChronusQ {
     std::vector<std::vector<double*>> ptrsToFreeThreads(GetNumThreads());
 
     // Memory control: avoid frequent calling of malloc and free.
-    BisectMemManager<double> dynamicMem(mem, candidateSize, NB);
+    BisectMemManager<double> dynamicMem(candidateSize, NB);
 
     std::vector<size_t> preserve;
     preserve.reserve(candidateSize);
 
     size_t Lalloc = std::min(candidateSize, maxQual_);
-    L = mem.malloc<double>(candidateSize * Lalloc);
+    L = CQMemManager::get().malloc<double>(candidateSize * Lalloc);
 
     auto beginERIvec = topDynCDPivots;
     auto beginCDalg = topDynCDPivots;
@@ -4330,7 +4320,7 @@ namespace ChronusQ {
         dynamicMem.shrink(preserve);
 
         Lalloc = pivots_.size() + std::min(candidateSize, maxQual_);
-        double *Lnew = mem.malloc<double>(candidateSize * Lalloc);
+        double *Lnew = CQMemManager::get().malloc<double>(candidateSize * Lalloc);
 
         #pragma omp parallel for
         for (size_t p = 0; p < pivots_.size(); p++) {
@@ -4341,7 +4331,7 @@ namespace ChronusQ {
           }
         }
 
-        mem.free(L);
+        CQMemManager::get().free(L);
 
         L = Lnew;
 
@@ -4356,9 +4346,9 @@ namespace ChronusQ {
 
     }
 
-    mem.free(L);
+    CQMemManager::get().free(L);
     for (auto &kv : diagBlocks) {
-      mem.free(kv.second);
+      CQMemManager::get().free(kv.second);
     }
 
 
@@ -4887,7 +4877,6 @@ namespace ChronusQ {
     std::cout << std::endl << "Build 3-index RIERI tensor:" << std::endl;
     std::cout << bannerMid << std::endl;
 
-    CQMemManager &mem = this->memManager();
     size_t NB2 = NB*NB, NBC = NB*(NB+1)/2;
 
     auto topLibintPivotRI = tick();
@@ -4948,7 +4937,7 @@ namespace ChronusQ {
 
     saveRawERI3J();
 
-    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(mem, NBRI);
+    twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(NBRI);
     double *S = twocenterERI_->pointer();
     extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI);
     if (saveRawERI_)
@@ -5060,7 +5049,7 @@ namespace ChronusQ {
       std::cout << bannerMid << std::endl;
       auto top4I = tick();
 
-      eri4I_ = std::make_shared<InCore4indexTPI<double>>(memManager_, NB);
+      eri4I_ = std::make_shared<InCore4indexTPI<double>>(NB);
       eri4I_->computeAOInts(basisSet, mol, emPert, op, options);
 
       auto dur4I = tock(top4I);
@@ -5104,15 +5093,15 @@ namespace ChronusQ {
         nShells = groupedBasisSet.nShell;
 
         // ATM_SLOTS = 6; BAS_SLOTS = 8;
-        atm = memManager_.template malloc<int>(nAtoms * ATM_SLOTS);
-        bas = memManager_.template malloc<int>(nShells * BAS_SLOTS);
-        env = memManager_.template malloc<double>(groupedBasisSet.getLibcintEnvLength(mol));
+        atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+        bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+        env = CQMemManager::get().template malloc<double>(groupedBasisSet.getLibcintEnvLength(mol));
 
         groupedBasisSet.setLibcintEnv(mol, atm, bas, env);
 
         // Get threads result buffer
         buffN4 = maxNcontrAMSize_*maxNcontrAMSize_*maxNcontrAMSize_*maxNcontrAMSize_;
-        buffAll = memManager_.malloc<double>(buffN4*nthreads);
+        buffAll = CQMemManager::get().malloc<double>(buffN4*nthreads);
 
         cache_size = 0;
         for (int i = 0; i < nShells; i++) {
@@ -5125,18 +5114,18 @@ namespace ChronusQ {
           }
           cache_size = std::max(cache_size, n);
         }
-        cacheAll = memManager_.malloc<double>(cache_size*nthreads);
+        cacheAll = CQMemManager::get().malloc<double>(cache_size*nthreads);
 
       } else {
 
         // Compute the mappings from primitives to CGTOs
         BasisSet primitives(basisSet.uncontractBasis());
-        OnePInts<double> overlap(memManager_, primitives.nBasis);
+        OnePInts<double> overlap(primitives.nBasis);
 
         overlap.computeAOInts(primitives, mol, emPert, OVERLAP, options);
 
-        double *mapPrim2Cont = memManager_.malloc<double>(primitives.nBasis*basisSet.nBasis);
-        basisSet.makeMapPrim2Cont(overlap.pointer(), mapPrim2Cont, memManager_);
+        double *mapPrim2Cont = CQMemManager::get().malloc<double>(primitives.nBasis*basisSet.nBasis);
+        basisSet.makeMapPrim2Cont(overlap.pointer(), mapPrim2Cont);
 
 #ifdef __DEBUGERI__
         prettyPrintSmart(std::cout, "mapPrim2Cont", mapPrim2Cont,
@@ -5145,7 +5134,7 @@ namespace ChronusQ {
 
         // Clear objects
         for (double *p : coefBlocks_) {
-          if (p) memManager_.free(p);
+          if (p) CQMemManager::get().free(p);
         }
         coefBlocks_.clear();
         coefBlocks_.resize(groupedBasisSet.nShell, nullptr);
@@ -5160,7 +5149,7 @@ namespace ChronusQ {
           if (pContrSize == 1) {
             maxNprimAMSize_ = std::max(maxNprimAMSize_, pAMSize);
             shellPrims_.emplace_back(1, shellP);
-            coefBlocks_[P] = memManager_.malloc<double>(1);
+            coefBlocks_[P] = CQMemManager::get().malloc<double>(1);
             coefBlocks_[P][0] = 1.0;
             continue;
           }
@@ -5182,7 +5171,7 @@ namespace ChronusQ {
           maxNprimAMSize_ = std::max(maxNprimAMSize_, pNprim * pAMSize);
 
           size_t pBegin = groupedBasisSet.mapSh2Bf[P];
-          coefBlocks_[P] = memManager_.malloc<double>(pContrSize * pNprim);
+          coefBlocks_[P] = CQMemManager::get().malloc<double>(pContrSize * pNprim);
           for (size_t c = 0; c < pContrSize; c++) {
             for (size_t i = 0; i < pNprim; i++) {
               coefBlocks_[P][i + c * pNprim]
@@ -5192,7 +5181,7 @@ namespace ChronusQ {
           }
           shellPrims_.push_back(std::move(primsP));
         }
-        memManager_.free(mapPrim2Cont);
+        CQMemManager::get().free(mapPrim2Cont);
 
         workBlocks.resize(nthreads, nullptr);
 
@@ -5211,7 +5200,7 @@ namespace ChronusQ {
                               + maxNprimAMSize_ * maxAMSize_
                               * maxAMSize_ * maxAMSize_;
         for (size_t i = 0; i < nthreads; i++) {
-          workBlocks[i] = memManager_.malloc<double>(primAllocSize);
+          workBlocks[i] = CQMemManager::get().malloc<double>(primAllocSize);
         }
 
       }
@@ -5250,17 +5239,17 @@ namespace ChronusQ {
     if (generalContraction_) {
 
       for (double *p : coefBlocks_) {
-        if (p) memManager_.free(p);
+        if (p) CQMemManager::get().free(p);
       }
       coefBlocks_.clear();
 
       if (options.Libcint) {
-        memManager_.free(cacheAll, buffAll, env, bas, atm);
+        CQMemManager::get().free(cacheAll, buffAll, env, bas, atm);
 
       } else {
 
         for (size_t i = 0; i < nthreads; i++) {
-          memManager_.free(workBlocks[i]);
+          CQMemManager::get().free(workBlocks[i]);
         }
       }
 

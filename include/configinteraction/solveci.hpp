@@ -92,14 +92,13 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
 
   const size_t nDet = nDeterminants(); // total number of determinants
   const size_t nRoots   = this->NStates; // total number of CI roots to solve
-  auto& mem  = this->memManager;
   const auto& ketCategoricalSpace = *detFactory->ketCategoricalSpace();
 
   if (ciSettings.ciAlg == CI_FULL_MATRIX) {
     
     std::cout << "  Diagonalize CI Full Hamiltonian Matrix ... \n" << std::endl;
-    dcomplex * ciEigenvalues = mem.template malloc<dcomplex>(nDet); // storage to save the ciEigenvalues
-    auto distributedFullH = ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, mem, nDet); 
+    dcomplex * ciEigenvalues = CQMemManager::get().malloc<dcomplex>(nDet); // storage to save the ciEigenvalues
+    auto distributedFullH = ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, nDet); 
     std::shared_ptr<RawVectors<MatsT>> fullH;
     
     MatsT *dummy = nullptr, *fullH_ptr = nullptr;
@@ -108,7 +107,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
     ciBuilder->buildFullH(*distributedFullH);
 
     if (MPISize() > 1) {
-      fullH = std::make_shared<RawVectors<MatsT>>(this->comm, this->memManager, nDet, nDet);
+      fullH = std::make_shared<RawVectors<MatsT>>(this->comm, nDet, nDet);
       distributedFullH->setRawVectors(0ul, *fullH, 0ul, nDet);
       distributedFullH = nullptr;
       if (MPIRank(this->comm) == 0) fullH_ptr = fullH->getPtr();
@@ -116,7 +115,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
       fullH_ptr = distributedFullH->getLocalPtr(); 
     }
 
-    RawVectors<MatsT> ciEigenvectors(this->comm, this->memManager, nDet, nDet);
+    RawVectors<MatsT> ciEigenvectors(this->comm, nDet, nDet);
     
     if (MPIRank(this->comm) == 0) {
 #ifdef _DEBUG_CISOLVER_IMPL
@@ -128,7 +127,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
     
       // TODO: why general Eigen ?
       GeneralEigen('N', 'V', nDet, fullH_ptr, nDet, ciEigenvalues, dummy, 1, ciEigenvectors.getPtr(), nDet);
-      //HermetianEigen('V', 'L', nDet, fullH, nDet, ciEigenvalues, mem);
+      //HermetianEigen('V', 'L', nDet, fullH, nDet, ciEigenvalues);
 
 #ifdef _DEBUG_CISOLVER_IMPL
       ciEigenvectors.print(std::cout,"HH Eigenvectors");
@@ -145,7 +144,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
         this->StateEnergy[i] = std::real(ciEigenvalues[i]);
       }
     } 
-    mem.free(ciEigenvalues);
+    CQMemManager::get().free(ciEigenvalues);
 
   } else if (ciSettings.ciAlg == CI_DAVIDSON) {
    
@@ -153,7 +152,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
     CIVectors = nullptr;
     
     // build diagonal H
-    auto diagH = ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, mem, 1ul); 
+    auto diagH = ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, 1ul); 
     
     ciBuilder->buildDiagH(*diagH, ketCategoricalSpace);
     
@@ -166,7 +165,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
     size_t m  = std::max(ciSettings.maxDavidsonSpace, kG);
     size_t nG = kG * nRoots;
 
-    dcomplex * curEigenvalues = mem.template malloc<dcomplex>(nG);
+    dcomplex * curEigenvalues = CQMemManager::get().malloc<dcomplex>(nG);
     
     using LinearTrans_t = typename IterDiagonalizer<MatsT>::LinearTrans_t;
       
@@ -214,12 +213,12 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
       
     std::function<std::shared_ptr<SolverVectors<MatsT>>(size_t)> distributedDASCIVecsGen = 
         [&] (size_t nVec) {
-           return ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, mem, nVec); 
+           return ketCategoricalSpace.constructDistributedCIVectors<MatsT>(this->comm, nVec); 
         };
     
     std::cout << "  Use Davidson Diagonalization ... \n" << std::endl;
 
-    Davidson<MatsT> davidson(this->comm, mem, nDet, 40, ciSettings.maxCIIter,
+    Davidson<MatsT> davidson(this->comm, nDet, 40, ciSettings.maxCIIter,
                              ciSettings.ciVectorConv, nRoots, func, PC,
                              distributedDASCIVecsGen);
      
@@ -251,7 +250,7 @@ void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
       }
     }
 
-    mem.free(curEigenvalues);
+    CQMemManager::get().free(curEigenvalues);
   } else{
     CErr("Haven't Implement Other Diagonalization yet");
   }

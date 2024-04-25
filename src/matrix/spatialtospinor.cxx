@@ -48,7 +48,7 @@ PauliSpinorMatrices<MatsU>
 Matrix<MatsT>::spinScatter(bool hasXY, bool hasZ) const {
   size_t nRow = nRows() / 2;
   size_t nCol = nColumns() / 2;
-  PauliSpinorMatrices<MatsU> pauli(memManager(), nRow, nCol, hasXY, hasZ);
+  PauliSpinorMatrices<MatsU> pauli(nRow, nCol, hasXY, hasZ);
   spinScatter(pauli, hasXY, hasZ);
   return pauli;
 }
@@ -60,7 +60,7 @@ PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
     const Matrix<MatsU> &AA, bool hasXY, bool hasZ) {
   size_t nRow = AA.nRows();
   size_t nCol = AA.nColumns();
-  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  PauliSpinorMatrices<MatsT> pauli(nRow, nCol, hasXY, hasZ);
   MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
   if (hasZ) Z = pauli.Z().pointer();
   if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
@@ -78,7 +78,7 @@ PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
     bool hasXY, bool hasZ) {
   size_t nRow = AA.nRows();
   size_t nCol = AA.nColumns();
-  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  PauliSpinorMatrices<MatsT> pauli(nRow, nCol, hasXY, hasZ);
   MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
   if (hasZ) Z = pauli.Z().pointer();
   if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
@@ -97,7 +97,7 @@ PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(
     bool hasXY, bool hasZ) {
   size_t nRow = AA.nRows();
   size_t nCol = AA.nColumns();
-  PauliSpinorMatrices<MatsT> pauli(AA.memManager(), nRow, nCol, hasXY, hasZ);
+  PauliSpinorMatrices<MatsT> pauli(nRow, nCol, hasXY, hasZ);
   MatsT *S = pauli.S().pointer(), *Z = nullptr, *Y = nullptr, *X = nullptr;
   if (hasZ) Z = pauli.Z().pointer();
   if (hasXY) { Y = pauli.Y().pointer(); X = pauli.X().pointer(); }
@@ -127,7 +127,7 @@ template <typename MatsU>
 Matrix<MatsU> PauliSpinorMatrices<MatsT>::spinGather() const {
   size_t nRow = this->nRows();
   size_t nCol = this->nColumns();
-  Matrix<MatsU> mat(this->memManager(), 2 * nRow, 2 * nCol);
+  Matrix<MatsU> mat(2 * nRow, 2 * nCol);
   spinGather(mat);
   return mat;
 }
@@ -141,13 +141,13 @@ PauliSpinorMatrices<MatsT>::spinGatherToBlocks(
   size_t nCol = this->nColumns();
   std::vector<Matrix<MatsU>> blocks;
   blocks.reserve(1 + (genABBA ? 2 : 0) + (genBB ? 1 : 0));
-  blocks.emplace_back(this->memManager(), nRow, nCol);
+  blocks.emplace_back(nRow, nCol);
   MatsU *AA = nullptr, *AB = nullptr, *BA = nullptr, *BB = nullptr;
   if (genABBA) {
-    blocks.emplace_back(this->memManager(), nRow, nCol);
-    blocks.emplace_back(this->memManager(), nRow, nCol);
+    blocks.emplace_back(nRow, nCol);
+    blocks.emplace_back(nRow, nCol);
   }
-  if (genBB) { blocks.emplace_back(this->memManager(), nRow, nCol); BB = blocks.back().pointer(); }
+  if (genBB) { blocks.emplace_back(nRow, nCol); BB = blocks.back().pointer(); }
   AA = blocks[0].pointer();
   if (genABBA) { AB = blocks[1].pointer(); BA = blocks[2].pointer(); }
 
@@ -163,7 +163,7 @@ PauliSpinorMatrices<MatsT>::spinGatherToBlocks(
 template <typename MatsT>
 template <typename MatsU>
 Matrix<MatsU> Matrix<MatsT>::spatialToSpinBlock() const {
-  Matrix<MatsU> spinor(memManager(), 2 * nRow_, 2 * nCol_);
+  Matrix<MatsU> spinor(2 * nRow_, 2 * nCol_);
 /*
     for ( auto sp = 0ul; sp < 2; sp++)
     for ( auto nu = 0ul; nu < N_; nu++)

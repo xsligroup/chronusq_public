@@ -47,7 +47,6 @@ class NewCIBuilder {
 
  protected:
   MPI_Comm comm_;
-  CQMemManager& memManager_;
   const IntegralsCollection& moints_; // integrals
   const DeterminantFactory& detFactory_;      // for CI vectors
   
@@ -62,10 +61,9 @@ class NewCIBuilder {
   NewCIBuilder() = delete;
   
   NewCIBuilder(MPI_Comm comm, 
-      CQMemManager& memManager,
-      const IntegralsCollection& moints, 
+      const IntegralsCollection& moints,
       const DeterminantFactory& detF):
-      comm_(comm), memManager_(memManager), 
+      comm_(comm),
       moints_(moints), detFactory_(detF) { }
 
   NewCIBuilder(const NewCIBuilder<MatsT>&) = default;

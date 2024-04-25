@@ -156,14 +156,13 @@ namespace ChronusQ {
 
     if (referenceWaveFunction().nC == 4) CErr("4C has no dipole.");
 
-    auto  &mem = memManager;
     size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t nCorrO = MOPartition.nCorrO;
     size_t nInact = MOPartition.nInact;
 
     // compute transition density matrix for specific state
-    cqmatrix::Matrix<MatsT> tmpTDM1(mem,nCorrO);
-    cqmatrix::Matrix<MatsT> tmpTDM2(mem,nCorrO);
+    cqmatrix::Matrix<MatsT> tmpTDM1(nCorrO);
+    cqmatrix::Matrix<MatsT> tmpTDM2(nCorrO);
     ciBuilder->computeTDM(*this, CIVecs[s1], CIVecs[s2], tmpTDM1);
     ciBuilder->computeTDM(*this, CIVecs[s2], CIVecs[s1], tmpTDM2);
 
@@ -174,9 +173,9 @@ namespace ChronusQ {
 
     if (not MOdipole) {
       std::shared_ptr<VectorInts<IntsT>> AOdipole =
-                std::make_shared<VectorInts<IntsT>>(mem, nAO, 1, true);
+                std::make_shared<VectorInts<IntsT>>( nAO, 1, true);
       std::shared_ptr<VectorInts<MatsT>> MOdipole_scr =
-                std::make_shared<VectorInts<MatsT>>(mem, nCorrO, 1, true);
+                std::make_shared<VectorInts<MatsT>>( nCorrO, 1, true);
 
       std::vector<std::pair<size_t, size_t>> active(2, {MOPartition.nFCore+nInact, nCorrO});
 

@@ -1,3 +1,4 @@
+#include <memmanager.hpp>
 #include <basisset/basisset_util.hpp>
 
 // Basis_DEBUG_LEVEL >= 3 - Print EVERYTHING 
@@ -12,7 +13,6 @@ namespace ChronusQ {
    *  Evaluates a shell set over a specified number of cartesian points.
    *  All distances of the points from each shell origin are computed and used
    *  in the Level 2 Basis Set Evaluation Function
-   *  \param [in] memManager CQ memory manager (for allocate distances inside)
    *  \param [in] typ        Type of evaluation to perform (gradient, etc)
    *  \param [in] shells     Shell set for evaluation(vector of libint2::Shell).
    *  \param [in] pts        Raw storage of the cartesian points (dimension 3 * npts)
@@ -24,12 +24,12 @@ namespace ChronusQ {
    *                         f/dx(ixyz,iSh,ipt), f/dy(ixyz,iSh,ipt), f/dz(ixyz,iSh,ipt) values of 
    *                         the functions in the shell, for each shell(nShSize), for each point(npts)
    */ 
-  void evalShellSet(CQMemManager &memManager,SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
+  void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
     double *pts, size_t npts, double *fEval, bool forceCart) {
     size_t NBasisEff = 0;
     size_t nShSize = shells.size();
-    double * r   = memManager.malloc<double>(3*npts*nShSize);
-    double * rSq = memManager.malloc<double>(npts*nShSize);
+    double * r   = CQMemManager::get().malloc<double>(3*npts*nShSize);
+    double * rSq = CQMemManager::get().malloc<double>(npts*nShSize);
     // figure the size (number of basis) of the all shells inputed that need to be evaluated
     // and store in NBasisEff. It will be used for defining the pointers later on.
     int LMax = 0;
@@ -40,7 +40,7 @@ namespace ChronusQ {
     size_t NDer = 1;
     if (typ ==GRADIENT) NDer = 4;
     double * SCR_Car = 
-        memManager.malloc<double>(NDer*shSizeCar);
+        CQMemManager::get().malloc<double>(NDer*shSizeCar);
 
     for (auto ipts = 0; ipts < npts; ipts++){
       double xp = *(pts + ipts*3);
@@ -64,7 +64,7 @@ namespace ChronusQ {
     // Call to Level 2 Basis Set Evaluation
     evalShellSet(typ,shells,evalShell,rSq,r,npts,nShSize,mapSh2Cen,
       NBasisEff,fEval,SCR_Car,shSizeCar,forceCart); 
-    memManager.free(r,rSq,SCR_Car);
+    CQMemManager::get().free(r,rSq,SCR_Car);
 
   }; // evalShellSet Level 1
 
@@ -637,7 +637,7 @@ namespace ChronusQ {
    *  it tests 5 pts and the evaluation of the f,dx,dy,dz at those points for a vector of shells
    *
    */ 
-  void testEval(CQMemManager &memManager,double *SCR, std::vector<libint2::Shell> &vshells, bool forceCart){
+  void testEval(double *SCR, std::vector<libint2::Shell> &vshells, bool forceCart){
     std::vector<std::array<double,3>>  testpts;
     testpts.push_back({0,0,0});
     testpts.push_back({0.1,0,0});
@@ -646,7 +646,7 @@ namespace ChronusQ {
     testpts.push_back({1.,0.5,0.1});
     size_t npts = testpts.size();
     std::cout <<"inside testEval" <<std::endl;
-    evalShellSet(memManager,GRADIENT,vshells,&testpts[0][0],npts,SCR,forceCart);
+    evalShellSet(GRADIENT,vshells,&testpts[0][0],npts,SCR,forceCart);
   }; // testEval
 
 }; // namespace ChronusQ

@@ -53,7 +53,6 @@ namespace ChronusQ {
       
   protected:
     
-    CQMemManager & memManager_;
     int * ptr_ = nullptr;
     size_t nElement_;
     size_t nNonZero_;
@@ -70,24 +69,24 @@ namespace ChronusQ {
     // default Constructors
     ExcitationList() = delete;
     ExcitationList(const ExcitationList & other):
-        ExcitationList(other.memManager_, other.nElement_,
+        ExcitationList(other.nElement_,
         other.nNonZero_, other.nStr1_, other.nStr2_) {
       std::copy_n(other.ptr_, N_, ptr_);
     }
 
     ExcitationList(ExcitationList && other):
-      memManager_(other.memManager_), nElement_(other.nElement_),
+      nElement_(other.nElement_),
       nNonZero_(other.nNonZero_), nStr1_(other.nStr1_),
       nStr2_(other.nStr2_), N1_(other.N1_), N2_(other.N2_),
       N3_(other.N3_), ptr_(other.ptr_) { other.ptr_ = nullptr; }
     
-    ExcitationList(CQMemManager &mem, size_t nElement, 
-      size_t nNZ, size_t nStr): memManager_(mem),
+    ExcitationList(size_t nElement, 
+      size_t nNZ, size_t nStr):
       nElement_(nElement), nNonZero_(nNZ), nStr1_(nStr), 
       nStr2_(1) { alloc(); }
     
-    ExcitationList(CQMemManager &mem, size_t nElement, 
-      size_t nNZ, size_t nStr1, size_t nStr2): memManager_(mem),
+    ExcitationList(size_t nElement, 
+      size_t nNZ, size_t nStr1, size_t nStr2):
       nElement_(nElement), nNonZero_(nNZ), nStr1_(nStr1), 
       nStr2_(nStr2) { alloc(); }
     
@@ -152,10 +151,10 @@ namespace ChronusQ {
       N2_ = N1_ * nNonZero_;
       N3_ = N2_ * nStr1_;
       N_  = N3_ * nStr2_;
-      this->ptr_ = this->memManager_.template malloc<int>(N_);
+      this->ptr_ = CQMemManager::get().malloc<int>(N_);
     }
     
-    void dealloc() { if(ptr_) memManager_.free(ptr_); }
+    void dealloc() { if(ptr_) CQMemManager::get().free(ptr_); }
   
   }; // ExcitationList
 

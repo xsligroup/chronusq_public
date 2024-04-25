@@ -26,7 +26,6 @@
 #define DETFACTORY_HPP
 
 #include <chronusq_sys.hpp>
-#include <memmanager.hpp>
 #include <detfactory/determinants.hpp>
 #include <detfactory/excitationlist.hpp>
 
@@ -60,7 +59,6 @@ class DeterminantFactory {
 
  protected:  
   MPI_Comm comm_;
-  CQMemManager & memManager_;
 
 #ifdef CQ_ENABLE_MPI
   // DetFactoryTaskScheduler taskScheduler_;
@@ -106,10 +104,9 @@ public:
   DeterminantFactory(const DeterminantFactory& other) = default;
   DeterminantFactory(DeterminantFactory&& other) = default;
   DeterminantFactory(MPI_Comm comm,
-                     CQMemManager& mem,
                      size_t nTotalCorrE,
                      const std::vector<ActiveSpaceParameters>& actS):
-      comm_(comm), memManager_(mem), activeSpaces_(actS), nTotalCorrE_(nTotalCorrE) {
+      comm_(comm), activeSpaces_(actS), nTotalCorrE_(nTotalCorrE) {
     for(const auto& s : activeSpaces_) {
       nOrbitals_.push_back(s.nOrbitals);
     }
@@ -132,7 +129,6 @@ public:
   
   // getters
   MPI_Comm MPIComm() const { return comm_; }
-  CQMemManager& memManager() const { return memManager_; }
   std::shared_ptr<const CategoricalSpace> braCategoricalSpace() const { return braCategoricalSpace_; }
   std::shared_ptr<const CategoricalSpace> ketCategoricalSpace() const { return ketCategoricalSpace_; }
   const std::vector<ActiveSpaceParameters>& activeSpaces() const { return activeSpaces_; }
@@ -160,7 +156,7 @@ public:
       totalMem += l.second->storageSize();
     }
     std::cout << "Total Memory Requirement for Storing Excitation Lists: " << std::fixed<<totalMem/1e9 << " GB" << std::endl;
-    if (totalMem > memManager_.max_avail_allocatable<char>(1,totalMem)) CErr();
+    if (totalMem > CQMemManager::get().max_avail_allocatable<char>(1,totalMem)) CErr();
   }
 
   // virtual function to do precomputations

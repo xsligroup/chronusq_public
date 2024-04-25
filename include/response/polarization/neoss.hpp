@@ -173,7 +173,7 @@ namespace ChronusQ {
             }
             
             // Free up transformation memory
-            this->memManager_.free(cList[0].X);
+            CQMemManager::get().free(cList[0].X);
 
          }    
 
@@ -423,8 +423,8 @@ namespace ChronusQ {
       size_t AXSize = NB*NB*(2*ss->nC+1);
 
       // Allocate scratch for exact diagonal contributions
-      MatsT* XSCR = this->memManager_.template malloc<MatsT>(XSize);
-      MatsT* AXSCR = this->memManager_.template malloc<MatsT>(AXSize);
+      MatsT* XSCR = CQMemManager::get().malloc<MatsT>(XSize);
+      MatsT* AXSCR = CQMemManager::get().malloc<MatsT>(AXSize);
       std::fill_n(XSCR, XSize, MatsT(0.));
       std::fill_n(AXSCR, AXSize, MatsT(0.));
 
@@ -460,7 +460,7 @@ namespace ChronusQ {
       }
 
       offset += NNext;
-      this->memManager_.free(XSCR, AXSCR);
+      CQMemManager::get().free(XSCR, AXSCR);
     } // Subsystem loop
 
     // Sort in ascending order
@@ -482,7 +482,7 @@ namespace ChronusQ {
 
     NEOSS<MatsT, IntsT>& neoss = dynamic_cast<NEOSS<MatsT, IntsT>&>(*this->ref_);
     auto labels = neoss.getLabels();
-    MatsT* grad = neoss.memManager.template malloc<MatsT>(this->nSingleDim_*nVec);
+    MatsT* grad = CQMemManager::get().malloc<MatsT>(this->nSingleDim_*nVec);
 
     for (auto label:labels){  
       auto ssbase =  neoss.getSubSSBase(label);
@@ -552,10 +552,10 @@ namespace ChronusQ {
       MatsT* SCR(nullptr);
 
       if( needTrans ) {
-        SCR   = ss.memManager.template malloc<MatsT>(NBC*NBC);
-        opT.emplace_back(ss.memManager.template malloc<MatsT>(NBC*NBC));
+        SCR   = CQMemManager::get().malloc<MatsT>(NBC*NBC);
+        opT.emplace_back(CQMemManager::get().malloc<MatsT>(NBC*NBC));
         if( ss.nC == 1 and not ss.iCS)
-          opT.emplace_back(ss.memManager.template malloc<MatsT>(NBC*NBC));
+          opT.emplace_back(CQMemManager::get().malloc<MatsT>(NBC*NBC));
       }
   
 
@@ -643,9 +643,9 @@ namespace ChronusQ {
   
       
   
-      if(SCR) ss.memManager.free(SCR);
+      if(SCR) CQMemManager::get().free(SCR);
       if( needTrans )
-        for(auto &X : opT ) ss.memManager.free(X);
+        for(auto &X : opT ) CQMemManager::get().free(X);
   
       //FIXME: Implementation needed for APB/AMB  
       // Transform to proper form form

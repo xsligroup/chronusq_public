@@ -49,7 +49,6 @@ namespace ChronusQ {
     MatsT notRotatedHessian = MatsT (1 / settings.hessianDiagScale);
 
     auto & mopart = mcwfn_.MOPartition;
-    auto & mem    = mcwfn_.memManager;
 
     size_t nTOrb   = mopart.nMO;
     size_t nCorrO  = mopart.nCorrO;
@@ -63,11 +62,11 @@ namespace ChronusQ {
     double fc   = (mcwfn_.reference().nC > 1) ? 1.0: 2.0;
     
     // Allocate SCR
-    MatsT * SCR   = mem.template malloc<MatsT>(SCRDim2);
+    MatsT * SCR   = CQMemManager::get().malloc<MatsT>(SCRDim2);
     MatsT * F1_ii = nullptr, * F1_aa = nullptr, * F1_nn = nullptr; 
-    MatsT * RDM1_tt = mem.template malloc<MatsT>(nCorrO); 
-    MatsT * F1_tt = mem.template malloc<MatsT>(nCorrO);
-    MatsT * F2_tt = mem.template malloc<MatsT>(nCorrO);
+    MatsT * RDM1_tt = CQMemManager::get().malloc<MatsT>(nCorrO); 
+    MatsT * F1_tt = CQMemManager::get().malloc<MatsT>(nCorrO);
+    MatsT * F2_tt = CQMemManager::get().malloc<MatsT>(nCorrO);
     
     // populate One electron terms
     for(auto t = 0ul; t < nCorrO; t++) RDM1_tt[t] = oneRDM(t,t) / fc;
@@ -80,19 +79,19 @@ namespace ChronusQ {
     
     if (nInact > 0) {
       //  F1_ii -> SCR
-      F1_ii = mem.template malloc<MatsT>(nInact);
+      F1_ii = CQMemManager::get().malloc<MatsT>(nInact);
       this->formGeneralizedFock1(pert, oneRDM, F1_ii, "ii", true);
     }
     
     if (nFVirt > 0) { 
       //  F1_aa -> SCR
-      F1_aa = mem.template malloc<MatsT>(nFVirt);
+      F1_aa = CQMemManager::get().malloc<MatsT>(nFVirt);
       this->formGeneralizedFock1(pert, oneRDM, F1_aa, "aa", true); 
     }
     
     if (nNegMO > 0) {
       //  F1_nn -> SCR
-      F1_nn = mem.template malloc<MatsT>(nNegMO);
+      F1_nn = CQMemManager::get().malloc<MatsT>(nNegMO);
       this->formGeneralizedFock1(pert, oneRDM, F1_nn, "nn", true); 
     }
 
@@ -145,12 +144,12 @@ namespace ChronusQ {
       SetMat('C', nCorrO, nFVirt, MatsT(1.), SCR, nCorrO, HP + nTOrb * nInact + nINCO, nTOrb);
     } 
     
-    if(SCR) mem.free(SCR); 
+    if(SCR) CQMemManager::get().free(SCR); 
     
     // NA-PO block
     if (settings.rotate_negative_positive) {
       
-      SCR = mem.template malloc<MatsT>(nNegMO * std::max(nInact, nCorrO));
+      SCR = CQMemManager::get().malloc<MatsT>(nNegMO * std::max(nInact, nCorrO));
       
       // IN-NA block
       if (nInact > 0) {
@@ -171,16 +170,16 @@ namespace ChronusQ {
       SetMat('N', nCorrO, nNegMO, MatsT(1.), SCR, nCorrO, H + nNegMO + nInact, nTOrb);
       SetMat('C', nCorrO, nNegMO, MatsT(1.), SCR, nCorrO, H + (nNegMO + nInact) * nTOrb, nTOrb);
       
-      mem.free(SCR);
+      CQMemManager::get().free(SCR);
     }
     
     // Free SCRs
-    if(F1_ii)   mem.free(F1_ii);
-    if(F2_tt)   mem.free(F2_tt);
-    if(F1_tt)   mem.free(F1_tt);
-    if(F1_aa)   mem.free(F1_aa);
-    if(F1_nn)   mem.free(F1_nn);
-    if(RDM1_tt) mem.free(RDM1_tt);
+    if(F1_ii)   CQMemManager::get().free(F1_ii);
+    if(F2_tt)   CQMemManager::get().free(F2_tt);
+    if(F1_tt)   CQMemManager::get().free(F1_tt);
+    if(F1_aa)   CQMemManager::get().free(F1_aa);
+    if(F1_nn)   CQMemManager::get().free(F1_nn);
+    if(RDM1_tt) CQMemManager::get().free(RDM1_tt);
     
     // Scale Hessian
     blas::scal(nTOrb * nTOrb, MatsT(settings.hessianDiagScale), H, 1);
