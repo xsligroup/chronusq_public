@@ -159,16 +159,6 @@ namespace ChronusQ {
     // Misc control
     size_t maxSCFIter = 128; ///< Maximum SCF iterations.
 
-    // Cube options
-    bool denCube = false;
-    bool charDenCube = false;
-    size_t npts = 0;
-    double steps = 0;
-    std::string res = "";
-    std::string CubegenFileName = ""; 
-
-    // bool moCube = false;
-
     // Printing
     size_t printMOCoeffs = 0;
     size_t printLevel = 1;

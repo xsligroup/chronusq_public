@@ -35,7 +35,8 @@ namespace ChronusQ {
       "POINTS",
       "STEPS",
       "NAME",
-      "RES"
+      "RES",
+      "PADDING"
     };
 
     // Specified keywords
@@ -51,41 +52,75 @@ namespace ChronusQ {
     // Check for disallowed combinations (if any)
   }
 
-  void CQCUBEOptions(std::ostream &out, CQInputFile &input,
-    SingleSlaterBase &ss) {
+  std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<SingleSlaterBase> &ss) {
 
     // CUBE section not required
-    if( not input.containsSection("CUBE") ) return;
+    if( not input.containsSection("CUBE") ) return nullptr;
 
-    std::cout << " CUBE INITIALIZED " << std::endl;
-    // std::string chargeDensitySwitch;
-    // OPTOPT(chargeDensitySwitch = input.getData<bool>("CUBE.CUBEDEN"); )
+    std::cout << " Found [CUBE] Section " << std::endl;
 
-    // auto const regexCubeTrue = std::regex("true|on|1",std::regex_constants::icase);
+    // >>Keywords needed for constructor
+    std::string CubegenFileName = "";
+    std::string resString = "";
+    size_t npts = 0;
+    double step = 0.0;
+    double pad = 0.0;
 
-    // // check for charge density 
-    // if (std::regex_search(chargeDensitySwitch, regexCubeTrue)) {
-    //   ss.scfControls.denCube = true;
-    // }
+    // change resolution 
+    OPTOPT( resString = input.getData<std::string>("CUBE.RES") );
 
-    // Cube Options
-    // generate cube file for charge density
-    OPTOPT( ss.scfControls.denCube = input.getData<bool>("CUBE.CUBEDEN") );
-
-    // collects NPTS from user for cube quality
-    OPTOPT( ss.scfControls.res = input.getData<std::string>("CUBE.RES") );
-
-    // collects NPTS from user for cube quality
-    OPTOPT( ss.scfControls.npts = input.getData<size_t>("CUBE.POINTS") );
-
-    OPTOPT( ss.scfControls.steps = input.getData<double>("CUBE.STEPS") );
+    // change padding. Used to avoid cube cutoffs
+    OPTOPT( pad = input.getData<double>("CUBE.PADDING") );
 
     // collects naming scheme from user (optional)
-    OPTOPT( ss.scfControls.CubegenFileName = input.getData<std::string>("CUBE.NAME") );
+    OPTOPT( CubegenFileName = input.getData<std::string>("CUBE.NAME") );
+
+    // Create custom grid with points and stepsize 
+    // Assumes cube 
+    OPTOPT( npts = input.getData<size_t>("CUBE.POINTS") );
+    OPTOPT( step = input.getData<double>("CUBE.STEPS") );
+
+    // Handle strange cases
+    if( npts>0 and step==0.0 ) CErr("Number of points in grid also requires step size");
+    if( npts==0 and step>0.0 ) CErr("Step size in grid also requires number of points");
+    if( step<0.0 ) CErr("Step size needs to be positive");
+
+    if( !resString.empty() and npts>0 and step>0.0 ) std::cout << "   ***WARNING: resolution overwrites custom grid" << std::endl; 
+    if( abs(pad) != 0.0 and npts>0 and step>0.0 ) std::cout << "   ***WARNING: padding is not used for custom grid construction" << std::endl;
+
+    std::shared_ptr<CubeGen> cubeptr;
+
+    // Construct cubegen
+    if( !resString.empty() and abs(pad) != 0.0 ){
+
+      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, resString, pad));
+
+    } else if( !resString.empty() ){
+
+      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, resString));
+
+    } else if( npts > 0 ){
+
+      std::array<size_t,3> grid = {npts, npts, npts};
+      std::array<double,3> units = {step, step, step};
+      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, grid, units));
+
+    } else {
+
+      cubeptr = std::make_shared<CubeGen>(CubeGen(ss));
+
+    }
+
+    // >>Keywords not needed for constructor
+
+    // generate cube file for charge density
+    OPTOPT( cubeptr->setDenEval(input.getData<bool>("CUBE.CUBEDEN")) );
 
     // OPTOPT( ss.scfControls.moCube = 
       // input.getData<bool>("CUBE.CUBEMO") );
 
+    return cubeptr;
 
   }; // CQSCFOptions
 

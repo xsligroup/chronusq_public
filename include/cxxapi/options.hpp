@@ -299,8 +299,8 @@ namespace ChronusQ {
 
   void CQMISC_VALID(std::ostream&, CQInputFile &);
 
-  void CQCUBEOptions(std::ostream&, CQInputFile&,
-    SingleSlaterBase &);
+  std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream&, CQInputFile&,
+    std::shared_ptr<SingleSlaterBase> &);
 
   void CQCUBE_VALID(std::ostream&, CQInputFile &);
 
