@@ -93,7 +93,7 @@ namespace ChronusQ {
         return;
       CQMemManager::get().free(rawERI3J_);
     }
-    try { rawERI3J_ = CQMemManager::get().malloc<IntsT>(NB3); }
+    try { rawERI3J_ = CQMemManager::get().calloc<IntsT>(NB3); }
     catch(...) {
       std::cout << std::fixed;
       std::cout << "Insufficient memory for the full RI-ERI tensor ("
@@ -168,7 +168,7 @@ namespace ChronusQ {
     size_t NB2   = NB*(NB+1)/2;
     size_t NB3   = NB2*NBRI;
     // S^{-1/2}(Q|ij)
-    auto ijK = CQMemManager::get().malloc<double>(NB3);
+    auto ijK = CQMemManager::get().calloc<double>(NB3);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBRI,NB2,NBRI,double(1.),S,NBRI,pointer(),NBRI,double(0.),ijK,NBRI);
 
     auto durGemm = tock(topGemm);
@@ -176,7 +176,7 @@ namespace ChronusQ {
 
 #ifdef __DEBUGERI__
     // Debug output of the ERIs
-    auto TempERI4 = CQMemManager::get().malloc<double>(NB2*NB2);
+    auto TempERI4 = CQMemManager::get().calloc<double>(NB2*NB2);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NB2,NB2,NBRI,double(1.),ijK,NB2,ijK,NB2,double(0.),TempERI4,NB2);
     std::cout << "Two-Electron Integrals (ERIs)" << std::endl;
     for(auto i = 0ul; i < NB; i++)
@@ -628,7 +628,7 @@ namespace ChronusQ {
         for (size_t Q = P; Q < basisSet.nShell; Q++, PQ++) {
 
           size_t pqSize(basisSet.shells[P].size() * basisSet.shells[Q].size());
-          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().malloc<double>(pqSize * pqSize);
+          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().calloc<double>(pqSize * pqSize);
         }
       }
     }
@@ -738,7 +738,7 @@ namespace ChronusQ {
 
         if (saveDiagBlocks or basisSet.shells[P].ncontr() > 1 or basisSet.shells[Q].ncontr() > 1) {
           size_t pqSize(basisSet.shells[P].size() * basisSet.shells[Q].size());
-          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().malloc<double>(pqSize * pqSize);
+          diagBlocks[std::make_pair(P,Q)] = CQMemManager::get().calloc<double>(pqSize * pqSize);
         }
       }
     }
@@ -1230,7 +1230,7 @@ namespace ChronusQ {
 
     size_t NB2 = NB*(NB+1)/2;
 
-    double *diag = CQMemManager::get().malloc<double>(NB2);
+    double *diag = CQMemManager::get().calloc<double>(NB2);
 
     if (libcint_)
       computeDiagonalLibcint(basisSet, diag);
@@ -1273,7 +1273,7 @@ namespace ChronusQ {
 
       // If here, we're really going to add this row
       if (NBRI % NB == 0)
-        allocs.push_back(CQMemManager::get().malloc<double>(NB * NB2));
+        allocs.push_back(CQMemManager::get().calloc<double>(NB * NB2));
       L.push_back(allocs.back() + (NBRI % NB) * NB2);
 
       beginERIvec = tick();
@@ -1880,8 +1880,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = CQMemManager::get().malloc<double>(NB2);
-    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().calloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().calloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -1950,7 +1950,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << D.size() << std::endl;
 #endif
 
-    L = CQMemManager::get().malloc<double>(D.size() * std::min(D.size(), maxQual_));
+    L = CQMemManager::get().calloc<double>(D.size() * std::min(D.size(), maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginCDalgMM = topEffCDPivots;
@@ -2000,7 +2000,7 @@ namespace ChronusQ {
 
 
       // 5. Build Mpq (New version build in inner loop)
-      double *M = CQMemManager::get().malloc<double>(D.size() * lenQ);
+      double *M = CQMemManager::get().calloc<double>(D.size() * lenQ);
       curERIdur = t1ERI;
       curERIcount = c1ERI;
       beginERIvec = tick();
@@ -2239,7 +2239,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << D.size() << std::endl;
 #endif
 
-      double *Lnew = CQMemManager::get().malloc<double>(D.size() * (pivots_.size() + std::min(D.size(), maxQual_)));
+      double *Lnew = CQMemManager::get().calloc<double>(D.size() * (pivots_.size() + std::min(D.size(), maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -2313,8 +2313,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = CQMemManager::get().malloc<double>(NB2);
-    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().calloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().calloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -2366,7 +2366,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-    L = CQMemManager::get().malloc<double>(lenD * std::min(lenD, maxQual_));
+    L = CQMemManager::get().calloc<double>(lenD * std::min(lenD, maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginERIcopy = topEffCDPivots;
@@ -2433,7 +2433,7 @@ namespace ChronusQ {
     std::cout << "    SevalBegin = " << nERIvec << std::endl;
 #endif
 
-    double *ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
+    double *ERIvecAlloc = CQMemManager::get().calloc<double>(lenD * nERIvec);
     double curERIvec = 0.0, curCDalgMM = 0.0, curShrink = 0.0;
     double curERIcopy = 0.0, curERItranspose = 0.0, curERIdur = 0.0;
     size_t curERIcount = 0;
@@ -2445,7 +2445,7 @@ namespace ChronusQ {
 #endif
 
       // 5. Build Mpq (New version build in inner loop)
-      double *M = CQMemManager::get().malloc<double>(lenD * lenQ);
+      double *M = CQMemManager::get().calloc<double>(lenD * lenQ);
       curERIdur = t1ERI;
       curERIcount = c1ERI;
       beginERIvec = tick();
@@ -2741,7 +2741,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-      double *Lnew = CQMemManager::get().malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
+      double *Lnew = CQMemManager::get().calloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -2756,7 +2756,7 @@ namespace ChronusQ {
       L = Lnew;
 
       double *preERIvecAlloc = ERIvecAlloc;
-      ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
+      ERIvecAlloc = CQMemManager::get().calloc<double>(lenD * nERIvec);
 
       #pragma omp parallel for
       for (size_t p = 0; p < nERIvec; p++) {
@@ -2884,8 +2884,8 @@ namespace ChronusQ {
 
     // 1. Compute diagonal
     // 3. Select all diagonals greater than theoreshold
-    double *diag = CQMemManager::get().malloc<double>(NB2);
-    double *diagCompound = CQMemManager::get().malloc<double>(NB*(NB+1)/2);
+    double *diag = CQMemManager::get().calloc<double>(NB2);
+    double *diagCompound = CQMemManager::get().calloc<double>(NB*(NB+1)/2);
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
     std::vector<size_t> D;
 
@@ -2937,7 +2937,7 @@ namespace ChronusQ {
     std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-    L = CQMemManager::get().malloc<double>(lenD * std::min(lenD, maxQual_));
+    L = CQMemManager::get().calloc<double>(lenD * std::min(lenD, maxQual_));
 
     auto beginERIvec = topEffCDPivots;
     auto beginERIcopy = topEffCDPivots;
@@ -3004,7 +3004,7 @@ namespace ChronusQ {
     std::cout << "    SevalBegin = " << nERIvec << std::endl;
 #endif
 
-    double *ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
+    double *ERIvecAlloc = CQMemManager::get().calloc<double>(lenD * nERIvec);
     double curERIvec = 0.0, curCDalgMM = 0.0, curShrink = 0.0;
     double curERIcopy = 0.0, curERItranspose = 0.0, curERIdur = 0.0;
     size_t curERIcount = 0;
@@ -3333,7 +3333,7 @@ namespace ChronusQ {
       std::cout << "    D size = " << lenD << std::endl;
 #endif
 
-      double *Lnew = CQMemManager::get().malloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
+      double *Lnew = CQMemManager::get().calloc<double>(lenD * (pivots_.size() + std::min(lenD, maxQual_)));
 
       #pragma omp parallel for
       for (size_t p = 0; p < pivots_.size(); p++) {
@@ -3348,7 +3348,7 @@ namespace ChronusQ {
       L = Lnew;
 
       double *preERIvecAlloc = ERIvecAlloc;
-      ERIvecAlloc = CQMemManager::get().malloc<double>(lenD * nERIvec);
+      ERIvecAlloc = CQMemManager::get().calloc<double>(lenD * nERIvec);
 
       #pragma omp parallel for
       for (size_t p = 0; p < nERIvec; p++) {
@@ -3562,7 +3562,7 @@ namespace ChronusQ {
 
       }
 
-      T* ptr = CQMemManager::get().malloc<T>(memBlockSize_);
+      T* ptr = CQMemManager::get().calloc<T>(memBlockSize_);
       rawPtrs_.push_back(ptr);
       memPtrs_.push_back({{1}});
 
@@ -4064,7 +4064,7 @@ namespace ChronusQ {
 
     // 2.1. Compute diagonal ERI elements
     // 2.2. Select all diagonals greater than the threshold
-    double *diag = CQMemManager::get().malloc<double>(NB2);
+    double *diag = CQMemManager::get().calloc<double>(NB2);
 
     std::map<std::pair<size_t, size_t>, double*> diagBlocks;
 
@@ -4147,7 +4147,7 @@ namespace ChronusQ {
     preserve.reserve(candidateSize);
 
     size_t Lalloc = std::min(candidateSize, maxQual_);
-    L = CQMemManager::get().malloc<double>(candidateSize * Lalloc);
+    L = CQMemManager::get().calloc<double>(candidateSize * Lalloc);
 
     auto beginERIvec = topDynCDPivots;
     auto beginCDalg = topDynCDPivots;
@@ -4320,7 +4320,7 @@ namespace ChronusQ {
         dynamicMem.shrink(preserve);
 
         Lalloc = pivots_.size() + std::min(candidateSize, maxQual_);
-        double *Lnew = CQMemManager::get().malloc<double>(candidateSize * Lalloc);
+        double *Lnew = CQMemManager::get().calloc<double>(candidateSize * Lalloc);
 
         #pragma omp parallel for
         for (size_t p = 0; p < pivots_.size(); p++) {
@@ -4882,6 +4882,7 @@ namespace ChronusQ {
     auto topLibintPivotRI = tick();
 
     setNRIBasis(pivots_.size());
+    clear();
 
     if (eri4I_) {
 
