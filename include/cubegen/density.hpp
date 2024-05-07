@@ -34,7 +34,7 @@ namespace ChronusQ {
      * This is called from evalCube.
     */
     template <typename LocMatsT>
-    void CubeGen::evalCDCube(std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> oPDM_)
+    void CubeGen::evalDenCube(LocMatsT *oPDM_)
     {
       // gets number of basis sets
       size_t NB = ref_->nAlphaOrbital();
@@ -60,7 +60,7 @@ namespace ChronusQ {
             evalShellSet(NOGRAD,ref_->basisSet().shells,&pt[0],1,&BASIS[0],false);
 
             blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans, 1, NB, NB,1.,
-            &BASIS[0], NB, oPDM_->S().pointer(), NB,0., &SCR[0], 1);
+            &BASIS[0], NB, oPDM_, NB,0., &SCR[0], 1);
 
             val = blas::dotu(NB,&SCR[0],1,&BASIS[0],1);
 

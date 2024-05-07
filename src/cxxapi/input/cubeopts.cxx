@@ -31,7 +31,7 @@ namespace ChronusQ {
 
     // Allowed keywords
     std::vector<std::string> allowedKeywords = {
-      "CUBEDEN",
+      "DEN",
       "POINTS",
       "STEPS",
       "NAME",
@@ -114,8 +114,8 @@ namespace ChronusQ {
 
     // >>Keywords not needed for constructor
 
-    // generate cube file for charge density
-    OPTOPT( cubeptr->setDenEval(input.getData<bool>("CUBE.CUBEDEN")) );
+    // generate cube file for density
+    OPTOPT( cubeptr->setDenEval(input.getData<bool>("CUBE.DEN")) );
 
     // OPTOPT( ss.scfControls.moCube = 
       // input.getData<bool>("CUBE.CUBEMO") );

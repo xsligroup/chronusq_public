@@ -523,24 +523,20 @@ namespace ChronusQ {
 
     if( cube ){
       std::string cube_name;
-      if(cube->getCubeFilename().empty()) {
-        cube_name = "";
+      if(cube->getCubeFileName().empty()) {
+        cube_name = "SCF";
       } else {
-        cube_name = cube->getCubeFilename();
-        std::transform(cube_name.begin(), cube_name.end(), cube_name.begin(), ::tolower);
+        cube_name = cube->getCubeFileName();
       }
 
       // charge density cubegen process
       if (cube->getDenEval()) {
-        std::string den_cube_name;
-        den_cube_name = cube_name + "_density.cube";
-        cube->createNewCube(den_cube_name);
-      
+
         // call charge density evaluation
         auto double_ss = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss);
         auto dcomplex_ss = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss);
-        if( double_ss ) cube->evalCube(CUBE_TYPE::_CHARGE_DENSITY, double_ss->onePDM);
-        else if( dcomplex_ss ) cube->evalCube(CUBE_TYPE::_CHARGE_DENSITY, dcomplex_ss->onePDM);
+        if( double_ss ) cube->evalCube(cube_name,double_ss->onePDM);
+        else if( dcomplex_ss ) cube->evalCube(cube_name,dcomplex_ss->onePDM);
         else std::cout << "Cannot perform Cubegen for this class type" << std::endl;
       }
     }
