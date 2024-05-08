@@ -211,12 +211,14 @@ namespace ChronusQ {
     // Construct CI object
     #define CONSTRUCT_CI_OBJ(_MT,_IT)             \
     if( not found ) try { \
-      auto ciObj = std::make_shared<ConfigrationInteraction<_MT,_IT>>( \
-          std::dynamic_pointer_cast<SingleSlater<_MT,_IT>>(ss), nR); \
-      ci = std::dynamic_pointer_cast<PostHartreeFockBase>(ciObj); \
-      ciSettings = &(ciObj->ciSettings); \
-      found = true;  \
-	} catch(...) { }
+	auto derived_ss = std::dynamic_pointer_cast<SingleSlater<_MT,_IT>>(ss); \
+        if (derived_ss) { \
+          auto ciObj = std::make_shared<ConfigrationInteraction<_MT,_IT>>( derived_ss, nR); \
+          ci = std::dynamic_pointer_cast<PostHartreeFockBase>(ciObj); \
+          ciSettings = &(ciObj->ciSettings); \
+          found = true;  \
+        } \
+      } catch(...) { }
 
     bool found = false;
     CONSTRUCT_CI_OBJ(double,double);   
