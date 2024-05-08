@@ -213,7 +213,7 @@ namespace ChronusQ {
     if( not found ) try { \
 	auto derived_ss = std::dynamic_pointer_cast<SingleSlater<_MT,_IT>>(ss); \
         if (derived_ss) { \
-          auto ciObj = std::make_shared<ConfigrationInteraction<_MT,_IT>>( derived_ss, nR); \
+          auto ciObj = std::make_shared<ConfigurationInteraction<_MT,_IT>>( derived_ss, nR); \
           ci = std::dynamic_pointer_cast<PostHartreeFockBase>(ciObj); \
           ciSettings = &(ciObj->ciSettings); \
           found = true;  \

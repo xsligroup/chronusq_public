@@ -80,7 +80,7 @@ void CISettings::print(bool fourComp) {
 } // CISettings::print
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::printCIHeader() {
+void ConfigurationInteraction<MatsT, IntsT>::printCIHeader() {
   
   auto & corrS = this->corrSpace;
   auto & ref = *this->reference();
@@ -155,7 +155,7 @@ void ConfigrationInteraction<MatsT, IntsT>::printCIHeader() {
 } //ConfigInteraction::printCIHeader
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::printStateEnergy() {
+void ConfigurationInteraction<MatsT, IntsT>::printStateEnergy() {
   
   std::cout << std::left << std::endl;
   
@@ -205,7 +205,7 @@ void printCIState(std::ostream &out, size_t i, double energy,
 } // namespace
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::printCIFooter( ) {
+void ConfigurationInteraction<MatsT, IntsT>::printCIFooter( ) {
   
   std::cout << std::endl << "Configuration Interaction Results:" << std::endl;
   std::cout << BannerTop << std::endl;
