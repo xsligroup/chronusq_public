@@ -72,7 +72,7 @@ struct CISettings {
 }; // struct CISettings 
 
 template <typename MatsT, typename IntsT>
-class ConfigrationInteraction: public PostHartreeFock<MatsT, IntsT> {
+class ConfigurationInteraction: public PostHartreeFock<MatsT, IntsT> {
 
 public:
   
@@ -91,9 +91,9 @@ public:
   std::shared_ptr<InCore4indexTPI<MatsT>> twoRDMSOI = nullptr;
   
   // Disable default, copy and move constructors
-  ConfigrationInteraction()                          = delete;
-  ConfigrationInteraction(const ConfigrationInteraction &) = delete;
-  ConfigrationInteraction(ConfigrationInteraction &&)      = delete;
+  ConfigurationInteraction()                          = delete;
+  ConfigurationInteraction(const ConfigurationInteraction &) = delete;
+  ConfigurationInteraction(ConfigurationInteraction &&)      = delete;
 
   /**
    *  \brief ConfigInteraction Constructor.
@@ -103,10 +103,10 @@ public:
    *  SingleSlater object for the propagation.
    */ 
   template <typename MatsU>
-  ConfigrationInteraction(std::shared_ptr<SingleSlater<MatsU,IntsT>> ref, size_t NS) :
+  ConfigurationInteraction(std::shared_ptr<SingleSlater<MatsU,IntsT>> ref, size_t NS) :
     PostHartreeFock<MatsT,IntsT>(ref, NS) { };  // ConfigInteraction constructor
 
-  ~ConfigrationInteraction(){ dealloc(); }
+  ~ConfigurationInteraction(){ dealloc(); }
 
   void initialization();
 

@@ -88,7 +88,7 @@ void davidsonPreconditioner(MatsT* localR, MatsT* localS,
  *
  */ 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::solveCI() {
+void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
 
   const size_t nDet = nDeterminants(); // total number of determinants
   const size_t nRoots   = this->NStates; // total number of CI roots to solve

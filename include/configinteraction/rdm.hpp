@@ -29,13 +29,13 @@
 namespace ChronusQ {
    
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::computeTDM(
+void ConfigurationInteraction<MatsT, IntsT>::computeTDM(
   size_t s1, size_t s2, std::shared_ptr<cqmatrix::Matrix<MatsT>> tdm) {
   ciBuilder->buildTDM(*CIVectors, *CIVectors, {s1, s2}, tdm);
 } // ConfigInteraction::computeTDM 
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
+void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   
   const auto& weights = this->SAWeight;
   oneRDMSOI->clear();

@@ -26,8 +26,8 @@
 
 namespace ChronusQ {
 
-template class ConfigrationInteraction<double,double>;
-template class ConfigrationInteraction<dcomplex,double>;
-template class ConfigrationInteraction<dcomplex,dcomplex>;
+template class ConfigurationInteraction<double,double>;
+template class ConfigurationInteraction<dcomplex,double>;
+template class ConfigurationInteraction<dcomplex,dcomplex>;
   
 } // namespace ChronusQ

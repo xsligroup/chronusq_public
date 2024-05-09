@@ -120,7 +120,10 @@ public:
     if (nRow * nCol != nRow_ * nCol_) {
       nRow_ = nRow;
       nCol_ = nCol;
-      malloc();
+      #pragma omp critical
+      {
+        malloc();
+      }
     } else {
       nRow_ = nRow;
       nCol_ = nCol;

@@ -79,7 +79,6 @@ public:
   
   }  // PostHartreeFock constructor
 
-  // See include/mcwavefunction/impl.hpp for documentation 
   PostHartreeFock() = delete;
   // Different type
   template <typename MatsU> 

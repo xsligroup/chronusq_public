@@ -35,7 +35,7 @@
 namespace ChronusQ {
   
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
+void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
   
   ProgramTimer::tick("Configuration Interaction Total");
    
@@ -212,7 +212,7 @@ void ConfigrationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
 } //ConfigInteraction::run
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::saveCurrentStates() {
+void ConfigurationInteraction<MatsT, IntsT>::saveCurrentStates() {
   
   ROOT_ONLY(this->comm);
 
@@ -227,12 +227,12 @@ void ConfigrationInteraction<MatsT, IntsT>::saveCurrentStates() {
 } // ConfigInteraction::saveCurrentStates
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::alloc() {
+void ConfigurationInteraction<MatsT, IntsT>::alloc() {
   // TODO: need to estimate memory usage
 }
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::initialization() {
+void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   
   PostHartreeFock<MatsT,IntsT>::alloc();
    
@@ -306,7 +306,7 @@ void ConfigrationInteraction<MatsT, IntsT>::initialization() {
 }
 
 template <typename MatsT, typename IntsT>
-void ConfigrationInteraction<MatsT, IntsT>::dealloc() {
+void ConfigurationInteraction<MatsT, IntsT>::dealloc() {
   oneRDMSOI = nullptr;
   twoRDMSOI = nullptr;
   ciBuilder = nullptr;
