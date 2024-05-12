@@ -22,6 +22,7 @@
  *  
  */
 #include <cubegen/density.hpp>
+#include <cubegen/orbital.hpp>
 #include <cubegen/impl.hpp>
 
 namespace ChronusQ {
@@ -34,5 +35,14 @@ namespace ChronusQ {
     void CubeGen::evalDenCompCube(double* oPDM_, double particleCharge);
     template
     void CubeGen::evalDenCompCube(dcomplex* oPDM_, double particleCharge);
+    template 
+    void CubeGen::evalOrbCube(std::string filePrefix, double* MOs, size_t LDMO, std::vector<size_t> whichMO, std::function<double(double)> Op);
+    template 
+    void CubeGen::evalOrbCube(std::string filePrefix, dcomplex* MOs, size_t LDMO, std::vector<size_t> whichMO, std::function<double(dcomplex)> Op);
+    template
+    void CubeGen::evalOrbCompCube(double * MO,size_t LDMO, size_t MOIndex,std::function<double(double)>Op);
+    template
+    void CubeGen::evalOrbCompCube(dcomplex * MO,size_t LDMO, size_t MOIndex,std::function<double(dcomplex)>Op);
+
 
 }

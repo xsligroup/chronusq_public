@@ -45,7 +45,7 @@ namespace ChronusQ {
    *  \brief Level 1 Basis Set Evaluation Function
    *  \brief Evaluates a shell set over a specified number of cartesian points.
    */ 
-  void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, double *, size_t, double *, bool);
+  void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, double *, size_t, double *, bool, double * SCR = nullptr);
 
   inline void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells,
     std::vector<std::array<double,3>> &pts, double *eval, bool &forceCart){

@@ -33,13 +33,26 @@ namespace ChronusQ {
      * 
      * This is called from evalCube.
     */
-    template <typename LocMatsT>
-    void CubeGen::evalDenCompCube(LocMatsT *oPDM_, double particleCharge)
+    template <typename LocMatsT, typename ValManipOp>
+    void CubeGen::evalOrbCompCube(LocMatsT * MO, size_t LDMO, size_t MOIndex, ValManipOp op)
     {
       // gets number of basis sets
       size_t NB = basis_->nBasis;
 
       double * BASIS;
+
+      LocMatsT * ThisMO = MO + MOIndex * LDMO;
+
+
+      // SMG Debug printing
+      //std::cout << "MOIndex: " << MOIndex << std::endl;
+      //std::cout << "Re, Im, Mag, Phase" << std::endl;
+      //for(size_t i = 0; i < NB; i++)
+      //  std::cout << std::right << std::setprecision(6) << std::setw(14) << 
+      //   std::real(ThisMO[i]) <<  "   " <<
+      //   std::imag(ThisMO[i]) <<  "   " << 
+      //   std::abs(ThisMO[i]) <<  "   " << 
+      //   std::arg(ThisMO[i]) << std::endl;
 
       for(auto ix = 0l; ix < voxelGrid_[0]; ix++) {
         for(auto iy = 0l; iy < voxelGrid_[1]; iy++) {
@@ -51,13 +64,10 @@ namespace ChronusQ {
 
             BASIS = EvalShellSetAtPoint(ix,iy,iz);
 
-            blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans, 1, NB, NB,1.,
-            BASIS, NB, oPDM_, NB,0., &SCR[0], 1);
-
-            val = blas::dotu(NB,&SCR[0],1,&BASIS[0],1);
+            val = blas::dot(NB,ThisMO,1,BASIS,1);
 
             *cubeFile_ << std::right << std::setw(15) << std::setprecision(5)
-            << std::scientific << std::uppercase << std::real(particleCharge *  val);
+            << std::scientific << std::uppercase << op(val);
 
             if( iz % 6 == 5 ) *cubeFile_ << "\n";
 

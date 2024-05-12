@@ -40,6 +40,13 @@ namespace ChronusQ {
     FINE
   };
 
+  // The standard options for obitals a user may want to plot
+  // Currently unused 
+  enum class MO_CLASSES {
+    ALL,
+    CUSTOM
+  };
+
   /**
    * @brief Generates a cubefile of specfied surface.
    * 
@@ -52,14 +59,28 @@ namespace ChronusQ {
 
     private : 
       std::shared_ptr<std::ofstream> cubeFile_ = nullptr;
+      // Allows for the generation of real and imaginary of an orbital
+      // in a single call when generating orbital cubes
       std::array<size_t,3> voxelGrid_;
       std::array<double,3> voxelUnits_;
       RES_TYPE res_;
       bool denCube_ = false;
+      // For orbitals, default is Re and Im, but user can override this
+      // to generate Magnitude and Phase cubes
+      bool MagnitudeAndPhase_ = false;
+      // Eventually moved to individual 
+      MO_CLASSES whichMO;
+      std::vector<size_t> custom_orb_request;
+      bool orbCube_ = false;
       std::string cubeFileName_;
       double cubePadding_ = 3.0;
       std::shared_ptr<Molecule> mol_;
       std::shared_ptr<BasisSet> basis_;
+
+      // Helper functions for precomputing the basis (if memory permits)
+      void ComputeBasis();
+      std::vector<double> evaluated_basis;
+      double * EvalShellSetAtPoint(int,int,int);
       
     public:
 
@@ -74,6 +95,7 @@ namespace ChronusQ {
         voxelUnits_ = {0.1,0.1,0.1};
         mol_ = mol;
         basis_ = basis;
+        ComputeBasis();
       }
 
       /**
@@ -88,6 +110,7 @@ namespace ChronusQ {
         voxelUnits_ = {0.1,0.1,0.1};
         mol_ = mol;
         basis_ = basis;
+        ComputeBasis();
       }
 
       /**
@@ -112,6 +135,7 @@ namespace ChronusQ {
         voxelUnits_ = voxelUnits;
         mol_ = mol;
         basis_ = basis;
+        ComputeBasis();
       }
 
       /**
@@ -136,6 +160,7 @@ namespace ChronusQ {
         basis_ = basis;
         // call this to create grid
         calculateVoxelDimensions();
+        ComputeBasis();
       }
 
 
@@ -185,6 +210,15 @@ namespace ChronusQ {
         denCube_ = denEval;
       }
 
+      /**
+       * @brief set orbital boolean
+       * 
+      */
+      void setOrbEval(bool orbEval)
+      {
+         orbCube_ = orbEval;
+      }
+
 
       /**
        * @brief returns density boolean 
@@ -192,6 +226,69 @@ namespace ChronusQ {
       */
       bool getDenEval() {
         return denCube_;
+      }
+
+      /**
+       * @brief returns orbital boolean 
+       * 
+      */
+      bool getOrbEval() {
+        return orbCube_;
+      }
+
+      /**
+       * @brief set internal flag for which orbitals to generate
+       * 
+      */
+      void setMORequest(MO_CLASSES req)
+      {
+        whichMO = req;
+      }
+
+      /**
+       * @brief returns enum class of which orbitals were requested 
+       * 
+      */
+      MO_CLASSES getMORequest()
+      {
+        return whichMO;
+      }
+
+      /**
+       * @brief add an orbital in a custom list of MO's to generate
+       * 
+       * NOTE: input is 1 indexed, but internal storage is 0 indexed
+      */
+      void addMOtoList(size_t mo)
+      {
+        custom_orb_request.push_back(mo-1);
+      }
+
+      /**
+       * @brief returns vector of which orbital which were requested 
+       * 
+      */
+      std::vector<size_t> getMOList()
+      {
+        return custom_orb_request;
+      }
+
+      /**
+       * @brief returns if Magnitude & Phase cubes requested
+       * 
+      */
+      bool getMagnitudeAndPhase()
+      {
+        return MagnitudeAndPhase_;
+      }
+
+      /**
+       * @brief sets if Magnitude & Phase cubes requested
+       * 
+      */
+      void setMagnitudeAndPhase(bool MagAndPhase)
+      {
+        MagnitudeAndPhase_ = MagAndPhase;
       }
 
       // There is no setter for cube padding because
@@ -213,10 +310,15 @@ namespace ChronusQ {
       void writeSummary(std::string fileSum);
       template <typename LocMatsT>
       void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> );
+      template <typename LocMatsT, typename ValManipOp>
+      void evalOrbCube(std::string filePref, LocMatsT* MOBase, size_t LDMO, std::vector<size_t> whichMOs, ValManipOp op);
 
       // >>> Property evaluation functions
       template <typename LocMatsT>
       void evalDenCompCube(LocMatsT*, double pCharge=-1.0);
+      template <typename LocMatsT, typename ValManipOp>
+      void evalOrbCompCube(LocMatsT *,size_t,size_t,ValManipOp);
+    
 
   };
 

@@ -25,11 +25,21 @@ namespace ChronusQ {
    *                         the functions in the shell, for each shell(nShSize), for each point(npts)
    */ 
   void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
-    double *pts, size_t npts, double *fEval, bool forceCart) {
+    double *pts, size_t npts, double *fEval, bool forceCart, double * SCR) {
     size_t NBasisEff = 0;
     size_t nShSize = shells.size();
-    double * r   = CQMemManager::get().malloc<double>(3*npts*nShSize);
-    double * rSq = CQMemManager::get().malloc<double>(npts*nShSize);
+    double * r;
+    double * rSq;
+    if(!SCR)
+    {
+      r   = CQMemManager::get().malloc<double>(3*npts*nShSize);
+      rSq = CQMemManager::get().malloc<double>(npts*nShSize);
+    }
+    else
+    {
+      r = SCR;
+      rSq = SCR + 3*npts*nShSize;
+    }
     // figure the size (number of basis) of the all shells inputed that need to be evaluated
     // and store in NBasisEff. It will be used for defining the pointers later on.
     int LMax = 0;
@@ -39,9 +49,16 @@ namespace ChronusQ {
     size_t shSizeCar = ((LMax+1)*(LMax+2))/2; 
     size_t NDer = 1;
     if (typ ==GRADIENT) NDer = 4;
-    double * SCR_Car = 
-        CQMemManager::get().malloc<double>(NDer*shSizeCar);
-
+    double * SCR_Car;
+    if(!SCR)
+    {
+      SCR_Car = CQMemManager::get().malloc<double>(NDer*shSizeCar);
+    }
+    else
+    {
+      SCR_Car = SCR + 3*npts*nShSize + npts*nShSize;
+    }
+        
     for (auto ipts = 0; ipts < npts; ipts++){
       double xp = *(pts + ipts*3);
       double yp = *(pts + 1 + ipts*3);
@@ -64,7 +81,10 @@ namespace ChronusQ {
     // Call to Level 2 Basis Set Evaluation
     evalShellSet(typ,shells,evalShell,rSq,r,npts,nShSize,mapSh2Cen,
       NBasisEff,fEval,SCR_Car,shSizeCar,forceCart); 
-    CQMemManager::get().free(r,rSq,SCR_Car);
+    if(!SCR)
+    {
+      CQMemManager::get().free(r,rSq,SCR_Car);
+    }
 
   }; // evalShellSet Level 1
 

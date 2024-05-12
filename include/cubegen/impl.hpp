@@ -156,4 +156,30 @@ namespace ChronusQ {
       
     }
 
+    template <typename LocMatsT, typename ValManipOp>
+    void CubeGen::evalOrbCube(std::string filenamePrefix, LocMatsT * MOBase, size_t LDMO, std::vector<size_t> whichMOs, ValManipOp op)
+    {
+      std::cout << std::endl;
+      std::cout << "----------------------------------------------------" << std::endl;
+      std::cout << "Generating Orbital Cube files" << std::endl;
+      std::cout << "For Component: " << filenamePrefix << std::endl;
+      std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
+      std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
+      std::cout << "----------------------------------------------------" << std::endl;
+      std::cout << std::endl;
+
+      ProgramTimer::tick("Cube Eval");
+
+      // Loop over requested orbitals
+      for(const size_t & MOIndex : whichMOs)
+      {
+        createNewCube(filenamePrefix + "_MO_"+std::to_string(MOIndex+1));
+        writeSummary(filenamePrefix + " MO " + std::to_string(MOIndex+1));
+        evalOrbCompCube(MOBase,LDMO,MOIndex,op);
+      }
+
+      ProgramTimer::tock("Cube Eval");
+
+    }
+
 }

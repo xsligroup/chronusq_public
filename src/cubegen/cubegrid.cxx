@@ -91,4 +91,107 @@ namespace ChronusQ {
       return centerPoint;
     }
 
+    double * CubeGen::EvalShellSetAtPoint(int ix, int iy, int iz)
+    {
+        size_t NB = basis_->nBasis;
+
+        // If we precomputed the basis we can return the cached basis
+        if(evaluated_basis.size()==NB * voxelGrid_[0] * voxelGrid_[1] * voxelGrid_[2])
+        {
+            return &(evaluated_basis.data()[NB*(ix + iy * voxelGrid_[0] + iz * voxelGrid_[0] * voxelGrid_[1])]);
+        }
+
+        std::array<double,3> pt = {
+            (ix-(int)voxelGrid_[0]/2) * voxelUnits_[0],
+            (iy-(int)voxelGrid_[1]/2) * voxelUnits_[1],
+            (iz-(int)voxelGrid_[2]/2) * voxelUnits_[2]
+            };
+        // Possibly add a parameter here for treading of the basis evaluation
+        // with default value 0
+        evalShellSet(NOGRAD,basis_->shells,&pt[0],1,&evaluated_basis[0],false);
+        return &evaluated_basis[0];
+    }
+
+    void CubeGen::ComputeBasis()
+    {
+      // Guard against multiply trying to call this function
+      if(evaluated_basis.size())
+        return;
+      
+      size_t NB = basis_->nBasis;
+      size_t TotalBasisSize = NB * voxelGrid_[0] * voxelGrid_[1] * voxelGrid_[2];
+
+      try
+      {
+        std::cout << "Requested Total Cube Basis Size: " << TotalBasisSize << std::endl;
+        evaluated_basis.resize(TotalBasisSize);
+      }
+      catch(...)
+      {
+        std::cout << " *** Attempted to precompute basis evaluation for CubeGen"  << std::endl
+                  << "     but didn't have sufficient memory allocated.  Basis"   << std::endl
+                  << "     will be re-computed for every cube generated!    ***"  << std::endl;
+        // Still need maintain capacity for a single basis evaluation so
+        // a double * can always be returned to the start of the memory
+        // In the future can multiply by number of threads so in the 
+        // future the cube evaluation can still be omp parallelized
+        evaluated_basis.resize(NB);// * GetNumThreads());
+        return;
+      }
+
+      // Calculate the amount of scratch space needed for evalShellSet
+      size_t SCRSize = 0;
+      // Might be able to batch points in the future, for now point by point over the grid evaluation
+      size_t npts = 1;
+      size_t nShSize = basis_->shells.size();
+      // r contribution
+      SCRSize += 3 * npts * nShSize;
+      // rSq contribution
+      SCRSize += npts * nShSize;
+
+      int LMax = 0;
+      for(auto iSh = 0; iSh < nShSize; iSh++)
+      {
+        LMax=std::max(basis_->shells[iSh].contr[0].l,LMax);
+      }
+      size_t shSizeCar = ((LMax+1)*(LMax+2))/2;
+
+      // SCR_Car Contribution
+      SCRSize +=  shSizeCar;
+
+      // Allocate enough memory 
+      size_t nThreads = GetNumThreads();
+
+      double * SCR =  CQMemManager::get().malloc<double>(nThreads*SCRSize);
+      double * tSCR;
+
+      int ix,iy,iz;
+
+#pragma omp parallel default(shared) private(tSCR, ix, iy, iz)
+{
+      auto iThread = GetThreadID();
+      tSCR = SCR + iThread * SCRSize;
+      for(iz = iThread; iz < voxelGrid_[2]; iz+=nThreads){
+        for(iy = 0l; iy < voxelGrid_[1]; iy++){
+          for(ix = 0l; ix < voxelGrid_[0]; ix++)
+      {
+        std::array<double,3> pt = {
+            (ix-(int)voxelGrid_[0]/2) * voxelUnits_[0],
+            (iy-(int)voxelGrid_[1]/2) * voxelUnits_[1],
+            (iz-(int)voxelGrid_[2]/2) * voxelUnits_[2]
+            };
+        size_t offset = NB * (ix + iy * voxelGrid_[0] + iz * voxelGrid_[0] * voxelGrid_[1]);
+
+        evalShellSet(NOGRAD,basis_->shells,&pt[0],1,&(evaluated_basis.data()[offset]),false,tSCR);
+      } // iz
+      } // iy
+      } // ix
+}
+
+      // Free Scratch Memory
+      CQMemManager::get().free(SCR);
+      
+      return;
+    }
+
 }
