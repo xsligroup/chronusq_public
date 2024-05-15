@@ -950,6 +950,9 @@ namespace ChronusQ {
 
     if(refOptions.refType == isFourCRef)  hamiltonianOptions.Libcint=true;
 
+    hamiltonianOptions.updateGaunt = hamiltonianOptions.Gaunt;
+    hamiltonianOptions.updateGauge = hamiltonianOptions.Gauge;
+
   }
 
   /**

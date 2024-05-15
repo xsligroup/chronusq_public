@@ -165,19 +165,24 @@ void RealTimeSCF<singleSlaterT,MatsT, IntsT>::formFock(bool increment, double ti
       // Get perturbation for the current time and build a Fock matrix
       EMPerturbation pert_t = tdEMPerturbation.getPert(time);
 
-      // check whether save gaunt contraction
-        if ((integrationProgress.currentStep % tdSCFOptions.rtGaunt)==0) {
+      // check whether save gaunt and gauge contraction
+      if (this->singleSlaterSystem.nC == 4){
+        if ((integrationProgress.currentStep % tdSCFOptions.rtGaunt)==0){
           this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGaunt = true;
-        } else{
+        } 
+        else{
           this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGaunt = false;
         }
 
-      // check whether save gauge contraction
         if ((integrationProgress.currentStep % tdSCFOptions.rtGauge)==0) {
-        this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGauge = true;
-        } else{
-        this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGauge = false;
-        }
+          this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGauge = true;
+        } 
+        else{
+          this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGauge = false;
+        } 
+      } 
+
+  
 
 
       // Add the SCF Perturbation

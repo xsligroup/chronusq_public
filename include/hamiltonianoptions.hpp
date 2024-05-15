@@ -117,8 +117,8 @@ namespace ChronusQ {
     APPROXIMATION_TYPE_4C GauntApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gaunt approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
     APPROXIMATION_TYPE_4C GaugeApproximationType = APPROXIMATION_TYPE_4C::None;        // Type of Gauge approximation - 3-Center, 2-Center, 1-Center, Atomic Mean Field
 
-    bool updateGaunt = true;      //Default true. False if do not update gaunt term at current step 
-    bool updateGauge = true;      //Default true. False if do not update gauge term at current step  
+    bool updateGaunt = false;      //Default False. True if open Gaunt and need to update. False if do not update gaunt term at current step 
+    bool updateGauge = false;      //Default False. True if open Gauge and need to update. False if do not update gauge term at current step  
 
   }; // struct HamiltonianOptions
 
