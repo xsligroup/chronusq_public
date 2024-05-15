@@ -29,17 +29,17 @@
 namespace ChronusQ {
 
     /**
-     * @brief Generates the cubefile for charge density
+     * @brief Generates the cubefile for a density component
      * 
      * This is called from evalCube.
     */
     template <typename LocMatsT>
-    void CubeGen::evalDenCube(LocMatsT *oPDM_)
+    void CubeGen::evalDenCompCube(LocMatsT *oPDM_, double particleCharge)
     {
       // gets number of basis sets
-      size_t NB = ref_->nAlphaOrbital();
+      size_t NB = basis_->nBasis;
 
-      std::vector<libint2::Shell> &shells = ref_->basisSet().shells;
+      std::vector<libint2::Shell> &shells = basis_->shells;
 
       for(auto ix = 0l; ix < voxelGrid_[0]; ix++) {
         for(auto iy = 0l; iy < voxelGrid_[1]; iy++) {
@@ -57,7 +57,7 @@ namespace ChronusQ {
 
             LocMatsT val = 0;
 
-            evalShellSet(NOGRAD,ref_->basisSet().shells,&pt[0],1,&BASIS[0],false);
+            evalShellSet(NOGRAD,basis_->shells,&pt[0],1,&BASIS[0],false);
 
             blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans, 1, NB, NB,1.,
             &BASIS[0], NB, oPDM_, NB,0., &SCR[0], 1);
@@ -65,7 +65,7 @@ namespace ChronusQ {
             val = blas::dotu(NB,&SCR[0],1,&BASIS[0],1);
 
             *cubeFile_ << std::right << std::setw(15) << std::setprecision(5)
-            << std::scientific << std::uppercase << std::real(ref_->particle.charge *  val);
+            << std::scientific << std::uppercase << std::real(particleCharge *  val);
 
             if( iz % 6 == 5 ) *cubeFile_ << "\n";
 

@@ -221,7 +221,7 @@ namespace ChronusQ {
   };
 
   // Parse the SCF options
-  SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &);
+  SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &, std::shared_ptr<CubeGen> cu);
 
   void HandleOrbitalSwaps(std::ostream&, CQInputFile&, SingleSlaterBase&);
 
@@ -300,9 +300,12 @@ namespace ChronusQ {
   void CQMISC_VALID(std::ostream&, CQInputFile &);
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream&, CQInputFile&,
-    std::shared_ptr<SingleSlaterBase> &);
+    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &);
 
-  void CQCUBE_VALID(std::ostream&, CQInputFile &);
+  void CQCUBEOptionalKeywords(std::ostream&, CQInputFile&,
+    std::shared_ptr<CubeGen> cu, std::string);
+
+  void CQCUBE_VALID(std::ostream&, CQInputFile &, std::string);
 
 
   inline void CQINPUT_VALID(std::ostream &out, CQInputFile &input) {
@@ -317,7 +320,7 @@ namespace ChronusQ {
     CQRT_VALID(out,input);
     CQRESPONSE_VALID(out,input);
     CQMOR_VALID(out,input);
-    CQCUBE_VALID(out,input);
+    CQCUBE_VALID(out,input,"");
     CQMISC_VALID(out,input);
     CQCC_VALID(out,input);
     CQDYNAMICS_VALID(out,input);

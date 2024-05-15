@@ -54,10 +54,10 @@ namespace ChronusQ {
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
-	    "NRLEVELSHIFT",
+      "NRLEVELSHIFT",
       "PRINTCONTRACTIONTIMING" ,
-      // New parameters
-      "ACCURACY"
+      "ACCURACY",
+      "CUBE"
     };
 
     // Specified keywords
@@ -141,7 +141,7 @@ namespace ChronusQ {
 
   }
 
-  SCFControls CQSCFOptions(std::ostream &out, CQInputFile &input, EMPerturbation &pert) {
+  SCFControls CQSCFOptions(std::ostream &out, CQInputFile &input, EMPerturbation &pert, std::shared_ptr<CubeGen> cube) {
 
     SCFControls scfControls;
 
@@ -152,6 +152,13 @@ namespace ChronusQ {
       HandlePostSCFRestarts(out, input, scfControls);
 
       return scfControls;
+    }
+
+    // check if [SCF.CUBE] section
+    if( input.containsSection("SCF.CUBE") ){
+      std::cout << " Found [SCF.CUBE] section" << std::endl;
+      CQCUBE_VALID(out,input,"SCF.");
+      CQCUBEOptionalKeywords(out,input,cube,"SCF.");
     }
 
     // Optionally parse guess

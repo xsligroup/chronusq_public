@@ -27,7 +27,7 @@
 
 namespace ChronusQ {
 
-  void CQCUBE_VALID( std::ostream &out, CQInputFile &input ) {
+  void CQCUBE_VALID( std::ostream &out, CQInputFile &input, std::string section ) {
 
     // Allowed keywords
     std::vector<std::string> allowedKeywords = {
@@ -39,21 +39,23 @@ namespace ChronusQ {
       "PADDING"
     };
 
+    std::string subSection = section + "CUBE";
+
     // Specified keywords
-    std::vector<std::string> cubeKeywords = input.getDataInSection("CUBE");
+    std::vector<std::string> cubeKeywords = input.getDataInSection(subSection);
 
     // Make sure all of cubeKeywords in allowedKeywords
 
     for( auto &keyword : cubeKeywords ) {
       auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
       if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword CUBE." + keyword + " is not recognized",std::cout);// Error
+        CErr("Keyword " + subSection + "." + keyword + " is not recognized",std::cout);// Error
     }
     // Check for disallowed combinations (if any)
   }
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream &out, CQInputFile &input,
-    std::shared_ptr<SingleSlaterBase> &ss) {
+    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &basis) {
 
     // CUBE section not required
     if( not input.containsSection("CUBE") ) return nullptr;
@@ -94,34 +96,38 @@ namespace ChronusQ {
     // Construct cubegen
     if( !resString.empty() and abs(pad) != 0.0 ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, resString, pad));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, CubegenFileName, resString, pad));
 
     } else if( !resString.empty() ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, resString));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, CubegenFileName, resString));
 
     } else if( npts > 0 ){
 
       std::array<size_t,3> grid = {npts, npts, npts};
       std::array<double,3> units = {step, step, step};
-      cubeptr = std::make_shared<CubeGen>(CubeGen(ss, CubegenFileName, grid, units));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, CubegenFileName, grid, units));
 
     } else {
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(ss));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, CubegenFileName));
 
     }
 
     // >>Keywords not needed for constructor
 
-    // generate cube file for density
-    OPTOPT( cubeptr->setDenEval(input.getData<bool>("CUBE.DEN")) );
-
-    // OPTOPT( ss.scfControls.moCube = 
-      // input.getData<bool>("CUBE.CUBEMO") );
+    CQCUBEOptionalKeywords(out,input,cubeptr,"");
 
     return cubeptr;
 
-  }; // CQSCFOptions
+  }; // CQCUBEOptions
+
+  // Handle keywords for an existing cube pointer
+  void CQCUBEOptionalKeywords(std::ostream &out, CQInputFile &input, std::shared_ptr<CubeGen> cube, std::string subSection){
+
+    // generate cube file for density
+    OPTOPT( cube->setDenEval(input.getData<bool>(subSection+"CUBE.DEN")) );
+
+  }; //CQCUBEOptionalKeywords
 
 }; // namespace ChronusQ

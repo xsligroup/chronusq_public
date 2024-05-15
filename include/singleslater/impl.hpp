@@ -256,6 +256,7 @@ namespace ChronusQ {
 #include <singleslater/print.hpp>     // Print header
 #include <singleslater/pop.hpp>       // Population analysis
 #include <singleslater/fchk.hpp>      // Fchk-specific header
+#include <singleslater/cube.hpp>     // Cubegen header
 
 
 #include <singleslater/kohnsham/impl.hpp> // KS headers

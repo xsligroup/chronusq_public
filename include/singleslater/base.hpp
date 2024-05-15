@@ -27,6 +27,7 @@
 #include <wavefunction/base.hpp>
 #include <integrals.hpp>
 #include <fields.hpp>
+#include <cubegen.hpp>
 #include <util/files.hpp>
 #include <orbitalmodifieroptions.hpp>
 
@@ -138,6 +139,9 @@ namespace ChronusQ {
     virtual void printK(std::ostream&)         = 0;
 
     virtual void printFockTimings(std::ostream&) = 0;
+
+    // Post-processing functions
+    virtual void runCube(std::shared_ptr<CubeGen>) = 0;
 
 #ifdef TEST_MOINTSTRANSFORMER
     virtual void MOIntsTransformationTest(EMPerturbation &pert) = 0;

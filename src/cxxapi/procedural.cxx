@@ -164,8 +164,6 @@ namespace ChronusQ {
     }
 
 
-    CQINPUT_VALID(output,input);
-
     // Dump contents of input file into output file
     if( rank == 0 ) {
       std::cout << "\n\n\n";
@@ -183,6 +181,8 @@ namespace ChronusQ {
       std::cout << input << std::endl;
       std::cout << BannerEnd << "\n\n\n" << std::endl;
     }
+
+    CQINPUT_VALID(output,input);
 
     // TEMPORARY
     bool doTemp = true;
@@ -227,6 +227,9 @@ namespace ChronusQ {
         IntegralOptions::buildAllIntegrals(output, mol, basis, dfbasis, prot_basis,
         aoints_options, prot_aoints_options, ep_aoints_options);
 
+    // cubegen for input mol and electronic basis
+    auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis);
+
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
     SingleSlaterOptions ssOptions;
@@ -235,7 +238,7 @@ namespace ChronusQ {
     EMPerturbation emPert;
 
     // SCF options
-    SCFControls scfControls = CQSCFOptions(output,input,emPert);
+    SCFControls scfControls = CQSCFOptions(output,input,emPert,cube);
 
     // Create the SingleSlater object
     if (doNEO) {
@@ -396,6 +399,7 @@ namespace ChronusQ {
             ss->formGuess(guessSSOptions);
             ss->initializeSCF();
             conventionalSCF->run(emPert);
+            if(cube) ss->runCube(cube);
           }
 #endif // new SCF
         }
@@ -518,28 +522,6 @@ namespace ChronusQ {
       } // Loop over geometries
     } // Loop over different jobs
 
-    // call cubegen
-    auto cube = CQCUBEOptions(output,input,ss);
-
-    if( cube ){
-      std::string cube_name;
-      if(cube->getCubeFileName().empty()) {
-        cube_name = "SCF";
-      } else {
-        cube_name = cube->getCubeFileName();
-      }
-
-      // charge density cubegen process
-      if (cube->getDenEval()) {
-
-        // call charge density evaluation
-        auto double_ss = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss);
-        auto dcomplex_ss = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss);
-        if( double_ss ) cube->evalCube(cube_name,double_ss->onePDM);
-        else if( dcomplex_ss ) cube->evalCube(cube_name,dcomplex_ss->onePDM);
-        else std::cout << "Cannot perform Cubegen for this class type" << std::endl;
-      }
-    }
 
     CQMemManager::get().printHighWaterMark(output);
 

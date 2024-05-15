@@ -28,6 +28,7 @@
 #include <singleslater/base.hpp>
 #include <particleintegrals/twopints.hpp>
 #include <matrix.hpp>
+#include <cubegen.hpp>
 #include <orthogonalization.hpp>
 #include <orbitalmodifier.hpp>
 
@@ -287,6 +288,9 @@ namespace ChronusQ {
     virtual void ortho2aoDen();
     void ortho2aoMOs();
     void orthoAOMO();
+
+    // Post-processing functions
+    void runCube(std::shared_ptr<CubeGen> cu);
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };

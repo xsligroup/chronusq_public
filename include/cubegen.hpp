@@ -25,7 +25,6 @@
 
 #include <chronusq_sys.hpp>
 #include <quantum.hpp>
-#include <singleslater.hpp>
 
 #include <cqlinalg/blas3.hpp>
 #include <cqlinalg/blasutil.hpp>
@@ -52,28 +51,43 @@ namespace ChronusQ {
   class CubeGen {
 
     private : 
-      std::shared_ptr<std::ofstream> cubeFile_;
+      std::shared_ptr<std::ofstream> cubeFile_ = nullptr;
       std::array<size_t,3> voxelGrid_;
       std::array<double,3> voxelUnits_;
-      std::shared_ptr<SingleSlaterBase> ref_;
       RES_TYPE res_;
       bool denCube_ = false;
       std::string cubeFileName_;
       double cubePadding_ = 3.0;
+      std::shared_ptr<Molecule> mol_;
+      std::shared_ptr<BasisSet> basis_;
       
     public:
 
       /**
-       * @brief Constructor that assumes default dimensions but has ref 
+       * @brief Constructor that assumes default dimensions
        * 
       */
-      CubeGen(std::shared_ptr<SingleSlaterBase> ref){
+      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis){
         cubeFileName_ = "";
-        cubeFile_ = nullptr;
         res_ = RES_TYPE::COARSE;
         voxelGrid_ = {80,80,80};
         voxelUnits_ = {0.1,0.1,0.1};
-        ref_ = ref;
+        mol_ = mol;
+        basis_ = basis;
+      }
+
+      /**
+       * @brief Constructor that assumes default dimensions but
+       * includes file name
+       * 
+      */
+      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis, std::string cubeFileName){
+        cubeFileName_ = cubeFileName;
+        res_ = RES_TYPE::COARSE;
+        voxelGrid_ = {80,80,80};
+        voxelUnits_ = {0.1,0.1,0.1};
+        mol_ = mol;
+        basis_ = basis;
       }
 
       /**
@@ -83,20 +97,21 @@ namespace ChronusQ {
        * specified surface to be visualized in a 3D format. Uses specified
        * grid and step input
        * 
-       * @param ref_ reference to calculation type 
+       * @param mol_ std::shared_ptr<Molecule> 
+       * @param basis_ BasisSet 
        * @param cubeFileName the name of the cubefile to be outputted
        * @param voxelGrid the dimensions of the grid that holds the information
        *  of the surface
        * @param voxelUnits the increments between datapoints for the voxelGrid
       */
-      CubeGen(std::shared_ptr<SingleSlaterBase> ref,
+      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
       std::string cubeFileName,
       std::array<size_t, 3> voxelGrid, std::array<double, 3> voxelUnits) {
         cubeFileName_ = cubeFileName;
         voxelGrid_ = voxelGrid;
         voxelUnits_ = voxelUnits;
-        cubeFile_ = std::make_shared<std::ofstream>(cubeFileName_);
-        ref_ = ref;
+        mol_ = mol;
+        basis_ = basis;
       }
 
       /**
@@ -106,18 +121,19 @@ namespace ChronusQ {
        * specified surface to be visualized in a 3D format. Uses
        * resolution input
        * 
-       * @param ref_ reference to calculation type 
+       * @param mol_ std::shared_ptr<Molecule> 
+       * @param basis_ BasisSet 
        * @param cubeFileName the name of the cubefile to be outputted
        * @param res resolution of visualization specified by user
       */
-      CubeGen(std::shared_ptr<SingleSlaterBase> ref,
+      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
       std::string cubeFileName , std::string resString,
       double cubePadding = 3.0) {
         cubeFileName_ = cubeFileName;
         res_ = inputToRes(resString);
-        cubeFile_ = std::make_shared<std::ofstream>(cubeFileName_);
         cubePadding_ = cubePadding;
-        ref_ = ref;
+        mol_ = mol;
+        basis_ = basis;
         // call this to create grid
         calculateVoxelDimensions();
       }
@@ -197,11 +213,11 @@ namespace ChronusQ {
       // >>> High-level functions
       void writeSummary(std::string fileSum);
       template <typename LocMatsT>
-      void evalCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> );
+      void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> );
 
       // >>> Property evaluation functions
       template <typename LocMatsT>
-      void evalDenCube(LocMatsT*);
+      void evalDenCompCube(LocMatsT*, double pCharge=-1.0);
 
   };
 

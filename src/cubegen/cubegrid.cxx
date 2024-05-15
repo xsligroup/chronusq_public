@@ -46,7 +46,7 @@ namespace ChronusQ {
       
       // get array of the greatest dimensions to create
       // total grid lengths
-      for( auto &atom : ref_->molecule().atoms ) {
+      for( auto &atom : mol_->atoms ) {
         for(int i = 0; i < std::size(maxDimensions); i++) {
           maxDimensions[i] = std::max(maxDimensions[i], std::abs(atom.coord[i]));
         }
@@ -76,13 +76,13 @@ namespace ChronusQ {
     std::vector<double> CubeGen::calcCenter() {
       std::vector<double> maxDimensions = {0.0,0.0,0.0};
 
-      for( auto &atom : ref_->molecule().atoms ) {
+      for( auto &atom : mol_->atoms ) {
         for(int i = 0; i < 3; i++) {
           maxDimensions[i] += atom.coord[i];
         }
       }
 
-      size_t num_atoms = ref_->molecule().atoms.size();
+      size_t num_atoms = mol_->atoms.size();
 
       std::vector<double> centerPoint = {maxDimensions[0] / num_atoms,
                                            maxDimensions[1] / num_atoms,
