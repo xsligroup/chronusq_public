@@ -230,6 +230,10 @@ public:
     }
     os << "    >>>>Total number of Determinants = " << nDeterminants() << std::endl;
     
+    // This should almost never be hit, but we guard against it just in case.
+    if (GetNumThreads() > nDeterminants())
+      CErr("The number of threads is greater than the number of determinants. Please reduce nsmp for this calculation.");
+
     os << std::endl;
     if (distributedAccumulatedNCategories_.size() > 0) {
       os << "    - Distributed Map:" << std::endl;
