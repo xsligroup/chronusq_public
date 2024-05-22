@@ -41,7 +41,7 @@ void CISettings::print(bool fourComp) {
     FormattedLine(std::cout,"  CI Algorithm:",  "Davidson");
     
     std::string ciSigma2eContAlgPrintStr;
-    if (ciSigma2eContAlg == "DEFAULT" or ciSigma2eContAlg == "NAIVELOOP"
+    if (ciSigma2eContAlg == "NAIVE" or ciSigma2eContAlg == "NAIVELOOP"
         or ciSigma2eContAlg == "NL") {
       ciSigma2eContAlgPrintStr = "Naive Loop (Default)"; 
     } else if (ciSigma2eContAlg == "KNOWLESHANDY" or ciSigma2eContAlg == "KH" ) {
