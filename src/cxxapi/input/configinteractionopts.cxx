@@ -404,7 +404,7 @@ namespace ChronusQ {
     } else if(not ciALG.empty())
       CErr(ciALG + "is not a valid CI.CIDIAGALG",out);
     
-    std::string ciSigma2eALG = "DEFAULT";
+    std::string ciSigma2eALG = "NAIVE";
     OPTOPT( ciSigma2eALG = input.getData<std::string>("CI.CISIGMA2EALG");)
     trim(ciSigma2eALG);
     ciSettings->ciSigma2eContAlg = ciSigma2eALG;
