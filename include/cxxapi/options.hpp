@@ -255,7 +255,7 @@ namespace ChronusQ {
 
   // Parse MCSCF options
   std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &, 
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation & );
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);
   
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
   
@@ -284,7 +284,7 @@ namespace ChronusQ {
     std::vector<std::vector<size_t>> & refOcc, std::string postHFSection);
 
   std::shared_ptr<PostHartreeFockBase> CQCIOptions(std::ostream &,
-    CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation & );
+    CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);
 
   void CQCI_VALID(std::ostream &, CQInputFile &);
   

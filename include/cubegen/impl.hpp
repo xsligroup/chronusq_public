@@ -100,7 +100,7 @@ namespace ChronusQ {
 
       std::cout << std::endl;
       std::cout << "----------------------------------------------------" << std::endl;
-      std::cout << "Generating Cube files" << std::endl;
+      std::cout << "Generating Density Cube files" << std::endl;
       std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
       std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
       std::cout << "----------------------------------------------------" << std::endl;
@@ -114,7 +114,7 @@ namespace ChronusQ {
       // Scalar density
       std::string scalDenFileName = denFileName + "_S";
       createNewCube(scalDenFileName);
-      std::cout << "Writing scalar density to file: " << getCubeFileName() << std::endl;
+      std::cout << "Writing scalar density to file: " << scalDenFileName << std::endl;
       writeSummary("Scalar Density");
       evalDenCompCube(oPDM->S().pointer());
 
@@ -123,7 +123,7 @@ namespace ChronusQ {
 
         std::string mzDenFileName = denFileName + "_MZ";
         createNewCube(mzDenFileName);
-        std::cout << "Writing MZ density to file: " << getCubeFileName() << std::endl;
+        std::cout << "Writing MZ density to file: " << mzDenFileName << std::endl;
         writeSummary("MZ Density");
         evalDenCompCube(oPDM->Z().pointer());
 
@@ -134,14 +134,14 @@ namespace ChronusQ {
           // MX density
           std::string mxDenFileName = denFileName + "_MX";
           createNewCube(mxDenFileName);
-          std::cout << "Writing MX density to file: " << getCubeFileName() << std::endl;
+          std::cout << "Writing MX density to file: " << mxDenFileName << std::endl;
           writeSummary("MX Density");
           evalDenCompCube(oPDM->X().pointer());
 
           // MY density
           std::string myDenFileName = denFileName + "_MY";
           createNewCube(myDenFileName);
-          std::cout << "Writing MY density to file: " << getCubeFileName() << std::endl;
+          std::cout << "Writing MY density to file: " << myDenFileName << std::endl;
           writeSummary("MY Density");
           evalDenCompCube(oPDM->Y().pointer());
 

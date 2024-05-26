@@ -67,6 +67,7 @@ namespace ChronusQ {
       "PRINTRDMS",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
+      "CUBE",
       // Parse in the future
       // "RAS1MAXHOLE",
       // "RAS3MAXELEC",
@@ -103,10 +104,17 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<PostHartreeFockBase> CQCIOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> & ss, EMPerturbation& scfPert ) {
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> & ss, EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube ) {
 
     if( not input.containsSection("CI") )
       CErr("CI section must be specified for CI job",std::cout);
+
+    // Check if CubeGen subsection
+    if( input.containsSection("CI.CUBE") ){
+      std::cout << " Found [CI.CUBE] section" << std::endl;
+      CQCUBE_VALID(out,input,"CI.");
+      CQCUBEOptionalKeywords(out,input,cube,"CI.");
+    }
     
     std::string jobType;
     

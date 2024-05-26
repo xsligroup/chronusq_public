@@ -233,3 +233,4 @@ namespace ChronusQ {
 #include <mcwavefunction/property.hpp>  // property implementation
 #include <mcwavefunction/rdm.hpp>       // density matrix
 #include <mcwavefunction/ciguess.hpp>   // Read in CI Vectors
+#include <mcwavefunction/cube.hpp>     // Cubegen header

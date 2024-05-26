@@ -499,9 +499,10 @@ namespace ChronusQ {
             CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
             
           if (input.containsSection("MCSCF")) {
-            auto mcscf = CQMCSCFOptions(output,input,ss,emPert);
+            auto mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
+            if(cube) mcscf->runCube(cube);
             
             if (input.containsSection("PERTURB")) {
               auto perturb = CQPerturbOptions(output,input,mcscf);
@@ -511,9 +512,10 @@ namespace ChronusQ {
           }
 
           if (input.containsSection("CI")) {
-            auto ci = CQCIOptions(output,input,ss,emPert);
+            auto ci = CQCIOptions(output,input,ss,emPert,cube);
             ci->savFile = rstFile;
             ci->run(additionalPert);
+            if(cube) ci->runCube(cube);
           }
         }
 

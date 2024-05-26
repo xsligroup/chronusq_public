@@ -173,8 +173,7 @@ namespace ChronusQ {
        * 
       */
       void createNewCube(std::string cubeT) {
-        setCubeFileName(cubeT);
-        cubeFile_ = std::make_shared<std::ofstream>(getCubeFileName()+".cube");
+        cubeFile_ = std::make_shared<std::ofstream>(cubeT+".cube");
       }
 
 

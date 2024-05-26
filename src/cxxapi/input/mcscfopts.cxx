@@ -74,6 +74,7 @@ namespace ChronusQ {
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
       "PRINTMULT",
+      "CUBE"
     };
 
     // Specified keywords
@@ -361,10 +362,17 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, EMPerturbation& scfPert ) {
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube ) {
 
     if( not input.containsSection("MCSCF") )
       CErr("MCSCF section must be specified for MCSCF job",out);
+
+    // Check for CubeGen subsection
+    if( input.containsSection("MCSCF.CUBE") ){
+      std::cout << " Found [MCSCF.CUBE] section" << std::endl;
+      CQCUBE_VALID(out,input,"MCSCF.");
+      CQCUBEOptionalKeywords(out,input,cube,"MCSCF.");
+    }
     
     std::string jobType;
     

@@ -176,4 +176,5 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
 #include <posthartreefock/print.hpp>     // print implementaion
 #include <posthartreefock/property.hpp>  // property implementation
 #include <posthartreefock/rdm.hpp>       // density matrix
+#include <posthartreefock/cube.hpp>       // cubegen
 

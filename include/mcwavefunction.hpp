@@ -155,6 +155,9 @@ namespace ChronusQ {
     // For dealing with electric fields
     void precompute_NucEField(EMPerturbation &);
 
+    // Post-processing functions
+    void runCube(std::shared_ptr<CubeGen> cu);
+
     // Memory functions
     void alloc();
     void dealloc();

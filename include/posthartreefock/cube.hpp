@@ -23,8 +23,7 @@
  */
 #pragma once
 
-#include <singleslater.hpp>
-#include <singleslater/base.hpp>
+#include <posthartreefock.hpp>
 
 namespace ChronusQ {
 
@@ -33,20 +32,26 @@ namespace ChronusQ {
    *
    */
   template<typename MatsT,typename IntsT>
-  void SingleSlater<MatsT,IntsT> :: runCube(std::shared_ptr<CubeGen> cube) {
+  void PostHartreeFock<MatsT,IntsT> :: runCube(std::shared_ptr<CubeGen> cube) {
+
+      std::shared_ptr<SingleSlater<MatsT,IntsT>> ss_ptr = reference();
 
       std::string cube_name;
       if(cube->getCubeFileName().empty()) {
-        cube_name = "SCF";
+        cube_name = "CI";
       } else {
         cube_name = cube->getCubeFileName();
-        cube_name = cube_name + "_SCF";
+        cube_name = cube_name + "_CI";
       }
 
       // density cube 
       if (cube->getDenEval()) {
 
-        cube->evalDenCube(cube_name,this->onePDM);
+        // Update 1PDM
+        // TODO: Add excited states
+        rdm2pdm(*this->oneRDM[0]);
+
+        cube->evalDenCube(cube_name,ss_ptr->onePDM);
 
       }
 

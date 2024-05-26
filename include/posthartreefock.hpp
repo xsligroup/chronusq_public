@@ -120,6 +120,9 @@ public:
   void populationAnalysis();
   double oscillator_strength(size_t, size_t s1 = 0);
 
+  // Post-processing functions
+  void runCube(std::shared_ptr<CubeGen> cu);
+
   // Memory functions
   void alloc();
   void dealloc();
