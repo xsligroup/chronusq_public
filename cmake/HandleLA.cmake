@@ -59,8 +59,8 @@ else()
 
   ## Better BLAS discovery
   FetchContent_Declare( la_cmake
-    GIT_REPOSITORY https://github.com/ajaypanyala/linalg-cmake-modules.git
-    GIT_TAG 4f7bc30697f0351012356ddc2505924940482f98
+    GIT_REPOSITORY https://github.com/wavefunction91/linalg-cmake-modules.git
+    GIT_TAG 290e2e080418e15fc35c80daad23e78c220fd6b4
   )
   FetchContent_MakeAvailable( la_cmake )
   list( APPEND CMAKE_MODULE_PATH ${la_cmake_SOURCE_DIR} )

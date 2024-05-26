@@ -34,10 +34,6 @@ post-SCF quantum mechanical methods."
 # Append local cmake directory to find CMAKE Modules
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
-# C++17
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 20)
-
 # -----------------------------------------------------------------------------
 # Options
 # -----------------------------------------------------------------------------
@@ -51,6 +47,7 @@ option(ENABLE_COVERAGE  "Enable coverage and profiling"   OFF)
 # -----------------------------------------------------------------------------
 
 add_library( cq STATIC )
+target_compile_features(cq PUBLIC cxx_std_20)
 
 # Parallelism
 message( "\n\n" )
