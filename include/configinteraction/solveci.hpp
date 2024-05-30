@@ -125,9 +125,9 @@ void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
       prettyPrintSmart(std::cout,"HH ciEigenvalues", fullH_ptr, nDet, nDet, nDet);
 #endif
     
-      // TODO: why general Eigen ?
-      GeneralEigen('N', 'V', nDet, fullH_ptr, nDet, ciEigenvalues, dummy, 1, ciEigenvectors.getPtr(), nDet);
-      //HermetianEigen('V', 'L', nDet, fullH, nDet, ciEigenvalues);
+//    GeneralEigen('N', 'V', nDet, fullH_ptr, nDet, ciEigenvalues, dummy, 1, ciEigenvectors.getPtr(), nDet);
+      HermetianEigen('V', 'L', nDet, fullH_ptr, nDet, ciEigenvalues);
+      std::copy_n(fullH_ptr,nDet*nDet,ciEigenvectors.getPtr());
 
 #ifdef _DEBUG_CISOLVER_IMPL
       ciEigenvectors.print(std::cout,"HH Eigenvectors");
@@ -225,6 +225,7 @@ void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
     davidson.setM(m);
     davidson.setkG(kG);
     davidson.setEigForT(curEigenvalues);
+    davidson.setHerm(true);
     davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
       davidsonGuess(std::min(nGuess, N), *diagH, Guess);
     });
