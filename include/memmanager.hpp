@@ -26,6 +26,19 @@
 #include <chronusq_sys.hpp>
 #include <custom_storage.hpp>
 
+#ifdef _OPENMP
+#define MEM_IN_OMP_WARNING(func) \
+    do { \
+        if (omp_in_parallel()) { \
+            std::cout << "Warning: " #func \
+                      << " called from within parallel region. " \
+                      << "This may lead to deadlock." << std::endl; \
+        } \
+    } while (false)
+#else
+#define MEM_IN_OMP_WARNING(func) do {} while (false)
+#endif
+
 //#define MEM_PRINT
 
 namespace ChronusQ {
@@ -78,6 +91,8 @@ namespace ChronusQ {
      *
      */ 
     void initialize(CQMemBackendType type, size_t N = 0, size_t BlockSize = 2048) {
+      MEM_IN_OMP_WARNING(CQMemManager::initialize);
+
       BlockSize_ = BlockSize;
       NAlloc_ = 0;
       NAllocHigh_ = 0;
@@ -107,6 +122,7 @@ namespace ChronusQ {
       */ 
      template <typename T>
      T* malloc(size_t n) {
+       MEM_IN_OMP_WARNING(CQMemManager::malloc);
        // Determine the number of blocks to allocate
        size_t nBlocks = ( (n-1) * sizeof(T) ) / BlockSize_ + 1;
       
@@ -161,6 +177,7 @@ namespace ChronusQ {
       */ 
      template <typename T>
      void free( T* &ptr ) {
+       MEM_IN_OMP_WARNING(CQMemManager::free);
 
        // Attempt to find the pointer in the list of 
        // allocated blocks
