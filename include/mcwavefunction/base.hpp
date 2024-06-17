@@ -135,6 +135,9 @@ namespace ChronusQ {
     // Perturbation
     EMPerturbation mcscfPert;
 
+    // Options for CubeGen
+    CubeGenOptions cubeOptsMC;
+
     // Print Settings
     size_t printMOCoeffs = 0;
     size_t printRDMs = 0;

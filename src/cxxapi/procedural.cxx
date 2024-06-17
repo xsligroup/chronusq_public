@@ -238,7 +238,7 @@ namespace ChronusQ {
     EMPerturbation emPert;
 
     // SCF options
-    SCFControls scfControls = CQSCFOptions(output,input,emPert,cube);
+    SCFControls scfControls = CQSCFOptions(output,input,emPert);
 
     // Create the SingleSlater object
     if (doNEO) {
@@ -258,6 +258,8 @@ namespace ChronusQ {
 
       // MO swapping
       HandleOrbitalSwaps(output, input, *ss);
+
+      ParseSCFCubeSubsection(output, input, ss, cube);
     }
 
     if( (ss->scfControls.guess == READMO or

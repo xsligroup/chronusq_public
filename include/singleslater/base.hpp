@@ -93,6 +93,9 @@ namespace ChronusQ {
     // SCF Variables
     SCFControls    scfControls; ///< Controls for the SCF procedure
 
+    // Options for CubeGen
+    CubeGenOptions cubeOptsSS;
+
     // Pair function for SingleSlater MO swap
     std::vector<std::vector<std::pair<size_t, size_t>>> moPairs;
 

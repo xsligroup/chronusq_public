@@ -221,7 +221,7 @@ namespace ChronusQ {
   };
 
   // Parse the SCF options
-  SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &, std::shared_ptr<CubeGen> cu);
+  SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &);
 
   void HandleOrbitalSwaps(std::ostream&, CQInputFile&, SingleSlaterBase&);
 
@@ -303,7 +303,10 @@ namespace ChronusQ {
     std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &);
 
   void CQCUBEOptionalKeywords(std::ostream&, CQInputFile&,
-    std::shared_ptr<CubeGen> cu, std::string);
+    CubeGenOptions&, std::string);
+
+  void ParseSCFCubeSubsection(std::ostream&, CQInputFile&,
+    std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<CubeGen> cu);
 
   void CQCUBE_VALID(std::ostream&, CQInputFile &, std::string);
 

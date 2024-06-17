@@ -108,13 +108,6 @@ namespace ChronusQ {
 
     if( not input.containsSection("CI") )
       CErr("CI section must be specified for CI job",std::cout);
-
-    // Check if CubeGen subsection
-    if( input.containsSection("CI.CUBE") ){
-      std::cout << " Found [CI.CUBE] section" << std::endl;
-      CQCUBE_VALID(out,input,"CI.");
-      CQCUBEOptionalKeywords(out,input,cube,"CI.");
-    }
     
     std::string jobType;
     
@@ -480,6 +473,20 @@ namespace ChronusQ {
    // MO swapping
    // Should occur after active orbital selection
    HandlePostHFOrbitalSwaps(out, input, ss, ci, "CI");
+
+   if( cube ){
+
+     auto &cubeOptions = cube->getCubeOptions();
+     ci->cubeOptsPostHF = cubeOptions;
+
+   }
+
+   // Check if CubeGen subsection
+   if( input.containsSection("CI.CUBE") ){
+     std::cout << " Found [CI.CUBE] section" << std::endl;
+     CQCUBE_VALID(out,input,"CI.");
+     CQCUBEOptionalKeywords(out,input,ci->cubeOptsPostHF,"CI.");
+   }
    
    return ci;
 

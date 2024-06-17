@@ -367,13 +367,6 @@ namespace ChronusQ {
     if( not input.containsSection("MCSCF") )
       CErr("MCSCF section must be specified for MCSCF job",out);
 
-    // Check for CubeGen subsection
-    if( input.containsSection("MCSCF.CUBE") ){
-      std::cout << " Found [MCSCF.CUBE] section" << std::endl;
-      CQCUBE_VALID(out,input,"MCSCF.");
-      CQCUBEOptionalKeywords(out,input,cube,"MCSCF.");
-    }
-    
     std::string jobType;
     
     try {
@@ -774,6 +767,20 @@ namespace ChronusQ {
    // MO swapping
    // Should occur after active orbital selection
    HandleMCSCFOrbitalSwaps(out, input, ss, mcscf);
+
+   if( cube ){
+
+     auto &cubeOptions = cube->getCubeOptions();
+     mcscf->cubeOptsMC = cubeOptions;
+
+   }
+
+   // Check for CubeGen subsection
+   if( input.containsSection("MCSCF.CUBE") ){
+     std::cout << " Found [MCSCF.CUBE] section" << std::endl;
+     CQCUBE_VALID(out,input,"MCSCF.");
+     CQCUBEOptionalKeywords(out,input,mcscf->cubeOptsMC,"MCSCF.");
+   }
    
    return mcscf;
 

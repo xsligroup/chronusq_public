@@ -66,7 +66,6 @@ namespace ChronusQ {
     std::cout << " Found [CUBE] Section " << std::endl;
 
     // >>Keywords needed for constructor
-    std::string CubegenFileName = "";
     std::string resString = "";
     size_t npts = 0;
     double step = 0.0;
@@ -77,9 +76,6 @@ namespace ChronusQ {
 
     // change padding. Used to avoid cube cutoffs
     OPTOPT( pad = input.getData<double>("CUBE.PADDING") );
-
-    // collects naming scheme from user (optional)
-    OPTOPT( CubegenFileName = input.getData<std::string>("CUBE.NAME") );
 
     // Create custom grid with points and stepsize 
     // Assumes cube 
@@ -99,47 +95,49 @@ namespace ChronusQ {
     // Construct cubegen
     if( !resString.empty() and abs(pad) != 0.0 ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, CubegenFileName, resString, pad));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, pad));
 
     } else if( !resString.empty() ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, CubegenFileName, resString));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString));
 
     } else if( npts > 0 ){
 
       std::array<size_t,3> grid = {npts, npts, npts};
       std::array<double,3> units = {step, step, step};
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, CubegenFileName, grid, units));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, grid, units));
 
     } else {
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, CubegenFileName));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis));
 
     }
 
     // >>Keywords not needed for constructor
 
-    CQCUBEOptionalKeywords(out,input,cubeptr,"");
+    auto &cubeOptions = cubeptr->getCubeOptions();
+    CQCUBEOptionalKeywords(out,input,cubeOptions,"");
 
     return cubeptr;
 
   }; // CQCUBEOptions
 
-  void handle_orbital_requests(std::ostream&out, CQInputFile & input, std::shared_ptr<CubeGen> cube, std::string subSection)
+  void handle_orbital_requests(std::ostream&out, CQInputFile & input, CubeGenOptions &cubeOpts, std::string subSection)
   {
+
     std::string OrbRequestString;
     OPTOPT(OrbRequestString = input.getData<std::string>(subSection+"CUBE.MOS"));
     // Default is all orbitals unless requested otherwise
     if(OrbRequestString.empty() || OrbRequestString=="ALL")
     {
-      cube->setMORequest(MO_CLASSES::ALL);
+      cubeOpts.whichMO = MO_CLASSES::ALL;
       std::cout << "Generating Cubes All Orbitals" << std::endl;
       return;
     }
     // Future options handled here
 
     // If no string matching, assume user requested a custom list
-    cube->setMORequest(MO_CLASSES::CUSTOM);
+    cubeOpts.whichMO = MO_CLASSES::CUSTOM;
     std::vector<std::string> OrbRequestTokens;
     split(OrbRequestTokens,OrbRequestString,", ");
     for(auto & mo : OrbRequestTokens)
@@ -152,14 +150,14 @@ namespace ChronusQ {
         if(mo2.size()==1)
         {
           size_t moindex = std::stoul(mo);
-          cube->addMOtoList(moindex);
+          cubeOpts.addMOtoList(moindex);
           std::cout << "Generating Cube for Orbital #" << mo << std::endl;
         }
         else if(mo2.size()==2)
         {
           for(size_t i = std::stoul(mo2[0]); i <= std::stoul(mo2[1]); i++)
           {
-            cube->addMOtoList(i);
+            cubeOpts.addMOtoList(i);
             std::cout << "Generating Cube for Orbital #" << i << std::endl;
           }
         }
@@ -172,20 +170,24 @@ namespace ChronusQ {
   }
 
   // Handle keywords for an existing cube pointer
-  void CQCUBEOptionalKeywords(std::ostream &out, CQInputFile &input, std::shared_ptr<CubeGen> cube, std::string subSection){
+  void CQCUBEOptionalKeywords(std::ostream &out, CQInputFile &input, CubeGenOptions &cubeOpts, std::string subSection){
+
+
+    // collects naming scheme from user (optional)
+    OPTOPT( cubeOpts.cubeFileName = input.getData<std::string>(subSection+"CUBE.NAME") );
 
     // generate cube file for density
-    OPTOPT( cube->setDenEval(input.getData<bool>(subSection+"CUBE.DEN")) );
+    OPTOPT( cubeOpts.denCube = input.getData<bool>(subSection+"CUBE.DEN") );
 
     // generate cube file for density
-    OPTOPT( cube->setOrbEval(input.getData<bool>(subSection+"CUBE.ORB")) );
-    if(cube->getOrbEval())
+    OPTOPT( cubeOpts.orbCube = input.getData<bool>(subSection+"CUBE.ORB") );
+    if(cubeOpts.orbCube)
     {
-      handle_orbital_requests(out,input,cube,subSection);
+      handle_orbital_requests(out,input,cubeOpts,subSection);
     }
 
     // If Magnitude & Phase Cubes are requested
-    OPTOPT( cube->setMagnitudeAndPhase(input.getData<bool>(subSection+"CUBE.MAGANDPHASE")) );
+    OPTOPT( cubeOpts.MagnitudeAndPhase = input.getData<bool>(subSection+"CUBE.MAGANDPHASE") );
 
   }; //CQCUBEOptionalKeywords
 

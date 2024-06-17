@@ -62,6 +62,9 @@ public:
   size_t NosS1 = 0; // number of initial states s1 for oscillator strength
   double * osc_str = nullptr; // matrix to save oscillator strength
 
+  // Options for CubeGen
+  CubeGenOptions cubeOptsPostHF;
+
   // Print Settings
   size_t printMOCoeffs = 0;
   size_t printRDMs     = 0;

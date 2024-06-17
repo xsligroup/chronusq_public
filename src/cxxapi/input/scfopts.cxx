@@ -141,7 +141,7 @@ namespace ChronusQ {
 
   }
 
-  SCFControls CQSCFOptions(std::ostream &out, CQInputFile &input, EMPerturbation &pert, std::shared_ptr<CubeGen> cube) {
+  SCFControls CQSCFOptions(std::ostream &out, CQInputFile &input, EMPerturbation &pert) {
 
     SCFControls scfControls;
 
@@ -152,13 +152,6 @@ namespace ChronusQ {
       HandlePostSCFRestarts(out, input, scfControls);
 
       return scfControls;
-    }
-
-    // check if [SCF.CUBE] section
-    if( input.containsSection("SCF.CUBE") ){
-      std::cout << " Found [SCF.CUBE] section" << std::endl;
-      CQCUBE_VALID(out,input,"SCF.");
-      CQCUBEOptionalKeywords(out,input,cube,"SCF.");
     }
 
     // Optionally parse guess

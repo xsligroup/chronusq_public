@@ -51,7 +51,7 @@ namespace ChronusQ {
     // cubegen for moved mol and electronic basis
     auto cube = CQCUBEOptions(std::cout,input_,std::make_shared<Molecule>(mol),basis);
 
-    SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert, cube);
+    SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert);
     ssOptions.scfControls = scfControls;
 
     curr_ = ssOptions.buildSingleSlater(std::cout,mol,*basis,aoints);

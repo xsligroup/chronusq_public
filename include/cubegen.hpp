@@ -25,6 +25,7 @@
 
 #include <chronusq_sys.hpp>
 #include <quantum.hpp>
+#include <cubegenoptions.hpp>
 
 #include <cqlinalg/blas3.hpp>
 #include <cqlinalg/blasutil.hpp>
@@ -38,13 +39,6 @@ namespace ChronusQ {
     COARSE,
     MEDIUM,
     FINE
-  };
-
-  // The standard options for obitals a user may want to plot
-  // Currently unused 
-  enum class MO_CLASSES {
-    ALL,
-    CUSTOM
   };
 
   /**
@@ -64,18 +58,12 @@ namespace ChronusQ {
       std::array<size_t,3> voxelGrid_;
       std::array<double,3> voxelUnits_;
       RES_TYPE res_;
-      bool denCube_ = false;
-      // For orbitals, default is Re and Im, but user can override this
-      // to generate Magnitude and Phase cubes
-      bool MagnitudeAndPhase_ = false;
-      // Eventually moved to individual 
-      MO_CLASSES whichMO;
-      std::vector<size_t> custom_orb_request;
-      bool orbCube_ = false;
-      std::string cubeFileName_;
       double cubePadding_ = 3.0;
       std::shared_ptr<Molecule> mol_;
       std::shared_ptr<BasisSet> basis_;
+
+      // container for general workflow cubegen options
+      CubeGenOptions cubeOpts_;
 
       // Helper functions for precomputing the basis (if memory permits)
       void ComputeBasis();
@@ -89,22 +77,6 @@ namespace ChronusQ {
        * 
       */
       CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis){
-        cubeFileName_ = "";
-        res_ = RES_TYPE::COARSE;
-        voxelGrid_ = {80,80,80};
-        voxelUnits_ = {0.1,0.1,0.1};
-        mol_ = mol;
-        basis_ = basis;
-        ComputeBasis();
-      }
-
-      /**
-       * @brief Constructor that assumes default dimensions but
-       * includes file name
-       * 
-      */
-      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis, std::string cubeFileName){
-        cubeFileName_ = cubeFileName;
         res_ = RES_TYPE::COARSE;
         voxelGrid_ = {80,80,80};
         voxelUnits_ = {0.1,0.1,0.1};
@@ -122,15 +94,12 @@ namespace ChronusQ {
        * 
        * @param mol_ std::shared_ptr<Molecule> 
        * @param basis_ BasisSet 
-       * @param cubeFileName the name of the cubefile to be outputted
        * @param voxelGrid the dimensions of the grid that holds the information
        *  of the surface
        * @param voxelUnits the increments between datapoints for the voxelGrid
       */
       CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
-      std::string cubeFileName,
       std::array<size_t, 3> voxelGrid, std::array<double, 3> voxelUnits) {
-        cubeFileName_ = cubeFileName;
         voxelGrid_ = voxelGrid;
         voxelUnits_ = voxelUnits;
         mol_ = mol;
@@ -147,13 +116,11 @@ namespace ChronusQ {
        * 
        * @param mol_ std::shared_ptr<Molecule> 
        * @param basis_ BasisSet 
-       * @param cubeFileName the name of the cubefile to be outputted
        * @param res resolution of visualization specified by user
       */
       CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
-      std::string cubeFileName , std::string resString,
+      std::string resString,
       double cubePadding = 3.0) {
-        cubeFileName_ = cubeFileName;
         res_ = inputToRes(resString);
         cubePadding_ = cubePadding;
         mol_ = mol;
@@ -178,117 +145,11 @@ namespace ChronusQ {
       // >>> Some general helper functions
 
       /**
-       * @brief updates cube title 
-       * 
-      */
-      void setCubeFileName(std::string cubeT) {
-        cubeFileName_ = cubeT;
-      }
-
-      /**
-       * @brief returns current cube title 
-       * 
-      */
-      std::string getCubeFileName() {
-        return cubeFileName_;
-      }
-
-      /**
        * @brief Creates cube file for a given title 
        * 
       */
       void createNewCube(std::string cubeT) {
         cubeFile_ = std::make_shared<std::ofstream>(cubeT+".cube");
-      }
-
-
-      /**
-       * @brief set density boolean 
-       * 
-      */
-      void setDenEval(bool denEval) {
-        denCube_ = denEval;
-      }
-
-      /**
-       * @brief set orbital boolean
-       * 
-      */
-      void setOrbEval(bool orbEval)
-      {
-         orbCube_ = orbEval;
-      }
-
-
-      /**
-       * @brief returns density boolean 
-       * 
-      */
-      bool getDenEval() {
-        return denCube_;
-      }
-
-      /**
-       * @brief returns orbital boolean 
-       * 
-      */
-      bool getOrbEval() {
-        return orbCube_;
-      }
-
-      /**
-       * @brief set internal flag for which orbitals to generate
-       * 
-      */
-      void setMORequest(MO_CLASSES req)
-      {
-        whichMO = req;
-      }
-
-      /**
-       * @brief returns enum class of which orbitals were requested 
-       * 
-      */
-      MO_CLASSES getMORequest()
-      {
-        return whichMO;
-      }
-
-      /**
-       * @brief add an orbital in a custom list of MO's to generate
-       * 
-       * NOTE: input is 1 indexed, but internal storage is 0 indexed
-      */
-      void addMOtoList(size_t mo)
-      {
-        custom_orb_request.push_back(mo-1);
-      }
-
-      /**
-       * @brief returns vector of which orbital which were requested 
-       * 
-      */
-      std::vector<size_t> getMOList()
-      {
-        return custom_orb_request;
-      }
-
-      /**
-       * @brief returns if Magnitude & Phase cubes requested
-       * 
-      */
-      bool getMagnitudeAndPhase()
-      {
-        return MagnitudeAndPhase_;
-      }
-
-      /**
-       * @brief sets if Magnitude & Phase cubes requested
-       * 
-      */
-      void setMagnitudeAndPhase(bool MagAndPhase)
-      {
-        MagnitudeAndPhase_ = MagAndPhase;
       }
 
       // There is no setter for cube padding because
@@ -299,6 +160,14 @@ namespace ChronusQ {
       */
       double getCubePad() {
         return cubePadding_;
+      }
+
+      /**
+       * @brief returns cube options 
+       * 
+      */
+      CubeGenOptions &getCubeOptions() {
+        return cubeOpts_;
       }
 
       // >>> Grid-related functions

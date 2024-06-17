@@ -37,15 +37,15 @@ namespace ChronusQ {
       std::shared_ptr<SingleSlater<MatsT,IntsT>> ss_ptr = reference();
 
       std::string cube_name;
-      if(cube->getCubeFileName().empty()) {
+      if(cubeOptsPostHF.cubeFileName.empty()) {
         cube_name = "CI";
       } else {
-        cube_name = cube->getCubeFileName();
+        cube_name = cubeOptsPostHF.cubeFileName;
         cube_name = cube_name + "_CI";
       }
 
       // density cube 
-      if (cube->getDenEval()) {
+      if (cubeOptsPostHF.denCube) {
 
         // Update 1PDM
         // TODO: Add excited states

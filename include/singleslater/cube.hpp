@@ -36,29 +36,29 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT> :: runCube(std::shared_ptr<CubeGen> cube) {
 
       std::string cube_name;
-      if(cube->getCubeFileName().empty()) {
+      if(cubeOptsSS.cubeFileName.empty()) {
         cube_name = "SCF";
       } else {
-        cube_name = cube->getCubeFileName();
+        cube_name = cubeOptsSS.cubeFileName;
         cube_name = cube_name + "_SCF";
       }
 
       // density cube 
-      if (cube->getDenEval()) {
+      if (cubeOptsSS.denCube) {
 
         cube->evalDenCube(cube_name,this->onePDM);
 
       }
 
       // Orbital Cubes
-      if (cube->getOrbEval()) {
+      if (cubeOptsSS.orbCube) {
 
         size_t NB = this->nAlphaOrbital();
         size_t NOrb = NB * this->nC;
 
         // Handle which orbitals to generate
         std::vector<size_t> OrbsToCube;
-        if(cube->getMORequest() == MO_CLASSES::ALL)
+        if(cubeOptsSS.whichMO == MO_CLASSES::ALL)
         {
           for(size_t i = 0; i < NOrb; i++)
             OrbsToCube.push_back(i);
@@ -66,7 +66,7 @@ namespace ChronusQ {
         // Base case is custom vector
         else
         {
-          OrbsToCube = cube->getMOList();
+          OrbsToCube = cubeOptsSS.custom_orb_request;
         }
 
         // Iterate through the different possibilities of 
@@ -83,7 +83,7 @@ namespace ChronusQ {
         std::function<double(MatsT)> ImOrPhase;
         // Check if user requested Magnitude and phase rather than
         // real and imaginary
-        bool MagPhase = cube->getMagnitudeAndPhase();
+        bool MagPhase = cubeOptsSS.MagnitudeAndPhase;
         if(MagPhase)
         {
           ReOrMag = [](MatsT x){return std::abs(x);};
