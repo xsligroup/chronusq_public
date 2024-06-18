@@ -34,6 +34,9 @@ namespace ChronusQ {
   
     // Mulliken charge analysis
     OPTOPT( postHF->PopulationAnalysis = input.getData<bool>(postHFSection + ".POPULATION"); )
+ 
+    // Spin analysis
+    OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + ".PRINTSPIN"); )
 
     // Oscillator strength
     OPTOPT( postHF->NosS1 = input.getData<size_t>(postHFSection + ".OSCISTREN"); )

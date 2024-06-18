@@ -189,6 +189,12 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
     PostHartreeFock<MatsT,IntsT>::populationAnalysis();
   }
 
+  // Spin analysis
+  if (this->printRDMs==0 && this->SpinAnalysis) {
+      std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
+      PostHartreeFock<MatsT,IntsT>::spinAnalysis();
+  }   
+
   // oscillator strength
   if (this->NosS1) {
     

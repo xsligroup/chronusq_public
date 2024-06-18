@@ -57,7 +57,8 @@ public:
 
   bool StateAverage    = false;
   std::vector<double> SAWeight;
-  
+
+  bool SpinAnalysis = false; // default is do not do Spin analysis
   bool PopulationAnalysis = false; // default is do not do Mulliken analysis
   size_t NosS1 = 0; // number of initial states s1 for oscillator strength
   double * osc_str = nullptr; // matrix to save oscillator strength

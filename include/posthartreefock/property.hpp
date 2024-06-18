@@ -65,6 +65,43 @@ namespace ChronusQ {
 
   }; // PostHartreeFock::populationAnalysis
 
+
+
+
+  /*
+  * \brief Spin analysis for each state
+  *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
+  *         2. SingleSlater->populationAnalysis()
+  *
+  */
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::spinAnalysis(size_t i) {
+
+    std::cout << std::endl << "Spin Analysis for State " << i+1 << ": " << std::endl;
+    std::shared_ptr<SingleSlater<MatsT,IntsT>> ss_ptr = reference();
+
+    // transform oneRDM to AO basis
+    rdm2pdm(*this->oneRDM[i]);
+
+    ss_ptr->computeSpin();
+    ss_ptr->printSpin(std::cout);
+
+  }; // PostHartreeFock::spinAnalysis
+
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::spinAnalysis() {
+
+    for (auto i = 0ul; i < this->NStates; i++) {
+
+      PostHartreeFock::spinAnalysis(i);
+
+    }
+
+  }; 
+
+
+
+
  /*
   * \brief Compute oscillator strength for MC wavefunction
   *         using AO dipole and MO coefficients and MO TDM

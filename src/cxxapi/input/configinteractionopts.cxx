@@ -67,6 +67,7 @@ namespace ChronusQ {
       "PRINTRDMS",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
+      "PRINTSPIN",
       "CUBE",
       // Parse in the future
       // "RAS1MAXHOLE",

@@ -119,6 +119,9 @@ public:
   void populationAnalysis(size_t);
   void populationAnalysis();
   double oscillator_strength(size_t, size_t s1 = 0);
+  void spinAnalysis(size_t);
+  void spinAnalysis();
+
 
   // Post-processing functions
   void runCube(std::shared_ptr<CubeGen> cu);

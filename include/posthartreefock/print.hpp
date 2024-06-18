@@ -82,6 +82,8 @@ namespace ChronusQ {
         prettyPrintSmart(std::cout, "State " + std::to_string(i),
           this->oneRDM[i]->pointer(), nCorrO, nCorrO, nCorrO);
 
+	if (this->SpinAnalysis)
+          this->spinAnalysis(i);
       }
     } else if( printRDMs==2 ){
       std::cout.precision(2);
@@ -105,6 +107,9 @@ namespace ChronusQ {
         }
 
         std::cout << std::endl;
+	
+	if (this->SpinAnalysis)
+          this->spinAnalysis(i);
 
       }
     }
