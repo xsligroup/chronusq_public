@@ -37,6 +37,7 @@
 #include <regex>
 #include <cubegen.hpp> 
 #include <perturb.hpp>
+#include <memory>
 
 // Preprocessor directive to aid the digestion of optional 
 // input arguments
@@ -162,8 +163,18 @@ namespace ChronusQ {
   void CQDFTINT_VALID(std::ostream&, CQInputFile &);
 
   // Parse RT options
+  std::shared_ptr<TDEMFieldBase> parseRTField(std::string&, std::ostream& );
+
+  void HandleRTInitState(std::ostream&, CQInputFile&, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase>&);
+
   std::shared_ptr<RealTimeBase> CQRealTimeOptions(
     std::ostream &, CQInputFile &, std::shared_ptr<SingleSlaterBase> &,
+    std::shared_ptr<MCWaveFunctionBase> &,
+    std::shared_ptr<TDEMPerturbation>& ,
+    EMPerturbation &
+  );
+  std::shared_ptr<RealTimeBase> CQRealTimeMultiSlaterOptions(
+    std::ostream &, CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &,
     EMPerturbation &
   );
 
@@ -243,12 +254,16 @@ namespace ChronusQ {
   // Parse geometry modifier options
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, 
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
-    std::shared_ptr<RealTimeBase>& rt, std::shared_ptr<IntegralsBase> epints,
+    std::shared_ptr<MCWaveFunctionBase> mcscf,
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert);
 
   JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, 
-    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
-    std::shared_ptr<RealTimeBase>& rt, std::shared_ptr<IntegralsBase> epints,
+    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert,
+    std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert);
 
   void CQDYNAMICS_VALID( std::ostream& out, CQInputFile& input );

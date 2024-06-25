@@ -171,42 +171,43 @@ namespace ChronusQ {
   }; // SCFControls struct
 
 
-
-  enum IntegrationAlgorithm {
-    MMUT,
-    ExpMagnus2
-  };
-
-  enum RestartAlgorithm {
+  enum class RestartAlgorithm {
     ForwardEuler,
     ModifiedMidpoint,
     ExplicitMagnus2
   };
 
-  enum PropagatorAlgorithm {
+  enum class PropagatorAlgorithm {
     Diagonalization,
     TaylorExpansion,
     ChebyshevExpansion
   };
 
-  enum FieldEnvelopeTyp {
-    Constant,
+  enum class FieldEnvelopeType {
     LinRamp,
     Gaussian,
-    Step
+    Step,
+    PlaneWave
   };
 
-  enum RealTimeAlgorithm {
+  enum class RealTimeAlgorithm {
       RTForwardEuler,
       RTModifiedMidpoint,
-      RTExplicitMagnus2
+      RTExplicitMagnus2,
+      RTSymplecticSplitOperator,
+      RTRungeKuttaOrderFour
+  };
+
+  enum class MSInitialState {
+    LinearCombination,
+    CustomCI,
   };
 
   struct TDSCFOptions {
 
-    RealTimeAlgorithm     integrationAlgorithm = RTModifiedMidpoint;         ///< Integration Algorithm
-    RealTimeAlgorithm     restartAlgorithm     = RTExplicitMagnus2; ///< Restart Step
-    PropagatorAlgorithm   propagatorAlgorithm  = Diagonalization; ///< exp(-iF) Algorithm
+    RealTimeAlgorithm     integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;         ///< Integration Algorithm
+    RestartAlgorithm     restartAlgorithm     = RestartAlgorithm::ExplicitMagnus2; ///< Restart Step
+    PropagatorAlgorithm   propagatorAlgorithm  = PropagatorAlgorithm::Diagonalization; ///< exp(-iF) Algorithm
 
     double tMax    = 1.0;  ///< Max simulation time in AU. Upon input, user can specify tMax or maxSteps
     size_t maxSteps= 0;    ///< Max number of steps. Upon input, user can specify tMax or maxSteps

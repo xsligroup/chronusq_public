@@ -68,7 +68,7 @@ namespace ChronusQ {
 	// Integrals here are computed and stored in correalted space
 	// Only one set of integrals, means not working for UHF reference
     std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> mointsTF; 
-    IntegralsCollection moints = IntegralsCollection(); ///< MOIntegrals for the storage of integrals
+    std::shared_ptr<IntegralsCollection> moints = std::make_shared<IntegralsCollection>();
 	// fold the following intgrals into moints
 	//oper_t moERI;   // Transformed MO 2e integral in correalted space
     //oper_t hCore;   // 1e integral with frozen core contribution
@@ -125,6 +125,7 @@ namespace ChronusQ {
     // MCWaveFunction procedural functions
     virtual void run(EMPerturbation &) = 0;  // From MCWaveFunctionBase
 
+    void computeOverlaps(oper_t, std::vector<MatsT>&); // Calculate the overlaps of an arbitrary CI vector with the CI vectors.
     virtual void computeOneRDM(size_t);    
     virtual void computeOneRDM();
     virtual void computeTDMs(); // compute TDMs

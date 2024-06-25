@@ -20,5 +20,5 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-target_sources(cq PRIVATE fields.cxx impl.cxx)
+target_sources(cq PRIVATE fields.cxx impl_ms.cxx)
 

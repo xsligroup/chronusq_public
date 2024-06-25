@@ -64,9 +64,9 @@ namespace ChronusQ {
     auto & nActO = mopart.nActOs;
     size_t nCorrO = mopart.nCorrO;
 
-    auto & hCore = *(this->moints.template getIntegral<OnePInts, MatsT>
+    auto & hCore = *(this->moints->template getIntegral<OnePInts, MatsT>
                                                     ("hCore_Correlated_Space")); 
-    auto & moERI = *(this->moints.template getIntegral<InCore4indexTPI, MatsT>
+    auto & moERI = *(this->moints->template getIntegral<InCore4indexTPI, MatsT>
                                                     ("ERI_Correlated_Space"));
 
     size_t u, v, w, t;

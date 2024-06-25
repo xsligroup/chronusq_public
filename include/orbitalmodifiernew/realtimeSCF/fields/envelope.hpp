@@ -2,7 +2,7 @@
 
 #include <chronusq_sys.hpp>
 #include <fields.hpp>
-#include <realtime/enums.hpp>
+#include <orbitalmodifieroptions.hpp>
 
 namespace ChronusQ {
 
@@ -48,14 +48,52 @@ namespace ChronusQ {
 
 
   // Forward declaration of FieldEnvelope templates
-  template < FieldEnvelopeTyp _Typ > struct FieldEnvelope;
+  template < FieldEnvelopeType _Typ > struct FieldEnvelope;
 
   // FieldEnvelope typedefs
-  using ConstantField  = FieldEnvelope<Constant>;
-  using LinRampField   = FieldEnvelope<LinRamp>;
-  using GaussianField  = FieldEnvelope<Gaussian>;
-  using StepField      = FieldEnvelope<Step>;
+  using LinRampField   = FieldEnvelope<FieldEnvelopeType::LinRamp>;
+  using GaussianField  = FieldEnvelope<FieldEnvelopeType::Gaussian>;
+  using StepField      = FieldEnvelope<FieldEnvelopeType::Step>;
+  using PlaneWaveField = FieldEnvelope<FieldEnvelopeType::PlaneWave>;
 
+  /**
+   *  \brief FieldEnvelope specification for a Linear Ramp function
+   *  envelope.
+   */ 
+  template<>
+  struct FieldEnvelope<FieldEnvelopeType::LinRamp> : FieldEnvelopeBase {
+
+    FieldEnvelope()                      = delete;
+    FieldEnvelope(const FieldEnvelope &) = default;
+    FieldEnvelope(FieldEnvelope &&)      = default;
+
+    FieldEnvelope(double on, double off): FieldEnvelopeBase(on,off){ };
+
+    double getAmp(double t);
+
+  }; // struct FieldEnvelop<LinRamp>
+
+
+  /**
+   *  \brief FieldEnvelop specification for a Gaussian function
+   *  envelope.
+   */ 
+  template<>
+  struct FieldEnvelope<FieldEnvelopeType::Gaussian> : FieldEnvelopeBase {
+
+    FieldEnvelope()                      = delete;
+    FieldEnvelope(const FieldEnvelope &) = default;
+    FieldEnvelope(FieldEnvelope &&)      = default;
+
+    FieldEnvelope(double on, double off): FieldEnvelopeBase(on,off){ };
+    FieldEnvelope(double on, double off, double alpha): FieldEnvelopeBase(on,off), alpha(alpha) { };
+
+    double getAmp(double t);
+
+    double alpha; // Gaussian envelope parameter should be > 0. Since the negative sign is in getAmp.
+    void setAlpha(double alpha) { this->alpha = alpha; };
+
+  }; // struct FieldEnvelop<Gaussian>
 
 
   /**
@@ -63,7 +101,7 @@ namespace ChronusQ {
    *  envelope.
    */ 
   template<>
-  struct FieldEnvelope<Step> : FieldEnvelopeBase {
+  struct FieldEnvelope<FieldEnvelopeType::Step> : FieldEnvelopeBase {
 
     FieldEnvelope()                      = delete;
     FieldEnvelope(const FieldEnvelope &) = default;
@@ -75,6 +113,31 @@ namespace ChronusQ {
 
   }; // struct FieldEnvelop<Step>
 
+  /**
+   *  \brief FieldEnvelop specification for a plane wave function
+   *  envelope.
+   */ 
+  template<>
+  struct FieldEnvelope<FieldEnvelopeType::PlaneWave> : FieldEnvelopeBase {
+
+    FieldEnvelope()                      = delete;
+    FieldEnvelope(const FieldEnvelope &) = default;
+    FieldEnvelope(FieldEnvelope &&)      = default;
+
+    FieldEnvelope(double on, double off ): FieldEnvelopeBase(on,off) { };
+    FieldEnvelope(double on, double off, double omega): FieldEnvelopeBase(on,off), omega(omega) { };
+    FieldEnvelope(double on, double off, double omega, bool doCos): FieldEnvelopeBase(on,off), omega(omega), doCos(doCos) { };
+
+    double getAmp(double t);
+
+    double omega;
+    bool doCos = true;
+    void setOmega(double omega) { this->omega = omega; };
+    void setdoCos(bool doCos) { this->doCos = doCos; };
+
+  }; // struct FieldEnvelop<PlaneWave>
+
+
   
   /**
    *  \brief Cast a templated FieldEnvelope shared_ptr to
@@ -85,7 +148,7 @@ namespace ChronusQ {
    *  \param [in] x Shared pointer for a FieldEnvelope object
    *  \returns      Shared pointer for a FieldEnvelopeBase object
    */ 
-  template < FieldEnvelopeTyp _Typ >
+  template < FieldEnvelopeType _Typ >
   std::shared_ptr<FieldEnvelopeBase> 
     cast(std::shared_ptr<FieldEnvelope<_Typ>> x) {
     return std::dynamic_pointer_cast<

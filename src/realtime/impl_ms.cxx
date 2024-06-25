@@ -22,11 +22,32 @@
  *  
  */
 
-#pragma once
-#include <orbitalmodifieroptions.hpp>
+#include <realtime/realtimemultislater/impl.hpp>
 
 namespace ChronusQ {
 
 
-};
+  template <>
+  void RTMS::scal(double* source, size_t vecSize_, dcomplex actor) {
+    CErr("Invalid type combination for scal");
+  };
 
+  template <>
+  void RTMS::dot(dcomplex* source_1, dcomplex* source_2, size_t vecSize_, double& result) {
+    CErr("Invalid type combination for dot");
+  };
+  
+  template <>
+  void RealTimeMultiSlater<dcomplex, dcomplex>::propagateWFN_SSO(bool, bool) {
+    CErr("Invalid");
+  };
+
+  template <>
+  void RealTimeMultiSlater<dcomplex, double>::propagateWFN_SSO(bool, bool) {
+    CErr("Invalid");
+  };
+
+
+  template class RealTimeMultiSlater<double, double >; 
+  template class RealTimeMultiSlater<dcomplex, double>; 
+}; // namespace ChronusQ

@@ -109,6 +109,7 @@ namespace ChronusQ {
     void buildDiagH(MCWaveFunction<MatsT, IntsT> &, MatsT *);
 	
     void buildSigma(MCWaveFunction<MatsT, IntsT> &, size_t, MatsT *, MatsT *);
+    void buildMu(MCWaveFunction<MatsT, IntsT> &, size_t, MatsT *, MatsT *, EMPerturbation & pert);
 
     void computeOneRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, cqmatrix::Matrix<MatsT> &);
     void computeTwoRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, InCore4indexTPI<MatsT> &);

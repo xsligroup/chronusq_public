@@ -201,6 +201,12 @@ namespace ChronusQ {
     if( jobType != JobType::SCF ) {
       jobs.push_back(JobType::SCF);
     }
+    // if RT MR propagation add MR calculation
+    if( jobType == JobType::RT ) {
+        if( input.containsSection("MCSCF")) {
+            jobs.push_back(JobType::MR);
+        }
+    }
     jobs.push_back(jobType);
 
     // Check if we're doing NEO
@@ -299,7 +305,10 @@ namespace ChronusQ {
       neoss->setSubSetup();
     }
 
-
+    // If we are doing RTCI we need a pointer to an mcscf object that is in this scope
+    std::shared_ptr<MCWaveFunctionBase> mcscf(nullptr);
+    std::shared_ptr<TDEMPerturbation> tdPert = std::make_shared<TDEMPerturbation>();
+    std::shared_ptr<RealTimeBase> rt;
 
     // Done setting up
     //
@@ -308,13 +317,11 @@ namespace ChronusQ {
     for( auto& job: jobs ) {
 
       bool firstStep = true;
-      std::shared_ptr<RealTimeBase> rt = nullptr;
-
 //      if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
 //        compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
 //      }
 
-      JobType elecJob = CQGeometryOptions(output, input, job.jobType, mol, ss, rt,
+      JobType elecJob = CQGeometryOptions(output, input, job.jobType, mol, ss, mcscf, rt, tdPert,
         ep_aoints, emPert);
 
       // Loop over various structures
@@ -410,14 +417,17 @@ namespace ChronusQ {
         // Run RT job
         if( elecJob == JobType::RT ) {
           // Initialize core hamiltonian
-          rt->formCoreH(emPert);
+          // rt->formCoreH(emPert);
           // Get correct time length
-          if( !firstStep ) {
-            rt->intScheme.restoreStep = rt->curState.iStep;
-            rt->intScheme.tMax = rt->intScheme.tMax + rt->intScheme.nSteps*rt->intScheme.deltaT;
-          }
+          // if( !firstStep ) {
+          //   rt->intScheme.restoreStep = rt->curState.iStep;
+          //   rt->intScheme.tMax = rt->intScheme.tMax + rt->intScheme.nSteps*rt->intScheme.deltaT;
+          // }
           //rt->doPropagation();
 
+          if (mcscf){
+          rt->run(firstStep, emPert);
+          } else {
 #if 1 // new TDSCF
           std::cout<<"xsli test new RT"<<std::endl;
 
@@ -428,7 +438,7 @@ namespace ChronusQ {
           if( not found ) try {                          \
             realtimeSCF = \
             std::make_shared<RealTimeSCF<_ssT,_MatsT,_IntsT>>(  \
-            tdSCFOptions, rt->pert, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
+            tdSCFOptions, *tdPert, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
             ,MPI_COMM_WORLD) ;                                       \
             found = true;                                \
           } catch(...) { }
@@ -448,6 +458,7 @@ namespace ChronusQ {
             realtimeSCF->run(emPert);
           }
 #endif // new TDSCF
+        }
         }
 
 
@@ -501,7 +512,7 @@ namespace ChronusQ {
             CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
             
           if (input.containsSection("MCSCF")) {
-            auto mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
+            mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
             if(cube) mcscf->runCube(cube);
@@ -549,4 +560,4 @@ namespace ChronusQ {
 
   };
 
- }; // namespace ChronusQ
+}; // namespace ChronusQ

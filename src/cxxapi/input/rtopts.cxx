@@ -22,6 +22,7 @@
  *  
  */
 #include <cxxapi/options.hpp>
+#include<regex>
 #include <cerr.hpp>
 
 namespace ChronusQ {
@@ -42,6 +43,7 @@ namespace ChronusQ {
       "DELTAT",
       "IRSTRT",
       "FIELD",
+      "FIELDINDEPENDENTHAMILTONIAN",
       "INTALG",
       "RESTARTALG",
       "RESTARTSTEP",
@@ -50,7 +52,14 @@ namespace ChronusQ {
       "RESTART",
       "SCFFIELD",
       "PRINTLEVEL",
-      "ORBITALPOPFREQ",
+      "CIPOPULATION",
+      "INITTYPE",
+      "LCWEIGHTS",
+      "LCSTATES",
+      "COEFFS",
+      "DETS",
+      "REALTIMECORRELATIONFUNC",
+      "REALTIMECORRELATIONFUNCSTART",
       "PRINTDEN",
       "PRINTCONTRACTIONTIMING",
       "PRINTSTEP",
@@ -85,51 +94,82 @@ namespace ChronusQ {
    *    constructed from the input options.
    *
    */ 
+
   std::shared_ptr<RealTimeBase> CQRealTimeOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss,
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcscf,
+    std::shared_ptr<TDEMPerturbation>& tdPert,
     EMPerturbation& scfPert ) {
 
+    std::shared_ptr<RealTimeBase> rt;
+    if(mcscf) {
+        rt = CQRealTimeMultiSlaterOptions(out, input, mcscf, scfPert);
+    }
+    std::cout << "returning RTMULTISLATER OPTS FROM RT" << std::endl;
+    return rt;
+  }
+
+  std::shared_ptr<RealTimeBase> CQRealTimeMultiSlaterOptions(std::ostream &out, 
+    CQInputFile &input, std::shared_ptr<MCWaveFunctionBase> &mcscf,
+    EMPerturbation& scfPert ) {
     if( not input.containsSection("RT") )
       CErr("RT Section must be specified for RT job",out);
 
 
-    out << "  *** Parsing RT options ***\n";
+    out << "  *** Parsing MRRT options ***\n";
 
-    std::shared_ptr<RealTimeBase> rt;
+    std::shared_ptr<RealTimeMultiSlaterBase> rt;
 
-  
     // Determine  reference and construct RT object
 
+    auto inputRTAlg = RealTimeAlgorithm::RTRungeKuttaOrderFour;
+    std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
+    try {
+      auto intAlg = input.getData<std::string>("RT.INTALG");
+
+      if ( not intAlg.compare("SSO") ) { 
+        inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
+        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double*>>();
+      }
+      else if ( not intAlg.compare("RK4") ) {
+      }
+      else {
+          std::cout << "Could not understand RT.INTALG. Defaulting to RK4.";
+          std::cout << std::endl;
+      }
+    }
+    catch(...) {
+      std::cout << "Defaulting to RK4 integration algorithm" << std::endl;
+    };
+    
+    if (!vecManager) {
+        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex*>>();
+    }
+    vecManager->set_vecSize_(mcscf->NDet);
+
+    // Determines the initial CI vector to be propogated 
+    HandleRTInitState(out,input,vecManager);
 
     bool found = false;
 
-
-    #define CONSTRUCT_RT(_REF,_MT,_IT)             \
+    #define CONSTRUCT_RT_MR(_REF,_MT,_IT,_RTALG,_MRWFN)             \
     if( not found ) try {                          \
-      rt = std::dynamic_pointer_cast<RealTimeBase>( \
-          std::make_shared< RealTime<_REF,_IT> >(  \
-            dynamic_cast< _REF<_MT,_IT>& >(*ss)    \
-          )                                        \
-        );                                         \
+      if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
+      rt =     std::make_shared< RealTimeMultiSlater<_MT, _IT> >(  \
+              std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
       found = true;                                \
-    } catch(...) { }
+      } \
+    } catch(...) {  }
 
-
-    // Construct RT object
-    CONSTRUCT_RT( NEOSS, double, double     );
-    CONSTRUCT_RT( NEOSS, dcomplex, double   );
-    CONSTRUCT_RT( NEOSS, dcomplex, dcomplex );
-
-    CONSTRUCT_RT( HartreeFock, double, double     );
-    CONSTRUCT_RT( HartreeFock, dcomplex, double   );
-    CONSTRUCT_RT( HartreeFock, dcomplex, dcomplex );
-
-    CONSTRUCT_RT( KohnSham, double, double     );
-    CONSTRUCT_RT( KohnSham, dcomplex, double   );
-    CONSTRUCT_RT( KohnSham, dcomplex, dcomplex );
+    // Construct RT object (MatsT, IntsT, PropT)
+    if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
+        CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+    }
+    //CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+    CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+    // no magnetic fields... yet.
+    //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
 
      // Parse Options
-
     try {
       rt->intScheme.tMax = input.getData<double>("RT.TMAX");
     } catch(...) {
@@ -143,43 +183,7 @@ namespace ChronusQ {
     }
 
     // Determine Integration Algorithm
-    try {
-      auto intAlg = input.getData<std::string>("RT.INTALG");
-
-      if ( not intAlg.compare("MAGNUS2") ) { 
-        rt->intScheme.intAlg = ExpMagnus2;
-      }
-      else if ( not intAlg.compare("MMUT") ) {
-      }
-      else {
-          std::cout << "Could not understand RT.INTALG. Defaulting to MMUT.";
-          std::cout << std::endl;
-      }
-    }
-    catch(...) {
-      std::cout << "Defaulting to MMUT integration algorithm" << std::endl;
-    };
-
-    // Get restart step if explicit leapfrog method
-    if ( rt->intScheme.intAlg == MMUT ) {
-      try {
-        auto intRstrt = input.getData<std::string>("RT.RESTARTSTEP");
-        if ( not intRstrt.compare("FORWARDEULER") ) {
-          rt->intScheme.rstStep = ForwardEuler;
-        }
-        else if ( not intRstrt.compare("MAGNUS2") ) {
-        }
-        else {
-          std::cout << "Could not understand RT.RESTARTSTEP. Defaulting to Magnus 2.";
-          std::cout << std::endl;
-        }
-      }
-      catch(...) {
-        std::cout << "Defaulting to Magnus 2 restart for MMUT" << std::endl;
-      }
-    }
-
-
+    rt->intScheme.integrationAlgorithm = inputRTAlg;
 
     // Set SCF perturbation
     rt->setSCFPerturbation( scfPert );
@@ -187,108 +191,6 @@ namespace ChronusQ {
     OPTOPT(
       rt->intScheme.includeSCFField = input.getData<bool>("RT.SCFFIELD");
     )
-
-    
-    // MMUT Restart
-    OPTOPT(
-      rt->intScheme.iRstrt = input.getData<size_t>("RT.IRSTRT");
-    )
-
-    // Handle field specification
-    try {
-
-      // Get raw string from input
-      std::string fieldSpec = input.getData<std::string>("RT.FIELD");
-      std::istringstream fieldStream(fieldSpec);
- 
-      // Loop over field specification lines
-      for(std::string fieldStr; std::getline(fieldStream, fieldStr); ) {
-  
-        // Split line on white space
-        std::vector<std::string> tokens;
-        split(tokens,fieldStr," \t");
-
-        if( tokens.size() == 0 ) continue;
-
-
-        for(auto &X : tokens) trim(X);
-        
-        // Only Dipole fields for now
-        if( tokens.size() != 5 )
-          CErr("\"" + fieldStr + "\" not a vaild FIELD specification",out);
-
-        // Determine field type
-        std::string fieldTypeStr = tokens[1];
-
-        EMFieldTyp fieldType;
-        if( not fieldTypeStr.compare("ELECTRIC") )
-          fieldType = Electric;
-        else if( not fieldTypeStr.compare("MAGNETIC") )
-          CErr("Magnetic Fields NYI");
-        else
-          CErr(fieldTypeStr + "not a valid Field type");
-
-
-        // Only DIPOLE implemented
-        cart_t DipoleField = {std::stod(tokens[2]), std::stod(tokens[3]), 
-                              std::stod(tokens[4])};
-
-
-        // Handle envelope specification
-        std::string envelope = tokens[0];
-
-
-        // STEPFIELD
-        if( envelope.find("STEPFIELD") != std::string::npos ) {
-
-          // Determine if valid specifcation
-          auto pStart = envelope.find("(");
-          auto pEnd   = envelope.find(")");
-          auto pSplit = envelope.find(",");
-
-
-          if( pStart == std::string::npos or pEnd == std::string::npos
-              or pSplit == std::string::npos )
-            CErr(envelope + " not a valid STEPFIELD specification",out);
-
-          envelope.erase(envelope.begin() + pEnd,envelope.end());
-          envelope.erase(envelope.begin(), envelope.begin() + pStart+1);
-
-
-          std::vector<std::string> tokens2;
-          split(tokens2,envelope,",");
-
-          if( tokens2.size() != 2 )
-            CErr("STEPFIELD takes 2 arguements",out);
-
-          double stepOn  = std::stod(tokens2[0]);
-          double stepOff = std::stod(tokens2[1]);
-   
-          if( stepOff <= stepOn )
-            CErr("STEPOFF must be > STEPON for STEPFIELD");
-
-
-          // Append Field
-          // XXX: Should store pointer to field base
-          // and then append after envelope is determined
-          rt->addField(fieldType, 
-            StepField(stepOn,stepOff),
-            DipoleField);
-
-
-        } else CErr("Only STEPFIELD Implemented");
-       
-      }
-
-    } catch( std::runtime_error &e ) {
-
-      throw;
-
-    } catch(...) { 
-
-      out << "  *** Defaulting to Trivial Propagation from SCF Density ***\n";
-
-    }
 
     // Save frequency
     OPTOPT(
@@ -305,23 +207,267 @@ namespace ChronusQ {
       rt->printLevel = input.getData<size_t>("RT.PRINTLEVEL");
     )
 
-    // Amount of printing in the RT calc
     OPTOPT(
-      rt->orbitalPopFreq = input.getData<size_t>("RT.ORBITALPOPFREQ");
+      rt->CIPopFreq = input.getData<size_t>("RT.CIPOPULATION");
+    )
+
+    OPTOPT(
+      rt->RealTimeCorrelationFunctionFreq = input.getData<size_t>("RT.REALTIMECORRELATIONFUNC");
+    )
+
+    OPTOPT(
+      rt->RealTimeCorrelationFunctionStart = input.getData<double>("RT.REALTIMECORRELATIONFUNCSTART");
+    )
+
+    OPTOPT(
+      rt->time_independent_ham = input.getData<bool>("RT.FIELDINDEPENDENTHAMILTONIAN");
     )
 
     // Whether to print time-dependent density
     OPTOPT(
-      rt->printDen = input.getData<bool>("RT.PRINTDEN");
-    )
-
-    // Parse whether to print contraction timing during RT propagation
-    OPTOPT( 
-      rt->printContractionTiming = input.getData<bool>("RT.PRINTCONTRACTIONTIMING"); 
+      rt->printCIVec = input.getData<bool>("RT.PRINTCIVEC");
     )
 
     return rt;
+  }; // CQRealTimeMultiSlaterOptions
+  
+std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream& out){
+    // Split line on white space
+    std::vector<std::string> tokens;
+    split(tokens,fieldStr," \t");
 
-  }; // CQRealTimeOpts
+    if( tokens.size() == 0 ) return std::shared_ptr<TDEMFieldBase>(nullptr);
 
+    for(auto &X : tokens) trim(X);
+    
+    // Only Dipole fields for now
+    if( tokens.size() != 5 )
+      CErr("\"" + fieldStr + "\" not a vaild FIELD specification",out);
+
+    // Determine field type
+    std::string fieldTypeStr = tokens[1];
+
+    EMFieldTyp fieldType;
+    if( not fieldTypeStr.compare("ELECTRIC") )
+      fieldType = Electric;
+    else if( not fieldTypeStr.compare("MAGNETIC") )
+      CErr("Magnetic Fields NYI");
+    else
+      CErr(fieldTypeStr + "not a valid Field type");
+
+    // Only DIPOLE implemented
+    cart_t DipoleField = {std::stod(tokens[2]), std::stod(tokens[3]), 
+                          std::stod(tokens[4])};
+
+    // Handle envelope specification
+    std::string envelope = tokens[0];
+    // This string will have things in the following form
+    // envelopeType[parameters](tOn,tOff) fieldType x y z
+    //   - STEPFIELD(tOn,tOff) ELECTRIC x y z
+    //   - LINEARRAMP(tOn,tOff) ELECTRIC x y z
+    //   - PLANEWAVE[omega](tOn,tOff) ELECTRIC x y z
+    //   - GAUSSIAN[alpha](tOn,tOff) ELECTRIC x y z
+
+    // Define all the containers, regex, and lambdas that we need
+    std::string timeParameters;
+    std::string envelopeParameters;
+    std::string envelopeType;
+    auto const timeParametersMatcher = std::regex("\\((.*?)\\)");
+    auto const envelopeParametersMatcher = std::regex("\\[(.*?)\\]");
+    auto const envelopeTypeMatcher = std::regex("^[^([]+");
+    auto get_matched_str = [&] (auto const& matcher, std::string& out_str) {
+        std::smatch matched_section;
+        out_str = "";
+        if (std::regex_search(envelope, matched_section, matcher))
+            out_str = matched_section.str();
+    };
+    auto erase_char = [&] (std::string& in_str, const std::vector<char> remove_char_vec) {
+        for (char remove_char : remove_char_vec)
+            in_str.erase(std::remove(in_str.begin(), in_str.end(), remove_char), in_str.end());
+        in_str.erase(std::remove(in_str.begin(), in_str.end(), ' '), in_str.end());
+    };
+    // Parse
+    get_matched_str(envelopeTypeMatcher, envelopeType);
+    get_matched_str(envelopeParametersMatcher, envelopeParameters);
+    get_matched_str(timeParametersMatcher, timeParameters);
+    erase_char(envelopeType, {});
+    erase_char(envelopeParameters, {'[', ']'});
+    erase_char(timeParameters, {'(',  ')'});
+
+    // Determine if valid specifcation
+    if (timeParameters.empty())
+      CErr(envelope + " not a valid specification. Missing time on and off specifications.",out);
+    
+    std::vector<std::string> timeTokens;
+    split(timeTokens, timeParameters, ",");
+    if( timeTokens.size() != 2 )
+      CErr("TDField needs at most 2 time arguments. For example, 'envelopeType[parameters](tOn,tOff) fieldType x y z'", out);
+    double stepOn  = std::stod(timeTokens[0]);
+    double stepOff = std::stod(timeTokens[1]);
+    if( stepOff <= stepOn )
+      CErr("STEPOFF must be > STEPON for TDField");
+
+    std::vector<std::string> parameterTokens;
+    split(parameterTokens, envelopeParameters, ",");
+    if ( parameterTokens.size() > 2)
+      CErr("Too many parameters provided. All currently implemented envelopes accept at most 2 parameters.", out);
+
+
+    //   - PLANEWAVE[omega](tOn,tOff) ELECTRIC x y z
+    //   - GAUSSIAN[alpha](tOn,tOff) ELECTRIC x y z
+    // STEPFIELD
+    if( envelopeType == "STEPFIELD" ) {
+      if ( parameterTokens.size() != 0)
+        CErr("Too many parameters provided. STEPFIELD envelope accepts no parameters.", out);
+      // Append Field
+      // XXX: Should store pointer to field base
+      // and then append after envelope is determined
+      // auto fieldenvelope = FieldEnvelope<FieldEnvelopeType::Step>(stepOn,stepOff);
+    //auto a = TDEMField(fieldType,fieldenvelope, DipoleField);
+    //auto a2 = std::make_shared<TDEMField<cart_t>>(fieldType,fieldenvelope, DipoleField);
+      return 
+      std::move(
+        std::dynamic_pointer_cast<TDEMFieldBase, TDEMField<cart_t> >(
+          std::make_shared<TDEMField<cart_t>>(fieldType,
+          FieldEnvelope<FieldEnvelopeType::Step>(stepOn,stepOff)
+          , DipoleField)
+        )
+      );
+    } else if ( envelopeType == "LINEARRAMPFIELD" ) {
+      if ( parameterTokens.size() != 0)
+        CErr("Too many parameters provided. LINEARRAMP envelope accepts no parameters.", out);
+      //return std::make_shared<TDEMField>(fieldType, LinRampField(stepOn,stepOff), DipoleField);
+      return 
+      std::move(
+        std::dynamic_pointer_cast<TDEMFieldBase, TDEMField<cart_t>>(
+          std::make_shared<TDEMField<cart_t>>(fieldType,
+          FieldEnvelope<FieldEnvelopeType::LinRamp>(stepOn,stepOff)
+          , DipoleField)
+        )
+      );
+    } else if ( envelopeType == "PLANEWAVEFIELD" ) {
+        bool doCos = true;
+        if (parameterTokens.size() == 2) {
+            if (parameterTokens[1] == "SIN" or parameterTokens[1] == "FALSE")
+              doCos = false;
+            else if (parameterTokens[1] == "COS" or parameterTokens[1] == "TRUE")
+                doCos = true;
+            else 
+                CErr("PlaneWaveField needs at most 2 parameter arguments in the correct order. For example, 'PlaneWaveField[omega,COS(true) or SIN(false)](tOn,tOff) fieldType x y z'", out);
+            parameterTokens.erase(parameterTokens.end() - 1);
+        }
+        std::vector<double> processedEnvelopeParameters(parameterTokens.size());
+        std::transform(parameterTokens.begin(), parameterTokens.end(), processedEnvelopeParameters.begin(), [](const std::string& val){ return std::stod(val); });
+        double omega = processedEnvelopeParameters[0];
+      //return std::make_shared<TDEMField>(fieldType, PlaneWaveField(stepOn,stepOff,omega, doCos), DipoleField);
+      return 
+      std::move(
+        std::dynamic_pointer_cast<TDEMFieldBase, TDEMField<cart_t>>(
+          std::make_shared<TDEMField<cart_t>>(fieldType,
+          FieldEnvelope<FieldEnvelopeType::PlaneWave>(stepOn,stepOff, omega, doCos)
+          , DipoleField)
+        )
+      );
+    } else if ( envelopeType == "GAUSSIANFIELD" ) {
+       std::vector<double> processedEnvelopeParameters(parameterTokens.size());
+       std::transform(parameterTokens.begin(), parameterTokens.end(), processedEnvelopeParameters.begin(), [](const std::string& val){ return std::stod(val); });
+        double alpha = processedEnvelopeParameters[0];
+        if ( alpha < 0.0 )
+          CErr("For a GAUSSIAN envelope, alpha should be postive since the implementation includes a negative sign.", out);
+      //return std::make_shared<TDEMField>(fieldType, GaussianField(stepOn,stepOff,alpha), DipoleField);
+      return 
+      std::move(
+        std::dynamic_pointer_cast<TDEMFieldBase, TDEMField<cart_t>>(
+          std::make_shared<TDEMField<cart_t>>(fieldType,
+          FieldEnvelope<FieldEnvelopeType::Gaussian>(stepOn,stepOff, alpha)
+          , DipoleField)
+        )
+      );
+
+    } else CErr("Envelope not recognized or not implemented.");
+    
+  } // parseRTField
+
+  void HandleRTInitState(std::ostream & out, CQInputFile & input, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> & vecManager)
+  {
+    std::string inittype;
+    OPTOPT(inittype = input.getData<std::string>("RT.INITTYPE"))
+    if(inittype.empty())
+    {
+      out << "** No detailed initial state detected, defaulting to propogating the lowest CIVec **" << std::endl;
+      vecManager->initmethod = MSInitialState::LinearCombination;
+      vecManager->init_detail.push_back(std::make_pair<double,size_t>(1.0,1));
+      return;
+    }
+    else if(inittype=="LINEARCOMBINATION")
+    {
+      vecManager->initmethod = MSInitialState::LinearCombination;
+      std::string weights,states;
+      OPTOPT(weights = input.getData<std::string>("RT.LCWEIGHTS"));
+      OPTOPT(states = input.getData<std::string>("RT.LCSTATES"));
+      std::vector<std::string> weighttokens,statetokens;
+      split(weighttokens,weights," ,;");
+      split(statetokens,states," ,;");
+      if(weighttokens.size()!=statetokens.size())
+      {
+        CErr("Number of RT Initial state weights != number of states!");
+      }
+      if(!weighttokens.size())
+      {
+        std::cout << "No Linear Combination weights specified, defaulting to lowest CI Vector" << std::endl;
+        vecManager->init_detail.push_back(std::make_pair<double,size_t>(1.0,1));
+      }
+      std::vector<double> dweights;
+      double sum;
+      for(auto w : weighttokens)
+        dweights.push_back(std::stod(w));
+      sum = std::accumulate(dweights.begin(),dweights.end(),0.0);
+      for(size_t i = 0; i < dweights.size(); i++)
+        vecManager->init_detail.push_back(std::make_pair<double,size_t>(dweights[i]/std::sqrt(sum),std::stoi(statetokens[i])));
+
+      out << "The initial state will be constructed of the following linear combination:" << std::endl;
+      out << " Coeff, state:" << std::endl;
+      for(auto lcstate : vecManager->init_detail)
+      {
+        out << lcstate.first << " , " << lcstate.second << std::endl;
+      }
+      out << std::endl;
+
+    }
+    else if(inittype=="CUSTOMCI")
+    {
+      vecManager->initmethod = MSInitialState::CustomCI;
+      std::cout << "Creating a custom initial CI Vector" << std::endl;
+      std::cout << "This is a very tenuous procedure!" << std::endl;
+      std::cout << "You should use very cautiously and probably only" << std::endl
+                << "if you REALLY know what you're doing!" << std::endl;
+      std::string coeffs,dets;
+      OPTOPT(coeffs = input.getData<std::string>("RT.COEFFS"));
+      OPTOPT(dets = input.getData<std::string>("RT.DETS"));
+      std::vector<std::string> coefftokens,dettokens;
+      split(coefftokens,coeffs," ,;");
+      split(dettokens,dets," ,;");
+      if(coefftokens.size()!=dettokens.size())
+      {
+        CErr("Number of RT Initial weights != number of determinants!");
+      }
+      if(!coefftokens.size())
+      {
+        CErr("CustomCI requested but no parameters provided!");
+      }
+      std::vector<double> cweights;
+      double sum;
+      for(size_t i = 0; i < coefftokens.size(); i++)
+        cweights.push_back(std::stof(coefftokens[i]));
+      sum=std::accumulate(cweights.begin(),cweights.end(),0.0);
+      for(size_t i = 0; i < cweights.size(); i++)
+        vecManager->init_detail.push_back(std::make_pair<double,size_t>(cweights[i]/std::sqrt(sum),std::stoi(dettokens[i])));
+
+    }
+    else
+    {
+      CErr("Unrecognized option for RT.initmethod: " + inittype);
+    }
+    return;
+  };
 }; // namespace ChronusQ

@@ -191,7 +191,6 @@ namespace ChronusQ {
     void dealloc();
 
   }; // class MCSCF
-  
 
 }; // namespace ChronusQ
 

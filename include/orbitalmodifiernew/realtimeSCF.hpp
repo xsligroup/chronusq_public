@@ -31,9 +31,6 @@
  *
  */
 #include <orbitalmodifiernew.hpp>
-#include <realtime/enums.hpp>
-#include <realtime/fields.hpp>
-
 
 namespace ChronusQ {
 

@@ -50,6 +50,21 @@ namespace ChronusQ {
     // Precompute the field - nuclear moment contributions
     precompute_NucEField(pert);
 
+    // If the field has changed, we need to rebuild the AOHCore cache
+    const double FIELD_DIFF_EPSILON = 1e-15;
+    if( pert_has_type(pert,Electric) ) {
+      std::array<double, 3> dip_field = pert.getDipoleAmp(Electric);
+      double diff = 0.0;
+      for(auto iXYZ = 0;    iXYZ < 3;     iXYZ++){
+        diff += std::pow(dip_field[iXYZ] - old_dip_field[iXYZ], 2.0);
+        old_dip_field[iXYZ] = dip_field[iXYZ];
+      }
+      diff = std::sqrt(diff);
+      this->field_changed = (diff > FIELD_DIFF_EPSILON);
+    }
+    if(field_changed)
+      mointsTF->clearAllCache();
+
     // TODO: expand to RI
     // build object and allocate memory
     size_t nTOrb  = this->MOPartition.nMO;
@@ -83,10 +98,17 @@ namespace ChronusQ {
      */ 
     OnePInts<MatsT> hCore_tu(nCorrO);
     OnePInts<MatsT> hCoreP_tu(nCorrO);
-    InCore4indexTPI<MatsT> ERI_tuvw(nCorrO);
     
     mointsTF->transformHCore(pert, hCore_tu.pointer(), "tu", false, 'i');
-    mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", this->cacheHalfTransTPI_);
+    
+    // For RT, the ERI don't need retransformed
+    std::shared_ptr<InCore4indexTPI<MatsT>> ERI_tuvw = this->moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space");
+    if(!ERI_tuvw)
+    {
+      ERI_tuvw = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
+      mointsTF->transformTPI(pert, ERI_tuvw->pointer(), "tuvw", this->cacheHalfTransTPI_);
+      this->moints->addIntegral("ERI_Correlated_Space",ERI_tuvw);
+    }
     
     /*
      * compute hCoreP
@@ -115,9 +137,9 @@ namespace ChronusQ {
         for (auto s = rasloop[sblk].first; s < rasloop[sblk].second; s++)
         for (auto qr = rasloop[qrblk].first; qr < rasloop[qrblk].second; qr++)
           if (pblk == qrblk or sblk == qrblk)
-            hCoreP_tu(p, s) -= symmFc * ERI_tuvw(p, qr, qr, s);
+            hCoreP_tu(p, s) -= symmFc * (*ERI_tuvw)(p, qr, qr, s);
           else if (pblk < qrblk)
-            hCoreP_tu(p, s) = hCoreP_tu(p, s) - ERI_tuvw(p, qr, qr, s) + ERI_tuvw(qr, qr, p, s);
+            hCoreP_tu(p, s) = hCoreP_tu(p, s) - (*ERI_tuvw)(p, qr, qr, s) + (*ERI_tuvw)(qr, qr, p, s);
       }
     } else {
 
@@ -127,18 +149,16 @@ namespace ChronusQ {
 
         MatsT tmp = 0.;
         for (auto v = 0ul; v < nCorrO; v++)
-          tmp += 0.5 * ERI_tuvw(t, v, v, u);
+          tmp += 0.5 * (*ERI_tuvw)(t, v, v, u);
 
         hCoreP_tu(t, u) = hCore_tu(t, u) - tmp;
       }
     }
 
-    this->moints.addIntegral("hCore_Correlated_Space", 
+    this->moints->addIntegral("hCore_Correlated_Space", 
       std::make_shared<OnePInts<MatsT>>(hCore_tu));
-    this->moints.addIntegral("hCoreP_Correlated_Space", 
+    this->moints->addIntegral("hCoreP_Correlated_Space", 
       std::make_shared<OnePInts<MatsT>>(hCoreP_tu));
-    this->moints.addIntegral("ERI_Correlated_Space",  
-      std::make_shared<InCore4indexTPI<MatsT>>(ERI_tuvw));
 
   }; // MCWaveFunction::transformInts
 

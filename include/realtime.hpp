@@ -27,13 +27,15 @@
 #include <cerr.hpp>
 #include <singleslater.hpp>
 #include <singleslater/neoss.hpp>
-
+#include <mcwavefunction.hpp>
+#include <manybodywavefunction.hpp>
 
 // RT Headers
-#include <realtime/enums.hpp>
-#include <realtime/fields.hpp>
+#include <orbitalmodifieroptions.hpp>
+#include <realtime/realtimesingleslater/fields.hpp>
 
-
+// RTMR Headers
+#include <realtime/realtimemultislater/vectormanager.hpp>
 
 namespace ChronusQ {
 
@@ -41,11 +43,9 @@ namespace ChronusQ {
    *  \brief A struct to store information pertinent to the time
    *  propagation procedure.
    */ 
-  struct IntegrationScheme {
+  struct RTPostHFIntegrationScheme {
 
-    IntegrationAlgorithm intAlg  = MMUT;         ///< Integration Algorithm
-    RestartAlgorithm      rstStep = ExplicitMagnus2; ///< Restart Step
-    PropagatorAlgorithm  prpAlg  = Diagonalization; ///< exp(-iF) Algorithm
+    RealTimeAlgorithm    integrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;         ///< Integration Algorithm
 
     double tMax    = 0.1;  ///< Max simulation time in AU
     double deltaT  = 0.01; ///< Time-step in AU
@@ -71,7 +71,7 @@ namespace ChronusQ {
     size_t  iStep = 0;  ///< Step index of current time point
     double  stepSize;   ///< Current step size
 
-    RestartAlgorithm curStep;  ///< Current integration step
+    RealTimeAlgorithm  curStep = RealTimeAlgorithm::RTRungeKuttaOrderFour;         ///< Integration Algorithm
 
   };
 
@@ -87,16 +87,15 @@ namespace ChronusQ {
 
     // Field
     std::vector<std::array<double,3>> ElecDipoleField;
+
+    std::vector<dcomplex> RealTimeCorrFunc;
+
   };
 
-
-
-
-  struct RealTimeBase {
-
+  class RealTimeBase {
+  public:
     SafeFile savFile; ///< Data File
-
-    IntegrationScheme intScheme;   ///< Integration scheme (MMUT, etc)
+    RTPostHFIntegrationScheme  intScheme;   ///< Integration scheme (SSO, RK4, etc)
     TDEMPerturbation  pert;        ///< TD field perturbation
     EMPerturbation    scfPert;     ///< SCF Perturbation
 
@@ -104,25 +103,20 @@ namespace ChronusQ {
     IntegrationData     data;      ///< Data collection
 
     int printLevel = 1; ///< Amount of printing in RT calc
-    bool printDen = false; ///< Print density to out file
-    bool printContractionTiming =false; ///< Print contraction timing during RT propagation
-    size_t orbitalPopFreq = 0; ///< Amount of printing in RT calc
-    
     bool restart   = false; ///< Restarting calc from bin file
 
     RealTimeBase()                     = default;
     RealTimeBase(const RealTimeBase &) = delete;
     RealTimeBase(RealTimeBase &&)      = delete;
 
+    ~RealTimeBase() {};
 
 
     // RealTimeBase procedural functions
     virtual void doPropagation()         = 0;
     virtual double totalEnergy()         = 0;
-    virtual std::vector<double> getGrad(EMPerturbation&) = 0;
-    virtual void formCoreH(EMPerturbation&)              = 0;
-    virtual void updateAOProperties(double) = 0;
     virtual void createRTDataSets(size_t maxPoints) = 0;
+    virtual void run(bool firstStep, EMPerturbation& emPert) = 0 ;
 
     // Progress functions
     void printRTHeader();
@@ -141,77 +135,99 @@ namespace ChronusQ {
     inline void addField(Args... args){ pert.addField(args...); }
 
 
+    inline void setTDPerturbation( TDEMPerturbation& inpert ) {
+      pert = inpert;
+    }
+
     inline void setSCFPerturbation( EMPerturbation& scfp ) {
       scfPert = scfp;
     }
 
   };
 
+  class RealTimeMultiSlaterBase : public RealTimeBase{
+    public:
+      bool printCIVec = false; ///< Print CI vector at every step
+      size_t CIPopFreq = 0; ///< frequency to calculate (and optionally save/print) CI populations
+      size_t RealTimeCorrelationFunctionFreq = 0; ///< frequency to calculate(and optionally save/print) the real time correlation function
+      double RealTimeCorrelationFunctionStart = 0.0; ///< the time at which to start the time correlation function collection
 
-  template <template <typename, typename> class _SSTyp, typename IntsT>
-  class RealTime : public RealTimeBase {
-   
-    typedef dcomplex*                 oper_t;
-    typedef std::vector<oper_t>       oper_t_coll;
+      //Do we need to transform the field
+      std::valarray<double> old_amp {std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+      double transform_threshold = 1e-15; // manually set tight/ user option?
+      bool time_independent_ham = false; // if true -> H is time independent (we apply mu explicitly separately for the field)
+                                         // if false -> H(t) has the field folded into it (as a one electron operator aka in HCore)
 
-    SingleSlaterBase         *reference_ = nullptr;  ///< Initial conditions
-    _SSTyp<dcomplex,IntsT>    propagator_; ///< Total system with complex matrices 
-    std::vector<SingleSlater<dcomplex, IntsT>*> systems_; ///< Objects for time propagation
+      double total_energy = 0.0;
+      std::array<double,3> Dipole;
+      RealTimeMultiSlaterBase() = default;
+      RealTimeMultiSlaterBase(const RealTimeMultiSlaterBase &) = delete;
+      RealTimeMultiSlaterBase(RealTimeMultiSlaterBase &&)      = delete;
+  
+  
+  };
 
-    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> DOSav;
-    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>> UH;
+  template <typename MatsT, typename IntsT>
+  class RealTimeMultiSlater : public RealTimeMultiSlaterBase {
+
+    public:
     
-  public:
-
+    std::shared_ptr<ManyBodyWavefunctionBase> reference_;  ///< Initial conditions
+    std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
 
     // Constructors
 
     // Disable default, copy and move constructors
-    RealTime()                 = delete;
-    RealTime(const RealTime &) = delete;
-    RealTime(RealTime &&)      = delete;
+    RealTimeMultiSlater()                 = delete;
+    RealTimeMultiSlater(const RealTimeMultiSlater &) = delete;
+    RealTimeMultiSlater(RealTimeMultiSlater &&)      = delete;
 
-
+    ~RealTimeMultiSlater(){dealloc();};
     /**
-     *  \brief RealTime Constructor.
+     *  \brief RealTimeMultiSlater Constructor.
      *
-     *  Stores references to a "reference" SingleSlater object and
-     *  makes a copy of the reference into a complex
-     *  SingleSlater object for the propagation.
+     *  Stores references to a "reference" MultiSlater object and
+     *  CQMemManager and makes a copy of the reference into a propagated wavefunction object
      */ 
-    template <typename RefMatsT>
-    RealTime(_SSTyp<RefMatsT,IntsT> &reference) :
-      reference_(&reference), propagator_(reference) { 
-
-      alloc<RefMatsT>(); 
-
-    }; // RealTime constructor
+    RealTimeMultiSlater(std::shared_ptr<MCWaveFunction<MatsT, IntsT>> reference, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager_, RealTimeAlgorithm MRRTAlg) : 
+      reference_(std::dynamic_pointer_cast<ManyBodyWavefunctionBase>(reference)),
+      vecManager(std::move(vecManager_)){
+        intScheme.integrationAlgorithm = MRRTAlg;
+        alloc(); 
+    }; // RealTimeMultiSlater constructor
   
-    inline double totalEnergy(){
-      //propagator_.computeEnergy();
-      return propagator_.totalEnergy;
-    }
-
-    inline void formCoreH(EMPerturbation &emPert) {
-      return propagator_.formCoreH(emPert, false);
-    }
-
-    inline std::vector<double> getGrad(EMPerturbation &emPert) {
-      return propagator_.getGrad(emPert,false,false);
-    }
-
-    // RealTime procedural functions
-    // RealTime procedural functions
-    void doPropagation(); // From RealTimeBase
+    // RealTimeMultiSlater procedural functions
+    inline double totalEnergy() override {
+        return this->total_energy;
+    };
+    void doPropagation() override;
     void propagateStep();
-    void formPropagator(size_t);
-    void formFock(bool,double,size_t);
-    void updateAOProperties(double t);
-    void propagateWFN(size_t);
+    void propagateWFN_SSO(bool Start, bool Finish);
+    void propagateWFN_RK4(bool Start, bool Finish);
+    void propagateWFN(bool Start, bool Finish);
+    void CIPop();
+    void RealTimeCorrelationFunction();
+
+    template<typename SigVecType>
+    void buildSigma(SigVecType& cin, SigVecType& sigma_out, double t);
+
+    template<typename SigVecType>
+    void buildMu(SigVecType& cin, SigVecType& sigma_out, double t);
+
+    void formHamiltonian(double);
+    void calculateDipole();
     void saveState(EMPerturbation&);
     void restoreState(); 
-    void createRTDataSets(size_t maxPoints);
-    void orbitalPop();
+    void createRTDataSets(size_t maxPoints) override;
+    void run(bool firstStep, EMPerturbation& emPert) override {
+          // Get correct time length
+          if( !firstStep ) {
+            intScheme.restoreStep = curState.iStep;
+            intScheme.tMax = intScheme.tMax + intScheme.nSteps*intScheme.deltaT;
+          }
+
+          doPropagation();
+    }
 
     // Progress functions
     void printRTHeader();
@@ -220,13 +236,14 @@ namespace ChronusQ {
     void printStepDetail();
     void appendStepRecord();
 
-
     // Memory functions
-    template <typename MatsT>
     void alloc();
+    void dealloc();
 
-  }; // class RealTime
-  
+    // Generate initial CI Vector functionality 
+    void genInitialState();
+
+  }; // class RealTimeMultiSlater
 
 }; // namespace ChronusQ
 

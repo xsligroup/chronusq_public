@@ -53,8 +53,8 @@
   size_t mxHole = RASString->maxHole(); \
   size_t mxElec = RASString->maxElectron(); \
   std::vector<std::vector<size_t>> LCat = RASString->LCategory(); \
-  auto & hCoreP = *(mcwfn.moints.template getIntegral<OnePInts, MatsT>("hCoreP_Correlated_Space")); \
-  auto & moERI  = *(mcwfn.moints.template getIntegral<InCore4indexTPI, MatsT>("ERI_Correlated_Space"));
+  auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space")); \
+  auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
 
 
 namespace ChronusQ {
@@ -84,7 +84,7 @@ namespace ChronusQ {
     auto RASdiagHSt = tick();
 
     RASCI_LOOP_INIT(); // check top for variable definitions
-    auto & hCore = *(mcwfn.moints.template getIntegral<OnePInts, MatsT>("hCore_Correlated_Space"));
+    auto & hCore = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>("hCore_Correlated_Space"));
 
     // empty CI Diagonal Hamiltonian
     std::fill_n(diagH, nStr, MatsT(0.));
@@ -166,6 +166,12 @@ namespace ChronusQ {
     } else CErr("Only 2C RASCI diag Hamiltonian is implemented");
 
   } // RASCI::buildDiagH
+
+  template <typename MatsT, typename IntsT>
+  void RASCI<MatsT,IntsT>::buildMu(MCWaveFunction<MatsT, IntsT> & mcwfn,
+    size_t nVec, MatsT * C, MatsT * Mu, EMPerturbation & pert){
+     CErr("RAS Mu operator NYI");
+   }
 
 
   /*

@@ -34,7 +34,8 @@
 #include <util/matout.hpp>
 #include <util/threads.hpp>
 
-// #define _DEBUG_CISOLVER_CASCI_IMPL
+// #define DEBUG_CI_MU
+// #define DEBUG_CI_SIGMA
 
 #define CASCI_LOOP_INIT() \
   size_t nC = mcwfn.reference().nC; \
@@ -60,8 +61,8 @@ namespace ChronusQ {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
     
-    auto & hCoreP = *(mcwfn.moints.template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints.template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
+    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
+    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
 
     // Allocate SCR
     size_t nSCR = std::max(nStr_a, nStr_b);
@@ -243,8 +244,8 @@ namespace ChronusQ {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
     
-    auto & hCoreP = *(mcwfn.moints.template getIntegral<OnePInts, MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints.template getIntegral<InCore4indexTPI, MatsT>("ERI_Correlated_Space"));
+    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>("hCoreP_Correlated_Space"));
+    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>("ERI_Correlated_Space"));
 
 	// Allocate SCR
     MatsT SCR;
@@ -373,8 +374,8 @@ namespace ChronusQ {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
     
-    auto & hCoreP = *(mcwfn.moints.template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints.template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
+    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
+    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
 
 #ifdef DEBUG_CI_SIGMA
     prettyPrintSmart(std::cout,"HH CASCI Sigma Build -- C", C, NDet, nVec, NDet);
@@ -564,7 +565,198 @@ namespace ChronusQ {
 #endif
   
   } // CASCI::buildSigma
+
+  /*
+   *  Mu, Matrix-vector product
+   */
+
+  template <typename MatsT, typename IntsT>
+  void CASCI<MatsT,IntsT>::buildMu(MCWaveFunction<MatsT, IntsT> & mcwfn, 
+    size_t nVec, MatsT * C, MatsT * Mu, EMPerturbation & pert) {
+    
+    auto dipAmp = pert.getDipoleAmp(Electric);
+    CASCI_LOOP_INIT(); // check top for variable definitions
+
+    // dont! empty Mu. CONSUMERS MUST EMPTY ON THEIR END
+    //std::fill_n(Mu, NDet*nVec, MatsT(0.));
+    bool return_early = true;
+    for(auto i = 0;    i < 3;     i++){
+      if (dipAmp[i] != 0.0) {
+	return_early = false;
+      }
+    }
+    if (return_early)
+      return;
+
+    // dipole AO -> MO transformation
+    auto MOdipole = mcwfn.moints->template getIntegral<VectorInts,MatsT>("MOdipole");
+    size_t nAO = mcwfn.reference().nAlphaOrbital() * mcwfn.reference().nC;
+    size_t nCorrO = mcwfn.MOPartition.nCorrO;
+    size_t nInact = mcwfn.MOPartition.nInact;
+    if (not MOdipole) {
+      std::shared_ptr<VectorInts<IntsT>> AOdipole =
+                std::make_shared<VectorInts<IntsT>>( nAO, 1, true);
+      std::shared_ptr<VectorInts<MatsT>> MOdipole_scr =
+                std::make_shared<VectorInts<MatsT>>( nCorrO, 1, true);
+
+      std::vector<std::pair<size_t, size_t>> active(2, {mcwfn.MOPartition.nFCore+nInact, nCorrO});
+
+      for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+        if (mcwfn.referenceWaveFunction().nC == 1)
+            (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*mcwfn.reference().aoints_->lenElectric)[iXYZ]) );
+        else if (mcwfn.referenceWaveFunction().nC == 2)
+            (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( (*mcwfn.reference().aoints_->lenElectric)[iXYZ]->template spatialToSpinBlock<IntsT>() ) ;
+        
+        (*AOdipole)[iXYZ]->subsetTransform('N',mcwfn.reference().mo[0].pointer(),
+            nAO, active, (*MOdipole_scr)[iXYZ]->pointer(), false);
+      }
+
+      mcwfn.moints->addIntegral("MOdipole", MOdipole_scr);
+    }
+
+    MOdipole = mcwfn.moints->template getIntegral<VectorInts,MatsT>("MOdipole");
+
+#ifdef DEBUG_CI_SIGMA
+    prettyPrintSmart(std::cout,"SU CASCI Mu Build -- C", C, NDet, nVec, NDet);
+#endif
+    
+    // Allocate SCR
+    size_t nSCR = std::max(nStr_a, nStr_b);
+    size_t nThreads = GetNumThreads();
+    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(nSCR * nThreads);
+
+    // Alpha Part for 1C or the whole build for 2C and 4C
+    // NOTE: exList_ are row-majored c++ objects 
+    
+    int i, j, k, l, La, Lb, Ka, Kb, Ja, Jb;
+    double signij, signkl;
+    double small_number = std::numeric_limits<double>::epsilon();
+    
+    MatsT *MuC, *Ci, *SCR_ith;
+    
+    // SCR_ith is a row of H instead of a column now
+#pragma omp parallel default(shared) private(MuC, Ci, SCR_ith, La, k, l, Ka, signkl, \
+  i, j, Ja, signij, Kb)
+    {
+      auto iThread = GetThreadID();
+      SCR_ith = SCR + nSCR * iThread;
+      for (Ka = iThread; Ka < nStr_a; Ka+=nThreads) {
+      
+        std::fill_n(SCR_ith, nStr_a, MatsT(0.));
+        const int * exList_Ka = exList_a->pointerAtDet(Ka);
+        for (auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_Ka+=4) {
+        
+          UNPACK_EXCITATIONLIST_4(exList_Ka, l, k, La, signkl);
+          for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+              if (dipAmp[iXYZ] != 0.0) {
+	      SCR_ith[La] += signkl * (-dipAmp[iXYZ]) *(*MOdipole)[iXYZ]->pointer()[k *nCorrO +  l];
+              }
+	  }
+        }
+
+        // passive screening 
+        std::vector<int> SCR_nonZero_ith;
+        for (La = 0 ; La < nStr_a;  La++) {
+          if (std::abs(SCR_ith[La]) > small_number) 
+	        SCR_nonZero_ith.push_back(La);
+        }
+
+        // update Mu
+        MuC = Mu;
+        Ci = C;
+        if(nC != 1) {  // for more than 1C
+          for (auto iVec = 0ul; iVec < nVec; iVec++, MuC+=NDet, Ci+=NDet) 
+          for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
+	        La = SCR_nonZero_ith[iSCR]; 
+	        MuC[Ka] += SCR_ith[La] * Ci[La]; 
+          }	
+        } else { // 1C
+          for (auto iVec = 0ul; iVec < nVec; iVec++) 
+          for (Kb = 0; Kb < nStr_b; Kb++, MuC+=nStr_a, Ci+=nStr_a)
+	      for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
+	        La = SCR_nonZero_ith[iSCR]; 
+	        MuC[Ka] += SCR_ith[La] * Ci[La]; 
+          }	
+        } 
+      }  // La
+    }
+
+    if (nC != 1) {
+       
+#ifdef DEBUG_CI_SIGMA
+    prettyPrintSmart(std::cout,"SU Mu Build -- Mu", Mu, NDet, nVec, NDet);
+#endif
+       CQMemManager::get().free(SCR);
+       return;
+    } 
+    
+    // 1C Continued: Build Beta part
+    
+    // transpose sigma and C to make update continuous in inner loop
+    // (a, b) -> (b, a) 
+    MuC = Mu;
+    Ci = C;
+    for (auto iVec = 0ul; iVec < nVec; iVec++, MuC+=NDet, Ci+=NDet) {
+      IMatCopy('T', nStr_a, nStr_b, MatsT(1.), MuC, nStr_a, nStr_b);  
+      IMatCopy('T', nStr_a, nStr_b, MatsT(1.), Ci, nStr_a, nStr_b);  
+    }
+
+#pragma omp parallel default(shared) private(MuC, Ci, SCR_ith, Lb, k, l, Kb, signkl, \
+  i, j, Jb, signij, Ka)
+    {
+      auto iThread = GetThreadID();
+      SCR_ith = SCR + nSCR * iThread;
+      for (Kb = iThread; Kb < nStr_b; Kb+=nThreads) {
+        
+        std::fill_n(SCR_ith, nStr_b, MatsT(0.));
+        const int * exList_Kb = exList_b->pointerAtDet(Kb);
+        for (auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Kb+=4) {
+          
+          UNPACK_EXCITATIONLIST_4(exList_Kb, l, k, Lb, signkl);
+	   for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+              if (dipAmp[iXYZ] != 0.0) {
+	      SCR_ith[Lb] += signkl * (-dipAmp[iXYZ]) *(*MOdipole)[iXYZ]->pointer()[k *nCorrO +  l];
+              }
+	  }
+        }
+        // passive screening 
+        std::vector<int> SCR_nonZero_ith;
+        for (Lb = 0 ; Lb < nStr_b;  Lb++) {
+          if (std::abs(SCR_ith[Lb]) > small_number) 
+	        SCR_nonZero_ith.push_back(Lb);
+        }
+        
+        // update Mu
+        MuC = Mu;
+        Ci = C;
+        for (auto iVec = 0ul; iVec < nVec; iVec++) 
+        for (Ka = 0; Ka < nStr_a; Ka++, MuC+=nStr_b, Ci+=nStr_b)
+        for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
+          Lb = SCR_nonZero_ith[iSCR]; 
+          MuC[Kb] += SCR_ith[Lb] * Ci[Lb]; 
+        }	
+      }  // Lb
+    }
+
+    // transpose sigma and C back
+    MuC = Mu;
+    Ci = C;
+    // (b, a) -> (a, b)
+    for (auto iVec = 0ul; iVec < nVec; iVec++, MuC+=NDet, Ci+=NDet) { 
+      IMatCopy('T', nStr_b, nStr_a, MatsT(1.), MuC, nStr_b, nStr_a);  
+      IMatCopy('T', nStr_b, nStr_a, MatsT(1.), Ci, nStr_b, nStr_a);  
+    }
+
+    CQMemManager::get().free(SCR);
+
+
+#ifdef DEBUG_CI_MU
+    prettyPrintSmart(std::cout,"SU Mu Hamiltonian -- Mu", Mu, NDet, nVec, NDet);
+#endif
   
+  } // CASCI::buildMu
+  
+
   template <typename MatsT, typename IntsT>
   void CASCI<MatsT,IntsT>::computeOneRDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * C, 
     cqmatrix::Matrix<MatsT> & oneRDM) {

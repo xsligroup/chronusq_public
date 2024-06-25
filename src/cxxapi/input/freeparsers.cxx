@@ -496,7 +496,7 @@ namespace ChronusQ {
           if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) str = "MMUT";
           else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) str = "FORWARDEULER";
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty() or !RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "MAGNUS2";
-          std::cout<<"xsli test read in restart algorithm = "<<tdSCFControls.restartAlgorithm<<std::endl;
+          //std::cout<<"xsli test read in restart algorithm = "<< std::to_string(tdSCFControls.restartAlgorithm) <<std::endl;
           addData("RT.RESTARTSTEP", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestartAlgorithm, "");
         }
@@ -511,7 +511,7 @@ namespace ChronusQ {
           if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) str = "MMUT";
           else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) str = "FORWARDEULER";
           else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty() or !RTmatch.str(7).empty() or !RTmatch.str(8).empty()) str = "MAGNUS2";
-          std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
+          //std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
           addData("RT.INTALG", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRTAlgorithm, "");
         }
@@ -538,7 +538,7 @@ namespace ChronusQ {
         auto const freeCQInputIRestart = std::regex("(IRESTART|AUTORESTART)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIRestart) ) {
           tdSCFControls.iRestart = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in iRestart = "<<tdSCFControls.iRestart<<std::endl;
+          std::cout<<"xsli test read in iRestart = "<< std::to_string(tdSCFControls.iRestart) <<std::endl;
           addData("RT.IRSTRT", std::to_string(tdSCFControls.iRestart));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputIRestart, "");
         }
@@ -613,14 +613,14 @@ namespace ChronusQ {
     if (dict.count("PRINTSTEP")) iPrint = std::stoi(dict.at("PRINTSTEP"));
     if (dict.count("RESTARTFROM")) restoreFromStep = std::stoi(dict.at("RESTARTFROM"));
     if (dict.count("INTALG")) {
-      if (dict.at("INTALG") == "MMUT") integrationAlgorithm = RTModifiedMidpoint;
-      else if (dict.at("INTALG") == "FORWARDEULER") integrationAlgorithm = RTForwardEuler;
-      else if (dict.at("INTALG") == "MAGNUS2") integrationAlgorithm = RTExplicitMagnus2;
+      if (dict.at("INTALG") == "MMUT") integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
+      else if (dict.at("INTALG") == "FORWARDEULER") integrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
+      else if (dict.at("INTALG") == "MAGNUS2") integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
     }
     if (dict.count("RESTARTSTEP")) {
-      if (dict.at("RESTARTSTEP") == "MMUT") restartAlgorithm = RTModifiedMidpoint;
-      else if (dict.at("RESTARTSTEP") == "FORWARDEULER") restartAlgorithm = RTForwardEuler;
-      else if (dict.at("RESTARTSTEP") == "MAGNUS2") restartAlgorithm = RTExplicitMagnus2;
+      if (dict.at("RESTARTSTEP") == "MMUT") restartAlgorithm = RestartAlgorithm::ModifiedMidpoint;
+      else if (dict.at("RESTARTSTEP") == "FORWARDEULER") restartAlgorithm = RestartAlgorithm::ForwardEuler;
+      else if (dict.at("RESTARTSTEP") == "MAGNUS2") restartAlgorithm = RestartAlgorithm::ExplicitMagnus2;
     }
     if (dict.count("RTGAUNT")) rtGaunt = std::stoi(dict.at("RTGAUNT"));
     if (dict.count("RTPRINTDEN")) Rtprintden = std::stoi(dict.at("RTPRINTDEN"));

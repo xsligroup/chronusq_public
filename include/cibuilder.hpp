@@ -63,6 +63,7 @@ namespace ChronusQ {
     virtual void buildFullH(MCWaveFunction<MatsT, IntsT> &, MatsT *) = 0;
     virtual void buildDiagH(MCWaveFunction<MatsT, IntsT> &, MatsT *) = 0;
     virtual void buildSigma(MCWaveFunction<MatsT, IntsT> &, size_t, MatsT *, MatsT *) = 0;
+    virtual void buildMu(MCWaveFunction<MatsT, IntsT> &, size_t, MatsT *, MatsT *, EMPerturbation&) = 0;
     
     virtual void computeOneRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, cqmatrix::Matrix<MatsT> &) = 0;
     virtual void computeTwoRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, InCore4indexTPI<MatsT> &) = 0;

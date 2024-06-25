@@ -26,7 +26,3 @@
 
 #include <tensor/tensorlooper.hpp>
 
-
-
-
-

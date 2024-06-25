@@ -26,9 +26,9 @@
 
 #include <chronusq_sys.hpp>
 #include <fields.hpp>
-#include <realtime/enums.hpp>
+#include <orbitalmodifieroptions.hpp>
 
-#include <realtime/fields/envelope.hpp>
+#include <orbitalmodifiernew/realtimeSCF/fields/envelope.hpp>
 
 namespace ChronusQ {
 

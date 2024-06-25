@@ -21,7 +21,7 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-#include <realtime/fields.hpp>
+#include <realtime/realtimesingleslater/fields.hpp>
 
 // This file instantiates the various field envelop definitions
 namespace ChronusQ {
@@ -44,10 +44,109 @@ namespace ChronusQ {
    *
    */ 
   double StepField::getAmp(double t) {
-    if( (t >= this->tOn) and (t <= this->tOff) or 
-        (std::abs(t - this->tOn)  < 1e-10) or 
-        (std::abs(t - this->tOff) < 1e-10) ) return 1.;
-    else return 0.;
+    const double epsilonDeltaT = 1e-10;
+    if(
+        ((t >= this->tOn - epsilonDeltaT) or (t >= this->tOn + epsilonDeltaT))
+        and 
+        ((t <= this->tOff - epsilonDeltaT) or (t <= this->tOff + epsilonDeltaT))
+      ) {
+        return 1.;
+    } else return 0.;
+  };
+
+  /**
+   *  \brief Definition of a linear function field envelope
+   *  
+   *  \f[
+   *    F(t) = \begin{cases}
+   *              t - tOn / (tOff - tOn) &  \mathrm{tOn} <= t <= \mathrm{tOff} \\
+   *              0 &  \mathrm{else}
+   *           \end{cases}
+   *  \f]
+   *
+   *  Also handle the case where t is close to the time
+   *  boundaries due to numerical precision.
+   *
+   *  \param [in] t Time point
+   *  \returns      F(t)
+   *
+   */ 
+  double LinRampField::getAmp(double t) {
+    const double epsilonDeltaT = 1e-10;
+    if(
+        ((t >= this->tOn - epsilonDeltaT) or (t >= this->tOn + epsilonDeltaT))
+        and 
+        ((t <= this->tOff - epsilonDeltaT) or (t <= this->tOff + epsilonDeltaT))
+      ) {
+        return (t - this->tOn) / (this->tOff - this->tOn);
+    } else {
+        return 0.;
+    }
+  };
+
+  /**
+   *  \brief Definition of a Gaussian function field envelope
+   *  
+   *  \f[
+   *    F(t) = \begin{cases}
+   *              exp(-\alpha (t - tOn)^2) &  \mathrm{tOn} <= t <= \mathrm{tOff} \\
+   *              0 &  \mathrm{else}
+   *           \end{cases}
+   *  \f]
+   *  
+   *  Note the negative sign is included in getAmp so $\alpha$ should be positive (unless you want an exponentially growing field).
+   *
+   *  Also handle the case where t is close to the time
+   *  boundaries due to numerical precision.
+   *
+   *  \param [in] t Time point
+   *  \returns      F(t)
+   *
+   */ 
+  double GaussianField::getAmp(double t) {
+    const double epsilonDeltaT = 1e-10;
+    if(
+        ((t >= this->tOn - epsilonDeltaT) or (t >= this->tOn + epsilonDeltaT))
+        and 
+        ((t <= this->tOff - epsilonDeltaT) or (t <= this->tOff + epsilonDeltaT))
+      ) {
+        return std::exp( - this->alpha * std::pow(t - this->tOn, 2.));
+    } else {
+        return 0.;
+    }
+  };
+
+/**
+   *  \brief Definition of a Plane Wave function field envelope
+   *  
+   *  \f[
+   *    F(t) = \begin{cases}
+   *              sin/cos(\omega (t - tOn)) &  \mathrm{tOn} <= t <= \mathrm{tOff} \\
+   *              0 &  \mathrm{else}
+   *           \end{cases}
+   *  \f]
+   *  
+   *  Also handle the case where t is close to the time
+   *  boundaries due to numerical precision.
+   *
+   *  \param [in] t Time point
+   *  \returns      F(t)
+   *
+   */ 
+  double PlaneWaveField::getAmp(double t) {
+    const double epsilonDeltaT = 1e-10;
+    if(
+        ((t >= this->tOn - epsilonDeltaT) or (t >= this->tOn + epsilonDeltaT))
+        and 
+        ((t <= this->tOff - epsilonDeltaT) or (t <= this->tOff + epsilonDeltaT))
+      ) {
+        if (this->doCos)
+            return std::cos( this->omega * (t - this->tOn));
+        else
+            return std::sin( this->omega * (t - this->tOn));
+    } else {
+        return 0.;
+    }
   };
 
 

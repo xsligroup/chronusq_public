@@ -143,6 +143,7 @@ namespace ChronusQ {
         ProgramTimer::tock("Orbital Rotation");
         
         this->mointsTF->clearAllCache();
+        this->moints->clear();
 
         // print energy and update EPrev
         std::copy_n(this->StateEnergy.begin(), this->NStates, EPrev.begin());

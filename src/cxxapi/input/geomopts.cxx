@@ -44,14 +44,16 @@ namespace ChronusQ {
   }
 
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, 
-    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
-    std::shared_ptr<RealTimeBase>& rt, std::shared_ptr<IntegralsBase> epints,
+    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert)
   {
 
     JobType elecJob = job;
     if( job == JobType::BOMD or job == JobType::EHRENFEST or job == JobType::RT ) {
-      elecJob = CQDynamicsOptions(out, input, job, mol, ss, rt, epints, emPert);
+      // New RT refactor probably breaks BOMD and Ehrenfest
+      elecJob = CQDynamicsOptions(out, input, job, mol, ss, mcscf, rt, tdPert, epints, emPert);
     }
     // add else if job == OPT
     else {
@@ -197,8 +199,9 @@ namespace ChronusQ {
   }
 
   JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, 
-    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
-    std::shared_ptr<RealTimeBase>& rt, std::shared_ptr<IntegralsBase> epints,
+    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert)
   {
 
@@ -295,79 +298,100 @@ namespace ChronusQ {
         elecJob = JobType::SCF;
       }
       else if( job == JobType::EHRENFEST ) {
+        // Shiv: Ehrenfest broken by new refactor.
+        // rt = CQRealTimeSingleSlaterOptions(out,input,ss,emPert);
+        // rt->savFile = ss->savFile;
+        // rt->intScheme.deltaT = molOpt.timeStepAU/
+        //                        (molOpt.nMidpointFockSteps*molOpt.nElectronicSteps);
+        // rt->createRTDataSets(molOpt.nElectronicSteps*molOpt.nMidpointFockSteps*molOpt.nNuclearSteps+1);
+        // rt->intScheme.nSteps = molOpt.nElectronicSteps;
+        // rt->intScheme.tMax = rt->intScheme.nSteps * rt->intScheme.deltaT;
 
-        rt = CQRealTimeOptions(out,input,ss,emPert);
-        rt->savFile = ss->savFile;
-        rt->intScheme.deltaT = molOpt.timeStepAU/
-                               (molOpt.nMidpointFockSteps*molOpt.nElectronicSteps);
-        rt->createRTDataSets(molOpt.nElectronicSteps*molOpt.nMidpointFockSteps*molOpt.nNuclearSteps+1);
-        rt->intScheme.nSteps = molOpt.nElectronicSteps;
-        rt->intScheme.tMax = rt->intScheme.nSteps * rt->intScheme.deltaT;
+        // int printLevel = -1;
+        // try {
+        //   printLevel = input.getData<int>("RT.PRINTLEVEL");
+        // } catch(...) { }
 
-        int printLevel = -1;
-        try {
-          printLevel = input.getData<int>("RT.PRINTLEVEL");
-        } catch(...) { }
+        // if( auto rtss = std::dynamic_pointer_cast<RealTimeSingleSlaterBase>(rt) ) {
+        //   md->gradientGetter = [&, printLevel, rtss](){
+        //     rtss->printLevel = printLevel;
+        //     return rtss->getGrad(emPert);
+        //   };
 
-        md->gradientGetter = [&, printLevel, rt](){
-          rt->printLevel = printLevel;
-          return rt->getGrad(emPert);
-        };
+        //   if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) {
+        //     // FIXME: Generalize this to account for more than two subsystems
+        //     std::vector<IntegralsBase*> ints;
+        //     std::vector<BasisSet*> bases;
+        //     BasisSet* ebasis = nullptr;
+        //     BasisSet* pbasis = nullptr;
+        //     auto labels = neoss->getLabels();
+        //     for( auto label: labels ) {
+        //       auto subss = neoss->getSubSSBase(label);
+        //       ints.push_back(extractIntPtr(subss));
+        //       bases.push_back(&subss->basisSet());
+        //       if( label == "Electronic" )
+        //         ebasis = bases.back();
+        //       else if( label == "Protonic" )
+        //         pbasis = bases.back();
+        //     }
 
-        if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) {
-          // FIXME: Generalize this to account for more than two subsystems
-          std::vector<IntegralsBase*> ints;
-          std::vector<BasisSet*> bases;
-          BasisSet* ebasis = nullptr;
-          BasisSet* pbasis = nullptr;
-          auto labels = neoss->getLabels();
-          for( auto label: labels ) {
-            auto subss = neoss->getSubSSBase(label);
-            ints.push_back(extractIntPtr(subss));
-            bases.push_back(&subss->basisSet());
-            if( label == "Electronic" )
-              ebasis = bases.back();
-            else if( label == "Protonic" )
-              pbasis = bases.back();
-          }
-
-          md->finalMidpointFock = [=, &mol, &emPert](double t){
-            for( auto isub = 0; isub < ints.size(); isub++ ) {
-              bases[isub]->updateNuclearCoordinates(mol);
-              ints[isub]->computeAOTwoE(*bases[isub], mol, emPert);
-            }
-            epints->computeAOTwoE(*ebasis, *pbasis, mol, emPert);
-            rt->formCoreH(emPert);
-            rt->updateAOProperties(t);
-            return rt->totalEnergy();
-          };
-        }
-        else {
-          auto aoints = extractIntPtr(ss);
-          BasisSet* basis = &ss->basisSet();
-          md->finalMidpointFock = [&, aoints, basis, rt](double t){
-            basis->updateNuclearCoordinates(mol);
-            aoints->computeAOTwoE(*basis, mol, emPert);
-            rt->formCoreH(emPert);
-            rt->updateAOProperties(t);
-            return rt->totalEnergy();
-          };
-        }
+        //     md->finalMidpointFock = [=, &mol, &emPert](double t){
+        //       for( auto isub = 0; isub < ints.size(); isub++ ) {
+        //         bases[isub]->updateNuclearCoordinates(mol);
+        //         ints[isub]->computeAOTwoE(*bases[isub], mol, emPert);
+        //       }
+        //       epints->computeAOTwoE(*ebasis, *pbasis, mol, emPert);
+        //       rtss->formCoreH(emPert);
+        //       rtss->updateAOProperties(t);
+        //       return rtss->totalEnergy();
+        //     };
+        //   }
+        //   else {
+        //     auto aoints = extractIntPtr(ss);
+        //     BasisSet* basis = &ss->basisSet();
+        //     md->finalMidpointFock = [&, aoints, basis, rt](double t){
+        //       basis->updateNuclearCoordinates(mol);
+        //       aoints->computeAOTwoE(*basis, mol, emPert);
+        //       rtss->formCoreH(emPert);
+        //       rtss->updateAOProperties(t);
+        //       return rtss->totalEnergy();
+        //     };
+        //   }
+        // }
 
         elecJob = JobType::RT;
       }
 
     }
     else if( job == JobType::RT ) {
-
-      rt = CQRealTimeOptions(out,input,ss,emPert);
-
-      rt->savFile = ss->savFile;
-      //rt->createRTDataSets(0);
       // Single point job
       MolecularOptions molOpt(0.0, 0.0);
       mol.geometryModifier = std::make_shared<SinglePoint>(molOpt);
       elecJob = JobType::RT;
+      // Handle field specification
+      try {
+        // Get raw string from input
+        std::string fieldSpec = input.getData<std::string>("RT.FIELD");
+        std::istringstream fieldStream(fieldSpec);
+        // Loop over field specification lines
+        for(std::string fieldStr; std::getline(fieldStream, fieldStr); ) {
+        //parseRTField(fieldStr, out, tdPert);
+        //tdPert->addField(parseRTField(fieldStr, out));
+        auto parsedfield = parseRTField(fieldStr, out);
+        if (parsedfield)
+          tdPert->addField(parsedfield);
+        }
+      } catch( std::runtime_error &e ) {
+        throw;
+      } catch(...) { 
+        out << "  *** No TD Field Defaulting to Trivial Propagation ***\n";
+      }
+      if(mcscf){
+        rt = CQRealTimeOptions(out,input,ss,mcscf,tdPert, emPert);
+        rt->setTDPerturbation(*tdPert);
+        rt->savFile = ss->savFile;
+        rt->createRTDataSets(0);
+      }
 
     }
 

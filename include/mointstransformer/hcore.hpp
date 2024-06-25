@@ -33,7 +33,6 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   std::shared_ptr<cqmatrix::Matrix<MatsT>> MOIntsTransformer<MatsT,IntsT>::formInactDen(
     const char coreIndex) {
-      
 
       size_t nAO  = ss_.nAlphaOrbital() * ss_.nC;
       auto Den = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);

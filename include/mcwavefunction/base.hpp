@@ -27,6 +27,8 @@
 #include <util/math.hpp>
 #include <detstringmanager.hpp>
 #include <wavefunction/base.hpp>
+#include <manybodywavefunction.hpp>
+#include <manybodywavefunction/base.hpp>
 
 namespace ChronusQ {
 
@@ -90,7 +92,7 @@ namespace ChronusQ {
    *
    *  See WaveFunction for further docs.
    */
-  class MCWaveFunctionBase {
+  class MCWaveFunctionBase : public ManyBodyWavefunctionBase {
 
   public:
 
@@ -115,6 +117,16 @@ namespace ChronusQ {
     // This is additive to the diagonal in CI theory, so it can be 
     // simply added to the total state energies on convergence
     double EFieldNuc = 0.0;
+
+    // Flags for avoiding redundant integral transformations
+    // If the applied field changed, we'll need to clear the AO Cache
+    // for transforming the one particle integrals
+    bool field_changed   = true;
+    std::array<double, 3> old_dip_field;
+    // Unused for now since the only place orbitals are currently changing
+    // in MCSCF is during orbital optimization and the cache is just cleared
+    // at that time
+    bool orbital_changed = false;
 
     bool StateAverage    = false;
     std::vector<double> SAWeight;
@@ -143,7 +155,7 @@ namespace ChronusQ {
     size_t printRDMs = 0;
     double rdmCut = 0.10;
 
-    MCWaveFunctionBase()                           = delete;
+    MCWaveFunctionBase() = delete;
     MCWaveFunctionBase(const MCWaveFunctionBase &) = default;
     MCWaveFunctionBase(MCWaveFunctionBase &&)      = default;
 

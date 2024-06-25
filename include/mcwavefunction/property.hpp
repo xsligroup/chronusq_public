@@ -169,7 +169,7 @@ namespace ChronusQ {
     MatsT D = MatsT(0.);
 
     // dipole AO -> MO transformation
-    auto MOdipole = moints.getIntegral<VectorInts,MatsT>("MOdipole");
+    auto MOdipole = moints->getIntegral<VectorInts,MatsT>("MOdipole");
 
     if (not MOdipole) {
       std::shared_ptr<VectorInts<IntsT>> AOdipole =
@@ -184,15 +184,15 @@ namespace ChronusQ {
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*reference().aoints_->lenElectric)[iXYZ]) );
         else if (referenceWaveFunction().nC == 2)
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( (*reference().aoints_->lenElectric)[iXYZ]->template spatialToSpinBlock<IntsT>() ) ;
-        
+       
         (*AOdipole)[iXYZ]->subsetTransform('N',reference().mo[0].pointer(),
             nAO, active, (*MOdipole_scr)[iXYZ]->pointer(), false);
       }
 
-      moints.addIntegral("MOdipole", MOdipole_scr);
+      moints->addIntegral("MOdipole", MOdipole_scr);
     }
 
-    MOdipole = moints.getIntegral<VectorInts,MatsT>("MOdipole");
+    MOdipole = moints->getIntegral<VectorInts,MatsT>("MOdipole");
 
     // dipole strength D = Tr(TDM \dot MOdiple) Tr(TDM^* \dot MOdipole)
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
@@ -235,6 +235,19 @@ namespace ChronusQ {
     return f;
 
   } // MCWaveFunction::oscillator_strength
+
+ /*
+  * \brief  Compute the overlaps of an arbitrary CI vector with the CI vectors.
+  *         C_target: an arbitrary CI vector to evaluate overlaps with
+  *         overlaps: vector of size Nstates that contains to the overlaps with each state
+  */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::computeOverlaps(oper_t C_target, std::vector<MatsT>& overlaps) {
+      overlaps.resize(NStates, 0.0);
+      for ( auto i = 0; i < NStates; i++){
+          overlaps[i] = blas::dot(NDet, CIVecs[i], 1, C_target, 1);
+      }
+  } // MCWaveFunction::computeOverlaps
 
 
 

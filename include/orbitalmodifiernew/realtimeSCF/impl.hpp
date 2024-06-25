@@ -79,14 +79,14 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     // "Start" the MMUT if the current step is the first step or a restart step or field discontinuous
     // "Finish" the MMUT if the current step is the last step or a restart step or field discontinuous
-    if(tdSCFOptions.integrationAlgorithm == RTModifiedMidpoint ) {
+    if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
       startStep = finalStep or (integrationProgress.currentStep == tdSCFOptions.restoreFromStep );
       finalStep = (integrationProgress.currentStep == tdSCFOptions.maxSteps ) or tdEMPerturbation.isFieldDiscontinuous(integrationProgress.currentTime, tdSCFOptions.deltaT);
       if(tdSCFOptions.iRestart > 0 and (integrationProgress.currentStep + 1) % tdSCFOptions.iRestart == 0) finalStep = true;
     };
 
     // Determine the step type, half or full step, for the current integration step for MMUT
-    if(tdSCFOptions.integrationAlgorithm == RTModifiedMidpoint ) {
+    if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
       if(startStep or finalStep) integrationProgress.currentDeltaT = tdSCFOptions.deltaT;
       else integrationProgress.currentDeltaT = 2. * tdSCFOptions.deltaT;
     } else {
@@ -104,7 +104,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
         if(printLevel > 0 and finalStep) std::cout << "  *** Finishing MMUT ***\n";
         for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
           this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
-          if(tdSCFOptions.restartAlgorithm == ExplicitMagnus2) onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
+          if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2) onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
         }
       }
     }
@@ -121,7 +121,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Explicit Magnus 2
-    if ((finalStep or startStep) and tdSCFOptions.restartAlgorithm == ExplicitMagnus2 ) {
+    if ((finalStep or startStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2 ) {
       if(MPIRank(this->mpiComm) == 0){
       	for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
       	  this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
@@ -424,18 +424,18 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert
   RTFormattedLineNew(std::cout,"* Integration Parameters:");
 
   std::string methString;
-  if(tdSCFOptions.integrationAlgorithm == RTModifiedMidpoint )
+  if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint )
     methString = "Modified Midpoint Unitary Transformation (MMUT)";
-  else if(tdSCFOptions.integrationAlgorithm == RTExplicitMagnus2)
+  else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2)
     methString = "Explicit 2nd Order Magnus";
 
   RTFormattedLineNew(std::cout,"Electronic Integration:",methString);
 
-  if(tdSCFOptions.integrationAlgorithm == RTModifiedMidpoint ) {
+  if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
     std::string rstString;
-    if(tdSCFOptions.restartAlgorithm == RTForwardEuler )
+    if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ForwardEuler )
       rstString = "Forward Euler";
-    else if(tdSCFOptions.restartAlgorithm == RTExplicitMagnus2 )
+    else if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2 )
       rstString = "Explicit 2nd Order Magnus";
     RTFormattedLineNew(std::cout, "Restarting MMUT every ", tdSCFOptions.iRestart, " steps with a(n) " + rstString + " step");
   }
@@ -480,9 +480,9 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert
   RTFormattedLineNew(std::cout,"* Misc Parameters:");
 
   std::string expString;
-  if(tdSCFOptions.propagatorAlgorithm == Diagonalization )
+  if(tdSCFOptions.propagatorAlgorithm == PropagatorAlgorithm::Diagonalization )
     expString = "Eigen Decomposition";
-  else if(tdSCFOptions.propagatorAlgorithm == TaylorExpansion )
+  else if(tdSCFOptions.propagatorAlgorithm == PropagatorAlgorithm::TaylorExpansion )
     expString = "Taylor Expansion";
 
   RTFormattedLineNew(std::cout,"Matrix Exponential Method:",expString);
@@ -557,9 +557,9 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printStepDetail() {
   std::cout << std::setw(24) << this->singleSlaterSystem.totalEnergy << " (Hartree)\n";
 
   std::cout << std::setprecision(8) << "Dipole: ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[0] * EBohrPerDebye << " ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[1] * EBohrPerDebye << " ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[2] * EBohrPerDebye << " (Debye)";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[0] / EBohrPerDebye << " ";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[1] / EBohrPerDebye << " ";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[2] / EBohrPerDebye << " (Debye)";
   std::cout << std::endl;
 };
 
