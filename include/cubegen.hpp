@@ -41,6 +41,12 @@ namespace ChronusQ {
     FINE
   };
 
+  // Particle type for cube
+  enum PAR_TYPE {
+    ELECTRONIC,
+    PROTONIC,
+  };
+
   /**
    * @brief Generates a cubefile of specfied surface.
    * 
@@ -178,7 +184,7 @@ namespace ChronusQ {
       // >>> High-level functions
       void writeSummary(std::string fileSum);
       template <typename LocMatsT>
-      void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> );
+      void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>>, double particleCharge = -1.0, bool skipoutput = false);
       template <typename LocMatsT, typename ValManipOp>
       void evalOrbCube(std::string filePref, LocMatsT* MOBase, size_t LDMO, std::vector<size_t> whichMOs, ValManipOp op);
 

@@ -67,8 +67,12 @@ namespace ChronusQ {
 
     // >>Keywords needed for constructor
     std::string resString = "";
-    size_t npts = 0;
-    double step = 0.0;
+    std::string spts;
+    std::string ssteps;
+    std::vector<std::string> nptstokens;
+    std::vector<std::string> stepstokens;
+    std::vector<size_t> npts;
+    std::vector<double> steps;
     double pad = 0.0;
 
     // change resolution 
@@ -79,16 +83,44 @@ namespace ChronusQ {
 
     // Create custom grid with points and stepsize 
     // Assumes cube 
-    OPTOPT( npts = input.getData<size_t>("CUBE.POINTS") );
-    OPTOPT( step = input.getData<double>("CUBE.STEPS") );
+    //OPTOPT( npts = input.getData<size_t>("CUBE.POINTS") );
+    //OPTOPT( ssteps = input.getData<double>("CUBE.STEPS") );
+
+    spts = input.getData<std::string>("CUBE.POINTS");
+    ssteps = input.getData<std::string>("CUBE.STEPS");
+
+    split(nptstokens, spts, " ,;");
+    for (auto & npt: nptstokens)
+      npts.push_back(std::stoi(npt));
+
+    split(stepstokens, ssteps, " ,;");
+    for (auto & nstep: stepstokens)
+      steps.push_back(std::stod(nstep));
 
     // Handle strange cases
-    if( npts>0 and step==0.0 ) CErr("Number of points in grid also requires step size");
-    if( npts==0 and step>0.0 ) CErr("Step size in grid also requires number of points");
-    if( step<0.0 ) CErr("Step size needs to be positive");
+    if(!npts.empty()) {
+        if(steps.empty()) {
+          CErr("Number of points in grid also requires step size");
+        } else {
+          // cubic
+          if (npts.size()==1) {
+            npts.push_back(npts[0]);
+            npts.push_back(npts[0]); 
+          }
+          if (steps.size()==1) {
+            steps.push_back(steps[0]);
+            steps.push_back(steps[0]); 
+          }
+          // strange cases
+          if( npts[0]*npts[1]*npts[2]<= 0 ) CErr("Step needs to be positive"); 
+          if( steps[0]*steps[1]*steps[2]<= 0 ) CErr("Step size needs to be positive"); 
+        }
+    } else {
+      if(!steps.empty()) CErr("Step size in grid also requires number of points");
+    }
 
-    if( !resString.empty() and npts>0 and step>0.0 ) std::cout << "   ***WARNING: resolution overwrites custom grid" << std::endl; 
-    if( abs(pad) != 0.0 and npts>0 and step>0.0 ) std::cout << "   ***WARNING: padding is not used for custom grid construction" << std::endl;
+    if( !resString.empty() and !npts.empty() and !steps.empty() ) std::cout << "   ***WARNING: resolution overwrites custom grid" << std::endl; 
+    if( abs(pad) != 0.0 and !npts.empty() and !steps.empty() ) std::cout << "   ***WARNING: padding is not used for custom grid construction" << std::endl;
 
     std::shared_ptr<CubeGen> cubeptr;
 
@@ -101,10 +133,10 @@ namespace ChronusQ {
 
       cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString));
 
-    } else if( npts > 0 ){
+    } else if( !npts.empty() and !steps.empty() ){
 
-      std::array<size_t,3> grid = {npts, npts, npts};
-      std::array<double,3> units = {step, step, step};
+      std::array<size_t,3> grid = {npts[0], npts[1], npts[2]};
+      std::array<double,3> units = {steps[0], steps[1], steps[2]};
       cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, grid, units));
 
     } else {

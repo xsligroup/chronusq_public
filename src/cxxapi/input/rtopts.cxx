@@ -66,7 +66,7 @@ namespace ChronusQ {
       "RTGAUNT",
       "RTPRINTDEN",
       "RTGAUGE",
-      "RTBREIT"
+      "RTBREIT",
     };
 
     // Specified keywords

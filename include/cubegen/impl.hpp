@@ -96,16 +96,17 @@ namespace ChronusQ {
      * 
     */
     template <typename LocMatsT>
-    void CubeGen::evalDenCube(std::string fileNamePrefix,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> oPDM) {
+    void CubeGen::evalDenCube(std::string fileNamePrefix,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> oPDM, double particleCharge, bool skipoutput) {
 
-      std::cout << std::endl;
-      std::cout << "----------------------------------------------------" << std::endl;
-      std::cout << "Generating Density Cube files" << std::endl;
-      std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
-      std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
-      std::cout << "----------------------------------------------------" << std::endl;
-      std::cout << std::endl;
-
+      if (not skipoutput) {
+        std::cout << std::endl;
+        std::cout << "----------------------------------------------------" << std::endl;
+        std::cout << "Generating Density Cube files" << std::endl;
+        std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
+        std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
+        std::cout << "----------------------------------------------------" << std::endl;
+        std::cout << std::endl;
+      }
       
       ProgramTimer::tick("Cube Eval");
 
@@ -114,18 +115,18 @@ namespace ChronusQ {
       // Scalar density
       std::string scalDenFileName = denFileName + "_S";
       createNewCube(scalDenFileName);
-      std::cout << "Writing scalar density to file: " << scalDenFileName << std::endl;
+      if (not skipoutput) std::cout << "Writing scalar density to file: " << scalDenFileName << std::endl;
       writeSummary("Scalar Density");
-      evalDenCompCube(oPDM->S().pointer());
+      evalDenCompCube(oPDM->S().pointer(),particleCharge);
 
       // MZ density
       if( oPDM->hasZ() ){
 
         std::string mzDenFileName = denFileName + "_MZ";
         createNewCube(mzDenFileName);
-        std::cout << "Writing MZ density to file: " << mzDenFileName << std::endl;
+        if (not skipoutput) std::cout << "Writing MZ density to file: " << mzDenFileName << std::endl;
         writeSummary("MZ Density");
-        evalDenCompCube(oPDM->Z().pointer());
+        evalDenCompCube(oPDM->Z().pointer(),particleCharge);
 
       }
 
@@ -134,25 +135,26 @@ namespace ChronusQ {
           // MX density
           std::string mxDenFileName = denFileName + "_MX";
           createNewCube(mxDenFileName);
-          std::cout << "Writing MX density to file: " << mxDenFileName << std::endl;
+          if (not skipoutput) std::cout << "Writing MX density to file: " << mxDenFileName << std::endl;
           writeSummary("MX Density");
-          evalDenCompCube(oPDM->X().pointer());
+          evalDenCompCube(oPDM->X().pointer(),particleCharge);
 
           // MY density
           std::string myDenFileName = denFileName + "_MY";
           createNewCube(myDenFileName);
-          std::cout << "Writing MY density to file: " << myDenFileName << std::endl;
+          if (not skipoutput) std::cout << "Writing MY density to file: " << myDenFileName << std::endl;
           writeSummary("MY Density");
-          evalDenCompCube(oPDM->Y().pointer());
+          evalDenCompCube(oPDM->Y().pointer(),particleCharge);
 
       }
 
       ProgramTimer::tock("Cube Eval");
 
-      std::cout << std::endl;
-      std::cout << "----------------------------------------------------" << std::endl;
-      std::cout << std::endl;
-
+      if (not skipoutput) {
+        std::cout << std::endl;
+        std::cout << "----------------------------------------------------" << std::endl;
+        std::cout << std::endl;
+      }
       
     }
 

@@ -235,6 +235,10 @@ namespace ChronusQ {
 
     // cubegen for input mol and electronic basis
     auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis);
+    // cubegen for NEO.
+    std::shared_ptr<CubeGen> pcube = nullptr;
+    if (doNEO)
+      pcube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),prot_basis);
 
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
@@ -256,6 +260,10 @@ namespace ChronusQ {
       // For NEO only one OrbitalModifier needs to be made since it is a
       // driver for both the NEOSingleSlater and the aux_neoss
       ss->buildOrbitalModifierOptions();
+
+      // Currently prot and elec share cube options.
+      ParseSCFCubeSubsection(output, input, ss, cube);
+      ParseSCFCubeSubsection(output, input, ss, pcube);
     } else {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
@@ -296,6 +304,11 @@ namespace ChronusQ {
         ep_aoints->savFile   = rstFile;
       }
     }
+
+    // Pack up cubes
+    std::vector<std::shared_ptr<CubeGen>> cubes;
+    cubes.push_back(cube);
+    if (doNEO) cubes.push_back(pcube);
 
     // Save reference info to bin file
     saveRefs( ssOptions, ss );
@@ -408,7 +421,7 @@ namespace ChronusQ {
             ss->formGuess(guessSSOptions);
             ss->initializeSCF();
             conventionalSCF->run(emPert);
-            if(cube) ss->runCube(cube);
+            if(cube) ss->runCube(cubes,emPert);
           }
 #endif // new SCF
         }
@@ -515,7 +528,7 @@ namespace ChronusQ {
             mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
-            if(cube) mcscf->runCube(cube);
+            if(cube) mcscf->runCube(cubes,emPert);
             
             if (input.containsSection("PERTURB")) {
               auto perturb = CQPerturbOptions(output,input,mcscf);
@@ -528,7 +541,7 @@ namespace ChronusQ {
             auto ci = CQCIOptions(output,input,ss,emPert,cube);
             ci->savFile = rstFile;
             ci->run(additionalPert);
-            if(cube) ci->runCube(cube);
+            if(cube) ci->runCube(cubes,emPert);
           }
         }
 

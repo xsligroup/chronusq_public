@@ -144,7 +144,7 @@ namespace ChronusQ {
     virtual void printFockTimings(std::ostream&) = 0;
 
     // Post-processing functions
-    virtual void runCube(std::shared_ptr<CubeGen>) = 0;
+    virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &) = 0;
 
 #ifdef TEST_MOINTSTRANSFORMER
     virtual void MOIntsTransformationTest(EMPerturbation &pert) = 0;

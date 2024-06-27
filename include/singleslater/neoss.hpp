@@ -265,6 +265,8 @@ namespace ChronusQ {
       virtual void setDenEqCoeff(bool val);
       virtual void ortho2aoDen();
 
+      // Cube
+      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &);
 
       // Properties
       using QuantumBase::computeEnergy;

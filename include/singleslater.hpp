@@ -290,7 +290,7 @@ namespace ChronusQ {
     void orthoAOMO();
 
     // Post-processing functions
-    void runCube(std::shared_ptr<CubeGen> cu);
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert);
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };

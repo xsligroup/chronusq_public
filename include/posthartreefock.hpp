@@ -124,7 +124,7 @@ public:
 
 
   // Post-processing functions
-  void runCube(std::shared_ptr<CubeGen> cu);
+  void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &emPert);
 
   // Memory functions
   void alloc();
