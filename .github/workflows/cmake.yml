@@ -27,13 +27,23 @@ jobs:
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
             parallel_build_tasks: 4
           }
+          #- {
+          #  name: "Intel21_NoMPI_Release",
+          #  os: self-hosted,
+          #  build_type: "Release",
+          #  opt_lvl: "-O3",
+          #  compiler_path_sh: "/home/ci_software/intel-21.1.1.sh",
+          #  libint_root: "/sw/libint/2/7/0/beta.6/intel/21/1/1",
+          #  additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
+          #  parallel_build_tasks: 4
+          #}
           - {
-            name: "Intel21_NoMPI_Release",
+            name: "IntelOneAPI_NoMPI_Release",
             os: self-hosted,
             build_type: "Release",
             opt_lvl: "-O3",
-            compiler_path_sh: "/home/ci_software/intel-21.1.1.sh",
-            libint_root: "/sw/libint/2/7/0/beta.6/intel/21/1/1",
+            compiler_path_sh: "/home/ci_software/intel-oneapi.sh",
+            libint_root: "/sw/libint/2/7/0/beta.6/intel/oneapi",
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
             parallel_build_tasks: 4
           }

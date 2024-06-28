@@ -90,6 +90,22 @@ namespace ChronusQ {
     }
   };
 
+  /**
+   * \brief The PrimShellEqual struct. Compare two primitive shells for equality.
+   *
+   * Warning: does not distinguish contracted shells.
+   */
+  struct PrimShellEqual {
+    bool operator()(const libint2::Shell &s1, const libint2::Shell &s2) const {
+      return s1.alpha[0] == s2.alpha[0] and
+             s1.contr[0].l == s2.contr[0].l and
+             s1.contr[0].pure == s2.contr[0].pure and
+             s1.O[0] == s2.O[0] and
+             s1.O[1] == s2.O[1] and
+             s1.O[2] == s2.O[2];
+    }
+  };
+
 
   /**
    *  \brief The BasisSet struct. Contains information pertinant
@@ -124,7 +140,7 @@ namespace ChronusQ {
     std::vector<libint2::Shell> shells;    ///< Basis shells
     ShellPairData               shellData; ///< Shell pair data
 
-    std::unordered_map<libint2::Shell, size_t, PrimShellHash> primitives;
+    std::unordered_map<libint2::Shell, size_t, PrimShellHash, PrimShellEqual> primitives;
       ///< Primitive shells
 
     std::vector<std::vector<double>> unNormCont;

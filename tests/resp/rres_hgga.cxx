@@ -25,7 +25,7 @@
 #include "resp.hpp"
 
 #define CQRESTEST_IMPL(TNAME, IN, REF) \
-TEST( RKS_RESIDUE, TNAME ) { CQRESTEST( true, IN, REF ); }
+TEST( RKS_RESIDUE, TNAME ) { CQRESTEST( true, IN, REF, true, 1e-5 ); }
 
 
 // FULL DIMENSIONAL TESTS
