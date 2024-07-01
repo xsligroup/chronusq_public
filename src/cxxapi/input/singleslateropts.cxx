@@ -948,7 +948,10 @@ namespace ChronusQ {
       CErr("4C Gauge and SSSS terms NYI with libint. "
             "Please use libcint = true instead.", out);
 
-    if(refOptions.refType == isFourCRef)  hamiltonianOptions.Libcint=true;
+    if(refOptions.refType == isFourCRef){
+      hamiltonianOptions.Libcint=true;
+      hamiltonianOptions.x2cType = X2C_TYPE::OFF;
+    }
 
     hamiltonianOptions.updateGaunt = hamiltonianOptions.Gaunt;
     hamiltonianOptions.updateGauge = hamiltonianOptions.Gauge;

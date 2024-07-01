@@ -981,7 +981,7 @@ namespace ChronusQ {
           size_t n1n2 = n1*n2;
           // Place 12 integral blocks into their respective matricies
           // Order: X_x, X_y, X_z, X_s, Y_x, Y_y, Y_z, Y_s, Z_x, Z_y, Z_z, Z_s
-          for(auto iMat = 0; iMat < 12; iMat++){
+          for(auto iMat = 0; iMat < SSMaps.size(); iMat++){
             Eigen::Map<
               const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
                 Eigen::RowMajor>>
