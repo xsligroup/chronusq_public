@@ -82,12 +82,8 @@ namespace ChronusQ {
     OPTOPT( pad = input.getData<double>("CUBE.PADDING") );
 
     // Create custom grid with points and stepsize 
-    // Assumes cube 
-    //OPTOPT( npts = input.getData<size_t>("CUBE.POINTS") );
-    //OPTOPT( ssteps = input.getData<double>("CUBE.STEPS") );
-
-    spts = input.getData<std::string>("CUBE.POINTS");
-    ssteps = input.getData<std::string>("CUBE.STEPS");
+    OPTOPT( spts = input.getData<std::string>("CUBE.POINTS") );
+    OPTOPT( ssteps = input.getData<std::string>("CUBE.STEPS") );
 
     split(nptstokens, spts, " ,;");
     for (auto & npt: nptstokens)

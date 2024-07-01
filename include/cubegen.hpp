@@ -64,7 +64,7 @@ namespace ChronusQ {
       std::array<size_t,3> voxelGrid_;
       std::array<double,3> voxelUnits_;
       RES_TYPE res_;
-      double cubePadding_ = 3.0;
+      double cubePadding_ = 5.0;
       std::shared_ptr<Molecule> mol_;
       std::shared_ptr<BasisSet> basis_;
 

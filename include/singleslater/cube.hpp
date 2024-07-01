@@ -80,7 +80,7 @@ namespace ChronusQ {
         // wavefunction/print.hpp
 
         // Check if complex (for naming files)
-        bool is_complex = std::is_same<MatsT,dcomplex>::value ? true: false;
+        bool is_complex = std::is_same<MatsT,dcomplex>::value;
 
         // Functions passed to CubeGen
         std::function<double(MatsT)> ReOrMag;
@@ -241,7 +241,7 @@ namespace ChronusQ {
         // wavefunction/print.hpp
 
         // Check if complex (for naming files)
-        bool is_complex = std::is_same<MatsT,dcomplex>::value ? true: false;
+        bool is_complex = std::is_same<MatsT,dcomplex>::value;
 
         // Functions passed to CubeGen
         std::function<double(MatsT)> ReOrMag;
