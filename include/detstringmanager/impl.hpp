@@ -113,7 +113,7 @@ namespace ChronusQ {
     
     std::vector<size_t> elecPos;
     
-    for (auto iE = 0ul, iOrb = 0ul; iOrb < nOrb, iE < nE; iOrb++) {
+    for (auto iE = 0ul, iOrb = 0ul; (iOrb < nOrb) && (iE < nE); iOrb++) {
       if (detStr[iOrb]) {
         elecPos.push_back(iOrb);
         iE ++;

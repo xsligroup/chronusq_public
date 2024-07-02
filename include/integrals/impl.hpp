@@ -213,7 +213,8 @@ namespace ChronusQ {
              " they are implemented in TwoPInts",std::cout);
         break;
 
-
+        default:
+          break;
       }
 
   }; // AOIntegrals<IntsT>::computeAOOneP
@@ -243,7 +244,6 @@ namespace ChronusQ {
 
 
       switch (op.first) {
-
         case OVERLAP:
           computeOneE(gradOverlap, op.first);
           break;
@@ -269,6 +269,8 @@ namespace ChronusQ {
             CErr("ERI gradients must be allocated outside of computeGradInts!");
 
           gradERI->computeAOInts(basis, mol, emPert, op.first, options);
+          break;
+        default:
           break;
       }
 

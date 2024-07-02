@@ -110,7 +110,7 @@ namespace ChronusQ {
     
     // Computation interfaces
     virtual void computeAOInts(BasisSet &basisSet, Molecule &mol,
-        EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &hamiltonianOptions) {
+        EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &hamiltonianOptions) override {
 
       if(hamiltonianOptions.Libcint) {
 
@@ -144,14 +144,14 @@ namespace ChronusQ {
     void computeERICINT(BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&);
 
-    virtual void clear() {
+    virtual void clear() override {
       InCore4indexTPI<IntsT>::clear();
       for (InCore4indexTPI<IntsT>& c : components_)
         c.clear();
     }
 
     virtual void output(std::ostream &out, const std::string &s = "",
-                        bool printFull = false) const {
+                        bool printFull = false) const override {
       if (printFull) {
         std::string oeiStr;
         if (s == "")

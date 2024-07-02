@@ -1168,6 +1168,8 @@ namespace ChronusQ {
       CErr("Requested operator is not implemented in OnePInts,"
            " it is implemented in MultipoleInts",std::cout);
       break;
+      default:
+        break;
     }
 
 

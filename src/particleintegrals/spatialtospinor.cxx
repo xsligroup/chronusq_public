@@ -241,7 +241,6 @@ namespace ChronusQ {
     }
   }
  
-  template InCore4indexTPI<double> InCore4indexTPI<double>::spatialToSpinBlock(char, char) const;
   template InCore4indexTPI<dcomplex> InCore4indexTPI<double>::spatialToSpinBlock(char, char) const;
   template InCore4indexTPI<dcomplex> InCore4indexTPI<dcomplex>::spatialToSpinBlock(char, char) const;
 
@@ -260,7 +259,6 @@ namespace ChronusQ {
   template InCoreRITPI<dcomplex> InCoreRITPI<double>::spatialToSpinBlock() const;
   template InCoreRITPI<dcomplex> InCoreRITPI<dcomplex>::spatialToSpinBlock() const;
 
-  template cqmatrix::Matrix<double> OnePRelInts<double>::formW() const;
   template cqmatrix::Matrix<dcomplex> OnePRelInts<double>::formW() const;
   template cqmatrix::Matrix<dcomplex> OnePRelInts<dcomplex>::formW() const;
 

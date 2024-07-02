@@ -625,8 +625,6 @@ namespace ChronusQ {
     DENSITY_TYPE denTyp, bool isGGA, size_t NPts, 
     double *VrhoEval, double *VgammaEval, double *ZrhoVar1, 
     double *ZgammaVar1, double *ZgammaVar2) {
-
-
     // FIXME: Don't zero out, copy / use MKL VAdd
     memset(ZrhoVar1,0,NPts*sizeof(double));
     if (isGGA) { 
@@ -649,47 +647,47 @@ namespace ChronusQ {
     }
 
 
-    if(isGGA) 
-    if( denTyp == SCALAR ) {
+    if(isGGA) {
+      if( denTyp == SCALAR ) {
 
-      // ( DE/DGamma++ DGamma++/DSCALAR + 
-      //   DE/DGamma+- DGamma+-/DSCALAR + 
-      //   DE/DGamma-- DGamma--/DSCALAR   ) 
+        // ( DE/DGamma++ DGamma++/DSCALAR +
+        //   DE/DGamma+- DGamma+-/DSCALAR +
+        //   DE/DGamma-- DGamma--/DSCALAR   )
 
-      //   Where DGamma++/DSCALAR = 0.5 * (Del SCAL + Del Mz --- only UKS)
-      //   Where DGamma+-/DSCALAR = 0.5 * (Del SCAL)
-      //   Where DGamma--/DSCALAR = 0.5 * (Del SCAL - Del Mz --- only UKS)
-      //   The Del SCAL and Del Mz will be assembled later in formZ_vxc
-      //   NOTE we are building 2 * Z. So 0.5 ---> 1.
+        //   Where DGamma++/DSCALAR = 0.5 * (Del SCAL + Del Mz --- only UKS)
+        //   Where DGamma+-/DSCALAR = 0.5 * (Del SCAL)
+        //   Where DGamma--/DSCALAR = 0.5 * (Del SCAL - Del Mz --- only UKS)
+        //   The Del SCAL and Del Mz will be assembled later in formZ_vxc
+        //   NOTE we are building 2 * Z. So 0.5 ---> 1.
 
-      blas::axpy(NPts,1.,VgammaEval,3  ,ZgammaVar1,1);
-      blas::axpy(NPts,1.,VgammaEval+1,3,ZgammaVar1,1);
-      blas::axpy(NPts,1.,VgammaEval+2,3,ZgammaVar1,1);
+        blas::axpy(NPts,1.,VgammaEval,3  ,ZgammaVar1,1);
+        blas::axpy(NPts,1.,VgammaEval+1,3,ZgammaVar1,1);
+        blas::axpy(NPts,1.,VgammaEval+2,3,ZgammaVar1,1);
 
-      if( onePDM->hasZ() ) {
-        blas::axpy(NPts,1.,VgammaEval,3   ,ZgammaVar2,1);
-        blas::axpy(NPts,-1.,VgammaEval+2,3,ZgammaVar2,1);
+        if( onePDM->hasZ() ) {
+          blas::axpy(NPts,1.,VgammaEval,3   ,ZgammaVar2,1);
+          blas::axpy(NPts,-1.,VgammaEval+2,3,ZgammaVar2,1);
+        }
+      } else {
+
+        // ( DE/DGamma++ DGamma++/DMz +
+        //   DE/DGamma+- DGamma+-/DMz +
+        //   DE/DGamma-- DGamma--/DMz   )
+
+        //   Where DGamma++/DMz = 0.5 * (Del Mz + Del SCAL --- only UKS)
+        //   Where DGamma+-/DMz = 0.5 * (- Del Mz)
+        //   Where DGamma--/DMz = 0.5 * (Del Mz - Del SCAL --- only UKS)
+        //   The Del SCAL and Del Mz will be assembled later in formZ_vxc
+        //   NOTE we are building 2 * Z. So 0.5 ---> 1.
+
+        blas::axpy(NPts,1.,VgammaEval,3  ,ZgammaVar2,1);
+        blas::axpy(NPts,-1.,VgammaEval+1,3,ZgammaVar2,1);
+        blas::axpy(NPts,1.,VgammaEval+2,3,ZgammaVar2,1);
+
+        blas::axpy(NPts,1.,VgammaEval,3   ,ZgammaVar1,1);
+        blas::axpy(NPts,-1.,VgammaEval+2,3,ZgammaVar1,1);
       }
-    } else {
-
-      // ( DE/DGamma++ DGamma++/DMz + 
-      //   DE/DGamma+- DGamma+-/DMz + 
-      //   DE/DGamma-- DGamma--/DMz   ) 
-
-      //   Where DGamma++/DMz = 0.5 * (Del Mz + Del SCAL --- only UKS)
-      //   Where DGamma+-/DMz = 0.5 * (- Del Mz)
-      //   Where DGamma--/DMz = 0.5 * (Del Mz - Del SCAL --- only UKS)
-      //   The Del SCAL and Del Mz will be assembled later in formZ_vxc
-      //   NOTE we are building 2 * Z. So 0.5 ---> 1.
-
-      blas::axpy(NPts,1.,VgammaEval,3  ,ZgammaVar2,1);
-      blas::axpy(NPts,-1.,VgammaEval+1,3,ZgammaVar2,1);
-      blas::axpy(NPts,1.,VgammaEval+2,3,ZgammaVar2,1);
-
-      blas::axpy(NPts,1.,VgammaEval,3   ,ZgammaVar1,1);
-      blas::axpy(NPts,-1.,VgammaEval+2,3,ZgammaVar1,1);
     }
-
   };
 
   template

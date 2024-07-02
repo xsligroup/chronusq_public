@@ -363,7 +363,6 @@ namespace ChronusQ {
     };
   
     Timer(const Timer&) = delete;
-    Timer(Timer&&) = default;
   
     //
     // Section manipulation

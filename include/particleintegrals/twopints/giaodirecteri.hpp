@@ -29,6 +29,9 @@ namespace ChronusQ {
 
   class GIAODirectERIContraction : public GTODirectTPIContraction<dcomplex,dcomplex> {
 
+    // typeid for object pointer
+    template <typename T> const std::type_info& pointer_to_typeid(const T& v) { return typeid(v); }
+
   public:
     typedef dcomplex ResultsT;
 
@@ -38,7 +41,9 @@ namespace ChronusQ {
     GIAODirectERIContraction(std::shared_ptr<TwoPInts<dcomplex>> eri):
       GTODirectTPIContraction<dcomplex,dcomplex>(eri) {
 
-      if (typeid(*eri) != typeid(DirectTPI<dcomplex>))
+      const std::type_info& ti_eri = pointer_to_typeid(*eri);
+      const std::type_info& ti_direct_tpi = typeid(DirectTPI<dcomplex>);
+      if (ti_eri != ti_direct_tpi)
         CErr("GIAODirectERIContraction expect a DirectERI<dcomplex> reference.");
 
     }

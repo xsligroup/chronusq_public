@@ -848,8 +848,6 @@ namespace ChronusQ {
         );
         const auto& buff = engines[thread_id].results();
 
-        if(&buff == nullptr) continue;
-
         // Place shell quartet into persistent storage with
         // permutational symmetry
         for(i = 0ul, bf1 = bf1_s, ijkl = 0ul ; i < n1; ++i, bf1++) 
@@ -3787,7 +3785,6 @@ namespace ChronusQ {
         );
         const auto& buff = engines[thread_id].results();
 
-        if(&buff == nullptr) continue;
         // Place shell quartet into persistent storage with
         // permutational symmetry
         for(i = 0ul, bf1 = 0ul, ijkl = 0ul ; i < n1; ++i, bf1++)

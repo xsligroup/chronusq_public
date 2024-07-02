@@ -81,9 +81,9 @@ class OrbitalOptimizer : public OrbitalModifier<MatsT> {
     virtual double computeFDCConv() { return 0.; };
 
     //   Print SCF header, footer and progress
-    void printRunHeader(std::ostream& out, EMPerturbation&) const;
+    void printRunHeader(std::ostream& out, EMPerturbation&) const override;
     void printHeaderFinal(std::ostream& out) const;
-    void printIteration(std::ostream& out = std::cout, bool printDiff = true) const;
+    void printIteration(std::ostream& out = std::cout, bool printDiff = true) const override;
 
     // Common SCF Functions
     void computeEigenvalues(EMPerturbation& pert, vecMORef<MatsT>&, vecEPtr&);

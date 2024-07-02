@@ -3564,7 +3564,7 @@ namespace ChronusQ {
 
       T* ptr = CQMemManager::get().calloc<T>(memBlockSize_);
       rawPtrs_.push_back(ptr);
-      memPtrs_.push_back({{1}});
+      memPtrs_.push_back({1});
 
 #ifdef CD_PROGRESS
       std::cout << "    Malloc a block of size " << memBlockSize_ << std::endl;

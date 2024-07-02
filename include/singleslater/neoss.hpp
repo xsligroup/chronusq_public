@@ -139,7 +139,7 @@ namespace ChronusQ {
       }
 
       // Getters
-			std::vector<std::string> getLabels() {
+			std::vector<std::string> getLabels() override {
 				if (order_.size() == subsystems.size()) return order_;
 				std::vector<std::string> labels;
 				for(auto& entry:subsystems){
@@ -156,7 +156,7 @@ namespace ChronusQ {
       std::shared_ptr<T<MatsT,IntsT>> getSubsystem(std::string label) {
         return std::dynamic_pointer_cast<T<MatsT,IntsT>>(subsystems.at(label));
       }
-      std::shared_ptr<SingleSlaterBase> getSubSSBase(std::string label) {
+      std::shared_ptr<SingleSlaterBase> getSubSSBase(std::string label) override {
         return std::dynamic_pointer_cast<SingleSlaterBase>(subsystems.at(label));
       }
       template <template <typename, typename> class T>
@@ -183,7 +183,7 @@ namespace ChronusQ {
         return order_;
       }
 
-      void saveCurrentState(bool saveMO = true) {
+      void saveCurrentState(bool saveMO = true) override {
         // Pass-through to each subsystems 
         applyToEach([saveMO](SubSSPtr& ss){ ss->saveCurrentState(saveMO); });
         ROOT_ONLY(this->comm);
@@ -215,23 +215,23 @@ namespace ChronusQ {
 
       void initializeSCF() override;
 
-      void formGuess(const SingleSlaterOptions& ssopt) {
+      void formGuess(const SingleSlaterOptions& ssopt) override {
         applyToEach([&](SubSSPtr& ss){ ss->formGuess(ssopt); });
       }
 
-      virtual void formFock(EMPerturbation& emPert, bool increment = false, double xHFX = 1.) {
+      virtual void formFock(EMPerturbation& emPert, bool increment = false, double xHFX = 1.) override {
         applyToEach([&](SubSSPtr& ss){ ss->formFock(emPert, increment, xHFX); });
       }
 
-      void formCoreH(EMPerturbation& emPert, bool save) {
+      void formCoreH(EMPerturbation& emPert, bool save) override {
         applyToEach([&](SubSSPtr& ss){ ss->formCoreH(emPert, save); });
       }
 
-      virtual void formDensity() {
+      virtual void formDensity() override {
         applyToEach([&](SubSSPtr& ss){ ss->formDensity(); });
       }
 
-      virtual void printOrbitalPopulation(std::ostream& out){
+      virtual void printOrbitalPopulation(std::ostream& out) {
         applyToEach([&](SubSSPtr& ss){ 
           out << bannerTop << std::endl;
           out << std::string(ss->particle.charge>0? "Protonic" : "Electronic") << " MO Occupation: " << std::endl;
@@ -240,7 +240,7 @@ namespace ChronusQ {
       }
 
       // Propagate options that were set by value in the *Options functions
-      void setSubSetup() {
+      void setSubSetup() override {
         applyToEach([&](SubSSPtr& ss){
           ss->scfControls = this->scfControls;
           ss->savFile = this->savFile;
@@ -250,27 +250,27 @@ namespace ChronusQ {
         subsystems["Protonic"]->scfControls.guess = this->scfControls.prot_guess;
       }
 
-      std::vector<double> getGrad(EMPerturbation&, bool, bool);
+      std::vector<double> getGrad(EMPerturbation&, bool, bool) override;
 
       // Functions for OrbitalModifier
-      virtual void runSCF(EMPerturbation&);
-      virtual void buildOrbitalModifierOptions();
-      virtual void printProperties();
-      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
-      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock();
-      virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
-      virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);
-      virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
-      virtual double getTotalEnergy() { return this->totalEnergy; };
+      virtual void runSCF(EMPerturbation&) override;
+      virtual void buildOrbitalModifierOptions() override;
+      virtual void printProperties() override;
+      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM() override;
+      virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock() override;
+      virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*) override;
+      virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*) override;
+      virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho() override;
+      virtual double getTotalEnergy() override { return this->totalEnergy; };
       virtual void setDenEqCoeff(bool val);
-      virtual void ortho2aoDen();
+      virtual void ortho2aoDen() override;
 
       // Cube
-      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &);
+      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &) override;
 
       // Properties
       using QuantumBase::computeEnergy;
-      void computeEnergy() {
+      void computeEnergy() override {
 
         this->totalEnergy = 0.;
         applyToEach([&](SubSSPtr& ss){
@@ -293,7 +293,7 @@ namespace ChronusQ {
 
       }
     
-      void computeMultipole(EMPerturbation& emPert) {
+      void computeMultipole(EMPerturbation& emPert) override {
       // Zeroing our Dipole, Quadrupole, and Octopole
         for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
 
@@ -370,11 +370,11 @@ namespace ChronusQ {
        
       };
 
-      void computeSpin() { 
+      void computeSpin() override {
         applyToEach([](SubSSPtr& ss){ ss->computeSpin(); });      
       }
 
-      void methodSpecificProperties() {
+      void methodSpecificProperties() override {
         applyToEach([](SubSSPtr& ss){ ss->methodSpecificProperties(); });      
       }
 
@@ -444,12 +444,12 @@ namespace ChronusQ {
       */
 
       // Disable NR/stability for now
-      MatsT* getNRCoeffs() {
+      MatsT* getNRCoeffs() override {
         CErr("NR NYI for NEO!");
         return nullptr;
       }
 
-      std::pair<double,MatsT*> getStab() {
+      std::pair<double,MatsT*> getStab() override {
         CErr("NR NYI for NEO!");
         return {0., nullptr};
       }

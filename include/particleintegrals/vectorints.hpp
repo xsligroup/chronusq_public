@@ -204,22 +204,22 @@ namespace ChronusQ {
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
-                               OPERATOR, const HamiltonianOptions&);
+                               OPERATOR, const HamiltonianOptions&) override;
 
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) { 
+        OPERATOR, const HamiltonianOptions&) override {
       
       CErr("Vector integral evaluation using two different basis is not implemented"); 
 
     };
 
-    virtual void clear() {
+    virtual void clear() override {
       for (std::shared_ptr<OnePInts<IntsT>>& c : components_)
         c->clear();
     }
 
     virtual void output(std::ostream &out, const std::string &s = "",
-                        bool printFull = false) const {
+                        bool printFull = false) const override {
       if (printFull) {
         std::string opiStr;
         if (s == "")

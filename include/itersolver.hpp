@@ -342,7 +342,6 @@ namespace ChronusQ {
                     preShift,vecGen,shiftVec),
        nRoots_(nR), nGuess_(nG){ }
 
-
     ~IterDiagonalizer() {
 
       if(VL_)   CQMemManager::get().free(VL_);
@@ -471,9 +470,10 @@ namespace ChronusQ {
       const LinearTrans_t &linearTrans,
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
-      const Shift_t &shiftVec = Shift_t()) :
+      const Shift_t &shiftVec = Shift_t(),
+      const size_t m = 1 ) :
       IterDiagonalizer<_F>(c,N,2 + m*nR,1,MAXITER,conv,nR,nR,
-                           linearTrans,preNoShift,vecGen,shiftVec){ }
+                           linearTrans,preNoShift,vecGen,shiftVec), m(m) { }
 
     GPLHR(
       MPI_Comm c,
@@ -484,9 +484,10 @@ namespace ChronusQ {
       const LinearTrans_t &linearTrans,
       const Shift_t &preShift,
       const VecsGen_t &vecGen = VecsGen_t(),
-      const Shift_t &shiftVec = Shift_t()) :
+      const Shift_t &shiftVec = Shift_t(),
+      const size_t m = 1) :
       IterDiagonalizer<_F>(c,N,2 + m*nR,1,MAXITER,conv,nR,nR,
-                           linearTrans,preShift,vecGen,shiftVec){ }
+                           linearTrans,preShift,vecGen,shiftVec), m(m) { }
 
     ~GPLHR() {
 
@@ -501,7 +502,7 @@ namespace ChronusQ {
 
     }
 
-    void alloc() {
+    void alloc() override {
 
       IterDiagonalizer<_F>::alloc();
 
@@ -515,9 +516,9 @@ namespace ChronusQ {
 
     }
 
-    bool runMicro();
+    bool runMicro() override;
 
-    void restart();
+    void restart() override;
 
     virtual void setGuess(size_t nGuess,
         std::function<void(size_t, SolverVectors<_F> &, size_t)> func) override {
@@ -581,7 +582,7 @@ namespace ChronusQ {
 
   public:
 
-    size_t m = 50;
+    size_t m =  50;
     size_t whenSc = 2; // Iteration at which to scale back the number of vectors added, or 0 if no change.
     size_t kG = 3;
 
@@ -599,9 +600,11 @@ namespace ChronusQ {
       const LinearTrans_t &linearTrans,
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
-      const Shift_t &shiftVec = Shift_t()):
+      const Shift_t &shiftVec = Shift_t(),
+      const size_t m = 50,
+      const size_t kG = 3):
       IterDiagonalizer<_F>(c,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
-                           linearTrans,preNoShift,vecGen,shiftVec){
+                           linearTrans,preNoShift,vecGen,shiftVec), m(m), kG(kG) {
       eigenVectorCrit = conv;
       eigenValueCrit = 1e-2 * conv;
     }
@@ -683,7 +686,7 @@ namespace ChronusQ {
       S = scr;
     }
 
-    void alloc() {
+    void alloc() override {
 
       IterDiagonalizer<_F>::alloc();
 
@@ -694,9 +697,9 @@ namespace ChronusQ {
       this->RelRes  = CQMemManager::get().malloc<double>(this->nGuess_);
     }
 
-    bool runMicro();
+    bool runMicro() override;
 
-    void restart();
+    void restart() override;
 
     void setEnergySpecific(std::vector<std::pair<double, size_t>> eRefs,
                            bool AbsoluteES = false, double ABSshift = 0.) {

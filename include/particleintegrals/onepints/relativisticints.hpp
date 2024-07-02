@@ -120,19 +120,19 @@ namespace ChronusQ {
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&);
+        OPERATOR, const HamiltonianOptions&) override;
 
     void OnePRelDriverLibcint(const Molecule&,
         const BasisSet&, const HamiltonianOptions &options);
 
-    virtual void clear() {
+    virtual void clear() override {
       OnePInts<IntsT>::clear();
       for (OnePInts<IntsT>& c : components_)
         c.clear();
     }
 
     virtual void output(std::ostream &out, const std::string &s = "",
-                        bool printFull = false) const {
+                        bool printFull = false) const override {
       if (printFull) {
         std::string oeiStr;
         if (s == "")

@@ -112,14 +112,14 @@ public:
 
   size_t nDeterminants() const { return  detFactory->ketCategoricalSpace()->nDeterminants(); }
   
-  void run(EMPerturbation &);       
+  void run(EMPerturbation &) override;
   void computeTDM(size_t s1, size_t s2, std::shared_ptr<cqmatrix::Matrix<MatsT>> tdm) override;
   
   void solveCI();
   
   void computeRDMsForOrbitalRotations(); 
 
-  void saveCurrentStates();
+  void saveCurrentStates() override;
 
   void printStateEnergy();
   void printCIHeader();

@@ -30,8 +30,7 @@ namespace ChronusQ {
   std::pair<double,double> unitBoundTransform(double lowBound, double upBound, double pt, double wgt) {
 
     // Both upper and lower bounds are finite: Map (-1,1) -> (a,b)
-    if( upBound  != std::numeric_limits<double>::infinity() and 
-        lowBound != -std::numeric_limits<double>::infinity() ) {
+    if( !std::isinf(upBound) and !std::isinf(-lowBound)) {
         
       // Factor jacobian into the weights
       // dx' = ((b-a)/2) * dx
@@ -42,7 +41,7 @@ namespace ChronusQ {
       pt = (upBound - lowBound) * pt / 2 + (upBound + lowBound) / 2;
 
     // Lower bound is finite, upper is infinite: Map (-1,1) -> (a,\inf)
-    } else if ( lowBound != -std::numeric_limits<double>::infinity() ) {
+    } else if (!std::isinf(-lowBound)) {
 
       // Factor jacobian into the weights
       // dx' = \frac{2}{(1-x)^2} dx
@@ -53,7 +52,7 @@ namespace ChronusQ {
       pt   = lowBound  + (1 + pt) / (1 - pt);
 
     // Upper bound is finite, low is infinite: Map (-1,1) -> (-\inf,b)
-    } else if ( upBound != std::numeric_limits<double>::infinity() ) {
+    } else if (!std::isinf(upBound)) {
   
       // Factor jacobian into the weights
       // dx' = - \frac{2}{(1+x)^2} dx

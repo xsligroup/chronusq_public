@@ -297,7 +297,7 @@ void Matrix<MatsT>::setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, Mats
   if (not this->isSquareMatrix()) CErr("setTriangle only supported for square matrix");
   size_t N_ = nRow_;
   switch (upLo) {
-  case blas::Uplo::Upper:
+    case blas::Uplo::Upper:
     for (size_t j = 1; j < N_; j++)
       for (size_t i = 0; i < j; i++)
         operator()(i,j) = value;
@@ -307,6 +307,8 @@ void Matrix<MatsT>::setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, Mats
       for (size_t i = j + 1; i < N_; i++)
         operator()(i,j) = value;
     break;
+    default:
+      break;
   }
 
   if (setDiag)

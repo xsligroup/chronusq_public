@@ -83,7 +83,7 @@ namespace ChronusQ {
     // Operator storage
     std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matricies
     std::vector<double*> moEigenvalues; ///< List of populated MO eigenvalues
-    virtual void initializeSCF(); ///< Initialize SCF, populate MO coefficients and eigenvalues
+    virtual void initializeSCF() override; ///< Initialize SCF, populate MO coefficients and eigenvalues
 
     // AO Fock Matrix
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matricies
@@ -209,38 +209,38 @@ namespace ChronusQ {
 
     // Declarations from QuantumBase 
     // (see include/singleslater/quantum.hpp for docs)
-    void formDensity();
+    void formDensity() override;
 
     using QuantumBase::computeEnergy;
-    void computeEnergy();
-    void computeMultipole(EMPerturbation &);
+    void computeEnergy() override;
+    void computeMultipole(EMPerturbation &) override;
     void compute4CDipole(EMPerturbation &);
     void computeFockX2CDipole(EMPerturbation &);
-    void computeSpin();
-    virtual std::vector<double> getEnergySummary();
+    void computeSpin() override;
+    virtual std::vector<double> getEnergySummary() override;
 
     // Compute various core Hamitlonian
-    void formCoreH(EMPerturbation&, bool); // Compute the CH
+    void formCoreH(EMPerturbation&, bool) override; // Compute the CH
     void computeOrtho();  // Evaluate orthonormalization transformations
     void computeOrthoGrad(); // Evaluate gradient of orthonormalization
 
     // Method specific properties
     void populationAnalysis();
-    void methodSpecificProperties() {
+    void methodSpecificProperties() override {
       populationAnalysis();
     }
 
     // Form a fock matrix (see include/singleslater/fock.hpp for docs)
-    virtual void formFock(EMPerturbation &, bool increment = false, double xHFX = 1.);
+    virtual void formFock (EMPerturbation &, bool increment = false, double xHFX = 1.) override;
     void formFock(EMPerturbation& pert) { formFock(pert,false,1.);};
 
     // Get the total gradient
     virtual std::vector<double> getGrad(EMPerturbation&, bool equil,
-      bool saveInts);
+      bool saveInts) override;
 
     // Form initial guess orbitals
     // see include/singleslater/guess.hpp for docs)
-    void formGuess(const SingleSlaterOptions&);
+    void formGuess(const SingleSlaterOptions&) override;
     void CoreGuess();
     void SADGuess(const SingleSlaterOptions&);
     void TightGuess();
@@ -290,7 +290,7 @@ namespace ChronusQ {
     void orthoAOMO();
 
     // Post-processing functions
-    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert);
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert) override;
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };
@@ -300,7 +300,7 @@ namespace ChronusQ {
     virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
     virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);
     virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
-    virtual void runSCF(EMPerturbation&);
+    virtual void runSCF(EMPerturbation&) override;
     virtual std::vector<NRRotOptions> buildRotOpt();
 
     // Misc procedural
@@ -314,15 +314,15 @@ namespace ChronusQ {
     virtual MatsT* getNRCoeffs() { return nullptr;};
 
     // Print functions
-    void printFock(std::ostream& )    ;
-    void print1PDMOrtho(std::ostream&);
-    void printGD(std::ostream&)       ;
-    void printJ(std::ostream&)        ;
-    void printK(std::ostream&)        ;
-    void printMiscProperties(std::ostream&);
-    void printEPS(std::ostream&);
-    void printMOInfo(std::ostream&, size_t a = 0); 
-    virtual void printFockTimings(std::ostream&);
+    void printFock(std::ostream& ) override   ;
+    void print1PDMOrtho(std::ostream&) override ;
+    void printGD(std::ostream&)   override    ;
+    void printJ(std::ostream&)  override      ;
+    void printK(std::ostream&)   override     ;
+    void printMiscProperties(std::ostream&) override;
+    void printEPS(std::ostream&) override;
+    void printMOInfo(std::ostream&, size_t a = 0) override;
+    virtual void printFockTimings(std::ostream&) override;
 
     // Method to produce a test on integral transformation 
 #ifdef TEST_MOINTSTRANSFORMER

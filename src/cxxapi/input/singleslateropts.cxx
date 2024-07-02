@@ -191,14 +191,15 @@ namespace ChronusQ {
 
 
     // Cleanup the reference string
-    if( ref.refType != isRawRef )
-      if( ref.refType == isTwoCRef and ref.isX2CRef )                       
+    if( ref.refType != isRawRef ) {
+      if( ref.refType == isTwoCRef and ref.isX2CRef ) {
         refString.erase(0,3);
-      else if( ref.refType == isFourCRef or ( ref.refType == isTwoCRef and not isGHF ) )
+      } else if( ref.refType == isFourCRef or ( ref.refType == isTwoCRef and not isGHF ) ) {
         refString.erase(0,2);
-      else
+      } else {
         refString.erase(0,1);
-
+      }
+    }
     // Handle KS related queries
     ref.isKSRef = 
       std::find(KSRefs.begin(),KSRefs.end(),refString) != KSRefs.end();

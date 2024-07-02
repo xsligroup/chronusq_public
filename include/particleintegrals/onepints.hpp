@@ -109,19 +109,19 @@ namespace ChronusQ {
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&);
+        OPERATOR, const HamiltonianOptions&) override;
 
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) { 
+        OPERATOR, const HamiltonianOptions&) override {
       
       CErr("One-Particle integral evaluation using two different basis is not implemented"); 
 
     };
 
-    virtual void clear() { mat_.clear(); }
+    virtual void clear() override { mat_.clear(); }
 
     virtual void output(std::ostream &out, const std::string &s = "",
-                        bool printFull = false) const {
+                        bool printFull = false) const override {
       std::string opiStr;
       if (s == "")
         opiStr = "One-Particle integral";

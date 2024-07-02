@@ -88,28 +88,28 @@ namespace ChronusQ {
     double*& schwarz2() { return schwarz2_; }
 
     // Single element interfaces
-    virtual IntsT operator()(size_t p, size_t q, size_t r, size_t s) const {
+    virtual IntsT operator()(size_t p, size_t q, size_t r, size_t s) const override {
       CErr("NYI");
       return 0;
     }
-    virtual IntsT operator()(size_t pq, size_t rs) const {
+    virtual IntsT operator()(size_t pq, size_t rs) const override {
       CErr("NYI");
       return 0;
     }
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) {}
+        OPERATOR, const HamiltonianOptions&) override {}
 
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) {}
+        OPERATOR, const HamiltonianOptions&) override {}
 
-    virtual void clear() {}
+    virtual void clear() override {}
 
     void computeSchwarz();
 
     virtual void output(std::ostream &out, const std::string &s = "",
-                        bool printFull = false) const {
+                        bool printFull = false) const override {
       if (s == "")
         out << "  Two particle integral:" << std::endl;
       else

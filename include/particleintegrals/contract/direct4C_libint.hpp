@@ -352,8 +352,6 @@ namespace ChronusQ {
 
         const auto& buff = engines[thread_id].results();
 
-        if(&buff == nullptr) continue;
-
 #if 1 // Contraction
 
 	memset(ERIBuffAB,0.0,4*NB4);

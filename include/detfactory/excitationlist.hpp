@@ -117,7 +117,7 @@ class FullCD1eExList: public NewExcitationList {
     return sizeof(uint8_t) * exList_pqSign_.totalDimension(); 
   }
   
-  virtual void computeExcitationList() = 0;
+  virtual void computeExcitationList() override = 0;
 
   // virtual generator interface
   virtual std::shared_ptr<FullCD1eExListGenerator> generator() const = 0;

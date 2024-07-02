@@ -217,7 +217,7 @@ namespace ChronusQ {
 
     public:
 
-      inline virtual size_t getNSingleDim(const bool doTDA = false) {
+      inline virtual size_t getNSingleDim(const bool doTDA = false) override {
 
         size_t N = 0;
 
@@ -272,14 +272,14 @@ namespace ChronusQ {
         ) { }
 
 
-      MatsT*                   formFullFromMemory(); 
-      MatsT*                   formFullMatrix(); 
-      void                 formRHS();
-      std::pair<size_t,MatsT*> formPropGrad(ResponseOperator);
-      void                 configOptions();
-      void                 eigVecNorm();
-      void                 constructShifts();
-      void                 postLinearSolve();
+      MatsT*                   formFullFromMemory() override;
+      MatsT*                   formFullMatrix()  override;
+      void                 formRHS() override;
+      std::pair<size_t,MatsT*> formPropGrad(ResponseOperator) override;
+      void                 configOptions() override;
+      void                 eigVecNorm() override;
+      void                 constructShifts() override;
+      void                 postLinearSolve() override;
       void                 resGuess(size_t, SolverVectors<MatsT> &, size_t) override { CErr(); };
 
 
@@ -314,21 +314,21 @@ namespace ChronusQ {
       };
 
       // Interface to ResponseRBase double exposure
-      inline void formLinearTrans( RC_coll<double> x ) {
+      inline void formLinearTrans( RC_coll<double> x ) override  {
        
         formLinearTrans_impl(x);
 
       };
 
       // Interface to ResponseRBase dcomplex exposure
-      inline void formLinearTrans( RC_coll<dcomplex> x ) {
+      inline void formLinearTrans( RC_coll<dcomplex> x ) override {
        
         formLinearTrans_impl(x);
 
       };
 
 
-      void printResMO(std::ostream &out) {
+      void printResMO(std::ostream &out) override {
 
         size_t N      = this->nSingleDim_;
         size_t nRoots = this->resSettings.nRoots;
@@ -346,12 +346,12 @@ namespace ChronusQ {
 
       virtual void printResMO(std::ostream &out, size_t nRoots, double *W,
         std::vector<std::pair<std::string,double *>> data, double* VL, 
-        double* VR) {
+        double* VR) override {
         printResMO_impl(out,nRoots,W,data,VL,VR); 
       };
       virtual void printResMO(std::ostream &out, size_t nRoots, double *W,
         std::vector<std::pair<std::string,double *>> data, dcomplex* VL, 
-        dcomplex* VR) {
+        dcomplex* VR) override {
         printResMO_impl(out,nRoots,W,data,VL,VR); 
       };
 

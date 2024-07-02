@@ -328,6 +328,8 @@ namespace ChronusQ {
       }
       break;
 
+      default:
+        break;
     }
 
   };

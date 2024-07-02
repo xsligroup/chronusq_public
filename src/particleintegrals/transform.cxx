@@ -612,6 +612,8 @@ namespace ChronusQ {
         transInts.TPI = std::dynamic_pointer_cast<TwoPInts<ResultT>>(
             ParticleIntegrals::transform(*TPI, TRANS, T, NT, LDT));
         break;
+          default:
+              break;
       }
     for (const std::string &op : miscOps)
       transInts.misc.integrals[op] = ParticleIntegrals::transform(*misc.integrals.at(op), TRANS, T, NT, LDT);

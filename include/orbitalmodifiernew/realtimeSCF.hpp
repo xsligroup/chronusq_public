@@ -112,7 +112,7 @@ public:
   // RealTime procedural functions
   // RealTime procedural functions
   void run(EMPerturbation&) override; // From RealTimeBase
-  void getNewOrbitals(EMPerturbation&) {};
+  void getNewOrbitals(EMPerturbation&) override {};
   void printRunHeader(EMPerturbation&) override;
   void printIteration(bool printDiff = false) override;
 

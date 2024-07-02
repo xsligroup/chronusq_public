@@ -85,7 +85,7 @@ namespace ChronusQ {
     PolarizationPropagator<Reference> respFactory_;
     typename Reference::value_type* respFullMatrix_ = nullptr;
 
-    inline size_t getNSingleDim(const bool doTDA = false) {
+    inline size_t getNSingleDim(const bool doTDA = false) override {
 
       return this->morSettings.nModel;
 
@@ -93,16 +93,16 @@ namespace ChronusQ {
 
   public:
 
-    T*                   formFullMatrix();
-    void                 formRHS       ();
-    std::pair<size_t,T*> formPropGrad(ResponseOperator);
-    void                 configOptions();
-    void                 eigVecNorm()                   {};
+    T*                   formFullMatrix() override;
+    void                 formRHS       () override;
+    std::pair<size_t,T*> formPropGrad(ResponseOperator) override;
+    void                 configOptions() override;
+    void                 eigVecNorm() override                   {};
     void                 resGuess(size_t, SolverVectors<T> &, size_t) override { CErr(); };
 
 
 
-    void printResMO(std::ostream &out){
+    void printResMO(std::ostream &out)  override {
      
 
       double * W_print = this->resResults.W ;
@@ -122,12 +122,12 @@ namespace ChronusQ {
 
     virtual void printResMO(std::ostream &out, size_t nRoots, double *W,
       std::vector<std::pair<std::string,double *>> data, double* VL, 
-      double* VR) { }
+      double* VR) override { }
     virtual void printResMO(std::ostream &out, size_t nRoots, double *W,
       std::vector<std::pair<std::string,double *>> data, dcomplex* VL, 
-      dcomplex* VR){ }
+      dcomplex* VR) override { }
 
-    void constructShifts() {
+    void constructShifts() override {
 
       respFactory_.constructShifts();
       this->fdrResults. shifts.clear();
@@ -219,12 +219,12 @@ namespace ChronusQ {
     }
 
 
-    void formLinearTrans( 
+    void formLinearTrans(
       std::vector<RESPONSE_CONTRACTION<double>> x
-    ){ CErr(); }
+    ) override { CErr(); }
     void formLinearTrans( 
       std::vector<RESPONSE_CONTRACTION<dcomplex>> x
-    ){ CErr(); }
+    ) override { CErr(); }
 
 
     MORSpec( MPI_Comm c, std::shared_ptr<Reference> ref ) : 
@@ -598,17 +598,18 @@ namespace ChronusQ {
 
       }
 
-      if( isRoot )
-      if( refineConv and this->morSettings.doRefine ) {
-        std::cout << "  ******** ITERATIVE MOR CONVERGED ********\n\n";
-        std::cout << "    * NMODEL  = " << this->morSettings.nModel << "\n";
-        std::cout << "    * NLINEAR = " << nModelShift << "\n\n";
-        std::cout << "  *****************************************\n\n";
-      } else if (this->morSettings.doRefine) {
-        std::cout << "  ******** ITERATIVE MOR FAILED TO CONVERGE ********\n\n";
-        std::cout << "    * NMODEL  = " << this->morSettings.nModel << "\n";
-        std::cout << "    * NLINEAR = " << nModelShift << "\n\n";
-        std::cout << "  **************************************************\n\n";
+      if( isRoot ) {
+        if( refineConv and this->morSettings.doRefine ) {
+          std::cout << "  ******** ITERATIVE MOR CONVERGED ********\n\n";
+          std::cout << "    * NMODEL  = " << this->morSettings.nModel << "\n";
+          std::cout << "    * NLINEAR = " << nModelShift << "\n\n";
+          std::cout << "  *****************************************\n\n";
+        } else if (this->morSettings.doRefine) {
+          std::cout << "  ******** ITERATIVE MOR FAILED TO CONVERGE ********\n\n";
+          std::cout << "    * NMODEL  = " << this->morSettings.nModel << "\n";
+          std::cout << "    * NLINEAR = " << nModelShift << "\n\n";
+          std::cout << "  **************************************************\n\n";
+        }
       }
 
       if( MPIRank(this->comm_) == 0 ) {
@@ -629,7 +630,7 @@ namespace ChronusQ {
 
     };
     
-    inline void run() {
+    inline void run() override {
 
       // Input RESP arguements are used to populate internal options,
       // this copies them over to respFactory_

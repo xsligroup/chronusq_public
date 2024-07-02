@@ -2980,7 +2980,7 @@ namespace ChronusQ {
   //  }
   
   //  else if ((LA>0)&(LB)>0) {
-    else if ( (LA >= 0) & (LB)>0 ) {
+    else if ( (LA >= 0) & (LB>0) ) {
       int lBm1[3],lAp1[3];
       for ( iWork = 0 ; iWork < 3 ; iWork++) {
         lAm1[iWork] = lA[iWork];

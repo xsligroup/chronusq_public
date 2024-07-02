@@ -385,7 +385,7 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
       );
 
     } else CErr("Envelope not recognized or not implemented.");
-    
+  return std::shared_ptr<TDEMFieldBase>(nullptr);
   } // parseRTField
 
   void HandleRTInitState(std::ostream & out, CQInputFile & input, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> & vecManager)

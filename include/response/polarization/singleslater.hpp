@@ -233,8 +233,8 @@ namespace ChronusQ {
 
           case MagneticQuadrupole: 
             std::cout << "Magnetic Quadrupole\n";
+            break;default:
             break;
-
         }
 
 
@@ -304,14 +304,15 @@ namespace ChronusQ {
       //std::cerr << "OP = " << op << " " << std::boolalpha 
       //  << scaleOp << std::endl;
 
-      if( scaleOp )
-      for(auto iO = 0; iO < freq.size(); iO++)
-        if( noDamp ) 
-          blas::scal(N*nOp,MatsT(freq[iO]),this->fdrResults.SOL + (iO*nRHS + iOff)*N,1);
-        else
-          blas::scal(N*nOp,dcomplex(freq[iO],this->fdrSettings.dampFactor),
-            this->dfdrResults.SOL + (iO*nRHS + iOff)*N,1);
-
+      if( scaleOp ) {
+        for(auto iO = 0; iO < freq.size(); iO++)
+          if( noDamp ) {
+            blas::scal(N*nOp,MatsT(freq[iO]),this->fdrResults.SOL + (iO*nRHS + iOff)*N,1);
+          } else {
+            blas::scal(N*nOp,dcomplex(freq[iO],this->fdrSettings.dampFactor),
+              this->dfdrResults.SOL + (iO*nRHS + iOff)*N,1);
+          }
+      }
       iOff += nOp;
     };
 
@@ -2233,25 +2234,25 @@ namespace ChronusQ {
         U* V_cb  = V_c  + nOAVA;
         U* HV_cb = HV_c + nOAVA;
 
-        if( ss.nC == 1 )
-        if( ss.iCS ) {
+        if( ss.nC == 1 ) {
+          if( ss.iCS ) {
 
-          // HV(a,i) = \sum_b F(a,b) V(b,i)
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NV,NO,NV,U(1.) ,Fvv,NB,V_cb,NV,fact ,HV_cb,NV);
-          // HV(a,i) -= \sum_j V(a,j) F(i,j)
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NV,NO,NO,U(-1.),V_cb,NV,Foo,NB,U(1.),HV_cb,NV);
+            // HV(a,i) = \sum_b F(a,b) V(b,i)
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NV,NO,NV,U(1.) ,Fvv,NB,V_cb,NV,fact ,HV_cb,NV);
+            // HV(a,i) -= \sum_j V(a,j) F(i,j)
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NV,NO,NO,U(-1.),V_cb,NV,Foo,NB,U(1.),HV_cb,NV);
 
-        } else {
+          } else {
 
-          // HV(a,i) = \sum_b F(a,b) V(b,i)
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,ss.nVB,ss.nOB,ss.nVB,U(1.),Fvvb,NB,
-            V_cb,ss.nVB,fact ,HV_cb,ss.nVB);
-          // HV(a,i) -= \sum_j V(a,j) F(i,j)
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,ss.nVB,ss.nOB,ss.nOB,U(-1.),V_cb,ss.nVB,
-            Foob,NB,U(1.),HV_cb,ss.nVB);
+            // HV(a,i) = \sum_b F(a,b) V(b,i)
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,ss.nVB,ss.nOB,ss.nVB,U(1.),Fvvb,NB,
+              V_cb,ss.nVB,fact ,HV_cb,ss.nVB);
+            // HV(a,i) -= \sum_j V(a,j) F(i,j)
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,ss.nVB,ss.nOB,ss.nOB,U(-1.),V_cb,ss.nVB,
+              Foob,NB,U(1.),HV_cb,ss.nVB);
 
+          }
         }
-
 
       }
 

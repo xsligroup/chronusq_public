@@ -2160,13 +2160,14 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
 
       return tmpVal; 
 
-    } else if ( LB > 0 and LA==0) {     // if LB>LA, use horizontal recursion to make LA>=LB. 
+    } else if ( LB > 0 and LA==0) {     // if LB>LA, use horizontal recursion to make LA>=LB.
 
       // (s|)
       
       tmpVal += compvRRS0b( pripair, shell2, K, sspri, LB, lB );
 
       return tmpVal;
+
 /*
       for( int mu = 0 ; mu < 3 ; mu++ ){
         lAp1[mu] = lA[mu];     
@@ -2210,7 +2211,7 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
     //  tmpVal+= pair.AB[iWork]*hRRSab(pair,shell1,shell2,LA,lA,LB-1,lBm1);
       return tmpVal;
     }; // if ( (LA > 0) and (LB>0) ) 
-  
+  return tmpVal;
   };  // comphRRiPPSab  
 
  
