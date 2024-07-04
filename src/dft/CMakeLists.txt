@@ -21,4 +21,4 @@
 #   E-Mail: xsli@uw.edu
 #
 
-target_sources( cq PRIVATE epc.cxx util.cxx )
+target_sources( cq PRIVATE epc.cxx util.cxx gauxcutils.cxx)

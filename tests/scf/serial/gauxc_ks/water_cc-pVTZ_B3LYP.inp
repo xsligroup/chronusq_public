@@ -1,0 +1,39 @@
+#
+#  testDFT - Water RB3LYP/cc-pvtz / SCF Serial
+#  SMP
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O               0.  -0.07579184359              0.
+ H     0.866811829    0.6014357793               0.
+ H    -0.866811829    0.6014357793               0.
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Real RB3LYP
+job = SCF
+
+[DFTINT]
+INHOUSE = FALSE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
+[GAUXC]
+GRID = ULTRAFINE
+RADIALQUAD = MURRAYHANDYLAMING
+XCWEIGHTALG = BECKE
+
+[BASIS]
+basis = cc-PVTZ
+[SCF]
+
+[MISC]
+nsmp = 1
+mem = 100MB
+

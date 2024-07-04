@@ -19,6 +19,12 @@ reference = 2CB3LYP
 job = SCF
 x2ctype = OneE
 
+[DFTINT]
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
 [BASIS]
 basis = 6-311+G(d,p) 
 

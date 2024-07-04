@@ -25,5 +25,5 @@ forcecart = true
 
 [MISC]
 nsmp = 1
-mem = 4GB
+mem = 100MB
 

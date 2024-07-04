@@ -55,6 +55,25 @@ namespace ChronusQ {
     bool iCS = true;             // closed shell or not
 
     std::string funcName;        // DFT functional name
+
+    std::string refstring(RefType reftype) {
+      switch (reftype) {
+        case isRawRef:
+          return "isRawRef";
+        case isRRef:
+          return "isRRef";
+        case isURef:
+          return "isURef";
+        case isRORef:
+          return "isRORef";
+        case isTwoCRef:
+          return "isTwoCRef";
+        case isFourCRef:
+          return "isFourCRef";
+        default:
+          return "";
+      }
+    } 
   };
 
 
@@ -68,6 +87,7 @@ namespace ChronusQ {
     size_t nAng         = 302;   ///< # Angular points
     size_t nRad         = 100;   ///< # Radial points
     size_t nRadPerBatch = 4;     ///< # Radial points / macro batch
+    bool   useGauXC     = false; ///< Use GauXC as the DFT engine
   };
 
   /**

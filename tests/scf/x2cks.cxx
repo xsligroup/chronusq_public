@@ -42,7 +42,14 @@ TEST( X2CKS, Water_6311pGdp_x2c_b3lyp_cart ) {
  
 };
 
+// X2C O2 6-31G B3LYP test
+TEST( X2CKS, O2_triplet_x2cks_631G ) {
 
+  CQSCFTEST( "scf/serial/x2c/o2_triplet_x2cks_631G", 
+    "o2_triplet_x2cks_631G.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
+ 
+};
 
 // Hg SAPPORO DZP DKH_2012 SP SLATER
 TEST( X2CKS, Hg_SAP_DZP_DKH3_2012_SP_SLATER  ) {

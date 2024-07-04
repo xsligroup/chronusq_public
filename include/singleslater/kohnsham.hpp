@@ -29,6 +29,7 @@
 #include <cqlinalg/blasext.hpp>
 #include <util/timer.hpp>
 #include <dft.hpp>
+#include <gauxcutils.hpp>
 
 // KS_DEBUG_LEVEL == 1 - Timing
 #ifndef KS_DEBUG_LEVEL
@@ -160,14 +161,62 @@ namespace ChronusQ {
 
       SingleSlater<MatsT,IntsT>::formFock(pert,increment,xHFX);
 
+      ProgramTimer::tick("Form VXC");
       if( doVXC_ ) {
-        formVXC(pert);
+        if (not this->intParam.useGauXC) {
+          // Using in-house DFT code to calculate VXC
+          formVXC(pert);
+          ROOT_ONLY(this->comm);
+          // Add VXC in Fock matrix
+          *this->fockMatrix += *VXC;
+        } else {
+          // Using GauXC to calculate VXC 
+          // Get system info 
+          bool is_gks = this->onePDM->hasZ() and this->onePDM->hasXY();
+          bool is_uks = this->onePDM->hasZ() and not this->onePDM->hasXY();
+          bool is_rks = not is_uks and not is_gks; 
+          size_t NB = this->basisSet().nBasis; 
 
-        ROOT_ONLY(this->comm);
+          // Convert CQ matrices to be Eigen matrices to feed into GauXC
+          Eigen::Matrix<double, -1, -1> Ps, Pz, Py, Px;
+          Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().S().pointer(), NB, NB); 
 
-        // Add VXC in Fock matrix
-        *this->fockMatrix += *VXC;
-      }
+          // Initialize return values
+          double EXC = 0.0;
+          Eigen::MatrixXd VXCs, VXCz, VXCx, VXCy;
+
+          // Call corresonding epc evaluation functions 
+          if (is_rks) {                                        
+            Ps /= 2.0; // Need to scale by 0.5 due to GauXC's RKS logic
+            std::tie(EXC, VXCs) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps );
+          } else {
+            Pz = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().Z().pointer(), NB, NB); 
+            if (is_uks) {              
+              std::tie(EXC, VXCs, VXCz) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz);
+            } else {              
+              Py = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().Y().pointer(), NB, NB); 
+              Px = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().X().pointer(), NB, NB); 
+              std::tie(EXC, VXCs, VXCz, VXCy, VXCx) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px);
+            }
+          }
+
+          // Assign computed EXC and VXC (with a scaling factor of 2)
+          this->XCEnergy = EXC;
+          VXCs *= 2.0;
+          this->fockMatrix->S() +=  VXCs;
+          if(!is_rks){
+            VXCz *= 2.0;
+            this->fockMatrix->Z() +=  VXCz;
+            if(is_gks){
+              VXCy *= 2.0;
+              VXCx *= 2.0;
+              this->fockMatrix->Y() +=  VXCy;
+              this->fockMatrix->X() +=  VXCx;
+            }
+          } 
+        }  // end GauXC
+      } // end VXC
+      ProgramTimer::tock("Form VXC"); 
 
     }; // formFock
 

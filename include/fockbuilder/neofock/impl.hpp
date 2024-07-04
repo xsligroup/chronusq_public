@@ -942,12 +942,84 @@ namespace ChronusQ {
     // Call all upstream FockBuilders
     this->upstream->formFock(ss, empert, increment, xHFX);
 
-    // auto vxcBegin = tick();
-    formVXC(ss);
-    // double durVxc = tock(vxcBegin);
-    // std::cout << "  VXC duration: " << durVxc << " s\n" << std::endl;
 
-    *ss.fockMatrix += *VXC;
-  }
+    std::string sys = ss.particle.charge > 0 ? "Protonic" : "Electronic";
+    auto vxcBegin = tick();
+    if(not this->intParam.useGauXC){
+      // InHouse NEO-DFT:
+      formVXC(ss);
+      *ss.fockMatrix += *VXC;
+      double durVxc = tock(vxcBegin);
+      //std::cout << "CQ " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
+      //KohnSham<MatsT,IntsT>* ks = dynamic_cast<KohnSham<MatsT,IntsT>*>(&ss);
+      //if(ss.particle.charge < 0) std::cout << "TOTAL Electronic EXC: " << ks->XCEnergy << std::endl;
+      //if(ss.particle.charge > 0) std::cout << "TOTAL Protonic   EXC: " << ks->XCEnergy << std::endl;
+    }else{
+      if (std::is_same<MatsT, dcomplex>::value)  CErr("GauXC currently only supports 'double' value type matrices!");
+      // GauXC NEO-DFT:
+      // EPC will be done only in Electronic formVXC() call to avoid evaluating rho_e and rho_p twice
+      if(ss.particle.charge > 0){
+        // When ss is protonic, do nothing
+        double durVxc = tock(vxcBegin);
+        //std::cout << "GauXC " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
+        return;
+      } else{
+        // When ss is electronic, evaluate EPC for both systems 
+        bool is_uks = ss.onePDM->hasZ();
+        bool is_rks = not is_uks;
+        size_t elec_NB = ss.basisSet().nBasis; 
+        size_t prot_NB = this->aux_ss->basisSet().nBasis;
+        
+        // Convert CQ matrices to be Eigen matrices to feed into GauXC
+        Eigen::Matrix<double, -1, -1> elec_Ps, elec_Pz, prot_Ps, prot_Pz;
+        elec_Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(ss.onePDM->real_part().S().pointer(), elec_NB, elec_NB);
+        prot_Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->aux_ss->onePDM->real_part().S().pointer(), prot_NB, prot_NB);
+        prot_Pz = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->aux_ss->onePDM->real_part().Z().pointer(), prot_NB, prot_NB);
+
+        // Initialize return values
+        double  elec_EXC = 0.0, prot_EXC = 0.0;
+        Eigen::MatrixXd elec_VXCs, elec_VXCz, prot_VXCs, prot_VXCz;
+
+        // Call corresonding epc evaluation functions 
+        if (is_rks){ 
+          // RKS Electronic + UKS Protonic
+          elec_Ps /= 2.0; // Need to scale by 0.5 due to GauXC's RKS logic
+          std::tie(elec_EXC, prot_EXC, elec_VXCs, prot_VXCs, prot_VXCz)
+              = ss.gauxcUtils->integrator_pointer->neo_eval_exc_vxc( elec_Ps, prot_Ps, prot_Pz );
+        } else{      
+          // UKS Electronic + UKS Protonic
+          elec_Pz  = Eigen::Map<Eigen::Matrix<double, -1, -1>>(ss.onePDM->real_part().Z().pointer(), elec_NB, elec_NB);
+          std::tie(elec_EXC, prot_EXC, elec_VXCs, elec_VXCz, prot_VXCs, prot_VXCz)
+              = ss.gauxcUtils->integrator_pointer->neo_eval_exc_vxc( elec_Ps, elec_Pz, prot_Ps, prot_Pz );
+        }
+
+        // Update Energy
+        KohnSham<MatsT,IntsT>* elec_ks = dynamic_cast<KohnSham<MatsT,IntsT>*>( &ss );
+        KohnSham<MatsT,IntsT>* prot_ks = dynamic_cast<KohnSham<MatsT,IntsT>*>( &(*this->aux_ss) );
+        elec_ks->XCEnergy = elec_EXC;
+        prot_ks->XCEnergy = prot_EXC;
+        
+        // Update Electronic VXC (with a scaling factor of 2)
+        elec_VXCs *= 2.0;
+        ss.fockMatrix->S() +=  elec_VXCs;
+        if (is_uks)  {
+          elec_VXCz *= 2.0;
+          ss.fockMatrix->Z() +=  elec_VXCz;
+        }
+
+        // Update Electronic VXC (with a scaling factor of 2)
+        prot_VXCs *= 2.0; prot_VXCz *= 2.0;
+        this->aux_ss->fockMatrix->S() +=  prot_VXCs;         
+        this->aux_ss->fockMatrix->Z() +=  prot_VXCz;         
+
+        double durVxc = tock(vxcBegin);
+        //std::cout << "GauXC " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
+        //std::cout << "TOTAL Protonic   EXC: " << prot_EXC << std::endl;
+        //std::cout << "TOTAL Electronic EXC: " << elec_EXC << std::endl;
+
+      } // End Electronic GauXC
+    } // End GauXC DFT
+} //NEOKohnShamBuilder<MatsT,IntsT>::formFock
+
 
 }

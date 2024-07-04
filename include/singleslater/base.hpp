@@ -30,6 +30,7 @@
 #include <cubegen.hpp>
 #include <util/files.hpp>
 #include <orbitalmodifieroptions.hpp>
+#include <gauxcutils.hpp> 
 
 // #define TEST_MOINTSTRANSFORMER
 
@@ -74,6 +75,9 @@ namespace ChronusQ {
 
     std::string refLongName_;  ///< Long form of the reference name
     std::string refShortName_; ///< Short form of the reference name
+
+    // GauXC utility class                                                      
+    std::shared_ptr<GauXCUtils>  gauxcUtils;
 
     // Save / Restart File
     SafeFile savFile;

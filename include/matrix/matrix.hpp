@@ -98,6 +98,20 @@ public:
   }
   template <typename ScalarT, typename MatsU>
   Matrix( const ScaledMatrix<ScalarT, MatsU>& );
+
+  // constructors that take an Eigen::Matrix
+  Matrix( const Eigen::Matrix<MatsT, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ): 
+      Matrix(eigen_mat.rows(), eigen_mat.cols()) {
+    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), ptr_);
+  }
+  template <typename MatsU>
+  Matrix( const Eigen::Matrix<MatsU, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ): 
+      Matrix(eigen_mat.rows(), eigen_mat.cols()) {
+    if (std::is_same<MatsU, dcomplex>::value
+        and std::is_same<MatsT, double>::value)
+      CErr("Cannot create a Real Matrix from a Complex Eigen matrix.");
+    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), ptr_);
+  }
   
   Matrix& operator=( const Matrix &other );
   Matrix& operator=( Matrix &&other );
@@ -137,6 +151,8 @@ public:
 
   template <typename MatsU>
   Matrix& operator+=( const Matrix<MatsU>& );
+  template <typename MatsU>
+  Matrix& operator+=(const Eigen::Matrix<MatsU, Eigen::Dynamic, Eigen::Dynamic>&);
   template <typename MatsU>
   Matrix& operator-=( const Matrix<MatsU>& );
   template <typename MatsU>

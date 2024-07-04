@@ -49,6 +49,22 @@ TEST( RKS, Water_ccpVTZ_LSDA ) {
 
 }
 
+// PBEXPBEC / cc-pVTZ
+TEST( RKS, Water_ccpVTZ_PBEXPBEC ) {
+
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_PBEXPBEC", "water_cc-pVTZ_PBEXPBEC.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// PBE0 / cc-pVTZ
+TEST( RKS, Water_ccpVTZ_PBE0 ) {
+
+  CQSCFTEST( "scf/serial/rks/water_cc-pVTZ_PBE0", "water_cc-pVTZ_PBE0.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
 #ifdef _CQ_DO_PARTESTS
 
 // SMP B3LYP / cc-pVTZ
@@ -72,6 +88,22 @@ TEST( RKS, PAR_Water_ccpVTZ_LSDA ) {
 
   CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_LSDA", "water_cc-pVTZ_LSDA.bin.ref", 1e-6, 
       true, true, true, true, true, true, false, "no", true );
+
+}
+
+// SMP PBEXPBEC / cc-pVTZ
+TEST( RKS, PAR_Water_ccpVTZ_PBEXPBEC ) {
+
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_PBEXPBEC", "water_cc-pVTZ_PBEXPBEC.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// SMP PBE0 / cc-pVTZ
+TEST( RKS, PAR_Water_ccpVTZ_PBE0 ) {
+
+  CQSCFTEST( "scf/parallel/rks/water_cc-pVTZ_PBE0", "water_cc-pVTZ_PBE0.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
 
 }
 

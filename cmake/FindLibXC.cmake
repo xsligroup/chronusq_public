@@ -21,37 +21,54 @@
 #   E-Mail: xsli@uw.edu
 #
 
+message ( "\n == LibXC ==" )
+
+
+## Find LibXC
 include(FetchContent)
 
-FetchContent_Declare(
-  libxc
-  GIT_REPOSITORY https://gitlab.com/eduard1/libxc.git
-  GIT_TAG        v5.0.0-plus-prs-324-351
-)
-set( Libxc_VERSION 5.0.0 )
+# Check if libxc has already been fetched and is available
+FetchContent_GetProperties(libxc)
+# Check if libxc content has already been populated
+if(libxc_POPULATED) 
 
-set( OLD_BUILD_TESTING ${BUILD_TESTING} )
-set( BUILD_TESTING OFF CACHE BOOL "" FORCE )
+  message(STATUS "Libxc has already been populated")
 
-FetchContent_MakeAvailable( libxc )
-if( TARGET xc ) 
-  message( "XC IS A TARGET!" )
+else()
+
+  FetchContent_Declare(
+    libxc
+    GIT_REPOSITORY https://gitlab.com/libxc/libxc.git
+    GIT_TAG 6.2.0  # v6.2.0
+  )
+  FetchContent_MakeAvailable(libxc)
+
 endif()
-add_library( Libxc::xc ALIAS xc )
-target_include_directories( xc 
-  PUBLIC 
-    $<BUILD_INTERFACE:${libxc_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${libxc_BINARY_DIR}/src>
-    $<BUILD_INTERFACE:${libxc_BINARY_DIR}>
-    $<BUILD_INTERFACE:${libxc_BINARY_DIR}/gen_funcidx>
-)
 
-# disable unity builds for libxc
-if (CMAKE_UNITY_BUILD)
-  set_target_properties(xc PROPERTIES UNITY_BUILD OFF)
-  message(STATUS "Will disable unity-build for Libxc::xc")
+if(NOT TARGET xc) # Check if the target already exists to avoid redefinition
+  add_library(Libxc::xc ALIAS xc)
+endif()
+
+# Configure target properties only if they haven't been set before
+if(TARGET xc)
+  target_include_directories(xc
+    PUBLIC 
+      $<BUILD_INTERFACE:${libxc_SOURCE_DIR}/src>
+      $<BUILD_INTERFACE:${libxc_BINARY_DIR}/src>
+      $<BUILD_INTERFACE:${libxc_BINARY_DIR}>
+      $<BUILD_INTERFACE:${libxc_BINARY_DIR}/gen_funcidx>
+  )
+
+  # disable unity builds for libxc
+  if (CMAKE_UNITY_BUILD)
+    set_target_properties(xc PROPERTIES UNITY_BUILD OFF)
+    message(STATUS "Will disable unity-build for Libxc::xc")
+  endif()
 endif()
 
 set( BUILD_TESTING ${OLD_BUILD_TESTING} CACHE BOOL "" FORCE )
 
 target_link_libraries( cq PUBLIC Libxc::xc )
+
+
+message ( " == End LibXC ==\n" )

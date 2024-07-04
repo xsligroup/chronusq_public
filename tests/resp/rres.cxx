@@ -25,7 +25,7 @@
 #include "resp.hpp"
 
 #define CQRESTEST_IMPL(TNAME, IN, REF) \
-TEST( RHF_RESIDUE, TNAME ) { CQRESTEST( true, IN, REF, true, 1e-5 ); }
+TEST( RHF_RESIDUE, TNAME ) { CQRESTEST( false, IN, REF, true, 1e-5 ); }
 
 
 

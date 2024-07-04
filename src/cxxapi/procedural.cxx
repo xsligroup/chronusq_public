@@ -71,6 +71,7 @@
 
 #include <coupledcluster/TAManager.hpp>
 #include <orbitalmodifiernew.hpp>
+#include <gauxcutils.hpp>
 //#include <TiledArray/util/bug.h>
 
 
@@ -243,6 +244,7 @@ namespace ChronusQ {
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
     SingleSlaterOptions ssOptions;
+    SingleSlaterOptions prot_ssOptions;
 
     // EM Perturbation for SCF
     EMPerturbation emPert;
@@ -252,7 +254,7 @@ namespace ChronusQ {
 
     // Create the SingleSlater object
     if (doNEO) {
-      std::tie(ss, ssOptions) = CQNEOSSOptions(output,input,mol,
+      std::tie(ss, ssOptions, prot_ssOptions) = CQNEOSSOptions(output,input,mol,
                                               *basis,*prot_basis,
                                                aoints, prot_aoints,
                                                ep_aoints, scfControls);
@@ -275,6 +277,12 @@ namespace ChronusQ {
 
       ParseSCFCubeSubsection(output, input, ss, cube);
     }
+
+    // GAUXC                                                                       
+    if (ssOptions.refOptions.isKSRef and ssOptions.intParam.useGauXC) {                                    
+      GauXCOptions gauxcOptions = CQGauXCOptions(output, input, ssOptions, prot_ssOptions);     
+      ss->gauxcUtils = gauxcOptions.buildGauXCUtils(basis, prot_basis, ss->molecule(), MPI_COMM_WORLD);
+    }                                                                             
 
     if( (ss->scfControls.guess == READMO or
          ss->scfControls.guess == READDEN or

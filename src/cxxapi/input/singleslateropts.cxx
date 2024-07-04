@@ -86,7 +86,9 @@ namespace ChronusQ {
       "EPS",
       "NANG",
       "NRAD",
-      "NMACRO"
+      "NMACRO",
+      "INHOUSE",
+      "GAUXC"
     };
 
     // Specified keywords
@@ -139,8 +141,14 @@ namespace ChronusQ {
     };
 
     std::vector<std::string> EPCRefs {
+      // CQ allowed EPC functional
       "EPC17",
-      "EPC19"
+      "EPC19",
+      // Gauxc allowed EPC functional
+      "EPC17_1",
+      "EPC17_2",
+      "EPC18_1",
+      "EPC18_2"
     };
 
     KSRefs.insert(KSRefs.begin(), EPCRefs.begin(), EPCRefs.end());
@@ -407,10 +415,12 @@ namespace ChronusQ {
 
     if( input.containsSection("DFTINT") ) {
 
-      OPTOPT( intParam.epsilon = input.getData<double>("DFTINT.EPS")  );
-      OPTOPT( intParam.nAng    = input.getData<size_t>("DFTINT.NANG") );
-      OPTOPT( intParam.nRad    = input.getData<size_t>("DFTINT.NRAD") );
-      OPTOPT( intParam.nRadPerBatch    = input.getData<size_t>("DFTINT.NMACRO") );
+      OPTOPT( intParam.epsilon      = input.getData<double>("DFTINT.EPS")  );
+      OPTOPT( intParam.nAng         = input.getData<size_t>("DFTINT.NANG") );
+      OPTOPT( intParam.nRad         = input.getData<size_t>("DFTINT.NRAD") );
+      OPTOPT( intParam.nRadPerBatch = input.getData<size_t>("DFTINT.NMACRO") );
+      OPTOPT( intParam.useGauXC     = input.getData<bool>("DFTINT.GAUXC") or 
+                                  not input.getData<bool>("DFTINT.INHOUSE") );
 
     }
 
@@ -427,6 +437,8 @@ namespace ChronusQ {
     out <<  "Euler-Maclaurin (" << intParam.nRad << ")" << std::endl;
     out << "  " << std::setw(28) << "Macro Batch Size:";
     out <<  intParam.nRadPerBatch << " Radial Points" << std::endl;
+    out << "  " << std::setw(28) << "DFT Engine:";
+    out <<  (intParam.useGauXC ? "GauXC" : "In-house") << " DFT Engine" << std::endl;
 
     out << std::endl << BannerEnd << std::endl;
 
@@ -1048,9 +1060,30 @@ namespace ChronusQ {
 
     // FIXME: Should put this somewhere else
     // Parse KS integration
+    if( options.refOptions.isKSRef ){
+      
+      parseIntParam(out, input, options.intParam);
+      
+      // Determine EPC functional is available in CQ/GauXC, and edit keywords in needed
+      if(options.refOptions.isEPCRef){
+        if(not options.intParam.useGauXC){
+          if(!options.refOptions.funcName.compare("EPC17_1"))
+            CErr("EPC17_1 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
+          else if(!options.refOptions.funcName.compare("EPC18_1"))
+            CErr("EPC18_1 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
+          else if(!options.refOptions.funcName.compare("EPC18_2"))
+            CErr("EPC18_2 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
+          else if(!options.refOptions.funcName.compare("EPC17_2"))
+            options.refOptions.funcName = "EPC17"; 
+        } else{
+          if(!options.refOptions.funcName.compare("EPC19"))
+            CErr("EPC19 Not Yet Implemented In GauXC");
+          else if(!options.refOptions.funcName.compare("EPC17"))
+            options.refOptions.funcName = "EPC17_2"; 
+        } 
+      }
+    }
 
-    if( options.refOptions.isKSRef )
-     parseIntParam(out, input, options.intParam);
 
 
     // Parse hamiltonianOptions
@@ -1594,7 +1627,7 @@ namespace ChronusQ {
 
 
   // NEO SingleSlater wrapper
-  std::pair<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions> CQNEOSSOptions(
+  std::tuple<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions, SingleSlaterOptions> CQNEOSSOptions(
     std::ostream &out, CQInputFile &input,
     Molecule &mol,
     BasisSet &ebasis, BasisSet &pbasis,
@@ -1673,7 +1706,7 @@ namespace ChronusQ {
       CErr("NEO + GIAO NYI!");
     }
 
-    return {neoss, essopt};
+    return {neoss, essopt, pssopt};
 
   }
 

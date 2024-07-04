@@ -17,6 +17,12 @@ geom:
 reference = Real UB3LYP
 job = SCF
 
+[DFTINT]
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
 [BASIS]
 basis = 6-311+G(d,p)
 [SCF]

@@ -151,7 +151,7 @@ namespace ChronusQ {
       std::shared_ptr<IntegralsBase>);
 
   // Parse the options relating to NEOSS
-  std::pair<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions> CQNEOSSOptions(
+  std::tuple<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions, SingleSlaterOptions> CQNEOSSOptions(
       std::ostream &, CQInputFile &, Molecule &mol,
       BasisSet &ebasis, BasisSet &pbasis,
       std::shared_ptr<IntegralsBase> eaoints,
@@ -300,6 +300,10 @@ namespace ChronusQ {
 
   std::shared_ptr<PostHartreeFockBase> CQCIOptions(std::ostream &,
     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);
+  
+  // Parse GauXC options                                                           
+  GauXCOptions CQGauXCOptions(std::ostream&, CQInputFile &input, SingleSlaterOptions &ssOptions,
+    SingleSlaterOptions &prot_ssOptions);                  
 
   void CQCI_VALID(std::ostream &, CQInputFile &);
   
@@ -325,6 +329,7 @@ namespace ChronusQ {
 
   void CQCUBE_VALID(std::ostream&, CQInputFile &, std::string);
 
+  void CQGAUXC_VALID(std::ostream&, CQInputFile &);
 
   inline void CQINPUT_VALID(std::ostream &out, CQInputFile &input) {
 
@@ -346,6 +351,7 @@ namespace ChronusQ {
     CQEOMCC_VALID(out,input);
     CQPERTURB_VALID(out,input);
     CQCI_VALID(out,input);
+    CQGAUXC_VALID(out,input);
 
   }
 

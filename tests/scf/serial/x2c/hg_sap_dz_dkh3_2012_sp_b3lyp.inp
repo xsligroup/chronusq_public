@@ -25,5 +25,7 @@ nsmp = 1
 mem = 200 MB
 
 [DFTINT]
-NANG = 302
-NRAD = 500
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1

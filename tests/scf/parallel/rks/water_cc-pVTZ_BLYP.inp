@@ -18,11 +18,17 @@ geom:
 reference = Real RBLYP
 job = SCF
 
+[DFTINT]
+INHOUSE = TRUE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
 [BASIS]
 basis = cc-PVTZ
 [SCF]
 
 [MISC]
 nsmp = 2
-mem = 4GB
+mem = 100MB
 

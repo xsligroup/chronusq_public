@@ -116,6 +116,19 @@ template Matrix<double>& Matrix<double>::operator+=( const Matrix<double>& );
 template Matrix<dcomplex>& Matrix<dcomplex>::operator+=( const Matrix<double>& );
 template Matrix<dcomplex>& Matrix<dcomplex>::operator+=( const Matrix<dcomplex>& );
 
+// operator+= for Eigen::Matrix
+template <typename MatsT>
+template <typename MatsU>
+Matrix<MatsT>& Matrix<MatsT>::operator+=(const Eigen::Matrix<MatsU, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat) {
+
+
+  (*this) += Matrix(eigen_mat);
+  return *this;
+}
+template Matrix<double>&   Matrix<double>::operator+=(   const Eigen::Matrix<double,   Eigen::Dynamic, Eigen::Dynamic>&);
+template Matrix<dcomplex>& Matrix<dcomplex>::operator+=( const Eigen::Matrix<double,   Eigen::Dynamic, Eigen::Dynamic>&);
+template Matrix<dcomplex>& Matrix<dcomplex>::operator+=( const Eigen::Matrix<dcomplex, Eigen::Dynamic, Eigen::Dynamic>&);
+
 template <typename MatsT>
 template <typename MatsU>
 Matrix<typename std::conditional<

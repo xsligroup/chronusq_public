@@ -79,12 +79,15 @@ include(HandleLA)
 # integral and DFT engine
 include(HandleLibint)
 include(HandleLibcint)
+# GauXC
+include(HandleGauXC)
 include(FindLibXC)
 
 # HDF5
 # HDF5 targets aren't until CMake 3.19, so mock them here
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 target_link_libraries(cq INTERFACE HDF5::HDF5 )
+
 
 message( "\n\n" )
 

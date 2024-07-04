@@ -1,0 +1,38 @@
+[Molecule]
+charge = 0
+mult = 3
+geom:
+ O      0.000000     0.000000     0.000000
+ O      1.200000     0.000000     0.000000
+
+#
+#  Job Specification
+#
+[QM]
+reference = X2CB3LYP
+job = SCF
+
+[DFTINT]
+INHOUSE = FALSE
+NRAD = 99
+NANG = 590
+NMACRO = 1
+
+[GAUXC]
+GRID = ULTRAFINE
+RADIALQUAD = MURRAYHANDYLAMING
+XCWEIGHTALG = BECKE
+
+[SCF]
+ACCURACY=1e-10
+
+[MISC]
+nsmp = 1
+mem = 200 MB
+
+[INTS]
+alg=incore
+
+[BASIS]
+basis = 6-31g
+

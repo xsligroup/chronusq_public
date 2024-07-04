@@ -245,6 +245,7 @@ namespace ChronusQ {
           ss->scfControls = this->scfControls;
           ss->savFile = this->savFile;
           ss->fchkFileName = this->fchkFileName;
+          ss->gauxcUtils = this->gauxcUtils;
         });
 
         subsystems["Protonic"]->scfControls.guess = this->scfControls.prot_guess;

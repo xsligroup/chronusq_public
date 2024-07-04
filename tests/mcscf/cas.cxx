@@ -129,10 +129,10 @@ TEST(MCSCF_FIELD, Ethylene_MCSCF_W_FIELD) {
 // H2O 6-31G(d) test (for multipole properties)
 TEST(OneC_CASSCF_FULLMATRIX, Water_631Gd ) {
 
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,true,true,true,false,true);
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,false,true,true,false,true);
 
 #ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,true,true,true,false,true);
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,false,true,true,false,true);
 #endif
 
 };
@@ -163,7 +163,7 @@ TEST(OneC_CASSCF_FULLMATRIX, PAR_Al_631G ) {
 
 TEST(OneC_CASSCF_FULLMATRIX, PAR_Water_631Gd ) {
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,true,true,true,false,true);
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,false,true,true,false,true);
 
 };
 
