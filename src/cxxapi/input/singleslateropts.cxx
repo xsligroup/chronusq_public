@@ -419,8 +419,10 @@ namespace ChronusQ {
       OPTOPT( intParam.nAng         = input.getData<size_t>("DFTINT.NANG") );
       OPTOPT( intParam.nRad         = input.getData<size_t>("DFTINT.NRAD") );
       OPTOPT( intParam.nRadPerBatch = input.getData<size_t>("DFTINT.NMACRO") );
-      OPTOPT( intParam.useGauXC     = input.getData<bool>("DFTINT.GAUXC") or 
-                                  not input.getData<bool>("DFTINT.INHOUSE") );
+      bool gauFlag1(false), gauFlag2(false);
+      OPTOPT( gauFlag1              = not input.getData<bool>("DFTINT.INHOUSE") );
+      OPTOPT( gauFlag2              = input.getData<bool>("DFTINT.GAUXC") ); 
+      intParam.useGauXC = gauFlag1 or gauFlag2;
 
     }
 

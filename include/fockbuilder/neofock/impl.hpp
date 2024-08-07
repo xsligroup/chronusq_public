@@ -942,26 +942,20 @@ namespace ChronusQ {
     // Call all upstream FockBuilders
     this->upstream->formFock(ss, empert, increment, xHFX);
 
-
     std::string sys = ss.particle.charge > 0 ? "Protonic" : "Electronic";
     auto vxcBegin = tick();
     if(not this->intParam.useGauXC){
       // InHouse NEO-DFT:
       formVXC(ss);
       *ss.fockMatrix += *VXC;
-      double durVxc = tock(vxcBegin);
-      //std::cout << "CQ " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
       //KohnSham<MatsT,IntsT>* ks = dynamic_cast<KohnSham<MatsT,IntsT>*>(&ss);
       //if(ss.particle.charge < 0) std::cout << "TOTAL Electronic EXC: " << ks->XCEnergy << std::endl;
       //if(ss.particle.charge > 0) std::cout << "TOTAL Protonic   EXC: " << ks->XCEnergy << std::endl;
     }else{
-      if (std::is_same<MatsT, dcomplex>::value)  CErr("GauXC currently only supports 'double' value type matrices!");
       // GauXC NEO-DFT:
       // EPC will be done only in Electronic formVXC() call to avoid evaluating rho_e and rho_p twice
       if(ss.particle.charge > 0){
         // When ss is protonic, do nothing
-        double durVxc = tock(vxcBegin);
-        //std::cout << "GauXC " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
         return;
       } else{
         // When ss is electronic, evaluate EPC for both systems 
@@ -1012,13 +1006,20 @@ namespace ChronusQ {
         this->aux_ss->fockMatrix->S() +=  prot_VXCs;         
         this->aux_ss->fockMatrix->Z() +=  prot_VXCz;         
 
-        double durVxc = tock(vxcBegin);
-        //std::cout << "GauXC " << std::left << std::setw(12) << sys << " VXC duration: " << durVxc << " s" << std::endl;
         //std::cout << "TOTAL Protonic   EXC: " << prot_EXC << std::endl;
         //std::cout << "TOTAL Electronic EXC: " << elec_EXC << std::endl;
 
       } // End Electronic GauXC
     } // End GauXC DFT
+
+
+    if(ss.TPI->printContractionTiming)
+      if(this->intParam.useGauXC)
+        std::cout << "      Total NEO VXC duration using GauXC DFT Engine: " << tock(vxcBegin) << " s \n" << std::endl;
+      else
+        std::cout << "      " << (ss.particle.charge > 0 ? "Protonic" : "Electronic") 
+            << " VXC duration using In-house DFT Engine: " << tock(vxcBegin) << " s \n" << std::endl;
+            
 } //NEOKohnShamBuilder<MatsT,IntsT>::formFock
 
 

@@ -64,9 +64,9 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
 
     savFile.safeWriteData(prefix + "FOCK_ORTHO", *fockMatrixOrtho);
 
-    savFile.safeWriteData("SCF/ORTHO", orthoSpinor->forwardPointer()->pointer(), {NB, NB});
+    savFile.safeWriteData(prefix + "ORTHO", orthoSpinor->forwardPointer()->pointer(), {NB, NB});
 
-    savFile.safeWriteData("SCF/ORTHO_INV", orthoSpinor->backwardPointer()->pointer(), {NB, NB});
+    savFile.safeWriteData(prefix + "ORTHO_INV", orthoSpinor->backwardPointer()->pointer(), {NB, NB});
 
     // Save MOs
     if (saveMO) {

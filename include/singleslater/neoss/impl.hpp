@@ -224,6 +224,9 @@ namespace ChronusQ {
         this_newKSBuilder = std::make_shared<NEOKohnShamBuilder<MatsT,IntsT>>(this_options);
         other_newKSBuilder = std::make_shared<NEOKohnShamBuilder<MatsT,IntsT>>(other_options);
 
+        this_newKSBuilder->setIntParam(other_ks->intParam);
+        other_newKSBuilder->setIntParam(other_ks->intParam);
+
         this_newKSBuilder->setFunctionals(other_ks->functionals);
         other_newKSBuilder->setFunctionals(other_ks->functionals);
 
@@ -233,6 +236,9 @@ namespace ChronusQ {
       else if( ks && this_nuclear && !other_nuclear ) {
         this_newKSBuilder = std::make_shared<NEOKohnShamBuilder<MatsT,IntsT>>(this_options);
         other_newKSBuilder = std::make_shared<NEOKohnShamBuilder<MatsT,IntsT>>(other_options);
+
+        this_newKSBuilder->setIntParam(ks->intParam);
+        other_newKSBuilder->setIntParam(ks->intParam);
 
         this_newKSBuilder->setFunctionals(ks->functionals);
         other_newKSBuilder->setFunctionals(ks->functionals);

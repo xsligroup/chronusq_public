@@ -263,6 +263,10 @@ namespace ChronusQ {
       // driver for both the NEOSingleSlater and the aux_neoss
       ss->buildOrbitalModifierOptions();
 
+      // MO swapping for electronic subsystem
+      if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) 
+        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Electronic")));
+
       // Currently prot and elec share cube options.
       ParseSCFCubeSubsection(output, input, ss, cube);
       ParseSCFCubeSubsection(output, input, ss, pcube);

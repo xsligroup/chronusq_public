@@ -203,7 +203,7 @@ namespace ChronusQ {
       // Generate GauXC Runtime and select execution space / Kernel
       GauXC::ExecutionSpace exec_space = useGPU ? GauXC::ExecutionSpace::Device : GauXC::ExecutionSpace::Host;
       if(useGPU) CErr("GPU GauXC Not Yet Implemented!");
-      #ifdef GAUXC_ENABLE_MPI
+      #ifdef CQ_ENABLE_MPI
         gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>(comm);
       #else
         gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>();

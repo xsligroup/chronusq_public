@@ -27,12 +27,20 @@ message ( "\n == GauXC ==" )
 # Method A(default): Pull from github branch
 include(FetchContent)
 
-FetchContent_Declare( 
-  gauxc 
-# Temporarily use Aodong's merge_neo_develop branch (master + NEO CPU)
-  GIT_REPOSITORY https://github.com/aodongliu/GauXC.git 
-  GIT_TAG merge_neo_CQ
+FetchContent_Declare(
+  gauxc
+  # Using Aodong's merge_neo branch (master + NEO CPU)
+  GIT_REPOSITORY https://github.com/aodongliu/GauXC.git
+  GIT_TAG merge_neo
 )
+
+# Propagate ENABLE_MPI flag to GAUXC
+if(CQ_ENABLE_MPI)
+  set(GAUXC_ENABLE_MPI ON CACHE BOOL "Enable MPI Bindings" FORCE)
+else()
+  set(GAUXC_ENABLE_MPI OFF CACHE BOOL "Enable MPI Bindings" FORCE)
+endif()
+
 FetchContent_MakeAvailable( gauxc )
 
 # Link to target

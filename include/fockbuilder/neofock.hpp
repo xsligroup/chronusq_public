@@ -165,6 +165,10 @@ namespace ChronusQ {
       epc_functionals.insert(epc_functionals.end(), funcs.begin(), funcs.end());
     }
 
+    void setIntParam(IntegrationParam& param){
+      this->intParam = param;
+    }
+
     void formVXC(SingleSlater<MatsT,IntsT>&);
 
     // Interface method
