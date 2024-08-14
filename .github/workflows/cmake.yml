@@ -2,7 +2,7 @@ name: CQ CI - CMake Configure, Build, Test
 
 on:
   push:
-    branches: dev
+    # branches: dev
   pull_request:
 
 concurrency: 
@@ -18,63 +18,40 @@ jobs:
       matrix:
         config:
           - {
-            name: "GCC10_NoMPI_Release",
-            os: self-hosted,
+            name: "GCC12-Release",
+            os: [self-hosted, gcc12],
             build_type: "Release",
-            opt_lvl: "-O3",
-            compiler_path_sh: "/home/ci_software/gcc-10.2.0.sh",
-            libint_root: "/sw/libint/2/7/0/beta.6/gcc/10/2/0",
+            cc: "gcc-12",
+            cxx: "g++-12",
+            fc: "gfortran-12",
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 4
+            parallel_build_tasks: 8
           }
-          #- {
-          #  name: "Intel21_NoMPI_Release",
-          #  os: self-hosted,
-          #  build_type: "Release",
-          #  opt_lvl: "-O3",
-          #  compiler_path_sh: "/home/ci_software/intel-21.1.1.sh",
-          #  libint_root: "/sw/libint/2/7/0/beta.6/intel/21/1/1",
-          #  additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-          #  parallel_build_tasks: 4
-          #}
-          - {
-            name: "IntelOneAPI_NoMPI_Release",
-            os: self-hosted,
-            build_type: "Release",
-            opt_lvl: "-O3",
-            compiler_path_sh: "/home/ci_software/intel-oneapi_2023.sh",
-            libint_root: "/sw/libint/2/7/0/beta.6/intel/oneapi_2023",
-            additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 4
-          }
-          - {
-            name: "GCC10_MPICH_Release",
-            os: self-hosted,
-            build_type: "Release",
-            opt_lvl: "-O3",
-            compiler_path_sh: "/home/ci_software/gcc-10.2.0_mpich-3.2.1.sh",
-            libint_root: "/sw/libint/2/7/0/beta.6/gcc/10/2/0",
-            additional_cmake_args: -DCQ_ENABLE_MPI=ON  -DCQ_SCALAPACK_LIBRARIES="$SCALAPACK_LIBRARY_DIR/libscalapack.a" -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx,
-            parallel_build_tasks: 4
-          }
+          # - {
+          #   name: "GCC12-MPI-Release",
+          #   os: [self-hosted, gcc12, mpich],
+          #   build_type: "Release",
+          #   cc: "gcc-12",
+          #   cxx: "g++-12",
+          #   fc: "gfortran-12",
+          #   additional_cmake_args: -DMPI_C_COMPILER=mpicc -DMPI_CXX_COMPILER=mpicxx -DCQ_ENABLE_MPI=ON,
+          #   parallel_build_tasks: 4
+          # }
     steps:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
       - name: Set up environment
         run: |
-          source ${{ matrix.config.compiler_path_sh }}
           env
           mkdir build
       - name: Configure
         shell: bash
         working-directory: build
         run: |
-          source ${{ matrix.config.compiler_path_sh }}
           cmake \
-            -DLibint2_ROOT=${{ matrix.config.libint_root }} \
-            -DCMAKE_CXX_FLAGS=${{ matrix.config.opt_lvl }} \
-            -DCMAKE_C_FLAGS=${{ matrix.config.opt_lvl }}  \
-            -DCMAKE_Fortran_FLAGS=${{ matrix.config.opt_lvl }} \
+            -DCMAKE_C_COMPILER=${{ matrix.config.cc }}  \
+            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            -DCMAKE_Fortran_COMPILER=${{ matrix.config.fc }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             ${{ matrix.config.additional_cmake_args }} \
             ..
@@ -82,11 +59,11 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-          source ${{ matrix.config.compiler_path_sh }}
-          cmake --build .
+          # source ${{ matrix.config.compiler_path_sh }}
+          cmake --build . --parallel ${{ matrix.config.parallel_build_tasks }}
       - name: Test
         shell: bash
         working-directory: build
         run: |
-          source ${{ matrix.config.compiler_path_sh }}
-          ctest --output-on-failure
+          # source ${{ matrix.config.compiler_path_sh }}
+          ctest --output-on-failure --parallel ${{ matrix.config.parallel_build_tasks }}
