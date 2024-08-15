@@ -25,18 +25,28 @@ jobs:
             cxx: "g++-12",
             fc: "gfortran-12",
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 8
+            parallel_build_tasks: 4
           }
-          # - {
-          #   name: "GCC12-MPI-Release",
-          #   os: [self-hosted, gcc12, mpich],
-          #   build_type: "Release",
-          #   cc: "gcc-12",
-          #   cxx: "g++-12",
-          #   fc: "gfortran-12",
-          #   additional_cmake_args: -DMPI_C_COMPILER=mpicc -DMPI_CXX_COMPILER=mpicxx -DCQ_ENABLE_MPI=ON,
-          #   parallel_build_tasks: 4
-          # }
+          - {
+            name: "GCC12-MPI-Release",
+            os: [self-hosted, gcc12, mpi],
+            build_type: "Release",
+            cc: "gcc-12",
+            cxx: "g++-12",
+            fc: "gfortran-12",
+            additional_cmake_args: -DCQ_ENABLE_MPI=ON,
+            parallel_build_tasks: 4
+          }
+          - {
+            name: "Intel-Release",
+            os: [self-hosted, intel],
+            build_type: "Release",
+            cc: "icx",
+            cxx: "icx",
+            fc: "ifx",
+            additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
+            parallel_build_tasks: 4
+          }
     steps:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
@@ -59,11 +69,9 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-          # source ${{ matrix.config.compiler_path_sh }}
           cmake --build . --parallel ${{ matrix.config.parallel_build_tasks }}
       - name: Test
         shell: bash
         working-directory: build
         run: |
-          # source ${{ matrix.config.compiler_path_sh }}
-          ctest --output-on-failure --parallel ${{ matrix.config.parallel_build_tasks }}
+          ctest . --output-on-failure --parallel ${{ matrix.config.parallel_build_tasks }}
