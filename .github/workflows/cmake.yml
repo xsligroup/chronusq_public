@@ -2,7 +2,7 @@ name: CQ CI - CMake Configure, Build, Test
 
 on:
   push:
-    # branches: dev
+    branches: dev
   pull_request:
 
 concurrency: 
@@ -18,9 +18,8 @@ jobs:
       matrix:
         config:
           - {
-            name: "GCC12-Release",
+            name: "GCC12",
             os: [self-hosted, gcc12],
-            build_type: "Release",
             cc: "gcc-12",
             cxx: "g++-12",
             fc: "gfortran-12",
@@ -28,9 +27,8 @@ jobs:
             parallel_build_tasks: 4
           }
           - {
-            name: "GCC12-MPI-Release",
+            name: "GCC12-MPI",
             os: [self-hosted, gcc12, mpi],
-            build_type: "Release",
             cc: "gcc-12",
             cxx: "g++-12",
             fc: "gfortran-12",
@@ -38,13 +36,21 @@ jobs:
             parallel_build_tasks: 4
           }
           - {
-            name: "Intel-Release",
+            name: "Intel",
             os: [self-hosted, intel],
-            build_type: "Release",
             cc: "icx",
-            cxx: "icx",
+            cxx: "icpx",
             fc: "ifx",
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
+            parallel_build_tasks: 4
+          }
+          - {
+            name: "Intel-MPI",
+            os: [self-hosted, intel, mpi],
+            cc: "icx",
+            cxx: "icpx",
+            fc: "ifx",
+            additional_cmake_args: -DCQ_ENABLE_MPI=ON,
             parallel_build_tasks: 4
           }
     steps:
@@ -62,16 +68,19 @@ jobs:
             -DCMAKE_C_COMPILER=${{ matrix.config.cc }}  \
             -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_Fortran_COMPILER=${{ matrix.config.fc }} \
-            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             ${{ matrix.config.additional_cmake_args }} \
             ..
       - name: Build
         shell: bash
         working-directory: build
         run: |
-          cmake --build . --parallel ${{ matrix.config.parallel_build_tasks }}
+          cmake --build . \
+                --config Release \
+                --parallel ${{ matrix.config.parallel_build_tasks }}
       - name: Test
         shell: bash
         working-directory: build
         run: |
-          ctest . --output-on-failure --parallel ${{ matrix.config.parallel_build_tasks }}
+          ctest . \
+                --output-on-failure \
+                --parallel ${{ matrix.config.parallel_build_tasks }}
