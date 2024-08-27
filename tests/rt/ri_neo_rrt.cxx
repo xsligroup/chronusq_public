@@ -30,32 +30,32 @@
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm, NEO-CD with EAUX algorithm
 TEST( RI_NEO_RHF_RT, hcn_sto3g_protsp_rhf_magnus2_delta_y_eaux ) {
 
-  CQRTTEST( rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_eaux,
-    hcn_sto3g_protsp_rhf_magnus2_delta_y_eaux.bin.ref );
+  CQRTTEST( "rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_eaux",
+    "hcn_sto3g_protsp_rhf_magnus2_delta_y_eaux.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm, NEO-CD with PAUX algorithm
 TEST( RI_NEO_RHF_RT, hcn_sto3g_protsp_rhf_magnus2_delta_y_paux ) {
 
-  CQRTTEST( rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_paux,
-    hcn_sto3g_protsp_rhf_magnus2_delta_y_paux.bin.ref );
+  CQRTTEST( "rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_paux",
+    "hcn_sto3g_protsp_rhf_magnus2_delta_y_paux.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm, NEO-CD with CONNECTOR algorithm
 TEST( RI_NEO_RHF_RT, hcn_sto3g_protsp_rhf_magnus2_delta_y_connector ) {
 
-  CQRTTEST( rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_connector,
-    hcn_sto3g_protsp_rhf_magnus2_delta_y_connector.bin.ref );
+  CQRTTEST( "rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_connector",
+    "hcn_sto3g_protsp_rhf_magnus2_delta_y_connector.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm, NEO-CD with COMBINEAUXBASIS(two-component RI) algorithm
 TEST( RI_NEO_RHF_RT, hcn_sto3g_protsp_rhf_magnus2_delta_y_combineauxbasis ) {
 
-  CQRTTEST( rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_combineauxbasis,
-    hcn_sto3g_protsp_rhf_magnus2_delta_y_combineauxbasis.bin.ref );
+  CQRTTEST( "rt/serial/ri_neo_rrt/hcn_sto3g_protsp_rhf_magnus2_delta_y_combineauxbasis",
+    "hcn_sto3g_protsp_rhf_magnus2_delta_y_combineauxbasis.bin.ref" );
 
 }
 

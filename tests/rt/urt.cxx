@@ -26,86 +26,131 @@
 
 
 
-// Oxygen 6-31G(d) Delta Spike (along Y)
-TEST( UHF_RT, O2_631Gd_Delta_Y ) {
+// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+TEST( UHF_RT, oxygen_uhf_mmut ) {
 
-  CQRTTEST( rt/serial/urt/oxygen_6-31Gd_uhf_delta_y,
-    oxygen_6-31Gd_uhf_delta_y.bin.ref );
-
-}
-
-// Magnus 2 delta electric field
-TEST( UHF_RT, O2_631Gd_Magnus2 ) {
-
-  CQRTTEST( rt/serial/urt/oxygen_6-31Gd_uhf_magnus2,
-    oxygen_6-31Gd_uhf_magnus2.bin.ref );
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_uhf_mmut",
+    "oxygen_6-31Gd_uhf_mmut.bin.ref" );
 
 }
 
-// MMUT w/ Magnus 2 restart non-delta electric field
-TEST( UHF_RT, O2_631Gd_MMUT_Magnus2 ) {
+TEST( UHF_RT, oxygen_uhf_magnus2 ) {
 
-  CQRTTEST( rt/serial/urt/oxygen_6-31Gd_uhf_mmut_magnus2,
-    oxygen_6-31Gd_uhf_mmut_magnus2.bin.ref );
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_uhf_magnus2",
+    "oxygen_6-31Gd_uhf_magnus2.bin.ref" );
 
 }
 
+TEST( UHF_RT, oxygen_uhf_forwardeuler ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_uhf_forwardeuler",
+    "oxygen_6-31Gd_uhf_forwardeuler.bin.ref" );
+
+}
+
+TEST( UHF_RT, oxygen_uhf_mmut_delta ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_uhf_mmut_delta",
+    "oxygen_6-31Gd_uhf_mmut_delta.bin.ref" );
+
+}
+
+
+
+
+// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+TEST( UHF_RT, PAR_oxygen_uhf_mmut ) {
+
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_uhf_mmut",
+    "oxygen_6-31Gd_uhf_mmut.bin.ref" );
+
+}
+
+TEST( UHF_RT, PAR_oxygen_magnus2 ) {
+
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_uhf_magnus2",
+    "oxygen_6-31Gd_uhf_magnus2.bin.ref" );
+
+}
+
+TEST( UHF_RT, PAR_oxygen_uhf_forwardeuler ) {
+
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_uhf_forwardeuler",
+    "oxygen_6-31Gd_uhf_forwardeuler.bin.ref" );
+
+}
+
+
+
+
+
+// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+TEST( UKS_RT, oxygen_ub3lyp_mmut ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_ub3lyp_mmut",
+    "oxygen_6-31Gd_ub3lyp_mmut.bin.ref" );
+
+}
+
+TEST( UKS_RT, oxygen_ub3lyp_magnus2 ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_ub3lyp_magnus2",
+    "oxygen_6-31Gd_ub3lyp_magnus2.bin.ref" );
+
+}
+
+TEST( UKS_RT, oxygen_ub3lyp_forwardeuler ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_ub3lyp_forwardeuler",
+    "oxygen_6-31Gd_ub3lyp_forwardeuler.bin.ref" );
+
+}
+
+TEST( UKS_RT, oxygen_ub3lyp_mmut_delta ) {
+
+  CQRTTEST( "rt/serial/urt/oxygen_6-31Gd_ub3lyp_mmut_delta",
+    "oxygen_6-31Gd_ub3lyp_mmut_delta.bin.ref" );
+
+}
 
 #ifdef _CQ_DO_PARTESTS
+// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+TEST( UKS_RT, PAR_oxygen_ub3lyp_mmut ) {
 
-// SMP Oxygen 6-31G(d) Delta Spike (along Y)
-TEST( UHF_RT, PAR_O2_631Gd_Delta_Y ) {
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_ub3lyp_mmut",
+    "oxygen_6-31Gd_ub3lyp_mmut.bin.ref" );
 
-  CQRTTEST( rt/parallel/urt/oxygen_6-31Gd_uhf_delta_y,
-    oxygen_6-31Gd_uhf_delta_y.bin.ref );
+}
 
+TEST( UKS_RT, PAR_oxygen_ub3lyp_magnus2 ) {
+
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_ub3lyp_magnus2",
+    "oxygen_6-31Gd_ub3lyp_magnus2.bin.ref" );
+
+}
+
+TEST( UKS_RT, PAR_oxygen_ub3lyp_forwardeuler ) {
+
+  CQRTTEST( "rt/parallel/urt/oxygen_6-31Gd_ub3lyp_forwardeuler" ,
+    "oxygen_6-31Gd_ub3lyp_forwardeuler.bin.ref" );
 }
 
 #endif
 
+//RESTART
+TEST( RESTART_RT, Restart_oxygen_631Gd_ub3lyp_mmut ) {
 
-
-
-
-
-
-
-
-// Oxygen 6-31G(d) B3LYP Delta Spike (along Y)
-TEST( UKS_RT, O2_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTTEST( rt/serial/urt/oxygen_6-31Gd_ub3lyp_delta_y,
-    oxygen_6-31Gd_ub3lyp_delta_y.bin.ref );
+  CQRTRESTARTTEST("oxygen_6-31Gd_ub3lyp_mmut_restart_mid.bin.ref",
+    "rt/serial/urt/oxygen_6-31Gd_ub3lyp_mmut_restart",
+    "oxygen_6-31Gd_ub3lyp_mmut_restart.bin.ref" );
 
 }
 
-// MMUT w/ Magnus 2 restart non-delta electric field
-TEST( UKS_RT, O2_631Gd_MMUT_Magnus2 ) {
+TEST( RESTART_RT, Restart_oxygen_631Gd_ub3lyp_magnus2 ) {
 
-  CQRTTEST( rt/serial/urt/oxygen_6-31Gd_ub3lyp_mmut_magnus2,
-    oxygen_6-31Gd_ub3lyp_mmut_magnus2.bin.ref );
-
-}
-
-#ifdef _CQ_DO_PARTESTS
-
-// SMP Oxygen 6-31G(d) B3LYP Delta Spike (along Y)
-TEST( UKS_RT, PAR_O2_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTTEST( rt/parallel/urt/oxygen_6-31Gd_ub3lyp_delta_y,
-    oxygen_6-31Gd_ub3lyp_delta_y.bin.ref );
-
-}
-
-#endif
-
-
-TEST( RESTART_RT, Restart_O2_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTRESTARTTEST( rt/serial/urt/oxygen_6-31Gd_ub3lyp_delta_y_restart_mid,
-    oxygen_6-31Gd_ub3lyp_delta_y_restart_mid.bin,
-    rt/serial/urt/oxygen_6-31Gd_ub3lyp_delta_y_restart,
-    oxygen_6-31Gd_ub3lyp_delta_y_restart.bin.ref );
+  CQRTRESTARTTEST("oxygen_6-31Gd_ub3lyp_magnus2_restart_mid.bin.ref",
+    "rt/serial/urt/oxygen_6-31Gd_ub3lyp_magnus2_restart",
+    "oxygen_6-31Gd_ub3lyp_magnus2_restart.bin.ref" );
 
 }
 

@@ -28,9 +28,12 @@
 
 #include <cxxapi/procedural.hpp>
 #include <util/files.hpp>
+#include <util/mpi.hpp>
+#include <iostream>
 
 #include <fstream>
 #include <cstdio>
+
 
 // Directory containing reference files
 #define RT_TEST_REF TEST_ROOT "/rt/reference/"
@@ -56,7 +59,7 @@ using namespace ChronusQ;
   SafeFile midFile(RT_TEST_REF #midr, false);\
   midFile.createFile();\
   \
-  auto timeDims = tempFile.getDims("/RT/TIME");\
+  auto timeDims = tempFile.getDims("/RTNEW/TIME");\
   auto moDims = tempFile.getDims("/SCF/MO1");\
   auto denDims = tempFile.getDims("/SCF/1PDM_SCALAR");\
   \
@@ -97,26 +100,27 @@ using namespace ChronusQ;
   std::vector<double> tArr3(newTimeD*3, 0.);\
   std::vector<dcomplex> tdDen(denDims[0]*denDims[1], 0.);\
   \
-  tempFile.readData("/RT/TIME", tArr.data());\
-  midFile.safeWriteData("/RT/TIME", tArr.data(), {newTimeD});\
+  tempFile.readData("/RTNEW/TIME", tArr.data());\
+  midFile.safeWriteData("/RTNEW/TIME", tArr.data(), {newTimeD});\
   \
-  tempFile.readData("/RT/ENERGY", tArr.data());\
-  midFile.safeWriteData("/RT/ENERGY", tArr.data(), {newTimeD});\
+  tempFile.readData("/RTNEW/ENERGY", tArr.data());\
+  midFile.safeWriteData("/RTNEW/ENERGY", tArr.data(), {newTimeD});\
   \
-  tempFile.readData("/RT/LEN_ELEC_DIPOLE", tArr3.data());\
-  midFile.safeWriteData("/RT/LEN_ELEC_DIPOLE", tArr3.data(), {newTimeD,3});\
+  tempFile.readData("/RTNEW/LEN_ELEC_DIPOLE", tArr3.data());\
+  midFile.safeWriteData("/RTNEW/LEN_ELEC_DIPOLE", tArr3.data(), {newTimeD,3});\
   \
-  tempFile.readData("/RT/LEN_ELEC_DIPOLE_FIELD", tArr3.data());\
-  midFile.safeWriteData("/RT/LEN_ELEC_DIPOLE_FIELD", tArr3.data(), {newTimeD,3});\
+  tempFile.readData("/RTNEW/LEN_ELEC_DIPOLE_FIELD", tArr3.data());\
+  midFile.safeWriteData("/RTNEW/LEN_ELEC_DIPOLE_FIELD", tArr3.data(), {newTimeD,3});\
   \
-  std::vector<std::string> decomp{"SCALAR", "MZ", "MY", "MX"};\
+  tempFile.readData("/RTNEW/TD_1PDM_ORTHO0", tArr3.data());\
+  midFile.safeWriteData("/RTNEW/TD_1PDM_ORTHO0", tArr3.data(), {newTimeD,denDims,denDims});\
+  \
+  std::vector<std::string> decomp{"ORTHO0", "ORTHO1"};\
   for ( auto &str : decomp ) { \
     try { \
       tempFile.readData("/RT/TD_1PDM_" + str, tdDen.data());\
-      midFile.safeWriteData("/RT/TD_1PDM_" + str, tdDen.data(), denDims);\
+      midFile.safeWriteData("/RT/TD_1PDM_" + str, tdDen.data(), moDims);\
       \
-      tempFile.readData("/RT/TD_1PDM_ORTHO_" + str, tdDen.data());\
-      midFile.safeWriteData("/RT/TD_1PDM_ORTHO_" + str, tdDen.data(), denDims);\
     } catch(...) { }\
   }\
   \
@@ -125,58 +129,56 @@ using namespace ChronusQ;
 #else
 
 // HTG RT test
-#define CQRTTEST( in, ref ) \
-  double tol = 1e-8;\
-  \
-  RunChronusQ(TEST_ROOT #in ".inp","STDOUT", \
-    TEST_OUT #in ".bin","");\
-  \
-  SafeFile refFile(RT_TEST_REF #ref,true);\
-  SafeFile resFile(TEST_OUT #in ".bin",true);\
+static void CQRTTEST(std::string in, std::string ref, 
+   double tol = 1e-8,
+   bool readBin = false ){ 
+  
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
+  
+  SafeFile refFile(RT_TEST_REF + ref,true);
+  SafeFile resFile(TEST_OUT + in + ".bin",true);
   \
   std::vector<double> xDummy, yDummy;\
-  std::vector<std::array<double,3>> xDummy3, yDummy3; \
   \
-  auto energyDim1 = resFile.getDims("/RT/ENERGY");\
-  auto energyDim2 = refFile.getDims("/RT/ENERGY");\
+  auto energyDim1 = resFile.getDims("/RTNEW/ENERGY");\
+  auto energyDim2 = refFile.getDims("/RTNEW/ENERGY");\
   ASSERT_EQ( energyDim1.size(), 1 );\
   ASSERT_EQ( energyDim2.size(), 1 );\
   ASSERT_EQ( energyDim1[0], energyDim2[0] );\
   \
-  auto dipoleDim1 = resFile.getDims("/RT/LEN_ELEC_DIPOLE");\
-  auto dipoleDim2 = refFile.getDims("/RT/LEN_ELEC_DIPOLE");\
-  ASSERT_EQ( dipoleDim1.size(), 2 );\
-  ASSERT_EQ( dipoleDim2.size(), 2 );\
+  auto dipoleDim1 = resFile.getDims("/RTNEW/LEN_ELEC_DIPOLE");\
+  auto dipoleDim2 = refFile.getDims("/RTNEW/LEN_ELEC_DIPOLE");\
+  ASSERT_EQ( dipoleDim1.size(), 1 );\
+  ASSERT_EQ( dipoleDim2.size(), 1 );\
   ASSERT_EQ( dipoleDim1[0], dipoleDim2[0] );\
-  ASSERT_EQ( dipoleDim1[1], 3 );\
-  ASSERT_EQ( dipoleDim2[1], 3 );\
   \
+  std::cout << "Checking RT energy" << std::endl;\
   xDummy.resize(energyDim1[0]); yDummy.resize(energyDim1[0]);\
-  resFile.readData("/RT/ENERGY",&xDummy[0]);\
-  refFile.readData("/RT/ENERGY",&yDummy[0]);\
+  resFile.readData("/RTNEW/ENERGY",&xDummy[0]);\
+  refFile.readData("/RTNEW/ENERGY",&yDummy[0]);\
   \
-  for(auto i = 0; i < energyDim1[0]; i++) \
+  for(auto i = 0; i < energyDim1[0]; i++){\ 
     EXPECT_NEAR(xDummy[i], yDummy[i], tol);\
+  }\
+\
+  std::cout << "Checking RT Dipole" << std::endl;\
+  xDummy.resize(dipoleDim1[0]); yDummy.resize(dipoleDim2[0]);\
+  resFile.readData("/RTNEW/LEN_ELEC_DIPOLE",&xDummy[0]);\
+  refFile.readData("/RTNEW/LEN_ELEC_DIPOLE",&yDummy[0]);\
   \
-  xDummy3.resize(dipoleDim1[0]); yDummy3.resize(dipoleDim1[0]);\
-  resFile.readData("/RT/LEN_ELEC_DIPOLE",&xDummy3[0][0]);\
-  refFile.readData("/RT/LEN_ELEC_DIPOLE",&yDummy3[0][0]);\
-  \
-  for(auto i = 0; i < energyDim1[0]; i++) {\
-    EXPECT_NEAR(xDummy3[i][0], yDummy3[i][0], tol);\
-    EXPECT_NEAR(xDummy3[i][1], yDummy3[i][1], tol);\
-    EXPECT_NEAR(xDummy3[i][2], yDummy3[i][2], tol);\
-  }
+  for(auto i = 0; i < 3 * energyDim1[0]; i++) {\
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \   
+  }\
+}
 
+static void CQRTRESTARTTEST( std::string midr, std::string in, std::string ref, double tol = 1e-8 ) {
 
-#define CQRTRESTARTTEST( midi, midr, in, ref ) \
-  remove( TEST_OUT #in ".bin" );\
-  std::ifstream oldFile( RT_TEST_REF #midr, std::ios::binary );\
-  std::ofstream newFile( TEST_OUT #in ".bin" );\
-  newFile << oldFile.rdbuf();\
-  newFile.flush();\
-  \
-  CQRTTEST( in, ref )
+  std::ifstream oldFile( RT_TEST_REF + midr, std::ios::binary );\
+  std::ofstream newFile( TEST_OUT + in + ".bin" );\
+  newFile << oldFile.rdbuf();
+  newFile.flush();
 
+  CQRTTEST(in, ref, tol, true);
+}
 #endif
 

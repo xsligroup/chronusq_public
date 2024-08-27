@@ -1,7 +1,7 @@
 #
-#  test0.05 - Water RHF/STO-3G : RT
-#  SERIAL
-#
+#  test water_6-31Gd_rhf_magnus2
+chronusq: realtime(stepsize = 0.05au, maxsteps = 20,  magnus2, autosave=1)
+
 #  Molecule Specification 
 [Molecule]
 charge = 0
@@ -15,15 +15,15 @@ geom:
 #  Job Specification
 #
 [QM]
-reference = RHF
+reference = Complex RHF
 job = RT
 
 [RT]
-TMAX   = 1.
-DELTAT = 0.05
-INTALG = Magnus2 
 FIELD:
- StepField(0.,0.0001) Electric 0. 0.001 0.
+  StepField(0.,0.15) Electric 0. 0.001 0.
 
 [BASIS]
 basis = 6-31G(D)
+
+[MISC]
+NSMP=1

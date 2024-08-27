@@ -97,14 +97,25 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     if(finalStep or startStep) normalStep = false;
     std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareOrthoSave;
     if(MPIRank(this->mpiComm) == 0){
-      if(normalStep) {
-        std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
-      } else if(startStep or finalStep) {
-        if(printLevel > 0 and startStep) std::cout << "  *** Starting MMUT ***\n";
-        if(printLevel > 0 and finalStep) std::cout << "  *** Finishing MMUT ***\n";
+      // Set up density for MMUT
+      if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
+        if(normalStep) {
+          std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
+        } else if(startStep or finalStep) {
+          if(printLevel > 0 and startStep) std::cout << "  *** Starting MMUT ***\n";
+          if(printLevel > 0 and finalStep) std::cout << "  *** Finishing MMUT ***\n";
+            for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
+              this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
+              if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2)
+                onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
+          }
+        }
+      } else{
+        // Set up density for ForwardEuler and ExplicitMagnus2
         for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
-          this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
-          if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2) onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
+           this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
+           if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2) 
+             onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
         }
       }
     }
@@ -121,7 +132,8 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Explicit Magnus 2
-    if ((finalStep or startStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2 ) {
+    if (((finalStep or startStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2) 
+        or tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2) {
       if(MPIRank(this->mpiComm) == 0){
       	for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
       	  this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
@@ -165,7 +177,7 @@ void RealTimeSCF<singleSlaterT,MatsT, IntsT>::formFock(bool increment, double ti
       // Get perturbation for the current time and build a Fock matrix
       EMPerturbation pert_t = tdEMPerturbation.getPert(time);
 
-      // check whether save gaunt and gauge contraction
+      // check whether to update gaunt and gauge terms or re-use the saved matrices
       if (this->singleSlaterSystem.nC == 4){
         if ((integrationProgress.currentStep % tdSCFOptions.rtGaunt)==0){
           this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGaunt = true;
@@ -181,9 +193,6 @@ void RealTimeSCF<singleSlaterT,MatsT, IntsT>::formFock(bool increment, double ti
           this->singleSlaterSystem.fockBuilder->hamiltonianOptions_.updateGauge = false;
         } 
       } 
-
-  
-
 
       // Add the SCF Perturbation
       if ( tdSCFOptions.includeSCFField ) for( auto& field : staticEMPerturbation.fields ) pert_t.addField(field );

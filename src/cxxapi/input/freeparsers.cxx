@@ -589,6 +589,7 @@ namespace ChronusQ {
         auto const freeCQInputOrbitalPopFreq = std::regex("(ORBITALPOPFREQ)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputOrbitalPopFreq) ) {
           tdSCFControls.orbitalPopFreq = std::stoi(RTmatch.str(2));
+          std::cout<<"test read in OrbitalPopFreq = "<<tdSCFControls.orbitalPopFreq<<std::endl;
           addData("RT.ORBITALPOPFREQ", std::to_string(tdSCFControls.orbitalPopFreq));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputOrbitalPopFreq, "");
         }
@@ -608,6 +609,8 @@ namespace ChronusQ {
     if (dict.count("DELTAT")) deltaT = std::stod(dict.at("DELTAT"));
     if (dict.count("TMAX")) tMax = std::stod(dict.at("TMAX"));
     if (dict.count("MAXSTEPS")) maxSteps = std::stoi(dict.at("MAXSTEPS"));
+    // Initialize maxSteps if not set
+    if (maxSteps==0 and (tMax!=0. and deltaT != 0.)) maxSteps = (tMax + deltaT/4) / deltaT;
     if (dict.count("IRSTRT")) iRestart = std::stoi(dict.at("IRSTRT"));
     if (dict.count("SAVESTEP")) iSave = std::stoi(dict.at("SAVESTEP"));
     if (dict.count("PRINTSTEP")) iPrint = std::stoi(dict.at("PRINTSTEP"));
@@ -630,7 +633,7 @@ namespace ChronusQ {
       rtBreit = std::stoi(dict.at("RTBREIT"));
       rtGauge = rtBreit;
       rtGaunt = rtBreit;
-      }
+    }
 
   }
 

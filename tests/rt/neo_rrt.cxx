@@ -26,56 +26,69 @@
 
 
 
-// Water sto3g/prot-sp Delta Spike (along Y), restarting with forwardEuler algotithm
-TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_forwardEuler_delta_y ) {
+// Water sto3g/prot-sp Delta Spike (along Y), restarting with mmut algotithm
+TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_mmut_delta_y ) {
 
-  CQRTTEST( rt/serial/neo_rrt/water_sto3g_protsp_rhf_forwardEuler_delta_y,
-    water_sto3g_protsp_rhf_forwardEuler_delta_y.bin.ref );
+  CQRTTEST( "rt/serial/neo_rrt/water_sto3g_protsp_rhf_mmut_delta_y",
+    "water_sto3g_protsp_rhf_mmut_delta_y.bin.ref" );
+
+}
+
+// Water sto3g/prot-sp Delta Spike (along Y), restarting with forwardEuler algotithm
+TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_forwardeuler_delta_y ) {
+
+  CQRTTEST( "rt/serial/neo_rrt/water_sto3g_protsp_rhf_forwardeuler_delta_y",
+    "water_sto3g_protsp_rhf_forwardeuler_delta_y.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm
 TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_magnus2_delta_y ) {
 
-  CQRTTEST( rt/serial/neo_rrt/water_sto3g_protsp_rhf_magnus2_delta_y,
-    water_sto3g_protsp_rhf_magnus2_delta_y.bin.ref );
+  CQRTTEST( "rt/serial/neo_rrt/water_sto3g_protsp_rhf_magnus2_delta_y",
+    "water_sto3g_protsp_rhf_magnus2_delta_y.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp non-delta electric field (along Y), restarting with magnus2 algotithm   
 TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_magnus2_nondelta_y ) {
 
-  CQRTTEST( rt/serial/neo_rrt/water_sto3g_protsp_rhf_magnus2_nondelta_y,
-    water_sto3g_protsp_rhf_magnus2_nondelta_y.bin.ref );
+  CQRTTEST( "rt/serial/neo_rrt/water_sto3g_protsp_rhf_magnus2_nondelta_y",
+    "water_sto3g_protsp_rhf_magnus2_nondelta_y.bin.ref" );
 
 }
 
-
 #ifdef _CQ_DO_PARTESTS
+// Water sto3g/prot-sp Delta Spike (along Y), restarting with mmut algotithm
+TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_mmut_delta_y ) {
+
+  CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_mmut_delta_y",
+    "water_sto3g_protsp_rhf_mmut_delta_y.bin.ref" );
+
+}
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with forwardEuler algotithm
-TEST( NEO_RHF_RT, par_water_sto3g_protsp_rhf_forwardEuler_delta_y ) {
+TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_forwardeuler_delta_y ) {
 
-  CQRTTEST( rt/parallel/neo_rrt/water_sto3g_protsp_rhf_forwardEuler_delta_y,
-    water_sto3g_protsp_rhf_forwardEuler_delta_y.bin.ref );
+  CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_forwardeuler_delta_y",
+    "water_sto3g_protsp_rhf_forwardeuler_delta_y.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with magnus2 algotithm
-TEST( NEO_RHF_RT, par_water_sto3g_protsp_rhf_magnus2_delta_y ) {
+TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_magnus2_delta_y ) {
 
-  CQRTTEST( rt/parallel/neo_rrt/water_sto3g_protsp_rhf_magnus2_delta_y,
-    water_sto3g_protsp_rhf_magnus2_delta_y.bin.ref );
+  CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_magnus2_delta_y",
+    "water_sto3g_protsp_rhf_magnus2_delta_y.bin.ref" );
 
 }
 
 // Water sto3g/prot-sp non-delta electric field (along Y), restarting with magnus2 algotithm   
-TEST( NEO_RHF_RT, par_water_sto3g_protsp_rhf_magnus2_nondelta_y ) {
+TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_magnus2_nondelta_y ) {
 
-  CQRTTEST( rt/parallel/neo_rrt/water_sto3g_protsp_rhf_magnus2_nondelta_y,
-    water_sto3g_protsp_rhf_magnus2_nondelta_y.bin.ref );
+  CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_magnus2_nondelta_y",
+    "water_sto3g_protsp_rhf_magnus2_nondelta_y.bin.ref" );
 
 }
+
 #endif
-
-

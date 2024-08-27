@@ -67,6 +67,7 @@ namespace ChronusQ {
       "RTPRINTDEN",
       "RTGAUGE",
       "RTBREIT",
+      "ORBITALPOPFREQ"
     };
 
     // Specified keywords

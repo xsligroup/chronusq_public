@@ -26,108 +26,135 @@
 
 
 
-// Water 6-31G(d) Delta Spike (along Y)
-TEST( RHF_RT, Water_631Gd_Delta_Y ) {
+// Water RHF
+TEST( RHF_RT, water_631Gd_rhf_mmut ) {
 
-  CQRTTEST( rt/serial/rrt/water_6-31Gd_rhf_delta_y,
-    water_6-31Gd_rhf_delta_y.bin.ref );
-
-}
-
-// Magnus 2 delta electric field
-TEST( RHF_RT, Water_631Gd_Magnus2 ) {
-
-  CQRTTEST( rt/serial/rrt/water_6-31Gd_rhf_magnus2,
-    water_6-31Gd_rhf_magnus2.bin.ref );
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rhf_mmut",
+    "water_6-31Gd_rhf_mmut.bin.ref",1e-6 );
 
 }
 
-// MMUT w/ Magnus 2 restart non-delta electric field
-TEST( RHF_RT, Water_631Gd_MMUT_Magnus2 ) {
+TEST( RHF_RT, water_631Gd_rhf_magnus2 ) {
 
-  CQRTTEST( rt/serial/rrt/water_6-31Gd_rhf_mmut_magnus2,
-    water_6-31Gd_rhf_mmut_magnus2.bin.ref );
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rhf_magnus2",
+   "water_6-31Gd_rhf_magnus2.bin.ref",1e-6 );
+
+}
+
+TEST( RHF_RT, water_631Gd_rhf_forwardeuler ) {
+
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rhf_forwardeuler",
+    "water_6-31Gd_rhf_forwardeuler.bin.ref",1e-6 );
+
+}
+
+TEST( RHF_RT, water_631Gd_rhf_mmut_delta ) {
+
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rhf_mmut_delta",
+    "water_6-31Gd_rhf_mmut_delta.bin.ref",1e-6 );
 
 }
 
 #ifdef _CQ_DO_PARTESTS
+// Parallel Water RHF
+TEST( RHF_RT, PAR_water_631Gd_rhf_mmut ) {
 
-// SMP Water 6-31G(d) Delta Spike (along Y)
-TEST( RHF_RT, PAR_Water_631Gd_Delta_Y ) {
-
-  CQRTTEST( rt/parallel/rrt/water_6-31Gd_rhf_delta_y,
-    water_6-31Gd_rhf_delta_y.bin.ref );
-
-}
-
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Water 6-31G(d) B3LYP Delta Spike (along Y)
-TEST( RKS_RT, Water_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTTEST( rt/serial/rrt/water_6-31Gd_rb3lyp_delta_y,
-    water_6-31Gd_rb3lyp_delta_y.bin.ref );
+  CQRTTEST( "rt/parallel/rrt/water_6-31Gd_rhf_mmut",
+    "water_6-31Gd_rhf_mmut.bin.ref",1e-6 );
 
 }
 
+TEST( RHF_RT, PAR_water_631Gd_rhf_magnus2 ) {
 
-// MMUT w/ Magnus 2 restart non-delta electric field
-TEST( RKS_RT, Water_631Gd_MMUT_Magnus2 ) {
-
-  CQRTTEST( rt/serial/rrt/water_6-31Gd_rb3lyp_mmut_magnus2,
-    water_6-31Gd_rb3lyp_mmut_magnus2.bin.ref );
+  CQRTTEST( "rt/parallel/rrt/water_6-31Gd_rhf_magnus2",
+    "water_6-31Gd_rhf_magnus2.bin.ref",1e-6 );
 
 }
 
-
-#ifdef _CQ_DO_PARTESTS
-
-// SMP Water 6-31G(d) B3LYP Delta Spike (along Y)
-TEST( RKS_RT, PAR_Water_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTTEST( rt/parallel/rrt/water_6-31Gd_rb3lyp_delta_y,
-    water_6-31Gd_rb3lyp_delta_y.bin.ref );
-
-}
-
-#endif
-
-
+//TEST( RHF_RT, PAR_water_631Gd_rhf_forwardeuler,1e-6 ) {
 //
-// Restart testing
+//  CQRTTEST( rt/parallel/rrt/water_6-31Gd_rhf_forwardeuler,
+//    water_6-31Gd_rhf_forwardeuler.bin );
 //
+//}
 
-TEST( RESTART_RT, Restart_Water_631Gd_B3LYP_Delta_Y ) {
+// // Parallel Water RB3LYP
+TEST( RKS_RT, PAR_water_631Gd_rb3lyp_mmut ) {
 
-  CQRTRESTARTTEST( rt/serial/rrt/water_6-31Gd_rb3lyp_delta_y_restart_mid,
-    water_6-31Gd_rb3lyp_delta_y_restart_mid.bin,
-    rt/serial/rrt/water_6-31Gd_rb3lyp_delta_y_restart,
-    water_6-31Gd_rb3lyp_delta_y_restart.bin.ref );
+  CQRTTEST( "rt/parallel/rrt/water_6-31Gd_rb3lyp_mmut",
+    "water_6-31Gd_rb3lyp_mmut.bin.ref",1e-6 );
 
 }
 
-#ifdef _CQ_DO_PARTESTS
+TEST( RKS_RT, PAR_water_631Gd_rb3lyp_magnus2 ) {
 
-TEST( RESTART_RT, PAR_Restart_Water_631Gd_B3LYP_Delta_Y ) {
-
-  CQRTRESTARTTEST( rt/parallel/rrt/water_6-31Gd_rb3lyp_delta_y_restart_mid,
-    water_6-31Gd_rb3lyp_delta_y_restart_mid.bin,
-    rt/parallel/rrt/water_6-31Gd_rb3lyp_delta_y_restart,
-    water_6-31Gd_rb3lyp_delta_y_restart.bin.ref );
+  CQRTTEST( "rt/parallel/rrt/water_6-31Gd_rb3lyp_magnus2",
+    "water_6-31Gd_rb3lyp_magnus2.bin.ref",1e-6 );
 
 }
 
 #endif
+//RESTART
+TEST( RESTART_RT, Restart_water_631Gd_rhf_mmut ) {
+  CQRTRESTARTTEST("water_6-31Gd_rhf_mmut_restart_mid.bin.ref",
+    "rt/serial/rrt/water_6-31Gd_rhf_mmut_restart",
+    "water_6-31Gd_rhf_mmut_restart.bin.ref" );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // Water RB3LYP
+TEST( RKS_RT, water_631Gd_rb3lyp_mmut ) {
+
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rb3lyp_mmut",
+    "water_6-31Gd_rb3lyp_mmut.bin.ref",1e-6 );
+
+}
+
+TEST( RKS_RT, water_631Gd_rb3lyp_magnus2 ) {
+
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rb3lyp_magnus2",
+    "water_6-31Gd_rb3lyp_magnus2.bin.ref",1e-6 );
+
+}
+
+//TEST( RKS_RT, water_631Gd_rb3lyp_forwardeuler ) {
+//
+//  CQRTTEST( rt/serial/rrt/water_6-31Gd_rb3lyp_forwardeuler,
+//    water_6-31Gd_rb3lyp_forwardeuler.bin );
+//
+//}
+
+TEST( RKS_RT, water_631Gd_rb3lyp_mmut_delta ) {
+
+  CQRTTEST( "rt/serial/rrt/water_6-31Gd_rb3lyp_mmut_delta",
+    "water_6-31Gd_rb3lyp_mmut_delta.bin.ref",1e-6 );
+
+}
+
+
+
+
+
+
+//TEST( RKS_RT, PAR_water_631Gd_rb3lyp_forwardeuler ) {
+//
+//  CQRTTEST( rt/parallel/rrt/water_6-31Gd_rb3lyp_forwardeuler,
+//    water_6-31Gd_rb3lyp_forwardeuler.bin );
+//
+//}
+
+
+
+

@@ -1,6 +1,7 @@
 #
 #  test0.05 - Water RHF/STO-3G/PROT-SP : RT
 #  SERIAL
+chronusq: realtime(stepsize = 0.05au, maxsteps = 20,  magnus2, autosave=1)
 #
 #  Molecule Specification 
 [Molecule]
@@ -15,11 +16,11 @@ geom:
 #  Job Specification
 #
 [QM]
-reference = RHF
+reference =complex RHF
 job = RT
 
 [PROTQM]
-reference = UHF
+reference =complex UHF
 
 [SCF]
 NEO = TRUE
@@ -27,9 +28,6 @@ guess = classical
 prot_guess = tight
 
 [RT]
-TMAX   = 1.
-DELTAT = 0.05
-RESTARTSTEP = MAGNUS2
 FIELD:
  StepField(0.,0.0001) Electric 0. 0.001 0.
 

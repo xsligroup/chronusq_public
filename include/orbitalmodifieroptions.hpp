@@ -226,7 +226,7 @@ namespace ChronusQ {
   struct TDSCFOptions {
 
     RealTimeAlgorithm     integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;         ///< Integration Algorithm
-    RestartAlgorithm     restartAlgorithm     = RestartAlgorithm::ExplicitMagnus2; ///< Restart Step
+    RestartAlgorithm      restartAlgorithm     = RestartAlgorithm::ExplicitMagnus2; ///< Restart Step
     PropagatorAlgorithm   propagatorAlgorithm  = PropagatorAlgorithm::Diagonalization; ///< exp(-iF) Algorithm
 
     double tMax    = 1.0;  ///< Max simulation time in AU. Upon input, user can specify tMax or maxSteps

@@ -1,0 +1,28 @@
+#
+#  test oxygen_6-31Gd_ub3lyp_mmut_restart
+chronusq: realtime(stepsize = 0.05au, maxsteps = 20,  mmut, restartalgorithm=magnus2, autosave=1, autorestart=10,restart=5)
+
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 3
+geom: 
+ O               0.               0.        0.608586
+ O               0.               0.       -0.608586
+
+# 
+#  Job Specification
+#
+[QM]
+reference = Complex UB3LYP
+job = RT
+
+[RT]
+FIELD:
+  StepField(0.,0.15) Electric 0. 0.001 0.
+
+[BASIS]
+basis = 6-31G(D)
+
+[MISC]
+NSMP=1
