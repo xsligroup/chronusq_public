@@ -51,6 +51,8 @@ namespace ChronusQ {
     size_t blksize = 32;   // Block size of TildeArray
     size_t nEvariation = 0;// Variation of number of electrons
     bool rebuildFock = false; // Rebuild Fock matrix from Core Hamiltonian
+    std::vector<size_t> frozen_occupied;
+    std::vector<size_t> frozen_virtual; 
   };
 
   enum class EOM_HBAR_TYPE { EXPLICIT, IMPLICIT, DEBUG };
@@ -108,11 +110,21 @@ namespace ChronusQ {
     size_t nVir;
     size_t nOcc;
     char aoLabel = 'a';
-    char vLabel = 'v';
-    char oLabel = 'o';
+    char vLabel = 'v';  // non-frozen virtual space, include LUMO, Rydberg
+    char oLabel = 'o';  // non-frozen occupied space, include HOMO, core
+    char VLabel = 'V';  // all virtual space, include LUMO, Rydberg, Free elec
+    char OLabel = 'O';  // all occupied space, include HOMO, core, deep core
+    char hLabel = 'h';  // HOMO space, active occupied space, CVS Valence
+    char lLabel = 'l';  // LUMO space, active virtual space, CVS virtual valence
+    char cLabel = 'c';  // core space, external occupied space, CVS core
+    char rLabel = 'r';  // Rydberg space, external virtual space, CVS continuum
+    char dLabel = 'd';  // deep core space, frozen core space
+    char fLabel = 'f';  // free electron space, frozen virtual space
 
     // Integrals
     double E_ref;
+    double E_fzc;
+
     std::vector<double> eps;
     std::map<std::string,TArray> fockMatrix;
     std::map<std::string,TArray> antiSymMoInts;
@@ -145,6 +157,8 @@ namespace ChronusQ {
                              const cqmatrix::PauliSpinorMatrices<MatsT> &aoTwoeH,
                              const TwoPInts<IntsT> &aoTPI,
                              const MultipoleInts<IntsT> &lenElectric,
+                             CoupledClusterSettings& ccSettings,
+                             EOMSettings& eomSettings,
                              MatsT *mo, size_t nO_, size_t nV_,
                              size_t blksize, double nucRepEnergy,
                              bool rebuildFock = false);

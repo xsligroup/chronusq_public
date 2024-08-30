@@ -41,6 +41,8 @@ namespace ChronusQ {
       "MAXITER",
       "TABLKSIZE",
       "NEVARIATION",
+      "FROZENOCCUPIED",
+      "FROZENVIRTUAL",
       "REBUILDFOCK"
     };
       // Specified keywords
@@ -67,8 +69,6 @@ namespace ChronusQ {
         "DIAGMETHOD",
         "CVSCORE",
         "CVSCONTINUUM",
-        "FROZENOCCUPIED",
-        "FROZENVIRTUAL",
         "DAVIDSONWHENSC",
         "DAVIDSONMAXMACROITER",
         "DAVIDSONMAXMICROITER",
@@ -103,6 +103,9 @@ namespace ChronusQ {
   }
 
 #ifdef CQ_HAS_TA
+
+  std::vector<size_t> parseOrbitalSelectionInput(std::string input_str);
+
   //Construct a CoupledClusterSettings object from input file
   CoupledClusterSettings CQCCOptions(std::ostream &out, CQInputFile &input) {
 
@@ -160,7 +163,24 @@ namespace ChronusQ {
         OPTOPT(ccSettings.nEvariation = input.getData<int>("CC.NEVARIATION");)
       }
 
+      if(input.containsData("CC.FROZENOCCUPIED")){
+        std::string frozen_occ_str;
+        OPTOPT(frozen_occ_str = input.getData<std::string>("CC.FROZENOCCUPIED"););
+        ccSettings.frozen_occupied = parseOrbitalSelectionInput(frozen_occ_str);
+      }
+
+      if(input.containsData("CC.FROZENVIRTUAL")){
+        std::string frozen_vir_str;
+        OPTOPT(frozen_vir_str = input.getData<std::string>("CC.FROZENVIRTUAL"););
+        ccSettings.frozen_virtual = parseOrbitalSelectionInput(frozen_vir_str);
+      }
+
       if(input.containsData("CC.REBUILDFOCK")){
+        /*
+         * *** REBUILDFOCK SHOULD NOT BE USED WITH mmfX2C ***
+         * because it will build 2c Fock matrix from 2c coreH and 2c TPI using the 2c mmfX2C MO coefficients
+         * and thus will not recover the correct reference energy computed using mmfX2C fock matrix
+         */
         OPTOPT(ccSettings.rebuildFock = input.getData<bool>("CC.REBUILDFOCK");)
         if (not ccSettings.rebuildFock and ccSettings.nEvariation != 0) {
           CErr("CC.NEVARIATION being non-zero requires CC.REBUILDFOCK = True");
@@ -227,18 +247,6 @@ namespace ChronusQ {
       std::string cvs_vir_str;
       OPTOPT(cvs_vir_str = input.getData<std::string>("EOMCC.CVSCONTINUUM"););
       eomSettings.cvs_virtual = parseOrbitalSelectionInput(cvs_vir_str);
-    }
-
-    if(input.containsData("EOMCC.FROZENOCCUPIED")){
-      std::string frozen_occ_str;
-      OPTOPT(frozen_occ_str = input.getData<std::string>("EOMCC.FROZENOCCUPIED"););
-      eomSettings.frozen_occupied = parseOrbitalSelectionInput(frozen_occ_str);
-    }
-
-    if(input.containsData("EOMCC.FROZENVIRTUAL")){
-      std::string frozen_vir_str;
-      OPTOPT(frozen_vir_str = input.getData<std::string>("EOMCC.FROZENVIRTUAL"););
-      eomSettings.frozen_virtual = parseOrbitalSelectionInput(frozen_vir_str);
     }
 
     if(input.containsData("EOMCC.NROOTS")){

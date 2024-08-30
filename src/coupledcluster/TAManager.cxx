@@ -37,6 +37,14 @@ namespace ChronusQ {
     return TA::TiledRange(range1s.begin(), range1s.end());
   }
 
+  std::vector<std::pair<size_t, size_t>> TAManager::toBlockRange(std::string ranges) const {
+    std::vector<std::pair<size_t,size_t>> blockRanges;
+    blockRanges.reserve(ranges.length());
+    for (char c : ranges)
+      blockRanges.push_back(blockRangeTypes_.at(c));
+    return blockRanges;
+  }
+
   size_t TAManager::elem_per_TA(std::string ranges) const {
     size_t elem = 1;
     for (char c : ranges)
@@ -160,11 +168,13 @@ namespace ChronusQ {
     TA::get_default_world().gop.fence();
   }
 
-  void TAManager::reset(bool reset_range_ypes) {
+  void TAManager::reset(bool reset_range_types) {
     peak_mem_ = 0;
     cur_mem_ = 0;
-    if (reset_range_ypes)
+    if (reset_range_types) {
       rangeTypes_.clear();
+      blockRangeTypes_.clear();
+    }
     rTAstat_.clear();
     cTAstat_.clear();
     rTAs_.clear();

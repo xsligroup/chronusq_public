@@ -12,14 +12,15 @@ geom:
 #
 [QM]
 reference = GHF
-job = CC
+job = EOMCC
 
 [CC]
 TYPE = CCSD
+FROZENOCCUPIED = 1-2
 
-# needed for CC run
 [EOMCC]
-hbartype = implicit
+NROOTS = 12
+OSCILLATORSTRENGTH = True
 
 [MISC]
 MEM = 256 MB
@@ -30,5 +31,5 @@ ALG = INCORE
 libcint = true
 
 [BASIS]
-basis = sto-3g
+basis = 6-31g
  

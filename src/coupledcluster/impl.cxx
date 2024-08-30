@@ -168,6 +168,18 @@ namespace ChronusQ {
     return count * sizeof(MatsT);
   }
 
+
+  std::vector<size_t> LinearRange(size_t size, size_t start_index, size_t blksize){
+    size_t blocks = size % blksize == 0 ? size / blksize : size / blksize + 1;
+    std::vector<size_t> blk;
+    blk.reserve(blocks);
+
+    for (auto i = 0 ; i < blocks; i++)
+      blk.push_back(blksize * i + start_index);
+    return blk;
+  }
+
+
   template <typename MatsT>
   template <typename IntsT>
   void CCIntermediates<MatsT>::initializeIntegrals(const cqmatrix::PauliSpinorMatrices<MatsT> &aoCoreH,
@@ -175,45 +187,223 @@ namespace ChronusQ {
                                                    const cqmatrix::PauliSpinorMatrices<MatsT> &aoTwoeH,
                                                    const TwoPInts<IntsT> &aoTPI,
                                                    const MultipoleInts<IntsT> &lenElectric,
+                                                   CoupledClusterSettings& ccSettings,
+                                                   EOMSettings& eomSettings,
                                                    MatsT *mo, size_t nO, size_t nV,
                                                    size_t blksize, double nucRepEnergy,
                                                    bool rebuildFock) {
 
     auto initIntStart = tick();
 
-    nOcc = nO;
-    nVir = nV;
-
     size_t nMO = nO + nV, nAO = nMO/2;
 
     TAManager &TAmanager = TAManager::get();
 
     // Initialize ranges
+
     TAERI<IntsT> taERI(aoTPI, blksize);
     TAmanager.addRangeType(aoLabel, taERI.getAOrange());
-    TAmanager.addRangeType(vLabel, TAERI<IntsT>::LinRange(nV, blksize));
-    TAmanager.addRangeType(oLabel, TAERI<IntsT>::LinRange(nO, blksize));
+
+    for (auto it = ccSettings.frozen_occupied.rbegin(); it != ccSettings.frozen_occupied.rend(); it++) {
+      if (*it >= nO + nV)
+        CErr("EOMCC: Orbital index in input EOMCC.FROZENOCCUPIED out of range");
+      if (*it >= nO)
+        CErr("EOMCC: Virtual orbital appears in input EOMCC.FROZENOCCUPIED");
+    }
+
+    for (size_t i : eomSettings.cvs_core) {
+      if (i >= nO + nV)
+        CErr("EOMCC: Orbital index in input EOMCC.CVSCORE out of range");
+      if (i >= nO)
+        CErr("EOMCC: Virtual orbital appears in input EOMCC.CVSCORE");
+      if (std::find(ccSettings.frozen_occupied.begin(), ccSettings.frozen_occupied.end(), i) != ccSettings.frozen_occupied.end() )
+        CErr("EOMCC: Orbital appear in both EOMCC.CVSCORE and EOMCC.FROZENOCCUPIED inputs");
+    }
+
+    for (auto it = ccSettings.frozen_virtual.rbegin(); it != ccSettings.frozen_virtual.rend(); it++) {
+      if (*it >= nO + nV)
+        CErr("EOMCC: Orbital index in input EOMCC.FROZENVRITUAL out of range");
+      if (*it < nO)
+        CErr("EOMCC: Occupied orbital appears in input EOMCC.FROZENVRITUAL");
+    }
+
+    for (size_t i : eomSettings.cvs_virtual) {
+      if (i >= nO + nV)
+        CErr("EOMCC: Orbital index in input EOMCC.CVSVIRTUAL out of range");
+      if (i < nO)
+        CErr("EOMCC: Occupied orbital appears in input EOMCC.CVSVIRTUAL");
+      if (std::find(ccSettings.frozen_virtual.begin(), ccSettings.frozen_virtual.end(), i) != ccSettings.frozen_virtual.end() )
+        CErr("EOMCC: Orbital appear in both EOMCC.CVSVIRTUAL and EOMCC.FROZENVRITUAL inputs");
+    }
+
+
+    // reorder mo by space
+      if (eomSettings.cvs_core.size() == 0 ) {
+        for (size_t i = 0; i < nO; i++) {
+          if (std::find(ccSettings.frozen_occupied.begin(), ccSettings.frozen_occupied.end(), i) == ccSettings.frozen_occupied.end() )
+            eomSettings.cvs_core.push_back(i);
+        }
+      }
+      if (eomSettings.cvs_virtual.size() == 0 ) {
+        for (size_t i = nO; i < nMO; i++){
+          if (std::find(ccSettings.frozen_virtual.begin(), ccSettings.frozen_virtual.end(), i) == ccSettings.frozen_virtual.end())
+            eomSettings.cvs_virtual.push_back(i);
+        }
+      }
+      std::vector<size_t> cvs_o_valence;
+      for (size_t i = 0; i < nO; i++) {
+        if (std::find(eomSettings.cvs_core.begin(), eomSettings.cvs_core.end(), i) == eomSettings.cvs_core.end() and
+            std::find(ccSettings.frozen_occupied.begin(), ccSettings.frozen_occupied.end(), i) == ccSettings.frozen_occupied.end() )
+            cvs_o_valence.push_back(i);
+      }
+      std::vector<size_t> cvs_v_valence;
+      for (size_t i = nO; i < nMO; i++) {
+        if (std::find(eomSettings.cvs_virtual.begin(), eomSettings.cvs_virtual.end(), i) == eomSettings.cvs_virtual.end() and
+            std::find(ccSettings.frozen_virtual.begin(), ccSettings.frozen_virtual.end(), i) == ccSettings.frozen_virtual.end() )
+            cvs_v_valence.push_back(i);
+      }
+  
+      int nFZC = ccSettings.frozen_occupied.size();
+      int nCVSCore = eomSettings.cvs_core.size();
+      int nCVSOValence = cvs_o_valence.size(); 
+      int nCVSVValence = cvs_v_valence.size();
+      int nCVSVirtual = eomSettings.cvs_virtual.size();
+      int nFZV = ccSettings.frozen_virtual.size();
+  
+      nOcc = nO - nFZC;
+      nVir = nV - nFZV;
+  
+      if (nCVSCore != nO || nCVSVirtual != nV ) {
+        MatsT * mo_by_space = CQMemManager::get().malloc<MatsT>(nMO * nAO * 2);
+        for (size_t i = 0; i < nFZC; i++) {
+          size_t mo_index = ccSettings.frozen_occupied[i];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+        for (size_t i = nFZC; i < nFZC+nCVSCore; i++) {
+          size_t mo_index = eomSettings.cvs_core[i-nFZC];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+        for (size_t i = nFZC+nCVSCore; i < nO; i++) {
+          size_t mo_index = cvs_o_valence[i-nFZC-nCVSCore];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+        for (size_t i = nO; i < nO+nCVSVValence; i++) {
+          size_t mo_index = cvs_v_valence[i-nO];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+        for (size_t i = nO+nCVSVValence; i < nMO-nFZV; i++) {
+          size_t mo_index = eomSettings.cvs_virtual[i-nO-nCVSVValence];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+        for (size_t i = nMO-nFZV; i < nMO; i++) {
+          size_t mo_index = ccSettings.frozen_virtual[i+nFZV-nMO];
+          memcpy(mo_by_space + i * nMO, mo + mo_index * nMO, nMO * sizeof(MatsT));
+        }
+  
+        memcpy(mo, mo_by_space, nMO * nMO * sizeof(MatsT));
+        CQMemManager::get().free(mo_by_space);
+      }
+  
+      // reorder CVS orbital indicies
+  
+      ccSettings.frozen_occupied.clear();
+      eomSettings.cvs_core.clear();
+      eomSettings.cvs_virtual.clear();
+      ccSettings.frozen_virtual.clear();
+      for (size_t i = 0; i < nFZC; i++) ccSettings.frozen_occupied.push_back(i);
+      for (size_t i = nFZC; i < nFZC+nCVSCore; i++) eomSettings.cvs_core.push_back(i);
+      for (size_t i = nO+nCVSVValence; i < nMO-nFZV; i++) eomSettings.cvs_virtual.push_back(i);
+      for (size_t i = nMO-nFZV; i < nMO; i++) ccSettings.frozen_virtual.push_back(i);
+  
+      eomSettings.frozen_occupied.clear();
+      eomSettings.frozen_virtual.clear();
+  
+      // define occupied and virtual TA ranges by subspace
+      std::vector<size_t> V_blk, O_blk, v_blk, o_blk;
+      std::vector<size_t> deep_blk, core_blk, homo_blk, lumo_blk, rydb_blk, free_blk;
+      if (nFZC        ) deep_blk = LinearRange(nFZC, 0, blksize);
+      if (nFZV        ) free_blk = LinearRange(nFZV, nCVSVirtual+nCVSVValence, blksize);
+  
+      if (nCVSCore    ) core_blk = LinearRange(nCVSCore, 0, blksize);
+      if (nCVSOValence) homo_blk = LinearRange(nCVSOValence, nCVSCore, blksize);
+      if (nCVSVValence) lumo_blk = LinearRange(nCVSVValence, 0, blksize);
+      if (nCVSVirtual ) rydb_blk = LinearRange(nCVSVirtual, nCVSVValence, blksize);
+  
+      O_blk.insert(O_blk.end(), deep_blk.begin(), deep_blk.end());
+      O_blk.insert(O_blk.end(), core_blk.begin(), core_blk.end());
+      O_blk.insert(O_blk.end(), homo_blk.begin(), homo_blk.end());
+      O_blk.push_back(nO);
+      V_blk.insert(V_blk.end(), lumo_blk.begin(), lumo_blk.end());
+      V_blk.insert(V_blk.end(), rydb_blk.begin(), rydb_blk.end());
+      V_blk.insert(V_blk.end(), free_blk.begin(), free_blk.end());
+      V_blk.push_back(nV);
+      o_blk.insert(o_blk.end(), core_blk.begin(), core_blk.end());
+      o_blk.insert(o_blk.end(), homo_blk.begin(), homo_blk.end());
+      o_blk.push_back(nCVSCore + nCVSOValence);
+      v_blk.insert(v_blk.end(), lumo_blk.begin(), lumo_blk.end());
+      v_blk.insert(v_blk.end(), rydb_blk.begin(), rydb_blk.end());
+      v_blk.push_back(nCVSVValence + nCVSVirtual);
+  
+      if (nFZC) {
+        deep_blk.push_back(nFZC);
+        TAmanager.addRangeType(dLabel, TA::TiledRange1(deep_blk.begin(),deep_blk.end()));
+      }
+  
+      //TAmanager.addRangeType(VLabel, TA::TiledRange1(V_blk.begin(),V_blk.end()));
+      //TAmanager.addRangeType(OLabel, TA::TiledRange1(O_blk.begin(),O_blk.end()));
+      TAmanager.addRangeType(vLabel, TA::TiledRange1(v_blk.begin(),v_blk.end()));
+      TAmanager.addRangeType(oLabel, TA::TiledRange1(o_blk.begin(),o_blk.end()));
+  
+      //// tiles within the full occ/vir space
+      //TAmanager.addBlockRangeType(dLabel, 0, deep_blk.size()); 
+      //TAmanager.addBlockRangeType(oLabel, deep_blk.size(), O_blk.size()-1); 
+      //TAmanager.addBlockRangeType(fLabel, homo_blk.size()+rydb_blk.size(), V_blk.size()-1); 
+      //TAmanager.addBlockRangeType(vLabel, 0, V_blk.size()-free_blk.size()-1); 
+  
+      // tiles within active occ/vir space
+      TAmanager.addBlockRangeType(cLabel, 0, core_blk.size()); 
+      TAmanager.addBlockRangeType(hLabel, core_blk.size(), o_blk.size()-1); 
+      TAmanager.addBlockRangeType(lLabel, 0, lumo_blk.size()); 
+      TAmanager.addBlockRangeType(rLabel, lumo_blk.size(), v_blk.size()-1); 
+      if (core_blk.size()) core_blk.push_back(nCVSCore); 
+      if (homo_blk.size()) homo_blk.push_back(nCVSOValence + nCVSCore); 
+      if (lumo_blk.size()) lumo_blk.push_back(nCVSVValence); 
+      if (rydb_blk.size()) rydb_blk.push_back(nCVSVirtual + nCVSVValence);
+      for (auto it = homo_blk.begin(); it < homo_blk.end(); it++) *it -= nCVSCore;
+      for (auto it = rydb_blk.begin(); it < rydb_blk.end(); it++) *it -= nCVSVValence;
+      if (core_blk.size()) TAmanager.addRangeType(cLabel, TA::TiledRange1(core_blk.begin(), core_blk.end())); 
+      if (homo_blk.size()) TAmanager.addRangeType(hLabel, TA::TiledRange1(homo_blk.begin(), homo_blk.end())); 
+      if (lumo_blk.size()) TAmanager.addRangeType(lLabel, TA::TiledRange1(lumo_blk.begin(), lumo_blk.end())); 
+      if (rydb_blk.size()) TAmanager.addRangeType(rLabel, TA::TiledRange1(rydb_blk.begin(), rydb_blk.end())); 
 
     std::map<std::string,TArray> ao2mo;
-    std::vector<std::string> ao2moTypes{"ao","bo","av","bv"};
+    std::vector<std::string> ao2moTypes{"ad","bd","ao","bo","av","bv"};
     for(const auto& ao2moType : ao2moTypes){
 
       std::vector<size_t> offset(2, 0);
       offset[0] = ao2moType[0] == 'b' ? nAO : 0;
-      offset[1] = ao2moType[1] == 'v' ? nO : 0;
+      switch ( ao2moType[1] ) {
+          case 'd': offset[1] = 0; break;
+          case 'o': offset[1] = ccSettings.frozen_occupied.size(); break;
+          case 'v': offset[1] = nO; break;
+      }
 
       std::string rangeStr(ao2moType);
       rangeStr[0] = 'a';
-      TArray tmp = TAmanager.malloc_fresh<dcomplex>(rangeStr);
+      if (nFZC || rangeStr[1] != 'd') {
+        TArray tmp = TAmanager.malloc_fresh<dcomplex>(rangeStr);
 
-      tmp.init_elements([mo, offset, nMO](const typename TArray::index &i){
-        return mo[i[0] + offset[0] + (i[1] + offset[1]) * nMO];
-      });
+        tmp.init_elements([mo, offset, nMO](const typename TArray::index &i){
+          return mo[i[0] + offset[0] + (i[1] + offset[1]) * nMO];
+        });
 
-      ao2mo[ao2moType] = tmp;
+        ao2mo[ao2moType] = tmp;
+      }
     }
 #ifdef DEBUG_CCSD
     prettyPrintSmart(std::cout, "MO", mo, nMO, nMO, nMO);
+    if (nFZC) std::cout << "ao2mo[ad]:" << ao2mo["ad"] << std::endl;
+    if (nFZC) std::cout << "ao2mo[bd]:" << ao2mo["bd"] << std::endl;
     std::cout << "ao2mo[ao]:" << ao2mo["ao"] << std::endl;
     std::cout << "ao2mo[bo]:" << ao2mo["bo"] << std::endl;
     std::cout << "ao2mo[av]:" << ao2mo["av"] << std::endl;
@@ -225,6 +415,55 @@ namespace ChronusQ {
 #ifdef DEBUG_CCSD
     std::cout << "aoTPIta:" << std::endl << aoTPIta << std::endl;
 #endif
+
+    if (nFZC) {
+      // dddd
+      antiSymMoInts["dddd"] = TAmanager.malloc<dcomplex>("dddd");
+      antiSymMoInts["dddd"]("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      antiSymMoInts["dddd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["dddd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["dddd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      antiSymMoInts["dddd"]("p,q,r,s") -= antiSymMoInts["dddd"]("p,q,s,r");
+      // dodo
+      antiSymMoInts["dodo"] = TAmanager.malloc<dcomplex>("dodo");
+      antiSymMoInts["dodo"]("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["ao"]("l,r")) * ao2mo["ao"]("g,s");
+      antiSymMoInts["dodo"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["bo"]("l,r")) * ao2mo["bo"]("g,s");
+      antiSymMoInts["dodo"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["bo"]("l,r")) * ao2mo["bo"]("g,s");
+      antiSymMoInts["dodo"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["ao"]("l,r")) * ao2mo["ao"]("g,s");
+      TArray tmpdood = TAmanager.malloc<dcomplex>("dood");
+      tmpdood("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ao"]("n,q") * conj(ao2mo["ao"]("l,r")) * ao2mo["ad"]("g,s");
+      tmpdood("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bo"]("n,q") * conj(ao2mo["bo"]("l,r")) * ao2mo["bd"]("g,s");
+      tmpdood("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["ad"]("m,p")) * ao2mo["ao"]("n,q") * conj(ao2mo["bo"]("l,r")) * ao2mo["bd"]("g,s");
+      tmpdood("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bd"]("m,p")) * ao2mo["bo"]("n,q") * conj(ao2mo["ao"]("l,r")) * ao2mo["ad"]("g,s");
+      antiSymMoInts["dodo"]("p,q,r,s") -= tmpdood("p,q,s,r");
+      TAmanager.free("dood", std::move(tmpdood), true);
+      // vdod
+      antiSymMoInts["vdod"] = TAmanager.malloc<dcomplex>("vdod");
+      antiSymMoInts["vdod"]("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ao"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      antiSymMoInts["vdod"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bo"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["vdod"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ao"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["vdod"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bo"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      TArray tmpvddo = TAmanager.malloc<dcomplex>("vddo");
+      tmpvddo("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ao"]("g,s");
+      tmpvddo("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bo"]("g,s");
+      tmpvddo("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bo"]("g,s");
+      tmpvddo("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ao"]("g,s");
+      antiSymMoInts["vdod"]("p,q,r,s") -= tmpvddo("p,q,s,r");
+      TAmanager.free("vddo", std::move(tmpvddo), true);
+      // vdvd
+      antiSymMoInts["vdvd"] = TAmanager.malloc<dcomplex>("vdvd");
+      antiSymMoInts["vdvd"]("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["av"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      antiSymMoInts["vdvd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bv"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["vdvd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["av"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bd"]("g,s");
+      antiSymMoInts["vdvd"]("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bv"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["ad"]("g,s");
+      TArray tmpvddv = TAmanager.malloc<dcomplex>("vddv");
+      tmpvddv("p,r,q,s")  = aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["av"]("g,s");
+      tmpvddv("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bv"]("g,s");
+      tmpvddv("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["av"]("m,p")) * ao2mo["ad"]("n,q") * conj(ao2mo["bd"]("l,r")) * ao2mo["bv"]("g,s");
+      tmpvddv("p,r,q,s") += aoTPIta("m,n,l,g") * conj(ao2mo["bv"]("m,p")) * ao2mo["bd"]("n,q") * conj(ao2mo["ad"]("l,r")) * ao2mo["av"]("g,s");
+      antiSymMoInts["vdvd"]("p,q,r,s") -= tmpvddv("p,q,s,r");
+      TAmanager.free("vddv", std::move(tmpvddv), true);
+    }
 
     // oooo
     antiSymMoInts["oooo"] = TAmanager.malloc<dcomplex>("oooo");
@@ -289,6 +528,13 @@ namespace ChronusQ {
 
     // Create MO Density matrics
     TArray moDen = TAmanager.template malloc_fresh<dcomplex>("oo");
+    TArray moDen_dd;
+    if (nFZC) {
+        moDen_dd = TAmanager.template malloc_fresh<dcomplex>("dd");
+        moDen_dd.init_elements([](const typename TArray::index &i){
+          return i[0] == i[1] ? 1.0 : 0.0;
+        });
+    }
     moDen.init_elements([](const typename TArray::index &i) {
       return i[0] == i[1] ? 1.0 : 0.0;
     });
@@ -297,11 +543,18 @@ namespace ChronusQ {
     std::map<std::string, TArray> twoeHta;
 
     if (rebuildFock) {
+      /*
+       * Rebuild the Fock matrix from coreH and ERI after ao2mo transformation
+       * This block **will** be problematic for mmfX2C because the new Fock matrix
+       * will not have all the 2-electron relativistic effects captured in the
+       * original Fock matrix coming out of the 4c->2c transformation. Thus,
+       * one should only use it with caution.
+       */
       // Create MO H
       cqmatrix::Matrix<MatsT> moCoreH = aoCoreH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
       std::map<std::string, TArray> coreHta;
 
-//    moCoreH.output(std::cout, "moCoreH", true);
+      // moCoreH.output(std::cout, "moCoreH", true);
 
       // Build Fock from coreH and TPI to TA blocks
       std::vector<std::string> onePTypes{"oo", "vo", "vv", "ov"};
@@ -311,7 +564,7 @@ namespace ChronusQ {
 
         for (const auto &otype: onePType) {
           if (otype == 'o') {
-            offset.push_back(0);
+            offset.push_back(nFZC);
           } else {
             offset.push_back(nO);
           }
@@ -337,20 +590,49 @@ namespace ChronusQ {
       fockMatrix["vv"]("p,q") = coreHta["vv"]("p,q") + antiSymMoInts["vovo"]("p,i,q,j") * moDen("i,j");
       fockMatrix["ov"]("p,q") = coreHta["ov"]("p,q") + conj(antiSymMoInts["vooo"]("q,j,p,i")) * moDen("i,j");
 
+      if (nFZC) {
+        coreHta["dd"] = TAmanager.template malloc_fresh<dcomplex>("dd");
+        coreHta["dd"].init_elements([&moCoreH](const typename TArray::index &i){
+          return moCoreH(i[0], i[1]);
+        });
+        fockMatrix["dd"] = TAmanager.template malloc<dcomplex>("dd");
+        fockMatrix["dd"]("p,q") = coreHta["dd"]("p,q") 
+            + antiSymMoInts["dodo"]("p,i,q,j") * moDen("i,j") 
+            + antiSymMoInts["dddd"]("p,i,q,j") * moDen_dd("i,j");
+        //EG += 0.5 * (antiSymMoInts["dddd"]("i,k,j,l") * moDen_dd("i,j")).dot(moDen_dd("k,l")).get();
+        //EG += 0.5 * (antiSymMoInts["dodo"]("i,k,j,l") * moDen_dd("i,j")).dot(moDen("k,l")).get();
+        //EG += 0.5 * (antiSymMoInts["dodo"]("k,i,l,j") * moDen("i,j")).dot(moDen_dd("k,l")).get();
+        fockMatrix["oo"]("p,q") += antiSymMoInts["dodo"]("i,p,j,q") * moDen_dd("i,j");
+        fockMatrix["vo"]("p,q") += antiSymMoInts["vdod"]("p,i,q,j") * moDen_dd("i,j");
+        fockMatrix["vv"]("p,q") += antiSymMoInts["vdvd"]("p,i,q,j") * moDen_dd("i,j");
+        fockMatrix["ov"]("p,q") += conj(antiSymMoInts["vdod"]("q,j,p,i")) * moDen_dd("i,j");
+      }
+
       for (auto ta: coreHta)
         TAmanager.free(ta.first, std::move(ta.second), true);
     } else {
+      /*
+       * Instead of rebuilding Fock matrix when employing frozen core approximation,
+       * we should instead grab the Fock matrix from SingleSlater and slice it afterward
+       * to obtain the appropriate spaces. Recomputing E_ref is unnecesssary because it
+       * lives in SingleSlater too, but it can be useful to leave as is for checking.
+       */
 
       cqmatrix::Matrix<MatsT> moFock = aoFock.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
 
       std::vector<std::string> onePTypes{"oo", "vo", "vv", "ov"};
+      // create dd block of fockMatrix in case of frozen core
+      if (nFZC) onePTypes.emplace_back("dd");
+
       for (const auto &onePType: onePTypes) {
 
         std::vector<size_t> offset;
 
         for (const auto &otype: onePType) {
-          if (otype == 'o') {
+          if (otype == 'd') {
             offset.push_back(0);
+          } else if (otype == 'o') {
+            offset.push_back(nFZC);
           } else {
             offset.push_back(nO);
           }
@@ -367,6 +649,7 @@ namespace ChronusQ {
       std::cout << "Fov:" << fockMatrix["ov"] << std::endl;
       std::cout << "Fvo:" << fockMatrix["vo"] << std::endl;
       std::cout << "Foo:" << fockMatrix["oo"] << std::endl;
+      if(nFZC) std::cout << "Fdd:" << fockMatrix["dd"] << std::endl;
 #endif
     }
 
@@ -383,10 +666,9 @@ namespace ChronusQ {
       std::vector<size_t> offset;
 
       for(const auto& otype:onePType){
-        if(otype == 'o'){
-          offset.push_back(0);
-        }
-        else{
+        if (otype == 'o') {
+          offset.push_back(nFZC);
+        } else {
           offset.push_back(nO);
         }
       }
@@ -402,8 +684,24 @@ namespace ChronusQ {
 
     // Compute diagonal Fock (orbital energies)
     eps.clear();
-    eps.resize(nMO, 0.0);
-    foreach_inplace(fockMatrix["oo"], [&](TA::Tensor<MatsT> &tile){
+    eps.resize(nMO-nFZC-nFZV, 0.0);
+    std::vector<double> eps_d(nFZC, 0.0);
+    if (nFZC) {
+      foreach_inplace(fockMatrix["dd"],[&](TA::Tensor<MatsT> &tile) {
+
+        const auto& lobound = tile.range().lobound();
+        if (lobound[0] == lobound[1]) {
+          const auto& upbound = tile.range().upbound();
+
+          std::size_t x[] = {0, 0};
+          for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]) {
+            x[1] = x[0];
+            eps_d[x[0]] = std::real(tile[x]);
+          }
+        }
+      });
+    }
+    foreach_inplace(fockMatrix["oo"],[&](TA::Tensor<MatsT> &tile) {
 
       const auto& lobound = tile.range().lobound();
       if (lobound[0] == lobound[1]) {
@@ -425,37 +723,71 @@ namespace ChronusQ {
         std::size_t x[] = {0, 0};
         for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]) {
           x[1] = x[0];
-          eps[nO + x[0]] = std::real(tile[x]);
+          eps[nOcc + x[0]] = std::real(tile[x]);
         }
       }
     });
     TA::get_default_world().gop.fence();
-    TA::get_default_world().gop.template reduce(eps.data(), nMO, std::plus<double>());
+    TA::get_default_world().gop.template reduce(eps.data(), nMO-nFZC-nFZV, std::plus<double>());
+    TA::get_default_world().gop.template reduce(eps_d.data(), nFZC, std::plus<double>());
 
 #ifdef DEBUG_CCSD
-    for (size_t i = 0; i < nO + nV; i++) {
-      std::cout << "Orbital " << i << " : " << eps[i] << std::endl;
+    for (size_t i = 0; i < nMO-nFZC-nFZV; i++) {
+      std::cout << "Orbital " << i+nFZC << " : " << eps[i] << std::endl;
+    }
+    for (size_t i = 0; i < nFZC; i++) {
+      std::cout << "Orbital " << i << " : " << eps_d[i] << std::endl;
     }
 #endif
 
     double EF = 0.0;
+    double EF_fzc = 0.0;
     MatsT EG = 0.0;
+    MatsT EG_fzc = 0.0;
 
-    for (size_t i = 0; i < nO; i++)
+    for (size_t i = 0; i < nFZC; i++)
+      EF_fzc += eps_d[i];
+    for (size_t i = 0; i < nOcc; i++)
       EF += eps[i];
 
     if (rebuildFock) {
-      EG = 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen("i,j")).dot(moDen("k,l")).get();
-      TA::get_default_world().gop.fence();
-    } else {
+      EG += 0.5 * (antiSymMoInts["oooo"]("i,k,j,l") * moDen   ("i,j")).dot(moDen   ("k,l")).get();
+      TA::get_default_world().gop.fence();    
+      if (nFZC) {
+        EG_fzc += 0.5 * (antiSymMoInts["dodo"]("i,k,j,l") * moDen_dd("i,j")).dot(moDen   ("k,l")).get();
+        TA::get_default_world().gop.fence();    
+        EG_fzc += 0.5 * (antiSymMoInts["dodo"]("k,i,l,j") * moDen   ("i,j")).dot(moDen_dd("k,l")).get();
+        TA::get_default_world().gop.fence();    
+        EG_fzc += 0.5 * (antiSymMoInts["dddd"]("i,k,j,l") * moDen_dd("i,j")).dot(moDen_dd("k,l")).get();
+        TA::get_default_world().gop.fence();
+
+      }
+    }
+    else {
 
       cqmatrix::Matrix<MatsT> moTwoeH = aoTwoeH.template spinGather<MatsT>().transform('N', mo, nMO, nMO);
-      for (size_t i = 0; i < nO; i++)
+      for (size_t i = nFZC; i < nO; i++)
         EG += 0.5 * moTwoeH(i, i);
+      for (size_t i = 0; i < nFZC; i++)
+        EG_fzc += 0.5 * moTwoeH(i, i);
     }
     TAmanager.free("oo", std::move(moDen), true);
+    if (nFZC) {
+      TAmanager.free("dddd", std::move(antiSymMoInts["dddd"]), true);
+      TAmanager.free("dodo", std::move(antiSymMoInts["dodo"]), true);
+      TAmanager.free("vdod", std::move(antiSymMoInts["vdod"]), true);
+      TAmanager.free("vdvd", std::move(antiSymMoInts["vdvd"]), true);
+      antiSymMoInts.erase("dddd");
+      antiSymMoInts.erase("dodo");
+      antiSymMoInts.erase("vdod");
+      antiSymMoInts.erase("vdvd");
+      TAmanager.free("dd", std::move(moDen_dd), true);
+      TAmanager.free("dd", std::move(fockMatrix["dd"]), true);
+      fockMatrix.erase("dd");
+    }
 
-    E_ref = EF - std::real(EG) + nucRepEnergy;
+    E_fzc = EF_fzc - std::real(EG_fzc) + nucRepEnergy;
+    E_ref = EF - std::real(EG) + E_fzc;
 
     // Build diagonal elements of moFock
     fockMatrix["oo_diag"] = TAmanager.template malloc_fresh<dcomplex>("oo");
@@ -577,11 +909,22 @@ namespace ChronusQ {
       aoMU = std::make_shared<MultipoleInts<double>>(ccref->nAlphaOrbital(), 3, true);
     }
     aoMU->broadcast();
+
+    // Read EOMCC options
+    // Necessary for initializeIntegrals, so [EOMCC] block must be specified even for a CC run
+    EOMSettings eomSettings = CQEOMCCOptions(output, input);
+
+    // Frozen occupied now handled by slicing Fock matrix from SingleSlater object
+    // if(ccSettings.frozen_occupied.size() && !ccSettings.rebuildFock)
+    //    CErr("RebuildFock option must be used when frozen core orbitals exist.", output);
+
     intermediates.initializeIntegrals(*ccref->coreH,
                                       *ccref->fockMatrix,
                                       *ccref->twoeH,
                                       *std::dynamic_pointer_cast<Integrals<double>>(aoints)->TPI,
                                       *aoMU,
+                                      ccSettings,
+                                      eomSettings,
                                       ccref->mo[0].pointer(),
                                       ccref->nO + ccSettings.nEvariation,
                                       ccref->nV - ccSettings.nEvariation,

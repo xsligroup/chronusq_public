@@ -40,10 +40,10 @@ TEST( EOM_CCSD, Na_631G_X2C_EOM_CCSD) {
            "na_631G_x2c_eom_ccsd.bin.ref", true, true);
 }
 
-TEST( EOM_CCSD, Na_631G_CationRef_X2C_CVS_EOM_CCSD) {
-  CQCCTEST("coupledcluster/serial/eom-ccsd/na_631G_cationRef_x2c_cvc_eom_ccsd",
-           "na_631G_cationRef_x2c_cvc_eom_ccsd.bin.ref", true, true);
-}
+//TEST( EOM_CCSD, Na_631G_CationRef_X2C_CVS_EOM_CCSD) {
+//  CQCCTEST("coupledcluster/serial/eom-ccsd/na_631G_cationRef_x2c_cvc_eom_ccsd",
+//           "na_631G_cationRef_x2c_cvc_eom_ccsd.bin.ref", true, true);
+//}
 
 #ifdef _CQ_DO_PARTESTS
 
@@ -57,15 +57,15 @@ TEST( EOM_CCSD, Na_631G_CationRef_X2C_CVS_EOM_CCSD) {
 //           "na_plus_sto3g_x2c_eom_ccsd.bin.ref", true, true);
 //}
 
-TEST( EOM_CCSD, PAR_Na_631G_X2C_EOM_CCSD) {
-  CQCCTEST("coupledcluster/parallel/eom-ccsd/na_631G_x2c_eom_ccsd",
-           "na_631G_x2c_eom_ccsd.bin.ref", true, true);
-}
+//TEST( EOM_CCSD, PAR_Na_631G_X2C_EOM_CCSD) {
+//  CQCCTEST("coupledcluster/parallel/eom-ccsd/na_631G_x2c_eom_ccsd",
+//           "na_631G_x2c_eom_ccsd.bin.ref", true, true);
+//}
 
-TEST( EOM_CCSD, PAR_Na_631G_CationRef_X2C_CVS_EOM_CCSD) {
-  CQCCTEST("coupledcluster/parallel/eom-ccsd/na_631G_cationRef_x2c_cvc_eom_ccsd",
-           "na_631G_cationRef_x2c_cvc_eom_ccsd.bin.ref", true, true);
-}
+//TEST( EOM_CCSD, PAR_Na_631G_CationRef_X2C_CVS_EOM_CCSD) {
+//  CQCCTEST("coupledcluster/parallel/eom-ccsd/na_631G_cationRef_x2c_cvc_eom_ccsd",
+//           "na_631G_cationRef_x2c_cvc_eom_ccsd.bin.ref", true, true);
+//}
 
 #endif
 

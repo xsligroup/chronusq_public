@@ -52,6 +52,7 @@ namespace ChronusQ {
     size_t peak_mem_ = 0;
     size_t cur_mem_ = 0;
     std::map<char, TA::TiledRange1> rangeTypes_;
+    std::map<char, std::pair<size_t, size_t>> blockRangeTypes_;
     std::map<std::string, TAStat> rTAstat_;
     std::map<std::string, TAStat> cTAstat_;
     std::map<std::string, std::vector<TA::TArray<double>>> rTAs_;
@@ -73,11 +74,19 @@ namespace ChronusQ {
       rangeTypes_[key] = tr;
     }
 
+    void addBlockRangeType(char key, size_t begin, size_t end) {
+      if (blockRangeTypes_.count(key))
+        CErr(std::string("Key ") + key + std::string(" already exist in TAManager!"));
+      blockRangeTypes_[key] = std::pair(begin, end);
+    }
+
     const TA::TiledRange1& getRange(char key) const {
       if (not rangeTypes_.count(key))
         CErr(std::string("Key ") + key + std::string(" does not exist in TAManager!"));
       return rangeTypes_.at(key);
     }
+
+    std::vector<std::pair<size_t, size_t>> toBlockRange(std::string ranges) const;
 
     TA::TiledRange toRange(std::string ranges) const;
 
@@ -94,7 +103,7 @@ namespace ChronusQ {
 
     void discard_cache();
 
-    void reset(bool reset_range_ypes = true);
+    void reset(bool reset_range_types = true);
 
   }; // class TAManager
 

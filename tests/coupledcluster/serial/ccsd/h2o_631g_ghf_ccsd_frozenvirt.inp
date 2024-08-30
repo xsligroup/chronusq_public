@@ -16,19 +16,21 @@ job = CC
 
 [CC]
 TYPE = CCSD
+FROZENVIRTUAL = 21-26
+ETOL = 1.0e-8
+TTOL = 1.0e-8
 
-# needed for CC run
 [EOMCC]
 hbartype = implicit
 
 [MISC]
 MEM = 256 MB
-nsmp = 4
+nsmp = 1
 
 [INTS]
 ALG = INCORE
 libcint = true
 
 [BASIS]
-basis = sto-3g
+basis = 6-31g
  

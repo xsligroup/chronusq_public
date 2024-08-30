@@ -17,6 +17,9 @@ job = CC
 [CC]
 TYPE = CCSD
 
+# needed for CC run
+[EOMCC]
+hbartype = implicit
 
 [MISC]
 MEM = 256 MB

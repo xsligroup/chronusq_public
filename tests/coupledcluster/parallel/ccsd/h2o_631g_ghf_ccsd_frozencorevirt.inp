@@ -16,8 +16,11 @@ job = CC
 
 [CC]
 TYPE = CCSD
+FROZENOCCUPIED = 1-2
+FROZENVIRTUAL = 21-26
+ETOL = 1.0e-8
+TTOL = 1.0e-8
 
-# needed for CC run
 [EOMCC]
 hbartype = implicit
 
@@ -30,5 +33,5 @@ ALG = INCORE
 libcint = true
 
 [BASIS]
-basis = sto-3g
+basis = 6-31g
  
