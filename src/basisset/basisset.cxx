@@ -563,31 +563,43 @@ namespace ChronusQ {
 
 
 // make tempelate for makeMapPrim2Cont for real and complex
-  template <> 
+  template<>  
   void BasisSet::makeMapPrim2Cont(const dcomplex *SUn, dcomplex *MAP) const {
 
     memset(MAP,0,nPrimitive * nBasis * sizeof(dcomplex));
 
     dcomplex *rA = MAP;
 
+    size_t cumeNBf = 0;
     // Compute the unnormalized mapping
-    for(auto iSh = 0; iSh < nShell; iSh++) {
+    for(size_t iSh = 0; iSh < nShell; iSh++) {
 
+      size_t nContr= shells[iSh].contr.size();
       size_t nPrim = shells[iSh].alpha.size();
-      size_t nBf   = shells[iSh].size();
 
-      for(auto iP = 0ul; iP < nPrim; iP++)
-      for(auto iB = 0ul; iB < nBf;   iB++) 
-        rA[iB + (iP*nBf + iB)*nBasis] = unNormCont[iSh][iP];
-
-      rA += nPrim * nBf * nBasis + nBf;
+      for(size_t iC = 0; iC < nContr; iC++) {// Loop over contractions
+        size_t nBf   = shells[iSh].contr[iC].size();
+        for(size_t iP = 0; iP < nPrim; iP++) {// Loop over primitives
+          libint2::Shell prim{
+            { shells[iSh].alpha[iP] },
+            { {shells[iSh].contr[iC].l, shells[iSh].contr[iC].pure, { 1.0 } } },
+            { { shells[iSh].O[0], shells[iSh].O[1], shells[iSh].O[2] } }
+          };
+          size_t primIdx = primitives.at(prim);
+          for(size_t iB = 0; iB < nBf; iB++) {
+            MAP[cumeNBf+iB + (primIdx+iB)*nBasis] = unNormCont[iSh][iP];
+          }
+        }
+        cumeNBf += nBf;
+      }
 
     } // loop over shells
 
  
     // Compute SUn * MAP
     dcomplex *SCR = CQMemManager::get().malloc<dcomplex>(nBasis*nPrimitive);
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nPrimitive,nBasis,nPrimitive,static_cast<dcomplex>(1.),SUn,nPrimitive,
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans, 
+      nPrimitive,nBasis,nPrimitive,static_cast<dcomplex>(1.),SUn,nPrimitive,
       MAP,nBasis,static_cast<dcomplex>(0.),SCR,nPrimitive);
 
 
@@ -615,8 +627,7 @@ namespace ChronusQ {
       // i loop over the function in the current shell             
 
         dcomplex fact = blas::dot(nPrimitive,MAP + (i+Itot) ,nBasis,
-                                                   SCR + (i+Itot)*nPrimitive,1);
-
+                                  SCR + (i+Itot)*nPrimitive,1);
         // i+I is the basis function index 
         dcomplex alpha = buff[i + i*n1];
         // alpha is the diagonal element of overlap of basis function i+Itot
@@ -628,7 +639,7 @@ namespace ChronusQ {
     } // for size_t s1 = 0
     CQMemManager::get().free(SCR);
 
-  };  // BasisSet::makeMapPrim2Cont Complex
+  };  // BasisSet::makeMapPrim2Cont<dcomplex>
 
 
 
