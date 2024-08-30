@@ -180,6 +180,7 @@ namespace ChronusQ {
       // see src/cubegen
       void calculateVoxelDimensions();
       std::vector<double> calcCenter();
+      void updateMolAndBasis(std::shared_ptr<Molecule> mol);
 
       // >>> High-level functions
       void writeSummary(std::string fileSum);

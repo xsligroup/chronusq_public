@@ -28,20 +28,18 @@ namespace ChronusQ {
 
   class SinglePoint : public GeometryModifier {
 
-    bool updated;
+    bool updated = false;
 
     public:
 
-      SinglePoint() = delete;
-      SinglePoint(MolecularOptions &molOpts) :
-        GeometryModifier(molOpts),
-        updated(false) { }
+      SinglePoint() = default;
 
       bool hasNext() {
         return !updated;
       }
 
-      void update(bool, Molecule&, bool) {
+      void update(bool, Molecule&, bool, TDSCFOptions&, std::shared_ptr<SingleSlaterBase> ss, 
+          EMPerturbation& emPert, std::vector<std::shared_ptr<CubeGen>> cubes) {
         updated = true;
       }
   };

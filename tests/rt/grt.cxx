@@ -26,7 +26,7 @@
 
 
 
-// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+// Oxygen 6-31G(d) MMUT, Magnus2, ForwardEuler
 //TEST( X2CHF_RT, oxygen_x2chf_mmut ) {
 //
 //  CQRTTEST( rt/serial/grt/oxygen_6-31Gd_x2chf_mmut,
@@ -61,7 +61,7 @@
 //    "oxygen_6-31Gd_x2chf_forwardeuler_readmo.bin" );
 //}
 
-//// Water 6-31G(d) MMUT, Magnus2, FowwardEular
+//// Water 6-31G(d) MMUT, Magnus2, ForwardEuler
 //TEST( X2CHF_RT, water_x2chf_mmut ) {
 //
 //  CQRTTEST( rt/serial/grt/water_6-31Gd_x2chf_mmut,
@@ -112,7 +112,7 @@ TEST( X2CHF_RT, ag2_sto3g_x2chf_magnus2 ) {
 //    ag2_sto3g_x2chf_forwardeuler.bin.ref );
 //}
 
-// Oxygen 6-31G(d) MMUT, Magnus2, FowwardEular
+// Oxygen 6-31G(d) MMUT, Magnus2, ForwardEuler
 TEST( X2CKS_RT, oxygen_x2cb3lyp_mmut ) {
 
   CQRTTEST( "rt/serial/grt/oxygen_6-31Gd_x2cb3lyp_mmut",

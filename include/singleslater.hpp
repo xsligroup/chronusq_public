@@ -48,6 +48,10 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   class MOIntsTransformer;
 
+  // Use SFINAE to ensure RT functions only get instantiated when MatsT is dcomplex
+  template <typename M>
+  using enable_if_dcomplex = typename std::enable_if<std::is_same<M, dcomplex>::value, int>::type;
+
   /**
    *  \brief The SingleSlater class. The typed abstract interface for all
    *  classes for which the wave function is described by a single slater
@@ -116,6 +120,9 @@ namespace ChronusQ {
     std::shared_ptr<Orthogonalization<MatsT>> orthoSpinor;  ///< Orthogonalization functions for spinor basis
     std::shared_ptr<Orthogonalization<MatsT>> orthoAB;      ///< Orthogonalization functions alpha/beta basis
     std::shared_ptr<OrbitalModifier<MatsT>> orbitalModifier;  ///< SCF/RT Abstraction Object
+    
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> tau;      ///< tau matrix for traveling proton basis
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> tauOrtho; ///< orthonormal tau matrix for traveling proton basis
 
     // Method specific propery storage
     std::vector<double> mullikenCharges;
@@ -134,6 +141,10 @@ namespace ChronusQ {
     // 4C gauge 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugetwoeH; ///< contributions from gaunt to twoeH
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugeexchangeMatrix; ///< contributions from gaunt to exchangeMatrix
+
+    // Density Gradient (vector of N*atoms*3 for each R)
+    std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> onePDMGrad;
+
     // Constructors
       
     /**
@@ -223,6 +234,20 @@ namespace ChronusQ {
     void formCoreH(EMPerturbation&, bool) override; // Compute the CH
     void computeOrtho();  // Evaluate orthonormalization transformations
     void computeOrthoGrad(); // Evaluate gradient of orthonormalization
+    
+    // RT functions
+    void computeTau();
+    void checkIdempotency(std::string system="Electronic");
+    void mcWeenyPurification();
+    // RT functions that require complex matrix types
+    template <typename M = MatsT, enable_if_dcomplex<M> = 0>
+    void addTauToFock();
+    template <typename M = MatsT, enable_if_dcomplex<M> = 0>
+    void RK4Propagation(bool, double, bool, EMPerturbation&, EMPerturbation&);
+    template <typename M = MatsT, enable_if_dcomplex<M> = 0>
+    void unitaryPropagation(bool, double, bool, EMPerturbation&);
+    template <typename M = MatsT, enable_if_dcomplex<M> = 0>
+    cqmatrix::PauliSpinorMatrices<MatsT> getTimeDerDen(bool);
 
     // Method specific properties
     void populationAnalysis();
@@ -236,7 +261,7 @@ namespace ChronusQ {
 
     // Get the total gradient
     virtual std::vector<double> getGrad(EMPerturbation&, bool equil,
-      bool saveInts) override;
+      bool saveInts, double xHFX = 1.) override;
 
     // Form initial guess orbitals
     // see include/singleslater/guess.hpp for docs)
@@ -290,12 +315,13 @@ namespace ChronusQ {
     void orthoAOMO();
 
     // Post-processing functions
-    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert) override;
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert, std::string prefix, std::shared_ptr<Molecule> mol) override;
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };
     virtual void printProperties();
     virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
+    virtual std::vector<cqmatrix::Matrix<MatsT>> getOnePDMOrtho();
     virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock();
     virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
     virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);

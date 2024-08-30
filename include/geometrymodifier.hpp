@@ -22,31 +22,26 @@
  *
  */
 #pragma once
-
 #include <fields.hpp>
 #include <molecule.hpp>
-#include <molecularoptions.hpp>
-
+#include <orbitalmodifieroptions.hpp>
 namespace ChronusQ {
 
+  // Forward declarations
   struct Molecule;
-
+  class SingleSlaterBase;
+  class CubeGen;
   /**
    * \brief The GeometryModifier class
    */
   class GeometryModifier {
 
-  protected:
-    MolecularOptions molecularOptions_;
-
   public:
 
     double   electronicPotentialEnergy; ///< electronic potential energy
 
-    // Constructors
-    GeometryModifier() = delete;
-    GeometryModifier(MolecularOptions molecularOptions):
-      molecularOptions_(molecularOptions) {}
+    // Default constructor
+    GeometryModifier() = default;
 
     // Different type
     GeometryModifier(const GeometryModifier &);
@@ -55,14 +50,9 @@ namespace ChronusQ {
     // Virtual destructor
     virtual ~GeometryModifier() {}
 
-
-    // Public member functions
-    const MolecularOptions& getMolecularOptions() const {
-      return molecularOptions_;
-    }
-
     virtual bool hasNext() = 0;
-    virtual void update(bool, Molecule&, bool) = 0;
+    virtual void update(bool, Molecule&, bool, TDSCFOptions&, std::shared_ptr<SingleSlaterBase>, 
+        EMPerturbation&, std::vector<std::shared_ptr<CubeGen>> cubes={}) = 0;
 
   };
 

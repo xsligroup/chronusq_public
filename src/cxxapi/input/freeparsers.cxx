@@ -502,7 +502,7 @@ namespace ChronusQ {
         }
 
         // Check for RT algorithm, this has to be checked after restart algorithm to avoid conflict
-        auto const freeCQInputRTAlgorithm = std::regex("(MMUT)|(MODIFIEDMIDPOINT)|(FORWARDEULER)|(EULER)|(EXPLICITMAGNUS2)|(EXPLICITMAGNUSTWO)|(MAGNUS2)|(MAGNUSTWO)\\s*([,;:]|$)", std::regex_constants::icase);
+        auto const freeCQInputRTAlgorithm = std::regex("(MMUT)|(MODIFIEDMIDPOINT)|(FORWARDEULER)|(EULER)|(EXPLICITMAGNUS2)|(EXPLICITMAGNUSTWO)|(MAGNUS2)|(MAGNUSTWO)|(RK4)|(RUNGEKUTTAFOURTHORDER)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRTAlgorithm) ) {
 //          if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) tdSCFControls.integrationAlgorithm = RTModifiedMidpoint;
 //          else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) tdSCFControls.integrationAlgorithm = RTForwardEuler;
@@ -511,6 +511,7 @@ namespace ChronusQ {
           if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) str = "MMUT";
           else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) str = "FORWARDEULER";
           else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty() or !RTmatch.str(7).empty() or !RTmatch.str(8).empty()) str = "MAGNUS2";
+          else if (!RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "RK4"; // New check for RK4 or RUNGEKUTTAFOURTHORDER
           //std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
           addData("RT.INTALG", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRTAlgorithm, "");
@@ -619,6 +620,26 @@ namespace ChronusQ {
       if (dict.at("INTALG") == "MMUT") integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
       else if (dict.at("INTALG") == "FORWARDEULER") integrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
       else if (dict.at("INTALG") == "MAGNUS2") integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
+      else if (dict.at("INTALG") == "RK4") integrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
+    }
+    if (dict.count("PROT_INTALG")) {
+      if (dict.at("PROT_INTALG") == "MMUT") protIntegrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
+      else if (dict.at("PROT_INTALG") == "FORWARDEULER") protIntegrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
+      else if (dict.at("PROT_INTALG") == "MAGNUS2") protIntegrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
+      else if (dict.at("PROT_INTALG") == "RK4") protIntegrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
+    }
+    // If the user didn't provide a specific protonic integration algorithm, use the same as electronic
+    if (protIntegrationAlgorithm == RealTimeAlgorithm::Uninitialized) protIntegrationAlgorithm = integrationAlgorithm;
+    // Currently we don't allow mixing of MMUT and RK4
+    if( protIntegrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour and integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint){
+      std::cout << "Warining: INTALG=MMUT and PROT_INTALG=RK4. This creates a mismatch in delta T " << std::endl;
+      std::cout << "Forcing electronic subsystem to use magnus2 propagation: INTALG=MAGNUS2 " << std::endl;
+      integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
+    }
+    if( integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour and protIntegrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint){
+      std::cout << "Warining: INTALG=RK4 and PROT_INTALG=MMUT. This creates a mismatch in delta T " << std::endl;
+      std::cout << "Forcing protonic subsystem to use magnus2 propagation: PROT_INTALG=MAGNUS2 " << std::endl;
+      protIntegrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
     }
     if (dict.count("RESTARTSTEP")) {
       if (dict.at("RESTARTSTEP") == "MMUT") restartAlgorithm = RestartAlgorithm::ModifiedMidpoint;
@@ -633,6 +654,9 @@ namespace ChronusQ {
       rtBreit = std::stoi(dict.at("RTBREIT"));
       rtGauge = rtBreit;
       rtGaunt = rtBreit;
+    }
+    if (dict.count("SAVEONEPDM")){ 
+      saveOnePDM = true;
     }
 
   }

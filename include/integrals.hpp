@@ -188,6 +188,7 @@ namespace ChronusQ {
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradOverlap = nullptr;
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradKinetic = nullptr;
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradPotential = nullptr;
+    std::shared_ptr<GradInts<OnePInts,IntsT>> S0a = nullptr;
 
     std::shared_ptr<GradInts<TwoPInts,IntsT>> gradERI = nullptr;
 

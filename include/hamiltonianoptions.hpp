@@ -120,6 +120,8 @@ namespace ChronusQ {
     bool updateGaunt = false;      //Default False. True if open Gaunt and need to update. False if do not update gaunt term at current step 
     bool updateGauge = false;      //Default False. True if open Gauge and need to update. False if do not update gauge term at current step  
 
+    bool includeTau = false;
+
   }; // struct HamiltonianOptions
 
   std::ostream& operator<<(std::ostream&, const HamiltonianOptions&);

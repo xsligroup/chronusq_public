@@ -454,11 +454,14 @@ namespace ChronusQ {
 
     for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
 
-      // Scale K by alpha
-      twoEGrad = -xHFX * KList[iGrad];
-
-      // G[S] = 2 * J[S] + alpha * K[S]
-      twoEGrad.S() += 2. * JList[iGrad];
+      if( std::abs(xHFX) > 1e-12 ){
+        // Scale K by alpha
+        twoEGrad = -xHFX * KList[iGrad];
+        // G[S] = 2 * J[S] + alpha * K[S]
+        twoEGrad.S() += 2. * JList[iGrad];
+      } else{
+        twoEGrad.S() = 2. * JList[iGrad];
+      }
 
       double gradVal = ss.template computeOBProperty<SCALAR>(
         twoEGrad.S().pointer()

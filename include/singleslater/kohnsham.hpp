@@ -67,6 +67,7 @@ namespace ChronusQ {
     bool doVXC_ = true; ///< If this object is responsible for forming VXC
     bool isGGA_; ///< Whether or not the XC kernel is within the GGA
     double XCEnergy; ///< Exchange-correlation energy
+    std::vector<std::vector<double> > XCGradient; ///< Exchange-correlation energy gradient
 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<IntsT>> VXC; ///< VXC terms
 
@@ -109,6 +110,14 @@ namespace ChronusQ {
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false, false);
       VXC->clear();
 
+      // initialize the gradients to be zero
+      XCGradient.resize(this->molecule_.atoms.size());
+      for(size_t ic = 0; ic < this->molecule_.atoms.size(); ic++) {
+        for(size_t xyz = 0; xyz < 3; xyz++) {
+          XCGradient[ic].push_back(0.);
+        }
+      }
+
 
     }; // KohnSham constructor
 
@@ -136,6 +145,13 @@ namespace ChronusQ {
         VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<IntsT>>(NB, false, false);
       VXC->clear();
 
+      // initialize the gradients to be zero
+      XCGradient.resize(this->molecule_.atoms.size());
+      for(size_t ic = 0; ic < this->molecule_.atoms.size(); ic++) {
+        for(size_t xyz = 0; xyz < 3; xyz++) {
+          XCGradient[ic].push_back(0.);
+        }
+      }
 
     }; // KohnSham constructor
 
@@ -220,6 +236,42 @@ namespace ChronusQ {
 
     }; // formFock
 
+    /**
+     *  \brief Kohn-Sham specialization of getGrad
+     *
+     *  Compute EXC gradient and increment the HF gradient
+     */
+    std::vector<double> getGrad(EMPerturbation& pert, bool equil, bool saveInts, double xHFX = 1.) {
+      
+      xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
+
+      size_t nAtoms = this->molecule().nAtoms;
+      size_t nGrad = 3*nAtoms;
+
+      // Obtain HF gradient
+      std::vector<double> gradient(nGrad, 0.);
+      gradient = SingleSlater<MatsT,IntsT>::getGrad(pert,equil,saveInts,xHFX);
+
+      for(size_t ic = 0; ic < nAtoms; ic++) 
+        for(size_t XYZ = 0; XYZ < 3; XYZ++) 
+          this->XCGradient[ic][XYZ] = 0.0;
+
+      formEXCGradient();
+
+      //std::cout << "Main XC Gradient:" << std::endl; 
+      for(size_t ic = 0; ic < nAtoms; ic++) {
+        for(size_t XYZ = 0; XYZ < 3; XYZ++) {
+          //std::cout << std::setprecision(8);
+          //std::cout << std::setw(16) << this->XCGradient[ic][XYZ] << " ";
+          gradient[ic*3+XYZ] += this->XCGradient[ic][XYZ];
+        }
+        std::cout << std::endl;
+      }
+      //std::cout << std::setprecision(16) << "XC Energy in computeGradients(): " << this->XCEnergy << std::endl;
+
+      return gradient;
+    }
+
 
     /**
      *  \brief Kohn-Sham specialization of computeEnergy
@@ -232,6 +284,8 @@ namespace ChronusQ {
       SingleSlater<MatsT,IntsT>::computeEnergy();
       // Add EXC in the total energy
       this->totalEnergy += XCEnergy;
+
+      //std::cout << std::setprecision(16) << "XC Energy in computeEnergy(): " << this->XCEnergy << std::endl;
         
     }; // computeEnergy
 
@@ -259,6 +313,8 @@ namespace ChronusQ {
 
     // VXC
     void formVXC(EMPerturbation&); 
+
+    void formEXCGradient();
 
     // FXC Terms
     template <typename U>

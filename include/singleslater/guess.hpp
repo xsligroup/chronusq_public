@@ -1437,7 +1437,7 @@ namespace ChronusQ {
 
     if( MPIRank(comm) == 0) {
 
-    if( printLevel > 0 ) std::cout << "  *** Computing Natural Orbitals from Guess Density ***" << std::endl << std::endl;
+    //if( printLevel > 0 ) std::cout << "  *** Computing Natural Orbitals from Guess Density ***" << std::endl << std::endl;
 
     size_t NBC = this->nC*basisSet().nBasis;
     bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);

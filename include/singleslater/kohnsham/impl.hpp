@@ -71,4 +71,5 @@ namespace ChronusQ {
 }; // namespace ChronusQ
 
 #include <singleslater/kohnsham/vxc.hpp> // VXC build
+#include <singleslater/kohnsham/gradient.hpp> // VXC build
 

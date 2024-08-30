@@ -168,7 +168,7 @@ namespace ChronusQ {
     }
 
     static void OnePDriverLibint(libint2::Operator, Molecule&,
-        BasisSet&, std::vector<IntsT*>, Particle p, size_t deriv=0);
+        BasisSet&, std::vector<IntsT*>, Particle p, size_t deriv=0, size_t S0a=0);
     void OnePDriverLibcint(OPERATOR, const Molecule&,
         const BasisSet&, const HamiltonianOptions&);
     template <size_t NOPER, bool SYMM, typename F>

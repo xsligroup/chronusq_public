@@ -386,7 +386,7 @@ namespace ChronusQ {
         )
       );
 
-    if (not funcName.compare("EPC17"))
+    if (not funcName.compare("EPC17") or not funcName.compare("EPC17_2"))
       funcList.push_back(
         std::dynamic_pointer_cast<DFTFunctional>(
           std::make_shared<EPC17>("EPC-17")

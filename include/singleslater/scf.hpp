@@ -451,6 +451,8 @@ std::vector<NRRotOptions> SingleSlater<MatsT,IntsT>::buildRotOpt(){
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::initializeSCF() {
 
+  this->moCoefficients.clear();
+
   bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
 
   // Setup MO reference vector
@@ -640,6 +642,23 @@ std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>
     return {dA, dB};
   } else {
     return {std::make_shared<cqmatrix::Matrix<MatsT>>(this->onePDM->template spinGather<MatsT>())};
+  }
+};   // SingleSlater<MatsT,IntsT> :: getOnePDM
+
+template<typename MatsT, typename IntsT>
+std::vector<cqmatrix::Matrix<MatsT>> SingleSlater<MatsT, IntsT>::getOnePDMOrtho() {
+
+  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  if( this->nC == 1 and iCS ) {
+    return {cqmatrix::Matrix<MatsT>(MatsT(0.5) * onePDMOrtho->S())};
+  } else if( this->nC == 1 and iRO ) {
+    return {cqmatrix::Matrix<MatsT>(MatsT(0.5) * onePDMOrtho->S() + MatsT(0.5)*onePDMOrtho->Z())};
+  } else if( this->nC == 1 ) {
+    cqmatrix::Matrix<MatsT> dA = MatsT(0.5) * onePDMOrtho->S() + MatsT(0.5)*onePDMOrtho->Z();
+    cqmatrix::Matrix<MatsT> dB = MatsT(0.5) * onePDMOrtho->S() - MatsT(0.5)*onePDMOrtho->Z();
+    return {dA, dB};
+  } else {
+    return {cqmatrix::Matrix<MatsT>(this->onePDMOrtho->template spinGather<MatsT>())};
   }
 };   // SingleSlater<MatsT,IntsT> :: getOnePDM
 

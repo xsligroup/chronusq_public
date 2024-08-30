@@ -25,6 +25,7 @@
 
 #include <singleslater/neoss.hpp>
 #include <singleslater/neoss/scf.hpp>
+#include <singleslater/neoss/gradient.hpp> 
 #include <cerr.hpp>
 
 namespace ChronusQ {
@@ -296,8 +297,12 @@ namespace ChronusQ {
     auto setGradInts = [&](std::shared_ptr<FockBuilder<MatsT,IntsT>>& fock) {
       if(auto neofock = std::dynamic_pointer_cast<NEOFockBuilder<MatsT,IntsT>>(fock)) {
         neofock->setGradientIntegrals(ints.get());
-      }
-      else {
+      } else if(auto neoks = std::dynamic_pointer_cast<NEOKohnShamBuilder<MatsT,IntsT>>(fock)){
+        if(auto neofock = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(neoks->getUpstream()) )
+          neofock->setGradientIntegrals(ints.get());
+        else
+          CErr("Upstream FockBuilder incorrectly set in setGradInts!");
+      } else {
         CErr("Can't set gradient integrals on a non-NEOFockBuilder");
       }
     };
@@ -310,7 +315,7 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   std::vector<double> NEOSS<MatsT,IntsT>::getGrad(EMPerturbation& pert,
-    bool equil, bool saveInts) {
+    bool equil, bool saveInts, double xHFX) {
 
     // Constants and return value
     size_t nAtoms = this->molecule().nAtoms;
@@ -358,13 +363,47 @@ namespace ChronusQ {
       }
     }
 
-
+    // Obtain the non-xc part of each subsystem gradient
     applyToEach([&](SubSSPtr& ss) {
-        auto localGrad = ss->getGrad(pert, equil, saveInts);
-        for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) {
-          gradient[iGrad] += localGrad[iGrad] - this->molecule().nucRepForce[iGrad/3][iGrad%3];
-        }
+      if (auto ks = std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(ss)) 
+        xHFX = ks->functionals.size() != 0 ? ks->functionals.back()->xHFX : 1. ;
+      auto localGrad = ss->SingleSlater<MatsT, IntsT>::getGrad(pert, equil, saveInts, xHFX);
+      //auto localGrad = ss->getGrad(pert, equil, saveInts, xHFX);
+      for( auto iGrad = 0; iGrad < nGrad; iGrad++ ) 
+        gradient[iGrad] += localGrad[iGrad] - this->molecule().nucRepForce[iGrad/3][iGrad%3];
     });
+
+    if(auto pss = getSubsystem<KohnSham>("Protonic")){
+      for(size_t ic = 0; ic < nAtoms; ic++){
+        for(size_t XYZ = 0; XYZ < 3; XYZ++){
+          this->EXCGradient[ic][XYZ] = 0.0;
+          this->EPCGradientE[ic][XYZ] = 0.0;
+          this->EPCGradientP[ic][XYZ] = 0.0;
+        }
+      } 
+      // Obtain the xc part of the gradient (ee_xc + epc)
+      formEXCGradient();
+      for( auto iGrad = 0; iGrad < nGrad; iGrad++ ){
+          gradient[iGrad] += this->EXCGradient[iGrad/3][iGrad%3];
+          gradient[iGrad] += this->EPCGradientE[iGrad/3][iGrad%3];
+          gradient[iGrad] += this->EPCGradientP[iGrad/3][iGrad%3];
+      } 
+    }
+
+    // Add additional printout for debugging NEO-Ehrenfest
+    auto printGrad = [&](std::string name, std::vector<double>& vecgrad) {
+      std::cout << name << std::endl;
+      std::cout << std::setprecision(12);
+      for( auto iAt = 0; iAt < nAtoms; iAt++ ) {
+        std::cout << " Gradient@I = " << iAt << ":";
+        for( auto iCart = 0; iCart < 3; iCart++ ) {
+          std::cout << "  " << vecgrad[iAt*3 + iCart];
+        }
+        std::cout << std::endl;
+      }
+      std::cout << std::endl;
+    };
+    //printGrad("Total NEO Gradient:", gradient);
 
     return gradient;
 

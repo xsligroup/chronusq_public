@@ -211,6 +211,7 @@ namespace ChronusQ {
   };
 
   enum class RealTimeAlgorithm {
+      Uninitialized,
       RTForwardEuler,
       RTModifiedMidpoint,
       RTExplicitMagnus2,
@@ -225,14 +226,19 @@ namespace ChronusQ {
 
   struct TDSCFOptions {
 
-    RealTimeAlgorithm     integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;         ///< Integration Algorithm
-    RestartAlgorithm      restartAlgorithm     = RestartAlgorithm::ExplicitMagnus2; ///< Restart Step
-    PropagatorAlgorithm   propagatorAlgorithm  = PropagatorAlgorithm::Diagonalization; ///< exp(-iF) Algorithm
+    RealTimeAlgorithm     integrationAlgorithm     = RealTimeAlgorithm::RTModifiedMidpoint; ///< Integration Algorithm
+    RealTimeAlgorithm     protIntegrationAlgorithm = RealTimeAlgorithm::Uninitialized;      ///< Protonic Integration Algorithm
+    RestartAlgorithm      restartAlgorithm         = RestartAlgorithm::ExplicitMagnus2;     ///< Restart Step
+    PropagatorAlgorithm   propagatorAlgorithm      = PropagatorAlgorithm::Diagonalization;  ///< exp(-iF) Algorithm
 
-    double tMax    = 1.0;  ///< Max simulation time in AU. Upon input, user can specify tMax or maxSteps
+    double tMax    = 0;  ///< Max simulation time in AU. Upon input, user can specify tMax or maxSteps
     size_t maxSteps= 0;    ///< Max number of steps. Upon input, user can specify tMax or maxSteps
     double deltaT  = 0.01; ///< Time-step in AU
 
+    bool   doMD                = false;
+    bool   includeTau          = false;
+    size_t totalMDSteps        = 0; 
+    size_t rtMaxStepsPerMDStep = 0;
 
     size_t iRestart  = 50;         ///< Restart MMUT every N steps
     size_t iSave     = 50;         ///< Save progress every N steps
@@ -246,6 +252,8 @@ namespace ChronusQ {
     size_t rtBreit = 1; /// < Calculate Breit(gaunt and gauge) every N steps
     size_t Rtprintden = 0;
     size_t orbitalPopFreq = 0; ///< Print orbital population every 'orbitalPopFreq' steps during RT propagation
+
+    bool saveOnePDM = false;   ///< Whether to save 1PDM in AO basis to bin file during RT propagation
 
     void parseSection(const InputMap &dict);
   };

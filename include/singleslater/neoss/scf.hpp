@@ -63,6 +63,17 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
+  std::vector<cqmatrix::Matrix<MatsT>> NEOSS<MatsT,IntsT>::getOnePDMOrtho() {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+    std::vector<cqmatrix::Matrix<MatsT>> dens;
+    applyToEach([&dens](SubSSPtr& ss) {
+      for( auto& X: ss->getOnePDMOrtho() )
+        dens.push_back(X);
+    });
+    return dens;
+  };
+
+  template <typename MatsT, typename IntsT>
   void NEOSS<MatsT,IntsT>::setOnePDMOrtho(cqmatrix::Matrix<MatsT> *tempOnePDMOrtho) {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
 
@@ -109,6 +120,22 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::ortho2aoMOs() {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+    applyToEach([this](SubSSPtr& ss) {
+      ss->ortho2aoMOs();
+    });
+  };
+
+  template <typename MatsT, typename IntsT>
+  void NEOSS<MatsT,IntsT>::ao2orthoDen() {
+    using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+    applyToEach([this](SubSSPtr& ss) {
+      ss->ao2orthoDen();
+    });
+  };
+
+  template <typename MatsT, typename IntsT>
   std::vector<std::shared_ptr<Orthogonalization<MatsT>>> NEOSS<MatsT, IntsT>::getOrtho() {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     std::vector<std::shared_ptr<Orthogonalization<MatsT>>> ortho;
@@ -130,6 +157,9 @@ namespace ChronusQ {
   template<typename MatsT, typename IntsT>
   void NEOSS<MatsT, IntsT>::initializeSCF() {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
+
+    this->moCoefficients.clear();
+    this->moEigenvalues.clear();
 
     // Setup MO reference vector
     applyToEach([this](SubSSPtr& ss) {

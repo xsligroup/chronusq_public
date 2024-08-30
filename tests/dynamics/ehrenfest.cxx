@@ -21,35 +21,42 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-#pragma once
 
-#include <cmath>
-#include <physcon.hpp>
-
-namespace ChronusQ {
+#include "dynamics.hpp"
 
 
-  struct MolecularOptions {
 
-    size_t nNuclearSteps; // Number of steps for molecular dynamics
-    size_t nMidpointFockSteps = 10; // Number of elctronic steps for electronic dynamics
-    size_t nElectronicSteps = 5; // Number of elctronic steps for electronic dynamics
+// Hydrogen Flouride RHF
+TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rhf_mmut ) {
 
-    // Molecular Dynamics Options
-    double timeStepAU; // Nuclear timestep for molecular dynamics in a.u.
-    double timeStepFS; // Nucleartimestep for molecular dynamics in fs
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/hf_ehrenfest_rhf_mmut",
+    "hf_ehrenfest_rhf_mmut.bin.ref");
 
-    MolecularOptions(double tmax, double deltat)
-    {
-      timeStepAU = deltat;
-      timeStepFS = deltat*FSPerAUTime;
+}
 
-      nNuclearSteps = size_t(ceil(tmax/deltat));
-    }
+//// Hydrogen Flouride RB3LYP
+//TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rb3lyp_mmut ) {
+//
+//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/hf_ehrenfest_rb3lyp_mmut",
+//    "hf_ehrenfest_rb3lyp_mmut.bin.ref");
+//
+//}
+//
+//// NEO Water RB3LYP Fixed Proton Basis
+//TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut ) {
+//
+//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut",
+//    "h2o_neoehrenfest_rb3lyp_epc17_mmut.bin.ref");
+//
+//}
+//
+//// NEO Water RB3LYP Traveling Proton Basis
+//TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
+//
+//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
+//    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref");
+//
+//}
 
-  }; // struct MolecularOptions
 
-  std::ostream& operator<<(std::ostream&, const MolecularOptions&);
-
-}; // namespace ChronusQ
 

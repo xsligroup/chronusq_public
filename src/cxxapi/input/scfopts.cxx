@@ -77,17 +77,32 @@ namespace ChronusQ {
   void HandlePostSCFRestarts(std::ostream &out, CQInputFile &input,
                              SCFControls &scfControls) {
 
-    bool restart = false;
+    bool restartRT = false;
+    bool restartMD = false;
     
     if ( input.containsSection("RT") )
-      OPTOPT( restart |= input.getData<bool>("RT.RESTART"); )
+      OPTOPT( restartRT |= input.getData<bool>("RT.RESTART"); )
+    
+    if ( input.containsSection("DYNAMICS") ){
+      std::string restart = "FALSE";
+      OPTOPT( restart = input.getData<std::string>("DYNAMICS.RESTART");)
+      trim(restart);
+      restartMD = (restart.compare("FALSE") != 0);
+    }
+    
+    // Add additional checks like the one below for restarting other post SCF
     // Add additional checks like the one below for restarting other post SCF
     // RESP restart is NYI, so this is a commented out placeholder example
     //
     // else if ( input.containsSection("RESP") )
     //   OPTOPT( restart |= input.getData<bool>("RESP.RESTART"); )
 
-    if ( restart ) {
+    // Skip SCF is the we are doing a restart for RT/MD
+    if ( restartRT or restartMD ) {
+      // Since scfControls currently is global, for BOMD restart we can't skip SCF
+      // TODO: allow BOMD job to have its own scfControls  
+      if (restartMD and parseJob(input.getData<std::string>("QM.JOB"))==JobType::BOMD )
+        return;
       out << "  *** RESTART requested -- SCF.GUESS set to READMO and SCF.ALG set to SKIP ***";
       out << std::endl;
 

@@ -58,7 +58,7 @@ namespace ChronusQ {
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 class RealTimeSCF : public OrbitalModifierNew<singleSlaterT, MatsT, IntsT> {
 
-  TDSCFOptions     tdSCFOptions;   ///< Integration scheme (MMUT, etc)
+  TDSCFOptions      &tdSCFOptions;   ///< Integration scheme (MMUT, etc)
   TDEMPerturbation  &tdEMPerturbation;        ///< TD field perturbation
   EMPerturbation    staticEMPerturbation;     ///< SCF Perturbation
 
@@ -96,7 +96,7 @@ public:
    *  makes a copy of the reference into a complex
    *  SingleSlater object for the propagation.
    */
-  RealTimeSCF(TDSCFOptions sC, TDEMPerturbation &tdPert, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm):
+  RealTimeSCF(TDSCFOptions& sC, TDEMPerturbation &tdPert, singleSlaterT<MatsT,IntsT> &referenceSS, MPI_Comm comm):
           tdSCFOptions(sC), tdEMPerturbation(tdPert), OrbitalModifierNew<singleSlaterT,MatsT,IntsT>(referenceSS, comm) {
 
     if(!std::is_same<MatsT, std::complex<double>>::value) {
@@ -116,9 +116,13 @@ public:
   void printRunHeader(EMPerturbation&) override;
   void printIteration(bool printDiff = false) override;
 
-  void formPropagator(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});
   void formFock(bool,double);
-  void doPropagation();
+  void formPropagatorForAll(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});
+  void propagateDenForAll();
+  void unitaryProgatationForAll(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
+  void doPropagation(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
+  void computeTau();
+  void addTauToFock();
   void saveState(EMPerturbation&);
   void restoreState();
   void createRTDataSets(size_t maxPoint = 0);

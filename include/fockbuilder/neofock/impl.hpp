@@ -1023,4 +1023,13 @@ namespace ChronusQ {
 } //NEOKohnShamBuilder<MatsT,IntsT>::formFock
 
 
+  template <typename MatsT, typename IntsT>
+  std::vector<double> NEOKohnShamBuilder<MatsT,IntsT>::getGDGrad(
+    SingleSlater<MatsT,IntsT>& ss, EMPerturbation& empert, double xHFX)
+  {
+
+    // Call all upstream FockBuilders
+    return this->upstream->getGDGrad(ss, empert, xHFX);
+
+  }
 }

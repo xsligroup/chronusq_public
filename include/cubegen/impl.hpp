@@ -184,4 +184,11 @@ namespace ChronusQ {
 
     }
 
+    void CubeGen::updateMolAndBasis(std::shared_ptr<Molecule> newMol){
+      mol_ = newMol;
+      basis_->updateNuclearCoordinates(*mol_);
+      calculateVoxelDimensions();
+      ComputeBasis();
+    }
+
 }

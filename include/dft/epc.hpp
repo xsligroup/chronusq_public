@@ -41,6 +41,8 @@ namespace ChronusQ {
     };
 
     void evalEXC_VXC(size_t N, double *rho, double *aux_rho, double *eps, double *vxc, bool electron);
+    
+    void evalEPCGrad(size_t N, double *rho, double *aux_rho, double *eps, double *aux_eps, double* dede, double* dedp);
 
   }; // epc17-2 functional
 
@@ -62,7 +64,6 @@ namespace ChronusQ {
     void evalEXC_VXC(size_t N, double *rho, double *aux_rho, double *sigma, double *aux_sigma,
                      double *cross_sigma, double *eps, double *vrho, double *vsigma, 
                      double *vcsigma, double* epc, bool electron);
-
   }; // class EPC19
 
   /**
@@ -215,6 +216,11 @@ namespace ChronusQ {
     double *Den2, double *Gamma2, double *cGamma, double *epsEval, double *VRhoEval, 
     double *VgammaEval,double *CVgammaEval, double *EpsSCR, double *VRhoSCR, 
     double *VgammaSCR, double *CVgammaSCR, double* epcEval);
+
+  void loadEPCGradder(
+    std::vector<std::shared_ptr<DFTFunctional>> functionals,
+    size_t NPts, double *Den1, double *Den2, double *epsEval, double *epsEval2, 
+    double* dede, double* dedp);
 
   /**
    *  \brief Construct the required quantities for the formation of the Z vector, 

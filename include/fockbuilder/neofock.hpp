@@ -169,6 +169,10 @@ namespace ChronusQ {
       this->intParam = param;
     }
 
+    std::vector<std::shared_ptr<DFTFunctional>> getFunctionals() {
+      return epc_functionals;
+    }
+
     void formVXC(SingleSlater<MatsT,IntsT>&);
 
     // Interface method
@@ -176,10 +180,7 @@ namespace ChronusQ {
       bool increment = false, double xHFX = 1.);
 
     virtual std::vector<double> getGDGrad(SingleSlater<MatsT,IntsT>&,
-      EMPerturbation&, double xHFX = 1.) {
-        CErr("Gradients of NEOKohnShamBuilder NYI!");
-        abort();
-    }
+      EMPerturbation&, double xHFX = 1.);
   };
 
 }

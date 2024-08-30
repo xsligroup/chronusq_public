@@ -252,19 +252,19 @@ namespace ChronusQ {
   void CQEOMCC_VALID(std::ostream &, CQInputFile &);
 
   // Parse geometry modifier options
-  JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, 
+  JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
     std::shared_ptr<MCWaveFunctionBase> mcscf,
     std::shared_ptr<RealTimeBase>& rt,
     std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert);
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions);
 
-  JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, 
+  JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
     std::shared_ptr<RealTimeBase>& rt,
     std::shared_ptr<TDEMPerturbation>& tdPert,
     std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert);
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions);
 
   void CQDYNAMICS_VALID( std::ostream& out, CQInputFile& input );
 

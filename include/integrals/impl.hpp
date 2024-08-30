@@ -279,6 +279,28 @@ namespace ChronusQ {
 
     }
 
+    if(options.includeTau){
+      // Note: we allocate NAtom*3 number of S0a matrices to use existing infrastructure, 
+      //       but we only use the three matrices that correspond the derivatives on ket:
+      //       <ϕ_P | d/dx ϕ_Q>, 
+      //       <ϕ_P | d/dy ϕ_Q>, 
+      //       <ϕ_P | d/dz ϕ_Q>
+      //       we places these three matrices as the first three elements of S0a
+      if (S0a == nullptr)
+        S0a = std::make_shared<GradInts<OnePInts,IntsT>>(NB, NAt);
+      else
+        S0a->clear();
+      
+      std::vector<IntsT*> S0aPtrs(3*NAt, nullptr);
+      for (auto i = 0; i < 3*NAt; i++) S0aPtrs[i] = (*S0a)[i]->pointer();
+
+      OnePInts<IntsT>::OnePDriverLibint(
+        libint2::Operator::overlap, mol, basis, S0aPtrs, options.particle, 1, 1
+      );
+      //for (size_t i = 0; i < S0aPtrs.size(); i++)
+      //  prettyPrintSmart(std::cout,"ovlp0a " +  std::to_string(i), S0aPtrs[i],NB,NB,NB);
+    }
+
   }; // AOIntegrals<IntsT>::computeGradInts
 
 

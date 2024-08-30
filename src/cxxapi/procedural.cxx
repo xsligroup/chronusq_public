@@ -150,16 +150,17 @@ namespace ChronusQ {
     CQInputFile input(inFileName);
     //SCFOptions scfOptions;
     TDSCFOptions tdSCFOptions;
-    SingleSlaterGuessOptions ssGuestOptions;
+    SingleSlaterGuessOptions ssGuessOptions;
     input.parse();
 
     // Misc options initializes CQMemManager
     CQMiscOptions(output,input);
 
     if (input.containsSection("SCF")) {
-      ssGuestOptions.parseSection(input.getSection("SCF"));
+      ssGuessOptions.parseSection(input.getSection("SCF"));
     }
 
+    // DeltaT and TMax will be overwritten if Dynamics Section is set
     if (input.containsSection("RT")) {
       tdSCFOptions.parseSection(input.getSection("RT"));
     }
@@ -346,15 +347,15 @@ namespace ChronusQ {
 //        compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
 //      }
 
-      JobType elecJob = CQGeometryOptions(output, input, job.jobType, mol, ss, mcscf, rt, tdPert,
-        ep_aoints, emPert);
+      JobType elecJob = CQGeometryOptions(output, input, rstFile, job.jobType, mol, ss, mcscf, rt, tdPert,
+        ep_aoints, emPert, tdSCFOptions);
 
       // Loop over various structures
       while( mol.geometryModifier->hasNext() ) {
 
         // Update geometry
         mol.geometryModifier->electronicPotentialEnergy = ss->totalEnergy;
-        mol.geometryModifier->update(true, mol, firstStep);
+        mol.geometryModifier->update(true, mol, firstStep, tdSCFOptions, ss, emPert, cubes);
         // Update basis to the new geometry
         basis->updateNuclearCoordinates(mol);
         if( dfbasis != nullptr ) dfbasis->updateNuclearCoordinates(mol);
@@ -364,10 +365,12 @@ namespace ChronusQ {
         }
 
         // Calculate integrals 
-        // For Real-time jobs, since basis functions are frozen, no integrals are not re-calculated.
-        //                     assume we can re-use the same integrals from SCF job
         // TODO: Time dependent field?
-        if (elecJob != JobType::RT){
+        if (elecJob == JobType::RT and !tdSCFOptions.doMD) {
+          // For Real-time jobs, since basis functions are frozen, integrals do not need to be re-calculated.
+          //                     assume we can re-use the same integrals from SCF job
+          std::cout << "Skipping integral calculations for RT job. Assuming it's pre-computed." << std::endl;
+        } else {
           aoints->computeAOTwoE(*basis, mol, emPert);
 
           if (doNEO) { 

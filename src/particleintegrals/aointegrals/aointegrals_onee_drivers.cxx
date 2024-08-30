@@ -86,14 +86,14 @@ namespace ChronusQ {
   template <>
   void OnePInts<dcomplex>::OnePDriverLibint(libint2::Operator op,
       Molecule &mol, BasisSet& basis, std::vector<dcomplex*> mats,
-      Particle p, size_t deriv) {
+      Particle p, size_t deriv, size_t S0a) {
     CErr("Only real GTOs are allowed",std::cout);
   };
 
   template <>
   void OnePInts<double>::OnePDriverLibint(libint2::Operator op,
       Molecule &mol, BasisSet& basis, std::vector<double*> mats, 
-      Particle p, size_t deriv) {
+      Particle p, size_t deriv, size_t S0a) {
 
     shell_set& shells = basis.shells;
 
@@ -218,6 +218,32 @@ namespace ChronusQ {
 
         };
 
+        // Compute S0a matrix
+        if (S0a) {
+          for (size_t xyz = 0; xyz < 3; xyz ++) {
+            // "map" buffer to a const Eigen matrix, and copy it to the
+            // corresponding blocks of the result
+            Eigen::Map<
+              const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>>
+              bufMat(buf_vec[3+xyz],n1,n2);
+            Eigen::Map<
+              const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>>
+              bufMat2(buf_vec[xyz],n1,n2);
+              //bufMat(buf_vec[xyz],n1,n2);
+            if (p.charge > 0) {
+              //std::cout << "(" << s1 << "," << s2 << ")" << std::endl;
+              matMaps[xyz].block(bf1_s,bf2_s,n1,n2) = bufMat;
+              if (s1 != s2)
+                matMaps[xyz].block(bf2_s,bf1_s,n2,n1) = bufMat2.transpose();
+            }
+          }
+          //std::cout << "computed S0a" << std::endl;
+          continue; 
+        }
+
+
         // Place integral blocks into their respective matricies
         switch (deriv) {
 
@@ -290,8 +316,10 @@ namespace ChronusQ {
 
 
     // Symmetrize the matricies 
-    for(auto nMat = 0; nMat < matMaps.size(); nMat++) 
-      matMaps[nMat] = matMaps[nMat].template selfadjointView<Eigen::Lower>();
+    if (S0a == 0) {
+      for(auto nMat = 0; nMat < matMaps.size(); nMat++) 
+        matMaps[nMat] = matMaps[nMat].template selfadjointView<Eigen::Lower>();
+    }
 
   }; // OnePInts::OnePDriver
 
@@ -1138,13 +1166,13 @@ namespace ChronusQ {
       gradPtrs[i] = components_[i]->pointer();
     }
 
-
     switch (op) {
-    case OVERLAP:
+    case OVERLAP: {
       OnePInts<double>::OnePDriverLibint(
         libint2::Operator::overlap, mol, basis, gradPtrs, options.particle, 1
       );
       break;
+    }
     case KINETIC:
       OnePInts<double>::OnePDriverLibint(
         libint2::Operator::kinetic, mol, basis, gradPtrs, options.particle, 1

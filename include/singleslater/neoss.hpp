@@ -97,6 +97,11 @@ namespace ChronusQ {
       // Storage for functionals (only for constructing new NEOSS)
       std::vector<std::shared_ptr<DFTFunctional>> functionals;
 
+      std::vector<std::vector<double>> EXCGradient; ///< electronic exchange-correlation energy gradient
+      std::vector<std::vector<double>> EPCGradient; ///< electron-proton correlation energy gradient
+      std::vector<std::vector<double>> EPCGradientE; ///< electron-proton correlation energy gradient with respect to electronic density
+      std::vector<std::vector<double>> EPCGradientP; ///< electron-proton correlation energy gradient with respect to protonic density
+
     public:
 
       // Main constructor
@@ -106,7 +111,21 @@ namespace ChronusQ {
                 std::shared_ptr<Integrals<IntsT>> aoi, Args... args) :
         SingleSlater<MatsT,IntsT>(c,mol,basis,aoi,args...),
         WaveFunctionBase(c,mol,basis,args...),
-        QuantumBase(c,args...) { };
+        QuantumBase(c,args...) {
+          // initialize the gradients (for NEO-DFT dynamics) to be zero
+          EXCGradient.resize(this->molecule_.atoms.size());
+          EPCGradient.resize(this->molecule_.atoms.size());
+          EPCGradientE.resize(this->molecule_.atoms.size());
+          EPCGradientP.resize(this->molecule_.atoms.size());
+          for(size_t ic = 0; ic < this->molecule_.atoms.size(); ic++) {
+            for(size_t xyz = 0; xyz < 3; xyz++) {
+              EXCGradient[ic].push_back(0.);
+              EPCGradient[ic].push_back(0.);
+              EPCGradientE[ic].push_back(0.);
+              EPCGradientP[ic].push_back(0.);
+            }
+          }
+        };
 
       // Copy/move constructors
       template <typename MatsU>
@@ -251,23 +270,34 @@ namespace ChronusQ {
         subsystems["Protonic"]->scfControls.guess = this->scfControls.prot_guess;
       }
 
-      std::vector<double> getGrad(EMPerturbation&, bool, bool) override;
+      std::vector<double> getGrad(EMPerturbation&, bool, bool, double xHFX = 1.) override;
+      void formEXCGradient();
+
+      virtual void checkIdempotency(std::string system=""){
+        applyToEach([&](SubSSPtr& ss){ 
+          std::string sys = (ss->particle.charge>0? "Protonic" : "Electronic");
+          ss->checkIdempotency(sys);
+        });
+      }
 
       // Functions for OrbitalModifier
       virtual void runSCF(EMPerturbation&) override;
       virtual void buildOrbitalModifierOptions() override;
       virtual void printProperties() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM() override;
+      virtual std::vector<cqmatrix::Matrix<MatsT>> getOnePDMOrtho() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock() override;
       virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*) override;
       virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*) override;
       virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho() override;
       virtual double getTotalEnergy() override { return this->totalEnergy; };
       virtual void setDenEqCoeff(bool val);
+      virtual void ortho2aoMOs();
+      virtual void ao2orthoDen();
       virtual void ortho2aoDen() override;
 
       // Cube
-      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &) override;
+      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation&, std::string prefix="", std::shared_ptr<Molecule> = nullptr) override;
 
       // Properties
       using QuantumBase::computeEnergy;

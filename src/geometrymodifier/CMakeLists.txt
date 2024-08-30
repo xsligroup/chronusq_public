@@ -20,4 +20,4 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-target_sources(cq PRIVATE impl.cxx)
+target_sources(cq PRIVATE impl.cxx velocityverlet.cxx print.cxx fileio.cxx)

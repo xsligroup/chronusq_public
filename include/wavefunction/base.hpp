@@ -99,7 +99,7 @@ namespace ChronusQ {
 
     // Get geometric gradients
     virtual std::vector<double> getGrad(EMPerturbation&, bool equil,
-      bool saveInts) = 0;
+      bool saveInts, double xHFX = 1.) = 0;
 
   }; // class WaveFunctionBase
 

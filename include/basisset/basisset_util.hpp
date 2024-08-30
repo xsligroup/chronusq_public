@@ -81,12 +81,36 @@ namespace ChronusQ {
 //SS end
 
   /**
+   *  \brief Level 2 Basis Set Gradient Evaluation Function
+   *  \brief Evaluates a shell set over a specified number of cartesian points. This
+   *  \brief function requires a precomputed set of distances and their x,y,z components
+   *  \brief for each point from each shell origin in the shells vector..
+   */
+  void evalShellSetGrad(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &, double *, double *, size_t, 
+    size_t, std::vector<size_t> &, size_t, double*, double*, size_t, bool );
+
+  /**
+   *  \brief Level 3 Basis Set Gradient Evaluation Function
+   *  \brief Evaluates a single shell over a single cartesian point. This function requires a precomputed
+   *  \brief distance and its x,y,z components for the point from the shell origin. An offset
+   *  \brief to properly store the results can be used..
+   */
+  void evalShellSetGrad(SHELL_EVAL_TYPE,const libint2::Shell&,double,const std::array<double,3>&, double*, size_t);
+
+  /**
    *  \brief Basis Set transformation from Cartesian to Spherical
    *  it also provide to copy to the final storage (pointer) and requires that the transformation matrix Sp <-> Cart
    *  is already populated.
    */ 
   void CarToSpDEval(SHELL_EVAL_TYPE, size_t , double *, double*, size_t, size_t, bool);
   void CarToSpDEval(SHELL_EVAL_TYPE, size_t , dcomplex *, dcomplex*, size_t, size_t, bool); //GIAO
+
+  /**
+   *  \brief Basis Set Gradient transformation from Cartesian to Spherical
+   *  it also provide to copy to the final storage (pointer) and requires that the transformation matrix Sp <-> Cart
+   *  is already populated.
+   */
+  void CarToSpDGradEval(SHELL_EVAL_TYPE, size_t, double *, double *, size_t, size_t, bool);
 
   void testEval(double *, std::vector<libint2::Shell> &, bool);
 

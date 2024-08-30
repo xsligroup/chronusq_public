@@ -39,6 +39,15 @@ namespace ChronusQ {
   template void SingleSlater<dcomplex,double>::getScr1PDM<double>(SafeFile &);
   template void SingleSlater<dcomplex,double>::getScr1PDM<dcomplex>(SafeFile &);
 
+  // Explicit template instantiation for RT functions that require dcomplex matrix types
+  template void SingleSlater<dcomplex, double>::addTauToFock<dcomplex>();
+  template void SingleSlater<dcomplex, dcomplex>::addTauToFock<dcomplex>();
+  template void SingleSlater<dcomplex, double>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&);
+  template void SingleSlater<dcomplex, dcomplex>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&);
+  template void SingleSlater<dcomplex, double>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&);
+  template void SingleSlater<dcomplex, dcomplex>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&);
+  template cqmatrix::PauliSpinorMatrices<dcomplex> SingleSlater<dcomplex, double>::getTimeDerDen<dcomplex>(bool);
+  template cqmatrix::PauliSpinorMatrices<dcomplex> SingleSlater<dcomplex, dcomplex>::getTimeDerDen<dcomplex>(bool);
 
   // Instantiate copy constructors
   template SingleSlater<dcomplex,double>::SingleSlater(const SingleSlater<double,double> &, int);

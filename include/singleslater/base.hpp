@@ -122,7 +122,6 @@ namespace ChronusQ {
     // In essence, all derived classes should be able to:
     //   Form a Fock matrix with the ability to increment
     virtual void formFock(EMPerturbation &, bool increment = false, double xHFX = 1.) = 0;
-
     // Function to build the orbitalModifier object which determines which
     // algorithm is used
     virtual void buildOrbitalModifierOptions() = 0;
@@ -148,7 +147,7 @@ namespace ChronusQ {
     virtual void printFockTimings(std::ostream&) = 0;
 
     // Post-processing functions
-    virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &) = 0;
+    virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &, std::string prefix="", std::shared_ptr<Molecule> = nullptr) = 0;
 
 #ifdef TEST_MOINTSTRANSFORMER
     virtual void MOIntsTransformationTest(EMPerturbation &pert) = 0;

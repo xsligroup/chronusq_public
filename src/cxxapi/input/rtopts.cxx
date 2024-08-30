@@ -45,10 +45,12 @@ namespace ChronusQ {
       "FIELD",
       "FIELDINDEPENDENTHAMILTONIAN",
       "INTALG",
+      "PROT_INTALG",
       "RESTARTALG",
       "RESTARTSTEP",
       "RESTARTFROM",
       "SAVESTEP",
+      "SAVEONEPDM",
       "RESTART",
       "SCFFIELD",
       "PRINTLEVEL",
@@ -170,7 +172,7 @@ namespace ChronusQ {
     // no magnetic fields... yet.
     //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
 
-     // Parse Options
+    // Parse Options
     try {
       rt->intScheme.tMax = input.getData<double>("RT.TMAX");
     } catch(...) {

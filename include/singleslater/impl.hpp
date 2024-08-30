@@ -251,6 +251,7 @@ namespace ChronusQ {
 // Other implementation files
 #include <singleslater/quantum.hpp>   // Quantum declarations
 #include <singleslater/fock.hpp>      // Fock matrix header
+#include <singleslater/rt.hpp>        // RT header
 #include <singleslater/guess.hpp>     // Guess header
 #include <singleslater/scf.hpp>       // SCF header
 #include <singleslater/print.hpp>     // Print header

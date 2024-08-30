@@ -215,6 +215,20 @@ namespace ChronusQ {
   
     }
 
+    std::vector<double> getTotalCoordinates() const {
+      std::vector<double> totalCoordinates;
+      for (const auto& atom : atoms) 
+          totalCoordinates.insert(totalCoordinates.end(), atom.coord.begin(), atom.coord.end());
+      return totalCoordinates;
+    }
+
+    void setCoordinates(const std::vector<double>& coordinates) {
+      if (coordinates.size() != atoms.size() * 3) 
+        CErr("The size of the coordinates vector must be 3 times the number of atoms.");
+      for (size_t i = 0; i < atoms.size(); ++i) 
+        std::copy(coordinates.begin() + i * 3, coordinates.begin() + (i * 3 + 3), atoms[i].coord.begin());
+    }
+
 
     private:
 

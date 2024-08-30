@@ -235,4 +235,37 @@ namespace ChronusQ {
     double *Hx, double *Hy, double *Hz,
     IntsT *BasisScratch, IntsT *ZMAT);
 
+  // Evaluate Density Nuclear Gradient
+  void evalDenGrad(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB,
+    std::vector<std::pair<size_t,size_t>> &subMatCut, double* SCR1,
+    double *SCR2, std::vector<std::vector<double*>>SCR3, std::vector<std::vector<double*>>SCR4, 
+    std::vector<double*> SCR5,
+    std::vector<std::vector<double*>>GDENMAT, double *DENMAT,  
+    std::vector<double*>GDenX, std::vector<double*>GDenY, std::vector<double*>GDenZ,
+    std::vector<double*>GGDenxX, std::vector<double*>GGDenxY, std::vector<double*>GGDenxZ, 
+    std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
+    std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
+    double *BasisScr, double *BasisGradScr, size_t nAtoms, BasisSet &basisSet);
+
+  template <typename MatsT>
+  void mkAuxVarGrad(
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM, 
+    bool isGGA, double epsScreen, size_t NPts_Batch, 
+    std::vector<double*> dScalardX, std::vector<double*> dScalardY, std::vector<double*> dScalardZ, 
+    std::vector<double*> dMzdX, std::vector<double*> dMzdY, std::vector<double*> dMzdZ,
+    double *dScalardx, double *dScalardy, double *dScalardz,
+    double *dMzdx, double *dMzdy, double *dMzdz,
+    std::vector<double*> dScalardxX, std::vector<double*> dScalardxY, std::vector<double*> dScalardxZ, 
+    std::vector<double*> dScalardyX, std::vector<double*> dScalardyY, std::vector<double*> dScalardyZ, 
+    std::vector<double*> dScalardzX, std::vector<double*> dScalardzY, std::vector<double*> dScalardzZ, 
+    std::vector<double*> dMzdxX, std::vector<double*> dMzdxY, std::vector<double*> dMzdxZ, 
+    std::vector<double*> dMzdyX, std::vector<double*> dMzdyY, std::vector<double*> dMzdyZ, 
+    std::vector<double*> dMzdzX, std::vector<double*> dMzdzY, std::vector<double*> dMzdzZ, 
+    std::vector<double*> nCollGrad_X, std::vector<double*> nCollGrad_Y,
+    std::vector<double*> nCollGrad_Z, 
+    std::vector<double*> gammaCollGrad_X, std::vector<double*> gammaCollGrad_Y, 
+    std::vector<double*> gammaCollGrad_Z, size_t nAtoms);
+
+  double energy_vxc_grad(bool isGGA, size_t NPts, std::vector<double> &weights, double *vrho,
+    double *vsigma, double *GradDen, double *GradGamma);
 }

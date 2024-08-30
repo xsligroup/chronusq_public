@@ -32,7 +32,7 @@
 #include <basisset.hpp>
 #include <molecule.hpp>
 #include <physcon.hpp>
-
+#include <algorithm> 
 #include <util/threads.hpp>
 #include <util/mpi.hpp>
 
@@ -486,6 +486,10 @@ namespace ChronusQ {
     size_t           NDer2;        ///< Number of required basis set derivatives for 2nd basis
     bool             Int2nd = false; ///< Whether to integrate second basis set
 
+    bool             doGrad;       ///< Whether to compute gradient as well 
+    size_t           GradNDer;     ///< Number of required gradients
+    size_t           GradNDer2;    ///< Number of required gradients for second basis
+
   public:
 
     // Defaulted / Deleted ctors
@@ -503,9 +507,10 @@ namespace ChronusQ {
       BasisSet &basis, _QTyp1 g, size_t NAng, size_t NRadPerMacroBatch, 
       SHELL_EVAL_TYPE typ, double epsScreen) :
       comm(c),molecule_(mol),basisSet_(basis),typ_(typ),
-      basisSet2_(basis),epsScreen_(epsScreen),
+      basisSet2_(basis),epsScreen_(epsScreen),doGrad(false),
       SphereIntegrator<_QTyp1>(g,NAng,{0.,0.,0.},1.,NRadPerMacroBatch),
-      NDer((typ_ == GRADIENT) ? 4:1){ };
+      NDer((typ_ == GRADIENT) ? 4:1),
+      GradNDer((typ_ == GRADIENT) ? 12:3){ };
 
     /**
      *  \brief BeckeIntegrator constructor
@@ -517,10 +522,12 @@ namespace ChronusQ {
       BasisSet &basis1, BasisSet &basis2, _QTyp1 g, size_t NAng, size_t NRadPerMacroBatch, 
       SHELL_EVAL_TYPE typ1, SHELL_EVAL_TYPE typ2, double epsScreen) : 
       comm(c),molecule_(mol),basisSet_(basis1),typ_(typ1),
-      epsScreen_(epsScreen),basisSet2_(basis2),typ2_(typ2),
+      epsScreen_(epsScreen),basisSet2_(basis2),typ2_(typ2),doGrad(false),
       SphereIntegrator<_QTyp1>(g,NAng,{0.,0.,0.},1.,NRadPerMacroBatch),
       NDer((typ_ == GRADIENT) ? 4:1),NDer2((typ2_ == GRADIENT) ? 4:1),
-      Int2nd(true) { };
+      Int2nd(true),
+      GradNDer((typ_ == GRADIENT) ? 12:3),
+      GradNDer2((typ2_ == GRADIENT) ? 12:3) { };
 
     /**
      *  Functions for the multicenter numerical integration from
@@ -530,6 +537,8 @@ namespace ChronusQ {
 
     inline double hBecke(double x) {return 1.5 * x - 0.5 * x * x * x;}; // Eq. 19
     inline double gBecke(double x) {return hBecke(hBecke(hBecke(x)));}; // Eq. 20 f_3
+
+    void turn_on_grad() { doGrad = true; } 
 
     // TODO: Put member functions in CXX file
           
@@ -773,14 +782,22 @@ namespace ChronusQ {
       size_t maxBatchSizeAtoms = maxBatchSize * molecule_.nAtoms;
 
       // Allocate Basis scratch
-      double *BasisEval = 
-        CQMemManager::get().malloc<double>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
+      double *BasisEval;
+      if (doGrad)
+        BasisEval = 
+          CQMemManager::get().malloc<double>(nthreads*(NDer+GradNDer)*maxBatchSize*basisSet_.nBasis);
+       else
+         BasisEval = 
+           CQMemManager::get().malloc<double>(nthreads*NDer*maxBatchSize*basisSet_.nBasis);
 
       // Allocate Basis2 scratch
       double *Basis2Eval;
       //std::cout << "In integrate " << Int2nd << std::endl;
-      if (Int2nd) 
-        Basis2Eval = CQMemManager::get().malloc<double>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
+      if (Int2nd)
+        if (doGrad)
+          Basis2Eval = CQMemManager::get().malloc<double>(nthreads*(NDer2+GradNDer2)*maxBatchSize*basisSet2_.nBasis);
+        else
+          Basis2Eval = CQMemManager::get().malloc<double>(nthreads*NDer2*maxBatchSize*basisSet2_.nBasis);
 
       // Allocate Basis scratch (shell cartisian)
       int LMax = 0;
@@ -791,6 +808,11 @@ namespace ChronusQ {
       double * SCR_Car = 
         CQMemManager::get().malloc<double>(nthreads*NDer*shSizeCar);
 
+      // Allocate for Basis nuclear gradient scratch
+      double * SCRGrad_Car;
+      if (doGrad)
+        SCRGrad_Car = CQMemManager::get().malloc<double>(nthreads*GradNDer*shSizeCar);
+
       // Allocate Basis2 scratch (shell cartisian)
       int LMax2 = 0;
       if (Int2nd)
@@ -799,8 +821,12 @@ namespace ChronusQ {
 
       size_t shSizeCar2 = ((LMax2+1)*(LMax2+2))/2; 
       double * SCR_Car2;
-      if (Int2nd) 
+      double * SCRGrad_Car2;
+      if (Int2nd){ 
         SCR_Car2 = CQMemManager::get().malloc<double>(nthreads*NDer2*shSizeCar2);
+        if (doGrad)
+          SCRGrad_Car2 = CQMemManager::get().malloc<double>(nthreads*GradNDer2*shSizeCar2);
+      }
 
       // Allocate scratch for Point Distances (squared and components) from each atomic center
 
@@ -856,16 +882,37 @@ namespace ChronusQ {
         auto topDist = std::chrono::high_resolution_clock::now();
 #endif
 
-        size_t thread_id = GetThreadID();       
+        size_t thread_id = GetThreadID();
 
-        double * BasisEval_loc = BasisEval + thread_id * NDer * maxBatchSize * basisSet_.nBasis;
+        double * BasisEval_loc;
+        if (doGrad)
+          BasisEval_loc = BasisEval + thread_id * (NDer + GradNDer) * maxBatchSize * basisSet_.nBasis;
+        else 
+          BasisEval_loc = BasisEval + thread_id * NDer * maxBatchSize * basisSet_.nBasis;
+        //double * BasisEval_loc = BasisEval + thread_id * NDer * maxBatchSize * basisSet_.nBasis;
         double * SCR_Car_loc   = SCR_Car   + thread_id * NDer * shSizeCar;
 
-        double * BasisEval2_loc, * SCR_Car2_loc;
-        if (Int2nd) {
-          BasisEval2_loc = Basis2Eval + thread_id * NDer2 * maxBatchSize * basisSet2_.nBasis;
-          SCR_Car2_loc   = SCR_Car2   + thread_id * NDer2 * shSizeCar2;  
+        double * BasisGradEval_loc, * SCRGrad_Car_loc;
+        if (doGrad) {
+          BasisGradEval_loc = BasisEval + thread_id * (NDer + GradNDer) * maxBatchSize * basisSet_.nBasis + NDer * maxBatchSize * basisSet_.nBasis;
+          SCRGrad_Car_loc   = SCRGrad_Car   + thread_id * GradNDer * shSizeCar;
         }
+
+        double * BasisEval2_loc, * SCR_Car2_loc;
+        double * BasisGradEval2_loc, * SCRGrad_Car2_loc;
+        if (Int2nd) {
+          if (doGrad)
+            BasisEval2_loc = Basis2Eval + thread_id * (NDer2 + GradNDer2) * maxBatchSize * basisSet2_.nBasis;
+          else
+            BasisEval2_loc = Basis2Eval + thread_id * NDer2 * maxBatchSize * basisSet2_.nBasis;
+
+          SCR_Car2_loc   = SCR_Car2   + thread_id * NDer2 * shSizeCar2;
+
+          if (doGrad) {
+            BasisGradEval2_loc = Basis2Eval + thread_id * (NDer2 + GradNDer2) * maxBatchSize * basisSet2_.nBasis + NDer2 * maxBatchSize * basisSet2_.nBasis;
+            SCRGrad_Car2_loc   = SCRGrad_Car2   + thread_id * GradNDer2 * shSizeCar2; 
+          }
+        }       
 
         double * cenRSq_loc = cenRSq + thread_id * maxBatchSizeAtoms;
         double * cenR_loc   = cenR   + thread_id * maxBatchSizeAtoms;
@@ -906,15 +953,19 @@ namespace ChronusQ {
         for(auto iSh = 0; iSh < basisSet_.nShell; iSh++) {
 
           double RAS = molecule_.RIJ[iAtm][basisSet_.mapSh2Cen[iSh]];
+          bool evalthisShell = true;
+          if (not doGrad)
+            evalthisShell = not ((RAS >= (minR + mapSh2Cut[iSh])) or (RAS < (maxR - mapSh2Cut[iSh])));
           evalShell.emplace_back(
-#if INT_DEBUG_LEVEL < 3
-           // Note. the spherical shell of point has to be within the shell cutoff 
-           // if is on the center or inside the other shell cutoff 
-            not (
-              (RAS >= (minR + mapSh2Cut[iSh])) or
-              (RAS <  (maxR - mapSh2Cut[iSh]))  
-            )
-           //true
+//#if INT_DEBUG_LEVEL < 3
+#if 0
+          // Note. the spherical shell of point has to be within the shell cutoff 
+          // if is on the center or inside the other shell cutoff 
+            evalthisShell
+            //not (
+            //  (RAS >= (minR + mapSh2Cut[iSh])) or
+            //  (RAS <  (maxR - mapSh2Cut[iSh]))  
+            //)
 #else
             true
 #endif
@@ -1027,13 +1078,36 @@ namespace ChronusQ {
         // TIMING
         auto topBasis = std::chrono::high_resolution_clock::now();
 #endif
+
+      //std::cout << "Basis Eval for thread " << thread_id << std::endl;
+      //for (size_t i=0; i < std::min(static_cast<size_t>(10), (NDer+GradNDer)*maxBatchSize*basisSet_.nBasis); i++){
+      //  std::cout << std::fixed << std::setprecision(16) << *(BasisEval_loc+i) << std::endl;
+      //}  
+
+      //if (doGrad){
+      //  std::cout << "Basis Eval Grad for thread " << thread_id << std::endl;
+      //  for (size_t i=0; i < std::min(static_cast<size_t>(10), (NDer + GradNDer) * maxBatchSize * basisSet_.nBasis + NDer * maxBatchSize * basisSet_.nBasis); i++){
+      //    std::cout << std::fixed << std::setprecision(16) << *(BasisGradEval_loc+i) << std::endl;
+      //  } 
+      //}  
         
         evalShellSet(typ_,basisSet_.shells,evalShell,cenRSq_loc,cenXYZ_loc,batch.size(),molecule_.nAtoms,
           basisSet_.mapSh2Cen,basisEvalDim,BasisEval_loc,SCR_Car_loc,shSizeCar,basisSet_.forceCart);
 
-        if (Int2nd)
+        if (doGrad) {
+          evalShellSetGrad(typ_,basisSet_.shells,evalShell,cenRSq_loc,cenXYZ_loc,batch.size(),molecule_.nAtoms,
+            basisSet_.mapSh2Cen,basisEvalDim,BasisGradEval_loc,SCRGrad_Car_loc,shSizeCar,basisSet_.forceCart);
+        }
+
+        if (Int2nd) {
           evalShellSet(typ2_,basisSet2_.shells,evalShell2,cenRSq_loc,cenXYZ_loc,batch.size(), molecule_.nAtoms,
             basisSet2_.mapSh2Cen,basisEvalDim2,BasisEval2_loc,SCR_Car2_loc,shSizeCar2,basisSet2_.forceCart);
+
+          if (doGrad){
+            evalShellSetGrad(typ2_,basisSet2_.shells,evalShell2,cenRSq_loc,cenXYZ_loc,batch.size(),molecule_.nAtoms,
+              basisSet2_.mapSh2Cen,basisEvalDim2,BasisGradEval2_loc,SCRGrad_Car2_loc,shSizeCar2,basisSet2_.forceCart);
+          }
+        }
 
 #if INT_DEBUG_LEVEL >= 1
         // TIMNG
@@ -1070,7 +1144,6 @@ namespace ChronusQ {
 #if INT_DEBUG_LEVEL >= 1
         auto topFunc = std::chrono::high_resolution_clock::now();
 #endif
-
 
         // Final call to be resambled ba the lambda function
         if (not Int2nd) {
@@ -1129,12 +1202,19 @@ namespace ChronusQ {
 
       } // loop over atoms
       res *= 4.* M_PI;
+      
 
       // clean memory
       CQMemManager::get().free(BasisEval,cenRSq,cenXYZ,cenR,SCR_Car);
 
-      if (Int2nd)
+      if (doGrad)
+        CQMemManager::get().free(SCRGrad_Car);
+
+      if (Int2nd){
        CQMemManager::get().free(Basis2Eval,SCR_Car2);
+       if (doGrad)
+        CQMemManager::get().free(SCRGrad_Car2);
+      }
 
 #if INT_DEBUG_LEVEL >= 1
       //TIMING

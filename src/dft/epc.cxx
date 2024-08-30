@@ -510,7 +510,8 @@ namespace ChronusQ {
 
     }
 
-  }; // loadVXCderWithEPC
+  }; // loadEPCVXCder
+
 
   /**
    *  \brief Construct the required quantities for the formation of the Z vector, 
@@ -596,5 +597,58 @@ namespace ChronusQ {
     return XCEnergy;
 
   };
+
+  void EPC17::evalEPCGrad(size_t N, double *rho, double *aux_rho, double *eps, double *aux_eps,
+      double* dede, double* dedp) {
+
+    // loop over grid points
+    for(auto iPt = 0; iPt < N; iPt++) {
+
+      // total electron density 
+      double total_erho = std::abs(rho[2*iPt]+rho[2*iPt+1]) > 1e-15 ? rho[2*iPt]+rho[2*iPt+1] : 0.0; 
+      // total proton density 
+      double total_prho = std::abs(aux_rho[2*iPt]+aux_rho[2*iPt+1]) > 1e-15 ? aux_rho[2*iPt]+aux_rho[2*iPt+1] : 0.0; 
+
+      // skip this point if the density is too small
+      if(total_erho < 1e-15 or total_prho < 1e-15) {
+        dede[2*iPt]   =  0.;
+        dede[2*iPt+1] =  0.;
+        dedp[2*iPt]   =  0.;
+        dedp[2*iPt+1] =  0.;
+        continue;
+      } 
+
+      // epc17-2 denominator
+      double dn = 2.35 - 2.4 * std::sqrt(total_erho * total_prho) + 6.6 * (total_erho * total_prho);
+
+      eps[iPt]     += -1.0 * total_prho / dn;
+      aux_eps[iPt]  = -1.0 * total_erho / dn;
+
+      dede[2*iPt]   = ( -1.0 * total_prho / dn + (-1.2 * std::sqrt(total_erho) * std::sqrt(total_prho) * total_prho 
+                    +    6.6 * total_erho * total_prho * total_prho ) / (dn * dn) );
+      dede[2*iPt+1] = ( -1.0 * total_prho / dn + (-1.2 * std::sqrt(total_erho) * std::sqrt(total_prho) * total_prho 
+                    +    6.6 * total_erho * total_prho * total_prho ) / (dn * dn) );
+
+      dedp[2*iPt]   = ( -1.0 * total_erho / dn + (-1.2 * std::sqrt(total_prho) * std::sqrt(total_erho) * total_erho 
+                    +    6.6 * total_erho * total_erho * total_prho ) / (dn * dn) );
+      dedp[2*iPt+1] = 0.;
+    }
+  }; // epc17-2 functional
+
+  void loadEPCGradder(
+    std::vector<std::shared_ptr<DFTFunctional>> functionals,
+    size_t NPts, double *Den1, double *Den2, double *epsEval, double *epsEval2,
+    double* dede, double* dedp) { 
+
+    if(functionals.size() > 1) CErr("Multiple EPC Functionals NYI");
+
+    if(functionals[0]->isGGA()) CErr("GGA EPC Functionals NYI"); 
+
+    if(auto epc17 = std::dynamic_pointer_cast<EPC17>(functionals[0]))
+      epc17->evalEPCGrad(NPts,Den1,Den2,epsEval,epsEval2,dede,dedp);
+    else 
+      CErr("Cast into EPC17 Unsuccessful!");
+
+  }; // loadEPCGradder
 
 } // namespace ChronusQ
