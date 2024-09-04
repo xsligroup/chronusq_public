@@ -41,11 +41,11 @@ namespace ChronusQ {
    */
   struct IntegrationProgressNew {
 
-    double  currentTime = 0.; ///< Current time point
-    size_t  currentStep = 0;  ///< Step index of current time point
-    double  currentDeltaT;   ///< Current step size
-    size_t  maxSavePoints;   ///< Maximum number of save points
-    size_t  lastSavePoint = 0;   ///< Index of last save point
+    double  currentTime = 0.;  ///< Current time point
+    size_t  currentStep = 0;   ///< Step index of current time point
+    double  currentDeltaT;     ///< Current step size
+    size_t  maxSavePoints;     ///< Maximum number of density save points
+    size_t  lastSavePoint = 0; ///< Index of last density save point
 
     std::vector<double> time;
     std::vector<double> energy;

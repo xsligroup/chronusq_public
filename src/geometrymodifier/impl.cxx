@@ -60,7 +60,7 @@ namespace ChronusQ {
       curState.iStep = 0;
       initializeMD(molecule, ss);
       if(mdOptions.pertFirstAtom) pertFirstAtom();
-      electronicPotentialEnergy = finalMidpointFock();
+      if(mdOptions.projectOrthoDen or mdOptions.pertFirstAtom) electronicPotentialEnergy = finalMidpointFock();
     } else {
       curState.iStep++;
     }

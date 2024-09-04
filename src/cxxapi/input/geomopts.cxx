@@ -45,7 +45,8 @@ namespace ChronusQ {
       "PERT_VALUE_X",
       "PERT_VALUE_Y",
       "PERT_VALUE_Z",
-      "SAVEALLGEOMETRY"
+      "SAVEALLGEOMETRY",
+      "PROJECT_ORTHO_DEN",
     };
   }
 
@@ -444,6 +445,8 @@ namespace ChronusQ {
       OPTOPT( md->mdOptions.pert_val_x = input.getData<double>("DYNAMICS.PERT_VALUE_X");)
       OPTOPT( md->mdOptions.pert_val_y = input.getData<double>("DYNAMICS.PERT_VALUE_Y");)
       OPTOPT( md->mdOptions.pert_val_z = input.getData<double>("DYNAMICS.PERT_VALUE_Z");)
+      
+      OPTOPT( md->mdOptions.projectOrthoDen = input.getData<bool>("DYNAMICS.PROJECT_ORTHO_DEN");)
       
 
       // Set up electronic jobs for each MD type

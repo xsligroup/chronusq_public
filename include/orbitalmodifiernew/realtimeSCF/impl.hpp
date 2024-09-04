@@ -221,12 +221,15 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::createRTDataSets(size_t maxPoints) 
   savFile.createDataSet<size_t>("RTNEW/ISAVE", {1});
   savFile.createDataSet<size_t>("RTNEW/LASTSAVEPOINT", {1});
   savFile.createDataSet<size_t>("RTNEW/MAXSAVEPOINTS", {1});
+  savFile.createDataSet<size_t>("RTNEW/MAXSTEPS", {1});
 
-  savFile.createDataSet<size_t>("RTNEW/STEP", {integrationProgress.maxSavePoints});
-  savFile.createDataSet<double>("RTNEW/TIME", {integrationProgress.maxSavePoints});
-  savFile.createDataSet<double>("RTNEW/ENERGY", {integrationProgress.maxSavePoints});
-  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE", {integrationProgress.maxSavePoints*3});
-  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {integrationProgress.maxSavePoints*3});
+  size_t maxDim = tdSCFOptions.doMD ? tdSCFOptions.rtMaxStepsPerMDStep*tdSCFOptions.totalMDSteps : tdSCFOptions.maxSteps;
+  savFile.createDataSet<size_t>("RTNEW/SAVESTEP", {integrationProgress.maxSavePoints});
+  savFile.createDataSet<size_t>("RTNEW/STEP",   {maxDim});
+  savFile.createDataSet<double>("RTNEW/TIME",   {maxDim});
+  savFile.createDataSet<double>("RTNEW/ENERGY", {maxDim});
+  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE",       {maxDim*3});
+  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxDim*3});
 
   for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
     size_t nBasis = this->onePDMSquareOrtho[i].dimension();
@@ -245,11 +248,20 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
 
   savFile.safeWriteData("RTNEW/ISAVE", &tdSCFOptions.iSave, {1});
   savFile.safeWriteData("RTNEW/MAXSAVEPOINTS", &integrationProgress.maxSavePoints, {1});
+  savFile.safeWriteData("RTNEW/MAXSTEPS", &tdSCFOptions.maxSteps, {1});
 
   integrationProgress.time.push_back(integrationProgress.currentTime);
   integrationProgress.energy.push_back(this->singleSlaterSystem.totalEnergy);
   integrationProgress.electricDipole.push_back(this->singleSlaterSystem.elecDipole);
   if( currentPerturbation.fields.size() > 0 ) integrationProgress.electricDipoleField.push_back(currentPerturbation.getDipoleAmp(Electric) );
+  
+  savFile.partialWriteData("RTNEW/TIME", &integrationProgress.currentTime, {integrationProgress.currentStep},{1},{0},{1});
+  savFile.partialWriteData("RTNEW/STEP", &integrationProgress.currentStep, {integrationProgress.currentStep},{1},{0},{1});
+  savFile.partialWriteData("RTNEW/ENERGY", &this->singleSlaterSystem.totalEnergy, {integrationProgress.currentStep},{1},{0},{1});
+  savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &this->singleSlaterSystem.elecDipole[0],{integrationProgress.currentStep*3}, {3},{0},{3});
+  std::array<double,3> elecDipoleField = currentPerturbation.getDipoleAmp(Electric);
+  if (integrationProgress.electricDipoleField.size() > 0)
+    savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE_FIELD",&elecDipoleField[0], {integrationProgress.currentStep*3}, {3},{0},{3});
 
   if (integrationProgress.currentStep == tdSCFOptions.restoreFromStep   // Save on entry
       or integrationProgress.currentStep == tdSCFOptions.maxSteps-1     // Save on exit
@@ -265,13 +277,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
     std::cout << "  *** Saving step #"<<integrationProgress.currentStep<<"( t = "<<integrationProgress.currentTime<<" au) to binary file ***" << std::endl;
     
     savFile.safeWriteData("RTNEW/LASTSAVEPOINT", &(integrationProgress.lastSavePoint), {1});
-    savFile.partialWriteData("RTNEW/TIME", &integrationProgress.currentTime, {integrationProgress.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("RTNEW/STEP", &integrationProgress.currentStep, {integrationProgress.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("RTNEW/ENERGY", &this->singleSlaterSystem.totalEnergy, {integrationProgress.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &this->singleSlaterSystem.elecDipole[0],{integrationProgress.lastSavePoint*3}, {3},{0},{3});
-    std::array<double,3> elecDipoleField = currentPerturbation.getDipoleAmp(Electric);
-    if (integrationProgress.electricDipoleField.size() > 0)
-      savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE_FIELD",&elecDipoleField[0], {integrationProgress.lastSavePoint*3}, {3},{0},{3});
+    savFile.partialWriteData("RTNEW/SAVESTEP", &integrationProgress.currentStep, {integrationProgress.lastSavePoint},{1},{0},{1});
 
     for (size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
       size_t nBasis = this->onePDMSquareOrtho[i].dimension();
@@ -314,20 +320,31 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
     size_t iSave;
     savFile.readData("RTNEW/ISAVE", &iSave);
 
-    if(tdSCFOptions.restoreFromStep < 0) integrationProgress.lastSavePoint = lastSavePoint;
-    else {
-      if(tdSCFOptions.doMD){
+    size_t restartStep;
+    if (tdSCFOptions.restoreFromStep < 0) {
+      integrationProgress.lastSavePoint = lastSavePoint;
+      if (tdSCFOptions.doMD) {
+        size_t scaleFactor = std::min(tdSCFOptions.rtMaxStepsPerMDStep, iSave);
+        restartStep = integrationProgress.lastSavePoint*scaleFactor-1;
+      } else {
+        restartStep = integrationProgress.lastSavePoint*iSave;
+      }
+    } else {
+      if (tdSCFOptions.doMD){
         integrationProgress.lastSavePoint = tdSCFOptions.restoreFromStep;
-      }else {
+        size_t scaleFactor = std::min(tdSCFOptions.rtMaxStepsPerMDStep, iSave);
+        restartStep = integrationProgress.lastSavePoint*scaleFactor-1;
+      } else {
         integrationProgress.lastSavePoint = tdSCFOptions.restoreFromStep/iSave;
-        if(integrationProgress.lastSavePoint> lastSavePoint) integrationProgress.lastSavePoint = lastSavePoint;
+        if(integrationProgress.lastSavePoint > lastSavePoint) integrationProgress.lastSavePoint = lastSavePoint;
+        restartStep = integrationProgress.lastSavePoint*iSave;
       }
     }
 
     // Restore time dependent density
     try {
-      savFile.partialReadData("RTNEW/STEP", &integrationProgress.currentStep, {integrationProgress.lastSavePoint}, {1}, {0}, {1});
-      savFile.partialReadData("RTNEW/TIME", &integrationProgress.currentTime, {integrationProgress.lastSavePoint}, {1}, {0}, {1});
+      savFile.partialReadData("RTNEW/STEP", &integrationProgress.currentStep, {restartStep}, {1}, {0}, {1});
+      savFile.partialReadData("RTNEW/TIME", &integrationProgress.currentTime, {restartStep}, {1}, {0}, {1});
 
       for (size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
         size_t nBasis = this->onePDMSquareOrtho[i].dimension();

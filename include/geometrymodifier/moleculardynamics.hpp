@@ -46,10 +46,12 @@ namespace ChronusQ {
     double timeStepAU; // Nuclear timestep for molecular dynamics in a.u.
     double timeStepFS; // Nucleartimestep for molecular dynamics in fs
 
-    bool pertFirstAtom = false; // Perturb first atom's geometry at t=0
+    bool pertFirstAtom = false; ///< Perturb first atom's geometry at t=0
     double pert_val_x = 1e-5;   ///< perturbation value
     double pert_val_y = 1e-5;   ///< perturbation value
     double pert_val_z = 1e-5;   ///< perturbation value
+    
+    bool projectOrthoDen = false; // Project the orthonormal density to initial geometry
 
     MDOptions(double tmax, double deltat)
     {
