@@ -19,41 +19,41 @@ jobs:
       matrix:
         config:
           - {
-            name: "GCC12",
-            os: [self-hosted, gcc12],
-            cc: "gcc-12",
-            cxx: "g++-12",
-            fc: "gfortran-12",
+            name: "GCC",
+            os: [self-hosted, gcc],
+            # cc: "gcc-12",
+            # cxx: "g++-12",
+            # fc: "gfortran-12",
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 4
+            parallel_build_tasks: 1
           }
           - {
-            name: "GCC12-MPI",
-            os: [self-hosted, gcc12, mpi],
-            cc: "gcc-12",
-            cxx: "g++-12",
-            fc: "gfortran-12",
+            name: "GCC-MPI",
+            os: [self-hosted, gcc, mpi],
+            # cc: "gcc-12",
+            # cxx: "g++-12",
+            # fc: "gfortran-12",
             additional_cmake_args: -DCQ_ENABLE_MPI=ON,
-            parallel_build_tasks: 4
+            parallel_build_tasks: 1
           }
-          - {
-            name: "Intel",
-            os: [self-hosted, intel],
-            cc: "icx",
-            cxx: "icpx",
-            fc: "ifx",
-            additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 4
-          }
-          - {
-            name: "Intel-MPI",
-            os: [self-hosted, intel, mpi],
-            cc: "icx",
-            cxx: "icpx",
-            fc: "ifx",
-            additional_cmake_args: -DCQ_ENABLE_MPI=ON,
-            parallel_build_tasks: 4
-          }
+          # - {
+          #   name: "Intel",
+          #   os: [self-hosted, intel],
+          #   cc: "icx",
+          #   cxx: "icpx",
+          #   fc: "ifx",
+          #   additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
+          #   parallel_build_tasks: 4
+          # }
+          # - {
+          #   name: "Intel-MPI",
+          #   os: [self-hosted, intel, mpi],
+          #   cc: "icx",
+          #   cxx: "icpx",
+          #   fc: "ifx",
+          #   additional_cmake_args: -DCQ_ENABLE_MPI=ON,
+          #   parallel_build_tasks: 4
+          # }
     steps:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
@@ -65,10 +65,11 @@ jobs:
         shell: bash
         working-directory: build
         run: |
+          source scl_source enable gcc-toolset-13
           cmake \
-            -DCMAKE_C_COMPILER=${{ matrix.config.cc }}  \
-            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
-            -DCMAKE_Fortran_COMPILER=${{ matrix.config.fc }} \
+            # -DCMAKE_C_COMPILER=${{ matrix.config.cc }}  \
+            # -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            # -DCMAKE_Fortran_COMPILER=${{ matrix.config.fc }} \
             ${{ matrix.config.additional_cmake_args }} \
             ..
       - name: Build
