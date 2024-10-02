@@ -238,7 +238,7 @@ namespace ChronusQ {
         << std::fixed << std::right << std::setw(5) << std::setprecision(1)
         << mem_postfix.first << mem_postfix.second << "B" << std::endl;
 
-    size_t ta_high_water_mark = TA::hostEnv::instance()->host_allocator().getHighWatermark();
+    size_t ta_high_water_mark = TA::hostEnv::instance()->host_allocator_getActualHighWatermark();
     mem_postfix = memSize(ta_high_water_mark);
     out << "    * TiledArray high-water mark" << std::endl
         << "                      |- this rank "

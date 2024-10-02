@@ -903,6 +903,15 @@ namespace ChronusQ {
 
     // Initialize integrals
     CCIntermediates<dcomplex> intermediates;
+    ccref->coreH->broadcast();
+    ccref->fockMatrix->broadcast();
+    ccref->twoeH->broadcast();
+    if (std::shared_ptr<InCore4indexTPI<double>> incoreTPI =
+            std::dynamic_pointer_cast<InCore4indexTPI<double>>(
+                std::dynamic_pointer_cast<Integrals<double>>(aoints)->TPI)) {
+      incoreTPI->broadcast();
+    }
+    ccref->mo[0].broadcast();
     std::shared_ptr<MultipoleInts<double>> &aoMU =
         std::dynamic_pointer_cast<Integrals<double>>(aoints)->lenElectric;
     if (aoMU == nullptr) {
