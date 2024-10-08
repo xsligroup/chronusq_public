@@ -27,6 +27,25 @@ message ( "\n == GauXC ==" )
 # Method A(default): Pull from github branch
 include(FetchContent)
 
+# Propagate ENABLE_MPI flag to GAUXC
+if(CQ_ENABLE_MPI)
+  set(GAUXC_ENABLE_MPI ON CACHE BOOL "Enable MPI Bindings" FORCE)
+else()
+  set(GAUXC_ENABLE_MPI OFF CACHE BOOL "Enable MPI Bindings" FORCE)
+endif()
+#
+# Propagate ENABLE_CUDA flag to GAUXC
+if(CQ_ENABLE_CUDA)
+  set(GAUXC_ENABLE_CUDA ON CACHE BOOL "Enable CUDA Bindings" FORCE)
+else()
+  set(GAUXC_ENABLE_CUDA OFF CACHE BOOL "Enable CUDA Bindings" FORCE)
+endif()
+if(CQ_ENABLE_MAGMA)
+  set(GAUXC_ENABLE_MAGMA ON CACHE BOOL "Enable MAGMA Bindings" FORCE)
+else()
+  set(GAUXC_ENABLE_MAGMA OFF CACHE BOOL "Enable MAGMA Bindings" FORCE)
+endif()
+
 FetchContent_Declare(
   gauxc
   # Using Aodong's merge_neo branch (master + NEO CPU)
@@ -34,12 +53,7 @@ FetchContent_Declare(
   GIT_TAG merge_neo
 )
 
-# Propagate ENABLE_MPI flag to GAUXC
-if(CQ_ENABLE_MPI)
-  set(GAUXC_ENABLE_MPI ON CACHE BOOL "Enable MPI Bindings" FORCE)
-else()
-  set(GAUXC_ENABLE_MPI OFF CACHE BOOL "Enable MPI Bindings" FORCE)
-endif()
+#CMAKE_ARGS "-DGAUXC_ENABLE_MPI=${CQ_ENABLE_MPI} -DGAUXC_ENABLE_CUDA=${CQ_ENABLE_CUDA}"
 
 FetchContent_MakeAvailable( gauxc )
 
@@ -51,9 +65,9 @@ target_link_libraries( cq PUBLIC gauxc::gauxc )
 
 # Method B: Local Gauxc install discovery
 #message("Linking a local version of GAUXC")
-#
-#include_directories(/Users/aodongliu/Softwares/GauXC-devel/install2/usr/local/include)
-#link_directories(/Users/aodongliu/Softwares/GauXC-devel/install2/usr/local/lib)
+
+#include_directories( path/to/GauXC/installation/usr/local/include )
+#link_directories( path/to/GauXC/installation/usr/local/lib )
 #target_link_libraries( cq PUBLIC -lgauxc -lexchcxx)
 
 message ( " == End GauXC ==\n" )

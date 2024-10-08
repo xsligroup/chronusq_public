@@ -202,11 +202,19 @@ namespace ChronusQ {
 
       // Generate GauXC Runtime and select execution space / Kernel
       GauXC::ExecutionSpace exec_space = useGPU ? GauXC::ExecutionSpace::Device : GauXC::ExecutionSpace::Host;
-      if(useGPU) CErr("GPU GauXC Not Yet Implemented!");
-      #ifdef CQ_ENABLE_MPI
-        gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>(comm);
+      #ifdef CQ_ENABLE_CUDA
+        #ifdef CQ_ENABLE_MPI
+        gauxcUtils->grt = useGPU ? std::make_shared<GauXC::DeviceRuntimeEnvironment>(comm, gpuMemFrac) : std::make_shared<GauXC::RuntimeEnvironment>(comm);
+        #else
+        gauxcUtils->grt = useGPU ? std::make_shared<GauXC::DeviceRuntimeEnvironment>(gpuMemFrac) : std::make_shared<GauXC::RuntimeEnvironment>();
+        #endif
       #else
+        if(useGPU) CErr("useGPU enabled but CQ not compiled with CUDA! Set CQ_ENABLE_CUDA=ON");
+        #ifdef CQ_ENABLE_MPI
+        gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>(comm);
+        #else
         gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>();
+        #endif
       #endif
 
       // Set up molecular grid

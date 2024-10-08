@@ -221,4 +221,104 @@ TEST( GAUXC_KS, PAR_Cd_SAP_DZP_DKH3_2012_SP_B3LYP  ) {
 #endif
 
 
+#ifdef CQ_ENABLE_CUDA
+// -----------------------------------------------------
+// -------------------START GPU TESTS-------------------
+// -----------------------------------------------------
 
+
+
+// -------------------START RKS TESTS-------------------
+// B3LYP / cc-pVTZ
+TEST( GAUXC_KS, Water_ccpVTZ_B3LYP_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVTZ_B3LYP_gpu", "water_cc-pVTZ_B3LYP_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
+
+}
+
+// BLYP / cc-pVTZ
+TEST( GAUXC_KS, Water_ccpVTZ_BLYP_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVTZ_BLYP_gpu", "water_cc-pVTZ_BLYP_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// PBEXPBEC / cc-pVTZ
+TEST( GAUXC_KS, Water_ccpVTZ_PBEXPBEC_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVTZ_PBEXPBEC_gpu", "water_cc-pVTZ_PBEXPBEC_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// PBE0 / cc-pVTZ
+TEST( GAUXC_KS, Water_ccpVTZ_PBE0_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVTZ_PBE0_gpu", "water_cc-pVTZ_PBE0_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+// -------------------END RKS TESTS-------------------
+
+
+
+// -------------------START UKS TESTS-------------------
+// B3LYP / 6-311pG**
+TEST( GAUXC_KS, Oxygen_6311pGss_B3LYP_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/oxygen_6-311pG**_B3LYP_gpu", "oxygen_6-311pG**_B3LYP_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// BLYP / 6-311pG**
+TEST( GAUXC_KS, Oxygen_6311pGss_BLYP_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/oxygen_6-311pG**_BLYP_gpu", "oxygen_6-311pG**_BLYP_SSF.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+// -------------------END UKS TESTS-------------------
+
+
+
+// -------------------START X2CKS TESTS-------------------
+// Water 6-311+G(d,p) B3LYP (Spherical) test
+TEST( GAUXC_KS, Water_6311pGdp_x2c_b3lyp_sph_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_6-311+Gdp_b3lyp_sph_gpu", 
+    "water_6-311+Gdp_sph_x2c_b3lyp_SSF.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
+ 
+};
+
+// X2C O2 6-31G B3LYP test
+TEST( GAUXC_KS, O2_triplet_x2cks_631G_SSF ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/o2_triplet_x2cks_631G_gpu", 
+    "o2_triplet_x2cks_631G_SSF.bin.ref", 1e-6, 
+    true, true, true, true, true, true, false, "no", true );
+ 
+};
+
+// Hg SAPPORO DZP DKH_2012 SP B3LYP
+// (Turned off Quad and Oct check)
+TEST( GAUXC_KS, Hg_SAP_DZP_DKH3_2012_SP_B3LYP_SSF  ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/hg_sap_dz_dkh3_2012_sp_b3lyp_gpu", 
+    "hg_sap_dz_dkh3_2012_sp_b3lyp_SSF.bin.ref",1e-6,true,true,
+               false,false,true,true);
+
+};
+
+// Cd SAPPORO DZP DKH_2012 SP B3LYP
+TEST( GAUXC_KS, Cd_SAP_DZP_DKH3_2012_SP_B3LYP_SSF  ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/cd_sap_dz_dkh3_2012_sp_b3lyp_gpu", 
+    "cd_sap_dz_dkh3_2012_sp_b3lyp_SSF.bin.ref",1e-6 );
+ 
+};
+// -------------------END X2CKS TESTS-------------------
+#endif
