@@ -414,8 +414,11 @@ namespace ChronusQ {
     int nAtoms = mol.nAtoms;
     int nShells = nShell;
     int off = PTR_ENV_START; // = 20
+    std::fill_n(env, off, 0.0);
 
     for(int iAtom = 0; iAtom < nAtoms; iAtom++) {
+
+      std::fill_n(atm + iAtom * ATM_SLOTS, ATM_SLOTS, 0);
 
       atm(CHARGE_OF, iAtom) = mol.atoms[iAtom].integerNucCharge();
 
@@ -449,6 +452,8 @@ namespace ChronusQ {
     }
 
     for(int iShell = 0; iShell < nShells; iShell++) {
+
+      std::fill_n(bas + iShell * BAS_SLOTS, BAS_SLOTS, 0);
 
       int nContr = shells[iShell].contr.size();
 
