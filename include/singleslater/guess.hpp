@@ -709,12 +709,12 @@ namespace ChronusQ {
         if( hasDY )
           std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
             << "restricted guess but " << savFile.fName()
-            << " contains SCF/1PDM_MY" << std::endl;
+            << " contains " + prefix + "1PDM_MY" << std::endl;
 
         if( hasDX )
           std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
             << "restricted guess but " << savFile.fName()
-            << " contains SCF/1PDM_MX" << std::endl;
+            << " contains " + prefix + "1PDM_MX" << std::endl;
 
       }
 
@@ -846,11 +846,15 @@ namespace ChronusQ {
       auto NB = basisSet().nBasis;
       if( this->nC == 4 ) NB=2*NB;
       auto NB2 = NB*NB;
+    
+      std::string prefix = "/SCF/";
+      if (this->particle.charge == 1.0)
+          prefix = "/PROT_SCF/";
 
-      auto DSdims = scrBin.getDims( "SCF/1PDM_SCALAR" );
-      auto DZdims = scrBin.getDims( "SCF/1PDM_MZ" );
-      auto DYdims = scrBin.getDims( "SCF/1PDM_MY" );
-      auto DXdims = scrBin.getDims( "SCF/1PDM_MX" );
+      auto DSdims = scrBin.getDims( prefix + "1PDM_SCALAR" );
+      auto DZdims = scrBin.getDims( prefix + "1PDM_MZ" );
+      auto DYdims = scrBin.getDims( prefix + "1PDM_MY" );
+      auto DXdims = scrBin.getDims( prefix + "1PDM_MX" );
 
       bool hasDS = DSdims.size() != 0;
       bool hasDZ = DZdims.size() != 0;
@@ -876,41 +880,41 @@ namespace ChronusQ {
 
       // Errors in 1PDM SCALAR
       if( not hasDS )
-        CErr("SCF/1PDM_SCALAR does not exist in " + scrBin.fName(), std::cout);
+        CErr(prefix + "1PDM_SCALAR does not exist in " + scrBin.fName(), std::cout);
 
       else if( not r2DS )
-        CErr("SCF/1PDM_SCALAR not saved as a rank-2 tensor in " +
+        CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
 
       // Read in 1PDM SCALAR
-      std::cout << "    * Looking for SCF/1PDM_SCALAR !" << std::endl;
-      scrBin.readData("/SCF/1PDM_SCALAR",onePDMtmp->S().pointer());
+      std::cout << "    * Looking for " << prefix << "1PDM_SCALAR !" << std::endl;
+      scrBin.readData(prefix + "1PDM_SCALAR",onePDMtmp->S().pointer());
 
       // MZ
       if( onePDMtmp->hasZ() ){
 
-        std::cout << "    * Looking for SCF/1PDM_MZ !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MZ !" << std::endl;
         if( not r2DZ )
-          CErr("SCF/1PDM_MZ not saved as a rank-2 tensor in " +
+          CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
-        scrBin.readData("SCF/1PDM_MZ",onePDMtmp->Z().pointer());
+        scrBin.readData(prefix + "1PDM_MZ",onePDMtmp->Z().pointer());
 
       }
 
       // MY
       if( onePDMtmp->hasXY() ){
 
-        std::cout << "    * Looking for SCF/1PDM_MX !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MX !" << std::endl;
         if( not r2DX )
-          CErr("SCF/1PDM_MX not saved as a rank-2 tensor in " +
+          CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
-        scrBin.readData("SCF/1PDM_MX",onePDMtmp->X().pointer());
+        scrBin.readData(prefix + "1PDM_MX",onePDMtmp->X().pointer());
 
-        std::cout << "    * Looking for SCF/1PDM_MY !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MY !" << std::endl;
         if( not r2DY )
-          CErr("SCF/1PDM_MY not saved as a rank-2 tensor in " +
+          CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
-        scrBin.readData("SCF/1PDM_MY",onePDMtmp->Y().pointer());
+        scrBin.readData(prefix + "1PDM_MY",onePDMtmp->Y().pointer());
 
       }
 
@@ -977,9 +981,9 @@ namespace ChronusQ {
         prefix = "/PROT_SCF/";
 
       try{
-        binFile.readData("/SCF/FIELD_TYPE", &savHash);
+        binFile.readData(prefix + "FIELD_TYPE", &savHash);
       } catch (...) {
-        CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+        CErr("Cannot find " + prefix + "FIELD_TYPE on rstFile!",std::cout);
       }
 
       // type of 1PDM
@@ -992,7 +996,7 @@ namespace ChronusQ {
       std::string t_field = t_is_double ? "REAL" : "COMPLEX";
       std::string s_field = s_is_double ? "REAL" : "COMPLEX";
 
-      std::string message = "    * Going from /SCF/FIELD_TYPE on disk (" + s_field +
+      std::string message = "    * Going from " + prefix + "FIELD_TYPE on disk (" + s_field +
         ") to current FIELD_TYPE (" + t_field + ")";
 
       std::cout << message << std::endl;
@@ -1136,7 +1140,7 @@ namespace ChronusQ {
       try{
         savFile.readData(prefix + "FIELD_TYPE", &savHash);
       } catch (...) {
-        CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+        CErr("Cannot find " + prefix + "FIELD_TYPE on rstFile!",std::cout);
       }
 
 
@@ -1175,7 +1179,7 @@ namespace ChronusQ {
 
       if( MO1dims[0] != NB or MO1dims[1] != NB ) {
 
-        std::cout << "    * Incompatible SCF/MO1:";
+        std::cout << "    * Incompatible " << prefix << "MO1:";
         std::cout << "  Recieved (" << MO1dims[0] << "," << MO1dims[1] << ")"
           << " :";
         std::cout << "  Expected (" << NB << "," << NB << ")";
@@ -1187,30 +1191,30 @@ namespace ChronusQ {
 
       // MO2 + RHF is odd, print warning
       if( MO2dims.size() != 0 and this->nC == 1 and this->iCS )
-        std::cout << "    * WARNING: Reading in SCF/MO1 as restricted guess "
-                  << "but " << savFile.fName() << " contains SCF/MO2"
+        std::cout << "    * WARNING: Reading in " << prefix << "MO1 as restricted guess "
+                  << "but " << savFile.fName() << " contains " << prefix << "MO2"
                   << std::endl;
 
 
       // Read in MO1
-      std::cout << "    * Found SCF/MO1 !" << std::endl;
+      std::cout << "    * Found " << prefix << "MO1 !" << std::endl;
       savFile.readData(prefix + "MO1",this->mo[0].pointer());
 
       // Unrestricted calculations
       if( this->nC == 1 and not this->iCS ) {
 
         if( MO2dims.size() == 0 )
-          std::cout << "    * WARNING: SCF/MO2 does not exist in "
-            << savFile.fName() << " -- Copying SCF/MO1 -> SCF/MO2 " << std::endl;
+          std::cout << "    * WARNING: " << prefix << "MO2 does not exist in "
+            << savFile.fName() << " -- Copying " << prefix << "MO1 -> " << prefix << "MO2 " << std::endl;
 
         if( MO2dims.size() > 2  )
 
-          CErr("SCF/MO2 not saved as a rank-2 tensor in " + savFile.fName(),
+          CErr(prefix + "MO2 not saved as a rank-2 tensor in " + savFile.fName(),
               std::cout);
 
         else if( MO2dims[0] != NB or MO2dims[1] != NB ) {
 
-          std::cout << "    * Incompatible SCF/MO2:";
+          std::cout << "    * Incompatible " << prefix << "MO2:";
           std::cout << "  Recieved (" << MO2dims[0] << "," << MO2dims[1] << ")"
             << " :";
           std::cout << "  Expected (" << NB << "," << NB << ")";
@@ -1223,7 +1227,7 @@ namespace ChronusQ {
         if( MO2dims.size() == 0 )
           this->mo[1] = this->mo[0];
         else {
-          std::cout << "    * Found SCF/MO2 !" << std::endl;
+          std::cout << "    * Found " << prefix << "MO2 !" << std::endl;
           savFile.readData(prefix + "MO2",this->mo[1].pointer());
         }
 
@@ -1258,7 +1262,7 @@ namespace ChronusQ {
       try{
         binFile.readData(prefix + "FIELD_TYPE", &savHash);
       } catch (...) {
-        CErr("Cannot find /SCF/FIELD_TYPE on rstFile!",std::cout);
+        CErr("Cannot find " + prefix + "FIELD_TYPE on rstFile!",std::cout);
       }
 
       // type of MO
@@ -1271,7 +1275,7 @@ namespace ChronusQ {
       std::string t_field = t_is_double ? "REAL" : "COMPLEX";
       std::string s_field = s_is_double ? "REAL" : "COMPLEX";
 
-      std::string message = "    * Going from /SCF/FIELD_TYPE on disk (" + s_field +
+      std::string message = "    * Going from " + prefix + "FIELD_TYPE on disk (" + s_field +
         ") to current FIELD_TYPE (" + t_field + ")";
 
       std::cout << message << std::endl;

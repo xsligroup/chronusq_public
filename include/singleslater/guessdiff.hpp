@@ -44,6 +44,8 @@ namespace ChronusQ {
     this->mo[0].clear();
 
     std::string prefix = "/SCF/";
+    if (this->particle.charge == 1.0)
+        prefix = "/PROT_SCF/";
 
     auto MO1dims = scrBin.getDims( prefix + "MO1" );
     auto MO2dims = scrBin.getDims( prefix + "MO2" );
@@ -69,23 +71,23 @@ namespace ChronusQ {
     if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) motmp.emplace_back(MO2dims[0]);
 
     // Read in MO1
-    std::cout << "    * Found SCF/MO1 !" << std::endl;
+    std::cout << "    * Found " << prefix << "MO1 !" << std::endl;
     scrBin.readData(prefix + "MO1",motmp[0].pointer());
 
     // Unrestricted calculations
     if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ) {
 
       if( MO2dims.size() == 0 )
-        std::cout << "    * WARNING: SCF/MO2 does not exist in "
-          << scrBin.fName() << " -- Copying SCF/MO1 -> SCF/MO2 " << std::endl;
+        std::cout << "    * WARNING: " << prefix << "MO2 does not exist in "
+          << scrBin.fName() << " -- Copying " << prefix << "MO1 -> " << prefix << "MO2 " << std::endl;
 
       if( MO2dims.size() > 2  )
 
-        CErr("SCF/MO2 not saved as a rank-2 tensor in " + scrBin.fName(),
+        CErr(prefix + "MO2 not saved as a rank-2 tensor in " + scrBin.fName(),
             std::cout);
 
       // Read in MO2
-      std::cout << "    * Found SCF/MO2 !" << std::endl;
+      std::cout << "    * Found " << prefix << "MO2 !" << std::endl;
       scrBin.readData(prefix + "MO2",motmp[1].pointer());
 
     }
