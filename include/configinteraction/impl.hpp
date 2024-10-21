@@ -77,7 +77,6 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
 
   // SCF Cycles 
   if(this->ciSettings.doSCF) {
-    CErr("MCSCF with the new code is untested. Proceed with caution if you are an expert user.");
 
     this->printStateEnergy();
     

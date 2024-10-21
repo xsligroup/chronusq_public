@@ -95,6 +95,7 @@ public:
   // PostHartreeFock procedural functions
   virtual void run(EMPerturbation &)      = 0;  // From PostHartreeFockBase
   virtual void computeTDM(size_t, size_t, std::shared_ptr<cqmatrix::Matrix<MatsT>>) = 0;
+  virtual void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>) = 0;  
 
   void computeOneRDM(size_t i) { computeTDM(i, i, oneRDM[i]);};    
   void computeOneRDM();

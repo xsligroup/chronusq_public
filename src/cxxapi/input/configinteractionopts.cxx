@@ -51,6 +51,7 @@ namespace ChronusQ {
       "MAXCIITER",
       "MAXSCFITER",
       "STATEAVERAGE",
+      "SAWEIGHTS",
       "SCFENECONV",
       "SCFGRADCONV",
       "SCFALG",
@@ -91,6 +92,36 @@ namespace ChronusQ {
     }
     // Check for disallowed combinations (if any)
   }
+  
+
+  std::vector<double> HandleSAWeightsInputDAS(CQInputFile &input,
+    size_t nR) {
+
+    std::string sSAWeights;
+    std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
+
+    OPTOPT( sSAWeights = input.getData<std::string>("CI.SAWEIGHTS"); )
+    if (!sSAWeights.empty()) {
+      std::cout << "  * Manual State Average Weights Detected: " << std::endl;
+      //Parse SAWeights string
+      std::vector<std::string> saTokens;
+      split(saTokens, sSAWeights, " ,;");
+      if (saTokens.size() != nR) CErr("Number of Input State Average Weights does not match number of roots.");
+      for (auto i=0; i < nR; i++)
+        SAWeights[i] = std::stod(saTokens[i]);
+    }
+
+    // post process
+    double sum = std::accumulate(SAWeights.begin(), SAWeights.end(), 0.);
+    if (sum != 1) {
+      std::cout << "   Rescale State Average Weights Sum to 1." << std::endl;
+      for (auto i = 0ul; i < SAWeights.size(); i++)
+        SAWeights[i] = SAWeights[i]/sum;
+    }
+    return SAWeights;
+
+  } // HandleSAWeightsInputDAS
+
 
   /**
    *  \brief Construct a CI object using the input file.
@@ -429,7 +460,7 @@ namespace ChronusQ {
       OPTOPT( StateAverage = input.getData<bool>("CI.STATEAVERAGE");)
       if(StateAverage) {
         //TODO: make as input in the future
-        std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
+        std::vector<double> SAWeights = HandleSAWeightsInputDAS(input, nR);//std::vector<double>(nR, 1./nR);
         ci->turnOnStateAverage(SAWeights);
       }
       

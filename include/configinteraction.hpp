@@ -114,7 +114,8 @@ public:
   
   void run(EMPerturbation &) override;
   void computeTDM(size_t s1, size_t s2, std::shared_ptr<cqmatrix::Matrix<MatsT>> tdm) override;
-  
+  void compute2TDM(size_t s1, size_t s2, std::shared_ptr<InCore4indexTPI<MatsT>> twoTDM) override;
+ 
   void solveCI();
   
   void computeRDMsForOrbitalRotations(); 

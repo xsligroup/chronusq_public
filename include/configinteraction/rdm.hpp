@@ -34,6 +34,14 @@ void ConfigurationInteraction<MatsT, IntsT>::computeTDM(
   ciBuilder->buildTDM(*CIVectors, *CIVectors, {s1, s2}, tdm);
 } // ConfigInteraction::computeTDM 
 
+
+template <typename MatsT, typename IntsT>
+void ConfigurationInteraction<MatsT, IntsT>::compute2TDM(
+  size_t s1, size_t s2, std::shared_ptr<InCore4indexTPI<MatsT>> twoTDM) {
+  ciBuilder->buildTDM(*CIVectors, *CIVectors, {s1, s2}, nullptr, false, 1.0, twoTDM);
+} // ConfigInteraction::compute2TDM
+
+
 template <typename MatsT, typename IntsT>
 void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   
@@ -59,13 +67,14 @@ void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   size_t nCorrO = this->corrSpace.nCorrO;
   auto & RDM2 = *twoRDMSOI;
   auto & RDM1 = *oneRDMSOI;
+/*
 #pragma omp parallel for schedule(static) default(shared)       
   for (auto w = 0ul; w < nCorrO; w++)
   for (auto u = 0ul; u < nCorrO; u++)
   for (auto t = 0ul; t < nCorrO; t++) {
     RDM2(t, u, u, w) -= RDM1(t, w);
   }
-  
+*/  
 } // ConfigInteraction::computeRDMsOfInterests
   
 } // namespace ChronusQ

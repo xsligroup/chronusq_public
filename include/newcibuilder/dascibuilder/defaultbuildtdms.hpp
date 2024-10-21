@@ -111,7 +111,7 @@ void DASCIBuilder<MatsT>::build1TDM(
                    nonExLooper->increment()) {
                  auto K = KEx + KNonEx;
                  auto L = LEx + LNonEx;
-                 oneTDMSCR(p, q) += fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];   
+                 oneTDMSCR(p, q) += scale * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];   
               }
             }
           }
@@ -134,11 +134,6 @@ void DASCIBuilder<MatsT>::build2TDM(
     const LocalCIVectorsView<const MatsT>& CKet, 
     InCore4indexTPI<MatsT>& twoTDM,
     const double scale) const {
-  
-    // TODO: FIX this for taking 2e permutational symmetries
-#ifdef DETFACTORY_USE_2E_PERMUTATIONAL_SYMMETRY
-  CErr("Need to fix 2tdm build for DETFACTORY_USE_2E_PERMUTATIONAL_SYMMETRY");
-#endif
   
   const auto& orbOffs = this->detFactory_.orbOffsInEachSpace();
    
@@ -211,7 +206,24 @@ void DASCIBuilder<MatsT>::build2TDM(
                    nonExLooper->increment()) {
                  auto K = KEx + KNonEx;
                  auto L = LEx + LNonEx;
-                 twoTDMSCR(p, q, r, s) += fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+		
+		 //NOTE: ALL signs in (r == s and p != q) have been flipped relative to Hang's PPT
+                 if(p != q and p != s and q != r and r != s){
+                   twoTDMSCR(p, q, r, s) += scale * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                 }
+                 if(r == s and p != q){
+                   twoTDMSCR(r, q, p, r) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                   twoTDMSCR(p, q, r, r) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                   twoTDMSCR(p, r, r, q) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                   twoTDMSCR(r, r, p, q) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                 }
+                 if(r == s and p == q){
+                   if(p != r){
+                     twoTDMSCR(p, p, r, r) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                     twoTDMSCR(r, p, p, r) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                   }
+                 }
+
               }
               
             }
