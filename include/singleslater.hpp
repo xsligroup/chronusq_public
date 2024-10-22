@@ -267,11 +267,12 @@ namespace ChronusQ {
     // see include/singleslater/guess.hpp for docs)
     void formGuess(const SingleSlaterOptions&) override;
     void CoreGuess();
-    void SADGuess(const SingleSlaterOptions&);
+    void SADGuess(SingleSlaterOptions);
+    void SCFGuess(SingleSlaterOptions);
     void TightGuess();
     void RandomGuess();
     void ReadGuessMO();
-    void ReadGuess1PDM();
+    void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis );
     void FchkGuessMO();
     void NEOTightProtonGuess();
     void NEOConvergeClassicalGuess(const SingleSlaterOptions&);
@@ -280,9 +281,12 @@ namespace ChronusQ {
 
     // ReadGuess1PDM functions
     void readSameTypeDenBin();
-    void readDiffTypeDenBin(std::string binName);
+    void readDiffTypeDenBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet );
+    template <typename ScrMatsT>
+    void getScr1PDM(SafeFile &, const std::shared_ptr<BasisSet> );
     template <typename ScrMatsT>
     void getScr1PDM(SafeFile &);
+    
 
     // ReadGuessMO functions
     void readSameTypeMOBin();

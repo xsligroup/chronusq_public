@@ -96,6 +96,10 @@ namespace ChronusQ {
         return std::make_shared<BasisSet>();
     }
 
+    // Give the basis a placeholder name if parsed from input file
+    if ( basisName.empty() and inputBasis )
+      basisName = "Custom Basis";
+
 
     BASIS_FUNCTION_TYPE bType = REAL_GTO;
     try{

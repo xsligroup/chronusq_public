@@ -31,6 +31,8 @@
 #include <fockbuilder/matrixfock.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <wavefunction/base.hpp>
+#include <algorithm>
+#include <corehbuilder/x2c.hpp>
 
 namespace ChronusQ {
 
@@ -185,7 +187,7 @@ namespace ChronusQ {
 
     } else if( scfControls.guess == RANDOM ) RandomGuess();
       else if( scfControls.guess == READMO ) ReadGuessMO();
-      else if( scfControls.guess == READDEN ) ReadGuess1PDM();
+      else if( scfControls.guess == READDEN ) ReadGuess1PDM( ssOptions.scfControls.guessBasis );
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
       else if( scfControls.guess == NEOTightProton ) NEOTightProtonGuess();
       else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(ssOptions);
@@ -193,6 +195,7 @@ namespace ChronusQ {
       else if( scfControls.guess == CORE ) CoreGuess();
       else if( scfControls.guess == TIGHT ) TightGuess();
       else if( scfControls.guess == SAD ) SADGuess(ssOptions);
+      else if( scfControls.guess == SCF ) SCFGuess(ssOptions);
       else CErr("Unknown choice for SCF.GUESS",std::cout);
 
     // If RANDOM guess, scale the densites appropriately
@@ -227,7 +230,8 @@ namespace ChronusQ {
       }
 
     }
-
+      
+    //this->onePDM->output(std::cout, "Guess PDM", true);
     ProgramTimer::tock("Form Guess");
 
   }; // SingleSlater<T>::formGuess
@@ -323,7 +327,12 @@ namespace ChronusQ {
    *
    */
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::SADGuess(const SingleSlaterOptions &ssOptions) {
+  void SingleSlater<MatsT,IntsT>::SADGuess(SingleSlaterOptions ssOptions) {
+
+    ssOptions.refOptions.isKSRef = false;
+    ssOptions.refOptions.nC = 1;
+    ssOptions.hamiltonianOptions.OneEScalarRelativity = false;
+    ssOptions.hamiltonianOptions.OneESpinOrbit = false;
 
 
 
@@ -552,7 +561,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::ReadGuess1PDM() {
+  void SingleSlater<MatsT,IntsT>::ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasisSet) {
 
     //Check if 1PDM comes from save file or scratch file
     if( MPIRank(comm) == 0 ) {
@@ -561,7 +570,11 @@ namespace ChronusQ {
 
         if( printLevel > 0 )
           std::cout << "    * Reading in guess density (restart file) from file "
-            << savFile.fName() << "\n";
+            << savFile.fName() << std::endl;
+
+        // Since this READDEN mode overwrites the bin file with the original dims, 
+        // it is not compatible with basis set projection. Use -s instead!
+        if( guessBasisSet ) CErr("    * ERROR: -z is incompatible with basis set projection, use -s instead.");
 
         readSameTypeDenBin();
 
@@ -569,13 +582,13 @@ namespace ChronusQ {
 
         if( printLevel > 0 )
           std::cout << "    * Reading in guess density (scratch file) from file "
-            << scrBinFileName << "\n";
+            << scrBinFileName << std::endl;
 
-        readDiffTypeDenBin(scrBinFileName);
+        readDiffTypeDenBin(scrBinFileName, guessBasisSet);
 
         if( printLevel > 0 )
           std::cout << "    * Saving prepared 1-PDMs to file "
-            << savFile.fName() << "\n";
+            << savFile.fName() << std::endl;
 
         // Saving post-transformed 1-PDMs to restart file
         if( savFile.exists() ) {
@@ -608,7 +621,112 @@ namespace ChronusQ {
     ao2orthoDen();
     //computeNaturalOrbitals();
 
-  } // SingleSlater<T>::ReadGuess1PDM()
+  } // SingleSlater<T>::ReadGuess1PDM
+  
+  /*
+   * \brief Returns the projection matrix that maps matrices in basis 1 to basis 2
+   *        (matrix in basis 2) = (Proj).(matrix in basis 1).(Proj)^T
+   **/
+  template <typename MatsT>
+  static cqmatrix::Matrix<MatsT> getProjectionMatrix( const cqmatrix::Matrix<MatsT>& overlap21, const cqmatrix::Matrix<MatsT>& overlap22) {
+    const size_t NB_1 = overlap21.nColumns();
+    const size_t NB_2 = overlap22.nColumns();
+
+        if( overlap21.nRows() != NB_2 )
+          CErr("Bad dimensions in getOrthoProjection");
+        
+        // Allocate temporaries for eigendecomposition
+        auto Vmat     = overlap22;                         //<<< (will be overwritten) Orthogonal V matrix (transposed)
+        auto Diag     = std::vector<double>(NB_2);         //<<< Holds eigenvalues
+        auto DiagMat  = cqmatrix::Matrix<MatsT>(NB_2, NB_2);  //<<< Holds eigenvalues on its diagonal
+        auto tmp      = cqmatrix::Matrix<MatsT>(NB_2, NB_2);  
+        auto overlap22_inv  = cqmatrix::Matrix<MatsT>(NB_2, NB_2); 
+        std::fill_n(DiagMat.pointer(), NB_2*NB_2, 0.0);    // Only DiagMat needs to be zeroed out since the others are overwritten entirely
+        
+
+        // Compute inverse of S_22 using eigendecomposition
+        HermetianEigen('V','L', NB_2, Vmat.pointer(), NB_2, Diag.data());
+        for(size_t it(0); it<NB_2; ++it) {
+          DiagMat(it,it) = 1.0/Diag[it];
+        }
+
+        // DiagMat^inv * V^T --> tmp
+        // XXX: We could eliminate this blas call because DiagMat is... well... diagonal
+        // (aka just rescale the matrix and multiply each col by diag element)
+        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans, NB_2, NB_2, NB_2, MatsT(1.), DiagMat.pointer(), NB_2, Vmat.pointer(), NB_2, MatsT(0.), tmp.pointer(), NB_2);
+
+        // V * tmp --> overlap22_inv
+        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
+            NB_2, NB_2, NB_2, MatsT(1.), Vmat.pointer(), NB_2, tmp.pointer(), NB_2, MatsT(0.), overlap22_inv.pointer(), NB_2);
+        
+        // Form left-projection matrix: S22_inv * S21
+        auto LeftProj = cqmatrix::Matrix<MatsT>(NB_2, NB_1); //<<< Final projection matrix
+        
+        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
+            NB_2, NB_1, NB_2, MatsT(1.), overlap22_inv.pointer(), NB_2, overlap21.pointer(), NB_2, MatsT(0.), LeftProj.pointer(), NB_2);
+        
+        return LeftProj;
+
+  } // Matrix<MatsT> getProjectionMatrix
+ 
+  /**
+   * \brief Driver for basis set projection with a given projection matrix
+   **/
+  template <typename MatsT>
+  static cqmatrix::Matrix<MatsT> projectMatrix( const cqmatrix::Matrix<MatsT>& projMat, const cqmatrix::Matrix<MatsT>&fromMatrix ) {
+    // Allocate return and temporary matrices
+    const size_t tNB = projMat.nRows();
+    const size_t fNB = projMat.nColumns();
+    auto toMatrix = cqmatrix::Matrix<MatsT>(tNB, tNB);
+    auto Intermediate = cqmatrix::Matrix<MatsT>(fNB, tNB);
+
+    // **********************************************************************************
+    // Form density in "to" basis: projMat * fromMatrix * projMat^T --> toMatrix
+    // **********************************************************************************
+    
+
+    // Do fromMatrix  * ( projMat  )^T --> Intermediate
+    //     (fNB, fNB) * (tNB, fNB)^T     --> (fNB, tNB)
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans, fNB, tNB, fNB, MatsT(1.), fromMatrix.pointer(), fNB, projMat.pointer(), tNB, MatsT(0.), Intermediate.pointer(), fNB);
+
+
+    // Do     projMat * Intermediate  --> toMatrix
+    //  (tNB, fNB) * (fNB, tNB)    --> (tNB, tNB)
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, tNB, tNB, fNB, MatsT(1.), projMat.pointer(), tNB, Intermediate.pointer(), fNB, MatsT(0.), toMatrix.pointer(), tNB);
+
+    return toMatrix;
+
+  }
+  /**
+   *  \brief Driver for basis set projection.
+   *  Returns both the projected matrix and projection matrix (for re-use)
+   **/
+  template <typename MatsT>
+  static std::tuple<cqmatrix::Matrix<MatsT>, cqmatrix::Matrix<MatsT>> projectMatrix( const Molecule& mol, const BasisSet& fromBasis, const BasisSet& toBasis, const cqmatrix::Matrix<MatsT>& fromMatrix ){
+    const size_t tNB = toBasis.nBasis;
+    const size_t fNB  = fromBasis.nBasis;
+
+    // Generate overlap matrix between fromBasis and and toBasis
+    // <double>, because libint doesn't support GIAOs yet. We will cast to MatsT later.
+    auto overlapSTF = cqmatrix::Matrix<double>(tNB, fNB); 
+    std::vector<double*> MatVecS21;
+    MatVecS21.emplace_back(overlapSTF.pointer());
+    OnePInts<double>::OnePDriverLibint( libint2::Operator::overlap, mol, toBasis, fromBasis, MatVecS21, Particle {-1.,1.}, 0);
+    
+    // Generate overlap between toBasis and itself
+    auto overlapSTT = cqmatrix::Matrix<double>(tNB, tNB); 
+    std::vector<double*> MatVecS22;
+    MatVecS22.emplace_back(overlapSTT.pointer());
+    OnePInts<double>::OnePDriverLibint( libint2::Operator::overlap, mol, toBasis, MatVecS22, Particle {-1.,1.}, 0);
+
+    // Get projection matrix from overlaps
+    cqmatrix::Matrix<MatsT> projectionMat = getProjectionMatrix( overlapSTF, overlapSTT );
+    auto projectedMat = projectMatrix(projectionMat, fromMatrix);
+
+    return std::make_tuple(
+        projectedMat, projectionMat);
+  } // Matrix<T> projectMatrix()
+
 
   /**
    *  \brief Reads in 1PDM from bin file
@@ -682,21 +800,24 @@ namespace ChronusQ {
       else if( not r2DS )
         CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " +
             savFile.fName(), std::cout);
-
-      else if( DSdims[0] != NB or DSdims[1] != NB ) {
-
-        std::cout << "    * Incompatible " + prefix + "1PDM_SCALAR:";
-        std::cout << "  Recieved (" << DSdims[0] << "," << DSdims[1] << ")"
-          << " :";
-        std::cout << "  Expected (" << NB << "," << NB << ")";
-        CErr("Wrong dimension of 1PDM SCALAR!",std::cout);
-
-      }
-
-      // Read in 1PDM SCALAR
+      
+      else if( DSdims[0] != NB or DSdims[1] != NB) {
+          std::cout << "    * Incompatible " + prefix + "1PDM_SCALAR";
+          std::cout << "  Received (" << DSdims[0] << "," << DSdims[1] << ")"
+            << " :";
+          std::cout << "  Expected (" << NB << "," << NB << ")" << std::endl;
+          CErr("Wrong dimension of 1PDM SCALAR! Set GUESSBASIS to project 1PDM.",std::cout);
+      } 
+      
+      // Read in 1PDM_SCALAR
       std::cout << "    * Found " + prefix + "1PDM_SCALAR !" << std::endl;
       savFile.readData(prefix + "1PDM_SCALAR",this->onePDM->S().pointer());
 
+      // Warn user if read-in densities don't match reference wavefunction scheme
+      if( hasDZ and this->nC == 1 and this->iCS )
+        std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
+          << "restricted guess but " << savFile.fName()
+          << " contains " + prefix + "1PDM_MZ" << std::endl;
 
       // Oddities in Restricted
       if( this->nC == 1 and this->iCS ) {
@@ -718,116 +839,70 @@ namespace ChronusQ {
 
       }
 
+      if( hasDX and this->nC == 1 )
+        std::cout << "    * WARNING: Reading in " + prefix + "1PDM_SCALAR as "
+          << "restricted guess but " << savFile.fName()
+          << " contains SCF/1PDM_MX" << std::endl;
 
       // MZ
       if( this->nC == 2 or not this->iCS ) {
-
         if( not hasDZ ) {
-
           std::cout <<  "    * WARNING: " + prefix + "1PDM_MZ does not exist in "
             << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MZ" << std::endl;
-
           this->onePDM->Z().clear();
-
-
-        } else if( not r2DZ )
+        } else if( not r2DZ ) {
           CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " +
               savFile.fName(), std::cout);
-
-        else if( DZdims[0] != NB or DZdims[1] != NB ) {
-
+        } else if( (DZdims[0] != NB or DZdims[1] != NB)) {
           std::cout << "    * Incompatible " + prefix + "1PDM_MZ:";
-          std::cout << "  Recieved (" << DZdims[0] << "," << DZdims[1] << ")"
+          std::cout << "  Received (" << DZdims[0] << "," << DZdims[1] << ")"
             << " :";
           std::cout << "  Expected (" << NB << "," << NB << ")";
           CErr("Wrong dimension of 1PDM MZ!",std::cout);
-
         } else {
-
-          std::cout << "    * Found " + prefix + "1PDM_MZ !" << std::endl;
-          savFile.readData(prefix + "1PDM_MZ",this->onePDM->Z().pointer());
-
+          std::cout << "    * Found " + prefix + "1PDM_MZ!" << std::endl;
+          savFile.readData(prefix + "1PDM_MZ", this->onePDM->Z().pointer());
         }
-
-        // Oddities in Unrestricted
-        if( this->nC == 2 ) {
-
-          if( hasDY )
-            std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
-              << "unrestricted guess but " << savFile.fName()
-              << " contains " + prefix + "1PDM_MY" << std::endl;
-
-          if( hasDX )
-            std::cout << "    * WARNING: Reading in " + prefix + "1PDM_MZ as "
-              << "unrestricted guess but " << savFile.fName()
-              << " contains " + prefix + "1PDM_MX" << std::endl;
-
-        }
-
       }
 
-
       if( this->nC == 2 or this->nC == 4 ) {
-
         if( not hasDY ) {
-
           std::cout <<  "    * WARNING: " + prefix + "1PDM_MY does not exist in "
             << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MY" << std::endl;
-
           this->onePDM->Y().clear();
-
-
-        } else if( not r2DY )
+        } else if( not r2DY ) {
           CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " +
-              savFile.fName(), std::cout);
-
-        else if( DYdims[0] != NB or DYdims[1] != NB ) {
-
+            savFile.fName(), std::cout);
+        } else if( (DYdims[0] != NB or DYdims[1] != NB)) {
           std::cout << "    * Incompatible " + prefix + "1PDM_MY:";
-          std::cout << "  Recieved (" << DYdims[0] << "," << DYdims[1] << ")"
+          std::cout << "  Received (" << DYdims[0] << "," << DYdims[1] << ")"
             << " :";
           std::cout << "  Expected (" << NB << "," << NB << ")";
           CErr("Wrong dimension of 1PDM MY!",std::cout);
-
         } else {
-
-          std::cout << "    * Found " + prefix + "1PDM_MY !" << std::endl;
-          savFile.readData(prefix + "1PDM_MY",this->onePDM->Y().pointer());
-
+          std::cout << "    * Found " + prefix + "1PDM_MY!" << std::endl;
+          savFile.readData(prefix + "1PDM_MY", this->onePDM->Y().pointer());
         }
 
-
         if( not hasDX ) {
-
           std::cout <<  "    * WARNING: " + prefix + "1PDM_MX does not exist in "
             << savFile.fName() << " -- Zeroing out " + prefix + "1PDM_MX" << std::endl;
-
           this->onePDM->X().clear();
-
-
-        } else if( not r2DX )
+        } else if( not r2DX ) {
           CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " +
-              savFile.fName(), std::cout);
-
-        else if( DXdims[0] != NB or DXdims[1] != NB ) {
-
+            savFile.fName(), std::cout);
+        } else if( (DXdims[0] != NB or DXdims[1] != NB)) {
           std::cout << "    * Incompatible " + prefix + "1PDM_MX:";
-          std::cout << "  Recieved (" << DXdims[0] << "," << DXdims[1] << ")"
+          std::cout << "  Received (" << DXdims[0] << "," << DXdims[1] << ")"
             << " :";
           std::cout << "  Expected (" << NB << "," << NB << ")";
           CErr("Wrong dimension of 1PDM MX!",std::cout);
-
         } else {
-
-          std::cout << "    * Found " + prefix + "1PDM_MX !" << std::endl;
-          savFile.readData(prefix + "1PDM_MX",this->onePDM->X().pointer());
-
+          std::cout << "    * Found " + prefix + "1PDM_MX!" << std::endl;
+          savFile.readData(prefix + "1PDM_MX", this->onePDM->X().pointer());
         }
-
       }
-
     }
-
   } // SingleSlater<T>::readSameTypeDenBin()
 
   /**
@@ -838,7 +913,14 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin) {
+  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin) { 
+    getScr1PDM<ScrMatsT>(scrBin, nullptr);
+  }
+
+
+  template <typename MatsT, typename IntsT>
+  template <typename ScrMatsT>
+  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -873,10 +955,11 @@ namespace ChronusQ {
       std::cout << "    * Converting from " << refMap[scrRefType] << " to "
         << refMap[binRefType] << std::endl;
 
+
       // onePDM on scr bin file
-      // assume square and same dimension between S,X,Y,Z
       std::shared_ptr<cqmatrix::PauliSpinorMatrices<ScrMatsT>> onePDMtmp;
       onePDMtmp = std::make_shared<cqmatrix::PauliSpinorMatrices<ScrMatsT>>(DSdims[0],hasDY,hasDZ);
+      
 
       // Errors in 1PDM SCALAR
       if( not hasDS )
@@ -886,54 +969,96 @@ namespace ChronusQ {
         CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
 
+      // Error out if any dimensions don't line up
+      //size_t NBCheck = guessBasisSet ? guessBasisSet->nBasis : NB;
+      //std::cout << "DSdims[0] = " << DSdims[0] << std::endl;
+      //std::cout << "nC = " << this->nC << std::endl;
+      //std::cout << "NBCheck = " << NBCheck << std::endl;
+      //if( NBCheck != DSdims[0] or (hasDZ and (NBCheck != DZdims[0])) or (hasDY and (NBCheck != DYdims[0])) or (hasDX and (NBCheck != DXdims[0])) )
+      //  CErr("Scratch file 1PDM dimensions do not match basis dimensions!");
+      
+      // Let the user know guessbasis is being used
+      if( guessBasisSet )
+        std::cout << "    * GUESSBASIS section specified, projecting basis set " <<
+         guessBasisSet->basisName << " -> " << this->basisSet().basisName << std::endl;
+
+
       // Read in 1PDM SCALAR
-      std::cout << "    * Looking for " << prefix << "1PDM_SCALAR !" << std::endl;
-      scrBin.readData(prefix + "1PDM_SCALAR",onePDMtmp->S().pointer());
+      std::cout << "    * Looking for " << prefix << "1PDM_SCALAR... ";
+      scrBin.readData(prefix + "1PDM_SCALAR", onePDMtmp->S().pointer());
+      std::cout << "Found." << std::endl;
 
       // MZ
       if( onePDMtmp->hasZ() ){
 
-        std::cout << "    * Looking for " << prefix << "1PDM_MZ !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MZ... " << std::endl;
         if( not r2DZ )
           CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
-        scrBin.readData(prefix + "1PDM_MZ",onePDMtmp->Z().pointer());
-
+        scrBin.readData(prefix + "1PDM_MZ", onePDMtmp->Z().pointer());
+        std::cout << "Found." << std::endl;
       }
 
       // MY
       if( onePDMtmp->hasXY() ){
 
-        std::cout << "    * Looking for " << prefix << "1PDM_MX !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MX... " << std::endl;
         if( not r2DX )
           CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
         scrBin.readData(prefix + "1PDM_MX",onePDMtmp->X().pointer());
+        std::cout << "Found." << std::endl;
 
-        std::cout << "    * Looking for " << prefix << "1PDM_MY !" << std::endl;
+        std::cout << "    * Looking for " << prefix << "1PDM_MY... " << std::endl;
         if( not r2DY )
           CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " +
             scrBin.fName(), std::cout);
         scrBin.readData(prefix + "1PDM_MY",onePDMtmp->Y().pointer());
+        std::cout << "Found." << std::endl;
 
       }
 
       // Initialize onePDM
       auto scr1PDMSize = onePDMtmp->dimension();
-      // Guess 1PDM same size as calculation 1PDM
-      if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;
-      // Guess 1PDM smaller than 1PDM
-      else if( scr1PDMSize < NB ){
-        auto p1Comps = this->onePDM->SZYXPointers();
-        auto p2Comps = onePDMtmp->SZYXPointers();
-        auto nComp = p1Comps.size();
-        auto n2Comp = p2Comps.size();
-        for( auto iComp=0; iComp<nComp; iComp++ ){
-          if( iComp < n2Comp )
-            SetMat('N',scr1PDMSize,scr1PDMSize,MatsT(1.),
-               p2Comps[iComp],scr1PDMSize,p1Comps[iComp],NB);
+      if( not guessBasisSet ) {
+        // Guess 1PDM same size as calculation 1PDM
+        if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;
+        // Guess 1PDM smaller than 1PDM
+        else if( scr1PDMSize < NB ){
+            auto p1Comps = this->onePDM->SZYXPointers();
+            auto p2Comps = onePDMtmp->SZYXPointers();
+            auto nComp = p1Comps.size();
+            auto n2Comp = p2Comps.size();
+            for( auto iComp=0; iComp<nComp; iComp++ ){
+              if( iComp < n2Comp )
+                SetMat('N',scr1PDMSize,scr1PDMSize,MatsT(1.),
+                   p2Comps[iComp],scr1PDMSize,p1Comps[iComp],NB);
+            }
+          } else CErr("Cannot use a guess of larger size. Specify GUESSBASIS section if guess is in a different basis.");
+      } else {
+
+        // If GUESSBASIS section is specified, project that basis!
+        std::cout << "    * Projecting 1PDM_SCALAR" << std::endl;
+        auto [onePDMS, projMat] = projectMatrix( this->molecule(), *guessBasisSet, this->basisSet(), onePDMtmp->S() );
+
+        this->onePDM->S() = std::move(onePDMS);
+        if( onePDMtmp->hasZ() ) {
+          if( this->onePDM->hasZ() ) {
+            std::cout << "    * Projecting 1PDM_MZ" << std::endl;
+            this->onePDM->Z() = projectMatrix( projMat, onePDMtmp->Z() );
+          }
+          else std::cout << "    * WARNING: Guess has 1PDM_MZ but this reference doesn't! Zeroing out guess MZ..." << std::endl;
         }
-      } else CErr("Cannot use a guess of larger size.");
+        if( onePDMtmp->hasXY() ) {
+          if( this->onePDM->hasXY() ) {
+            std::cout << "    * Projecting 1PDM_MY" << std::endl;
+            this->onePDM->Y() = projectMatrix( projMat, onePDMtmp->Y() );
+            std::cout << "    * Projecting 1PDM_MX" << std::endl;
+            this->onePDM->X() = projectMatrix( projMat, onePDMtmp->X() );
+          } 
+          else std::cout << "    * WARNING: Guess has 1PDM_MY/MX but this reference doesn't! Zeroing out guess MY/MX..." << std::endl;
+        }
+      }
 
       std::cout << "\n" << std::endl;
       onePDMtmp = nullptr;
@@ -944,7 +1069,7 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,double>::getScr1PDM<dcomplex>(SafeFile& scrBin) {
+  void SingleSlater<double,double>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
 
     CErr("Cannot do complex guess density for real calculation.");
 
@@ -952,7 +1077,7 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,dcomplex>::getScr1PDM<dcomplex>(SafeFile& scrBin) {
+  void SingleSlater<double,dcomplex>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
 
     CErr("Cannot do complex guess density for real calculation.");
 
@@ -964,7 +1089,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readDiffTypeDenBin(std::string binName) {
+  void SingleSlater<MatsT,IntsT>::readDiffTypeDenBin(std::string binName, const std::shared_ptr<BasisSet> guessBasis ) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -1006,18 +1131,110 @@ namespace ChronusQ {
       // Assumes square 1PDM
       if( s_is_double ){
 
-        getScr1PDM<double>(binFile);
+        getScr1PDM<double>(binFile, guessBasis);
 
       } else if( s_is_complex ){
 
-        getScr1PDM<dcomplex>(binFile);
+        getScr1PDM<dcomplex>(binFile, guessBasis);
 
       } else CErr("Could not determine type of scratch bin file");
 
     }
 
   } // SingleSlater<T>::readDiffTypeDenBin()
+  
+  /**
+   *  \brief Generates guess density from a full SCF in the basis set specified by
+   *  the SCFControls object passed in guessSSOptions.
+   *  Outputs a handy binary file too.
+   **/
+  /**
+   *
+   * NOTICE: This function is not used!
+   *
+   **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::SCFGuess(SingleSlaterOptions guessSSOptions) {
 
+
+    const auto refType = guessSSOptions.refOptions.refType;
+    if( refType == isFourCRef ) {
+      CErr("Four component SCF Guess is not supported");
+    }
+
+    std::cout << "    * Performing SCF Guess" << std::endl;
+    std::shared_ptr<BasisSet> guessBasis  = guessSSOptions.scfControls.guessBasis;
+    const auto& localBasis        = this->basisSet();
+          auto& mol               = this->molecule();
+    EMPerturbation pert; // Dummy EM perturbation
+
+
+    // Make guess AOInts and SS objects
+    std::shared_ptr<Integrals<IntsT>> guessAOInts =
+        std::make_shared<Integrals<IntsT>>();
+    guessAOInts->TPI = std::make_shared<InCore4indexTPI<IntsT>>(
+        guessBasis->nBasis);
+
+
+    std::shared_ptr<SingleSlater<MatsT,IntsT>> guessSS =
+        std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(
+            guessSSOptions.buildSingleSlater(std::cout, 
+                mol, *guessBasis, guessAOInts));
+
+    // Silence output
+    guessSSOptions.scfControls.printLevel = 0;
+    guessSS->printLevel = 0;
+    
+    // Set the output file name
+    // If empty, default to the output bin file name with a "_guess" at the end (before the extension)
+    // TODO: make the name an input option
+    std::string outFileName = guessSSOptions.scfControls.scfGuessOutFile;
+    std::vector<std::string> tokens;
+    split(tokens, outFileName, ".");
+    tokens.insert(tokens.begin()+1, "_guess.");
+    outFileName = std::accumulate(tokens.begin(), tokens.end(), std::string());
+    SafeFile guessSavFile(outFileName, true);
+    guessSavFile.createFile();
+    guessSS->savFile = guessSavFile;
+
+
+    // Use SAD guess for the guess SCF
+    // Guessception...
+    guessSS->scfControls.guess = SAD;
+    
+    guessSS->buildOrbitalModifierOptions();
+    // Do X2C CoreH if needed
+    if (guessSSOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
+      ChronusQ::compute_X2C_CoreH_Fock( mol, *guessBasis, guessAOInts, pert, guessSS, guessSSOptions);
+    }
+    
+    // Do integrals
+    guessSS->formCoreH(pert, false);
+    guessAOInts->TPI->computeAOInts(*guessBasis, mol, pert,
+        ELECTRON_REPULSION, guessSSOptions.hamiltonianOptions);
+    guessAOInts->computeAOTwoE(*guessBasis, mol, pert);
+    
+    // Let the SCF rip
+    guessSS->formGuess(guessSSOptions);
+    guessSS->runSCF(pert);
+    
+    // Extract 1PDM and project onto our own
+    auto& guessDen = guessSS->onePDM;
+
+    auto [onePDMS, projMat] = projectMatrix( mol, *guessBasis, this->basisSet(), guessDen->S() );
+    this->onePDM->S() = std::move(onePDMS);  // If std changes to allow instantiation and assignment in one structured binding, these lines can be combined...
+    if( guessDen->hasZ() ) {
+      this->onePDM->Z() = projectMatrix( projMat, guessDen->Z() );
+      if( guessDen->hasXY() ) {
+        this->onePDM->Y() = projectMatrix( projMat, guessDen->Y() );
+        this->onePDM->X() = projectMatrix( projMat, guessDen->X() );
+      }
+    }
+
+
+  }
+
+  
 
   /**
    *  \brief Reads in MOs from bin file.
@@ -1033,7 +1250,7 @@ namespace ChronusQ {
 
         if( printLevel > 0 )
           std::cout << "    * Reading in guess MOs (restart file) from file "
-            << savFile.fName() << "\n";
+            << savFile.fName() << std::endl;
 
         readSameTypeMOBin();
 
@@ -1041,13 +1258,13 @@ namespace ChronusQ {
 
         if( printLevel > 0 )
           std::cout << "    * Reading in guess MOs (scratch file) from file "
-            << scrBinFileName << "\n";
+            << scrBinFileName << std::endl;
 
         readDiffTypeMOBin(scrBinFileName);
 
         if( printLevel > 0 )
           std::cout << "    * Saving prepared MOs to file "
-            << savFile.fName() << "\n";
+            << savFile.fName() << std::endl;
 
         // Saving post-transformed MOs to restart file
         if( savFile.exists() ) {
@@ -1070,48 +1287,8 @@ namespace ChronusQ {
     orthoAOMO();
 
     // MO swapping if requested
-    if( this->moPairs[0].size() != 0 ){
-
-      this->swapMOs(this->moPairs,SpinType::isAlpha);
-
-      if( printLevel > 0 )
-        std::cout << "    * Saving swapped MOs to file "
-          << savFile.fName() << "\n";
-
-      // Saving post-transformed MOs to restart file
-      if( savFile.exists() ) {
-
-        size_t NB  = this->nAlphaOrbital();
-        size_t NBC = this->nC * NB;
-        std::string prefix = "SCF/";
-        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
-
-        savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
-
-      }
-
-    }
-    if( this->moPairs[1].size() != 0 ){
-
-      this->swapMOs(this->moPairs,SpinType::isBeta);
-
-      if( printLevel > 0 )
-        std::cout << "    * Saving swapped beta MOs to file "
-          << savFile.fName() << "\n";
-
-      // Saving post-transformed MOs to restart file
-      if( savFile.exists() ) {
-
-        size_t NB  = this->nAlphaOrbital();
-        size_t NBC = this->nC * NB;
-        std::string prefix = "SCF/";
-        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
-
-        savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
-
-      }
-
-    }
+    if( this->moPairs[0].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isAlpha);
+    if( this->moPairs[1].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isBeta);
 
     // Form density from MOs
     formDensity();

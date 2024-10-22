@@ -167,8 +167,10 @@ namespace ChronusQ {
       return mat_.subsetTransform(TRANS, T, LDT, off_size, out, increment);
     }
 
-    static void OnePDriverLibint(libint2::Operator, Molecule&,
-        BasisSet&, std::vector<IntsT*>, Particle p, size_t deriv=0, size_t S0a=0);
+    static void OnePDriverLibint(libint2::Operator, const Molecule&,
+        const BasisSet&, std::vector<IntsT*>, Particle p, size_t deriv=0, size_t S0a=0);
+    static void OnePDriverLibint(libint2::Operator, const Molecule&,
+        const BasisSet&, const BasisSet&, std::vector<IntsT*>, Particle p, size_t deriv=0);
     void OnePDriverLibcint(OPERATOR, const Molecule&,
         const BasisSet&, const HamiltonianOptions&);
     template <size_t NOPER, bool SYMM, typename F>

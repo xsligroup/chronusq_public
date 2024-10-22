@@ -85,21 +85,21 @@ namespace ChronusQ {
    */ 
   template <>
   void OnePInts<dcomplex>::OnePDriverLibint(libint2::Operator op,
-      Molecule &mol, BasisSet& basis, std::vector<dcomplex*> mats,
+      const Molecule &mol, const BasisSet& basis, std::vector<dcomplex*> mats,
       Particle p, size_t deriv, size_t S0a) {
     CErr("Only real GTOs are allowed",std::cout);
   };
 
   template <>
   void OnePInts<double>::OnePDriverLibint(libint2::Operator op,
-      Molecule &mol, BasisSet& basis, std::vector<double*> mats, 
+      const Molecule &mol, const BasisSet& basis, std::vector<double*> mats, 
       Particle p, size_t deriv, size_t S0a) {
 
-    shell_set& shells = basis.shells;
+    const shell_set& shells = basis.shells;
 
     // Determine the number of basis functions for the passed shell set
-    size_t NB = std::accumulate(shells.begin(),shells.end(),0,
-      [](size_t init, libint2::Shell &sh) -> size_t {
+    size_t NB = std::accumulate(shells.cbegin(),shells.cend(),0,
+      [](size_t init, const libint2::Shell &sh) -> size_t {
         return init + sh.size();
       }
     );
@@ -108,15 +108,15 @@ namespace ChronusQ {
 
 
     // Determine the maximum angular momentum of the passed shell set
-    int maxL = std::max_element(shells.begin(), shells.end(),
-      [](libint2::Shell &sh1, libint2::Shell &sh2){
+    int maxL = std::max_element(shells.cbegin(), shells.cend(),
+      [](const libint2::Shell &sh1, const libint2::Shell &sh2){
         return sh1.contr[0].l < sh2.contr[0].l;
       }
     )->contr[0].l;
 
     // Determine the maximum contraction depth of the passed shell set
-    int maxPrim = std::max_element(shells.begin(), shells.end(),
-      [](libint2::Shell &sh1, libint2::Shell &sh2){
+    int maxPrim = std::max_element(shells.cbegin(), shells.cend(),
+      [](const libint2::Shell &sh1, const libint2::Shell &sh2){
         return sh1.alpha.size() < sh2.alpha.size();
       }
     )->alpha.size();
@@ -320,6 +320,216 @@ namespace ChronusQ {
       for(auto nMat = 0; nMat < matMaps.size(); nMat++) 
         matMaps[nMat] = matMaps[nMat].template selfadjointView<Eigen::Lower>();
     }
+
+  }; // OnePInts::OnePDriver
+
+
+  /** 
+   *  /brief Integral driver with two basis support
+   *  Only op=overlap is actually tested, be careful when using other operators!
+   *  Returns matrices with dimension (basisB.size(), basisA.size())
+   **/
+  template <>
+  void OnePInts<dcomplex>::OnePDriverLibint(libint2::Operator op,
+      const Molecule &mol, const BasisSet& basis_B, const BasisSet& basis_A, std::vector<dcomplex*> mats, 
+      Particle p, size_t deriv) {
+    CErr("OnePDriverLibint: Only real GTOs are allowed");
+  };
+  template <>
+  void OnePInts<double>::OnePDriverLibint(libint2::Operator op,
+      const Molecule &mol, const BasisSet& basis_B, const BasisSet& basis_A, std::vector<double*> mats, 
+      Particle p, size_t deriv) {
+
+    const shell_set& shells_A = basis_A.shells;
+    const shell_set& shells_B = basis_B.shells;
+
+
+    // Determine the number of basis functions for the passed shell set
+    auto shell_counter = [](size_t init, const libint2::Shell &sh) -> size_t {
+        return init + sh.size();
+    };
+
+    const size_t NB_A = std::accumulate(shells_A.cbegin(),shells_A.cend(), 0, shell_counter);
+    const size_t NB_B = std::accumulate(shells_B.cbegin(),shells_B.cend(), 0, shell_counter);
+
+
+    // Determine the maximum angular momentum of the passed shell set
+    auto max_l_compare = [](const libint2::Shell &sh1, const libint2::Shell &sh2){
+        return sh1.contr[0].l < sh2.contr[0].l;
+    };
+
+    const int maxL_A = std::max_element(shells_A.cbegin(), shells_A.cend(), max_l_compare)->contr[0].l;
+    const int maxL_B = std::max_element(shells_B.cbegin(), shells_B.cend(), max_l_compare)->contr[0].l;
+    const int maxL = std::max(maxL_A, maxL_B);
+
+    // Determine the maximum contraction depth of the passed shell set
+    auto max_prim_compare = [](const libint2::Shell &sh1, const libint2::Shell &sh2){
+        return sh1.alpha.size() < sh2.alpha.size();
+    };
+
+    const int maxPrim_A = std::max_element(shells_A.cbegin(), shells_A.cend(), max_prim_compare)->alpha.size();
+    const int maxPrim_B = std::max_element(shells_B.cbegin(), shells_B.cend(), max_prim_compare)->alpha.size();
+    const int maxPrim = std::max(maxPrim_A, maxPrim_B);
+
+    // Determine the number of OpenMP threads
+    int nthreads = GetNumThreads();
+
+    // Create a vector of libint2::Engines for possible threading
+    std::vector<libint2::Engine> engines(nthreads);
+
+    // Initialize the first engine for the integral evaluation
+    engines[0] = libint2::Engine(op,maxPrim,maxL,deriv);
+    engines[0].set_precision(0.0);
+
+    // If engine is K, prescale it by 1/m
+    if (op == libint2::Operator::kinetic)
+      engines[0].prescale_by(1.0 / p.mass);  
+
+    // If engine is V, define nuclear charges (pseudo molecule is used for NEO)
+    if(op == libint2::Operator::nuclear){
+      std::vector<std::pair<double,std::array<double,3>>> q;
+      for (auto ind : mol.atomsC) // loop over classical atoms
+        q.push_back( { -1.0 * p.charge * mol.atoms[ind].nucCharge, mol.atoms[ind].coord } );
+
+      engines[0].set_params(q);
+      
+    }
+
+    // for multipoles, prescale it by charge
+    if (op == libint2::Operator::emultipole1 or op == libint2::Operator::emultipole2 or op == libint2::Operator::emultipole3)
+      engines[0].prescale_by(-1.0 * p.charge);
+
+    // Copy over the engines to other threads if need be
+    for(size_t i = 1; i < nthreads; i++) engines[i] = engines[0];
+
+
+    std::vector<
+      Eigen::Map<
+        Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
+      > 
+    > matMaps;
+    for( auto i = 0; i < mats.size(); i++ ) {
+      std::fill_n(mats[i],NB_A*NB_B,0.);
+      matMaps.emplace_back(mats[i],NB_B,NB_A);
+    }
+
+
+    #pragma omp parallel
+    {
+      int thread_id = GetThreadID();
+
+      const auto& buf_vec = engines[thread_id].results();
+      size_t n1,n2,atom1,atom2;
+
+      // Loop over unique shell pairs
+      // TODO: exploit symmetry
+      for(size_t s1(0), bf1_s(0), s12(0); s1 < shells_B.size(); bf1_s+=n1, s1++){ 
+        n1 = shells_B[s1].size(); // Size of Shell 1
+        atom1 = basis_B.mapSh2Cen[s1]; // Index of atom for Shell 1
+      for(size_t s2(0), bf2_s(0); s2 < shells_A.size(); bf2_s+=n2, s2++, s12++) {
+        n2 = shells_A[s2].size(); // Size of Shell 2
+        atom2 = basis_A.mapSh2Cen[s2]; // Index of atom for Shell 2
+
+        // Round Robbin work distribution
+        #ifdef _OPENMP
+        if( s12 % nthreads != thread_id ) continue;
+        #endif
+
+        // Compute the integrals       
+        engines[thread_id].compute(shells_B[s1],shells_A[s2]);
+
+        // adds the iOp result of the engine to the iMat matrix 
+        //   For non-gradients, iOp and iMat should be the same
+        //   For gradients, they can differ
+        auto add_shellset_to_mat = [&](size_t iOp, size_t iMat) {
+
+
+          // If the integrals were screened, do nothing
+          if(buf_vec[iOp] == nullptr) return;
+
+          // std::cout << "iOp: " << iOp << " iMat: " << iMat << std::endl;
+          Eigen::Map<
+            const Eigen::Matrix<
+              double,
+              Eigen::Dynamic,
+              Eigen::Dynamic,
+              Eigen::RowMajor
+            >
+          > bufMat(buf_vec[iOp],n1,n2);
+
+          matMaps[iMat].block(bf1_s, bf2_s, n1, n2) += bufMat;
+
+        };
+
+        // Place integral blocks into their respective matricies
+        switch (deriv) {
+
+          case 0:
+            for(auto iMat = 0; iMat < buf_vec.size(); iMat++){
+              add_shellset_to_mat(iMat, iMat);
+            }
+            break; // case deriv == 0
+
+          case 1:
+            // For gradients, libint returns first the gradients of the
+            //   bra/ket, and then the gradients of the operator. We handle
+            //   these separately.
+            // e.g.
+            //   For the (O1s|V|H1s) nuclear attraction gradients in H2O with
+            //   atom indices: O:0, H:1, H:2, libint will return 15 derivative
+            //   integrals.
+            //   (3 cartesian indices * (2 shell centers + 3 nuclear centers))
+            //   There are only 9 gradient integrals
+            //   (3 cartesian indices * 3 nuclear centers)
+            //
+            //   The results will be mapped to their respective gradient
+            //   integrals by:
+            //
+            //   | ======================================================== |
+            //   |   Engine result    | Gradient integral |  iOps   | iMats |
+            //   | ------------------ + ----------------- + ------- + ----- |
+            //   | (d/dR0 O1s|V| H1s) | d/dR0 (O1s|V|H1s) | [0,2]   | [0,2] |
+            //   | (O1s|V| d/dR1 H1s) | d/dR1 (O1s|V|H1s) | [3,5]   | [3,5] |
+            //   | (O1s|d/dR0 V| H1s) | d/dR0 (O1s|V|H1s) | [6,8]   | [0,2] |
+            //   | (O1s|d/dR1 V| H1s) | d/dR1 (O1s|V|H1s) | [9,11]  | [3,5] |
+            //   | (O1s|d/dR2 V| H1s) | d/dR2 (O1s|V|H1s) | [12,14] | [6,8] |
+            //   | ======================================================== |
+            //
+            // For geometry independent operators, libint will only return 6
+            //   derivative integrals. (bra then ket)
+            // std::cout << "(" << s1 << "," << s2 << ")" << std::endl;
+            // for (auto& x: buf_vec) {
+            //   std::cout << "**************************************" << std::endl;
+            //   for ( auto i = 0 ; i < n1*n2 ; i++ ) {
+            //     std::cout << i << ": " << x[i] << std::endl;
+            //   }
+            // }
+
+            size_t result_idx = 0;
+            
+            // First the bra and ket
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(result_idx, 3*atom1 + xyz);
+
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(result_idx, 3*atom2 + xyz);
+
+            // Gradient of operator
+            if (op == libint2::Operator::nuclear) {
+              auto nAtoms = mol.atomsC.size();
+              for (auto iAt = 0; iAt < nAtoms; iAt++) {
+                for ( auto xyz = 0; xyz < 3; xyz++, result_idx++) {
+                  add_shellset_to_mat(result_idx, 3*mol.atomsC[iAt]+ xyz);
+                }
+              }
+            }
+            break; // case deriv == 1
+        } // switch deriv
+
+      } // Loop over s2 <= s1
+      } // Loop over s1
+
+    } // end OpenMP context
 
   }; // OnePInts::OnePDriver
 

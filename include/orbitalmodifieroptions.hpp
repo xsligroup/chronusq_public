@@ -26,6 +26,7 @@
 #include <cmath>
 #include <physcon.hpp>
 #include <cxxapi/input.hpp>
+#include <basisset.hpp>
 
 
 namespace ChronusQ {
@@ -100,6 +101,7 @@ namespace ChronusQ {
     RANDOM,
     READMO,
     READDEN,
+    SCF,
     FCHKMO,
     // Specific Guess Options For NEO
     NEOTightProton,
@@ -160,6 +162,8 @@ namespace ChronusQ {
     // Guess Settings
     SS_GUESS guess = SAD;
     SS_GUESS prot_guess = NEOTightProton;
+    std::shared_ptr<BasisSet> guessBasis;      ///< Optional guess basis set to project from
+    std::string scfGuessOutFile;            ///< Optional guess save file name for SCF guess
 
     // DIIS settings
     DIIS_ALG diisAlg = CDIIS; ///< Type of DIIS extrapolation

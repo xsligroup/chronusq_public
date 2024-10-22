@@ -31,5 +31,9 @@ namespace ChronusQ {
   size_t ORTH(int M, int N, _F *A, int LDA, double *S,
     _F *U, int LDU);
 
+  template <typename _F>
+  size_t ORTH(int M, int N, _F *A, int LDA, double *S,
+    _F *U, int LDU, _F *VT, int LDVT);
+
 }; // namespace ChronusQ
 

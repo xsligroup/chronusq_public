@@ -223,6 +223,7 @@ namespace ChronusQ {
 
     std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS"); // Create BasisSet object
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
+    std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Create BasisSet object for DFBasis if defined
     std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation
 
     // Parse Integral options from input file
@@ -391,10 +392,12 @@ namespace ChronusQ {
         
         // Note, these guessSSOptions does not apply to NEO guess
         SingleSlaterOptions guessSSOptions(ssOptions);
-        guessSSOptions.refOptions.isKSRef = false;
-        guessSSOptions.refOptions.nC = 1;
-        guessSSOptions.hamiltonianOptions.OneEScalarRelativity = false;
-        guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
+        guessSSOptions.scfControls.guessBasis = guessbasis;
+        guessSSOptions.scfControls.scfGuessOutFile = rstFileName;
+        //guessSSOptions.refOptions.isKSRef = false;
+        //guessSSOptions.refOptions.nC = 1;
+        //guessSSOptions.hamiltonianOptions.OneEScalarRelativity = false;
+        //guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
 
         // Run SCF job
         if( elecJob == JobType::SCF ) {
