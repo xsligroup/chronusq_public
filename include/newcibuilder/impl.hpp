@@ -177,8 +177,6 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
         bcast_ptr = iBCast % 2 == 0 ? localC_MPIBuff1 : localC_MPIBuff2;
       }
       bcast_len = C.lengthAtNode(iBCast) * nVec;
-      // std::cout << "HHDebug Start MPI IBCast, bcast_len = " << bcast_len
-      //           << ", mem is " << sizeof(MatsT) * bcast_len / 1e9 << " GB" << std::endl;
       bcast_req = MPIIBCast(bcast_ptr, bcast_len, iBCast, comm_);
       ProgramTimer::tock("Sigma MPI COMM Init IBCast");
     }
