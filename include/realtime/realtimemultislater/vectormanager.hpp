@@ -22,42 +22,72 @@
  *
  */
 #pragma once
-#include <cqlinalg/blas1.hpp>
-#include <cqlinalg/blas3.hpp>
-#include <cqlinalg/blasutil.hpp>
 #include <realtime.hpp>
+#include <itersolver.hpp>
 
 namespace ChronusQ {
 
 namespace RTMS {
-template <typename oper_t>
-void copy(oper_t source, oper_t dest, size_t vecSize_) {
-  std::copy_n(source, vecSize_, dest);
+template <typename MatsT>
+void copy(std::shared_ptr<SolverVectors<MatsT>> source, std::shared_ptr<SolverVectors<MatsT>> dest, size_t vecSize_) {
+  auto derived_source = std::dynamic_pointer_cast<RawVectors<MatsT>>(source);
+  auto derived_dest= std::dynamic_pointer_cast<RawVectors<MatsT>>(dest);
+  //should check that source + dest sizes are the same..
+  if (source->size() * source->length() != dest->size() * dest->length()){
+    CErr("Mismatched sizes");
+  }
+  std::copy_n(derived_source->getPtr(), source->size() * source->length(), derived_dest->getPtr());
 };
 
-template <typename oper_t, typename T>
-void add(oper_t source, oper_t dest, size_t vecSize_, T factor) {
-  blas::axpy(vecSize_, factor, source, 1, dest, 1);
+template <typename MatsT, typename T>
+void add(std::shared_ptr<SolverVectors<MatsT>> source, std::shared_ptr<SolverVectors<MatsT>> dest, size_t vecSize_, T factor) {
+  size_t shiftY = 0, nVec = 1, shiftX = 0;
+  //dest->axpy(shiftY, nVec, factor, *source, shiftX);
+  auto derived_source= std::dynamic_pointer_cast<RawVectors<MatsT>>(source);
+  auto derived_dest= std::dynamic_pointer_cast<RawVectors<MatsT>>(dest);
+  blas::axpy(dest->size() * dest->length(), factor, derived_source->getPtr(shiftX), 1, derived_dest->getPtr(shiftY), 1);
 };
 
-template <typename oper_t, typename T>
-void fill(oper_t dest, T val, size_t vecSize_) {
-  std::fill_n(dest, vecSize_, val);
+template <typename MatsT, typename T>
+void add(MatsT* source, std::shared_ptr<SolverVectors<MatsT>> dest, size_t vecSize_, T factor) {
+  size_t shiftY = 0, nVec = 1, shiftX = 0;
+  auto derived_dest= std::dynamic_pointer_cast<RawVectors<MatsT>>(dest);
+  blas::axpy(dest->size() * dest->length(), factor, source, 1, derived_dest->getPtr(shiftY), 1);
 };
 
-template <typename oper_t, typename T>
-void dot(oper_t source_1, oper_t source_2, size_t vecSize_, T &result) {
-  result = blas::dot(vecSize_, source_1, 1, source_2, 1);
+
+template <typename MatsT, typename T>
+void fill(std::shared_ptr<SolverVectors<MatsT>> dest, T val, size_t vecSize_) {
+  auto derived_dest= std::dynamic_pointer_cast<RawVectors<MatsT>>(dest);
+  MatsT MatsT_val = (MatsT) val;
+  std::fill_n(derived_dest->getPtr(), dest->length() * dest->size(), MatsT_val);
 };
 
-template <typename oper_t, typename T>
-void scal(oper_t source, size_t vecSize_, T factor) {
-  blas::scal(vecSize_, factor, source, 1);
+template <typename MatsT>
+void dot(std::shared_ptr<SolverVectors<MatsT>> source_1, std::shared_ptr<SolverVectors<MatsT>> source_2, size_t vecSize_, MatsT &result) {
+    size_t shiftA = 0, shiftB =0;
+    int64_t m =1, n = 1, ldc=1;
+    bool conjA = true;
+    auto derived_source_1= std::dynamic_pointer_cast<RawVectors<MatsT>>(source_1);
+    auto derived_source_2= std::dynamic_pointer_cast<RawVectors<MatsT>>(source_2);
+    MatsT *val;
+    //derived_source_1->dot_product(shiftA, *derived_source_2, shiftB, m, n, val, ldc, conjA);
+    //result = *val;
+    result = blas::dot(vecSize_, derived_source_1->getPtr(), 1, derived_source_2->getPtr(), 1);
 };
 
-template <typename oper_t, typename T>
-void normalize(oper_t source, size_t vecSize_, T &result) {
-  result = Normalize(vecSize_, source, 1);
+template <typename MatsT, typename T>
+void scal(std::shared_ptr<SolverVectors<MatsT>> source, size_t vecSize_, T factor) {
+  size_t shift=0, nVec=1;
+  source->scale(factor, shift, nVec);
+};
+
+template <typename MatsT, typename T>
+void normalize(std::shared_ptr<SolverVectors<MatsT>> source, size_t vecSize_, T &result) {
+  size_t shift=0, nVec=1;
+  result = source->norm2F(shift, nVec);
+  auto derived_source= std::dynamic_pointer_cast<RawVectors<MatsT>>(source);
+  source->scale(1.0/result, shift, nVec);
 };
 } // namespace RTMS
 
@@ -65,8 +95,14 @@ class RealTimeMultiSlaterVectorManagerBase {
 protected:
   size_t vecSize_;
   double inactiveEnergy_ = 0.0;
+  MPI_Comm comm_;
 
 public:
+    RealTimeMultiSlaterVectorManagerBase()                 = delete;
+    RealTimeMultiSlaterVectorManagerBase(const RealTimeMultiSlaterVectorManagerBase &) = delete;
+    RealTimeMultiSlaterVectorManagerBase(RealTimeMultiSlaterVectorManagerBase &&)      = delete;
+    RealTimeMultiSlaterVectorManagerBase(MPI_Comm comm ) : comm_(comm)  {};
+
   // For handling multislater initial wavefunctions
   MSInitialState initmethod;
   std::vector<std::pair<double, size_t>> init_detail;
@@ -82,51 +118,56 @@ public:
   size_t get_vecSize_() { return this->vecSize_; }
 };
 
-template <typename oper_t>
+template <typename MatsT>
 class RealTimeMultiSlaterVectorManagerSSO
     : public RealTimeMultiSlaterVectorManagerBase {
 public:
-  oper_t C_real_t;
-  oper_t C_real_tplusdt;
-  oper_t C_imag_tminushalfdt;
-  oper_t C_imag_tplushalfdt;
-  oper_t C_imag_t;
-  oper_t dC;
+    RealTimeMultiSlaterVectorManagerSSO()                 = delete;
+    RealTimeMultiSlaterVectorManagerSSO(const RealTimeMultiSlaterVectorManagerSSO &) = delete;
+    RealTimeMultiSlaterVectorManagerSSO(RealTimeMultiSlaterVectorManagerSSO &&)      = delete;
+    RealTimeMultiSlaterVectorManagerSSO(MPI_Comm comm ) : RealTimeMultiSlaterVectorManagerBase(comm)  {};
 
-  oper_t C_real_epsilon; // wave functions at t=\epsilon for the accumulation of
+  std::shared_ptr<SolverVectors<MatsT>> C_real_t;
+  std::shared_ptr<SolverVectors<MatsT>> C_real_tplusdt;
+  std::shared_ptr<SolverVectors<MatsT>> C_imag_tminushalfdt;
+  std::shared_ptr<SolverVectors<MatsT>> C_imag_tplushalfdt;
+  std::shared_ptr<SolverVectors<MatsT>> C_imag_t;
+  std::shared_ptr<SolverVectors<MatsT>> dC;
+
+  std::shared_ptr<SolverVectors<MatsT>> C_real_epsilon; // wave functions at t=\epsilon for the accumulation of
                          // the RT correlation function
-  oper_t C_imag_epsilon;
+  std::shared_ptr<SolverVectors<MatsT>> C_imag_epsilon;
 
-  template <typename MatsT, typename IntsT>
+  template <typename IntsT>
   void buildInitCIVec(std::shared_ptr<MCWaveFunction<MatsT, IntsT>>);
 
   void allocateMemory() override {
     // allocating
-    C_real_t = CQMemManager::get().malloc<double>(this->get_vecSize_());
-    C_real_tplusdt = CQMemManager::get().malloc<double>(this->get_vecSize_());
+    C_real_t       = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
+    C_real_tplusdt = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
 
-    C_imag_tminushalfdt =
-        CQMemManager::get().malloc<double>(this->get_vecSize_());
-    C_imag_tplushalfdt =
-        CQMemManager::get().malloc<double>(this->get_vecSize_());
-    C_imag_t = CQMemManager::get().malloc<double>(this->get_vecSize_());
+    C_imag_tminushalfdt = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
+    C_imag_tplushalfdt = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
+    C_imag_t = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
 
-    dC = CQMemManager::get().malloc<double>(this->get_vecSize_());
+    dC       = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
 
-    RTMS::fill(C_real_t, 0.0, this->get_vecSize_());
-    RTMS::fill(C_real_tplusdt, 0.0, this->get_vecSize_());
-    RTMS::fill(C_imag_tminushalfdt, 0.0, this->get_vecSize_());
-    RTMS::fill(C_imag_tplushalfdt, 0.0, this->get_vecSize_());
-    RTMS::fill(C_imag_t, 0.0, this->get_vecSize_()),
-    RTMS::fill(dC, 0.0, this->get_vecSize_());
+    // RTMS::fill(C_real_t, 0.0, this->get_vecSize_());
+    // RTMS::fill(C_real_tplusdt, 0.0, this->get_vecSize_());
+    // RTMS::fill(C_imag_tminushalfdt, 0.0, this->get_vecSize_());
+    // RTMS::fill(C_imag_tplushalfdt, 0.0, this->get_vecSize_());
+    // RTMS::fill(C_imag_t, 0.0, this->get_vecSize_()),
+    // RTMS::fill(dC, 0.0, this->get_vecSize_());
   }
 
   void allocateCorrelationFunctionMemory() override {
-    C_real_epsilon = CQMemManager::get().malloc<double>(this->get_vecSize_());
-    C_imag_epsilon = CQMemManager::get().malloc<double>(this->get_vecSize_());
+    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(C_real_t);
+    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(C_imag_t);
+    C_real_epsilon = std::make_shared<RawVectors<MatsT>>(*derived_C_real_t);
+    C_imag_epsilon = std::make_shared<RawVectors<MatsT>>(*derived_C_imag_t);
     // std::fill_n(C_real_epsilon, this->get_vecSize_(), 0.0);
     const auto Nelem = this->get_vecSize_();
-    RTMS::fill(C_imag_epsilon, 0.0, Nelem);
+    // RTMS::fill(C_imag_epsilon, 0.0, Nelem);
     RTMS::copy(C_real_t, C_real_epsilon, Nelem);
     RTMS::copy(C_imag_t, C_imag_epsilon, Nelem);
     // Real Time Correlation Function requires CONJ(C(epsilon) C(epsilon+t) so
@@ -136,80 +177,85 @@ public:
 
   void cleanupMemory() override {
     // free mem
-    CQMemManager::get().free(C_real_t);
-    CQMemManager::get().free(C_real_tplusdt);
+    //CQMemManager::get().free(C_real_t);
+    //CQMemManager::get().free(C_real_tplusdt);
 
-    CQMemManager::get().free(C_imag_t);
-    CQMemManager::get().free(C_imag_tminushalfdt);
-    CQMemManager::get().free(C_imag_tplushalfdt);
+    //CQMemManager::get().free(C_imag_t);
+    //CQMemManager::get().free(C_imag_tminushalfdt);
+    //CQMemManager::get().free(C_imag_tplushalfdt);
 
-    CQMemManager::get().free(dC);
-    if (C_real_epsilon)
-      CQMemManager::get().free(C_real_epsilon);
-    if (C_imag_epsilon)
-      CQMemManager::get().free(C_imag_epsilon);
+    //CQMemManager::get().free(dC);
+    //if (C_real_epsilon)
+    //  CQMemManager::get().free(C_real_epsilon);
+    //if (C_imag_epsilon)
+    //  CQMemManager::get().free(C_imag_epsilon);
   }
 };
 
-template <typename oper_t>
+template <typename MatsT>
 class RealTimeMultiSlaterVectorManagerRK4
     : public RealTimeMultiSlaterVectorManagerBase {
 public:
-  oper_t C_t;
-  oper_t C_tplusdt;
+    RealTimeMultiSlaterVectorManagerRK4()                 = delete;
+    RealTimeMultiSlaterVectorManagerRK4(const RealTimeMultiSlaterVectorManagerRK4 &) = delete;
+    RealTimeMultiSlaterVectorManagerRK4(RealTimeMultiSlaterVectorManagerRK4 &&)      = delete;
+    RealTimeMultiSlaterVectorManagerRK4(MPI_Comm comm ) : RealTimeMultiSlaterVectorManagerBase(comm)  {};
 
-  oper_t k1;
-  oper_t k2;
-  oper_t k3;
-  oper_t k4;
+  std::shared_ptr<SolverVectors<MatsT>> C_t;
+  std::shared_ptr<SolverVectors<MatsT>> C_tplusdt;
 
-  oper_t ktemp;
+  std::shared_ptr<SolverVectors<MatsT>> k1;
+  std::shared_ptr<SolverVectors<MatsT>> k2;
+  std::shared_ptr<SolverVectors<MatsT>> k3;
+  std::shared_ptr<SolverVectors<MatsT>> k4;
 
-  oper_t C_epsilon; // wave functions at t=\epsilon for the accumulation of the
+  std::shared_ptr<SolverVectors<MatsT>> ktemp;
+
+  std::shared_ptr<SolverVectors<MatsT>> C_epsilon; // wave functions at t=\epsilon for the accumulation of the
                     // RT correlation function
 
-  template <typename MatsT, typename IntsT>
+  template <typename IntsT>
   void buildInitCIVec(std::shared_ptr<MCWaveFunction<MatsT, IntsT>>);
 
   void allocateMemory() override {
     // allocating
-    C_t = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    C_tplusdt = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    k1 = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    k2 = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    k3 = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    k4 = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
-    ktemp = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
+    C_t       = std::make_shared<RawVectors<MatsT>>(      this->comm_, this->get_vecSize_(), 1);
+    C_tplusdt       = std::make_shared<RawVectors<MatsT>>(this->comm_, this->get_vecSize_(), 1);
+    k1       = std::make_shared<RawVectors<MatsT>>(       this->comm_, this->get_vecSize_(), 1);
+    k2       = std::make_shared<RawVectors<MatsT>>(       this->comm_, this->get_vecSize_(), 1);
+    k3      = std::make_shared<RawVectors<MatsT>>(        this->comm_, this->get_vecSize_(), 1);
+    k4       = std::make_shared<RawVectors<MatsT>>(       this->comm_, this->get_vecSize_(), 1);
+    ktemp      = std::make_shared<RawVectors<MatsT>>(     this->comm_, this->get_vecSize_(), 1);
 
     const auto Nelem = this->get_vecSize_();
-    RTMS::fill(C_t, 0.0, Nelem);
-    RTMS::fill(C_tplusdt, 0.0, Nelem);
-    RTMS::fill(k1, 0.0, Nelem);
-    RTMS::fill(k2, 0.0, Nelem);
-    RTMS::fill(k3, 0.0, Nelem);
-    RTMS::fill(k4, 0.0, Nelem);
-    RTMS::fill(ktemp, 0.0, Nelem);
+    // RTMS::fill(C_t, 0.0, Nelem);
+    // RTMS::fill(C_tplusdt, 0.0, Nelem);
+    // RTMS::fill(k1, 0.0, Nelem);
+    // RTMS::fill(k2, 0.0, Nelem);
+    // RTMS::fill(k3, 0.0, Nelem);
+    // RTMS::fill(k4, 0.0, Nelem);
+    // RTMS::fill(ktemp, 0.0, Nelem);
   }
 
   void allocateCorrelationFunctionMemory() override {
-    C_epsilon = CQMemManager::get().malloc<dcomplex>(this->get_vecSize_());
+    auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(C_t);
+    C_epsilon = std::make_shared<RawVectors<MatsT>>(*derived_C_t);
     const auto Nelem = this->get_vecSize_();
-    RTMS::copy(C_t, C_epsilon, Nelem);
   }
 
   void cleanupMemory() override {
     // free mem
-    CQMemManager::get().free(C_t);
-    CQMemManager::get().free(C_tplusdt);
+    // CQMemManager::get().free(C_t);
+    // CQMemManager::get().free(C_tplusdt);
 
-    CQMemManager::get().free(k1);
-    CQMemManager::get().free(k2);
-    CQMemManager::get().free(k3);
-    CQMemManager::get().free(k4);
+    // CQMemManager::get().free(k1);
+    // CQMemManager::get().free(k2);
+    // CQMemManager::get().free(k3);
+    // CQMemManager::get().free(k4);
 
-    CQMemManager::get().free(ktemp);
-    if (C_epsilon)
-      CQMemManager::get().free(C_epsilon);
+    // CQMemManager::get().free(ktemp);
+    // if (C_epsilon)
+    //   CQMemManager::get().free(C_epsilon);
   }
 };
 

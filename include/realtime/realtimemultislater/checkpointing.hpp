@@ -40,14 +40,12 @@ void RealTimeMultiSlater<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
   if (restart)
     return;
 
+  auto derived_ref = dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
   if (maxPoints == 0)
-    maxPoints =
-        (size_t)(((intScheme.tMax + intScheme.deltaT / 4) / intScheme.deltaT) +
-                 1);
+    maxPoints = (size_t)(((intScheme.tMax + intScheme.deltaT / 4) / intScheme.deltaT) + 1);
   // maxPoints = intScheme.tMax / intScheme.deltaT + 1;
 
   savFile.createGroup("RT");
-
   savFile.createDataSet<double>("RT/TIME", {maxPoints});
   savFile.createDataSet<double>("RT/ENERGY", {maxPoints});
   savFile.createDataSet<double>("RT/LEN_ELEC_DIPOLE", {maxPoints, 3});
@@ -58,7 +56,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
       nPop += 1;
     if (maxPoints == 1)
       nPop = 1;
-    hsize_t NStates = vecManager->get_vecSize_();
+    hsize_t NStates = derived_ref->NStates;
     savFile.createDataSet<double>("RT/CIPOPULATION", {nPop, NStates});
   }
   if (this->RealTimeCorrelationFunctionFreq != 0) {

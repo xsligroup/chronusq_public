@@ -105,14 +105,13 @@ namespace ChronusQ {
 
     std::shared_ptr<RealTimeBase> rt;
     if(mcscf) {
-        rt = CQRealTimeMultiSlaterOptions(out, input, mcscf, scfPert);
+        rt = CQRealTimeMultiSlaterOptions(out, input, ss, mcscf, scfPert);
     }
-    std::cout << "returning RTMULTISLATER OPTS FROM RT" << std::endl;
     return rt;
   }
 
   std::shared_ptr<RealTimeBase> CQRealTimeMultiSlaterOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<MCWaveFunctionBase> &mcscf,
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcscf,
     EMPerturbation& scfPert ) {
     if( not input.containsSection("RT") )
       CErr("RT Section must be specified for RT job",out);
@@ -131,7 +130,7 @@ namespace ChronusQ {
 
       if ( not intAlg.compare("SSO") ) { 
         inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
-        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double*>>();
+        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double>>(ss->comm);
       }
       else if ( not intAlg.compare("RK4") ) {
       }
@@ -145,7 +144,7 @@ namespace ChronusQ {
     };
     
     if (!vecManager) {
-        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex*>>();
+        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex>>(ss->comm);
     }
     vecManager->set_vecSize_(mcscf->NDet);
 
@@ -465,7 +464,6 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
       sum=std::accumulate(cweights.begin(),cweights.end(),0.0);
       for(size_t i = 0; i < cweights.size(); i++)
         vecManager->init_detail.push_back(std::make_pair<double,size_t>(cweights[i]/std::sqrt(sum),std::stoi(dettokens[i])));
-
     }
     else
     {

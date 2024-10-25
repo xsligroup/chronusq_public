@@ -51,9 +51,10 @@ void RealTimeMultiSlater<MatsT, IntsT>::formHamiltonian(double t) {
     }
     auto derived_ref =
         dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
-    if (time_independent_ham) {
+    if (time_independent_ham && !time_independent_ham_transformed) {
       EMPerturbation dummy_field;
       derived_ref->transformInts(dummy_field);
+      time_independent_ham_transformed = true;
     } else {
       derived_ref->transformInts(pert_t);
     }

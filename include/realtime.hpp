@@ -154,16 +154,16 @@ namespace ChronusQ {
 
       //Do we need to transform the field
       std::valarray<double> old_amp {std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
-      double transform_threshold = 1e-15; // manually set tight/ user option?
+      double transform_threshold = 1e-10; // manually set tight/ user option?
       bool time_independent_ham = false; // if true -> H is time independent (we apply mu explicitly separately for the field)
                                          // if false -> H(t) has the field folded into it (as a one electron operator aka in HCore)
+      bool time_independent_ham_transformed = false; // only used if time_independent_ham == true. If true then we have done the transform once and we can skip the rest of the MO int transforms
 
       double total_energy = 0.0;
       std::array<double,3> Dipole;
       RealTimeMultiSlaterBase() = default;
       RealTimeMultiSlaterBase(const RealTimeMultiSlaterBase &) = delete;
       RealTimeMultiSlaterBase(RealTimeMultiSlaterBase &&)      = delete;
-  
   
   };
 
@@ -189,9 +189,9 @@ namespace ChronusQ {
      *  Stores references to a "reference" MultiSlater object and
      *  CQMemManager and makes a copy of the reference into a propagated wavefunction object
      */ 
-    RealTimeMultiSlater(std::shared_ptr<MCWaveFunction<MatsT, IntsT>> reference, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager_, RealTimeAlgorithm MRRTAlg) : 
+    RealTimeMultiSlater(std::shared_ptr<MCWaveFunction<MatsT, IntsT>> reference, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager_, RealTimeAlgorithm MRRTAlg) :
       reference_(std::dynamic_pointer_cast<ManyBodyWavefunctionBase>(reference)),
-      vecManager(std::move(vecManager_)){
+      vecManager(std::move(vecManager_)) {
         intScheme.integrationAlgorithm = MRRTAlg;
         alloc(); 
     }; // RealTimeMultiSlater constructor

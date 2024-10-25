@@ -40,28 +40,26 @@ void RealTimeMultiSlater<MatsT, IntsT>::CIPop() {
   std::vector<double> populations;
   std::vector<MatsT> overlaps;
   if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT *>>(
-            vecManager);
-    auto derived_ref =
-        std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
-    derived_ref->computeOverlaps(vecManagerDerived->C_real_t, overlaps);
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
+    auto derived_ref = std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
+    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_real_t);
+    derived_ref->computeOverlaps(derived_C_real_t->getPtr(), overlaps);
     populations.resize(overlaps.size());
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);
     }
     overlaps.clear();
-    derived_ref->computeOverlaps(vecManagerDerived->C_imag_t, overlaps);
+    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_imag_t);
+    derived_ref->computeOverlaps(derived_C_imag_t->getPtr(), overlaps);
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);
     }
   } else {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT *>>(
-            vecManager);
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(vecManager);
     auto derived_ref =
         std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
-    derived_ref->computeOverlaps(vecManagerDerived->C_t, overlaps);
+    auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
+    derived_ref->computeOverlaps(derived_C_t->getPtr(), overlaps);
     populations.resize(overlaps.size());
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);

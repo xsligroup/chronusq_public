@@ -38,9 +38,7 @@ template <typename MatsT, typename IntsT>
 void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
                                                          bool Finish) {
   // TODO figure out upcast for cc/dmrg wfn
-  auto vecManagerDerived = dynamic_cast<RealTimeMultiSlaterVectorManagerSSO<double *> *>(vecManager.get());
-  // auto derived_ref = dynamic_cast<MCWaveFunction<double,
-  // double>*>(reference_.get());
+  auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
   auto derived_ref = dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
   size_t NDet = vecManagerDerived->get_vecSize_();
   // C(t) = p(t) + q(t) i
@@ -59,7 +57,6 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
     // q(t0 + 0.5 dt) = q(t0) - 1/2 dt dq(t0)
     RTMS::copy(vecManagerDerived->C_imag_t, vecManagerDerived->C_imag_tplushalfdt, NDet);
     RTMS::add(vecManagerDerived->dC, vecManagerDerived->C_imag_tplushalfdt, NDet, -0.5 * curState.stepSize);
-
     // transform integrals for t0 + 0.5 dt
     this->formHamiltonian(curState.xTime + (0.5 * curState.stepSize));
 
@@ -69,9 +66,6 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
     // p(t0 + dt) =  p(t0) + dt dp(t0 + 0.5 dt)
     RTMS::copy(vecManagerDerived->C_real_t, vecManagerDerived->C_real_tplusdt, NDet);
     RTMS::add(vecManagerDerived->dC, vecManagerDerived->C_real_tplusdt, NDet, curState.stepSize);
-    for (auto i = 0; i < NDet; i++) {
-     std::cout << vecManagerDerived->C_imag_tplushalfdt[i] << std::endl;
-    }
   } else if (Finish) {
     RTMS::copy(vecManagerDerived->C_imag_tplushalfdt, vecManagerDerived->C_imag_t, NDet);
     RTMS::copy(vecManagerDerived->C_real_tplusdt, vecManagerDerived->C_real_t, NDet);
@@ -83,7 +77,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
     this->buildSigma(vecManagerDerived->C_real_t, vecManagerDerived->dC, curState.xTime);
     this->total_energy = derived_ref->reference().molecule().nucRepEnergy + derived_ref->InactEnergy;
     double dot_result;
-    RTMS::dot(vecManagerDerived->C_real_t, vecManagerDerived->dC, NDet, dot_result);
+    RTMS::dot(vecManagerDerived->C_real_t, vecManagerDerived->dC, NDet,
+              dot_result);
     this->total_energy += dot_result;
 
     // q(t) = q(t - 0.5 dt) - 0.5 dt dq(t)
@@ -91,7 +86,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
 
     this->buildSigma(vecManagerDerived->C_imag_t, vecManagerDerived->dC, curState.xTime);
     dot_result = 0.0;
-    RTMS::dot(vecManagerDerived->C_imag_t, vecManagerDerived->dC, NDet, dot_result);
+    RTMS::dot(vecManagerDerived->C_imag_t, vecManagerDerived->dC, NDet,
+              dot_result);
     this->total_energy += dot_result;
   } else {
     RTMS::copy(vecManagerDerived->C_imag_tplushalfdt, vecManagerDerived->C_imag_tminushalfdt, NDet);
@@ -126,7 +122,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_SSO(bool Start,
 
     this->buildSigma(vecManagerDerived->C_imag_t, vecManagerDerived->dC, curState.xTime + (0.5 * curState.stepSize));
     dot_result = 0.0;
-    RTMS::dot(vecManagerDerived->C_imag_t, vecManagerDerived->dC, NDet, dot_result);
+    RTMS::dot(vecManagerDerived->C_imag_t, vecManagerDerived->dC, NDet,
+              dot_result);
     this->total_energy += dot_result;
   }
 }

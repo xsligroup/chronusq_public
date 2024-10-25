@@ -61,9 +61,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN_RK4(bool Start,
   // properties etc are evaluated on psi(t) copy psi(t+dt) and evaluate
   // properties If finishing, copy psi(t+dt) to psi(t), no propagation just
   // evaluate properties
-  auto vecManagerDerived =
-      dynamic_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT *> *>(
-          vecManager.get());
+  auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(vecManager);
   auto derived_ref =
       dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
   size_t NDet = vecManagerDerived->get_vecSize_();

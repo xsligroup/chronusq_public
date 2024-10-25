@@ -33,7 +33,9 @@ void RealTimeMultiSlater<MatsT, IntsT>::buildSigma(SigVecType &cin,
                                                    double t) {
   auto derived_ref =
       dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
-  derived_ref->ciBuilder->buildSigma(*derived_ref, 1, cin, sigma_out);
+  auto derived_cin = std::dynamic_pointer_cast<RawVectors<MatsT>>(cin);
+  auto derived_sigma_out = std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
+  derived_ref->ciBuilder->buildSigma(*derived_ref, 1, derived_cin->getPtr(), derived_sigma_out->getPtr());
 
   if (time_independent_ham)
     this->buildMu(cin, sigma_out, t);
@@ -54,7 +56,9 @@ void RealTimeMultiSlater<MatsT, IntsT>::buildMu(SigVecType &cin,
 
   auto derived_ref =
       dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
-  derived_ref->ciBuilder->buildMu(*derived_ref, 1, cin, sigma_out, pert_t);
+  auto derived_cin = std::dynamic_pointer_cast<RawVectors<MatsT>>(cin);
+  auto derived_sigma_out = std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
+  derived_ref->ciBuilder->buildMu(*derived_ref, 1, derived_cin->getPtr(), derived_sigma_out->getPtr(), pert_t);
 };
 
 }; // namespace ChronusQ

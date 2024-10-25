@@ -36,21 +36,20 @@ void RealTimeMultiSlater<MatsT, IntsT>::calculateDipole() {
 
   cqmatrix::Matrix<MatsT> oneRDM(nCorrO);
   if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT *>>(
-            vecManager);
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
+    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_real_t);
+    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_imag_t);
     cqmatrix::Matrix<MatsT> oneRDM_r(nCorrO);
     cqmatrix::Matrix<MatsT> oneRDM_i(nCorrO);
     derived_ref->ciBuilder->computeOneRDM(
-        *derived_ref, vecManagerDerived->C_real_t, oneRDM_r);
+        *derived_ref, derived_C_real_t->getPtr(), oneRDM_r);
     derived_ref->ciBuilder->computeOneRDM(
-        *derived_ref, vecManagerDerived->C_imag_t, oneRDM_i);
+        *derived_ref, derived_C_imag_t->getPtr(), oneRDM_i);
     oneRDM = oneRDM_r + oneRDM_i;
   } else if (curState.curStep == RealTimeAlgorithm::RTRungeKuttaOrderFour) {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT *>>(
-            vecManager);
-    derived_ref->ciBuilder->computeOneRDM(*derived_ref, vecManagerDerived->C_t,
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(vecManager);
+    auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
+    derived_ref->ciBuilder->computeOneRDM(*derived_ref, derived_C_t->getPtr(),
                                           oneRDM);
   }
   // Convert to AO basis and update PDM in ref

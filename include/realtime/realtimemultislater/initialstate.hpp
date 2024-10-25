@@ -28,18 +28,15 @@ namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
 void RealTimeMultiSlater<MatsT, IntsT>::genInitialState() {
-
   if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT *>>(
-            vecManager);
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
     auto derived_ref =
         std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
     if (derived_ref)
       vecManagerDerived->buildInitCIVec(derived_ref);
   } else if (curState.curStep == RealTimeAlgorithm::RTRungeKuttaOrderFour) {
     auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT *>>(
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(
             vecManager);
     auto derived_ref =
         std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
@@ -48,9 +45,9 @@ void RealTimeMultiSlater<MatsT, IntsT>::genInitialState() {
   }
 };
 
-template <typename oper_t>
-template <typename MatsT, typename IntsT>
-void RealTimeMultiSlaterVectorManagerSSO<oper_t>::buildInitCIVec(
+template <typename MatsT>
+template <typename IntsT>
+void RealTimeMultiSlaterVectorManagerSSO<MatsT>::buildInitCIVec(
     std::shared_ptr<MCWaveFunction<MatsT, IntsT>> ref) {
   auto NDet = this->get_vecSize_();
 
@@ -64,7 +61,9 @@ void RealTimeMultiSlaterVectorManagerSSO<oper_t>::buildInitCIVec(
     }
   } else if (this->initmethod == MSInitialState::CustomCI) {
     for (auto det : this->init_detail) {
-      C_real_t[det.second - 1] = det.first;
+      // horrible lol
+      auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(C_real_t);
+      derived_C_real_t->getPtr()[det.second - 1] = det.first;
     }
   } else {
     CErr("Unclear how you'd like to create your RTCI initial State?");
@@ -78,9 +77,9 @@ void RealTimeMultiSlaterVectorManagerSSO<oper_t>::buildInitCIVec(
 
 }; // RealTimeMultiSlaterVectorManagerSSO::buildInitCIVec
 
-template <typename oper_t>
-template <typename MatsT, typename IntsT>
-void RealTimeMultiSlaterVectorManagerRK4<oper_t>::buildInitCIVec(
+template <typename MatsT>
+template <typename IntsT>
+void RealTimeMultiSlaterVectorManagerRK4<MatsT>::buildInitCIVec(
     std::shared_ptr<MCWaveFunction<MatsT, IntsT>> ref) {
   const auto NDet = this->get_vecSize_();
   auto derived_ref = dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(ref.get());
@@ -91,7 +90,9 @@ void RealTimeMultiSlaterVectorManagerRK4<oper_t>::buildInitCIVec(
     }
   } else if (this->initmethod == MSInitialState::CustomCI) {
     for (auto det : this->init_detail) {
-      C_t[det.second - 1] = det.first;
+      // horrible lol
+      auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(C_t);
+      derived_C_t->getPtr()[det.second - 1] = det.first;
     }
   } else {
     CErr("Unclear how you'd like to create your RTCI initial State?");

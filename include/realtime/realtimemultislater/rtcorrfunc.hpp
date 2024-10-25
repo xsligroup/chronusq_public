@@ -39,25 +39,19 @@ template <typename MatsT, typename IntsT>
 void RealTimeMultiSlater<MatsT, IntsT>::RealTimeCorrelationFunction() {
   dcomplex curr_corr(0.0, 0.0);
   if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived =
-        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT *>>(
-            vecManager);
+    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<double>>(vecManager);
     size_t NDet = vecManagerDerived->get_vecSize_();
     // (Crealep, Cimagep) dot (Crealt, Cimagt)
     // (a + bi)\dagger dot (c + di)
     // (a dot c + b dot d) + (a dot d - b dot c) i
     double dot_val;
-    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_real_t,
-              NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_real_t, NDet, dot_val);
     curr_corr += dot_val;
-    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_imag_t,
-              NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_imag_t, NDet, dot_val);
     curr_corr += dot_val;
-    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_imag_t,
-              NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_imag_t, NDet, dot_val);
     curr_corr += dcomplex(0.0, dot_val);
-    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_real_t,
-              NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_real_t, NDet, dot_val);
     curr_corr -= dcomplex(0.0, dot_val);
   } else {
     CErr("NYI");

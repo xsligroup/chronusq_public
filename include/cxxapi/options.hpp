@@ -174,7 +174,8 @@ namespace ChronusQ {
     EMPerturbation &
   );
   std::shared_ptr<RealTimeBase> CQRealTimeMultiSlaterOptions(
-    std::ostream &, CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &,
+    std::ostream &, CQInputFile &, std::shared_ptr<SingleSlaterBase> &,
+    std::shared_ptr<MCWaveFunctionBase> &,
     EMPerturbation &
   );
 
