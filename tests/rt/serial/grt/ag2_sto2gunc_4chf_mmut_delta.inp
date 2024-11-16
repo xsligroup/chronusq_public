@@ -23,7 +23,7 @@ StepField(0.,0.0001) Electric 0. 0.001 0.
 
 [INTS]
 Libcint = true
-ALG = incore
+ALG = direct
 
 [SCF]
 guess = CORE
@@ -81,7 +81,7 @@ D    1   1.00
 
 [MISC]
 NSMP=1
-memtype = os
+MEM=800MB
 
 
 

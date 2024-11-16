@@ -137,6 +137,49 @@ TEST( X2CKS_RT, oxygen_x2cb3lyp_mmut_delta ) {
 //    oxygen_6-31Gd_x2cb3lyp_forwardeuler.bin );
 //}
 
+// 4CHF
+TEST( FOURCHF_RT, oxygen_4chf_mmut ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut",
+    "oxygen_6-31Gdunc_4chf_mmut.bin.ref" );
+}
+
+TEST( FOURCHF_RT, oxygen_4chf_mmut_gaunt ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_gaunt",
+    "oxygen_6-31Gdunc_4chf_mmut_gaunt.bin.ref" );
+}
+
+TEST( FOURCHF_RT, oxygen_4chf_mmut_breit ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_breit",
+    "oxygen_6-31Gdunc_4chf_mmut_breit.bin.ref" );
+}
+
+TEST( FOURCHF_RT, oxygen_4chf_mmut_gaunt_rtgaunt ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_gaunt_rtgaunt",
+    "oxygen_6-31Gdunc_4chf_mmut_gaunt_rtgaunt.bin.ref" );
+}
+
+TEST( FOURCHF_RT, oxygen_4chf_mmut_breit_rtbreit ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit",
+    "oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit.bin.ref" );
+}
+
+TEST( FOURCHF_RT, ag2_sto2gunc_4chf_mmut ) {
+
+  CQRTTEST( "rt/serial/grt/ag2_sto2gunc_4chf_mmut",
+    "ag2_sto2gunc_4chf_mmut.bin.ref",1e-6 );
+}
+
+TEST( FOURCHF_RT, ag2_sto2gunc_4chf_mmut_delta ) {
+
+  CQRTTEST( "rt/serial/grt/ag2_sto2gunc_4chf_mmut_delta",
+    "ag2_sto2gunc_4chf_mmut_delta.bin.ref",1e-6 );
+}
+
 
 #ifdef _CQ_DO_PARTESTS
 
@@ -163,6 +206,12 @@ TEST( X2CKS_RT, PAR_oxygen_x2cb3lyp_mmut ) {
 
   CQRTTEST( "rt/parallel/grt/oxygen_6-31Gd_x2cb3lyp_mmut",
     "oxygen_6-31Gd_x2cb3lyp_mmut.bin.ref" );
+}
+
+TEST( FOURCHF_RT, PAR_oxygen_4chf_mmut_breit_rtbreit ) {
+
+  CQRTTEST( "rt/parallel/grt/oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit",
+    "oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit.bin.ref" );
 }
 #endif
 

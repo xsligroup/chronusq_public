@@ -35,8 +35,7 @@ IMAGINARYSHIFT = 0.1
 
 [INTS]
 libcint=true
-tpitransalg = N5
-alg = incore
+alg = direct
 dc=true
 
 [MISC]

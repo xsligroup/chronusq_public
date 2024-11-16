@@ -35,6 +35,11 @@ TEST( MRPT, H2O_631G_X2C) {
     "water_631g_x2c_readci.bin.ref", false, "water_631g_x2c_ref.bin.ref");
 }
 
+TEST( MRPT, H2O_631G_4CDC) {
+  CQPTTEST("pt/serial/water_631g_4cdc_readci",
+    "water_631g_4cdc_readci.bin.ref", false, "water_631g_4cdc_ref.bin.ref");
+}
+
 #ifdef _CQ_DO_PARTESTS
 
 TEST( MRPT, PAR_AL_631G_X2C) {
@@ -45,6 +50,11 @@ TEST( MRPT, PAR_AL_631G_X2C) {
 TEST( MRPT, PAR_H2O_631G_X2C) {
   CQPTTEST("pt/parallel/water_631g_x2c_readci",
     "water_631g_x2c_readci.bin.ref", false, "water_631g_x2c_ref.bin.ref");
+}
+
+TEST( MRPT, PAR_H2O_631G_4CDC) {
+  CQPTTEST("pt/parallel/water_631g_4cdc_readci",
+    "water_631g_4cdc_readci.bin.ref", false, "water_631g_4cdc_ref.bin.ref");
 }
 #endif
 

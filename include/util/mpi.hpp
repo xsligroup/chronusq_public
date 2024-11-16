@@ -146,14 +146,15 @@ namespace ChronusQ {
 #endif
 
   template <typename T>
-  static inline void MPIBCast(T* msg, int count, int root, MPI_Comm c) {
+  static inline void MPIBCast(T* msg, size_t count, int root, MPI_Comm c) {
 
 #ifdef CQ_ENABLE_MPI
 
 #ifdef ENABLE_BCAST_COUNTER
     bcastCounter++;
 #endif
-    int bcast_count = std::min(count, MPI_MAX_INT);
+    int int_count = count;
+    int bcast_count = (count > MPI_MAX_INT) ? MPI_MAX_INT : std::min(int_count, MPI_MAX_INT);
     MPI_Bcast(msg, bcast_count, mpi_data_type<T>(), root, c);
     if (bcast_count < count) MPIBCast(msg + bcast_count, count - bcast_count, root, c);
 #endif
@@ -181,12 +182,12 @@ namespace ChronusQ {
   }
 
   template <typename T>
-  static inline std::vector<MPI_Request> MPIIBCast(T* msg, int count, int root, MPI_Comm c) {
+  static inline std::vector<MPI_Request> MPIIBCast(T* msg, size_t count, int root, MPI_Comm c) {
     size_t max_T = MPI_MAX_INT / sizeof(T);
     size_t n_requests = (count + max_T - 1) / max_T;
     std::vector<MPI_Request> requests(n_requests);
     for (auto i = 0ul; i < n_requests; i++) {
-      size_t count_i = (i == n_requests - 1) ? count - (max_T * (n_requests - 1)) : max_T;
+      int count_i = (i == n_requests - 1) ? count - (max_T * (n_requests - 1)) : max_T;
       MPIIBCast(msg + i * max_T, count_i, root, c, &requests[i]);
     }
     return requests;

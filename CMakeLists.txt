@@ -24,7 +24,7 @@
 cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
 project(ChronusQ
-    VERSION 0.7.0
+    VERSION 0.8.0
     DESCRIPTION
     "Chronus Quantum is an ab initio computational chemistry \
 software package that focuses on explicitly time-dependent and unconventional \

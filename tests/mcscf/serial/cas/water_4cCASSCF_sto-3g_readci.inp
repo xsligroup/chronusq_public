@@ -29,7 +29,6 @@ NACTE = 4
 NRoots = 1
 
 [INTS]
-alg = incore
 libcint=true
 dc=true
 

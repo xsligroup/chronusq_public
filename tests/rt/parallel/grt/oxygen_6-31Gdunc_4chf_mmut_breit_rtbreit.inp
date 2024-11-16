@@ -23,7 +23,7 @@ FIELD:
 
 [INTS]
 Libcint = true
-ALG = incore
+ALG = direct
 breit = true
 
 [SCF]
@@ -68,4 +68,3 @@ D    1   1.00
 
 [MISC]
 NSMP=2
-memtype = os

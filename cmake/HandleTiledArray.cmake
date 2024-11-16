@@ -34,7 +34,7 @@ if( CQ_ENABLE_TA )
   set( ENABLE_SCALAPACK ON CACHE BOOL "Enable ScaLAPACK" FORCE )
   FetchContent_Declare( tiledarray
     GIT_REPOSITORY https://github.com/ValeevGroup/tiledarray.git
-    GIT_TAG d72357a06384c673f82ba12d8a2c94746a0ca379
+    GIT_TAG ec51edbcafc363c418f5ce235423463d2beb2785
   )
   
   FetchContent_MakeAvailable( tiledarray )

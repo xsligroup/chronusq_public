@@ -32,7 +32,6 @@
 #include <cqlinalg.hpp>
 #include <matrix.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
-#include <particleintegrals/twopints/gtodirectreleri.hpp>
 #include <cqlinalg/blas1.hpp>
 #include <cqlinalg/blasutil.hpp>
 

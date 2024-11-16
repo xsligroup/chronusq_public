@@ -74,5 +74,4 @@ nsmp = 1
 mem = 200 MB
 
 [INTS]
-alg = incore
 libcint=true
