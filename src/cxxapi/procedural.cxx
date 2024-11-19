@@ -457,6 +457,8 @@ namespace ChronusQ {
           //rt->doPropagation();
 
           if (mcscf){
+          rt->intScheme.cubeOptsRTMS = mcscf->cubeOptsMC;
+          rt->intScheme.rtcubes = cubes;
           rt->run(firstStep, emPert);
           } else {
 #if 1 // new TDSCF
@@ -464,6 +466,12 @@ namespace ChronusQ {
 
           std::shared_ptr<OrbitalModifierNewBase> realtimeSCF = nullptr;
           bool found = false;
+
+          // Handle RT cube files
+          if (cube) {
+            tdSCFOptions.cubeOptsRT = ss->cubeOptsSS; 
+            tdSCFOptions.rtcubes = cubes;
+          }
 
           #define CONSTRUCT_NEWRT(_ssT,_MatsT,_IntsT)             \
           if( not found ) try {                          \

@@ -141,6 +141,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     doPropagation(onePDMSquareOrthoSave, startMMUTStep, finalMMUTStep);
 
     this->saveState(currentPerturbation); // Save the current energy, dipole, and propagated density every iSave steps
+    this->saveCube(currentPerturbation); // Output Cube
     ProgramTimer::tock("Real Time Iter");
 
   } // Time loop
@@ -219,6 +220,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::createRTDataSets(size_t maxPoints) 
   savFile.createGroup("RTNEW");
 
   savFile.createDataSet<size_t>("RTNEW/ISAVE", {1});
+  savFile.createDataSet<size_t>("RTNEW/ICUBE", {1});
   savFile.createDataSet<size_t>("RTNEW/LASTSAVEPOINT", {1});
   savFile.createDataSet<size_t>("RTNEW/MAXSAVEPOINTS", {1});
   savFile.createDataSet<size_t>("RTNEW/MAXSTEPS", {1});
@@ -247,6 +249,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
   ROOT_ONLY(this->mpiComm);
 
   savFile.safeWriteData("RTNEW/ISAVE", &tdSCFOptions.iSave, {1});
+  savFile.safeWriteData("RTNEW/ICUBE", &tdSCFOptions.iCube, {1});
   savFile.safeWriteData("RTNEW/MAXSAVEPOINTS", &integrationProgress.maxSavePoints, {1});
   savFile.safeWriteData("RTNEW/MAXSTEPS", &tdSCFOptions.maxSteps, {1});
 
@@ -377,6 +380,67 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
   #endif
 
 }; // RealTime::restoreState
+
+
+template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube(EMPerturbation& emPert) {
+
+  ROOT_ONLY(this->mpiComm);
+
+  if (tdSCFOptions.iCube > 0) {
+  if (integrationProgress.currentStep % tdSCFOptions.iCube == 0) {
+
+    std::cout << tdSCFOptions.iCube << std::endl;
+    std::cout << "  *** Saving density of step #"<<integrationProgress.currentStep<<"( t = "<<integrationProgress.currentTime<<" au) in cube ***" << std::endl;
+
+    // NEO
+    if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
+
+      auto ss_all = dynamic_cast<NEOSS<MatsT,IntsT>*>(&this->singleSlaterSystem);
+      SingleSlater<MatsT, IntsT>& ess = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(ss_all->getSubSSBase(std::string("Electronic")))));
+      SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(ss_all->getSubSSBase(std::string("Protonic")))));
+      auto cube = tdSCFOptions.rtcubes[PAR_TYPE::ELECTRONIC];
+      auto pcube = tdSCFOptions.rtcubes[PAR_TYPE::PROTONIC];
+      std::string cube_name,pcube_name;
+      if(tdSCFOptions.cubeOptsRT.cubeFileName.empty()) {
+        pcube_name = "RT_P_" + std::to_string(integrationProgress.currentStep);
+        cube_name  = "RT_"   + std::to_string(integrationProgress.currentStep);
+      } else {
+        cube_name = tdSCFOptions.cubeOptsRT.cubeFileName;
+        pcube_name = cube_name + "_RT_P_" + std::to_string(integrationProgress.currentStep);
+        cube_name  = cube_name + "_RT_"   + std::to_string(integrationProgress.currentStep);
+      }
+
+      // density cube 
+      if (tdSCFOptions.cubeOptsRT.denCube) {
+        cube->evalDenCube(cube_name,ess.onePDM,true);
+        pcube->evalDenCube(pcube_name,pss.onePDM,1.0,true);
+      }
+
+    } else {
+
+      auto ss = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->singleSlaterSystem);
+      auto cube = tdSCFOptions.rtcubes[PAR_TYPE::ELECTRONIC];
+      std::string cube_name;
+      if(tdSCFOptions.cubeOptsRT.cubeFileName.empty()) {
+        cube_name = "RT_" + std::to_string(integrationProgress.currentStep);
+      } else {
+        cube_name = tdSCFOptions.cubeOptsRT.cubeFileName;
+        cube_name = cube_name + "_RT_" + std::to_string(integrationProgress.currentStep);
+      }
+
+      // density cube 
+      if (tdSCFOptions.cubeOptsRT.denCube) {
+
+
+        cube->evalDenCube(cube_name,ss->onePDM,true);
+      }
+
+    }
+
+  }
+  }
+}; // RealTime::saveCube
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s) {

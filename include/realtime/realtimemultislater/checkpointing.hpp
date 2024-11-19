@@ -46,6 +46,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
   // maxPoints = intScheme.tMax / intScheme.deltaT + 1;
 
   savFile.createGroup("RT");
+  savFile.createDataSet<size_t>("RT/ICUBE", {1});
   savFile.createDataSet<double>("RT/TIME", {maxPoints});
   savFile.createDataSet<double>("RT/ENERGY", {maxPoints});
   savFile.createDataSet<double>("RT/LEN_ELEC_DIPOLE", {maxPoints, 3});
@@ -120,6 +121,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
   data.ElecDipole.push_back(Dipole);
   if (pert_t.fields.size() > 0)
     data.ElecDipoleField.push_back(pert_t.getDipoleAmp(Electric));
+
+  savFile.safeWriteData("RT/ICUBE",&intScheme.iCube,{1});
 
   // Write to file
   if (savFile.exists()) {

@@ -50,6 +50,7 @@ namespace ChronusQ {
       "RESTARTSTEP",
       "RESTARTFROM",
       "SAVESTEP",
+      "SAVECUBE",
       "SAVEONEPDM",
       "RESTART",
       "SCFFIELD",
@@ -197,6 +198,11 @@ namespace ChronusQ {
     // Save frequency
     OPTOPT(
       rt->intScheme.iSave = input.getData<size_t>("RT.SAVESTEP")
+    )
+
+    // Save frequency
+    OPTOPT(
+      rt->intScheme.iCube = input.getData<size_t>("RT.SAVECUBE")
     )
 
     // Whether we are restarting an RT calculation

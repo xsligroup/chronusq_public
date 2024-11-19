@@ -36,3 +36,4 @@
 #include <realtime/realtimemultislater/sigma.hpp>
 #include <realtime/realtimemultislater/statepopulation.hpp>
 #include <realtime/realtimemultislater/vectormanager.hpp>
+#include <realtime/realtimemultislater/cube.hpp>

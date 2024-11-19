@@ -108,6 +108,10 @@ void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
     // Save data
     saveState(pert_t);
 
+    // CubeGeneration
+    if(this->intScheme.iCube && !(curState.iStep%this->intScheme.iCube))
+      genCubes();
+
     ProgramTimer::tock("Real Time Iter");
 
   } // Time loop

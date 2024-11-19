@@ -37,12 +37,15 @@
 // RTMR Headers
 #include <realtime/realtimemultislater/vectormanager.hpp>
 
+#include <cubegenoptions.hpp>
+
 namespace ChronusQ {
 
   /**
    *  \brief A struct to store information pertinent to the time
    *  propagation procedure.
    */ 
+  class CubeGen;
   struct RTPostHFIntegrationScheme {
 
     RealTimeAlgorithm    integrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;         ///< Integration Algorithm
@@ -53,11 +56,15 @@ namespace ChronusQ {
     size_t iRstrt  = 50; ///< Restart MMUT every N steps
 
     size_t iSave    = 50; ///< Save progress every N steps
+    size_t iCube    = 0; ///< Save progress every N steps
     size_t restoreStep = 0;  ///< Restore propagation from this step
 
     size_t nSteps = 0; ///< Electronic steps to update tMax
 
     bool   includeSCFField = true;  ///< Whether to include the SCF field
+
+    CubeGenOptions cubeOptsRTMS; ///< Cube settings
+    std::vector<std::shared_ptr<CubeGen>> rtcubes; ///< Cube files
 
   }; // struct IntegrationScheme
 
@@ -242,6 +249,9 @@ namespace ChronusQ {
 
     // Generate initial CI Vector functionality 
     void genInitialState();
+
+    // Generate cube files
+    void genCubes();
 
   }; // class RealTimeMultiSlater
 

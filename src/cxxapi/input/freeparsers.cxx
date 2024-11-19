@@ -526,6 +526,15 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputISave, "");
         }
 
+        // Check for the frequency of cubegen
+        auto const freeCQInputICube = std::regex("(ICUBE|CUBEGEN)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputICube) ) {
+          tdSCFControls.iCube = std::stoi(RTmatch.str(2));
+          std::cout<<"xsli test read in iCube = "<<tdSCFControls.iCube<<std::endl;
+          addData("RT.SAVECUBE", std::to_string(tdSCFControls.iCube));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputICube, "");
+        }
+
         // Check for the frequency of print
         auto const freeCQInputIPrint = std::regex("(IPRINT|AUTOPRINT)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIPrint) ) {
@@ -614,6 +623,7 @@ namespace ChronusQ {
     if (maxSteps==0 and (tMax!=0. and deltaT != 0.)) maxSteps = (tMax + deltaT/4) / deltaT;
     if (dict.count("IRSTRT")) iRestart = std::stoi(dict.at("IRSTRT"));
     if (dict.count("SAVESTEP")) iSave = std::stoi(dict.at("SAVESTEP"));
+    if (dict.count("SAVECUBE")) iCube = std::stoi(dict.at("SAVECUBE"));
     if (dict.count("PRINTSTEP")) iPrint = std::stoi(dict.at("PRINTSTEP"));
     if (dict.count("RESTARTFROM")) restoreFromStep = std::stoi(dict.at("RESTARTFROM"));
     if (dict.count("INTALG")) {

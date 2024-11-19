@@ -28,6 +28,7 @@
 #include <cxxapi/input.hpp>
 #include <basisset.hpp>
 
+#include <cubegenoptions.hpp>
 
 namespace ChronusQ {
 
@@ -228,6 +229,8 @@ namespace ChronusQ {
     CustomCI,
   };
 
+// Forward declarations
+class CubeGen;
   struct TDSCFOptions {
 
     RealTimeAlgorithm     integrationAlgorithm     = RealTimeAlgorithm::RTModifiedMidpoint; ///< Integration Algorithm
@@ -246,6 +249,7 @@ namespace ChronusQ {
 
     size_t iRestart  = 50;         ///< Restart MMUT every N steps
     size_t iSave     = 50;         ///< Save progress every N steps
+    size_t iCube     = 0;         ///< Save cube every N steps
     size_t iPrint    = 50;          ///< Print progress every N steps
     long int restoreFromStep = 0;    ///< Restore propagation from this step
 
@@ -256,6 +260,9 @@ namespace ChronusQ {
     size_t rtBreit = 1; /// < Calculate Breit(gaunt and gauge) every N steps
     size_t Rtprintden = 0;
     size_t orbitalPopFreq = 0; ///< Print orbital population every 'orbitalPopFreq' steps during RT propagation
+
+    CubeGenOptions cubeOptsRT; ///< Cube settings;
+    std::vector<std::shared_ptr<CubeGen>> rtcubes; ///< Cube files;
 
     bool saveOnePDM = false;   ///< Whether to save 1PDM in AO basis to bin file during RT propagation
 
