@@ -49,12 +49,49 @@ namespace ChronusQ {
 
       // density cube 
       if (cubeOptsMC.denCube) {
-
+        
+        // Handle which roots to generate
+        size_t NRoots = this->NStates;
+        std::vector<size_t> RootsToCube;
+        if(cubeOptsMC.whichCIRoots == CI_CUBE_ROOT_CLASSES::GS)
+        {
+          RootsToCube.push_back(0);
+        }
+        else if(cubeOptsMC.whichCIRoots == CI_CUBE_ROOT_CLASSES::ALL)
+        {
+          for(size_t i = 0; i < NRoots; i++)
+            RootsToCube.push_back(i);
+        }
+        else if(cubeOptsMC.whichCIRoots == CI_CUBE_ROOT_CLASSES::AVERAGE)
+        {
+          std::shared_ptr<cqmatrix::Matrix<MatsT>> SARDM = std::make_shared<cqmatrix::Matrix<MatsT>>(this->oneRDM[0].dimension());
+          SARDM->clear();
+          // Build the state averaged density
+          for(size_t i = 0; i < NRoots; i++)
+          {
+            *SARDM += this->SAWeight[i] * this->oneRDM[i];
+          }
+          rdm2pdm(*SARDM);
+          std::string sa_cube_name = cube_name+"_SA";
+          cube->evalDenCube(sa_cube_name,ss_ptr->onePDM);
+        }
+        else
+        {
+          RootsToCube=cubeOptsMC.custom_root_request;
+        }
+        
         // Update 1PDM
-        // TODO: Add excited states
-        rdm2pdm(this->oneRDM[0]);
-
-        cube->evalDenCube(cube_name,ss_ptr->onePDM);
+        if(cubeOptsMC.whichCIRoots != CI_CUBE_ROOT_CLASSES::AVERAGE)
+        {
+          for(const auto Root : RootsToCube)
+          {
+            if(Root > NRoots)
+              CErr("Requesting cube for Root #" + std::to_string(Root+1) + " which is greater than CI Roots available!");
+            rdm2pdm(this->oneRDM[Root]);
+            std::string cube_name_with_root = cube_name+"_ROOT_"+std::to_string(Root+1);
+            cube->evalDenCube(cube_name_with_root,ss_ptr->onePDM);
+          }
+        }
 
       }
 

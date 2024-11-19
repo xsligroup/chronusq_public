@@ -32,6 +32,15 @@ namespace ChronusQ {
     CUSTOM
   };
 
+  // Standard options for which however many roots we may want to calculate
+  // in an MCSCF calculation
+  enum class CI_CUBE_ROOT_CLASSES {
+    GS,
+    ALL,
+    AVERAGE,
+    CUSTOM
+  };
+
   struct CubeGenOptions {
  
     // Commonly-used options
@@ -42,6 +51,10 @@ namespace ChronusQ {
     bool MagnitudeAndPhase = false; // MOs printed as magnitude/phase instead of real/imaginary
     MO_CLASSES whichMO; // Standard orbital choice options
     std::vector<size_t> custom_orb_request; // User-defined choice of orbitals
+
+    // Options for MCSCF Calculations
+    CI_CUBE_ROOT_CLASSES whichCIRoots = CI_CUBE_ROOT_CLASSES::GS; // By default only the lowest energy root generates cubes
+    std::vector<size_t> custom_root_request; // User-defined set of roots to calculate
 
     // Miscellaneous options
     std::string cubeFileName = ""; //Preceding string for cube file names
@@ -54,6 +67,16 @@ namespace ChronusQ {
     void addMOtoList(size_t mo)
     {
       custom_orb_request.push_back(mo-1);
+    }
+
+    /**
+     * @brief add a root in a custom list of roots to generate
+     * 
+     * NOTE: input is 1 indexed, but internal storage is 0 indexed
+    */
+    void addRoottoList(size_t root)
+    {
+      custom_root_request.push_back(root-1);
     }
 
   };

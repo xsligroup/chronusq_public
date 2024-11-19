@@ -34,6 +34,7 @@ namespace ChronusQ {
       "DEN",
       "ORB",
       "MOS",
+      "ROOTS",
       "POINTS",
       "STEPS",
       "NAME",
@@ -197,6 +198,66 @@ namespace ChronusQ {
     }
   }
 
+  void handle_root_requests(std::ostream&out, CQInputFile & input, CubeGenOptions &cubeOpts, std::string subSection)
+  {
+
+    std::string RootRequestString;
+    OPTOPT(RootRequestString = input.getData<std::string>(subSection+"CUBE.ROOTS"));
+    if(!RootRequestString.empty() && subSection=="SCF.")
+      CErr("Requesting multiple roots to generate cubes from an SCF calculation doesn't make sense!");
+    // Default is all orbitals unless requested otherwise
+    if(RootRequestString.empty() || RootRequestString=="GS")
+    {
+      cubeOpts.whichCIRoots = CI_CUBE_ROOT_CLASSES::GS;
+      std::cout << "Generating Cubes for ONLY the lowest energy CI Root" << std::endl;
+      return;
+    }
+    if(RootRequestString=="ALL")
+    {
+      cubeOpts.whichCIRoots = CI_CUBE_ROOT_CLASSES::ALL;
+      std::cout << "Generating Cubes for ALL MCSCF Roots" << std::endl;
+      return;
+    }
+    if(RootRequestString=="AVERAGE")
+    {
+      cubeOpts.whichCIRoots = CI_CUBE_ROOT_CLASSES::AVERAGE;
+      std::cout << "Generating Cubes for The State Averaged Density" << std::endl;
+      return;
+    }
+
+    // If no string matching, assume user requested a custom list
+    cubeOpts.whichCIRoots = CI_CUBE_ROOT_CLASSES::CUSTOM;
+    std::vector<std::string> RootRequestTokens;
+    split(RootRequestTokens,RootRequestString,", ");
+    for(auto & Root : RootRequestTokens)
+    {
+      try
+      {
+        // roots are 1 indexed
+        std::vector<std::string> root2;
+        split(root2,Root,"-");
+        if(root2.size()==1)
+        {
+          size_t rootindex = std::stoul(Root);
+          cubeOpts.addRoottoList(rootindex);
+          std::cout << "Generating Cube for CI Root #" << Root << std::endl;
+        }
+        else if(root2.size()==2)
+        {
+          for(size_t i = std::stoul(root2[0]); i <= std::stoul(root2[1]); i++)
+          {
+            cubeOpts.addRoottoList(i);
+            std::cout << "Generating Cube for CI Root #" << i << std::endl;
+          }
+        }
+      }
+      catch(...)
+      {
+        CErr("Unrecognized token in " + subSection+"CUBE.ROOTS");
+      }
+    }
+  }
+
   // Handle keywords for an existing cube pointer
   void CQCUBEOptionalKeywords(std::ostream &out, CQInputFile &input, CubeGenOptions &cubeOpts, std::string subSection){
 
@@ -206,6 +267,10 @@ namespace ChronusQ {
 
     // generate cube file for density
     OPTOPT( cubeOpts.denCube = input.getData<bool>(subSection+"CUBE.DEN") );
+    if(cubeOpts.denCube)
+    {
+      handle_root_requests(out,input,cubeOpts,subSection);
+    }
 
     // generate cube file for density
     OPTOPT( cubeOpts.orbCube = input.getData<bool>(subSection+"CUBE.ORB") );
