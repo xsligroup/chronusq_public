@@ -27,7 +27,7 @@
 #error This file can only be included in newcibuilder.hpp
 #endif
 
-#include <particleintegrals/gasints.hpp>
+#include <particleintegrals/dasints.hpp>
 #include <util/scratch.hpp>
 
 namespace ChronusQ {
@@ -98,14 +98,14 @@ namespace DASCISigma2eBuilder {
   template <typename MatsT>
   void buildNaive(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs, 
       std::shared_ptr<TensorLooper>& NonExLooper, const double symmFact);
 
   template <typename MatsT>
   void buildKnowlesHandy(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, std::shared_ptr<TensorLooper>& KNonExLooper, 
       const std::vector<size_t>& LExOffs, std::shared_ptr<TensorLooper>& LNonExLooper,
       MatsT* omega, MatsT* lambda, MatsT* X, const double symmFactor);
@@ -113,7 +113,7 @@ namespace DASCISigma2eBuilder {
   template <typename MatsT>
   void buildOlsenRoos(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, std::shared_ptr<TensorLooper>& KNonExLooper, 
       const std::vector<size_t>& LExOffs, std::shared_ptr<TensorLooper>& LNonExLooper,
       MatsT* omega, MatsT* sSCR, MatsT* X, const double symmFactor);
@@ -121,7 +121,7 @@ namespace DASCISigma2eBuilder {
   template <typename MatsT>
   void buildFrischLi(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, std::shared_ptr<TensorLooper>& KNonExLooper, 
       const std::vector<size_t>& LExOffs, std::shared_ptr<TensorLooper>& LNonExLooper,
       MatsT* cSCR, MatsT* lambda, MatsT* X, const double symmFactor);
@@ -129,7 +129,7 @@ namespace DASCISigma2eBuilder {
   template <typename MatsT>
   void buildSmallBlockHamiltonian(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, std::shared_ptr<TensorLooper>& KNonExLooper, 
       const std::vector<size_t>& LExOffs, std::shared_ptr<TensorLooper>& LNonExLooper,
       MatsT* cSCR, MatsT* sSCR, MatsT* X, const double symmFactor);
@@ -137,7 +137,7 @@ namespace DASCISigma2eBuilder {
   template <typename MatsT>
   void buildLargeBlockHamiltonian(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-      const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+      const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       std::shared_ptr<TensorLooper>& KExLooper, std::shared_ptr<TensorLooper>& KNonExLooper, 
       std::shared_ptr<TensorLooper>& LExLooper, std::shared_ptr<TensorLooper>& LNonExLooper,
       MatsT* cSCR, MatsT* sSCR, MatsT* X, const double symmFactor);

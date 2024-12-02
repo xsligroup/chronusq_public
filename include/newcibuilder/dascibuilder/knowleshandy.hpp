@@ -44,7 +44,7 @@ namespace ChronusQ {
 template <typename MatsT>
 void DASCISigma2eBuilder::buildKnowlesHandy(
         size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-        const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+        const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
         const std::vector<size_t>& braExOffs, std::shared_ptr<TensorLooper>& braNonExLooper,
         const std::vector<size_t>& ketExOffs, std::shared_ptr<TensorLooper>& ketNonExLooper,
         MatsT* omega, MatsT* lambda, MatsT* X, const double symmFactor) {

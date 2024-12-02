@@ -379,7 +379,6 @@ inline std::shared_ptr<DeterminantCategory> buildFullDeterminantCategory(
   for (auto i = 0ul; i < refOccupation.size(); i++)
     if ( (activeSpace[i].eLimit != 0 and (iDASGroupOcc[activeSpace[i].iDASGroup] > activeSpace[i].eLimit) )
       or (activeSpace[i].hLimit != 0 and (iDASGroupOcc[activeSpace[i].iDASGroup] < -activeSpace[i].hLimit)) ) {
-        std::cout<<iDASGroupOcc[activeSpace[i].iDASGroup]<<std::endl;
         return nullptr;
     }
 

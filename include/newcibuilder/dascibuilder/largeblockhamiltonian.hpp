@@ -44,7 +44,7 @@ namespace ChronusQ {
 template <typename MatsT>
 void DASCISigma2eBuilder::buildLargeBlockHamiltonian(
     size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-    const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+    const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
     std::shared_ptr<TensorLooper>& KExLooper, std::shared_ptr<TensorLooper>& KNonExLooper, 
     std::shared_ptr<TensorLooper>& LExLooper, std::shared_ptr<TensorLooper>& LNonExLooper, 
     MatsT* cSCR, MatsT* sSCR, MatsT* X, const double symmFactor) {

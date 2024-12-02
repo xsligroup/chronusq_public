@@ -25,7 +25,7 @@
 
 #include <posthartreefock.hpp>
 #include <mointstransformer/impl.hpp>
-#include <particleintegrals/gasints.hpp>
+#include <particleintegrals/dasints.hpp>
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <cqlinalg/blas1.hpp>
@@ -173,7 +173,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
     // std::cout << "    - wOff = " << wOff << ", nw = " << nw << std::endl;
     // std::cout << "    - vOff = " << vOff << ", nv = " << nv << std::endl;
 
-    GASTwoPInts<MatsT> ERI_sub(nt, nu, nw, nv);
+    DASTwoPInts<MatsT> ERI_sub(nt, nu, nw, nv);
 
     if (termVec.size() == 1) {
 #pragma omp parallel for schedule(static) collapse(2) default(shared)       
@@ -199,7 +199,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
       CErr(term + " NYI"); 
     } 
     
-    this->moints.addIntegral(term, std::make_shared<GASTwoPInts<MatsT>>(ERI_sub));
+    this->moints.addIntegral(term, std::make_shared<DASTwoPInts<MatsT>>(ERI_sub));
   } // twoEExTerms
   
   const auto& hCore = *(moints.template getIntegral<OnePInts,MatsT>("hCore_Correlated_Space"));
@@ -225,7 +225,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
     }
     
     for (auto i = 1ul; i < termVec.size(); ++i) {
-      const auto& ERI_sub  = *(moints.template getIntegral<GASTwoPInts,MatsT>(termVec[i]));
+      const auto& ERI_sub  = *(moints.template getIntegral<DASTwoPInts,MatsT>(termVec[i]));
       #pragma omp parallel for schedule(static) collapse(2) default(shared)       
       for (auto u = 0ul; u < nu; u++)
       for (auto t = 0ul; t < nt; t++) {

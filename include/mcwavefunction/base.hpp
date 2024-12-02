@@ -35,7 +35,7 @@ namespace ChronusQ {
   enum DetScheme {
     CAS,
     RAS,
-    GAS,
+    DAS,
     GENERIC_DET
   };
 

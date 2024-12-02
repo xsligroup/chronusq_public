@@ -74,11 +74,11 @@ namespace ChronusQ {
     // disable Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) { 
-      CErr("computeAOInts is not supported in GASOnePInt"); 
+      CErr("computeAOInts is not supported in DASOnePInt"); 
     };
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) { 
-      CErr("computeAOInts is not supported in GASOnePInt"); 
+      CErr("computeAOInts is not supported in DASOnePInt"); 
     };
 
     void clear() {
@@ -109,11 +109,11 @@ namespace ChronusQ {
   }; // class DASOnePInts
 
   template <typename IntsT>
-  class GASTwoPInts : public ParticleIntegrals {
+  class DASTwoPInts : public ParticleIntegrals {
 
   protected:
 
-    IntsT * ptr_; ///< GAS Two Particle Ints (4 index)
+    IntsT * ptr_; ///< DAS Two Particle Ints (4 index)
     size_t nb1_;
     size_t nb2_;
     size_t nb3_;
@@ -125,8 +125,8 @@ namespace ChronusQ {
   public:
 
     // Constructor
-    GASTwoPInts() = delete;
-    GASTwoPInts(size_t nb1, size_t nb2,
+    DASTwoPInts() = delete;
+    DASTwoPInts(size_t nb1, size_t nb2,
         size_t nb3, size_t nb4):
         ParticleIntegrals(0ul), nb1_(nb1), nb2_(nb2),
         nb3_(nb3), nb4_(nb4) { 
@@ -135,12 +135,12 @@ namespace ChronusQ {
       nb1234_ = nb123_ * nb4_;
       ptr_ = CQMemManager::get().malloc<IntsT>(nb1234_);
     }
-    GASTwoPInts( const GASTwoPInts &other ): 
-        GASTwoPInts(other.nb1_, other.nb2_,
+    DASTwoPInts( const DASTwoPInts &other ): 
+        DASTwoPInts(other.nb1_, other.nb2_,
         other.nb3_, other.nb4_) {
       std::copy_n(other.ptr_, nb1234_, ptr_);
     };
-    GASTwoPInts( GASTwoPInts &&other ): 
+    DASTwoPInts( DASTwoPInts &&other ): 
         ParticleIntegrals(0ul), 
         nb1_(other.nb1_), nb2_(other.nb2_),
         nb3_(other.nb3_), nb4_(other.nb4_),
@@ -156,7 +156,7 @@ namespace ChronusQ {
     size_t nBasis3() const { return nb3_; } 
     size_t nBasis4() const { return nb4_; } 
 
-    GASTwoPInts& operator=( const GASTwoPInts &other ) {
+    DASTwoPInts& operator=( const DASTwoPInts &other ) {
       if (nb1234_ != other.nb1234_) {
         CQMemManager::get().free(ptr_);
         ptr_ = CQMemManager::get().malloc<IntsT>(nb1234_);
@@ -168,8 +168,8 @@ namespace ChronusQ {
       std::copy_n(other.ptr_, nb1234_, ptr_);
       return *this; 
     }
-    GASTwoPInts& operator=( GASTwoPInts &&other ) {
-      return GASTwoPInts(other);
+    DASTwoPInts& operator=( DASTwoPInts &&other ) {
+      return DASTwoPInts(other);
     }
 
     IntsT& operator()(size_t p, size_t q, size_t r, size_t s) {
@@ -187,11 +187,11 @@ namespace ChronusQ {
     // disable Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) { 
-      CErr("computeAOInts is not supported in GASTwoPInt"); 
+      CErr("computeAOInts is not supported in DASTwoPInt"); 
     };
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&) { 
-      CErr("computeAOInts is not supported in GASTwoPInt"); 
+      CErr("computeAOInts is not supported in DASTwoPInt"); 
     };
 
     void clear() {
@@ -219,8 +219,8 @@ namespace ChronusQ {
       }
     }
 
-    ~GASTwoPInts() { CQMemManager::get().free(ptr_); }
+    ~DASTwoPInts() { CQMemManager::get().free(ptr_); }
 
-  }; // class GASTwoPInts
+  }; // class DASTwoPInts
 
 }; // namespace ChronusQ

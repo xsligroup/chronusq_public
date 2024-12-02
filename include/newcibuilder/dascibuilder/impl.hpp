@@ -200,7 +200,7 @@ void DASCIBuilder<MatsT>::buildSigma2e(
     // std::cout << " contraction on term - " << twoEEx.term << std::endl; 
     // twoEEx.output(std::cout);
     // find the interaction terms
-    const auto& s2e = *this->moints_.template getIntegral<GASTwoPInts, MatsT>(twoEEx.term);
+    const auto& s2e = *this->moints_.template getIntegral<DASTwoPInts, MatsT>(twoEEx.term);
     // s2e.output(std::cout, twoEEx.term, true);
      
     const auto& braCategory = dynamic_cast<const FullDeterminantCategory&>(

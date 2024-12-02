@@ -159,11 +159,11 @@ namespace ChronusQ {
     };
     
     // Construct valid job types 
-    std::vector<std::string> CASJobs, RASJobs, GASJobs, SelectedJobs;
+    std::vector<std::string> CASJobs, RASJobs, DASJobs, SelectedJobs;
     for (auto &m: MCMethods) {
       CASJobs.emplace_back("CAS" + m);
       RASJobs.emplace_back("RAS" + m);
-      GASJobs.emplace_back("GAS" + m);
+      DASJobs.emplace_back("DAS" + m);
       SelectedJobs.emplace_back("SELECTED" + m);
     }
      
@@ -172,12 +172,12 @@ namespace ChronusQ {
       std::find(CASJobs.begin(),CASJobs.end(),jobType) != CASJobs.end();
     bool isRASJob = 
       std::find(RASJobs.begin(),RASJobs.end(),jobType) != RASJobs.end();
-    bool isGASJob =
-      std::find(GASJobs.begin(),GASJobs.end(),jobType) != GASJobs.end();
+    bool isDASJob =
+      std::find(DASJobs.begin(),DASJobs.end(),jobType) != DASJobs.end();
     bool isSelectedJob = 
       std::find(SelectedJobs.begin(), SelectedJobs.end(), jobType) != SelectedJobs.end();
     
-    if(not isCASJob and not isRASJob and not isGASJob and not isSelectedJob) 
+    if(not isCASJob and not isRASJob and not isDASJob and not isSelectedJob) 
       CErr(jobType + " is not a valid CI.JOBTYPE",out);
 
     if(isSelectedJob)

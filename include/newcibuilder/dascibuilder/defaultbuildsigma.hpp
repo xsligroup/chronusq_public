@@ -140,7 +140,7 @@ void DASCIBuilder<MatsT>::buildSigma1e(
 template <typename MatsT>
 void DASCISigma2eBuilder::buildNaive(
     size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
-    const GASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+    const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
     const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs, 
     std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact) {
     
