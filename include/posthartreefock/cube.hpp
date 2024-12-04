@@ -32,7 +32,7 @@ namespace ChronusQ {
    *
    */
   template<typename MatsT,typename IntsT>
-  void PostHartreeFock<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, EMPerturbation &emPert) {
+  void PostHartreeFock<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes) {
 
       std::shared_ptr<SingleSlater<MatsT,IntsT>> ss_ptr = reference();
 

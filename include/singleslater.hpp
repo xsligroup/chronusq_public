@@ -265,7 +265,7 @@ namespace ChronusQ {
 
     // Form initial guess orbitals
     // see include/singleslater/guess.hpp for docs)
-    void formGuess(const SingleSlaterOptions&) override;
+    void formGuess(EMPerturbation &, const SingleSlaterOptions&);
     void CoreGuess();
     void SADGuess(SingleSlaterOptions);
     void SCFGuess(SingleSlaterOptions);
@@ -275,7 +275,7 @@ namespace ChronusQ {
     void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis );
     void FchkGuessMO();
     void NEOTightProtonGuess();
-    void NEOConvergeClassicalGuess(const SingleSlaterOptions&);
+    void NEOConvergeClassicalGuess(EMPerturbation &, const SingleSlaterOptions&);
     void computeNaturalOrbitals();
     void getNewOrbitals();
 
@@ -319,7 +319,7 @@ namespace ChronusQ {
     void orthoAOMO();
 
     // Post-processing functions
-    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert, std::string prefix, std::shared_ptr<Molecule> mol) override;
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, std::string prefix, std::shared_ptr<Molecule> mol) override;
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };

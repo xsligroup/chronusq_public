@@ -210,7 +210,7 @@ namespace ChronusQ {
 
 
   template <typename MatsT, typename IntsT>
-  void NEOKohnShamBuilder<MatsT,IntsT>::formVXC(SingleSlater<MatsT,IntsT>& ss) {
+  void NEOKohnShamBuilder<MatsT,IntsT>::formVXC(SingleSlater<MatsT,IntsT>& ss, EMPerturbation& pert) {
 
     KohnSham<MatsT,IntsT>* ks = dynamic_cast<KohnSham<MatsT,IntsT>*>(&ss);
     bool isKS(ks);
@@ -926,9 +926,751 @@ namespace ChronusQ {
   }
 
   template <>
-  inline void NEOKohnShamBuilder<dcomplex,dcomplex>::formVXC(SingleSlater<dcomplex,dcomplex>&) {
-    CErr("GIAO for NEO NYI!");
-  };
+  inline void NEOKohnShamBuilder<dcomplex,dcomplex>::formVXC(SingleSlater<dcomplex,dcomplex>& ss, EMPerturbation& pert) {
+
+    KohnSham<dcomplex,dcomplex>* ks = dynamic_cast<KohnSham<dcomplex,dcomplex>*>(&ss);
+    bool isKS(ks);
+
+    // TODO: initialize integration parameter storage
+    assert( intParam.nRad % intParam.nRadPerBatch == 0 );
+
+    // Parallelism
+
+    size_t nthreads = GetNumThreads();
+    size_t LAThreads = GetLAThreads();
+    size_t mpiRank   = MPIRank(ss.comm);
+    size_t mpiSize   = MPISize(ss.comm);
+
+    // MPI Communicator for numerical integration
+    // *** Assumes that MPI will be done only across atoms in integration
+
+    size_t nAtoms = ss.molecule().nAtoms;
+    int color = ((mpiSize < nAtoms) or 
+                 (mpiRank < nAtoms)) ? 1 : MPI_UNDEFINED;
+                                                            
+                  
+    MPI_Comm intComm = MPICommSplit(ss.comm,color,mpiRank);
+
+#ifdef CQ_ENABLE_MPI
+    if( intComm != MPI_COMM_NULL ) 
+#endif
+    {
+  
+      // Define several useful quantities for later on
+      size_t NPtsMaxPerBatch = intParam.nRadPerBatch * intParam.nAng;
+  
+      bool isGGA = false;
+      if( isKS )
+        isGGA = std::any_of(ks->functionals.begin(),ks->functionals.end(),
+                     [](std::shared_ptr<DFTFunctional> &x) {
+                       return x->isGGA(); 
+                     }); 
+
+      bool epcisGGA = std::any_of(epc_functionals.begin(),epc_functionals.end(),
+                       [](std::shared_ptr<DFTFunctional> &x) {
+                       return x->isGGA(); 
+                     }); 
+  
+      // Turn off LA threads
+      SetLAThreads(1);
+  
+      BasisSet &basis = ss.basisSet();
+      size_t NB     = basis.nBasis;
+      size_t NB2    = NB*NB;
+      size_t NTNB2  = nthreads * NB2;
+      size_t NTNPPB = nthreads*NPtsMaxPerBatch;
+
+      // Auxiliary basis set information for NEO-DFT
+      BasisSet &aux_basis = this->aux_ss->basisSet();
+      size_t aux_NB    = aux_basis.nBasis;
+      size_t aux_NB2   = aux_NB*aux_NB;
+      size_t aux_NTNB2 = nthreads * aux_NB2;
+
+      // Make sure we've allocated VXC if we need to
+      if( !VXC ) {
+        if( ks ) {
+          VXC = ks->VXC;
+        } else {
+          VXC = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(
+            NB, ss.nC > 1, !ss.iCS
+          );
+        }
+      }
+
+      // Clean up all VXC components for a the evaluation for a new 
+      // batch of points
+  
+      std::vector<std::vector<dcomplex*>> integrateVXC;
+      dcomplex* intVXC_RAW = (nthreads == 1) ? nullptr :
+        CQMemManager::get().malloc<dcomplex>(VXC->nComponent() * NTNB2);
+  
+      std::vector<dcomplex*> VXC_SZYX = VXC->SZYXPointers(); 
+      for(auto k = 0; k < VXC_SZYX.size(); k++) {
+        integrateVXC.emplace_back();
+
+        if( nthreads != 1 ) 
+          for(auto ith = 0; ith < nthreads; ith++)
+            integrateVXC.back().emplace_back(
+              intVXC_RAW + (ith + k*nthreads) * NB2
+            );
+
+        else 
+          integrateVXC.back().emplace_back(VXC_SZYX[k]);
+
+      }
+      
+      for(auto &X : integrateVXC) for(auto &Y : X) std::fill_n(Y,NB2,0.);
+
+      std::vector<double> integrateXCEnergy(nthreads,0.);
+      std::vector<double> integrateEPCEnergy(nthreads,0.);
+  
+      // Allocating Memory
+      // ----------------------------------------------------------//
+      if( ks ) ks->XCEnergy = 0.;
+      XCEnergy = 0.;
+      dcomplex *SCRATCHNBNB = 
+        CQMemManager::get().malloc<dcomplex>(NTNB2); 
+      dcomplex *SCRATCHNBNP = 
+        CQMemManager::get().malloc<dcomplex>(NTNPPB*NB); 
+
+      double *DenS, *DenZ, *DenX ;
+      DenS = CQMemManager::get().malloc<double>(NTNPPB);
+
+      if( ss.onePDM->hasZ() )
+        DenZ = CQMemManager::get().malloc<double>(NTNPPB);
+
+      if( ss.onePDM->hasXY() )
+        CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+      double *epsEval = CQMemManager::get().malloc<double>(NTNPPB);
+      double *epcEval = CQMemManager::get().malloc<double>(NTNPPB);
+      std::fill_n(epcEval, NTNPPB, 0.);
+
+      // Density U-Variables
+      double *U_n   = 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
+      double *dVU_n = 
+        CQMemManager::get().malloc<double>(2*NTNPPB); 
+
+      double *ZrhoVar1, *ZgammaVar1, *ZgammaVar2;
+
+      ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+      
+      // These quantities are only used for GGA functionals
+      double *GDenS, *GDenZ, *U_gamma, *dVU_gamma;
+      if( isGGA || epcisGGA ) {
+        GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
+
+        if( ss.onePDM->hasZ() )
+          GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
+
+        if( ss.onePDM->hasXY() )
+          CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+        // Gamma U-Variables
+        U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+      }
+
+      // These quantities are used when there are multiple xc functionals
+      double *epsSCR, *dVU_n_SCR, *dVU_gamma_SCR;
+      if( ks && ks->functionals.size() > 1 ) {
+        epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
+        if(isGGA || epcisGGA) 
+          dVU_gamma_SCR = 
+            CQMemManager::get().malloc<double>(3*NTNPPB);
+      }
+
+      // ZMatrix
+      dcomplex *ZMAT = CQMemManager::get().malloc<dcomplex>(NTNPPB*NB);
+ 
+      // Decide if we need to allocate space for real part of the 
+      // densities and copy over the real parts
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> Re1PDM
+          = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<dcomplex>>(ss.onePDM);
+
+
+      // Scratch pointers for auxiliary systems 
+      // ---------------NEO------------------------------------------------
+      dcomplex *AUX_SCRATCHNBNB = 
+        CQMemManager::get().malloc<dcomplex>(aux_NTNB2);
+      dcomplex *AUX_SCRATCHNBNP = 
+        CQMemManager::get().malloc<dcomplex>(NTNPPB*aux_NB);        
+
+      // Density pointers for auxiliary system
+      double *aux_DenS, *aux_DenZ;
+      aux_DenS = CQMemManager::get().malloc<double>(NTNPPB);
+
+        if ( this->aux_ss->onePDM->hasZ() )
+          aux_DenZ = CQMemManager::get().malloc<double>(NTNPPB);
+
+        if ( this->aux_ss->onePDM->hasXY() )
+          CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+      // NEO auxiliary Density U-Variables
+      double *aux_U_n   = 
+        CQMemManager::get().malloc<double>(2*NTNPPB);
+      double *aux_dVU_n  = 
+        CQMemManager::get().malloc<double>(2*NTNPPB);
+
+      double *aux_ZrhoVar1, *aux_ZgammaVar1, *aux_ZgammaVar2;
+      // These quantities are only used for GGA functionals
+      double *aux_GDenS, *aux_GDenZ, *aux_U_gamma, *aux_dVU_gamma;
+
+      aux_ZrhoVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+
+      if( epcisGGA ) {
+        aux_GDenS = CQMemManager::get().malloc<double>(3*NTNPPB);
+        aux_ZgammaVar1 = CQMemManager::get().malloc<double>(NTNPPB);
+        aux_ZgammaVar2 = CQMemManager::get().malloc<double>(NTNPPB);
+
+        if( this->aux_ss->onePDM->hasZ() )
+          aux_GDenZ = CQMemManager::get().malloc<double>(3*NTNPPB);
+
+        if( this->aux_ss->onePDM->hasXY() )
+          CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+        // Gamma U-Variables
+        aux_U_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+        aux_dVU_gamma = CQMemManager::get().malloc<double>(3*NTNPPB); 
+      }
+
+      double *aux_epsSCR, *aux_dVU_n_SCR, *aux_dVU_gamma_SCR;
+      if( epc_functionals.size() > 1 ) {
+        aux_epsSCR    = CQMemManager::get().malloc<double>(NTNPPB);
+        aux_dVU_n_SCR    = CQMemManager::get().malloc<double>(2*NTNPPB);
+        if(epcisGGA) 
+          aux_dVU_gamma_SCR = 
+            CQMemManager::get().malloc<double>(3*NTNPPB);
+      }
+
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> aux_Re1PDM
+          = std::dynamic_pointer_cast<cqmatrix::PauliSpinorMatrices<dcomplex>>(this->aux_ss->onePDM);
+
+
+      // ---------------end NEO------------------------------------------------
+
+      // --------------Cross Memory--------------------------------------------
+      double *cross_U_gamma, *cross_dVU_gamma, *ZgammaVar3;
+      if (epcisGGA) {
+        cross_U_gamma = CQMemManager::get().malloc<double>(4*NTNPPB); 
+        cross_dVU_gamma = CQMemManager::get().malloc<double>(4*NTNPPB);
+        ZgammaVar3 = CQMemManager::get().malloc<double>(NTNPPB);
+      }
+      // --------------end cross-----------------------------------------------
+ 
+
+      // -------------------------------------------------------------//
+      // End allocating Memory
+
+      auto vxcbuild = [&](size_t &res, std::vector<cart_t> &batch, 
+        std::vector<double> &weights, std::vector<size_t> NBE_vec, 
+        std::vector<dcomplex*> BasisEval_vec, 
+        std::vector<std::vector<size_t>> & batchEvalShells_vec, 
+        std::vector<std::vector<std::pair<size_t,size_t>>> & subMatCut_vec) {
+
+        // main system
+        size_t NBE = NBE_vec[0];
+        dcomplex * BasisEval = BasisEval_vec[0];
+        std::vector<size_t> & batchEvalShells = batchEvalShells_vec[0];
+        std::vector<std::pair<size_t,size_t>> & subMatCut = subMatCut_vec[0];
+
+        // auxiliary system
+        size_t aux_NBE = NBE_vec[1];
+        dcomplex * aux_BasisEval = BasisEval_vec[1];
+        std::vector<size_t> & aux_batchEvalShells = batchEvalShells_vec[1];
+        std::vector<std::pair<size_t,size_t>> & aux_subMatCut = subMatCut_vec[1];
+
+
+        // intParam.epsilon / ntotalpts (NANG * NRAD * NATOMS)
+        double epsScreen = intParam.epsilon / nAtoms /
+          intParam.nAng / intParam.nRad;
+
+        epsScreen = std::max(epsScreen,
+                             std::numeric_limits<double>::epsilon());
+
+        size_t NPts = batch.size();
+        size_t IOff = NBE*NPts;
+
+        size_t thread_id = GetThreadID();
+        size_t TIDNPPB   = thread_id * NPtsMaxPerBatch;
+
+#if VXC_DEBUG_LEVEL >= 1
+        // TIMING
+        auto topevalDen = std::chrono::high_resolution_clock::now();
+#endif
+
+        // --------------Main System------------------------------------------
+        // Setup local pointers
+        dcomplex * SCRATCHNBNB_loc = SCRATCHNBNB + thread_id * NB2;
+        dcomplex * SCRATCHNBNP_loc = SCRATCHNBNP + thread_id * NB*NPtsMaxPerBatch;
+
+        // local density pointers 
+        double * DenS_loc = DenS + TIDNPPB;
+        double * DenZ_loc = DenZ + TIDNPPB;
+
+        // local density gradient pointers
+        double * GDenS_loc = GDenS + 3*TIDNPPB;
+        double * GDenZ_loc = GDenZ + 3*TIDNPPB;
+
+        // local vxc energy and U, V pointer
+        double * epsEval_loc   = epsEval   +  TIDNPPB;
+        double * epcEval_loc   = epcEval   +  TIDNPPB;
+        double * U_n_loc       = U_n       + 2*TIDNPPB;
+        double * dVU_n_loc     = dVU_n     + 2*TIDNPPB;
+        double * U_gamma_loc   = U_gamma   + 3*TIDNPPB;
+        double * dVU_gamma_loc = dVU_gamma + 3*TIDNPPB;
+
+        // local gradient pointer
+        double * ZrhoVar1_loc   = ZrhoVar1   + TIDNPPB;
+        double * ZgammaVar1_loc = ZgammaVar1 + TIDNPPB;
+        double * ZgammaVar2_loc = ZgammaVar2 + TIDNPPB;
+
+        // local multiple functional pointer
+        double * epsSCR_loc        = epsSCR        +   TIDNPPB;
+        double * dVU_n_SCR_loc     = dVU_n_SCR     + 2*TIDNPPB;
+        double * dVU_gamma_SCR_loc = dVU_gamma_SCR + 3*TIDNPPB;
+
+        // local Zmat
+        dcomplex *ZMAT_loc = ZMAT + NB * TIDNPPB;
+
+        // ---------------End Main System------------------------------------
+
+
+        // ---------------Auxiliary System-----------------------------------
+        // aux local scratch pointers 
+        dcomplex * AUX_SCRATCHNBNB_loc, * AUX_SCRATCHNBNP_loc;
+        AUX_SCRATCHNBNB_loc = AUX_SCRATCHNBNB + thread_id * aux_NB2;
+        AUX_SCRATCHNBNP_loc = AUX_SCRATCHNBNP + thread_id * aux_NB*NPtsMaxPerBatch;         
+
+        // aux local density pointers
+        double * aux_DenS_loc, * aux_DenZ_loc;
+        aux_DenS_loc = aux_DenS + TIDNPPB;
+        aux_DenZ_loc = aux_DenZ + TIDNPPB;
+
+        // aux local density gradient pointers
+        double *aux_GDenS_loc, *aux_GDenZ_loc;
+        aux_GDenS_loc = aux_GDenS + 3*TIDNPPB;
+        aux_GDenZ_loc = aux_GDenZ + 3*TIDNPPB;
+
+        // aux local U and V pointers
+        double * aux_U_n_loc, * aux_dVU_n_loc, * aux_U_gamma_loc, * aux_dVU_gamma_loc;
+        aux_U_n_loc       = aux_U_n       + 2*TIDNPPB;
+        aux_dVU_n_loc     = aux_dVU_n     + 2*TIDNPPB;
+        aux_U_gamma_loc   = aux_U_gamma   + 3*TIDNPPB;
+        aux_dVU_gamma_loc = aux_dVU_gamma + 3*TIDNPPB;
+
+        // aux local Z pointers
+        double * aux_ZrhoVar1_loc, * aux_ZgammaVar1_loc, * aux_ZgammaVar2_loc;        
+        aux_ZrhoVar1_loc   = aux_ZrhoVar1   + TIDNPPB;
+        aux_ZgammaVar1_loc = aux_ZgammaVar1 + TIDNPPB;
+        aux_ZgammaVar2_loc = aux_ZgammaVar2 + TIDNPPB;
+
+        // aux local multiple functional pointers
+        double * aux_epsSCR_loc, * aux_dVU_n_SCR_loc, * aux_dVU_gamma_SCR_loc;
+        aux_epsSCR_loc        = aux_epsSCR        +   TIDNPPB;
+        aux_dVU_n_SCR_loc     = aux_dVU_n_SCR     + 2*TIDNPPB;
+        aux_dVU_gamma_SCR_loc = aux_dVU_gamma_SCR + 3*TIDNPPB;
+
+        // ---------------End Auxiliary System--------------------------------
+
+        // ---------------Cross Between Main and Auxiliary system-------------
+        double * cross_U_gamma_loc, *cross_dVU_gamma_loc, *ZgammaVar3_loc;
+        if (epcisGGA) {
+          cross_U_gamma_loc = cross_U_gamma + 4*TIDNPPB;
+          cross_dVU_gamma_loc = cross_dVU_gamma + 4*TIDNPPB;
+          ZgammaVar3_loc = ZgammaVar3 + TIDNPPB;
+        }
+        // ---------------End Cross-------------------------------------------
+        
+        // This evaluates the V variables for all components of the main system
+        // (Scalar, MZ (UKS) and Mx, MY (2 Comp))
+        evalDen((isGGA || epcisGGA ? GRADIENT : NOGRAD), NPts, NBE, NB, subMatCut, 
+            SCRATCHNBNB_loc, SCRATCHNBNP_loc, Re1PDM->S().pointer(), DenS_loc, 
+            GDenS_loc, GDenS_loc + NPts, GDenS_loc + 2*NPts, BasisEval);
+
+        // evaluate density for auxiliary components
+        evalDen((epcisGGA ? GRADIENT : NOGRAD), NPts, aux_NBE, 
+          aux_NB, aux_subMatCut, 
+          AUX_SCRATCHNBNB_loc, AUX_SCRATCHNBNP_loc, aux_Re1PDM->S().pointer(), aux_DenS_loc,
+          aux_GDenS_loc, aux_GDenS_loc + NPts, aux_GDenS_loc + 2*NPts, aux_BasisEval);
+
+
+        if ( ss.onePDM->hasZ() )
+          evalDen((isGGA || epcisGGA ? GRADIENT : NOGRAD), NPts, NBE, NB, subMatCut, 
+                SCRATCHNBNB_loc ,SCRATCHNBNP_loc, Re1PDM->Z().pointer(), DenZ_loc, 
+                GDenZ_loc, GDenZ_loc + NPts, GDenZ_loc + 2*NPts, BasisEval);
+
+        if ( this->aux_ss->onePDM->hasZ() )
+          evalDen((epcisGGA ? GRADIENT : NOGRAD), NPts, aux_NBE, 
+            aux_NB, aux_subMatCut, 
+            AUX_SCRATCHNBNB_loc, AUX_SCRATCHNBNP_loc, aux_Re1PDM->Z().pointer(), 
+            aux_DenZ_loc,
+            aux_GDenZ_loc, aux_GDenZ_loc + NPts, aux_GDenZ_loc + 2*NPts, aux_BasisEval);
+
+        if ( ss.onePDM->hasXY() )
+          CErr("Relativistic NEO-Kohn-Sham NYI!");
+
+        if ( this->aux_ss->onePDM->hasXY() )
+          CErr("Relativistic NEO-Kohn-Sham NYI!");
+
+        
+        // V -> U variables for NEO-DFT kernal derivatives 
+        mkAuxVar(this->aux_ss->onePDM,
+          epcisGGA,epsScreen,NPts,
+          aux_DenS_loc,aux_DenZ_loc,nullptr,nullptr,
+          aux_GDenS_loc,aux_GDenS_loc + NPts,aux_GDenS_loc + 2*NPts,
+          aux_GDenZ_loc,aux_GDenZ_loc + NPts,aux_GDenZ_loc + 2*NPts,
+          nullptr,nullptr,nullptr,
+          nullptr,nullptr,nullptr,
+          nullptr,
+          nullptr, nullptr, nullptr,
+          nullptr, nullptr, nullptr,
+          nullptr, nullptr, nullptr, 
+          aux_U_n_loc, aux_U_gamma_loc
+        );
+
+
+        // V -> U variables for evaluating the kernel derivatives.
+        mkAuxVar(ss.onePDM,
+          isGGA || epcisGGA,epsScreen,NPts,
+          DenS_loc,DenZ_loc,nullptr,nullptr,
+          GDenS_loc,GDenS_loc + NPts,GDenS_loc + 2*NPts,
+          GDenZ_loc,GDenZ_loc + NPts,GDenZ_loc + 2*NPts,
+          nullptr,nullptr,nullptr,
+          nullptr,nullptr,nullptr,
+          nullptr, 
+          nullptr, nullptr, nullptr,
+          nullptr, nullptr, nullptr,
+          nullptr, nullptr, nullptr, 
+          U_n_loc,U_gamma_loc
+        );
+
+
+        // Cross V -> U variables
+        if (epcisGGA)
+          mkCrossAuxVar(false,ss.particle.charge < 0,
+            ss.onePDM, this->aux_ss->onePDM, epsScreen,NPts,
+            GDenS_loc,GDenS_loc + NPts,GDenS_loc + 2*NPts,
+            nullptr,nullptr,nullptr,
+            nullptr,nullptr,nullptr,
+            GDenZ_loc,GDenZ_loc + NPts,GDenZ_loc + 2*NPts,
+            aux_GDenS_loc,aux_GDenS_loc + NPts,aux_GDenS_loc + 2*NPts,
+            nullptr,nullptr,nullptr,
+            nullptr,nullptr,nullptr,
+            aux_GDenZ_loc,aux_GDenZ_loc + NPts,aux_GDenZ_loc + 2*NPts,
+            cross_U_gamma_loc);
+
+
+        // Get NEO-DFT Energy derivatives wrt U variables
+        if( ks )
+          loadVXCder(
+            ks->functionals,
+            NPts, U_n_loc, U_gamma_loc,
+            epsEval_loc, dVU_n_loc, dVU_gamma_loc,
+            epsSCR_loc, dVU_n_SCR_loc, dVU_gamma_SCR_loc);
+        else {
+          std::fill_n(epsEval_loc, NPts, 0.);
+          std::fill_n(dVU_n_loc, NPts, 0.);
+          if( isGGA || epcisGGA ) std::fill_n(dVU_gamma_loc, NPts, 0.);
+          if( ks && ks->functionals.size() > 1 ) {
+            std::fill_n(epsSCR_loc, NPts, 0.);
+            std::fill_n(dVU_n_SCR_loc, NPts, 0.);
+            if( isGGA || epcisGGA ) std::fill_n(dVU_gamma_SCR_loc, NPts, 0.);
+          }
+        }
+
+
+        loadEPCVXCder(ss.particle.charge < 0, 
+          epc_functionals,
+          NPts, U_n_loc, U_gamma_loc, aux_U_n_loc,
+          aux_U_gamma_loc, cross_U_gamma_loc, epsEval_loc, dVU_n_loc,
+          dVU_gamma_loc, cross_dVU_gamma_loc, epsSCR_loc, dVU_n_SCR_loc, 
+          dVU_gamma_SCR_loc, cross_dVU_gamma_loc, epcEval_loc);
+
+
+        // Compute for the current batch the XC energy and increment the 
+        // total XC energy.
+        integrateXCEnergy[thread_id] += 
+          energy_vxc(NPts, weights, epsEval_loc, DenS_loc);
+        //integrateEPCEnergy[thread_id] += 
+        //  energy_vxc(NPts, weights, epcEval_loc, DenS_loc);
+
+
+        // Construct the required quantities for the formation of the Z 
+        // vector (SCALAR) given the kernel derivatives wrt U variables. 
+        constructZVars(ss.onePDM, SCALAR, isGGA || epcisGGA, 
+          NPts,dVU_n_loc,dVU_gamma_loc, ZrhoVar1_loc, ZgammaVar1_loc,
+          ZgammaVar2_loc);
+
+        // Construct the required quantities for the formation of the Z
+        // vector for EPC-19 functional
+        if (epcisGGA)
+          constructEPCZVars(ss.particle.charge < 0,
+            SCALAR,NPts,cross_dVU_gamma_loc, ZgammaVar3_loc);
+
+        // Creating ZMAT (SCALAR) according to 
+        //   J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 15 
+        if ( epcisGGA )
+          formZ_vxc_epc(ss.onePDM, this->aux_ss->onePDM,
+            SCALAR, epcisGGA, NPts, NBE, IOff, epsScreen, weights,
+            ZrhoVar1_loc, ZgammaVar1_loc, ZgammaVar2_loc, ZgammaVar3_loc,
+            DenS_loc, DenZ_loc, nullptr, nullptr, GDenS_loc, GDenZ_loc, nullptr,
+            nullptr, aux_DenS_loc, aux_DenZ_loc, nullptr, nullptr,
+            aux_GDenS_loc, aux_GDenZ_loc, nullptr, nullptr,
+            BasisEval, ZMAT_loc);
+        else
+          formZ_vxc(ss.onePDM, SCALAR,isGGA, NPts, NBE, IOff, epsScreen, weights, 
+            ZrhoVar1_loc, ZgammaVar1_loc, ZgammaVar2_loc, DenS_loc, 
+            DenZ_loc, nullptr, nullptr, GDenS_loc, GDenZ_loc, nullptr, 
+            nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr,
+            nullptr, BasisEval, ZMAT_loc);
+
+        bool evalZ = true;
+
+        if (evalZ) {
+          // Creating according to 
+          //   J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 14 
+          //
+          // Z -> VXC (submat - SCALAR)
+
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            ZMAT_loc[icount] = std::conj(ZMAT_loc[icount]);                     
+                                                                                
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NBE,NBE,NPts,
+            dcomplex(1.0),ZMAT_loc,NBE,BasisEval,NBE,dcomplex(0.0),SCRATCHNBNB_loc,NBE);
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            ZMAT_loc[icount] = std::conj(ZMAT_loc[icount]);                     
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            BasisEval[icount] = std::conj(BasisEval[icount]);                   
+                                                                                
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NBE,NBE,NPts,
+            dcomplex(1.0),BasisEval,NBE,ZMAT_loc,NBE,dcomplex(1.0),SCRATCHNBNB_loc,NBE);
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            BasisEval[icount] = std::conj(BasisEval[icount]); 
+          
+
+
+          // Locating the submatrix in the right position given the 
+          // subset of shells for the given batch.
+          IncBySubMat(NB,NB,NBE,NBE,integrateVXC[SCALAR][thread_id],NB,
+            SCRATCHNBNB_loc,NBE,subMatCut);
+        }
+
+
+        if( not ss.onePDM->hasZ() ) return;
+
+        //
+        // ---------------   UKS or 2C ------------- Mz ---------------
+        //    See J. Chem. Theory Comput. 2017, 13, 2591-2603  
+        //
+
+        // Construct the required quantities for the formation of 
+        // the Z vector (Mz) given the kernel derivatives wrt U 
+        // variables.
+        constructZVars(ss.onePDM, MZ,isGGA || epcisGGA,NPts,dVU_n_loc,dVU_gamma_loc,ZrhoVar1_loc,
+          ZgammaVar1_loc, ZgammaVar2_loc);
+
+        // Construct the required quantities for the formation of the Z
+        // vector for EPC-19 functional
+        if (epcisGGA)
+          constructEPCZVars(ss.particle.charge < 0, 
+            MZ,NPts,cross_dVU_gamma_loc, ZgammaVar3_loc);
+
+        // Creating ZMAT (Mz) according to 
+        //   J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 15 
+        if (epcisGGA)
+          formZ_vxc_epc(ss.onePDM, this->aux_ss->onePDM,
+            MZ, epcisGGA, NPts, NBE, IOff, epsScreen, weights,
+            ZrhoVar1_loc, ZgammaVar1_loc, ZgammaVar2_loc, ZgammaVar3_loc,
+            DenS_loc, DenZ_loc, nullptr, nullptr, GDenS_loc, GDenZ_loc, nullptr,
+            nullptr, aux_DenS_loc, aux_DenZ_loc, nullptr, nullptr,
+            aux_GDenS_loc, aux_GDenZ_loc, nullptr, nullptr,
+            BasisEval, ZMAT_loc);
+        else
+          formZ_vxc(ss.onePDM,MZ,isGGA, NPts, NBE, IOff, epsScreen, weights, 
+            ZrhoVar1_loc, ZgammaVar1_loc, ZgammaVar2_loc, DenS_loc, 
+            DenZ_loc, nullptr, nullptr, GDenS_loc, GDenZ_loc, nullptr, 
+            nullptr, nullptr, nullptr, 
+            nullptr, nullptr, nullptr, 
+            nullptr, BasisEval, ZMAT_loc);
+
+
+        // Coarse screen on ZMat
+        if(evalZ) {
+  
+          // Creating according to 
+          //   J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 14 
+          //
+          // Z -> VXC (submat)
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            ZMAT_loc[icount] = std::conj(ZMAT_loc[icount]);                     
+                                                                                
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NBE,NBE,NPts,
+            dcomplex(1.0),ZMAT_loc,NBE,BasisEval,NBE,dcomplex(0.0),SCRATCHNBNB_loc,NBE);
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            ZMAT_loc[icount] = std::conj(ZMAT_loc[icount]);                     
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            BasisEval[icount] = std::conj(BasisEval[icount]);                   
+                                                                                
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NBE,NBE,NPts,
+            dcomplex(1.0),BasisEval,NBE,ZMAT_loc,NBE,dcomplex(1.0),SCRATCHNBNB_loc,NBE);
+                                                                                
+          for ( int icount = 0 ; icount < NBE*NPts ; icount++ )                 
+            BasisEval[icount] = std::conj(BasisEval[icount]);  
+    
+    
+          // Locating the submatrix in the right position given 
+          // the subset of shells for the given batch.
+          IncBySubMat(NB,NB,NBE,NBE,integrateVXC[MZ][thread_id],NB,
+            SCRATCHNBNB_loc,NBE,subMatCut);           
+
+        }
+ 
+
+
+        if( not ss.onePDM->hasXY() ) return;
+        
+        CErr("Relativistic NEO-Kohn-Sham NYI!",std::cout);
+
+      }; // VXC integrate
+
+
+
+      // Create the BeckeIntegrator object
+      if( ks ) intParam = ks->intParam;
+      else if( auto aux_ks = dynamic_cast<KohnSham<dcomplex,dcomplex>*>( this->aux_ss ) )
+        intParam = aux_ks->intParam;
+      BeckeIntegrator<EulerMac> 
+        integrator(intComm,ss.molecule(),basis,aux_basis,
+        EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
+          (isGGA ? GRADIENT : NOGRAD), (epcisGGA ? GRADIENT : NOGRAD), 
+          intParam.epsilon);
+
+      // Integrate the VXC
+      integrator.integrate<size_t>(vxcbuild, pert, this->aux_ss->particle.charge>0);
+
+
+
+      // Finishing up the VXC
+      // factor in the 4 pi (Lebedev) and built the upper triagolar part
+      // since we create only the lower triangular. For all components
+      for(auto k = 0; k < VXC_SZYX.size(); k++) {
+        if( nthreads == 1 )
+          blas::scal(NB2,4*M_PI,VXC_SZYX[k],1);
+        else
+          for(auto ithread = 0; ithread < nthreads; ithread++)
+            MatAdd('N','N',NB,NB,dcomplex((ithread == 0) ? 0. : 1.),VXC_SZYX[k],NB,
+              dcomplex(4*M_PI),integrateVXC[k][ithread],NB, VXC_SZYX[k],NB);
+        
+        //HerMat('L',NB,VXC_SZYX[k],NB);
+      }
+
+      for(auto &X : integrateXCEnergy) {
+        XCEnergy += 4*M_PI*X;
+      }
+
+      if( ks )
+        ks->XCEnergy = XCEnergy;
+      else
+        ss.extraEnergy = XCEnergy;
+
+
+// Combine MPI results
+#ifdef CQ_ENABLE_MPI
+
+      dcomplex* mpiScr;
+      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<dcomplex>(NB*NB);
+
+      for(auto &V : VXC_SZYX) {
+
+        MPIReduce(V, NB*NB, mpiScr, 0, intComm);
+
+        if( mpiRank == 0 ) std::copy_n(mpiScr,NB*NB,V);
+
+      }
+
+      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
+
+      if(ks) ks->XCEnergy = MPIReduce(ks->XCEnergy,0,intComm);
+
+#endif
+
+
+      // Freeing the memory
+      // ----------------Main System-------------------------------------------- //
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,epcEval,U_n,
+        dVU_n, ZrhoVar1,ZMAT);
+      if( isGGA || epcisGGA )  
+        CQMemManager::get().free(ZgammaVar1,ZgammaVar2,GDenS,U_gamma,
+          dVU_gamma);
+
+      if( ss.onePDM->hasZ() ) {
+        CQMemManager::get().free(DenZ);
+        if( isGGA || epcisGGA )  CQMemManager::get().free(GDenZ);
+      }
+
+      if( ss.onePDM->hasXY() )
+        CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+      if( ks && ks->functionals.size() > 1 ) {
+        CQMemManager::get().free(epsSCR,dVU_n_SCR);
+        if( isGGA || epcisGGA ) CQMemManager::get().free(dVU_gamma_SCR);
+      }
+
+      if( nthreads != 1 ) CQMemManager::get().free(intVXC_RAW);
+
+      Re1PDM = nullptr;
+
+      // -----------------End Main System-------------------------------------------- //
+
+      // ----------------Auxiliary System-------------------------------------------- //
+      CQMemManager::get().free(AUX_SCRATCHNBNB,AUX_SCRATCHNBNP,aux_DenS,aux_U_n,aux_dVU_n,aux_ZrhoVar1);
+      if(epcisGGA )  
+        CQMemManager::get().free(aux_ZgammaVar1,aux_ZgammaVar2,aux_GDenS,aux_U_gamma,
+          aux_dVU_gamma);
+
+      if( this->aux_ss->onePDM->hasZ() ) {
+        CQMemManager::get().free(aux_DenZ);
+        if ( epcisGGA ) CQMemManager::get().free(aux_GDenZ);
+      }
+
+      if( this->aux_ss->onePDM->hasXY() )
+        CErr("Relativistic NEO-Kohn-Sham NYI!", std::cout);
+
+      if( epc_functionals.size() > 1 ) {
+        CQMemManager::get().free(aux_epsSCR,aux_dVU_n_SCR);
+        if( epcisGGA ) CQMemManager::get().free(aux_dVU_gamma_SCR);
+      }
+
+      aux_Re1PDM = nullptr;
+
+      // -----------------End Aux-------------------------------------------- //
+      // -----------------Cross---------------------------------------------- //
+      if(epcisGGA)
+        CQMemManager::get().free(cross_U_gamma, cross_dVU_gamma, ZgammaVar3);
+      // -----------------End Cross------------------------------------------ //
+      // End freeing the memory
+
+      // Turn back on LA threads
+      SetLAThreads(LAThreads);
+
+      MPICommFree(intComm); // Free communicator
+
+    } // Valid intComm
+
+    MPI_Barrier(ss.comm); // Syncronize the MPI processes
+
+  }
 
 
   template <typename MatsT, typename IntsT>
@@ -946,7 +1688,7 @@ namespace ChronusQ {
     auto vxcBegin = tick();
     if(not this->intParam.useGauXC){
       // InHouse NEO-DFT:
-      formVXC(ss);
+      formVXC(ss, empert);
       *ss.fockMatrix += *VXC;
       //KohnSham<MatsT,IntsT>* ks = dynamic_cast<KohnSham<MatsT,IntsT>*>(&ss);
       //if(ss.particle.charge < 0) std::cout << "TOTAL Electronic EXC: " << ks->XCEnergy << std::endl;

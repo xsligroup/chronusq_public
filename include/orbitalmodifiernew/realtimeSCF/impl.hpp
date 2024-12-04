@@ -141,7 +141,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     doPropagation(onePDMSquareOrthoSave, startMMUTStep, finalMMUTStep);
 
     this->saveState(currentPerturbation); // Save the current energy, dipole, and propagated density every iSave steps
-    this->saveCube(currentPerturbation); // Output Cube
+    this->saveCube(); // Output Cube
     ProgramTimer::tock("Real Time Iter");
 
   } // Time loop
@@ -383,7 +383,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
 
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube(EMPerturbation& emPert) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube() {
 
   ROOT_ONLY(this->mpiComm);
 
@@ -414,7 +414,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube(EMPerturbation& emPert) {
       // density cube 
       if (tdSCFOptions.cubeOptsRT.denCube) {
         cube->evalDenCube(cube_name,ess.onePDM,true);
-        pcube->evalDenCube(pcube_name,pss.onePDM,1.0,true);
+        pcube->evalDenCube(pcube_name,pss.onePDM,true);
       }
 
     } else {

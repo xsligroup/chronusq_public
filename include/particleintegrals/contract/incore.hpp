@@ -177,14 +177,28 @@ namespace ChronusQ {
 
       #else
 
-    if( std::is_same<IntsT,dcomplex>::value )
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),NB2,X,sNB2,IntsT(0.),AX,NB2);
-    else 
+    //if( std::is_same<IntsT,dcomplex>::value )
+    //  blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),NB2,X,sNB2,IntsT(0.),AX,NB2);
+    //else 
+
+    // GIAO
+    // J(μν) = ((μν|κλ).H * D(λκ)).H = ((νμ|λκ) * D(λκ)).H = J(νμ).H = J(μν) 
+    if( std::is_same<IntsT,dcomplex>::value ){
+      if(NB2==sNB2){
+        blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),NB2,X,sNB2,IntsT(0.),AX,NB2);
+      }else{
+        if (not this->contractSecond)
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,1,NB2,sNB2,IntsT(1.),X,1,tpi4I.pointer(),NB2,IntsT(0.),AX,1);
+        else
+          blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),sNB2,X,sNB2,IntsT(0.),AX,NB2);
+      }    
+    }else{
       if (not this->contractSecond)
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),NB2,X,sNB2,IntsT(0.),AX,NB2);
       else
         blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),sNB2,X,sNB2,IntsT(0.),AX,NB2);
-
+    }
+    
       // if Complex ints + Hermitian, conjugate
       if( std::is_same<IntsT,dcomplex>::value and C.HER )
         IMatCopy('R',NB,NB,IntsT(1.),AX,NB,NB);

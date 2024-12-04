@@ -48,11 +48,11 @@ namespace ChronusQ {
     aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EPINTS");
     auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis,aoints);
 
-    // cubegen for moved mol and electronic basis
-    auto cube = CQCUBEOptions(std::cout,input_,std::make_shared<Molecule>(mol),basis);
-
     SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert);
     ssOptions.scfControls = scfControls;
+
+    // cubegen for moved mol and electronic basis
+    auto cube = CQCUBEOptions(std::cout,input_,std::make_shared<Molecule>(mol),basis,emPert,-1.0);
 
     curr_ = ssOptions.buildSingleSlater(std::cout,mol,*basis,aoints);
 
@@ -86,7 +86,7 @@ namespace ChronusQ {
     guessSSOptions.hamiltonianOptions.OneEScalarRelativity = false;
     guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
  
-    curr_->formGuess(guessSSOptions);
+    curr_->formGuess(emPert, guessSSOptions);
     curr_->runSCF(emPert);
  
     return curr_->getEnergySummary();

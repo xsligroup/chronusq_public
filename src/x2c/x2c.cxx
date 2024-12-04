@@ -1606,14 +1606,14 @@ namespace ChronusQ {
       fourCompSS.fockBuilder = std::make_shared<MatrixFock<MatsT, IntsT>>(
           ssOptions_.hamiltonianOptions, *fourCompSS.coreH);
 
-      fourCompSS.formGuess(fourCoptions);
+      fourCompSS.formGuess(emPert, fourCoptions);
 
     } else if (ssOptions_.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
 
       fourCompSS.aoints_->computeAOTwoE(uncontractedBasis_, molecule_, emPert);
 
       // For Fock X2C, solve four-component SCF
-      fourCompSS.formGuess(fourCoptions);
+      fourCompSS.formGuess(emPert, fourCoptions);
       fourCompSS.buildOrbitalModifierOptions();
       fourCompSS.runSCF(emPert);
     }

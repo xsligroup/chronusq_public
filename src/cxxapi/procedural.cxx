@@ -236,13 +236,6 @@ namespace ChronusQ {
         IntegralOptions::buildAllIntegrals(output, mol, basis, dfbasis, prot_basis,
         aoints_options, prot_aoints_options, ep_aoints_options);
 
-    // cubegen for input mol and electronic basis
-    auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis);
-    // cubegen for NEO.
-    std::shared_ptr<CubeGen> pcube = nullptr;
-    if (doNEO)
-      pcube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),prot_basis);
-
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
     SingleSlaterOptions ssOptions;
@@ -253,6 +246,13 @@ namespace ChronusQ {
 
     // SCF options
     SCFControls scfControls = CQSCFOptions(output,input,emPert);
+
+    // cubegen for input mol and electronic basis
+    auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis,emPert,-1.0);
+    // cubegen for NEO.
+    std::shared_ptr<CubeGen> pcube = nullptr;
+    if (doNEO)
+      pcube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),prot_basis,emPert,1.0);
 
     // Create the SingleSlater object
     if (doNEO) {
@@ -322,7 +322,8 @@ namespace ChronusQ {
     // Pack up cubes
     std::vector<std::shared_ptr<CubeGen>> cubes;
     cubes.push_back(cube);
-    if (doNEO) cubes.push_back(pcube);
+    if (pcube)
+      cubes.push_back(pcube);
 
     // Save reference info to bin file
     saveRefs( ssOptions, ss );
@@ -375,18 +376,8 @@ namespace ChronusQ {
           aoints->computeAOTwoE(*basis, mol, emPert);
 
           if (doNEO) { 
-            if(auto p = std::dynamic_pointer_cast<Integrals<double>>(prot_aoints)){
-              prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
-            }else{
-              CErr("NEO with complex integrals NYI!",output);
-            }
-
-            //ep_aoints = ep_aoints_options.buildAsymmIntegral(output,  mol, basis, dfbasis, prot_basis,
-            //    aoints_options, prot_aoints_options, aoints, prot_aoints);
-
-            if(auto p = std::dynamic_pointer_cast<Integrals<double>>(ep_aoints)){
-              ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
-            }  
+            prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
+            ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
           }
         }
         
@@ -436,10 +427,10 @@ namespace ChronusQ {
 
           if(conventionalSCF!=nullptr){
             std::cout<<"xsli test new SCF"<<std::endl;
-            ss->formGuess(guessSSOptions);
+            ss->formGuess(emPert, guessSSOptions);
             ss->initializeSCF();
             conventionalSCF->run(emPert);
-            if(cube) ss->runCube(cubes,emPert);
+            if(cube) ss->runCube(cubes);
           }
 #endif // new SCF
         }
@@ -554,7 +545,7 @@ namespace ChronusQ {
             mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
-            if(cube) mcscf->runCube(cubes,emPert);
+            if(cube) mcscf->runCube(cubes);
             
             if (input.containsSection("PERTURB")) {
               auto perturb = CQPerturbOptions(output,input,mcscf);
@@ -567,7 +558,7 @@ namespace ChronusQ {
             auto ci = CQCIOptions(output,input,ss,emPert,cube);
             ci->savFile = rstFile;
             ci->run(additionalPert);
-            if(cube) ci->runCube(cubes,emPert);
+            if(cube) ci->runCube(cubes);
           }
         }
 

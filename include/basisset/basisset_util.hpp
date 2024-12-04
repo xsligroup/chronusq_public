@@ -55,6 +55,19 @@ namespace ChronusQ {
   }; // evalShellSet (over vector of arrays)
 
   /**
+   *  \brief Level 1 Basis Set Evaluation Function - GIAO
+   *  \brief Evaluates a shell set over a specified number of cartesian points.
+   */ 
+  void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, double *, size_t, dcomplex *, bool, EMPerturbation&, double, dcomplex * SCR = nullptr, double * SCR2 = nullptr);
+
+  inline void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells,
+    std::vector<std::array<double,3>> &pts, dcomplex *eval, bool &forceCart, EMPerturbation &pert, double scaleFactor=1.0,dcomplex *SCR = nullptr, double * SCR2 = nullptr){
+
+    evalShellSet(typ,shells,&(pts[0][0]),pts.size(),eval,forceCart,pert,scaleFactor,SCR,SCR2);
+
+  }; // evalShellSet (over vector of arrays)
+
+  /**
    *  \brief Level 2 Basis Set Evaluation Function.
    *  \brief Evaluates a shell set over a specified number of cartesian points. This 
    *  \brief function requires a precomputed set of distances and their x,y,z components 
@@ -65,7 +78,7 @@ namespace ChronusQ {
 // SS start
   // define level 2 basis set eval for GIAO 
   void evalShellSet(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &,double *, double *, size_t, 
-    size_t, std::vector<size_t>&, size_t, dcomplex*, dcomplex*, size_t, bool, EMPerturbation& );
+    size_t, std::vector<size_t>&, size_t, dcomplex*, dcomplex*, size_t, bool, EMPerturbation&, double);
 // SS end 
 
   /**

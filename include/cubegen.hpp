@@ -73,22 +73,35 @@ namespace ChronusQ {
 
       // Helper functions for precomputing the basis (if memory permits)
       void ComputeBasis();
+      void ComputeGIAOBasis();
       std::vector<double> evaluated_basis;
+      std::vector<dcomplex> evaluated_giaobasis;
       double * EvalShellSetAtPoint(int,int,int);
+      dcomplex * EvalShellSetAtPointGIAO(int,int,int);
       
     public:
+
+      // For GIAO & NEO
+      EMPerturbation emPert_;
+      double particleCharge_ = -1.0; 
 
       /**
        * @brief Constructor that assumes default dimensions
        * 
       */
-      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis){
+      CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis, EMPerturbation emPert, double particleCharge){
         res_ = RES_TYPE::COARSE;
         voxelGrid_ = {80,80,80};
         voxelUnits_ = {0.1,0.1,0.1};
         mol_ = mol;
         basis_ = basis;
-        ComputeBasis();
+        emPert_ = emPert;
+        particleCharge_ = particleCharge;
+        if (basis_->basisType == COMPLEX_GIAO) {
+          ComputeGIAOBasis();
+        } else {
+          ComputeBasis();
+        }
       }
 
       /**
@@ -105,12 +118,18 @@ namespace ChronusQ {
        * @param voxelUnits the increments between datapoints for the voxelGrid
       */
       CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
-      std::array<size_t, 3> voxelGrid, std::array<double, 3> voxelUnits) {
+      std::array<size_t, 3> voxelGrid, std::array<double, 3> voxelUnits, EMPerturbation &emPert, double particleCharge) {
         voxelGrid_ = voxelGrid;
         voxelUnits_ = voxelUnits;
         mol_ = mol;
         basis_ = basis;
-        ComputeBasis();
+        emPert_ = emPert;
+        particleCharge_ = particleCharge;
+        if (basis_->basisType == COMPLEX_GIAO) {
+          ComputeGIAOBasis();
+        } else {
+          ComputeBasis();
+        }
       }
 
       /**
@@ -125,15 +144,21 @@ namespace ChronusQ {
        * @param res resolution of visualization specified by user
       */
       CubeGen(std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> basis,
-      std::string resString,
+      std::string resString, EMPerturbation &emPert, double particleCharge,
       double cubePadding = 3.0) {
         res_ = inputToRes(resString);
         cubePadding_ = cubePadding;
         mol_ = mol;
         basis_ = basis;
+        emPert_ = emPert;
+        particleCharge_ = particleCharge;
         // call this to create grid
         calculateVoxelDimensions();
-        ComputeBasis();
+        if (basis_->basisType == COMPLEX_GIAO) {
+          ComputeGIAOBasis();
+        } else {
+          ComputeBasis();
+        }
       }
 
 
@@ -185,13 +210,13 @@ namespace ChronusQ {
       // >>> High-level functions
       void writeSummary(std::string fileSum);
       template <typename LocMatsT>
-      void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>>, double particleCharge = -1.0, bool skipoutput = false);
+      void evalDenCube(std::string filePref,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>>, bool skipoutput = false);
       template <typename LocMatsT, typename ValManipOp>
       void evalOrbCube(std::string filePref, LocMatsT* MOBase, size_t LDMO, std::vector<size_t> whichMOs, ValManipOp op);
 
       // >>> Property evaluation functions
       template <typename LocMatsT>
-      void evalDenCompCube(LocMatsT*, double pCharge=-1.0);
+      void evalDenCompCube(LocMatsT*);
       template <typename LocMatsT, typename ValManipOp>
       void evalOrbCompCube(LocMatsT *,size_t,size_t,ValManipOp);
     

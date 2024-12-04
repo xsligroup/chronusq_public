@@ -100,7 +100,7 @@ public:
   virtual void swapMOs(std::vector<std::vector<std::pair<size_t, size_t>>>&, SpinType) = 0;
 
   // Post-processing functions
-  virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &) = 0;
+  virtual void runCube(std::vector<std::shared_ptr<CubeGen>>) = 0;
 
   void alloc() {
     this->StateEnergy.clear();

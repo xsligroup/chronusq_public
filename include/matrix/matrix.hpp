@@ -324,7 +324,7 @@ public:
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full INTS matrix ("
-                  << (N /1e9) * sizeof(double) << " GB)" << std::endl;
+                  << (N /1e9) * sizeof(MatsT) << " GB)" << std::endl;
         std::cout << std::endl << CQMemManager::get() << std::endl;
         throw std::bad_alloc();
       }

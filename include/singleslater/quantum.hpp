@@ -22,7 +22,8 @@
  *  
  */
 #pragma once
-//#define _DEBUGGIAO 
+#define _DEBUGGIAO 0 
+#define seperatemag
 
 #include <singleslater.hpp>
 #include <cqlinalg/blasext.hpp>
@@ -153,8 +154,10 @@ namespace ChronusQ {
       this->template computeOBProperty<DENSITY_TYPE::SCALAR>(
          coreH->S().pointer());
 
-    
-    
+#ifdef _DEBUGGIAO
+    std::cout<<"One-body energy in Hartree "<< 0.5*std::real(this->OBEnergy) <<std::endl;
+#endif
+
     // One body Spin Orbit
     double SOEnergy = 0.;
     if (coreH->hasZ())
@@ -172,7 +175,9 @@ namespace ChronusQ {
 
  
     this->OBEnergy += SOEnergy;
-
+#ifdef _DEBUGGIAO
+    std::cout<<"Spin Zeeman energy in Hartree "<< 0.5*std::real(SOEnergy) <<std::endl;
+#endif
 
     this->OBEnergy *= 0.5;
 
@@ -197,6 +202,11 @@ namespace ChronusQ {
     }
 
     this->MBEnergy *= 0.25;
+#ifdef _DEBUGGIAO
+    std::cout<<"Many-body energy in Hartree "<< std::real(this->MBEnergy) <<std::endl;
+    std::cout<<"Nuc energy in Hartree "<< std::real(this->molecule().nucRepEnergy) <<std::endl;
+    std::cout<<"E-field energy in Hartree "<< std::real(this->extraEnergy) <<std::endl;
+#endif
 
     // Assemble total energy
     this->totalEnergy = 
@@ -246,6 +256,66 @@ namespace ChronusQ {
           &atom.coord[0],3,&this->elecDipole[0],3);
     }
 
+#ifdef seperatemag
+  // Here output orbital Zeeman energy
+
+    dcomplex onei = dcomplex(0,1);
+    auto magAmp = pert.getDipoleAmp(Magnetic);
+    // std::cout<<"magnetic field Bx= "<<magAmp[0] <<" By= "<<magAmp[1]
+    //   <<" Bz= "<<magAmp[2]<<std::endl;
+    //size_t DSize = memManager.template getSize(this->onePDM[SCALAR]); 
+    // std::cout<<"DSize="<<DSize<<std::endl;
+
+    // this part add the orbital Zeeman energy contribution  
+    double OrbitZeeman = 0.0;  
+
+    const std::array<std::string,3> dipoleList =
+      { "X","Y","Z" };
+
+    int NB = 0 + this->basisSet().nBasis;
+    //prettyPrintSmart(std::cout,"L",(*this->aoints_->magnetic)[dipoleList[2]]->pointer(),NB,NB,NB);
+
+    for ( auto index = 0 ; index < 3 ; index++ ) {
+      OrbitZeeman += std::real( 0.5 * magAmp[index] * onei * this->particle.charge * (1.0/this->particle.mass) * 
+        blas::dot(NB*NB, this->onePDM->S().pointer(), 1, (*this->aoints_->magnetic)[dipoleList[index]]->pointer(), 1 ));
+    } // for ( auto inde = 0 ; inde < 3 ; inde++ ) 
+
+    std::cout<<"Orbit Zeeman contribution "<<OrbitZeeman<<std::endl; 
+
+// Here we calculate diamgnetic contribution
+    double diamagcontrib = 0.0;
+
+    const std::array<std::string,3> diagindex =
+      { "XX","YY","ZZ" };
+
+    double diagcoeff[3];
+    diagcoeff[0] = 1.0/8.0*(magAmp[1]*magAmp[1]+magAmp[2]*magAmp[2]); 
+    diagcoeff[1] = 1.0/8.0*(magAmp[0]*magAmp[0]+magAmp[2]*magAmp[2]);    
+    diagcoeff[2] = 1.0/8.0*(magAmp[0]*magAmp[0]+magAmp[1]*magAmp[1]);    
+
+    // add diagonal part
+
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      diamagcontrib += std::real( diagcoeff[index] * ((-1.0 * this->particle.charge) * 1.0/this->particle.mass) *
+        this->template computeOBProperty<DENSITY_TYPE::SCALAR>((*this->aoints_->lenElectric)[diagindex[index]]->pointer()));
+    }  
+
+    const std::array<std::string,3> offindex =
+      { "XY","XZ","YZ" };
+
+    double offcoeff[3];
+    offcoeff[0] = -1.0/4.0*magAmp[0]*magAmp[1];
+    offcoeff[1] = -1.0/4.0*magAmp[0]*magAmp[2];
+    offcoeff[2] = -1.0/4.0*magAmp[1]*magAmp[2];
+
+    for ( auto index = 0 ; index < 3 ; index++ ) { 
+      diamagcontrib += std::real( offcoeff[index] * (-1.0 * this->particle.charge) * (1.0/this->particle.mass) * 
+        this->template computeOBProperty<DENSITY_TYPE::SCALAR>((*this->aoints_->lenElectric)[diagindex[index]]->pointer()));
+    } 
+
+    std::cout<<"Diamagnetic contribution = "<<diamagcontrib<<std::endl;
+
+#endif
 
     // Electric contribution to the quadrupoles
     for(size_t iXYZ = 0, iX = 0; iXYZ < 3; iXYZ++)
@@ -299,6 +369,9 @@ namespace ChronusQ {
         atom.nucCharge * atom.coord[iXYZ] * atom.coord[jXYZ] *
         atom.coord[kXYZ];
     }
+
+    std::cout << std::string(this->particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Dipole: " 
+        << this->elecDipole[0] << " " << this->elecDipole[1] << " " << this->elecDipole[2] << std::endl;
   };
 
 

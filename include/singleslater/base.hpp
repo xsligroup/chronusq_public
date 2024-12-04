@@ -129,7 +129,7 @@ namespace ChronusQ {
 
     //   Form an initial Guess (which populates the Fock, Density 
     //   and energy)
-    virtual void formGuess(const SingleSlaterOptions&) = 0;
+    virtual void formGuess(EMPerturbation &, const SingleSlaterOptions&) = 0;
 
     //   Form the core Hamiltonian
     virtual void formCoreH(EMPerturbation&, bool) = 0;
@@ -147,7 +147,7 @@ namespace ChronusQ {
     virtual void printFockTimings(std::ostream&) = 0;
 
     // Post-processing functions
-    virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation &, std::string prefix="", std::shared_ptr<Molecule> = nullptr) = 0;
+    virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) = 0;
 
 #ifdef TEST_MOINTSTRANSFORMER
     virtual void MOIntsTransformationTest(EMPerturbation &pert) = 0;

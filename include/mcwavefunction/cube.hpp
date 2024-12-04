@@ -32,7 +32,7 @@ namespace ChronusQ {
    *
    */
   template<typename MatsT,typename IntsT>
-  void MCWaveFunction<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, EMPerturbation &emPert) {
+  void MCWaveFunction<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes) {
 
       SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
 

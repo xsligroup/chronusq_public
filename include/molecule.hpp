@@ -150,6 +150,27 @@ namespace ChronusQ {
       return new_mole;
     }
 
+    /**
+     *  \brief Constructs a new Molecule by retaining only the classical nuclei for inhouse GIAO NEO V integrals
+     *  
+     *  Please mind that this molecule has no physical meaning! Do not use it elsewhere!
+     *
+     */
+    Molecule retainCNuc() {
+
+      // vector of atoms 
+      std::vector<Atom> new_atoms = {};
+      for (size_t i = 0; i < atoms.size(); i++)
+        if (not atoms[i].quantum)
+          new_atoms.emplace_back(atoms[i]);
+
+      // Detect number of quantum proton
+      // construct the molecule object
+      Molecule new_mole(charge-atomsQ.size(), multip, new_atoms);
+
+      // return it
+      return new_mole;
+    }
 
     /**
      *  Test if the molecule contains an atom that has a fractional nuclear charge.

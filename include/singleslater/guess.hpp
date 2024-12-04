@@ -163,7 +163,7 @@ namespace ChronusQ {
    *  determininant SCF in various ways
    */
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::formGuess(const SingleSlaterOptions &ssOptions) {
+  void SingleSlater<MatsT,IntsT>::formGuess(EMPerturbation &pert, const SingleSlaterOptions &ssOptions) {
 
     ProgramTimer::tick("Form Guess");
      
@@ -190,7 +190,7 @@ namespace ChronusQ {
       else if( scfControls.guess == READDEN ) ReadGuess1PDM( ssOptions.scfControls.guessBasis );
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
       else if( scfControls.guess == NEOTightProton ) NEOTightProtonGuess();
-      else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(ssOptions);
+      else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(pert,ssOptions);
       else if( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) CoreGuess();
       else if( scfControls.guess == CORE ) CoreGuess();
       else if( scfControls.guess == TIGHT ) TightGuess();
@@ -404,6 +404,10 @@ namespace ChronusQ {
     if( MPIRank(comm) == 0 )
     for(auto iUn = 0; iUn < uniqueElements.size(); iUn++) {
 
+      // skip ghost atoms                                                       
+      if ( uniqueElements[iUn].atomicNumber == 0 )                              
+        continue;  
+
       // Get default multiplicity for the Atom
       size_t defaultMultip;
       try {
@@ -469,7 +473,7 @@ namespace ChronusQ {
           ELECTRON_REPULSION, guessSSOptions.hamiltonianOptions);
 
 
-      ss->formGuess(ssOptions);
+      ss->formGuess(pert,ssOptions);
       ss->runSCF(pert);
 
       size_t NBbasis = basis.nBasis;
@@ -1215,7 +1219,7 @@ namespace ChronusQ {
     guessAOInts->computeAOTwoE(*guessBasis, mol, pert);
     
     // Let the SCF rip
-    guessSS->formGuess(guessSSOptions);
+    guessSS->formGuess(pert,guessSSOptions);
     guessSS->runSCF(pert);
     
     // Extract 1PDM and project onto our own
@@ -1538,8 +1542,8 @@ namespace ChronusQ {
     this->mo[0].clear();
     this->mo[1].clear();
     for(int i = 0; i < numProt; i++) {
-      this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = 1;
-      this->mo[0](i*NB_per_prot, i) = 1;
+      this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = IntsT(1.0);
+      this->mo[0](i*NB_per_prot, i) = IntsT(1.0);
     }
     this->onePDM->Z() = this->onePDM->S();
 
@@ -1553,14 +1557,14 @@ namespace ChronusQ {
    *         Converge a classical SCF, then use converged density as guess for NEO electronic subsystem
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::NEOConvergeClassicalGuess(const SingleSlaterOptions &ssOptions){
+  void SingleSlater<MatsT,IntsT>::NEOConvergeClassicalGuess(EMPerturbation &pert, const SingleSlaterOptions &ssOptions){
 
 
     std::cout << "    * Converging a classical SCF calculation " << std::endl;
     std::cout << "      The converged density will be used as the guess the electronic subsystem " << "\n" << std::endl;
 
     size_t NB = this->basisSet().nBasis;
-    EMPerturbation pert;
+    //EMPerturbation pert;
 
     // Zero out the densities (For all MPI processes)
     this->onePDM->clear();
@@ -1588,7 +1592,7 @@ namespace ChronusQ {
     classicalSS->buildOrbitalModifierOptions();
 
     classicalSS->formCoreH(pert, false);
-    classicalSS->formGuess(classicalSSOptions);
+    classicalSS->formGuess(pert, classicalSSOptions);
     classicalSS->formFock(pert, false);
     classicalSS->runSCF(pert);
 

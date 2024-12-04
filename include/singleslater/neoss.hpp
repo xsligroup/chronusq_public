@@ -102,6 +102,8 @@ namespace ChronusQ {
       std::vector<std::vector<double>> EPCGradientE; ///< electron-proton correlation energy gradient with respect to electronic density
       std::vector<std::vector<double>> EPCGradientP; ///< electron-proton correlation energy gradient with respect to protonic density
 
+      cart_t protDipole;        ///< Protonic Dipole in the length gauge; only used in NEO
+
     public:
 
       // Main constructor
@@ -223,6 +225,7 @@ namespace ChronusQ {
 
           // Save Multipoles
           this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_DIPOLE", &this->elecDipole[0], {3});
+          this->savFile.safeWriteData(prefix + "LEN_PROTONIC_DIPOLE", &this->protDipole[0], {3});
           this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_QUADRUPOLE", &this->elecQuadrupole[0][0], {3, 3});
           this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_OCTUPOLE", &this->elecOctupole[0][0][0], {3, 3, 3});
 
@@ -234,8 +237,8 @@ namespace ChronusQ {
 
       void initializeSCF() override;
 
-      void formGuess(const SingleSlaterOptions& ssopt) override {
-        applyToEach([&](SubSSPtr& ss){ ss->formGuess(ssopt); });
+      void formGuess(EMPerturbation &pert, const SingleSlaterOptions& ssopt) {
+        applyToEach([&](SubSSPtr& ss){ ss->formGuess(pert, ssopt); });
       }
 
       virtual void formFock(EMPerturbation& emPert, bool increment = false, double xHFX = 1.) override {
@@ -298,7 +301,7 @@ namespace ChronusQ {
       virtual void ortho2aoDen() override;
 
       // Cube
-      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, EMPerturbation&, std::string prefix="", std::shared_ptr<Molecule> = nullptr) override;
+      virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) override;
 
       // Properties
       using QuantumBase::computeEnergy;
@@ -399,6 +402,21 @@ namespace ChronusQ {
             (subsystems.size()-1) * atom.nucCharge * atom.coord[iXYZ] * atom.coord[jXYZ] *
             atom.coord[kXYZ];
         }
+
+        // protonic dipole (without classical nuclei contributions)
+        applyToEach([&](SubSSPtr& ss){
+          if(ss->particle.charge>0){
+            for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+              this->protDipole[iXYZ] = ss->elecDipole[iXYZ];
+            }
+
+            for(auto &atom : this->molecule().atoms){
+              if (atom.quantum) continue;
+              for (int iXYZ = 0; iXYZ < 3; iXYZ++)
+                this->protDipole[iXYZ] -= atom.nucCharge*atom.coord[iXYZ]*(subsystems.size()-1);
+            }
+          } 
+        });
        
       };
 

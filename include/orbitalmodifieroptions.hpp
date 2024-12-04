@@ -27,7 +27,6 @@
 #include <physcon.hpp>
 #include <cxxapi/input.hpp>
 #include <basisset.hpp>
-
 #include <cubegenoptions.hpp>
 
 namespace ChronusQ {
@@ -229,8 +228,10 @@ namespace ChronusQ {
     CustomCI,
   };
 
-// Forward declarations
-class CubeGen;
+
+  // Forward declarations
+  class CubeGen;
+  
   struct TDSCFOptions {
 
     RealTimeAlgorithm     integrationAlgorithm     = RealTimeAlgorithm::RTModifiedMidpoint; ///< Integration Algorithm

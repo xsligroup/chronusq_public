@@ -28,13 +28,13 @@
 namespace ChronusQ {
 
     template
-    void CubeGen::evalDenCube(std::string filePrefix, std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> oPDM_, double particleCharge, bool skipoutput);
+    void CubeGen::evalDenCube(std::string filePrefix, std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> oPDM_, bool skipoutput);
     template
-    void CubeGen::evalDenCube(std::string filePrefix, std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> oPDM_, double particleCharge, bool skipoutput);
+    void CubeGen::evalDenCube(std::string filePrefix, std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> oPDM_, bool skipoutput);
     template
-    void CubeGen::evalDenCompCube(double* oPDM_, double particleCharge);
+    void CubeGen::evalDenCompCube(double* oPDM_);
     template
-    void CubeGen::evalDenCompCube(dcomplex* oPDM_, double particleCharge);
+    void CubeGen::evalDenCompCube(dcomplex* oPDM_);
     template 
     void CubeGen::evalOrbCube(std::string filePrefix, double* MOs, size_t LDMO, std::vector<size_t> whichMO, std::function<double(double)> Op);
     template 

@@ -44,7 +44,7 @@ namespace ChronusQ {
   std::vector<dcomplex> ComplexGIAOIntEngine::computeGIAOERIabcd(
     libint2::ShellPair &pair1 , libint2::ShellPair &pair2, 
     libint2::Shell &shell1, libint2::Shell &shell2,
-    libint2::Shell &shell3, libint2::Shell &shell4, double *H )  {
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption)  {
     
     dcomplex tmpVal=0.0,sqrPQ,PQ;
     std::vector<dcomplex> ERI_cart;
@@ -93,6 +93,28 @@ namespace ChronusQ {
     kd[0] = 0.5*( shell4.O[1]*H[2] - shell4.O[2]*H[1] );
     kd[1] = 0.5*( shell4.O[2]*H[0] - shell4.O[0]*H[2] );
     kd[2] = 0.5*( shell4.O[0]*H[1] - shell4.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+
+    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
+    if (NEOoption == 1) {
+      ka[0] = -1.0 * ka[0];
+      ka[1] = -1.0 * ka[1];
+      ka[2] = -1.0 * ka[2];
+      kb[0] = -1.0 * kb[0];
+      kb[1] = -1.0 * kb[1];
+      kb[2] = -1.0 * kb[2];
+    }
+
+    if (NEOoption > 0) {
+      kc[0] = -1.0 * kc[0];
+      kc[1] = -1.0 * kc[1];
+      kc[2] = -1.0 * kc[2];
+      kd[0] = -1.0 * kd[0];
+      kd[1] = -1.0 * kd[1];
+      kd[2] = -1.0 * kd[2];
+    }
 
     for ( int mu = 0 ; mu < 3 ; mu++ ) {
       k1[mu] = ka[mu] + kb[mu];
@@ -208,7 +230,7 @@ namespace ChronusQ {
 
   std::vector<dcomplex> ComplexGIAOIntEngine::bottomupcomplexERI(libint2::ShellPair &pair1 ,
     libint2::ShellPair &pair2, libint2::Shell &shell1, libint2::Shell &shell2,
-    libint2::Shell &shell3, libint2::Shell &shell4, double *H) {
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption) {
 
 
     // here calculate the phase factor in LONDON orbital
@@ -230,6 +252,28 @@ namespace ChronusQ {
     kd[0] = 0.5*( shell4.O[1]*H[2] - shell4.O[2]*H[1] );
     kd[1] = 0.5*( shell4.O[2]*H[0] - shell4.O[0]*H[2] );
     kd[2] = 0.5*( shell4.O[0]*H[1] - shell4.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+
+    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
+    if (NEOoption == 1) {
+      //std::cout << "(pp|xx) detected.." << std::endl;
+      ka[0] = -1.0 * ka[0];
+      ka[1] = -1.0 * ka[1];
+      ka[2] = -1.0 * ka[2];
+      kb[0] = -1.0 * kb[0];
+      kb[1] = -1.0 * kb[1];
+      kb[2] = -1.0 * kb[2];
+    }
+    if (NEOoption > 0) {
+      kc[0] = -1.0 * kc[0];
+      kc[1] = -1.0 * kc[1];
+      kc[2] = -1.0 * kc[2];
+      kd[0] = -1.0 * kd[0];
+      kd[1] = -1.0 * kd[1];
+      kd[2] = -1.0 * kd[2];
+    }
 
     for ( int mu = 0 ; mu < 3 ; mu++ ) {
       k1[mu] = ka[mu] + kb[mu];

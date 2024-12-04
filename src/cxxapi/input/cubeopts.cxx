@@ -59,7 +59,7 @@ namespace ChronusQ {
   }
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream &out, CQInputFile &input,
-    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &basis) {
+    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &basis, EMPerturbation &emPert, double particleCharge) {
 
     // CUBE section not required
     if( not input.containsSection("CUBE") ) return nullptr;
@@ -124,21 +124,21 @@ namespace ChronusQ {
     // Construct cubegen
     if( !resString.empty() and abs(pad) != 0.0 ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, pad));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, emPert, particleCharge, pad));
 
     } else if( !resString.empty() ){
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, emPert, particleCharge));
 
     } else if( !npts.empty() and !steps.empty() ){
 
       std::array<size_t,3> grid = {npts[0], npts[1], npts[2]};
       std::array<double,3> units = {steps[0], steps[1], steps[2]};
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, grid, units));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, grid, units, emPert, particleCharge));
 
     } else {
 
-      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis));
+      cubeptr = std::make_shared<CubeGen>(CubeGen(mol, basis, emPert, particleCharge));
 
     }
 

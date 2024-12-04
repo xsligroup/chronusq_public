@@ -141,7 +141,7 @@ namespace ChronusQ {
 
     std::vector<std::shared_ptr<DFTFunctional>> epc_functionals;
     IntegrationParam intParam;
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> VXC;
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<IntsT>> VXC;
     double XCEnergy;
 
     public:
@@ -173,7 +173,7 @@ namespace ChronusQ {
       return epc_functionals;
     }
 
-    void formVXC(SingleSlater<MatsT,IntsT>&);
+    void formVXC(SingleSlater<MatsT,IntsT>&, EMPerturbation&);
 
     // Interface method
     virtual void formFock(SingleSlater<MatsT,IntsT>&, EMPerturbation&,

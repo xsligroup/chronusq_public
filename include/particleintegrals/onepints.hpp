@@ -176,6 +176,10 @@ namespace ChronusQ {
     template <size_t NOPER, bool SYMM, typename F>
     static void OnePDriverLocal(const F&,
         std::vector<libint2::Shell>&, std::vector<IntsT*>);
+    // For protonic GIAO
+    template <size_t NOPER, bool SYMM, typename F>
+    static void OnePDriverLocal(const F&,
+        std::vector<libint2::Shell>&, std::vector<IntsT*>, OPERATOR, const HamiltonianOptions&);
 
     // Pointer convertor
     template <typename IntsU>

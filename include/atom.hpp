@@ -159,6 +159,7 @@ namespace ChronusQ {
   // FIXME: Need to specify isotope label for non-default isotopes
   static std::map<std::string,Atom> atomicReference(
     {
+      { "GH-0"     , {   0  ,   0.  ,   0  ,   1.0078250321  ,   1.058  } },
       { "H-1"      , {   1  ,   1.  ,   1  ,   1.0078250321  ,   1.058  } },
       { "H-2"      , {   1  ,   1.  ,   2  ,   2.0141017780  ,   1.058  } },
       { "H-3"      , {   1  ,   1.  ,   3  ,   3.0160492675  ,   1.058  } },
@@ -509,6 +510,7 @@ namespace ChronusQ {
   // Map atomic symbol to atomic number
   static std::unordered_map<std::string,int> atomicNumMap(
     {
+      { "GH"   ,  0   }, 
       { "H"    ,  1   }, 
       { "He"   ,  2   },
       { "HE"   ,  2   },
@@ -721,6 +723,7 @@ namespace ChronusQ {
   // https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=&all=all&isotype=some
   static std::unordered_map<std::string,std::string> defaultIsotope(
     {
+      { "GH"   ,  "GH-0" }, 
       { "H"    ,  "H-1"  }, 
       { "HE"   ,  "HE-4" },
       { "LI"   ,  "LI-7" },

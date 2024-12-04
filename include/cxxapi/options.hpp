@@ -320,7 +320,7 @@ namespace ChronusQ {
   void CQMISC_VALID(std::ostream&, CQInputFile &);
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream&, CQInputFile&,
-    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &);
+    std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &, EMPerturbation &, double );
 
   void CQCUBEOptionalKeywords(std::ostream&, CQInputFile&,
     CubeGenOptions&, std::string);

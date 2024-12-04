@@ -48,15 +48,24 @@ namespace ChronusQ {
   void InCore4indexTPI<dcomplex>::computeERINR(BasisSet &basisSet, BasisSet &basisSet2, 
       Molecule&, EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &options) {
 
-    if (&basisSet != &basisSet2)
-      CErr("Only same basis is allowed in InCore4indexTPI<dcomplex>",std::cout);
-
-    if (op != ELECTRON_REPULSION)
-      CErr("Only Electron repulsion integrals in InCore4indexTPI<dcomplex>",std::cout);
+    bool sameBasis = (&basisSet == &basisSet2);
+    if (!sameBasis and op != EP_ATTRACTION)
+      CErr("(ee|pp) needs op==EP_ATTRACTION in InCore4indexTPI<dcomplex>)",std::cout);
+    if (op != ELECTRON_REPULSION and op != EP_ATTRACTION)
+      CErr("Only e-p attraction/e-e/p-p repulsion integrals in InCore4indexTPI<dcomplex>",std::cout);
     if (options.basisType == REAL_GTO)
       CErr("Real GTOs are not allowed in InCore4indexTPI<dcomplex>",std::cout);
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in InCore4indexTPI<dcomplex>",std::cout);
+
+    // no NEO or (ee|ee)
+    int NEOoption = 0;
+    // (pp|pp)
+    if (options.particle.charge == 1.0 )
+      NEOoption = 1;
+    // (ee|pp)
+    if (op == EP_ATTRACTION)
+      NEOoption = 2; 
 
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
@@ -81,9 +90,10 @@ namespace ChronusQ {
     // define magnetic field
 
     // Allocate and zero out ERIs
-
+    size_t NB2 = this->NB2;
+    size_t MB2 = this->sNB2;
     InCore4indexTPI<dcomplex> &eri4I = *this;
-    std::fill_n(eri4I.pointer(),NB2*NB2,0.);
+    std::fill_n(eri4I.pointer(),NB2*MB2,0.);
 
     #pragma omp parallel
     {
@@ -103,7 +113,7 @@ namespace ChronusQ {
 
 
       size_t n1,n2,n3,n4,i,j,k,l,ijkl,bf1,bf2,bf3,bf4;
-      size_t s4_max;
+      size_t s3_max, s4_max;
       for(size_t s1(0), bf1_s(0), s1234(0); s1 < basisSet.nShell;
           bf1_s+=n1, s1++) { 
 
@@ -122,15 +132,16 @@ namespace ChronusQ {
         // switch s1 and s2
         pair1_to_use_switch.init( basisSet.shells[s2],basisSet.shells[s1],-1000);
 
+      s3_max = sameBasis ? s1 : basisSet2.nShell - 1;
 
-      for(size_t s3(0), bf3_s(0); s3 <= s1; bf3_s+=n3, s3++) {
+      for(size_t s3(0), bf3_s(0); s3 <= s3_max; bf3_s+=n3, s3++) {
 
-        n3 = basisSet.shells[s3].size(); // Size of Shell 3
-        s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
+        n3 = basisSet2.shells[s3].size(); // Size of Shell 3
+        s4_max = sameBasis && (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
 
       for(size_t s4(0), bf4_s(0); s4 <= s4_max; bf4_s+=n4, s4++, s1234++) {
 
-        n4 = basisSet.shells[s4].size(); // Size of Shell 4
+        n4 = basisSet2.shells[s4].size(); // Size of Shell 4
 
         // Round Robbin work distribution
         #ifdef _OPENMP
@@ -141,7 +152,7 @@ namespace ChronusQ {
 
         libint2::ShellPair pair2_to_use;
         
-        pair2_to_use.init( basisSet.shells[s3],basisSet.shells[s4],-1000);
+        pair2_to_use.init( basisSet2.shells[s3],basisSet2.shells[s4],-1000);
 
 #ifdef _DEBUGGIAOERI
  std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
@@ -157,23 +168,23 @@ namespace ChronusQ {
 #ifdef bottomupGIAO
         auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
-          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
 //std::cout<<"calculate bottom up GIAO ERI fuck!!!"<<std::endl;
         auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
-          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
 // SS bottom up end
 #else
         // calculate integral (s1,s2|s3,s4)
         auto two2buff = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
-          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
 
 
         // calculate integral (s2,s1|s3,s4)
         auto two2buff_switch = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
-          basisSet.shells[s3],basisSet.shells[s4],&magAmp[0]);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
 
 #endif
         
@@ -260,25 +271,33 @@ if ( std::abs(two2buff[ijkl]-two2buff_switch[ijkl]) > 1.0e-11  ) {
             // (43 | 21)
             ERI[bf4 + bf3*NB + bf2*NB2 + bf1*NB3] = two2nonbuff[ijkl];
 */
+            
+            // 4-fold symmetry for GIAO
+            // 4-fold symmetry only if left basis is the same as right basis
+
             // (12 | 34)
             eri4I(bf1, bf2, bf3, bf4) = two2buff[ijkl];
-            // (34 | 12)
-            eri4I(bf3, bf4, bf1, bf2) = two2buff[ijkl];
             // (21 | 43)
             eri4I(bf2, bf1, bf4, bf3) = std::conj(two2buff[ijkl]);
-            // (43 | 21)
-            eri4I(bf4, bf3, bf2, bf1) = std::conj(two2buff[ijkl]);
 
+            if( sameBasis ) {
+              // (34 | 12)
+              eri4I(bf3, bf4, bf1, bf2) = two2buff[ijkl];
+              // (43 | 21)
+              eri4I(bf4, bf3, bf2, bf1) = std::conj(two2buff[ijkl]);
+            }
 
             // (21 | 34)
             eri4I(bf2, bf1, bf3, bf4) = two2buff_switch[jikl];
-            // (34 | 21)
-            eri4I(bf3, bf4, bf2, bf1) = two2buff_switch[jikl];
             // (12 | 43)
             eri4I(bf1, bf2, bf4, bf3) = std::conj(two2buff_switch[jikl]);
+
+            if( sameBasis ) {
+            // (34 | 21)
+            eri4I(bf3, bf4, bf2, bf1) = two2buff_switch[jikl];
             // (43 | 12)
             eri4I(bf4, bf3, bf1, bf2) = std::conj(two2buff_switch[jikl]);
-
+            }
 
 
         }; // ijkl loop
@@ -289,14 +308,22 @@ if ( std::abs(two2buff[ijkl]-two2buff_switch[ijkl]) > 1.0e-11  ) {
     }; // omp region
 
     // Debug output of the ERIs
-#if _DEBUGGIAOERI
+#ifdef _DEBUGGIAOERI
+    if (NEOoption==1)
+      std::cout << "Protonic" << std::endl;
+    else if (NEOoption==2)
+      std::cout << "eepp" << std::endl;
+    else
+      std::cout << "Electronic" << std::endl;
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
+    std::cout<<"magAmp 2e 0: "<< magAmp[0]<<" 1: "<< magAmp[1]<<" 2: "<< magAmp[2]<<std::endl; 
     std::cout << "Two-Electron GIAO Integrals (GIAO ERIs)" << std::endl;
     for(auto k = 0ul; k < NB; k++)
     for(auto l = 0ul; l < NB; l++)
     for(auto i = 0ul; i < NB; i++)
     for(auto j = 0ul; j < NB; j++){
       std::cout << "(" << i << "," << j << "|" << k << "," << l << ")  ";
-      std::cout <<std::setprecision(12)<< ERI[i + j*NB  + k*NB2 + l*NB3] << std::endl;
+      std::cout <<std::setprecision(12)<< eri4I(i, j, k, l) << std::endl;
     };
 #endif
   }; // InCore4indexERI<dcomplex>::computeAOInts

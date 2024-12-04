@@ -124,7 +124,7 @@ public:
   void computeTau();
   void addTauToFock();
   void saveState(EMPerturbation&);
-  void saveCube(EMPerturbation&);
+  void saveCube();
   void restoreState();
   void createRTDataSets(size_t maxPoint = 0);
 

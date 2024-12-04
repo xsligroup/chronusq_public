@@ -76,7 +76,7 @@ namespace ChronusQ {
 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOOverlapS(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -110,6 +110,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -163,7 +171,7 @@ namespace ChronusQ {
 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOKineticT(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -189,6 +197,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -251,7 +267,7 @@ namespace ChronusQ {
   
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOAngularL(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -277,6 +293,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -355,7 +379,7 @@ namespace ChronusQ {
    */ 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEDipoleE1_len(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -381,6 +405,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -452,7 +484,7 @@ namespace ChronusQ {
 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEDipoleE1_vel(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -478,6 +510,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -608,7 +648,7 @@ namespace ChronusQ {
    */ 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEQuadrupoleE2_len(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -634,6 +674,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -745,7 +793,7 @@ namespace ChronusQ {
    */ 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEOctupoleE3_len(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     std::vector<std::vector<dcomplex>> tmpEO3(10);
@@ -767,6 +815,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -882,7 +938,7 @@ namespace ChronusQ {
    */ 
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEprp_len(
-    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H ){ 
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
 
    
     std::vector<std::vector<dcomplex>> tmpprp(27);
@@ -904,6 +960,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -1045,7 +1109,7 @@ namespace ChronusQ {
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOPotentialV(
     const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, 
-    libint2::Shell &shell1 , libint2::Shell &shell2, double *H, const Molecule& molecule){
+    libint2::Shell &shell1 , libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){
   
 
     bool useFiniteWidthNuclei = nucShell.size() > 0;
@@ -1066,6 +1130,15 @@ namespace ChronusQ {
     kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
     double K[3]; 
     for ( int mu = 0 ; mu < 3 ; mu++ ) 
@@ -1149,7 +1222,7 @@ namespace ChronusQ {
    *  \returns Shell block of the potential integral matrix for (shell1 | shell2)
    */ 
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOSL(
-    const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule){ 
+    const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){ 
 
  
     bool useFiniteWidthNuclei = nucShell.size() > 0;
@@ -1179,6 +1252,14 @@ namespace ChronusQ {
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -1273,7 +1354,7 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB,mu, iAto
    *  \returns Shell block of the potential integral matrix for (shell1 | shell2)
    */ 
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOpVdotp(
-    const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule){ 
+    const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){ 
 
    
     bool useFiniteWidthNuclei = nucShell.size() > 0;
@@ -1303,6 +1384,14 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB,mu, iAto
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -1392,7 +1481,7 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOrVr(
     const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, 
-    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule ){ 
+    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -1418,6 +1507,14 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -1534,7 +1631,7 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOpVrprVp(
     const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, 
-    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule ){ 
+    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -1560,6 +1657,14 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
@@ -1709,7 +1814,7 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
    
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOpVrmrVp(
     const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, 
-    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule ){ 
+    libint2::Shell &shell1,libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){ 
 
    
     // int nElement = cart_ang_list[shell1.contr[0].l].size() 
@@ -1735,6 +1840,14 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
     kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
     kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
 
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
 
 //std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
 //std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;

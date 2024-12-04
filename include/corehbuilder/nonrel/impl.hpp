@@ -30,7 +30,7 @@ namespace ChronusQ {
 
   template <>
   void NRCoreH<dcomplex, dcomplex>::addMagPert(EMPerturbation &pert,
-      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> coreH) {
+      std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>> coreH, double mass, double charge) {
 
     //Compute the GIAO non-relativistic core Hamiltonian in the CGTO basis
     //H(S) = 2(T + V) + B * L + sigma * B + 1/4 *(B\timesr)^2
@@ -41,7 +41,7 @@ namespace ChronusQ {
 
     // this part add the angular momentum term
     for ( auto index = 0 ; index < 3 ; index++ ) {
-      *coreH += -magAmp[index] * onei * (*aoints_.magnetic)[index]->matrix();
+      *coreH += magAmp[index] * onei * charge * (1.0/mass) * (*aoints_.magnetic)[index]->matrix();
     } // for ( auto inde = 0 ; inde < 3 ; inde++ )
 
     // this part add the length gauge electric quadrupole term
@@ -55,7 +55,7 @@ namespace ChronusQ {
 
     // add diagonal part
     for ( size_t index = 0 ; index < 3 ; index++ ) {
-      *coreH += 2.0*diagcoeff[index] * (*aoints_.lenElectric)[diagindex[index]]->matrix();
+      *coreH -= 2.0*diagcoeff[index] * charge * (1.0/mass) * (*aoints_.lenElectric)[diagindex[index]]->matrix();
     }
 
     const std::array<std::string,3> offindex =
@@ -68,20 +68,20 @@ namespace ChronusQ {
 
     // add off diagonal part
     for ( size_t index = 0 ; index < 3 ; index++ ) {
-      *coreH += 2.0*offcoeff[index] * (*aoints_.lenElectric)[offindex[index]]->matrix();
+      *coreH -= 2.0*offcoeff[index] * charge * (1.0/mass) * (*aoints_.lenElectric)[offindex[index]]->matrix();
     }
 
     // finally spin Zeeman term
     // z component
     if(coreH->hasZ())
-      coreH->Z() = magAmp[2] * aoints_.overlap->matrix();
+      coreH->Z() = -magAmp[2] * charge * (1.0/mass) * aoints_.overlap->matrix();
 
     if(coreH->hasXY()) {
       // y component
-      coreH->Y() = magAmp[1] * aoints_.overlap->matrix();
+      coreH->Y() = -magAmp[1] * charge * (1.0/mass) * aoints_.overlap->matrix();
 
       // x coponent
-      coreH->X() = magAmp[0] * aoints_.overlap->matrix();
+      coreH->X() = -magAmp[0] * charge * (1.0/mass) * aoints_.overlap->matrix();
     }
 
 
@@ -89,7 +89,7 @@ namespace ChronusQ {
 
   template <>
   void NRCoreH<dcomplex, double>::addMagPert(EMPerturbation&,
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>) {
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<dcomplex>>, double mass, double charge) {
 
 
     CErr("GIAO + Real integrals is not a valid option");
@@ -97,7 +97,7 @@ namespace ChronusQ {
   }
   template <>
   void NRCoreH<double, double>::addMagPert(EMPerturbation&,
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>) {
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>>, double mass, double charge) {
 
 
     CErr("GIAO + Real integrals is not a valid option");
@@ -129,7 +129,7 @@ namespace ChronusQ {
     *coreH = 2. * (this->aoints_.kinetic->matrix() + this->aoints_.potential->matrix());
 
     if( this->hamiltonianOptions_.basisType == COMPLEX_GIAO and pert_has_type(emPert,Magnetic) )
-      addMagPert(emPert,coreH);
+      addMagPert(emPert,coreH,this->hamiltonianOptions_.particle.mass,this->hamiltonianOptions_.particle.charge);
 
 
 #ifdef _DEBUGGIAOONEE

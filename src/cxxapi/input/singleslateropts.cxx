@@ -1704,8 +1704,35 @@ namespace ChronusQ {
       else
         CErr("Electrons and protons must use the same field (real/real) or (complex/complex)");
     }
+    else if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ess)) {
+      if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(pss)) {
+
+        if(scfControls.printContractionTiming){
+          ess_t->TPI->printContractionTiming = true;
+          pss_t->TPI->printContractionTiming = true;
+        }
+
+        auto neoss_t = std::make_shared<NEOSS<dcomplex,dcomplex>>(NEO_LIST(dcomplex));
+        auto epaoints_t = std::dynamic_pointer_cast<Integrals<dcomplex>>(epaoints);
+        neoss_t->addSubsystem("Electronic", ess_t, {});
+        neoss_t->addSubsystem("Protonic", pss_t, {{"Electronic", {true, epaoints_t->TPI}}});
+        neoss_t->setOrder({"Protonic", "Electronic"});
+        neoss = std::dynamic_pointer_cast<SingleSlaterBase>(neoss_t);
+
+        // Handle the fact that VXC will be formed by the NEOKohnShamBuilder
+        if( pssopt.refOptions.isEPCRef ) {
+          auto pks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,dcomplex>>(pss_t);
+          pks_t->doVXC_ = false;
+          if( auto eks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,dcomplex>>(ess_t) ) {
+            eks_t->doVXC_ = false;
+          }
+        }
+      }
+      else
+        CErr("Electrons and protons must use the same field (real/real) or (complex/complex)");
+    }
     else {
-      CErr("NEO + GIAO NYI!");
+      CErr("NEO w/ mixed GTO/GIAO NYI, \nor Unreconized MatsT/IntsT combination in CQNEOSSOptions");
     }
 
     return {neoss, essopt, pssopt};

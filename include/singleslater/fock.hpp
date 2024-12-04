@@ -133,6 +133,7 @@ namespace ChronusQ {
     // Compute Orthonormalization trasformations
     computeOrtho();
 
+    std::string prefix = this->particle.charge < 0 ? "INTS/" : "PINTS/";
 
     // Save the Core Hamiltonian
     if( savFile.exists() && save) {
@@ -143,7 +144,7 @@ namespace ChronusQ {
       std::vector<MatsT*> CH(coreH->SZYXPointers());
       for(auto i = 0; i < CH.size(); i++){
 
-        try{ savFile.safeWriteData("INTS/CORE_HAMILTONIAN_" +
+        try{ savFile.safeWriteData(prefix + "CORE_HAMILTONIAN_" +
           spinLabel[i], CH[i], {NB,NB}); }
         catch(...){ CErr("Error saving core Hamiltonian. Please use -s. See Running ChronusQ section of wiki.");
         }

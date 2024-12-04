@@ -341,7 +341,7 @@ namespace ChronusQ {
  
     // local one body GIAO integral start
     static std::vector<std::vector<dcomplex>> computeGIAOOverlapS(libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // calculate the uncontracted overlap of (s||s) type for a shellpair
     static std::vector<dcomplex> computecompOverlapss( libint2::ShellPair&, 
@@ -365,7 +365,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO Kinetic integral
     static std::vector<std::vector<dcomplex>> computeGIAOKineticT( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // calculate the uncontracted kinetic integrals of (s||s) type for a shellpair
     static std::vector<dcomplex> computecompKineticss( libint2::ShellPair&,
@@ -378,7 +378,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO angular momentum integral 
     static std::vector<std::vector<dcomplex>> computeGIAOAngularL( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // complex angular momentum integral for uncontracted case
     static dcomplex compLabmu( libint2::ShellPair::PrimPairData&, 
@@ -387,7 +387,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO electric dipole length gauge integral
     static std::vector<std::vector<dcomplex>> computeGIAOEDipoleE1_len( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // complex GIAO electric dipole length gauge
     static dcomplex compDipoleD1_len( libint2::ShellPair&, 
@@ -397,7 +397,7 @@ namespace ChronusQ {
     /* Momentum Integrals */
     // electric dipole (velocity gauge) integrals of a shell pair
     static std::vector<std::vector<dcomplex>> computeGIAOEDipoleE1_vel(libint2::ShellPair&,
-                      libint2::Shell&, libint2::Shell&, double* );
+                      libint2::Shell&, libint2::Shell&, double*, double);
 
     // contracted momentum integral
     static dcomplex GIAOMomentummu(libint2::ShellPair&,libint2::Shell&,libint2::Shell&, 
@@ -405,7 +405,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO electric quadrupole momentum length gauge integral 
     static std::vector<std::vector<dcomplex>> computeGIAOEQuadrupoleE2_len( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // complex GIAO electric quadrupole momentum length gauge 
     static dcomplex compQuadrupoleE2_len( libint2::ShellPair&, 
@@ -414,7 +414,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO electric octupole length gauge integral
     static std::vector<std::vector<dcomplex>> computeGIAOEOctupoleE3_len( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // complex GIAO electric octupole length gauge
     static dcomplex compOctupoleE3_len( libint2::ShellPair&, 
@@ -423,7 +423,7 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO electric prp length gauge integral
     static std::vector<std::vector<dcomplex>> computeGIAOEprp_len( libint2::ShellPair&,
-      libint2::Shell&, libint2::Shell&, double* );
+      libint2::Shell&, libint2::Shell&, double*, double);
 
     // complex GIAO electric prp length gauge
     static dcomplex compGIAOprp_len( libint2::ShellPair&, 
@@ -434,13 +434,13 @@ namespace ChronusQ {
 
     // compute a shell pair of GIAO Potential integral
     static std::vector<std::vector<dcomplex>> computeGIAOPotentialV( const std::vector<libint2::Shell>&,
-      libint2::ShellPair&, libint2::Shell&, libint2::Shell&, double*, const Molecule&);
+      libint2::ShellPair&, libint2::Shell&, libint2::Shell&, double*, const Molecule&, double);
 
     static inline std::vector<std::vector<dcomplex>> computeGIAOPotentialV( libint2::ShellPair& pair, 
-      libint2::Shell &s1, libint2::Shell &s2, double *H, const Molecule& mol) {
+      libint2::Shell &s1, libint2::Shell &s2, double *H, const Molecule& mol, double charge) {
 
       std::vector<libint2::Shell> dummy;
-      return computeGIAOPotentialV(dummy,pair,s1,s2,H,mol);
+      return computeGIAOPotentialV(dummy,pair,s1,s2,H,mol,charge);
     }   
 
     // complex potential horizontal recursion for contracted case
@@ -468,14 +468,14 @@ namespace ChronusQ {
     // spin orbit integrals of a shell pair  
     static std::vector<std::vector<dcomplex>> computeGIAOSL( 
       const std::vector<libint2::Shell>&, libint2::ShellPair&, libint2::Shell&, 
-      libint2::Shell&, double*, const Molecule& ); 
+      libint2::Shell&, double*, const Molecule&, double); 
   
     static inline std::vector<std::vector<dcomplex>> computeGIAOSL( 
       libint2::ShellPair &pair, libint2::Shell &s1, libint2::Shell &s2, double* H, 
-      const Molecule& mol ) {
+      const Molecule& mol, double charge) {
       
       std::vector<libint2::Shell> dummy;   
-      return computeGIAOSL(dummy,pair,s1,s2,H,mol);
+      return computeGIAOSL(dummy,pair,s1,s2,H,mol,charge);
 
     }  
 
@@ -490,14 +490,14 @@ namespace ChronusQ {
     // spin free integrals of a shell pair  
     static std::vector<std::vector<dcomplex>> computeGIAOpVdotp( 
       const std::vector<libint2::Shell>&, libint2::ShellPair&, libint2::Shell&, 
-      libint2::Shell&, double*, const Molecule& ); 
+      libint2::Shell&, double*, const Molecule&, double); 
   
     static inline std::vector<std::vector<dcomplex>> computeGIAOpVdotp( 
       libint2::ShellPair &pair, libint2::Shell &s1, libint2::Shell &s2, double* H, 
-      const Molecule& mol ) {
+      const Molecule& mol, double charge) {
       
       std::vector<libint2::Shell> dummy;   
-      return computeGIAOpVdotp(dummy,pair,s1,s2,H,mol);
+      return computeGIAOpVdotp(dummy,pair,s1,s2,H,mol,charge);
 
     }  
 
@@ -509,14 +509,14 @@ namespace ChronusQ {
     /* GIAO X2C integrals */
     static std::vector<std::vector<dcomplex>> computeGIAOrVr(
       const std::vector<libint2::Shell>&, libint2::ShellPair&, libint2::Shell&, 
-      libint2::Shell&, double*, const Molecule& ); 
+      libint2::Shell&, double*, const Molecule&, double); 
       
-    static inline std::vector<std::vector<dcomplex>> computeGIAOrVrp( 
+    static inline std::vector<std::vector<dcomplex>> computeGIAOrVr( 
       libint2::ShellPair &pair, libint2::Shell &s1, libint2::Shell &s2, double* H, 
-      const Molecule& mol ) {
+      const Molecule& mol, double charge) {
       
       std::vector<libint2::Shell> dummy;   
-      return computeGIAOrVr(dummy,pair,s1,s2,H,mol);
+      return computeGIAOrVr(dummy,pair,s1,s2,H,mol,charge);
 
     }  
 
@@ -531,14 +531,14 @@ namespace ChronusQ {
     // pVr + rVp integrals of a shell pair  
     static std::vector<std::vector<dcomplex>> computeGIAOpVrprVp( 
       const std::vector<libint2::Shell>&, libint2::ShellPair&, libint2::Shell&, 
-      libint2::Shell&, double*, const Molecule& ); 
+      libint2::Shell&, double*, const Molecule&, double); 
   
     static inline std::vector<std::vector<dcomplex>> computeGIAOpVrprVp( 
       libint2::ShellPair &pair, libint2::Shell &s1, libint2::Shell &s2, double* H, 
-      const Molecule& mol ) {
+      const Molecule& mol, double charge) {
       
       std::vector<libint2::Shell> dummy;   
-      return computeGIAOpVrprVp(dummy,pair,s1,s2,H,mol);
+      return computeGIAOpVrprVp(dummy,pair,s1,s2,H,mol,charge);
 
     }  
 
@@ -551,14 +551,14 @@ namespace ChronusQ {
     // pVr - rVp integrals of a shell pair  
     static std::vector<std::vector<dcomplex>> computeGIAOpVrmrVp( 
       const std::vector<libint2::Shell>&, libint2::ShellPair&, libint2::Shell&, 
-      libint2::Shell&, double*, const Molecule& ); 
+      libint2::Shell&, double*, const Molecule&, double); 
   
     static inline std::vector<std::vector<dcomplex>> computeGIAOpVrmrVp( 
       libint2::ShellPair &pair, libint2::Shell &s1, libint2::Shell &s2, double* H, 
-      const Molecule& mol ) {
+      const Molecule& mol, double charge) {
       
       std::vector<libint2::Shell> dummy;   
-      return computeGIAOpVrmrVp(dummy,pair,s1,s2,H,mol);
+      return computeGIAOpVrmrVp(dummy,pair,s1,s2,H,mol,charge);
 
     }  
 
@@ -576,11 +576,11 @@ namespace ChronusQ {
     
     // bottom up GIAO ERI of shell pair 1 and 2 
     static std::vector<dcomplex> bottomupcomplexERI(libint2::ShellPair&,libint2::ShellPair&,
-      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double* );
+      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,int);
 
     // compute GIAO ERI of shell pair 1 and 2 
     static std::vector<dcomplex> computeGIAOERIabcd(libint2::ShellPair&,libint2::ShellPair&,
-      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double* );
+      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,int);
 
     // complex horizontal recursion (ab||cd)
     static dcomplex twoecomphRRabcd( libint2::ShellPair&, libint2::ShellPair&, libint2::Shell& ,

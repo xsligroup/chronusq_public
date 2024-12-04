@@ -1245,7 +1245,19 @@ namespace ChronusQ {
    *  \param [in] arg     several arguments to be passed in 
    */  
     template <typename T, class F, typename... Args>
-    void integrate(T &res, const F &func, EMPerturbation &pert, Args... args) {
+    void integrate(T &res, const F &func, EMPerturbation &pert, bool scale2ndBasis=true, Args... args) {
+
+      // Logic for scaling perturbation by -1 for Proton GIAO basis 
+      double scaleFactorBasis1 = 1.;
+      double scaleFactorBasis2 = 1.;
+      if (Int2nd) {
+        if (scale2ndBasis){
+          scaleFactorBasis2 = -1.0;
+        } else{
+          scaleFactorBasis1 = -1.0;
+        }
+      }
+    
 
 #if INT_DEBUG_LEVEL >= 1
     //TIMING
@@ -1521,11 +1533,13 @@ namespace ChronusQ {
 #endif
         
         evalShellSet(typ_,basisSet_.shells,evalShell,cenRSq_loc,cenXYZ_loc,batch.size(),molecule_.nAtoms,
-          basisSet_.mapSh2Cen,basisEvalDim,BasisEval_loc,SCR_Car_loc,shSizeCar,basisSet_.forceCart,pert);
+          basisSet_.mapSh2Cen,basisEvalDim,BasisEval_loc,SCR_Car_loc,shSizeCar,basisSet_.forceCart,pert,
+          scaleFactorBasis1);
 
         if (Int2nd)
           evalShellSet(typ2_,basisSet2_.shells,evalShell2,cenRSq_loc,cenXYZ_loc,batch.size(), molecule_.nAtoms,
-            basisSet2_.mapSh2Cen,basisEvalDim2,BasisEval2_loc,SCR_Car2_loc,shSizeCar2,basisSet2_.forceCart,pert);
+            basisSet2_.mapSh2Cen,basisEvalDim2,BasisEval2_loc,SCR_Car2_loc,shSizeCar2,basisSet2_.forceCart,pert,
+            scaleFactorBasis2);
 
 #if INT_DEBUG_LEVEL >= 1
         // TIMNG
@@ -1578,7 +1592,6 @@ namespace ChronusQ {
                batchEvalShells_vec,batchSubMat_vec,args...);
         }
         else {
-          CErr("GIAO NEO-Kohn-Sham NYI!",std::cout);
           std::vector<size_t> basisEvalDim_vec{basisEvalDim, basisEvalDim2};
           std::vector<dcomplex*> BasisEval_loc_vec{BasisEval_loc, BasisEval2_loc};
           std::vector<std::vector<size_t>> batchEvalShells_vec; 
@@ -1671,9 +1684,9 @@ namespace ChronusQ {
      *
      */ 
     template <typename T, class F, typename... Args>
-    T integrate(const F &func, EMPerturbation &pert, Args... args) {
+    T integrate(const F &func, EMPerturbation &pert, bool scale2ndBasis=true, Args... args) {
       T res(0.);
-      integrate<T>(res,func,pert,args...);
+      integrate<T>(res,func,pert,scale2ndBasis, args...);
       return res;
     }
 // SS end 

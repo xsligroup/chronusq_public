@@ -88,6 +88,73 @@ namespace ChronusQ {
 
   }; // evalShellSet Level 1
 
+  // TangDD GIAO Start
+  void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
+    double *pts, size_t npts, dcomplex *fEval, bool forceCart, EMPerturbation &pert, double scaleFactor, dcomplex * SCR, double *SCR2) {
+    double * r;
+    double * rSq;
+    size_t NBasisEff = 0;
+    size_t nShSize = shells.size();
+    if(!SCR2)
+    {
+      r   = CQMemManager::get().malloc<double>(3*npts*nShSize);
+      rSq = CQMemManager::get().malloc<double>(npts*nShSize);
+    }
+    else
+    {
+      r = SCR2;
+      rSq = SCR2 + 3*npts*nShSize; 
+    }
+    // figure the size (number of basis) of the all shells inputed that need to be evaluated
+    // and store in NBasisEff. It will be used for defining the pointers later on.
+    int LMax = 0;
+    for (auto iSh = 0; iSh < nShSize; iSh++){
+      LMax = std::max(shells[iSh].contr[0].l,LMax);
+    }
+    size_t shSizeCar = ((LMax+1)*(LMax+2))/2; 
+    size_t NDer = 1;
+    if (typ ==GRADIENT) NDer = 4;
+    dcomplex * SCR_Car;
+    if(!SCR)
+    {
+      SCR_Car = CQMemManager::get().malloc<dcomplex>(NDer*shSizeCar);
+    }
+    else
+    {
+      // TangDD: In GIAO version, r and rSq are not saved in SCR
+      SCR_Car = SCR + 0;
+    }
+        
+    for (auto ipts = 0; ipts < npts; ipts++){
+      double xp = *(pts + ipts*3);
+      double yp = *(pts + 1 + ipts*3);
+      double zp = *(pts + 2 + ipts*3);
+      // we need this counter to keep track of the nbasis evaluated for all shells (at a given point)
+      for (auto iSh = 0; iSh < nShSize; iSh++){
+        r[   iSh*3 + ipts*3*nShSize] =  xp - shells[iSh].O[0];
+        r[1+ iSh*3 + ipts*3*nShSize] =  yp - shells[iSh].O[1];
+        r[2+ iSh*3 + ipts*3*nShSize] =  zp - shells[iSh].O[2];
+        rSq[ iSh + ipts*nShSize] = r[    iSh*3 + ipts*3*nShSize]*r[    iSh*3 + ipts*3*nShSize] + 
+                                       r[1 + iSh*3 + ipts*3*nShSize]*r[1 + iSh*3 + ipts*3*nShSize] + 
+                                       r[2 + iSh*3 + ipts*3*nShSize]*r[2 + iSh*3 + ipts*3*nShSize]; 
+      } // loop over shells
+    } // loop over points
+
+    std::vector<size_t> mapSh2Cen(nShSize); 
+    std::iota(mapSh2Cen.begin(),mapSh2Cen.end(),0);
+
+    std::vector<bool> evalShell(nShSize,true);
+    // Call to Level 2 Basis Set Evaluation
+    evalShellSet(typ,shells,evalShell,rSq,r,npts,nShSize,mapSh2Cen,
+      NBasisEff,fEval,SCR_Car,shSizeCar,forceCart,pert,scaleFactor);
+
+    if(!SCR)
+    {
+      CQMemManager::get().free(r,rSq,SCR_Car);
+    }
+
+  }; // evalShellSet Level 1
+
   /**
    *  \brief Level 2 Basis Set Evaluation Function - Used in the KS - DFT
    *  Evaluates a shell set over a specified number of cartesian points. This function requires a precomputed
@@ -151,7 +218,7 @@ namespace ChronusQ {
   void evalShellSet(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
     std::vector<bool> &evalShell, double* rSq, double *r, size_t npts, size_t nCenter, 
     std::vector<size_t> &mapSh2Cen, size_t NBasisEff, dcomplex *fEval, dcomplex *SCR, 
-    size_t IOffSCR, bool forceCart, EMPerturbation &pert) {
+    size_t IOffSCR, bool forceCart, EMPerturbation &pert, double scaleFactor=1.0) {
 
     assert(shells.size() == evalShell.size());
 
@@ -175,9 +242,9 @@ namespace ChronusQ {
 
         auto magAmp = pert.getDipoleAmp(Magnetic);
 
-        k[0] = 0.5*( shells[iSh].O[1]*magAmp[2] - shells[iSh].O[2]*magAmp[1] );
-        k[1] = 0.5*( shells[iSh].O[2]*magAmp[0] - shells[iSh].O[0]*magAmp[2] );
-        k[2] = 0.5*( shells[iSh].O[0]*magAmp[1] - shells[iSh].O[1]*magAmp[0] );
+        k[0] = scaleFactor * 0.5 * ( shells[iSh].O[1]*magAmp[2] - shells[iSh].O[2]*magAmp[1] );
+        k[1] = scaleFactor * 0.5 * ( shells[iSh].O[2]*magAmp[0] - shells[iSh].O[0]*magAmp[2] );
+        k[2] = scaleFactor * 0.5 * ( shells[iSh].O[0]*magAmp[1] - shells[iSh].O[1]*magAmp[0] );
 
         evalShellSet(typ,shells[iSh],rSq[mapSh2Cen[iSh] + ipts*nCenter],
           rVal,SCR,IOffSCR,k); 

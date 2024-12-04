@@ -115,7 +115,7 @@ namespace ChronusQ {
     if(doGrad or mdOptions.saveAllGeometry) saveState(molecule, ss);
 
     if (std::any_of(cubes.begin(), cubes.end(), [](const std::shared_ptr<CubeGen>& ptr) { return ptr != nullptr; })) 
-      ss->runCube(cubes, emPert, "_MDStep"+std::to_string(curState.iStep), std::make_shared<Molecule>(molecule));
+      ss->runCube(cubes, "_MDStep"+std::to_string(curState.iStep), std::make_shared<Molecule>(molecule));
 
 
 

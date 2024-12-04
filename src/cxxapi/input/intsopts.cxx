@@ -346,13 +346,14 @@ namespace ChronusQ {
     
     
     std::shared_ptr<IntegralsBase> epaoi = nullptr;
-    std::shared_ptr<Integrals<double>> epaoint = std::make_shared<Integrals<double>>();
 
     if (!basis2){
       CErr("Asymmetric integral object requires two different basis");
     } else {
       out << "Building integral object for the electron-quantum proton Coulomb term:\n\n";
       if(basis->basisType == REAL_GTO and basis2->basisType == REAL_GTO) {
+
+        std::shared_ptr<Integrals<double>> epaoint = std::make_shared<Integrals<double>>();
 
         // If nothing is set for EPINTS, by default (ee|pp) integrals will be evaluated on the fly using direct algorithm
         if(basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::DIRECT) {
@@ -479,12 +480,29 @@ namespace ChronusQ {
             }
           }  
         }
+        epaoi = std::dynamic_pointer_cast<IntegralsBase>(epaoint);
+      } else if (basis->basisType == COMPLEX_GIAO and basis2->basisType == COMPLEX_GIAO) {
+        std::shared_ptr<Integrals<dcomplex>> epgiaoint =
+            std::make_shared<Integrals<dcomplex>>();
+
+        if(!basicintsoptions.RI.compare("FALSE") && !basicintsoptions.RI.compare("AUTO")) {
+          CErr("GIAO resolution of identity ERI NYI",std::cout);
+        } else if (basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE) {
+          epgiaoint->TPI = std::make_shared<InCore4indexTPI<dcomplex>>(basis->nBasis,basis2->nBasis);
+        } else {
+          // DIRECT
+          // Temporary DISABLE NEO+GIAO+DIRECT
+          CErr("Direct GIAO-NEO for (ee|pp) NYI",std::cout); 
+          epgiaoint->TPI = std::make_shared<DirectTPI<dcomplex>>(*basis,*basis2,mol,basicintsoptions.threshSchwarz);
+        }
+        epaoi = std::dynamic_pointer_cast<IntegralsBase>(epgiaoint);
+        epaoi->options_.basisType = COMPLEX_GIAO;
       } else{
-        CErr("GIAO for (ee|pp) NYI",std::cout);
+        CErr("mixed GTO/GIAO for (ee|pp) NYI",std::cout);
       }  
     }
     
-    epaoi = std::dynamic_pointer_cast<IntegralsBase>(epaoint);
+    //epaoi = std::dynamic_pointer_cast<IntegralsBase>(epaoint);
     setTPITransAlg(epaoi);
     
     // Print

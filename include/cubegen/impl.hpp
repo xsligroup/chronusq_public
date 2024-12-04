@@ -96,14 +96,19 @@ namespace ChronusQ {
      * 
     */
     template <typename LocMatsT>
-    void CubeGen::evalDenCube(std::string fileNamePrefix,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> oPDM, double particleCharge, bool skipoutput) {
+    void CubeGen::evalDenCube(std::string fileNamePrefix,std::shared_ptr<cqmatrix::PauliSpinorMatrices<LocMatsT>> oPDM, bool skipoutput) {
+
+      auto magAmp = emPert_.getDipoleAmp(Magnetic);
 
       if (not skipoutput) {
         std::cout << std::endl;
         std::cout << "----------------------------------------------------" << std::endl;
-        std::cout << "Generating Density Cube files" << std::endl;
+        std::cout << "Generating Density Cube files: ";
+        std::cout << (particleCharge_ == -1.0 ? "Electronic" : "Protonic") << std::endl;
         std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
         std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
+        if (basis_->basisType == COMPLEX_GIAO)
+          std::cout << "GIAO Magnetic Field Strength: " << magAmp[0] << "," << magAmp[1] << "," << magAmp[2] << std::endl;
         std::cout << "----------------------------------------------------" << std::endl;
         std::cout << std::endl;
       }
@@ -117,7 +122,7 @@ namespace ChronusQ {
       createNewCube(scalDenFileName);
       if (not skipoutput) std::cout << "Writing scalar density to file: " << scalDenFileName << std::endl;
       writeSummary("Scalar Density");
-      evalDenCompCube(oPDM->S().pointer(),particleCharge);
+      evalDenCompCube(oPDM->S().pointer());
 
       // MZ density
       if( oPDM->hasZ() ){
@@ -126,7 +131,7 @@ namespace ChronusQ {
         createNewCube(mzDenFileName);
         if (not skipoutput) std::cout << "Writing MZ density to file: " << mzDenFileName << std::endl;
         writeSummary("MZ Density");
-        evalDenCompCube(oPDM->Z().pointer(),particleCharge);
+        evalDenCompCube(oPDM->Z().pointer());
 
       }
 
@@ -137,14 +142,14 @@ namespace ChronusQ {
           createNewCube(mxDenFileName);
           if (not skipoutput) std::cout << "Writing MX density to file: " << mxDenFileName << std::endl;
           writeSummary("MX Density");
-          evalDenCompCube(oPDM->X().pointer(),particleCharge);
+          evalDenCompCube(oPDM->X().pointer());
 
           // MY density
           std::string myDenFileName = denFileName + "_MY";
           createNewCube(myDenFileName);
           if (not skipoutput) std::cout << "Writing MY density to file: " << myDenFileName << std::endl;
           writeSummary("MY Density");
-          evalDenCompCube(oPDM->Y().pointer(),particleCharge);
+          evalDenCompCube(oPDM->Y().pointer());
 
       }
 
@@ -161,12 +166,19 @@ namespace ChronusQ {
     template <typename LocMatsT, typename ValManipOp>
     void CubeGen::evalOrbCube(std::string filenamePrefix, LocMatsT * MOBase, size_t LDMO, std::vector<size_t> whichMOs, ValManipOp op)
     {
+
+      auto magAmp = emPert_.getDipoleAmp(Magnetic);
+
       std::cout << std::endl;
       std::cout << "----------------------------------------------------" << std::endl;
-      std::cout << "Generating Orbital Cube files" << std::endl;
+      std::cout << "Generating Orbital Cube files: ";
+      std::cout << (particleCharge_ == -1.0 ? "Electronic" : "Protonic") << std::endl;
       std::cout << "For Component: " << filenamePrefix << std::endl;
       std::cout << "Using " << voxelGrid_[0] << "," << voxelGrid_[1] << "," << voxelGrid_[2] << " Points" << std::endl;
       std::cout << "With steps: " << voxelUnits_[0] << "," << voxelUnits_[1] << "," << voxelUnits_[2] << std::endl;
+      if (basis_->basisType == COMPLEX_GIAO)
+          std::cout << "GIAO Magnetic Field Strength: " << magAmp[0] << "," << magAmp[1] << "," << magAmp[2] << std::endl;
+      std::cout << "----------------------------------------------------" << std::endl;
       std::cout << "----------------------------------------------------" << std::endl;
       std::cout << std::endl;
 
@@ -188,7 +200,11 @@ namespace ChronusQ {
       mol_ = newMol;
       basis_->updateNuclearCoordinates(*mol_);
       calculateVoxelDimensions();
-      ComputeBasis();
+      if (basis_->basisType == COMPLEX_GIAO) {
+        ComputeGIAOBasis();
+      } else {
+        ComputeBasis();
+      }
     }
 
 }

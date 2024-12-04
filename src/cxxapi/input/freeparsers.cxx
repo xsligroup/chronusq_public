@@ -86,6 +86,7 @@ namespace ChronusQ {
     auto const freeCQInputPROTPB4D  = std::regex("((CD)|(RI)-?)?PROT-PB4-D",std::regex_constants::icase);
     auto const freeCQInputPROTPB4F1 = std::regex("((CD)|(RI)-?)?PROT-PB4-F1",std::regex_constants::icase);
     auto const freeCQInputPROTPB4F2 = std::regex("((CD)|(RI)-?)?PROT-PB4-F2",std::regex_constants::icase);
+    auto const freeCQInputPROTPB5F  = std::regex("((CD)|(RI)-?)?PROT-PB5-F",std::regex_constants::icase);
     auto const freeCQInputPROTPB5G  = std::regex("((CD)|(RI)-?)?PROT-PB5-G",std::regex_constants::icase);
     auto const freeCQInputPROTPB6G  = std::regex("((CD)|(RI)-?)?PROT-PB6-G",std::regex_constants::icase);
 
@@ -130,6 +131,11 @@ namespace ChronusQ {
           if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-F2"<<std::endl;
           else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-F2"<<std::endl;
           else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-F2"<<std::endl;
+        }
+        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB5F) ) {
+          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB5-F"<<std::endl;
+          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB5-F"<<std::endl;
+          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB5-F"<<std::endl;
         }
         else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB5G) ) {
           if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-D"<<std::endl;

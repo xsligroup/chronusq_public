@@ -303,7 +303,7 @@ namespace ChronusQ {
    *   
    *  Note. See Documentations of constructZVars.
    */  
-  template <typename MatsT>
+  template <typename MatsT, typename IntsT>
   void formZ_vxc_epc(
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM1,
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDM2,
@@ -315,7 +315,7 @@ namespace ChronusQ {
     double *GDenS, double *GDenZ, double *GDenY, double *GDenX, 
     double *aux_DenS,  double *aux_DenZ,  double *aux_DenY,  double *aux_DenX, 
     double *aux_GDenS, double *aux_GDenZ, double *aux_GDenY, double *aux_GDenX, 
-    double *BasisScratch, double *ZMAT){
+    IntsT *BasisScratch, IntsT *ZMAT){
 
     double Fg;
     // Fx,y,z  ^m(all batch) in J. Chem. Theory Comput. 2011, 7, 3097–3104 Eq. 17 (changed for Total and Magn)

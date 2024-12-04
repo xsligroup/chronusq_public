@@ -330,9 +330,8 @@ namespace ChronusQ {
     } else { // nuclear basis
       for (auto &atom : mol.atoms) {
 
-        if ( atom.quantum ) {
-          if (atom.atomicNumber != 1)
-            CErr("Find non-hydrogen atoms");
+        // put nuclear basis on quantum atoms or ghost atoms
+        if ( (atom.atomicNumber == 1 and atom.quantum) or atom.atomicNumber == 0 ) {
 
           auto &newSh = refShells[atom.atomicNumber];
 

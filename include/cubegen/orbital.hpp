@@ -66,7 +66,7 @@ namespace ChronusQ {
 
             val = blas::dot(NB,ThisMO,1,BASIS,1);
 
-            *cubeFile_ << std::right << std::setw(15) << std::setprecision(5)
+            *cubeFile_ << std::right << std::setw(20) << std::setprecision(12)
             << std::scientific << std::uppercase << op(val);
 
             if( iz % 6 == 5 ) *cubeFile_ << "\n";
@@ -75,6 +75,81 @@ namespace ChronusQ {
           *cubeFile_ << "\n";
         }
       }
+    };
+
+    template <>
+    void CubeGen::evalOrbCompCube(dcomplex * MO, size_t LDMO, size_t MOIndex, std::function<double(dcomplex)>op)
+    {
+      // gets number of basis sets
+      size_t NB = basis_->nBasis;
+
+      double * BASIS;
+      dcomplex * GIAO_BASIS;
+
+      dcomplex * ThisMO = MO + MOIndex * LDMO;
+
+
+      // SMG Debug printing
+      //std::cout << "MOIndex: " << MOIndex << std::endl;
+      //std::cout << "Re, Im, Mag, Phase" << std::endl;
+      //for(size_t i = 0; i < NB; i++)
+      //  std::cout << std::right << std::setprecision(6) << std::setw(14) << 
+      //   std::real(ThisMO[i]) <<  "   " <<
+      //   std::imag(ThisMO[i]) <<  "   " << 
+      //   std::abs(ThisMO[i]) <<  "   " << 
+      //   std::arg(ThisMO[i]) << std::endl;
+
+    if( basis_->basisType == COMPLEX_GIAO ) {
+
+      for(auto ix = 0l; ix < voxelGrid_[0]; ix++) {
+        for(auto iy = 0l; iy < voxelGrid_[1]; iy++) {
+          for(auto iz = 0l; iz < voxelGrid_[2]; iz++) {
+
+            std::vector<dcomplex> SCR(NB,0.);
+
+            dcomplex val = 0;
+
+            GIAO_BASIS = EvalShellSetAtPointGIAO(ix,iy,iz);
+
+            val = blas::dot(NB,ThisMO,1,GIAO_BASIS,1);
+
+            *cubeFile_ << std::right << std::setw(20) << std::setprecision(12)
+            << std::scientific << std::uppercase << op(val);
+
+            if( iz % 6 == 5 ) *cubeFile_ << "\n";
+
+          }
+          *cubeFile_ << "\n";
+        }
+      }
+
+    // Complex GTO
+    } else {
+
+      for(auto ix = 0l; ix < voxelGrid_[0]; ix++) {
+        for(auto iy = 0l; iy < voxelGrid_[1]; iy++) {
+          for(auto iz = 0l; iz < voxelGrid_[2]; iz++) {
+
+            std::vector<dcomplex> SCR(NB,0.);
+
+            dcomplex val = 0;
+
+            BASIS = EvalShellSetAtPoint(ix,iy,iz);
+
+            val = blas::dot(NB,ThisMO,1,BASIS,1);
+
+            *cubeFile_ << std::right << std::setw(20) << std::setprecision(12)
+            << std::scientific << std::uppercase << op(val);
+
+            if( iz % 6 == 5 ) *cubeFile_ << "\n";
+
+          }
+          *cubeFile_ << "\n";
+        }
+      }
+
+    }
+
     };
 
 }

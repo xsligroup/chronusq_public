@@ -34,7 +34,7 @@ namespace ChronusQ {
    *
    */
   template<typename MatsT,typename IntsT>
-  void SingleSlater<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, EMPerturbation &emPert, std::string prefix, std::shared_ptr<Molecule> mol) {
+  void SingleSlater<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, std::string prefix, std::shared_ptr<Molecule> mol) {
 
       // Electron only for SingleSlater 
       std::shared_ptr<CubeGen> cube;
@@ -208,13 +208,14 @@ namespace ChronusQ {
   }
 
   template<typename MatsT,typename IntsT>
-  void NEOSS<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, EMPerturbation &emPert, std::string prefix, std::shared_ptr<Molecule> mol) {
+  void NEOSS<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, std::string prefix, std::shared_ptr<Molecule> mol) {
 
       applyToEach([&](SubSSPtr & ss){
         auto SS = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(ss);
         // Copy the SingleSlater options
         SS->cubeOptsSS = this->cubeOptsSS;
-        SS->runCube(cubes,emPert,prefix,mol);});
+        SS->runCube(cubes,prefix,mol);
+      });
       return;
   }
 

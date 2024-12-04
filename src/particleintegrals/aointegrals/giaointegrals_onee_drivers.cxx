@@ -49,7 +49,8 @@ namespace ChronusQ {
   template <>
   template <size_t NOPER, bool SYMM, typename F>
   void OnePInts<dcomplex>::OnePDriverLocal(
-      const F &obFunc, shell_set& shells, std::vector<dcomplex*> mats) {
+      const F &obFunc, shell_set& shells, std::vector<dcomplex*> mats,
+      OPERATOR op, const HamiltonianOptions &options) {
 
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
@@ -147,6 +148,25 @@ namespace ChronusQ {
       }
     }
 
+    // Future modify matrices if particle is proton
+    // If engine is K, scale it by 1/m
+    if (op == KINETIC) {
+      for(auto nMat = 0; nMat < matMaps.size(); nMat++)
+        for(auto i = 0  ; i < NB; ++i)
+        for(auto j = 0  ; j < NB; ++j)
+          matMaps[nMat](i,j) *= 1.0 / options.particle.mass;
+    }
+    // If engine is V or q<r...r>, scale it by charge
+    // X2C + NEO currently not considered 
+    if(op == NUCLEAR_POTENTIAL or
+       op == LEN_ELECTRIC_MULTIPOLE or
+       op == VEL_ELECTRIC_MULTIPOLE) {
+      for(auto nMat = 0; nMat < matMaps.size(); nMat++)
+        for(auto i = 0  ; i < NB; ++i)
+        for(auto j = 0  ; j < NB; ++j)
+          matMaps[nMat](i,j) *= -1.0 * options.particle.charge;
+    }
+
   }; // OnePInts::OnePDriverLocal
 
 
@@ -168,15 +188,15 @@ namespace ChronusQ {
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           std::bind(&ComplexGIAOIntEngine::computeGIAOOverlapS,
                     std::placeholders::_1, std::placeholders::_2,
-                    std::placeholders::_3, &magAmp[0]),
-          basis.shells, tmp);
+                    std::placeholders::_3, &magAmp[0],options.particle.charge),
+          basis.shells, tmp, op, options);
       break;
     case KINETIC:
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           std::bind(&ComplexGIAOIntEngine::computeGIAOKineticT,
                     std::placeholders::_1, std::placeholders::_2,
-                    std::placeholders::_3, &magAmp[0]),
-          basis.shells, tmp);
+                    std::placeholders::_3, &magAmp[0],options.particle.charge),
+          basis.shells, tmp, op, options);
       break;
     case NUCLEAR_POTENTIAL:
       options.finiteWidthNuc ?
@@ -184,14 +204,14 @@ namespace ChronusQ {
           [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
-                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol);
-            }, basis.shells, tmp) :
+                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+            }, basis.shells, tmp, op, options) :
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
-                pair,sh1,sh2,&magAmp[0],mol);
-            }, basis.shells, tmp);
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+            }, basis.shells, tmp, op, options);
       break;
     case ELECTRON_REPULSION:
       CErr("Electron repulsion integrals are not implemented in OnePInts,"
@@ -240,22 +260,22 @@ namespace ChronusQ {
         OnePInts<dcomplex>::OnePDriverLocal<3,true>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOEDipoleE1_len,
                       std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, &magAmp[0]),
-            basis.shells, pointers());
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            basis.shells, pointers(), op, options);
         break;
       case 2:
         OnePInts<dcomplex>::OnePDriverLocal<6,true>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOEQuadrupoleE2_len,
                       std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, &magAmp[0]),
-            basis.shells, pointers());
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            basis.shells, pointers(), op, options);
         break;
       case 3:
         OnePInts<dcomplex>::OnePDriverLocal<10,true>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOEOctupoleE3_len,
                       std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, &magAmp[0]),
-            basis.shells, pointers());
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            basis.shells, pointers(), op, options);
         break;
       default:
         CErr("Requested operator is NYI in VectorInts.",std::cout);
@@ -271,8 +291,8 @@ namespace ChronusQ {
         OnePInts<dcomplex>::OnePDriverLocal<3,false>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOAngularL,
                       std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, &magAmp[0]),
-            basis.shells, pointers());
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            basis.shells, pointers(), op, options);
         break;
       default:
         CErr("Requested operator is NYI in VectorInts.",std::cout);
@@ -285,12 +305,20 @@ namespace ChronusQ {
     case MAGNETIC_4COMP_rVr:
       switch (order()) {
       case 2:
-        OnePInts<dcomplex>::OnePDriverLocal<6,true>(
-          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
-              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
-            return ComplexGIAOIntEngine::computeGIAOrVr(
-              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
-            }, basis.shells, pointers());
+        if (options.finiteWidthNuc)
+          OnePInts<dcomplex>::OnePDriverLocal<6,true>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOrVr(
+                mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
+        else
+          OnePInts<dcomplex>::OnePDriverLocal<6,true>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOrVr(
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -299,13 +327,21 @@ namespace ChronusQ {
       break;
     case MAGNETIC_4COMP_PVrprVP:
       switch (order()) {
-      case 2: 
-        OnePInts<dcomplex>::OnePDriverLocal<9,false>(
-          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
-              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
-            return ComplexGIAOIntEngine::computeGIAOpVrprVp(
-              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
-            }, basis.shells, pointers());
+      case 2:
+        if (options.finiteWidthNuc) 
+          OnePInts<dcomplex>::OnePDriverLocal<9,false>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOpVrprVp(
+                mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
+        else
+          OnePInts<dcomplex>::OnePDriverLocal<9,false>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOpVrprVp(
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -314,13 +350,21 @@ namespace ChronusQ {
       break;
     case MAGNETIC_4COMP_PVrmrVP:
       switch (order()) {
-      case 2: 
-        OnePInts<dcomplex>::OnePDriverLocal<9,true>(
-          [&](libint2::ShellPair& pair, libint2::Shell& sh1,
-              libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
-            return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
-              mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol); 
-            }, basis.shells, pointers());
+      case 2:
+        if (options.finiteWidthNuc)  
+          OnePInts<dcomplex>::OnePDriverLocal<9,true>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
+                mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
+        else
+          OnePInts<dcomplex>::OnePDriverLocal<9,true>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
+              return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
+              }, basis.shells, pointers(), op, options);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -390,15 +434,15 @@ namespace ChronusQ {
           [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
-                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol);
-            }, basis.shells, _potential);
+                mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+            }, basis.shells, _potential, op, options);
     else
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
-                pair,sh1,sh2,&magAmp[0],mol);
-            }, basis.shells, _potential);
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+            }, basis.shells, _potential, op, options);
 
     // Point nuclei is used when chargeDist is empty
     const std::vector<libint2::Shell> &chargeDist = options.finiteWidthNuc ?
@@ -414,8 +458,8 @@ namespace ChronusQ {
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
               return ComplexGIAOIntEngine::computeGIAOSL(chargeDist,
-                  pair,sh1,sh2,&magAmp[0],mol);
-              }, basis.shells, SOXYZPointers());       
+                  pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+              }, basis.shells, SOXYZPointers(), op, options);       
     }
 
     std::vector<dcomplex*> _PVdP(1, scalar().pointer());
@@ -423,8 +467,8 @@ namespace ChronusQ {
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
             return ComplexGIAOIntEngine::computeGIAOpVdotp(chargeDist,
-                pair,sh1,sh2,&magAmp[0],mol);
-            }, basis.shells, _PVdP);
+                pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+            }, basis.shells, _PVdP, op, options);
 
   };
 

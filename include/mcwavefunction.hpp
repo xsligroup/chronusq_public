@@ -157,7 +157,7 @@ namespace ChronusQ {
     void precompute_NucEField(EMPerturbation &);
 
     // Post-processing functions
-    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, EMPerturbation &emPert);
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu);
 
     // Memory functions
     void alloc();

@@ -112,6 +112,28 @@ namespace ChronusQ {
         return &evaluated_basis[0];
     }
 
+    // TangDD Generate Local Density for GIAO.
+    dcomplex * CubeGen::EvalShellSetAtPointGIAO(int ix, int iy, int iz)
+    {
+        size_t NB = basis_->nBasis;
+
+        // If we precomputed the basis we can return the cached basis
+        if(evaluated_giaobasis.size()==NB * voxelGrid_[0] * voxelGrid_[1] * voxelGrid_[2])
+        {
+            return &(evaluated_giaobasis.data()[NB*(ix + iy * voxelGrid_[0] + iz * voxelGrid_[0] * voxelGrid_[1])]);
+        }
+
+        std::array<double,3> pt = {
+            (ix-(int)voxelGrid_[0]/2) * voxelUnits_[0],
+            (iy-(int)voxelGrid_[1]/2) * voxelUnits_[1],
+            (iz-(int)voxelGrid_[2]/2) * voxelUnits_[2]
+            };
+        // Possibly add a parameter here for treading of the basis evaluation
+        // with default value 0
+        evalShellSet(NOGRAD,basis_->shells,&pt[0],1,&evaluated_giaobasis[0],false,emPert_,particleCharge_);
+        return &evaluated_giaobasis[0];
+    }
+
     void CubeGen::ComputeBasis()
     {
       // Guard against multiply trying to call this function
@@ -190,6 +212,93 @@ namespace ChronusQ {
 
       // Free Scratch Memory
       CQMemManager::get().free(SCR);
+      
+      return;
+    }
+
+    void CubeGen::ComputeGIAOBasis()
+    {
+      // Guard against multiply trying to call this function
+      if(evaluated_giaobasis.size())
+        return;
+      
+      size_t NB = basis_->nBasis;
+      size_t TotalBasisSize = NB * voxelGrid_[0] * voxelGrid_[1] * voxelGrid_[2];
+
+      try
+      {
+        std::cout << "Requested Total Cube Basis Size (GIAO): " << TotalBasisSize << std::endl;
+        evaluated_giaobasis.resize(TotalBasisSize);
+      }
+      catch(...)
+      {
+        std::cout << " *** Attempted to precompute basis evaluation for CubeGen"  << std::endl
+                  << "     but didn't have sufficient memory allocated.  Basis"   << std::endl
+                  << "     will be re-computed for every cube generated!    ***"  << std::endl
+                  << "     ***This could take forever with GIAO!***            "  << std::endl;
+        // Still need maintain capacity for a single basis evaluation so
+        // a double * can always be returned to the start of the memory
+        // In the future can multiply by number of threads so in the 
+        // future the cube evaluation can still be omp parallelized
+        evaluated_giaobasis.resize(NB);// * GetNumThreads());
+        return;
+      }
+
+      // Calculate the amount of scratch space needed for evalShellSet
+      size_t RSize = 0;
+      // Might be able to batch points in the future, for now point by point over the grid evaluation
+      size_t npts = 1;
+      size_t nShSize = basis_->shells.size();
+      // r contribution
+      RSize += 3 * npts * nShSize;
+      // rSq contribution
+      RSize += npts * nShSize;
+
+      int LMax = 0;
+      for(auto iSh = 0; iSh < nShSize; iSh++)
+      {
+        LMax=std::max(basis_->shells[iSh].contr[0].l,LMax);
+      }
+      size_t shSizeCar = ((LMax+1)*(LMax+2))/2;
+
+      // SCR_Car Contribution
+      //SCRSize +=  shSizeCar;
+
+      // Allocate enough memory 
+      size_t nThreads = GetNumThreads();
+
+      dcomplex * SCR =  CQMemManager::get().malloc<dcomplex>(nThreads*shSizeCar);
+      dcomplex * tSCR;
+      double * SCR2 =  CQMemManager::get().malloc<double>(nThreads*RSize);
+      double * tSCR2;
+
+      int ix,iy,iz;
+
+#pragma omp parallel default(shared) private(tSCR, tSCR2, ix, iy, iz)
+{
+      auto iThread = GetThreadID();
+      tSCR = SCR + iThread * shSizeCar;
+      tSCR2 = SCR2 + iThread * RSize;
+      for(iz = iThread; iz < voxelGrid_[2]; iz+=nThreads){
+        for(iy = 0l; iy < voxelGrid_[1]; iy++){
+          for(ix = 0l; ix < voxelGrid_[0]; ix++)
+      {
+        std::array<double,3> pt = {
+            (ix-(int)voxelGrid_[0]/2) * voxelUnits_[0],
+            (iy-(int)voxelGrid_[1]/2) * voxelUnits_[1],
+            (iz-(int)voxelGrid_[2]/2) * voxelUnits_[2]
+            };
+        size_t offset = NB * (ix + iy * voxelGrid_[0] + iz * voxelGrid_[0] * voxelGrid_[1]);
+
+        evalShellSet(NOGRAD,basis_->shells,&pt[0],1,&(evaluated_giaobasis.data()[offset]),false,emPert_,particleCharge_,tSCR,tSCR2);
+      } // iz
+      } // iy
+      } // ix
+}
+
+      // Free Scratch Memory
+      CQMemManager::get().free(SCR);
+      CQMemManager::get().free(SCR2);
       
       return;
     }
