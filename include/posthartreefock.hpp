@@ -99,8 +99,9 @@ public:
 
   void computeOneRDM(size_t i) { computeTDM(i, i, oneRDM[i]);};    
   void computeOneRDM();
-  void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1.);
-  
+  void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
+  void pdm2rdm(cqmatrix::Matrix<MatsT> &);
+
   std::shared_ptr<SingleSlater<MatsT,IntsT>> reference() const { return ref_;}
   
   void transformInts(EMPerturbation &, bool);

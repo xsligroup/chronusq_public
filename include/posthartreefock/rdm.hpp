@@ -46,15 +46,17 @@ namespace ChronusQ {
    * \brief transform oneRDM(MO) to onePDM(AO) and put it back to ref_
    */
   template <typename MatsT, typename IntsT>
-  void PostHartreeFock<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale) {
+  void PostHartreeFock<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale, bool isTDM) {
 
     // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq} C^*_{qv}
     size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
     size_t fourCompOffset = (ref_->nC == 4) ? ref_->nAlphaOrbital() * 2: 0;
     size_t nCoreO = corrSpace.nFCore + corrSpace.nInact;
     size_t nCorrO = corrSpace.nCorrO;
+    double fc1C = 0.0;
 
-    double fc1C = (ref_->nC == 1) ? 2.0 : 1.0;
+    if (isTDM == false) {
+      fc1C = (ref_->nC == 1) ? 2.0 : 1.0;} 
 
     cqmatrix::Matrix<MatsT> tmpPDM(nAO);
     tmpPDM.clear();
@@ -77,6 +79,61 @@ namespace ChronusQ {
     ref_->ao2orthoDen();
 
   } //PostHartreeFock::rdm2pdm
+
+  /* brief: Transforms 1-RDM from the AO basis to the MO basis.
+   * Formula: 1rdmMO = C^{\dagger} S 1rdmAO S C
+   * Arguments: AO - RDM (Dimension-> nAO)
+   * Return: MO - RDM (Dimension-> nAO)
+   */
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::pdm2rdm(cqmatrix::Matrix<MatsT> &rdmAO) {
+  
+    // oneRDM(MO) = C^{\dagger} S oneRDM(AO) S C
+    size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
+    size_t nMO = corrSpace.nMO;
+
+    //Obtain overlap: S
+    cqmatrix::Matrix<MatsT> S(nAO);
+    if(ref_->nC == 1){
+      S = ref_->aoints_->overlap->matrix();
+    } else if(ref_->nC == 2){
+      std::fill_n(S.pointer(),nAO*nAO,MatsT(0.0));
+      SetMat('N',nAO/2,nAO/2,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/2, S.pointer(),nAO);
+      SetMat('N',nAO/2,nAO/2,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/2, S.pointer()+nAO*nAO/2+nAO/2,nAO);
+    } else {
+      CErr("Not extended for nC = 4, refer to singleslater/quantum.hpp");
+    }
+
+    //Create MO density matrix:
+    cqmatrix::Matrix<MatsT> tmpdm1(nAO);
+    cqmatrix::Matrix<MatsT> tmpdm2(nAO);
+    
+    // tmpdm1 = oneRDM(AO) S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), rdmAO.pointer(), nAO, S.pointer(), nAO,
+        MatsT(0.),tmpdm1.pointer(), nAO);
+    // tmpdm2 = S tmpdm1
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), S.pointer(), nAO, tmpdm1.pointer(), nAO,
+        MatsT(0.),tmpdm2.pointer(), nAO);
+    // tmpdm1 = C^T tmpdm2 = C^T S oneRDM(AO) S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), ref_->mo[0].pointer(), nAO, tmpdm2.pointer(), nAO,
+        MatsT(0.),tmpdm1.pointer(), nAO);
+    // tmpdm2 = tmpdm1 C = C^T S oneRDM(SO) S C
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), tmpdm1.pointer(), nAO, ref_->mo[0].pointer(), nAO,
+        MatsT(0.),tmpdm2.pointer(), nAO);
+
+    if (ref_->nC == 1)  {
+      ref_->onePDM->S() = tmpdm2;
+    } else {
+      *ref_->onePDM = tmpdm2.template spinScatter<MatsT>();
+    }
+
+  tmpdm1.clear();
+  tmpdm2.clear();
+  } //PostHartreeFock: pdmrdm 
 
 }; // namespace ChronusQ
 

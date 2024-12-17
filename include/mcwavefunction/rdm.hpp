@@ -78,15 +78,17 @@ namespace ChronusQ {
    *
    */
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale) {
+  void MCWaveFunction<MatsT,IntsT>::rdm2pdm(cqmatrix::Matrix<MatsT> & rdm, double scale, bool isTDM) {
 
     // onePDM(AO)_{uv} = sum_{pq} C_{up} oneRDM(MO)_{pq}^* C^*_{qv}
     size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t fourCompOffset = (reference().nC == 4) ? reference().nAlphaOrbital() * 2: 0;
     size_t nI = MOPartition.nFCore + MOPartition.nInact;
     size_t nCorrO = MOPartition.nCorrO;
-
-    double fc1C = (reference().nC == 1) ? 2.0 : 1.0;
+    double fc1C = 0.0;
+    
+    if (isTDM == false) {
+      fc1C = (reference().nC == 1) ? 2.0 : 1.0;}
 
     cqmatrix::Matrix<MatsT> tmpPDM(nAO);
     tmpPDM.clear();

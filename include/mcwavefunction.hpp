@@ -129,7 +129,7 @@ namespace ChronusQ {
     virtual void computeOneRDM(size_t);    
     virtual void computeOneRDM();
     virtual void computeTDMs(); // compute TDMs
-    void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1.);
+    void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
     
     WaveFunctionBase & referenceWaveFunction() { return dynamic_cast<WaveFunctionBase&>(ref_); }
     SingleSlater<MatsT,IntsT> & reference() const  { return ref_;} 
