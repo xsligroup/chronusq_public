@@ -22,8 +22,8 @@
  *  
  */
 #pragma once
-#define _DEBUGGIAO 0 
-#define seperatemag
+//#define _DEBUGGIAO 
+//#define seperatemag
 
 #include <singleslater.hpp>
 #include <cqlinalg/blasext.hpp>
@@ -370,8 +370,8 @@ namespace ChronusQ {
         atom.coord[kXYZ];
     }
 
-    std::cout << std::string(this->particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Dipole: " 
-        << this->elecDipole[0] << " " << this->elecDipole[1] << " " << this->elecDipole[2] << std::endl;
+    //std::cout << std::string(this->particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Dipole: " 
+    //    << this->elecDipole[0] << " " << this->elecDipole[1] << " " << this->elecDipole[2] << std::endl;
   };
 
 
