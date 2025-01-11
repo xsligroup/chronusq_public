@@ -639,7 +639,7 @@ namespace ChronusQ {
 
         isConverged = std::all_of(SiConv.begin(), SiConv.begin()+nR, [&] (const IterDiagConvStatus &i) {
           return i.hasConverged(checkEigenVectorConv, checkEigenValueConv, checkResidueConv); });
-        if(isConverged or nVCur >= MSS) {
+        if(isConverged or nVCur >= MSS or this->maxMicroIter_ <= iter+1) {
 
           double DavidsonDur = tock(DavidsonSt);
           double perLT = LTdur * 100 / DavidsonDur;
