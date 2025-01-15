@@ -149,6 +149,7 @@ namespace ChronusQ {
     std::vector<size_t> mapSh2Bf;  ///< Map Shell # -> BF #
     std::vector<size_t> mapSh2Cen; ///< Map Shell # -> Cen #
     std::vector<size_t> mapCen2BfSt; ///< Map Cen # -> Starting BF #
+    std::vector<size_t> mapAllCen2BfSt; ///< Map All Cen (including classical atoms) # -> Starting BF #
 
     // Disable default constructor
     BasisSet() { };

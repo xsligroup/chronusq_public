@@ -795,7 +795,7 @@ namespace ChronusQ {
           GGDenS_dxX_loc, GGDenS_dxY_loc, GGDenS_dxZ_loc, 
           GGDenS_dyX_loc, GGDenS_dyY_loc, GGDenS_dyZ_loc, 
           GGDenS_dzX_loc, GGDenS_dzY_loc, GGDenS_dzZ_loc, 
-          BasisEval, BasisGradEval, nAtoms, basis);
+          BasisEval, BasisGradEval, ess->molecule(), basis);
         
         if( ess->onePDM->hasZ() ) {
           evalDen((isGGA ? GRADIENT : NOGRAD), NPts, NBE, NB, subMatCut, 
@@ -809,7 +809,7 @@ namespace ChronusQ {
             GGDenZ_dxX_loc, GGDenZ_dxY_loc, GGDenZ_dxZ_loc, 
             GGDenZ_dyX_loc, GGDenZ_dyY_loc, GGDenZ_dyZ_loc, 
             GGDenZ_dzX_loc, GGDenZ_dzY_loc, GGDenZ_dzZ_loc, 
-            BasisEval, BasisGradEval, nAtoms, basis);
+            BasisEval, BasisGradEval, ess->molecule(), basis);
         }
 
         if( ess->onePDM->hasXY() )
@@ -826,7 +826,7 @@ namespace ChronusQ {
           aux_GGDenS_dxX_loc, aux_GGDenS_dxY_loc, aux_GGDenS_dxZ_loc, 
           aux_GGDenS_dyX_loc, aux_GGDenS_dyY_loc, aux_GGDenS_dyZ_loc, 
           aux_GGDenS_dzX_loc, aux_GGDenS_dzY_loc, aux_GGDenS_dzZ_loc, 
-          aux_BasisEval, aux_BasisGradEval, nAtoms, aux_basis);
+          aux_BasisEval, aux_BasisGradEval, ess->molecule(), aux_basis);
 
         if( pss->onePDM->hasZ() ) {
           evalDen((epcisGGA ? GRADIENT : NOGRAD), NPts, aux_NBE, aux_NB, aux_subMatCut, 
@@ -841,7 +841,7 @@ namespace ChronusQ {
             aux_GGDenZ_dxX_loc, aux_GGDenZ_dxY_loc, aux_GGDenZ_dxZ_loc, 
             aux_GGDenZ_dyX_loc, aux_GGDenZ_dyY_loc, aux_GGDenZ_dyZ_loc, 
             aux_GGDenZ_dzX_loc, aux_GGDenZ_dzY_loc, aux_GGDenZ_dzZ_loc, 
-            aux_BasisEval, aux_BasisGradEval, nAtoms, aux_basis);
+            aux_BasisEval, aux_BasisGradEval, ess->molecule(), aux_basis);
         }
 
         if( pss->onePDM->hasXY() )

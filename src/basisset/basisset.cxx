@@ -134,6 +134,7 @@ namespace ChronusQ {
     mapSh2Cen.clear();
     mapSh2Bf.clear();
     mapCen2BfSt.clear();
+    mapAllCen2BfSt.clear();
 
     // Create basis maps
     // Maps Sh # -> BF #
@@ -164,10 +165,11 @@ namespace ChronusQ {
                   [&](size_t x){ return x == iAtm; });
 
       if (nucBasis and it == mapSh2Cen.end())
-        mapCen2BfSt.emplace_back(0);
+        mapAllCen2BfSt.emplace_back(0);
       else {
         size_t firstShell = std::distance(mapSh2Cen.begin(),it);
         mapCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
+        mapAllCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
       }
 
     }

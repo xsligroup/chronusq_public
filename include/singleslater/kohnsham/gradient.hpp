@@ -457,7 +457,7 @@ namespace ChronusQ {
           nGDenS_dY_loc, nGDenS_dZ_loc, GGDenS_dxX_loc, GGDenS_dxY_loc, 
           GGDenS_dxZ_loc, GGDenS_dyX_loc, GGDenS_dyY_loc,
           GGDenS_dyZ_loc, GGDenS_dzX_loc, GGDenS_dzY_loc, 
-          GGDenS_dzZ_loc, BasisEval, BasisGradEval, nAtoms, basis);
+          GGDenS_dzZ_loc, BasisEval, BasisGradEval, this->molecule(), basis);
 
           //std::cout << "after evalDen " << std::endl;
           //for(auto iPt = 0; iPt < NPts; iPt++) {
@@ -490,7 +490,7 @@ namespace ChronusQ {
             nGDenZ_dY_loc, nGDenZ_dZ_loc, GGDenZ_dxX_loc, GGDenZ_dxY_loc, 
             GGDenZ_dxZ_loc, GGDenZ_dyX_loc, GGDenZ_dyY_loc,
             GGDenZ_dyZ_loc, GGDenZ_dzX_loc, GGDenZ_dzY_loc, 
-            GGDenZ_dzZ_loc, BasisEval, BasisGradEval, nAtoms, basis);
+            GGDenZ_dzZ_loc, BasisEval, BasisGradEval, this->molecule(), basis);
         }
 
         if( this->onePDM->hasXY() )

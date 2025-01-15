@@ -245,7 +245,7 @@ namespace ChronusQ {
     std::vector<double*>GGDenxX, std::vector<double*>GGDenxY, std::vector<double*>GGDenxZ, 
     std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
     std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
-    double *BasisScr, double *BasisGradScr, size_t nAtoms, BasisSet &basisSet);
+    double *BasisScr, double *BasisGradScr, Molecule &mol, BasisSet &basisSet);
 
   template <typename MatsT>
   void mkAuxVarGrad(

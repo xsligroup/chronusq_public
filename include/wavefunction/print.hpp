@@ -182,7 +182,7 @@ namespace ChronusQ {
         bool newAtm = false;
         if( curCen != iAtm ) {
           newAtm = true;
-          iAtm++;
+          iAtm = curCen;
           atmSymb = getAtmSymb(iAtm);
           iShellAtm = 0;
         }
@@ -314,7 +314,7 @@ namespace ChronusQ {
         size_t curCen = basis.mapSh2Cen[iShell];
         bool newAtm = false;
         if( curCen != iAtm ) {
-          iAtm++;
+          iAtm = curCen;
           if( !groupAtm or (groupAtm and (atmSymb != getAtmSymb(iAtm))) ) {
             newAtm = true;
             atmSymb = getAtmSymb(iAtm);

@@ -56,8 +56,9 @@ namespace ChronusQ {
     std::vector<double*>GGDenxX, std::vector<double*>GGDenxY, std::vector<double*>GGDenxZ,
     std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
     std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
-    double *BasisScr, double *BasisGradScr, size_t nAtoms, BasisSet &basisSet){
+    double *BasisScr, double *BasisGradScr, Molecule &mol, BasisSet &basisSet){
 
+    size_t nAtoms = mol.atoms.size();
     size_t IOff = NPts*NBE; 
 
     // effective orbitals for gradient
@@ -68,7 +69,9 @@ namespace ChronusQ {
     for (size_t pi = 0; pi < subMatCut.size(); pi++) {
       for (size_t oi = subMatCut[pi].first; oi < subMatCut[pi].second; oi++) {
         for (int i = nAtoms-1; i >=0; i--) {
-          if (oi >= basisSet.mapCen2BfSt[i]) {
+          // For NEO basis, skip classical atom centers
+          if (basisSet.nucBasis and !mol.atoms[i].quantum) continue;
+          if (oi >= basisSet.mapAllCen2BfSt[i]) {
             effOrbsForAtom[i].emplace_back(oi);
             break;
           }
