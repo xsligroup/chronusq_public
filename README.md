@@ -51,7 +51,7 @@ For more details about using the Docker image, see the
 If you have all the prerequisites above, all you need to do is:
 
 ```
-git clone https://urania.chem.washington.edu/chronusq/chronusq_public.git
+git clone https://github.com/xsligroup/chronusq_public
 mkdir chronusq_public/build && cd chronusq_public/build
 cmake ..
 cmake --build .
@@ -74,7 +74,7 @@ The following WIREs paper and software citation should be cited in publications 
 
 Found a bug or want a new feature?
 ----------------------------------
-Please submit a bug report or feature request on the [issues](https://urania.chem.washington.edu/chronusq/chronusq_public/-/issues) page.
+Please submit a bug report or feature request on the [issues](https://github.com/xsligroup/chronusq_public/issues) page.
 
 
 General Inquiries
