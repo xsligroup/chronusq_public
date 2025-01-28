@@ -1291,8 +1291,48 @@ namespace ChronusQ {
     orthoAOMO();
 
     // MO swapping if requested
-    if( this->moPairs[0].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isAlpha);
-    if( this->moPairs[1].size() != 0 ) this->swapMOs(this->moPairs,SpinType::isBeta);
+    if( this->moPairs[0].size() != 0 ){
+
+      this->swapMOs(this->moPairs,SpinType::isAlpha);
+
+      if( printLevel > 0 )
+        std::cout << "    * Saving swapped MOs to file "
+          << savFile.fName() << "\n";
+
+      // Saving post-transformed MOs to restart file
+      if( savFile.exists() ) {
+
+        size_t NB  = this->nAlphaOrbital();
+        size_t NBC = this->nC * NB;
+        std::string prefix = "SCF/";
+        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+
+        savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
+
+      }
+
+    }
+    if( this->moPairs[1].size() != 0 ){
+
+      this->swapMOs(this->moPairs,SpinType::isBeta);
+
+      if( printLevel > 0 )
+        std::cout << "    * Saving swapped beta MOs to file "
+          << savFile.fName() << "\n";
+
+      // Saving post-transformed MOs to restart file
+      if( savFile.exists() ) {
+
+        size_t NB  = this->nAlphaOrbital();
+        size_t NBC = this->nC * NB;
+        std::string prefix = "SCF/";
+        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+
+        savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
+
+      }
+
+    }
 
     // Form density from MOs
     formDensity();
