@@ -49,7 +49,15 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
   bool cacheHalfTransTPI) {
   
   // TODO: expand to RI
-  
+  // splitting comm for root only parts
+  auto old_comm = this->comm;
+  MPI_Comm new_comm;
+
+#ifdef CQ_ENABLE_MPI
+  int color = (MPIRank(old_comm) == 0); // Set color to 1 only for root process
+  MPI_Comm_split(old_comm, color, 0, &new_comm); 
+#endif
+
   // build object and allocate memory
   size_t nCorrO  = this->corrSpace.nCorrO;
   size_t nCoreO  = this->corrSpace.nInact + this->corrSpace.nFCore;
@@ -66,7 +74,11 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
     MatsT * GD_JJII = CQMemManager::get().malloc<MatsT>(nCoreO);
     
     mointsTF->transformHCore(pert, h1e_II, "II", true);
+    // just change the communicator for the ss object not the mointsTF object
+    mointsTF->ss_.comm = new_comm;
     mointsTF->transformGD(pert, 'I', GD_JJII, "JJ", true, true, "WithInactive-I");  
+    // change it back
+    mointsTF->ss_.comm = old_comm;
     
     MatsT ECore = 0.;
     // compute core enenrgy

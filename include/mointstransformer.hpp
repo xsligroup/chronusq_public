@@ -68,7 +68,6 @@ protected:
 
   TPI_TRANSFORMATION_ALG TPITransAlg_;
   MPI_Comm comm_;
-  SingleSlater<MatsT,IntsT> & ss_;
   
   // storage of cache integral intermidates
   IntegralsCollection ints_cache_ = IntegralsCollection(); 
@@ -78,6 +77,7 @@ protected:
   std::vector<std::pair<size_t, size_t>> mo_ranges_;
   
 public:
+  SingleSlater<MatsT,IntsT> & ss_;
 
   // Constructor
   MOIntsTransformer() = delete;
