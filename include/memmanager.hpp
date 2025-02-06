@@ -121,8 +121,7 @@ namespace ChronusQ {
       *                 n items of type T
       */ 
      template <typename T>
-     T* malloc(size_t n) {
-       MEM_IN_OMP_WARNING(CQMemManager::malloc);
+     T* unsafe_malloc(size_t n) {
        // Determine the number of blocks to allocate
        size_t nBlocks = ( (n-1) * sizeof(T) ) / BlockSize_ + 1;
       
@@ -155,6 +154,13 @@ namespace ChronusQ {
        AllocatedBlocks_[ptr] = { n * sizeof(T), nBlocks }; 
 
        return static_cast<T*>(ptr); // Return the pointer
+     }; // CQMemManager::unsafe_malloc
+
+
+     template <typename T>
+     T* malloc(size_t n) {
+       MEM_IN_OMP_WARNING(CQMemManager::malloc);
+       return unsafe_malloc<T>(n); // Return the pointer
      }; // CQMemManager::malloc
 
     // malloc with default initialization
@@ -176,9 +182,7 @@ namespace ChronusQ {
       *  \param [in] ptr Pointer to free 
       */ 
      template <typename T>
-     void free( T* &ptr ) {
-       MEM_IN_OMP_WARNING(CQMemManager::free);
-
+     void unsafe_free( T* &ptr ) {
        // Attempt to find the pointer in the list of 
        // allocated blocks
        auto it = AllocatedBlocks_.find(static_cast<void*>(ptr));
@@ -202,6 +206,13 @@ namespace ChronusQ {
        AllocatedBlocks_.erase(it);
                 
        ptr = NULL; // NULL out the pointer
+     }; // CQMemManager::unsafe_free
+
+
+     template <typename T>
+     void free( T* &ptr ) {
+       MEM_IN_OMP_WARNING(CQMemManager::free);
+       unsafe_free(ptr);
      }; // CQMemManager::free
 
      /**

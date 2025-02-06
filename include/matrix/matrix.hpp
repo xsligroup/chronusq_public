@@ -134,10 +134,7 @@ public:
     if (nRow * nCol != nRow_ * nCol_) {
       nRow_ = nRow;
       nCol_ = nCol;
-      #pragma omp critical
-      {
         malloc();
-      }
     } else {
       nRow_ = nRow;
       nCol_ = nCol;
@@ -317,16 +314,19 @@ public:
   }
 
   void malloc() {
-    if (ptr_) CQMemManager::get().free(ptr_);
-    size_t N = nRow_ * nCol_;
-    if (N != 0) {
-      try { ptr_ = CQMemManager::get().malloc<MatsT>(N); }
-      catch(...) {
-        std::cout << std::fixed;
-        std::cout << "Insufficient memory for the full INTS matrix ("
-                  << (N /1e9) * sizeof(MatsT) << " GB)" << std::endl;
-        std::cout << std::endl << CQMemManager::get() << std::endl;
-        throw std::bad_alloc();
+    #pragma omp critical
+    {
+      if (ptr_) CQMemManager::get().unsafe_free(ptr_);
+      size_t N = nRow_ * nCol_;
+      if (N != 0) {
+        try { ptr_ = CQMemManager::get().unsafe_malloc<MatsT>(N); }
+        catch(...) {
+          std::cout << std::fixed;
+          std::cout << "Insufficient memory for the full INTS matrix ("
+                    << (N /1e9) * sizeof(MatsT) << " GB)" << std::endl;
+          std::cout << std::endl << CQMemManager::get() << std::endl;
+          throw std::bad_alloc();
+        }
       }
     }
   }
