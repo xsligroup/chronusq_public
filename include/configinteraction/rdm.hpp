@@ -67,14 +67,34 @@ void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   size_t nCorrO = this->corrSpace.nCorrO;
   auto & RDM2 = *twoRDMSOI;
   auto & RDM1 = *oneRDMSOI;
-/*
-#pragma omp parallel for schedule(static) default(shared)       
-  for (auto w = 0ul; w < nCorrO; w++)
-  for (auto u = 0ul; u < nCorrO; u++)
-  for (auto t = 0ul; t < nCorrO; t++) {
-    RDM2(t, u, u, w) -= RDM1(t, w);
+
+  
+  #pragma omp parallel for schedule(static) default(shared)
+  for (auto q = 0ul; q < nCorrO; q++) {
+
+    //find which DAS orbital q belongs to
+    size_t orbitalRangeStart = 0;
+    size_t orbitalRangeEnd = 0;
+    for(const auto& activeSpace : ciSettings.activeSpaces) {
+      orbitalRangeStart = orbitalRangeEnd;
+      orbitalRangeEnd += activeSpace.nOrbitals;
+
+      if(q >= orbitalRangeStart and q < orbitalRangeEnd) {
+	break;
+      }
+    }
+
+    for (auto p = 0ul; p < nCorrO; p++) {
+      if(p >= orbitalRangeStart and p < orbitalRangeEnd) {
+        for (auto s = 0ul; s < nCorrO; s++) {
+	  if(s >= orbitalRangeStart and s < orbitalRangeEnd) {
+            RDM2(p, q, q, s) -= RDM1(p, s);
+	  }
+        }
+      }
+    }  
   }
-*/  
+  
 } // ConfigInteraction::computeRDMsOfInterests
   
 } // namespace ChronusQ

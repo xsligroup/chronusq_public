@@ -292,7 +292,8 @@ class FullDetsCatGenerator {
   }
   
   const FullDetsCatAddresser<DetsT>& addresser() const { return addresser_; }
-  
+  const size_t nSpaces() const { return nSpaces_; }
+
   template <typename Visitor>
   void visitAllDeterminants(Visitor visitor) {
     visitDeterminants(0ul, nDeterminants_, std::forward<Visitor>(visitor));

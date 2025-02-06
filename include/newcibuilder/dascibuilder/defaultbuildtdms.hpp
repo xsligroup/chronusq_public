@@ -57,7 +57,7 @@ void DASCIBuilder<MatsT>::build1TDM(
         *braCategoricalSpace->getCategory(oneEEx.categoricalIndices.first));
     const auto& catL = dynamic_cast<const FullDeterminantCategory&>(
         *ketCategoricalSpace->getCategory(oneEEx.categoricalIndices.second));
-    const auto& symmFact = oneEEx.symmetryFactor * scale; 
+    const auto& symmFact = oneEEx.symmetryFactor > 0? scale : -scale; 
     const auto& exList = dynamic_cast<const FullCD1eExList&>(*oneEEx.exLists[0]); 
     
     const auto pqExSpaces = oneEEx.exSpaces;
@@ -111,7 +111,9 @@ void DASCIBuilder<MatsT>::build1TDM(
                    nonExLooper->increment()) {
                  auto K = KEx + KNonEx;
                  auto L = LEx + LNonEx;
-                 oneTDMSCR(p, q) += scale * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];   
+
+		 const auto pqVal = symmFact * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+                 oneTDMSCR(p, q) += pqVal;
               }
             }
           }
@@ -123,6 +125,7 @@ void DASCIBuilder<MatsT>::build1TDM(
   for (const auto& oneTDMSCR : SCR) oneTDM += oneTDMSCR;
 
 } // DASCIBuilder::compute1TDMs
+
 
 /*
  * compute twoTDM_IJ(t, w, u, v) = 
@@ -157,7 +160,9 @@ void DASCIBuilder<MatsT>::build2TDM(
         *braCategoricalSpace->getCategory(twoEEx.categoricalIndices.first));
     const auto& catL = dynamic_cast<const FullDeterminantCategory&>(
         *ketCategoricalSpace->getCategory(twoEEx.categoricalIndices.second));
-    const auto symmFact = twoEEx.symmetryFactor * scale; 
+
+    const auto symmFactSign = twoEEx.symmetryFactor > 0 ?  scale: - scale;
+
     const auto& exList_qp = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[0]); 
     const auto& exList_rs = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[1]); 
     
@@ -200,32 +205,57 @@ void DASCIBuilder<MatsT>::build2TDM(
               auto q = qq + qOrbOff;
               auto r = rr + rOrbOff;
               auto s = ss + sOrbOff;
-              
+
               for (nonExLooper->setIndex(0ul);
                    not nonExLooper->isEnd();
                    nonExLooper->increment()) {
                  auto K = KEx + KNonEx;
                  auto L = LEx + LNonEx;
-		
-		 //NOTE: ALL signs in (r == s and p != q) have been flipped relative to Hang's PPT
-                 if(p != q and p != s and q != r and r != s){
-                   twoTDMSCR(p, q, r, s) += scale * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                 }
-                 if(r == s and p != q){
-                   twoTDMSCR(r, q, p, r) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                   twoTDMSCR(p, q, r, r) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                   twoTDMSCR(p, r, r, q) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                   twoTDMSCR(r, r, p, q) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                 }
-                 if(r == s and p == q){
-                   if(p != r){
-                     twoTDMSCR(p, p, r, r) += scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                     twoTDMSCR(r, p, p, r) += -scale *fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
-                   }
-                 }
 
+		 const auto pqrsExSpaces = twoEEx.exSpaces;
+		 const auto pSpace = pqrsExSpaces[0];
+		 const auto qSpace = pqrsExSpaces[1];
+		 const auto rSpace = pqrsExSpaces[2];
+		 const auto sSpace = pqrsExSpaces[3];
+
+		 const auto pqrsVal = symmFactSign * fc * SmartConj(CBra_ptr[K]) * CKet_ptr[L];
+
+		 MatsT symmFact = MatsT(1.);
+		 //remove redundancies
+                 if (pSpace == rSpace) symmFact /= 2;
+                 if (qSpace == sSpace) symmFact /= 2;
+
+		 //case 1: 
+		 if(pSpace != qSpace and pSpace != sSpace and rSpace != qSpace and rSpace != sSpace) {
+		   twoTDMSCR(p, q, r, s) += symmFact * pqrsVal;
+		   twoTDMSCR(r, s, p, q) += symmFact * pqrsVal;
+		   twoTDMSCR(r, q, p, s) -= symmFact * pqrsVal;
+		   twoTDMSCR(p, s, r, q) -= symmFact * pqrsVal;
+		 }
+
+		 //case 2
+		 else if(rSpace != qSpace and pSpace == sSpace) {
+	           twoTDMSCR(p, q, r, s) += symmFact * pqrsVal;
+                   twoTDMSCR(r, s, p, q) += symmFact * pqrsVal;
+                   twoTDMSCR(r, q, p, s) -= symmFact * pqrsVal;
+                   twoTDMSCR(p, s, r, q) -= symmFact * pqrsVal;
+		 }
+		 //case 3 a
+		 else if(pSpace == qSpace and rSpace == sSpace and pSpace != rSpace) {
+		   twoTDMSCR(p, q, r, s) += pqrsVal;
+                   twoTDMSCR(r, s, p, q) += pqrsVal;
+                   twoTDMSCR(r, q, p, s) -= pqrsVal;
+                   twoTDMSCR(p, s, r, q) -= pqrsVal;
+		 }
+		 //case 3 b
+		 else if(pSpace == qSpace and rSpace == sSpace and pSpace == rSpace) {
+		   twoTDMSCR(p, q, r, s) += pqrsVal;
+		 }
+		 else {
+		   std::cout << "Excitation p " << p << " q " << q << " r " << r << " s " << s << std::endl;
+		   CErr("was no captured in 2TDMs symmetry-aware tensor looper!");
+		 }
               }
-              
             }
           }
       ); // visitAllExcitations
