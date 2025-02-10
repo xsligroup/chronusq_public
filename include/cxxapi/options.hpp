@@ -278,6 +278,10 @@ namespace ChronusQ {
   void HandlePostHFProperties(std::ostream &, CQInputFile &,
     std::shared_ptr<PostHartreeFockBase> & postHF,
     std::string postHFSection);
+
+   void HandleSavePDMSPostHF(std::ostream &, CQInputFile &,
+    std::shared_ptr<PostHartreeFockBase> & postHF,
+    std::string postHFSection);
   
   void HandlePostHFRDMPrinting(std::ostream &, CQInputFile &,
     std::shared_ptr<PostHartreeFockBase> & postHF,

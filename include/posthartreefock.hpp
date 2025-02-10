@@ -123,6 +123,8 @@ public:
   double oscillator_strength(size_t, size_t s1 = 0);
   void spinAnalysis(size_t);
   void spinAnalysis();
+  void saveOnePDMs(size_t);
+  void saveOnePDMs();
 
 
   // Post-processing functions

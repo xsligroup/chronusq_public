@@ -65,6 +65,40 @@ namespace ChronusQ {
 
   }; // PostHartreeFock::populationAnalysis
 
+ /*
+  * \brief Store the AO representation of the PDM in bin
+  *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
+  *         2. save SS->onePDM
+  *
+  */
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::saveOnePDMs(size_t i) {
+    
+    ROOT_ONLY(this->comm);
+
+    std::cout << "Saving PDM for State " << i+1 << " as requested." << std::endl;
+
+    // transform oneRDM to AO basis
+    rdm2pdm(*this->oneRDM[i]);
+
+    // Convert to AO basis and update PDM in ref
+    std::string rdmStr = "POSTHF/RDM-"+std::to_string(i+1);
+    savFile.safeWriteData(rdmStr, *ref_->onePDM);
+
+  }; // PostHartreeFock::saveOnePDMs(i)
+
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::saveOnePDMs() {
+   
+    for (auto i : this->saveOnePDM_states) {
+
+      PostHartreeFock::saveOnePDMs(i);
+
+    }
+
+  }; // PostHartreeFock::saveOnePDMs()
+
+
 
 
 

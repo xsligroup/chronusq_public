@@ -77,8 +77,8 @@ namespace ChronusQ {
       // "RAS1ORBITAL",
       // "RAS2ORBITAL",
       // "RAS3ORBITAL",
-
-      "DAS"
+      "DAS",
+      "SAVEONEPDMS"
     };
 
     // Specified keywords
@@ -498,6 +498,9 @@ namespace ChronusQ {
 
    // Properties 
    HandlePostHFProperties(out, input, ci, "CI");
+
+   // saveOnePDMs
+   HandleSavePDMSPostHF(out, input, ci, "CI");
 
    // RDMs
    HandlePostHFRDMPrinting(out, input, ci, "CI");

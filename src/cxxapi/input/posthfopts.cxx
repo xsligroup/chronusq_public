@@ -417,5 +417,60 @@ namespace ChronusQ {
 
   }; // ReadReferenceOcc 
 
+  void HandleSavePDMSPostHF(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<PostHartreeFockBase> &posthf, std::string postHFSection) {
+
+    // Parse natural orbital option
+    std::string savePDMsString;
+    OPTOPT( savePDMsString = input.getData<std::string>(postHFSection + ".SAVEONEPDMS"); )
+    if ( not savePDMsString.empty() ) {
+      std::cout << "  * Requesting to Save PDMs keyword detected: " << std::endl;
+
+      auto const regexstatestosavepdm = std::regex("\\(.*\\)",std::regex_constants::icase);
+      posthf->saveOnePDMS = true;
+
+      if( std::regex_search(savePDMsString, regexstatestosavepdm) ) {
+        std::smatch SOI;
+        std::regex_search(savePDMsString, SOI, regexstatestosavepdm);
+        auto states_of_interest = SOI.str();
+        states_of_interest.erase(std::remove(states_of_interest.begin(), states_of_interest.end(), '('), states_of_interest.end());
+        states_of_interest.erase(std::remove(states_of_interest.begin(), states_of_interest.end(), ')'), states_of_interest.end());
+        std::stringstream states_stream(states_of_interest);
+        std::vector<size_t> result;
+        posthf->saveOnePDM_states.resize(0);
+        while( states_stream.good() )
+        {
+            std::string substr;
+            std::getline( states_stream, substr, ',' );
+            if (substr.find('-') != std::string::npos){
+              std::stringstream range_stream(substr);
+              std::string start_string, end_string;
+              std::getline( range_stream, start_string, '-' );
+              std::getline( range_stream, end_string, '-' );
+              std::istringstream start_ss(start_string);
+              std::istringstream end_ss(end_string);
+              size_t start, end;
+              start_ss >> start;
+              end_ss >> end;
+              start -= 1;
+              end -= 1;
+              for (auto i = start; i < end+1; i++){
+                posthf->saveOnePDM_states.push_back( i );
+              }
+            } else {
+              std::istringstream orb_ss(substr);
+              size_t orb;
+              orb_ss >> orb;
+              posthf->saveOnePDM_states.push_back(orb-1);
+            }
+        }
+        std::sort(posthf->saveOnePDM_states.begin(), posthf->saveOnePDM_states.end());
+        //posthf->noSOI = std::stoi(SOI.str());
+      }
+    }
+  }
+
+
+
 }; // namespace ChronusQ
 

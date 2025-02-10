@@ -63,6 +63,9 @@ public:
   size_t NosS1 = 0; // number of initial states s1 for oscillator strength
   double * osc_str = nullptr; // matrix to save oscillator strength
 
+  bool saveOnePDMS = false;
+  std::vector<size_t> saveOnePDM_states;
+
   // Options for CubeGen
   CubeGenOptions cubeOptsPostHF;
 

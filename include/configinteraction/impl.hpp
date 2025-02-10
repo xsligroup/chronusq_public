@@ -184,13 +184,19 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
 
   // Mulliken analysis
   if (this->PopulationAnalysis) {
-    std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
+    std::cout<<"\n\nPopulation analysis in ConfigInt."<<std::endl;
     PostHartreeFock<MatsT,IntsT>::populationAnalysis();
+  }
+
+  // save OnePDMS
+  if (this->saveOnePDMS) {
+    std::cout<<"\n\nSaving One PDMs in ConfigInt."<<std::endl;
+    PostHartreeFock<MatsT,IntsT>::saveOnePDMs();
   }
 
   // Spin analysis
   if (this->printRDMs==0 && this->SpinAnalysis) {
-      std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
+      std::cout<<"\n\nSpin analysis in ConfigInt."<<std::endl;
       PostHartreeFock<MatsT,IntsT>::spinAnalysis();
   }   
 
