@@ -70,11 +70,11 @@ struct OrbitalRotationSettings {
 
   void print(bool fourComp) const {
     if (alg == OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Approximated Quasi-2nd Order");
+      FormattedLine(std::cout,"  Orbital Rotation Algorithm:",  "Approximated Quasi-Second Order");
     } else if (alg == OrbitalRotationAlgorithm::ORB_ROT_QUASI_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Quasi-2nd Order");
+      FormattedLine(std::cout,"  Orbital Rotation Algorithm:",  "Quasi-Second Order");
     } else if (alg == ORB_ROT_2ND_ORDER) {
-      FormattedLine(std::cout,"  Oribital Rotation Algorithm:",  "Seconnd Order");
+      FormattedLine(std::cout,"  Orbital Rotation Algorithm:",  "Second Order");
     } else CErr("NYI Orbital Rotation Algorithm");
  
     FormattedLine(std::cout, "  Rotation Blocks:");

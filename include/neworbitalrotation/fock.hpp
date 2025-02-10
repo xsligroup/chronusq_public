@@ -113,7 +113,7 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock2(EMPerturbation & per
     SCR, nq, MatsT(0.), F2, nCorrO);
 
   // populate ERI as (qu|vw)
-  postHF_.mointsTF->transformTPI(pert, SCR, moType + "uvw", true, false);
+  postHF_.mointsTF->directTransformTPI(pert, SCR, moType + "uvw");
   
   blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans, 
     nCorrO, nq, nCorrO3, MatsT(1.), twoRDM.pointer(), nCorrO,

@@ -80,6 +80,7 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
     CErr("2nd Order orbital rotation not implemented");
   } else {
     this->computeOrbOrbHessianDiag(pert, oneRDM, twoRDM, H);
+#pragma omp parallel for schedule(static) default(shared)
     for (auto i = 0ul; i < nTOrb2; i++) X[i] = - G[i] / H[i];
   }
   ProgramTimer::tock("Form Hessian");
