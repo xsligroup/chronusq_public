@@ -54,7 +54,7 @@ namespace ChronusQ {
     auto & mo     = mcwfn_.reference().mo[0];
     size_t nTOrb  = mopart.nMO;
     size_t nTOrb2 = nTOrb * nTOrb;
-    size_t nAO    = mo.dimension(); 
+    size_t nAO    = mo.nRows(); 
     
     // offset it by inactive core index
     auto mo_pointer = mo.pointer(); 

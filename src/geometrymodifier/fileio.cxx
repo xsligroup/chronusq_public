@@ -174,7 +174,7 @@ namespace ChronusQ {
     size_t maxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
     std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDMs = ss->getOnePDM();
     for( size_t i = 0; i < onePDMs.size(); i++ ) {
-      size_t nBasis = onePDMs[i]->dimension();
+      size_t nBasis = onePDMs[i]->nRows();
       savFile.createDataSet<MatsT>("MD/1PDM"+std::to_string(i), {maxPoints*nBasis*nBasis});
     }
   }
@@ -183,7 +183,7 @@ namespace ChronusQ {
   void MolecularDynamics::writeOnePDM(const std::shared_ptr<SingleSlater<MatsT, IntsT>> ss) {
     std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDMs = ss->getOnePDM();
     for( size_t i = 0; i < onePDMs.size(); i++ ) {
-      size_t nBasis = onePDMs[i]->dimension();
+      size_t nBasis = onePDMs[i]->nRows();
       savFile.partialWriteData("MD/1PDM"+std::to_string(i), onePDMs[i]->pointer(), 
           {curState.lastSavePoint*nBasis*nBasis},{nBasis * nBasis}, {0}, {nBasis * nBasis});
       //onePDMs[i]->output(std::cout, "Write 1PDM"+std::to_string(i), true);
@@ -194,7 +194,7 @@ namespace ChronusQ {
   void MolecularDynamics::readOnePDM(const std::shared_ptr<SingleSlater<MatsT, IntsT>> ss) {
     std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDMs = ss->getOnePDM();
     for( size_t i = 0; i < onePDMs.size(); i++ ) {
-      size_t nBasis = onePDMs[i]->dimension();
+      size_t nBasis = onePDMs[i]->nRows();
       savFile.partialReadData("MD/1PDM"+std::to_string(i), onePDMs[i]->pointer(),
           {curState.lastSavePoint*nBasis*nBasis},{nBasis * nBasis}, {0}, {nBasis * nBasis});
     }
@@ -204,7 +204,7 @@ namespace ChronusQ {
     std::transform(onePDMs.begin(), onePDMs.end(), std::back_inserter(tempOnePDMs),
                    [](const std::shared_ptr<cqmatrix::Matrix<MatsT>>& ptr) { return *ptr; });
     for( size_t i = 0; i < tempOnePDMs.size(); i++ ) {
-      size_t nBasis = tempOnePDMs[i].dimension();
+      size_t nBasis = tempOnePDMs[i].nRows();
       //tempOnePDMs[i].output(std::cout, "Read 1PDM"+std::to_string(i), true);
     }
     ss->setOnePDMAO(tempOnePDMs.data());

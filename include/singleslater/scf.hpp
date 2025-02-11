@@ -352,7 +352,7 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
   if( MPISize(comm) > 1 ) {
 
       std::cerr  << "  *** Scattering the AO-MOs ***\n";
-      size_t Nmo = this->mo[0].dimension();
+      size_t Nmo = this->mo[0].nRows();
       MPIBCast(this->mo[0].pointer(),Nmo*Nmo,0,comm);
       if( nC == 1 and not iCS )
         MPIBCast(this->mo[1].pointer(),Nmo*Nmo,0,comm);
@@ -363,7 +363,7 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
         MPIBCast(this->eps2,Nmo,0,comm);
 
       std::cerr  << "  *** Scattering FOCK ***\n";
-      size_t fockDim = fockMatrix->dimension();
+      size_t fockDim = fockMatrix->nRows();
       for(MatsT *mat : fockMatrix->SZYXPointers())
         MPIBCast(mat,fockDim*fockDim,0,comm);
 
@@ -524,7 +524,7 @@ void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
   if( MPISize(comm) > 1 ) {
 
       std::cerr  << "  *** Scattering the AO-MOs ***\n";
-      size_t Nmo = this->mo[0].dimension();
+      size_t Nmo = this->mo[0].nRows();
       MPIBCast(this->mo[0].pointer(),Nmo*Nmo,0,comm);
       if( nC == 1 and not iCS )
         MPIBCast(this->mo[1].pointer(),Nmo*Nmo,0,comm);
@@ -535,12 +535,12 @@ void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
         MPIBCast(this->eps2,Nmo,0,comm);
 
       std::cerr  << "  *** Scattering FOCK ***\n";
-      size_t fockDim = fockMatrix->dimension();
+      size_t fockDim = fockMatrix->nRows();
       for(MatsT *mat : fockMatrix->SZYXPointers())
         MPIBCast(mat,fockDim*fockDim,0,comm);
 
       std::cerr  << "  *** Scattering the 1PDM ***\n";
-      size_t denDim = this->onePDM->dimension();
+      size_t denDim = this->onePDM->nRows();
       for(auto p : this->onePDM->SZYXPointers())
         MPIBCast(p,denDim*denDim,0,comm);
     }

@@ -229,7 +229,7 @@ void ConventionalSCF<MatsT>::ediisErrorMetric(size_t iDIIS, size_t nExtrap) {
 
   diisBMat->clear();
   for( size_t a = 0; a < nMat; a++ ) {
-    size_t NB = diisOnePDM[iDIIS][a].dimension();
+    size_t NB = diisOnePDM[iDIIS][a].nRows();
 
     cqmatrix::Matrix<MatsT> dF(NB);
     cqmatrix::Matrix<MatsT> dD(NB);
@@ -301,9 +301,9 @@ void ConventionalSCF<MatsT>::allocExtrapStorage() {
       std::vector<cqmatrix::Matrix<MatsT>> d;
       std::vector<cqmatrix::Matrix<MatsT>> e;
       for( auto a = 0; a < fock.size(); a++ ) {
-        f.emplace_back(fock[a]->dimension());
-        d.emplace_back(fock[a]->dimension());
-        e.emplace_back(fock[a]->dimension());
+        f.emplace_back(fock[a]->nRows());
+        d.emplace_back(fock[a]->nRows());
+        e.emplace_back(fock[a]->nRows());
       }
       diisFock.push_back(f);
       diisOnePDM.push_back(d);
@@ -318,8 +318,8 @@ void ConventionalSCF<MatsT>::allocExtrapStorage() {
     prevFock.reserve(fock.size());
     prevOnePDM.reserve(fock.size());
     for( size_t a = 0; a < fock.size(); a++ ) {
-      prevFock.emplace_back(fock[a]->dimension());
-      prevOnePDM.emplace_back(fock[a]->dimension());
+      prevFock.emplace_back(fock[a]->nRows());
+      prevOnePDM.emplace_back(fock[a]->nRows());
     }
   }
 
@@ -348,7 +348,7 @@ void ConventionalSCF<MatsT>::FDCommutator(std::vector<cqmatrix::Matrix<MatsT>>& 
 
   ao2orthoDen();
   for( size_t a = 0; a < fockMatrixOrtho.size(); a++ ) {
-    size_t NB = fockMatrixOrtho[a].dimension();
+    size_t NB = fockMatrixOrtho[a].nRows();
     cqmatrix::Matrix<MatsT> SCR(NB);
     FDC[a].clear();
 
@@ -364,7 +364,7 @@ double ConventionalSCF<MatsT>::computeFDCConv() {
   // Compute the Max element
   double maxGrad = 0.;
   for( size_t a = 0; a < orbGrad.size(); a++ ) {
-    size_t NB = orbGrad[a].dimension();
+    size_t NB = orbGrad[a].nRows();
     for( size_t i = 0; i < NB * NB; i++ )
       if( maxGrad < std::abs(orbGrad[a].pointer()[i]) ) maxGrad = std::abs(orbGrad[a].pointer()[i]);
   }

@@ -82,12 +82,12 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
     OrbitalModifierNewBase(mpiComm) {
       // Allocate ortho Fock and Den
       vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
-      for( auto& f : fock ) fockSquareOrtho.emplace_back(f->dimension());
+      for( auto& f : fock ) fockSquareOrtho.emplace_back(f->nRows());
 
       vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
       for( auto& d : onePDM ) {
-        onePDMSquareOrtho.emplace_back(d->dimension());
-        onePDMSquareAO.emplace_back(d->dimension());
+        onePDMSquareOrtho.emplace_back(d->nRows());
+        onePDMSquareAO.emplace_back(d->nRows());
       }
     }
 

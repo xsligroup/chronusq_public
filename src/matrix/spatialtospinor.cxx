@@ -163,7 +163,7 @@ PauliSpinorMatrices<MatsT>::spinGatherToBlocks(
 template <typename MatsT>
 template <typename MatsU>
 Matrix<MatsU> Matrix<MatsT>::spatialToSpinBlock() const {
-  Matrix<MatsU> spinor(2 * nRow_, 2 * nCol_);
+  Matrix<MatsU> spinor(2 * nRows(), 2 * nColumns());
 /*
     for ( auto sp = 0ul; sp < 2; sp++)
     for ( auto nu = 0ul; nu < N_; nu++)
@@ -171,7 +171,7 @@ Matrix<MatsU> Matrix<MatsT>::spatialToSpinBlock() const {
       spinor(sp*N_ + mu, sp*N_ + nu) = (*this)(mu, nu);
     }
 */
-  SetMatDiag(nRow_, nCol_, pointer(), nRow_, spinor.pointer(), 2 * nRow_);
+  SetMatDiag(nRows(), nColumns(), pointer(), nRows(), spinor.pointer(), 2 * nRows());
   return spinor;
 }
 

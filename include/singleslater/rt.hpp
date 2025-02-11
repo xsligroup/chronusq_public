@@ -401,7 +401,7 @@ void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt, 
   // Convert AO fock matrices to orthonormal basis (in A/B blocks)
   std::vector<cqmatrix::Matrix<dcomplex>> fockMatrixOrthoAB = {};
   for( size_t i = 0; i < fock_k.size(); i++ ) {
-    fockMatrixOrthoAB.emplace_back(fock_k[i]->dimension());
+    fockMatrixOrthoAB.emplace_back(fock_k[i]->nRows());
     if( ortho[i]->hasOverlap() )
       fockMatrixOrthoAB[i] = ortho[i]->nonortho2ortho(*fock_k[i]);
     else 

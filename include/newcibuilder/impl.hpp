@@ -277,7 +277,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
   if (oneTDM and reduceOneTDM) {
     // put the results to reduceOneTDM instead
     reducedOneTDM = std::make_shared<cqmatrix::Matrix<MatsT>>(
-        oneTDM->dimension());
+        oneTDM->nRows());
     *reducedOneTDM = *oneTDM;
     oneTDM.swap(reducedOneTDM);
   }
@@ -366,7 +366,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedVectors<MatsT>& CBra,
   
   // data reductions
   if (oneTDM and reduceOneTDM) {
-    size_t reductionDim = oneTDM->dimension();
+    size_t reductionDim = oneTDM->nRows();
     reductionDim *= reductionDim;
     MPIAllReduce(oneTDM->pointer(), reductionDim, reducedOneTDM->pointer(), comm_);
   }

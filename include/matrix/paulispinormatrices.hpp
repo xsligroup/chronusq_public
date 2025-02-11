@@ -193,7 +193,7 @@ public:
   bool hasZ() const { return components_.size() >= 2; }
   size_t nComponent() const { return components_.size(); }
 
-  size_t dimension() const{ return S().dimension(); }
+  const std::vector<size_t>& dimensions() const{ return S().dimensions(); }
   size_t nColumns() const { return S().nColumns(); }
   size_t nRows() const { return S().nRows(); }
 

@@ -98,7 +98,7 @@ namespace ChronusQ {
 
     // Build the B matrix
     for( auto l=0ul; l<errorMetric[0].size(); l++){
-      size_t NB = errorMetric[0][l].dimension();
+      size_t NB = errorMetric[0][l].nRows();
       size_t OSize = NB*NB;
       for(auto j = 0ul; j < nExtrap; j++){
         for(auto k = 0ul; k <= j; k++){

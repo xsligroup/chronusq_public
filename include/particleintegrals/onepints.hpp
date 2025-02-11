@@ -57,14 +57,14 @@ namespace ChronusQ {
         ParticleIntegrals(other), mat_(other.mat_) {}
     OnePInts( OnePInts &&other ) = default;
     OnePInts( const cqmatrix::Matrix<IntsT> &other ):
-        ParticleIntegrals(other.dimension()),
+        ParticleIntegrals(other.nRows()),
         mat_(other) {}
     template <typename IntsU>
     OnePInts( const cqmatrix::Matrix<IntsU> &other, int = 0 ):
-        ParticleIntegrals(other.dimension()),
+        ParticleIntegrals(other.nRows()),
         mat_(other) {}
     OnePInts( cqmatrix::Matrix<IntsT> &&other ):
-        ParticleIntegrals(other.dimension()),
+        ParticleIntegrals(other.nRows()),
         mat_(std::move(other)) {}
 
     OnePInts& operator=( const OnePInts &other ) {
@@ -83,13 +83,13 @@ namespace ChronusQ {
     }
     template <typename IntsU>
     OnePInts& operator=( const cqmatrix::Matrix<IntsU> &other ) {
-      NB = other.dimension();
+      NB = other.nRows();
       mat_ = other;
       return *this;
     }
     template <typename IntsU>
     OnePInts& operator=( cqmatrix::Matrix<IntsU> &&other ) {
-      NB = other.dimension();
+      NB = other.nRows();
       mat_ = std::move(other);
       return *this;
     }

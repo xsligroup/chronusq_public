@@ -240,7 +240,7 @@ namespace ChronusQ {
     
     // only save MO when doing orbital rotation
     if (settings.doSCF and this->savFile.exists()) {
-      auto mo_dim = this->reference().mo[0].dimension();
+      auto mo_dim = this->reference().mo[0].nRows();
       this->savFile.safeWriteData("SCF/MO1", this->reference().mo[0].pointer(), {mo_dim, mo_dim});
     }
 

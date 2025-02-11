@@ -43,7 +43,7 @@ void DASCIBuilder<MatsT>::build1TDM(
   
   std::vector<cqmatrix::Matrix<MatsT>> SCR;
   for (auto i = 0ul; i < GetNumThreads() - 1; i++) {
-    SCR.emplace_back(oneTDM.dimension());
+    SCR.emplace_back(oneTDM.nRows());
     SCR.back().clear();
   }
 

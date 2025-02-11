@@ -215,7 +215,7 @@ namespace ChronusQ {
     applyToEach([&](SubSSPtr& ss) {
       if( MPISize(ss->comm) > 1 ) {
         std::cerr  << "  *** Scattering the AO-MOs ***\n";
-        size_t Nmo = ss->mo[0].dimension();
+        size_t Nmo = ss->mo[0].nRows();
         MPIBCast(ss->mo[0].pointer(),Nmo*Nmo,0,ss->comm);
         if( ss->nC == 1 and not ss->iCS )
           MPIBCast(ss->mo[1].pointer(),Nmo*Nmo,0,ss->comm);
@@ -226,12 +226,12 @@ namespace ChronusQ {
           MPIBCast(ss->eps2,Nmo,0,ss->comm);
 
         std::cerr  << "  *** Scattering FOCK ***\n";
-        size_t fockDim = ss->fockMatrix->dimension();
+        size_t fockDim = ss->fockMatrix->nRows();
         for(MatsT *mat : ss->fockMatrix->SZYXPointers())
           MPIBCast(mat,fockDim*fockDim,0,ss->comm);
 
         std::cerr  << "  *** Scattering the 1PDM ***\n";
-        size_t denDim = ss->onePDM->dimension();
+        size_t denDim = ss->onePDM->nRows();
         for(auto p : ss->onePDM->SZYXPointers())
           MPIBCast(p,denDim*denDim,0,ss->comm);
       }

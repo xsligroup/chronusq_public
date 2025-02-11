@@ -215,8 +215,8 @@ namespace ChronusQ{
     fullMat.clear();
 
     MatsT * Hbar = fullMat.pointer();
-    size_t ldH = fullMat.dimension();
-    size_t nCol = fullMat.dimension();
+    size_t ldH = fullMat.nRows();
+    size_t nCol = fullMat.nColumns();
 
     MatsT * Hbar0S = nullptr;
     MatsT * Hbar0D = nullptr;

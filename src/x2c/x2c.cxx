@@ -45,7 +45,7 @@ namespace ChronusQ {
 
   template <typename MatsT>
   void GatherUSpin(const cqmatrix::Matrix<MatsT> &UL, const cqmatrix::Matrix<MatsT> &US, MatsT *U) {
-    size_t NP = UL.dimension() / 2;
+    size_t NP = UL.nRows() / 2;
     SetMat('N', NP, 2*NP, 1.0, UL.pointer(), 2*NP, U, 4*NP);
     SetMat('N', NP, 2*NP, 1.0, US.pointer(), 2*NP, U + NP, 4*NP);
     SetMat('N', NP, 2*NP, 1.0, UL.pointer() + NP, 2*NP, U + 2*NP, 4*NP);
@@ -58,7 +58,7 @@ namespace ChronusQ {
   template <typename MatsT>
   void ReOrganizeMOSpin(const cqmatrix::Matrix<MatsT> &moSpin, cqmatrix::Matrix<MatsT> &mo) {
 
-    size_t NP = moSpin.dimension() / 4;
+    size_t NP = moSpin.nRows() / 4;
 
     SetMat('N', NP, 4*NP,
            MatsT(1.), moSpin.pointer(), 4 * NP,
@@ -390,23 +390,23 @@ namespace ChronusQ {
     // Form X = S * L^-1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                2*NPU,2*NPU,2*NPU,MatsT(1.),S,4*NPU,L,4*NPU,
-               MatsT(0.),X->pointer(),X->dimension());
+               MatsT(0.),X->pointer(),X->nRows());
 
     // Form Y = sqrt(1 + X**H * X)
 
     // Y = X**H * X
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
                2*NPU,2*NPU,2*NPU,
-               MatsT(1.),X->pointer(),X->dimension(),
-               X->pointer(),X->dimension(),
-               MatsT(0.),Y->pointer(),Y->dimension());
+               MatsT(1.),X->pointer(),X->nRows(),
+               X->pointer(),X->nRows(),
+               MatsT(0.),Y->pointer(),Y->nRows());
 
     // Y = Y + I
     for(auto j = 0; j < 2*NPU; j++) (*Y)(j,j) += 1.0;
 
     // Y = Y^-0.5
     MatDiagFunc(std::function<double(double)>([](double x){ return std::pow(x, -0.5); }),
-                2*NPU, Y->pointer(), Y->dimension(), Y->pointer(), Y->dimension());
+                2*NPU, Y->pointer(), Y->nRows(), Y->pointer(), Y->nRows());
 
     // Build the effective two component CH in "L"
     cqmatrix::Matrix<MatsT> FullCH2C(2*NPU);
@@ -433,23 +433,23 @@ namespace ChronusQ {
 
     // SCR1 = X**H * W
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
-               2*NPU,2*NPU,2*NPU,MatsT(1.),X->pointer(),X->dimension(),
+               2*NPU,2*NPU,2*NPU,MatsT(1.),X->pointer(),X->nRows(),
                Wp.pointer(),LDW,MatsT(0.),CSCR1,2*NPU);
 
     // 2C CH += SCR1 * X
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                2*NPU,2*NPU,2*NPU,MatsT(1.),CSCR1,2*NPU,
-               X->pointer(),X->dimension(),MatsT(1.),FullCH2C.pointer(),2*NPU);
+               X->pointer(),X->nRows(),MatsT(1.),FullCH2C.pointer(),2*NPU);
 
     // SCR1 = CH2C * Y
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
                2*NPU,2*NPU,2*NPU,MatsT(1.),FullCH2C.pointer(),2*NPU,
-               Y->pointer(),Y->dimension(),MatsT(0.),CSCR1,2*NPU);
+               Y->pointer(),Y->nRows(),MatsT(0.),CSCR1,2*NPU);
 
 
     // 2C CH = Y * SCR1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-               2*NPU,2*NPU,2*NPU,MatsT(1.),Y->pointer(),Y->dimension(),CSCR1,2*NPU,
+               2*NPU,2*NPU,2*NPU,MatsT(1.),Y->pointer(),Y->nRows(),CSCR1,2*NPU,
                MatsT(0.),FullCH2C.pointer(),2*NPU);
 
     // Allocate memory for the uncontracted spin components
@@ -1190,20 +1190,20 @@ namespace ChronusQ {
 
     // Form X = S * L^-1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),S,4*NP,
-      L,4*NP,dcomplex(0.),X->pointer(),X->dimension());
+      L,4*NP,dcomplex(0.),X->pointer(),X->nRows());
 
     // Form Y = sqrt(1 + X**H * X)
 
     // Y = X**H * X
-    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->dimension(),
-      X->pointer(),X->dimension(),dcomplex(0.),Y->pointer(),Y->dimension());
+    blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->nRows(),
+      X->pointer(),X->nRows(),dcomplex(0.),Y->pointer(),Y->nRows());
 
     // Y = Y + I
     for(auto j = 0; j < 2*NP; j++) (*Y)(j,j) += 1.0;
 
     // Y -> V * y * V**H 
     // XXX: Store the eigenvalues of Y in CHEV
-    HermetianEigen('V','U',2*NP,Y->pointer(),Y->dimension(),CHEV);
+    HermetianEigen('V','U',2*NP,Y->pointer(),Y->nRows(),CHEV);
 
     // SCR1 -> V * y^-0.25
     for(auto j = 0ul; j < 2*NP; j++)
@@ -1212,7 +1212,7 @@ namespace ChronusQ {
 
     // Y = SCR1 * SCR1**H
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
-      CSCR1,2*NP,dcomplex(0.),Y->pointer(),Y->dimension());
+      CSCR1,2*NP,dcomplex(0.),Y->pointer(),Y->nRows());
 
     // Build the effective two component CH 
     cqmatrix::Matrix<dcomplex> FullCH2C(2*NP);
@@ -1238,23 +1238,23 @@ namespace ChronusQ {
 
     // SCR1 = X**H * W
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
-               2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->dimension(),
+               2*NP,2*NP,2*NP,dcomplex(1.),X->pointer(),X->nRows(),
                Wp,LDW,dcomplex(0.),CSCR1,2*NP);
 
     // 2C CH += SCR1 * X
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                2*NP,2*NP,2*NP,dcomplex(1.),CSCR1,2*NP,
-               X->pointer(),X->dimension(),dcomplex(1.),FullCH2C.pointer(),2*NP);
+               X->pointer(),X->nRows(),dcomplex(1.),FullCH2C.pointer(),2*NP);
 
     // SCR1 = CH2C * Y
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                2*NP,2*NP,2*NP,dcomplex(1.),FullCH2C.pointer(),2*NP,
-               Y->pointer(),Y->dimension(),dcomplex(0.),CSCR1,2*NP);
+               Y->pointer(),Y->nRows(),dcomplex(0.),CSCR1,2*NP);
 
 
     // 2C CH = Y * SCR1
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,
-               2*NP,2*NP,2*NP,dcomplex(1.),Y->pointer(),Y->dimension(),CSCR1,2*NP,
+               2*NP,2*NP,2*NP,dcomplex(1.),Y->pointer(),Y->nRows(),CSCR1,2*NP,
                dcomplex(0.),FullCH2C.pointer(),2*NP);
 
 
@@ -1348,7 +1348,7 @@ namespace ChronusQ {
     std::fill_n(RT,4*NB*NPU,MatsT(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NPU,2*NPU,MatsT(1.),UP2CSUK,2*NB,
-               Y->pointer(),Y->dimension(),MatsT(0.),RT,2*NB);
+               Y->pointer(),Y->nRows(),MatsT(0.),RT,2*NB);
 
     // 3. Xp = 2 c p^-1 X
     double twoC = 2 * SpeedOfLight;
@@ -1415,7 +1415,7 @@ namespace ChronusQ {
     std::fill_n(RT,4*NB*NP,dcomplex(0.));
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,
                2*NB,2*NP,2*NP,dcomplex(1.),UP2CSUK,2*NB,
-               Y->pointer(),Y->dimension(),dcomplex(0.),RT,2*NB);  
+               Y->pointer(),Y->nRows(),dcomplex(0.),RT,2*NB);  
 
     // 3. Xp = 2 c p^-1 X
     // Mind that p is reverted by the end of computeOneEX2C 
@@ -1692,13 +1692,13 @@ namespace ChronusQ {
     cqmatrix::Matrix<IntsT> T2c(uncontractedInts_.kinetic->matrix().template spatialToSpinBlock<IntsT>());
 
     // Get and reorganize coefficients
-    cqmatrix::Matrix<MatsT> fourCompMO(fourCompMOSpin.dimension());
+    cqmatrix::Matrix<MatsT> fourCompMO(fourCompMOSpin.nRows());
     fourCompMO.clear();
     ReOrganizeMOSpin(fourCompMOSpin, fourCompMO);
 
     // Get pointers to "L" and "S" components of eigenvectors
     MatsT *coef = fourCompMO.pointer();
-    size_t ldCoef = fourCompMO.dimension();
+    size_t ldCoef = fourCompMO.nRows();
     MatsT *L = coef + 2*NP * ldCoef;
     MatsT *S = L + 2*NP;
 
@@ -1712,7 +1712,7 @@ namespace ChronusQ {
     // Form X = S * L^-1
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
                2*NP,2*NP,2*NP,MatsT(1.),S,ldCoef,L,ldCoef,
-               MatsT(0.),X->pointer(),X->dimension());
+               MatsT(0.),X->pointer(),X->nRows());
 
     // Compute UL and US
 
@@ -1721,48 +1721,48 @@ namespace ChronusQ {
     cqmatrix::Matrix<IntsT> SinvHalf(2*NP);
 
     MatDiagFunc(std::function<double(double)>([](double x){ return std::sqrt(x); }),
-                S2c.dimension(), S2c.pointer(), S2c.dimension(),
-                Shalf.pointer(), Shalf.dimension());
+                S2c.nRows(), S2c.pointer(), S2c.nRows(),
+                Shalf.pointer(), Shalf.nRows());
     MatDiagFunc(std::function<double(double)>([](double x){ return 1.0/std::sqrt(x); }),
-                S2c.dimension(), S2c.pointer(), S2c.dimension(),
-                SinvHalf.pointer(), SinvHalf.dimension());
+                S2c.nRows(), S2c.pointer(), S2c.nRows(),
+                SinvHalf.pointer(), SinvHalf.nRows());
 
     // S + 1/2c^2 X^H T X
     const double TFact = 0.5 / (SpeedOfLight * SpeedOfLight);
-    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(S2c + TFact * T2c.transform('N', X->pointer(), X->dimension(), X->dimension()));
+    Y = std::make_shared<cqmatrix::Matrix<MatsT>>(S2c + TFact * T2c.transform('N', X->pointer(), X->nRows(), X->nRows()));
 
     // S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2
-    *Y = Y->transform('N', SinvHalf.pointer(), SinvHalf.dimension(), SinvHalf.dimension());
+    *Y = Y->transform('N', SinvHalf.pointer(), SinvHalf.nRows(), SinvHalf.nRows());
 
     // ( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2
     MatDiagFunc(std::function<double(double)>([](double x){ return 1.0/std::sqrt(x); }),
-                Y->dimension(), Y->pointer(), Y->dimension(),
-                Y->pointer(), Y->dimension());
+                Y->nRows(), Y->pointer(), Y->nRows(),
+                Y->pointer(), Y->nRows());
 
     cqmatrix::Matrix<MatsT> SCR(2*NP);
 
     // CSCR1 = (( S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2 )^-1/2 S^1/2)^T
     blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
                2*NP, 2*NP, 2*NP,
-               MatsT(1.0), Shalf.pointer(), Shalf.dimension(),
-               Y->pointer(), Y->dimension(),
-               MatsT(0.0), SCR.pointer(), SCR.dimension());
+               MatsT(1.0), Shalf.pointer(), Shalf.nRows(),
+               Y->pointer(), Y->nRows(),
+               MatsT(0.0), SCR.pointer(), SCR.nRows());
 
     // compute UL
     cqmatrix::Matrix<MatsT> ULsub(2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans,
                2*NP, 2*NP, 2*NP,
-               MatsT(1.0), SinvHalf.pointer(), SinvHalf.dimension(),
-               SCR.pointer(), SCR.dimension(),
-               MatsT(0.0), ULsub.pointer(), ULsub.dimension());
+               MatsT(1.0), SinvHalf.pointer(), SinvHalf.nRows(),
+               SCR.pointer(), SCR.nRows(),
+               MatsT(0.0), ULsub.pointer(), ULsub.nRows());
 
     // compute US = X UL
     cqmatrix::Matrix<MatsT> USsub(2*NP);
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                2*NP, 2*NP, 2*NP,
-               MatsT(1.0), X->pointer(), X->dimension(),
-               ULsub.pointer(), ULsub.dimension(),
-               MatsT(0.0), USsub.pointer(), USsub.dimension());
+               MatsT(1.0), X->pointer(), X->nRows(),
+               ULsub.pointer(), ULsub.nRows(),
+               MatsT(0.0), USsub.pointer(), USsub.nRows());
 
     // Compute the mappings from primitives to CGTOs
     mapPrim2Cont = CQMemManager::get().malloc<IntsT>(NB*NP);
@@ -1893,7 +1893,7 @@ namespace ChronusQ {
       // BCast fockMatrix to all MPI processes
       if( MPISize(ss->comm) > 1 ) {
         std::cerr  << "  *** Scattering the X2C Fock ***\n";
-        size_t NB = ref.fockMatrix->dimension();
+        size_t NB = ref.fockMatrix->nRows();
         for(auto mat : ref.fockMatrix->SZYXPointers())
           MPIBCast(mat,NB*NB,0,ss->comm);
       }

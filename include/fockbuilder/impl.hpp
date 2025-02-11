@@ -92,7 +92,7 @@ namespace ChronusQ {
     
     coulombMatrices.push_back(
       std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
-      ss.coulombMatrix->dimension(), false, false)
+      ss.coulombMatrix->nRows(), false, false)
     );
 
     formRawGDInBatches(ss, pert, increment, xHFX, HerDen, onePDMs, coulombMatrices, exchangeMatrices, twoeHs);

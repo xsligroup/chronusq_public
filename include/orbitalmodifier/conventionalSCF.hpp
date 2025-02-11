@@ -58,12 +58,12 @@ public:
     // Allocate ortho Fock and Den
     vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
     for( auto& f : fock )
-      fockMatrixOrtho.emplace_back(f->dimension());
+      fockMatrixOrtho.emplace_back(f->nRows());
     vecShrdPtrMat<MatsT> den = this->orbitalModifierDrivers.getOnePDM();
     for( auto& d : den )
-      onePDMOrtho.emplace_back(d->dimension());
+      onePDMOrtho.emplace_back(d->nRows());
     for( auto& d : den )
-      orbGrad.emplace_back(d->dimension());
+      orbGrad.emplace_back(d->nRows());
 
     if( this->scfControls.doExtrap ) allocExtrapStorage();
   };

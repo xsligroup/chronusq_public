@@ -38,14 +38,14 @@ void NewtonRaphsonSCF<MatsT>::saveRefMOs(vecMORef<MatsT>& mo) {
   if( not refMOsAllocated ) {
     refMO.reserve(nMO);
     for( size_t i = 0; i < nMO; i++ ) {
-      size_t NBC = mo[i].get().dimension();
+      size_t NBC = mo[i].get().nRows();
       refMO.emplace_back(NBC);
     }
   }
 
   // Copy MO's
   for( size_t i = 0; i < nMO; i++ ) {
-    size_t NBC = mo[i].get().dimension();
+    size_t NBC = mo[i].get().nRows();
     refMO[i] = mo[i].get();
   }
 
@@ -62,7 +62,7 @@ void NewtonRaphsonSCF<MatsT>::rotateMOs(vecMORef<MatsT>& mo) {
 
   size_t disp = 0;
   for( size_t i = 0; i < mo.size(); i++ ) {
-    size_t NBC   = mo[i].get().dimension();
+    size_t NBC   = mo[i].get().nRows();
 
     // Rotate MO's
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
@@ -87,7 +87,7 @@ std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
   std::vector<cqmatrix::Matrix<MatsT>> A;
   A.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
-    A.emplace_back(den[i]->dimension());
+    A.emplace_back(den[i]->nRows());
   for( auto& a : A ) a.clear();
 
   // Parse parameters to make antisymmetric matrices
@@ -106,12 +106,12 @@ std::vector<cqmatrix::Matrix<MatsT>> NewtonRaphsonSCF<MatsT>::computeUnitary(){
   std::vector<cqmatrix::Matrix<MatsT>> U;
   U.reserve(nMat);
   for( size_t i=0; i<nMat; ++i )
-    U.emplace_back(den[i]->dimension());
+    U.emplace_back(den[i]->nRows());
   for( auto& u : U ) u.clear();
 
   // Compute either exp(A) or Cayley transform
   for( size_t i=0; i<nMat; ++i ){
-    size_t N = U[i].dimension();
+    size_t N = U[i].nRows();
     // Try to compute exp(A) or use Cayley transform if failed
     try{
       MatExp(N,A[i].pointer(),N,U[i].pointer(),N);
@@ -161,7 +161,7 @@ void NewtonRaphsonSCF<MatsT>::computeGradient(vecMORef<MatsT>& mo) {
     std::vector<cqmatrix::Matrix<MatsT>> moFock;
     moFock.reserve(nMat);
     for( size_t i=0; i<nMat; ++i ) {
-      size_t NB = mo[i].get().dimension();
+      size_t NB = mo[i].get().nRows();
       moFock.emplace_back( fock[i]->transform('N',mo[i].get().pointer(),NB,NB) );
     }
 

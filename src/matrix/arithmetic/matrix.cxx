@@ -72,7 +72,7 @@ Matrix<MatsT>& Matrix<MatsT>::operator=( const Matrix<MatsT> &other ) {
   if (this != &other) { // self-assignment check expected
     if (not isSameDimension(other))
       CErr("Cannot assign Matrix of different size.");
-    std::copy_n(other.ptr_, nRow_ * nCol_, ptr_);
+    array_ = std::make_shared<NDArray<MatsT>>(*other.array_);
   }
   return *this;
 }
@@ -84,9 +84,7 @@ Matrix<MatsT>& Matrix<MatsT>::operator=( Matrix<MatsT> &&other ) {
   if (this != &other) { // self-assignment check expected
     if (not isSameDimension(other))
       CErr("Cannot assign Matrix of different size.");
-    CQMemManager::get().free(ptr_);
-    ptr_ = other.ptr_;
-    other.ptr_ = nullptr;
+    array_ = std::move(other.array_);
   }
   return *this;
 }
@@ -308,7 +306,7 @@ template <typename MatsT>
 void Matrix<MatsT>::setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, MatsT diagValue) {
   
   if (not this->isSquareMatrix()) CErr("setTriangle only supported for square matrix");
-  size_t N_ = nRow_;
+  size_t N_ = nRows();
   switch (upLo) {
     case blas::Uplo::Upper:
     for (size_t j = 1; j < N_; j++)

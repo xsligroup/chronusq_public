@@ -169,11 +169,11 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::initialize(size_t maxPoints) {
   std::cout<<"xsli test RealTimeSCF initialize 2"<<std::endl;
 
   std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDM = this->singleSlaterSystem.getOnePDM();
-  for (auto &d: onePDM) previousOnePDMSquareOrtho.emplace_back(d->dimension());
+  for (auto &d: onePDM) previousOnePDMSquareOrtho.emplace_back(d->nRows());
   std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock = this->singleSlaterSystem.getFock();
   for (auto &f: fock) {
-    previousFockSquareOrtho.emplace_back(f->dimension());
-    unitarySquareOrtho.emplace_back(f->dimension());
+    previousFockSquareOrtho.emplace_back(f->nRows());
+    unitarySquareOrtho.emplace_back(f->nRows());
   }
 
   // XSLI: number of max steps should be calculated when the tdSCFOptions is set up

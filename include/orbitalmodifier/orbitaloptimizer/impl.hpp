@@ -103,14 +103,14 @@ void OrbitalOptimizer<MatsT>::runOrbitalModifier(EMPerturbation& pert, vecMORef<
     if( MPISize(this->comm) > 1 ) {
       for( auto& m : mo ){
         std::cerr  << "  *** Scattering the MOs ***\n";
-        size_t Nmo = m.get().dimension();
+        size_t Nmo = m.get().nRows();
         MPIBCast(m.get().pointer(),Nmo*Nmo,0,this->comm);
       }
 
       std::cerr  << "  *** Scattering EPS ***\n";
       size_t cnt = 0;
       for( auto* e : eps ){
-        size_t Nmo = mo[cnt].get().dimension();
+        size_t Nmo = mo[cnt].get().nRows();
         MPIBCast(e,Nmo,0,this->comm);
         ++cnt;
       }
@@ -292,7 +292,7 @@ bool OrbitalOptimizer<MatsT>::evaluateProgress(EMPerturbation& pert) {
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->orbitalModifierDrivers.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->nRows());
           prevOnePDM[a] = *onePDM[a];
         }
       } else {
@@ -303,7 +303,7 @@ bool OrbitalOptimizer<MatsT>::evaluateProgress(EMPerturbation& pert) {
         for( size_t a = 0; a < onePDM.size(); a++ ) {
           cqmatrix::Matrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
           prevOnePDM[a] = *onePDM[a];
-          size_t NB = onePDM[a]->dimension();
+          size_t NB = onePDM[a]->nRows();
           this->scfConv.rmsdP += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
           // std::abs returns the norm of a complex number
           for( size_t b = 0; b < NB*NB; b++) {
@@ -357,7 +357,7 @@ double OrbitalOptimizer<MatsT> :: computeDensityConv() {
     double rmsDen = 0.;
     for( size_t a=0; a<currDen.size(); a++ ) {
         cqmatrix::Matrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
-        size_t NB = currDen[a]->dimension();
+        size_t NB = currDen[a]->nRows();
         rmsDen += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
         prevOnePDM[a] = *currDen[a];
     }
@@ -374,7 +374,7 @@ void OrbitalOptimizer<MatsT>::computeEigenvalues(EMPerturbation& pert, vecMORef<
   vecShrdPtrMat<MatsT> fock = this->orbitalModifierDrivers.getFock();
 
   for( size_t i = 0; i < mo.size(); i++ ) {
-    size_t NB = fock[i]->dimension();
+    size_t NB = fock[i]->nRows();
 
     cqmatrix::Matrix<MatsT> moFock = fock[i]->transform('N', mo[i].get().pointer(), NB, NB);
     for( size_t a = 0; a < NB; a++ )

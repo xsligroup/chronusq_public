@@ -360,6 +360,8 @@ namespace ChronusQ {
 
   }
 
+  void copyIntermediates();
+
 
 };
 

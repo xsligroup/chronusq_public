@@ -76,9 +76,9 @@ public:
 
   // Change out the Overlap Matrix
   void setOverlap(cqmatrix::Matrix<MatsT>& s) {
-    if (not overlap or s.dimension() != overlap->dimension()) {
-      size_t nDim   = s.dimension();
-      if (overlap and nDim != overlap->dimension()) {
+    if (not overlap or s.nRows() != overlap->nRows()) {
+      size_t nDim   = s.nRows();
+      if (overlap and nDim != overlap->nRows()) {
         std::cout << std::endl;
         std::cout << "WARNING: The overlap matrix given to setOverlap is a different dimension" << std::endl;
         std::cout << "WARNING: Changing the dimension of overlap and setting the new matrix" << std::endl << std::endl;

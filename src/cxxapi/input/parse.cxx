@@ -124,14 +124,11 @@ namespace ChronusQ {
     std::string dataHeader;
 
     // Keywords that are case sensitive (do *not* transform data to UPPER)
-    std::set<std::string> caseSens, caseSensReverse;
+    std::vector<std::regex> caseSensRegexes;
 
     // Add case sensitive data keywords here
-    caseSens.insert("BASIS.BASIS");
-
-    // Reverse entries in caseSens
-    for (auto &sec : caseSens)
-      caseSensReverse.insert(reverse_by_dot(sec));
+    caseSensRegexes.emplace_back(".*BASIS\\.BASIS$");
+    caseSensRegexes.emplace_back("^FILES\\..*");
 
     // Loop over all lines of the file
     for( auto line_iter = lines_begin; line_iter != lines_end; ++line_iter ) {
@@ -188,10 +185,9 @@ namespace ChronusQ {
         }
 
         // Capitalize data if not case sensitive
-        auto it = caseSensReverse.lower_bound(reverse_by_dot(dataHeader));
-        if ((it == caseSensReverse.end()
-              or it->find(reverse_by_dot(dataHeader)) != 0)
-            and not value.empty())
+        if (not std::any_of(caseSensRegexes.begin(), caseSensRegexes.end(), [&dataHeader](const std::regex& regex) {
+              return std::regex_search(dataHeader, regex);
+            }) and not value.empty())
           strToUpper(value);
 
         // Create a dictionary entry for the data field in the current

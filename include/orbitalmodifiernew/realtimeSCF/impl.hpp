@@ -234,7 +234,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::createRTDataSets(size_t maxPoints) 
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxDim*3});
 
   for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
-    size_t nBasis = this->onePDMSquareOrtho[i].dimension();
+    size_t nBasis = this->onePDMSquareOrtho[i].nRows();
     savFile.createDataSet<dcomplex>("RTNEW/TD_1PDM_ORTHO"+std::to_string(i), {integrationProgress.maxSavePoints*nBasis*nBasis});
     savFile.createDataSet<double>("RTNEW/ORBITALPOPULATION"+std::to_string(i), {integrationProgress.maxSavePoints*nBasis});
     if(tdSCFOptions.saveOnePDM)
@@ -283,7 +283,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
     savFile.partialWriteData("RTNEW/SAVESTEP", &integrationProgress.currentStep, {integrationProgress.lastSavePoint},{1},{0},{1});
 
     for (size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
-      size_t nBasis = this->onePDMSquareOrtho[i].dimension();
+      size_t nBasis = this->onePDMSquareOrtho[i].nRows();
       // TODO: Determine which density to save. 
       // For Ehrenfest dynamics with many RT restarts, we need to want to save the density AFTER Propagation to allow appropriate next restart
       // the current density (time k,   before propagation) is saved in onePDMSquareOrtho
@@ -350,7 +350,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
       savFile.partialReadData("RTNEW/TIME", &integrationProgress.currentTime, {restartStep}, {1}, {0}, {1});
 
       for (size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
-        size_t nBasis = this->onePDMSquareOrtho[i].dimension();
+        size_t nBasis = this->onePDMSquareOrtho[i].nRows();
         // NOTE: Reading from previous RT maxstep+1 density (density after the last propagation)
         if(savFile.getDims("RTNEW/TD_1PDM_ORTHO" + std::to_string(i)) != std::vector<hsize_t>{integrationProgress.maxSavePoints*nBasis*nBasis})
           CErr("Mismatched requested and saved propagation length!");

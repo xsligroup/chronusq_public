@@ -61,8 +61,8 @@ namespace ChronusQ {
         std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ssTwoeH = ss.twoeH;
         
         // allocate scratch space for coulombMatrix and exchangeMatrix 
-        ss.coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(ss.coulombMatrix->dimension());
-        ss.exchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ss.exchangeMatrix->dimension());
+        ss.coulombMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(ss.coulombMatrix->nRows());
+        ss.exchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ss.exchangeMatrix->nRows());
 
         for (auto i = 0ul; i < onePDMs.size(); i++) {
           

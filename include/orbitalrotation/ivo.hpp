@@ -49,7 +49,7 @@ namespace ChronusQ {
     
     if (nC == 1) CErr("1C IVO NYI");
     
-    size_t nAO     = mo.dimension();
+    size_t nAO     = mo.nRows();
     size_t nTOrb   = mopart.nMO;
     size_t nCorrO  = mopart.nCorrO;
     size_t nCorrE  = mopart.nCorrE;

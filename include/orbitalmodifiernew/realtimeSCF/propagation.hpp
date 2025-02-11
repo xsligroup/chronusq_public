@@ -93,7 +93,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::formPropagatorForAll(std::vector<st
   ProgramTimer::tick("Propagator Formation");
   this->ao2orthoFock(fockSquareAO);
   for( size_t i = 0; i < this->fockSquareOrtho.size(); i++ ) {
-    size_t NB = this->fockSquareOrtho[i].dimension();
+    size_t NB = this->fockSquareOrtho[i].nRows();
     MatExp('D',NB,dcomplex(0.,-integrationProgress.currentDeltaT),
            this->fockSquareOrtho[i].pointer(),NB,unitarySquareOrtho[i].pointer(),NB);
   }
@@ -111,7 +111,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::propagateDenForAll() {
   ProgramTimer::tick("Propagate Density");
 
   for( size_t i = 0; i < unitarySquareOrtho.size(); i++ ) {
-    size_t NB = this->fockSquareOrtho[i].dimension();
+    size_t NB = this->fockSquareOrtho[i].nRows();
     cqmatrix::Matrix<MatsT> SCR(NB);
 
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),

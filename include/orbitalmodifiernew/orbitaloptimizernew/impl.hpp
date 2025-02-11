@@ -106,14 +106,14 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
     if( MPISize(this->mpiComm) > 1 ) {
       for( auto& m : this->singleSlaterSystem.moCoefficients ){
         std::cerr  << "  *** Scattering the MOs ***\n";
-        size_t Nmo = m.get().dimension();
+        size_t Nmo = m.get().nRows();
         MPIBCast(m.get().pointer(),Nmo*Nmo,0,this->mpiComm);
       }
 
       std::cerr  << "  *** Scattering EPS ***\n";
       size_t cnt = 0;
       for( auto* e : this->singleSlaterSystem.moEigenvalues ){
-        size_t Nmo = this->singleSlaterSystem.moCoefficients[cnt].get().dimension();
+        size_t Nmo = this->singleSlaterSystem.moCoefficients[cnt].get().nRows();
         MPIBCast(e,Nmo,0,this->mpiComm);
         ++cnt;
       }
@@ -300,7 +300,7 @@ bool OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::evaluateProgress(EMPerturba
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->nRows());
           prevOnePDM[a] = *onePDM[a];
         }
       } else {
@@ -311,7 +311,7 @@ bool OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::evaluateProgress(EMPerturba
         for( size_t a = 0; a < onePDM.size(); a++ ) {
           cqmatrix::Matrix<MatsT> dDen = *onePDM[a] - prevOnePDM[a];
           prevOnePDM[a] = *onePDM[a];
-          size_t NB = onePDM[a]->dimension();
+          size_t NB = onePDM[a]->nRows();
           this->scfConv.rmsdP += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
           // std::abs returns the norm of a complex number
           for( size_t b = 0; b < NB*NB; b++) {
@@ -365,7 +365,7 @@ double OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::computeDensityConv() {
     double rmsDen = 0.;
     for( size_t a=0; a<currDen.size(); a++ ) {
         cqmatrix::Matrix<MatsT> dDen = *currDen[a] - prevOnePDM[a];
-        size_t NB = currDen[a]->dimension();
+        size_t NB = currDen[a]->nRows();
         rmsDen += blas::nrm2(NB*NB,dDen.pointer(),1) / NB;
         prevOnePDM[a] = *currDen[a];
     }
@@ -382,7 +382,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::computeEigenvalues(EMPertur
   vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
 
   for( size_t i = 0; i < this->singleSlaterSystem.moCoefficients.size(); i++ ) {
-    size_t NB = fock[i]->dimension();
+    size_t NB = fock[i]->nRows();
 
     cqmatrix::Matrix<MatsT> moFock = fock[i]->transform('N', this->singleSlaterSystem.moCoefficients[i].get().pointer(), NB, NB);
     for( size_t a = 0; a < NB; a++ )

@@ -33,7 +33,7 @@ namespace ChronusQ {
   template <typename MatsT>
   void Quantum<MatsT>::print1PDM(std::ostream &out) {
 
-    size_t NB = onePDM->dimension();
+    size_t NB = onePDM->nRows();
 
     prettyPrintSmart(out,"1PDM (AO) Scalar",onePDM->S().pointer(),NB,NB,NB);
 

@@ -72,7 +72,7 @@ namespace ChronusQ {
       
       auto AOTPI = formAOTPIInCore(cacheIntermediates); 
        
-      size_t nAO = ss_.mo[0].dimension();
+      size_t nAO = ss_.mo[0].nRows();
       auto MO = ss_.mo[0].pointer();
       
       MatsT * SCR = nullptr;

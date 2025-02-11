@@ -183,6 +183,19 @@ namespace cqmatrix {
         }
       };
 
+//      template <typename T>
+//      void readPauliSpinorMatrices(const std::string &dataSet) {
+//
+//        cqmatrix::PauliSpinorMatrices<T> data(jij);
+//        readData(dataSet + "_SCALAR", data.S().pointer());
+//        if (data.hasZ())
+//          readData(dataSet + "_MZ", data.Z().pointer());
+//        if (data.hasXY()) {
+//          readData(dataSet + "_MY", data.Y().pointer());
+//          readData(dataSet + "_MX", data.X().pointer());
+//        }
+//      };
+
       template <typename T>
       void partialReadData(const std::string &dataSet, T* data,
                            const std::vector<hsize_t> &start, const std::vector<hsize_t> &dims,
@@ -284,13 +297,14 @@ namespace cqmatrix {
       template <typename T>
       void safeWriteData(const std::string &dataSet,
                          cqmatrix::PauliSpinorMatrices<T> &data) {
-        size_t N = data.dimension();
-        safeWriteData(dataSet + "_SCALAR", data.S().pointer(), {N,N});
+        size_t M = data.nRows();
+        size_t N = data.nColumns();
+        safeWriteData(dataSet + "_SCALAR", data.S().pointer(), {N,M}); // Note: N and M are swapped for column-major storage
         if (data.hasZ())
-          safeWriteData(dataSet + "_MZ", data.Z().pointer(), {N,N});
+          safeWriteData(dataSet + "_MZ", data.Z().pointer(), {N,M});
         if (data.hasXY()) {
-          safeWriteData(dataSet + "_MY", data.Y().pointer(), {N,N});
-          safeWriteData(dataSet + "_MX", data.X().pointer(), {N,N});
+          safeWriteData(dataSet + "_MY", data.Y().pointer(), {N,M});
+          safeWriteData(dataSet + "_MX", data.X().pointer(), {N,M});
         }
       };
 

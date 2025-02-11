@@ -27,6 +27,9 @@
 namespace ChronusQ {
 namespace cqmatrix {
 
+template class NDArray<double>;
+template class NDArray<dcomplex>;
+
 template class Matrix<double>;
 template class Matrix<dcomplex>;
 
@@ -36,6 +39,12 @@ template class PauliSpinorMatrices<dcomplex>;
 template <typename MatsT>
 std::ostream& operator<<(std::ostream &out, const Matrix<MatsT> &mat) {
   mat.output(out);
+  return out;
+}
+
+template <typename MatsT>
+std::ostream& operator<<(std::ostream &out, const NDArray<MatsT> &ndarray) {
+  ndarray.output(out);
   return out;
 }
 

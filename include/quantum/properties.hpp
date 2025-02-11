@@ -37,7 +37,7 @@ namespace ChronusQ {
     double rZero(0.);
     bool isReal = std::is_same<double,MatsT>::value;
 
-    size_t NB = onePDM->dimension();
+    size_t NB = onePDM->nRows();
     size_t DSize = NB * NB;
 
     // Scalar trace option always valid

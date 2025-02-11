@@ -144,9 +144,12 @@ namespace ChronusQ {
 
     out << "\n\n";
 
-    std::pair<double, char> mem_postfix = memSize(mem);
-    out << "  *** Allocating " << std::fixed << std::setprecision(1)
-        << mem_postfix.first << " " << mem_postfix.second << "B *** \n";
+    if (memType == CQMemBackendType::PREALLOCATED) {
+      std::pair<double, char> mem_postfix = memSize(mem);
+      out << "  *** Allocating " << std::fixed << std::setprecision(1)
+          << mem_postfix.first << " " << mem_postfix.second << "B *** \n";
+    } else if (memType == CQMemBackendType::OS_DIRECT)
+      out << "  *** Memory will be allocated from OS Direct *** \n";
     out << "  *** ChronusQ will use " << GetNumThreads() 
         << " OpenMP threads ***\n";
     out << "  *** ChronusQ will use " << MPISize() 

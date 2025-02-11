@@ -60,7 +60,7 @@ class OrbitalOptimizerNew : public OrbitalModifierNew<singleSlaterT, MatsT, Ints
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
-          prevOnePDM.emplace_back(onePDM[a]->dimension());
+          prevOnePDM.emplace_back(onePDM[a]->nRows());
           prevOnePDM[a] = *onePDM[a];
         }
     };

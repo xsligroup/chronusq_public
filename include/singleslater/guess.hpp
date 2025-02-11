@@ -312,7 +312,7 @@ namespace ChronusQ {
     // BCast random fock to all MPI processes
     if( MPISize(comm) > 1 ) {
       std::cerr  << "  *** Scattering the CORE GUESS Fock ***\n";
-      size_t NB = this->fockMatrix->dimension();
+      size_t NB = this->fockMatrix->nRows();
       for(auto mat : this->fockMatrix->SZYXPointers())
         MPIBCast(mat,NB*NB,0,comm);
     }
@@ -523,7 +523,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::RandomGuess() {
 
-    size_t NB = this->fockMatrix->dimension();
+    size_t NB = this->fockMatrix->nRows();
 
     // Set up random number generator
     std::random_device rd;
@@ -1023,7 +1023,7 @@ namespace ChronusQ {
       }
 
       // Initialize onePDM
-      auto scr1PDMSize = onePDMtmp->dimension();
+      auto scr1PDMSize = onePDMtmp->nRows();
       if( not guessBasisSet ) {
         // Guess 1PDM same size as calculation 1PDM
         if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;

@@ -94,7 +94,7 @@ namespace ChronusQ {
 
     // Handle motmp->mo
     // motmp size (assumes alpha and beta same size)
-    auto scrMOSize = motmp[0].dimension();
+    auto scrMOSize = motmp[0].nRows();
 
     // Guess mo same size as calculation mo
     if( scrMOSize == NB ){
@@ -204,8 +204,8 @@ namespace ChronusQ {
   template <typename ScrMatsT>
   void SingleSlater<MatsT,IntsT>::convert1CRto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
-    size_t NB = outputMO[0].dimension();
-    size_t scrMOSize = inputMO[0].dimension();
+    size_t NB = outputMO[0].nRows();
+    size_t scrMOSize = inputMO[0].nRows();
 
     size_t smallMO=0; // RHF/ROHF index
 
@@ -231,8 +231,8 @@ namespace ChronusQ {
   template <typename ScrMatsT>
   void SingleSlater<MatsT,IntsT>::convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
-    size_t NB = outputMO[0].dimension();
-    size_t scrMOSize = inputMO[0].dimension();
+    size_t NB = outputMO[0].nRows();
+    size_t scrMOSize = inputMO[0].nRows();
 
     size_t smallMO=0; // UHF index
 
@@ -258,8 +258,8 @@ namespace ChronusQ {
   template <typename ScrMatsT>
   void SingleSlater<MatsT,IntsT>::convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
-    size_t NB = outputMO[0].dimension();
-    size_t scrMOSize = inputMO[0].dimension();
+    size_t NB = outputMO[0].nRows();
+    size_t scrMOSize = inputMO[0].nRows();
 
     size_t smallMO=0; // RHF/ROHF index
 
@@ -293,8 +293,8 @@ namespace ChronusQ {
   template <typename ScrMatsT>
   void SingleSlater<MatsT,IntsT>::convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
 
-    size_t NB = outputMO[0].dimension();
-    size_t scrMOSize = inputMO[0].dimension();
+    size_t NB = outputMO[0].nRows();
+    size_t scrMOSize = inputMO[0].nRows();
 
     size_t smallMO=0; // UHF index
 
@@ -335,8 +335,8 @@ namespace ChronusQ {
 
     size_t NB = this->basisSet().nBasis;
     size_t NP = this->basisSet().nPrimitive;
-    size_t NBC = outputMO[0].dimension();
-    size_t scrMOSize = inputMO[0].dimension();
+    size_t NBC = outputMO[0].nRows();
+    size_t scrMOSize = inputMO[0].nRows();
     size_t NBC2 = NBC*NBC;
 
     // dimensions: row 2*NP, column 2*NB

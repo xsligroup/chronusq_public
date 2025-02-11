@@ -593,7 +593,7 @@ namespace ChronusQ {
     size_t nThreads = GetNumThreads();
     std::vector<cqmatrix::Matrix<MatsT>> SCR;
     for (auto i = 0ul; i < nThreads; i++) {
-      SCR.emplace_back(TDM.dimension());
+      SCR.emplace_back(TDM.nRows());
       SCR.back().clear();
     }
 

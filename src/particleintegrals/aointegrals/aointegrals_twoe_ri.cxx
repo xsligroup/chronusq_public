@@ -117,7 +117,7 @@ namespace ChronusQ {
     auto topERI3Trans = tick();
 
     double *S = twocenterERI.pointer();
-    size_t NBRI = twocenterERI.dimension();
+    size_t NBRI = twocenterERI.nRows();
 
 #ifdef __DEBUGERI__
     prettyPrintSmart(std::cout, "Cholesky S", S, NBRI, NBRI, NBRI);

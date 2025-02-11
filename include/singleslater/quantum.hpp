@@ -523,7 +523,7 @@ template <typename MatsT, typename IntsT>
     
     //ROOT_ONLY(comm);
 
-    size_t NB = coeffAO.dimension();
+    size_t NB = coeffAO.nRows();
     cqmatrix::Matrix<MatsT> S(NB);
     
     // Obtaining overlap matrix S
@@ -589,7 +589,7 @@ template <typename MatsT, typename IntsT>
     std::vector<cqmatrix::Matrix<MatsT>> aoMO = this->mo;
 
     // Transform alpha Density and compute populations
-    size_t NB = aoMO[0].dimension();
+    size_t NB = aoMO[0].nRows();
     std::vector<double> population;
     std::vector<cqmatrix::Matrix<MatsT>> moDen;
 

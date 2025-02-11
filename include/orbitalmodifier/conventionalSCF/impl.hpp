@@ -93,8 +93,8 @@ void ConventionalSCF<MatsT>::diagOrthoFock(vecMORef<MatsT>& mo, vecEPtr& eps) {
   ROOT_ONLY(this->comm);
 
   for( size_t i = 0; i < mo.size(); i++ ) {
-    size_t NB = mo[i].get().dimension();
-    if( NB != fockMatrixOrtho[i].dimension() ) CErr("Ortho Fock and MO dimensions do not match");
+    size_t NB = mo[i].get().nRows();
+    if( NB != fockMatrixOrtho[i].nRows() ) CErr("Ortho Fock and MO dimensions do not match");
     std::copy_n(fockMatrixOrtho[i].pointer(),NB*NB,mo[i].get().pointer());
     int INFO  = HermetianEigen('V', 'L', NB, mo[i].get().pointer(), NB, eps[i]);
     if( INFO != 0 ) {

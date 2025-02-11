@@ -1540,7 +1540,7 @@ namespace ChronusQ {
 
     for(auto iVec = 0; iVec < nVec; iVec++) {
       MatsT* CMO = this->ref_->mo[0].pointer();
-      MatsT* CMOB = (ss.nC == 1) ? this->ref_->mo[1].pointer() : CMO + NB;
+      MatsT* CMOB = (ss.nC == 1) ? (ss.iCS ? nullptr : this->ref_->mo[1].pointer()) : CMO + NB;
 
       MatsT* V = grad + iVec*this->nSingleDim_;
 

@@ -53,7 +53,7 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   auto& mo     = postHF_.reference()->mo[0];
   const size_t nTOrb  = corrS.nMO;
   const size_t nTOrb2 = nTOrb * nTOrb;
-  const size_t nAO    = mo.dimension(); 
+  const size_t nAO    = mo.nRows(); 
   
   // offset it by inactive core index
   auto mo_pointer = mo.pointer(); 

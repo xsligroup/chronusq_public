@@ -40,7 +40,7 @@ template<typename MatsT>
 void Orthogonalization<MatsT>::computeOrtho() {
   if( not overlap ) CErr("Overlap has not been initialized");
 
-  size_t NB  = overlap->dimension();
+  size_t NB  = overlap->nRows();
   size_t nSQ = NB * NB;
 
   forwardTrans->clear();
@@ -195,18 +195,18 @@ void Orthogonalization<MatsT>::computeOrtho() {
   template<typename MatsT>
   cqmatrix::Matrix<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::Matrix<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( forwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in nonortho2ortho");
+    if( forwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in nonortho2ortho");
 
-    size_t NB = forwardTrans->dimension();
+    size_t NB = forwardTrans->nRows();
     return mat.transform('N', forwardTrans->pointer(), NB, NB);
   }
 
   template<typename MatsT>
   cqmatrix::Matrix<MatsT> Orthogonalization<MatsT>::ortho2nonortho(cqmatrix::Matrix<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( backwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in ortho2nonortho");
+    if( backwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in ortho2nonortho");
 
-    size_t NB = backwardTrans->dimension();
+    size_t NB = backwardTrans->nRows();
     return mat.transform('N', backwardTrans->pointer(), NB, NB);
   }
 
@@ -216,18 +216,18 @@ void Orthogonalization<MatsT>::computeOrtho() {
   template<typename MatsT>
   cqmatrix::PauliSpinorMatrices<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::PauliSpinorMatrices<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( forwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in nonortho2ortho");
+    if( forwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in nonortho2ortho");
 
-    size_t NB = forwardTrans->dimension();
+    size_t NB = forwardTrans->nRows();
     return mat.transform('N', forwardTrans->pointer(), NB, NB);
   }
 
   template<typename MatsT>
   cqmatrix::PauliSpinorMatrices<MatsT> Orthogonalization<MatsT>::ortho2nonortho(cqmatrix::PauliSpinorMatrices<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( backwardTrans->dimension() != mat.dimension() ) CErr("Matrices are not the same dimension in ortho2nonortho");
+    if( backwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in ortho2nonortho");
 
-    size_t NB = backwardTrans->dimension();
+    size_t NB = backwardTrans->nRows();
     return mat.transform('N', backwardTrans->pointer(), NB, NB);
   }
 
@@ -241,8 +241,8 @@ void Orthogonalization<MatsT>::computeOrtho() {
   void Orthogonalization<MatsT>::nonortho2orthoCoeffs(cqmatrix::Matrix<MatsT>& mo) const {
     if( not overlap ) CErr("Overlap has not been initialized in nonortho2orthoCoeffs");
 
-    size_t NB = mo.dimension();
-    if( forwardTrans->dimension() != NB ) CErr("Matrices are not the same dimension in nonortho2orthoCoeffs");
+    size_t NB = mo.nRows();
+    if( forwardTrans->nRows() != NB ) CErr("Matrices are not the same dimension in nonortho2orthoCoeffs");
 
     MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), backwardTrans->pointer(), NB, mo.pointer(), NB, MatsT(0.), SCR, NB);
@@ -254,8 +254,8 @@ void Orthogonalization<MatsT>::computeOrtho() {
   void Orthogonalization<MatsT>::ortho2nonorthoCoeffs(cqmatrix::Matrix<MatsT>& mo) const {
     if( not overlap ) CErr("Overlap has not been initialized in nonortho2orthoCoeffs");
 
-    size_t NB = mo.dimension();
-    if( forwardTrans->dimension() != NB ) CErr("Matrices are not the same dimension in ortho2nonorthoCoeffs");
+    size_t NB = mo.nRows();
+    if( forwardTrans->nRows() != NB ) CErr("Matrices are not the same dimension in ortho2nonorthoCoeffs");
 
     // Loop over components
     MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
@@ -298,8 +298,8 @@ void Orthogonalization<MatsT>::computeOrtho() {
     if( not overlap ) CErr("Overlap has not been initialized in orthogonalizeStates");
     if( nStates == 0 ) return;
 
-    size_t NB = mo.dimension();
-    if( overlap->dimension() != NB ) CErr("Matrices are not the same dimension in orthogonalizeStates");
+    size_t NB = mo.nRows();
+    if( overlap->nRows() != NB ) CErr("Matrices are not the same dimension in orthogonalizeStates");
 
     // Set pointer to start of states of interest
     MatsT* moPointer = mo.pointer() + disp*NB;
@@ -348,7 +348,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
     if( operators.size() != gradOrtho.size() )
       CErr("Different number of operators and output matrices in getOrthogonalizationGradients");
 
-    size_t NB = operators[0].dimension();
+    size_t NB = operators[0].nRows();
     size_t nSQ = NB*NB;
 
     if( orthoType == LOWDIN ) {

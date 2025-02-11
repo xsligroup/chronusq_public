@@ -55,7 +55,7 @@ public:
 
     vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
     for( auto& d : onePDM )
-      orbGrad.emplace_back(d->dimension());
+      orbGrad.emplace_back(d->nRows());
 
     if( this->scfControls.doExtrap ) allocExtrapStorage();
   };

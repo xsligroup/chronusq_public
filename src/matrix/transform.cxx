@@ -51,7 +51,7 @@ void Matrix<MatsT>::subsetTransform(
   
   if (not this->isSquareMatrix()) CErr("transform only supported for square matrix");
   
-  size_t N_ = nRow_;
+  size_t N_ = nRows();
   ResultsT* SCR = CQMemManager::get().malloc<ResultsT>(N_ * off_sizes[0].second);
   std::fill_n(SCR, N_ * off_sizes[0].second, ResultsT(0.0));
   MatsT * dummy = nullptr;

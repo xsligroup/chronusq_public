@@ -49,7 +49,7 @@ void NewOrbitalRotation<MatsT, IntsT>::generateIVOs(EMPerturbation & pert,
   
   if (nC == 1) CErr("1C IVO NYI");
   
-  const size_t nAO     = mo.dimension();
+  const size_t nAO     = mo.nRows();
   const size_t nTOrb   = mopart.nMO;
   const size_t nCorrO  = mopart.nCorrO;
   const size_t nCorrE  = mopart.nCorrE;

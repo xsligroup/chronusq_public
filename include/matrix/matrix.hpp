@@ -22,10 +22,8 @@
  *
  */
 #pragma once
-#include <memmanager.hpp>
-#include <cerr.hpp>
+#include <matrix/ndarray.hpp>
 #include <util/matout.hpp>
-#include <cqlinalg.hpp>
 
 namespace ChronusQ {
 namespace cqmatrix {
@@ -43,9 +41,7 @@ class Matrix {
   friend class Matrix;
 
 protected:
-  size_t nRow_;
-  size_t nCol_;
-  MatsT *ptr_ = nullptr;     ///< Raw matrix storage (2 index)
+  std::shared_ptr<NDArray<MatsT>> array_ = nullptr;     ///< Raw NDArray storage (2 index)
 
 public:
 
@@ -58,37 +54,42 @@ public:
    * @param nCol Number of columns
    */
   Matrix(size_t nRow, size_t nCol):
-      nRow_(nRow), nCol_(nCol) {
-    malloc();
+      array_(std::make_shared<NDArray<MatsT>>(std::vector<size_t>{nRow, nCol})) {}
+  Matrix(const std::vector<size_t> &dims):
+      array_(std::make_shared<NDArray<MatsT>>(dims)) {
+    if (dims.size() != 2)
+      CErr("Cannot create a Matrix with more or less than 2 dimensions.");
+  }
+  Matrix(std::shared_ptr<NDArray<MatsT>> array):
+      array_(array) {}
+  Matrix(const NDArray<MatsT> &ndarray):
+      array_(std::make_shared<NDArray<MatsT>>(ndarray)) {
+    if (not array_->isMatrix())
+      CErr("Cannot create a Matrix with more or less than 2 dimensions.");
+  }
+  Matrix(NDArray<MatsT> &&ndarray):
+      array_(std::make_shared<NDArray<MatsT>>(std::move(ndarray))) {
+    if (not array_->isMatrix())
+      CErr("Cannot create a Matrix with more or less than 2 dimensions.");
   }
   Matrix(size_t n):
-      Matrix(n, n) { }
+      Matrix(n, n) {}
 
   Matrix( const Matrix &other ):
-      Matrix(other.nRow_, other.nCol_) {
-    std::copy_n(other.ptr_, nRow_ * nCol_, ptr_);
-  }
+      Matrix(*other.array_){}
+  Matrix( Matrix &&other ) = default;
   template <typename MatsU>
   Matrix( const Matrix<MatsU> &other, int = 0 ):
-      Matrix(other.nRow_, other.nCol_) {
-    if (std::is_same<MatsU, dcomplex>::value
-        and std::is_same<MatsT, double>::value)
-      CErr("Cannot create a Real Matrix from a Complex one.");
-    std::copy_n(other.ptr_, nRow_ * nCol_, ptr_);
-  }
-  Matrix( Matrix &&other ):
-      nRow_(other.nRow_), nCol_(other.nCol_),
-      ptr_(other.ptr_) { other.ptr_ = nullptr; }
+      array_(std::make_shared<NDArray<MatsT>>(*other.array_, 0)) {}
   template <typename MatsU>
   Matrix( const PauliSpinorMatrices<MatsU> &other ):
-      Matrix(other.nRows(), other.nColumns()) {
+      Matrix(other.S(), 0) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real Matrix from a Complex one.");
     if (other.hasZ())
       CErr("Cannot create a Matrix from a PauliSpinorMatrices"
            " with XYZ components.");
-    std::copy_n(other.S().pointer(), nRow_ * nCol_, ptr_);
   }
   Matrix( PauliSpinorMatrices<MatsT> &&other ):
       Matrix(std::move(other.S())) {
@@ -100,45 +101,38 @@ public:
   Matrix( const ScaledMatrix<ScalarT, MatsU>& );
 
   // constructors that take an Eigen::Matrix
-  Matrix( const Eigen::Matrix<MatsT, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ): 
+  Matrix( const Eigen::Matrix<MatsT, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ):
       Matrix(eigen_mat.rows(), eigen_mat.cols()) {
-    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), ptr_);
+    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), pointer());
   }
   template <typename MatsU>
-  Matrix( const Eigen::Matrix<MatsU, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ): 
+  Matrix( const Eigen::Matrix<MatsU, Eigen::Dynamic, Eigen::Dynamic>& eigen_mat ):
       Matrix(eigen_mat.rows(), eigen_mat.cols()) {
     if (std::is_same<MatsU, dcomplex>::value
         and std::is_same<MatsT, double>::value)
       CErr("Cannot create a Real Matrix from a Complex Eigen matrix.");
-    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), ptr_);
+    std::copy_n(eigen_mat.data(), eigen_mat.rows()*eigen_mat.cols(), pointer());
   }
-  
+
   Matrix& operator=( const Matrix &other );
   Matrix& operator=( Matrix &&other );
 
   template <typename ScalarT, typename MatsU>
   Matrix& operator=( const ScaledMatrix<ScalarT, MatsU>& );
 
-  size_t dimension() const{ return nRow_; }
-  size_t nColumns() const { return nCol_; }
-  size_t nRows() const { return nRow_; }
-   
-  bool isSquareMatrix() const { return nRow_ == nCol_; }
+  const std::vector<size_t>& dimensions() const{ return array_->dimensions(); }
+  size_t nRows() const { return dimensions()[0]; }
+  size_t nColumns() const { return dimensions()[1]; }
+
+  bool isSquareMatrix() const { return nRows() == nColumns(); }
 
   template <typename MatU>
   bool isSameDimension(const Matrix<MatU>& other) const {
-    return nRow_ == other.nRows() and nCol_ == other.nColumns();
+    return nRows() == other.nRows() and nColumns() == other.nColumns();
   }
   
   void resize(size_t nRow, size_t nCol) {
-    if (nRow * nCol != nRow_ * nCol_) {
-      nRow_ = nRow;
-      nCol_ = nCol;
-        malloc();
-    } else {
-      nRow_ = nRow;
-      nCol_ = nCol;
-    }
+    array_->resize({nRow, nCol});
   }
 
   Matrix& operator*=( MatsT );
@@ -183,20 +177,18 @@ public:
   operator-( const ScaledMatrix<ScalarT, MatsU>& ) const;
 
   MatsT& operator()(size_t p, size_t q) {
-    return ptr_[p + q * nRow_];
+    return (*array_)(p,q);
   }
-  MatsT operator()(size_t p, size_t q) const {
-    return ptr_[p + q * nRow_];
+  const MatsT& operator()(size_t p, size_t q) const {
+    return (*array_)(p,q);
   }
 
   // Matrix direct access
-  MatsT* pointer() { return ptr_; }
-  const MatsT* pointer() const { return ptr_; }
+  MatsT* pointer() { return array_->pointer(); }
+  const MatsT* pointer() const { return array_->pointer(); }
 
   Matrix<double> real_part() {
-    Matrix<double> realMat(nRow_, nCol_);
-    GetMatRE('N', nRow_, nCol_, 1., pointer(), nRow_, realMat.pointer(), nRow_);
-    return realMat;
+    return array_->real_part();
   }
   
   // transform and return the transformed matrix
@@ -213,7 +205,7 @@ public:
   void setTriangle(blas::Uplo upLo, MatsT value, bool setDiag, MatsT diagValue = 1.0);
   
   void clear() {
-    std::fill_n(ptr_, nRow_ * nCol_, MatsT(0.));
+    array_->clear();
   }
 
   void output(std::ostream &out, const std::string &s = "",
@@ -224,7 +216,7 @@ public:
     else
       matStr = "Square Matrix[" + s + "]";
     if (printFull)
-      prettyPrintSmart(out, matStr, pointer(), nRow_, nCol_, nRow_);
+      prettyPrintSmart(out, matStr, pointer(), nRows(), nColumns(), nRows());
     else {
       out << matStr << std::endl;
     }
@@ -234,21 +226,7 @@ public:
 
 #ifdef CQ_ENABLE_MPI
     // BCast matrix to all MPI processes
-    if( MPISize(comm) > 1 ) {
-      std::cerr  << "  *** Scattering a matrix ***\n";
-      size_t nRow_bcast = nRow_;
-      size_t nCol_bcast = nCol_;
-      MPIBCast(nRow_bcast,root,comm);
-      MPIBCast(nCol_bcast,root,comm);
-
-      if (nRow_bcast != nRow_ or nCol_bcast != nCol_) {
-        nRow_ = nRow_bcast;
-        nCol_ = nCol_bcast;
-        malloc();
-      }
-
-      MPIBCast(ptr_, nRow_ * nCol_, root, comm);
-    }
+    array_->broadcast(comm, root);
 #endif
 
   }
@@ -302,38 +280,14 @@ public:
 
   
   double norm(lapack::Norm norm) const {
-    return lapack::lange(norm, nRow_, nCol_, ptr_, nRow_);
+    return lapack::lange(norm, nRows(), nColumns(), pointer(), nRows());
   }
 
   virtual bool hasNaN() const {
-    for (size_t i = 0; i < nRow_ * nCol_; i++) {
-      if (std::isnan(std::real(ptr_[i]))) return true;
-      if (std::isnan(std::imag(ptr_[i]))) return true;
-    }
-    return false;
+    return array_->hasNaN();
   }
 
-  void malloc() {
-    #pragma omp critical
-    {
-      if (ptr_) CQMemManager::get().unsafe_free(ptr_);
-      size_t N = nRow_ * nCol_;
-      if (N != 0) {
-        try { ptr_ = CQMemManager::get().unsafe_malloc<MatsT>(N); }
-        catch(...) {
-          std::cout << std::fixed;
-          std::cout << "Insufficient memory for the full INTS matrix ("
-                    << (N /1e9) * sizeof(MatsT) << " GB)" << std::endl;
-          std::cout << std::endl << CQMemManager::get() << std::endl;
-          throw std::bad_alloc();
-        }
-      }
-    }
-  }
-
-  ~Matrix() {
-    if(ptr_) CQMemManager::get().free(ptr_);
-  }
+  ~Matrix() {}
 
 }; // class Matrix
 
@@ -376,12 +330,4 @@ template <typename MatsT>
 std::ostream& operator<<(std::ostream&, const Matrix<MatsT>&);
 
 } // namespace cqmatrix
-template <typename MatsT>
-bool hasNaN(MatsT * ptr, size_t N) {
-  for (size_t i = 0; i < N; i++) {
-    if (std::isnan(std::real(ptr[i]))) return true;
-    if (std::isnan(std::imag(ptr[i]))) return true;
-  }
-  return false;
-}
 } // namespace ChronusQ

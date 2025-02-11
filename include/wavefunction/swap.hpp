@@ -35,7 +35,7 @@ namespace ChronusQ {
     if (moP[spin].empty()) return;
     
     auto MO = mo[spin].pointer();
-    size_t LDMO = mo[spin].dimension();
+    size_t LDMO = mo[spin].nRows();
     MatsT * SCR = CQMemManager::get().malloc<MatsT>(LDMO);
 
     if( spin==0 ) std::cout << "  * the following MOs are swapped" << std::endl;

@@ -64,7 +64,7 @@ namespace ChronusQ {
         }
         else if(cubeOptsMC.whichCIRoots == CI_CUBE_ROOT_CLASSES::AVERAGE)
         {
-          std::shared_ptr<cqmatrix::Matrix<MatsT>> SARDM = std::make_shared<cqmatrix::Matrix<MatsT>>(this->oneRDM[0].dimension());
+          std::shared_ptr<cqmatrix::Matrix<MatsT>> SARDM = std::make_shared<cqmatrix::Matrix<MatsT>>(this->oneRDM[0].nRows());
           SARDM->clear();
           // Build the state averaged density
           for(size_t i = 0; i < NRoots; i++)
