@@ -295,10 +295,10 @@ namespace ChronusQ {
       void malloc() {
 #pragma omp critical
         {
-          if (ptr_) CQMemManager::get().free(ptr_);
+          if (ptr_) CQMemManager::get().unsafe_free(ptr_);
           size_t N = nElements();
           if (N != 0) {
-            try { ptr_ = CQMemManager::get().malloc<MatsT>(N); }
+            try { ptr_ = CQMemManager::get().unsafe_malloc<MatsT>(N); }
             catch (...) {
               std::cout << std::fixed;
               std::cout << "Insufficient memory for the full NDArray ("
