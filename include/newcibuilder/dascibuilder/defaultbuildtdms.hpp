@@ -47,6 +47,9 @@ void DASCIBuilder<MatsT>::build1TDM(
     SCR.back().clear();
   }
 
+  if (scale == 0.0)
+    return;
+
   for(const auto& oneEEx: this->detFactory_.oneEExcitations()) {
     // std::cout << " contraction on term - " << oneEEx.term << std::endl; 
     
@@ -149,6 +152,9 @@ void DASCIBuilder<MatsT>::build2TDM(
     SCR.emplace_back(twoTDM.nBasis());
     SCR.back().clear();
   }
+
+  if (scale == 0.0)
+    return;
   
   for (const auto& twoEEx: this->detFactory_.twoEExcitations()) {
     // std::cout << " contraction on term - " << twoEEx.term << std::endl; 

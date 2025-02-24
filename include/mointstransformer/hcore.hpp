@@ -65,10 +65,10 @@ namespace ChronusQ {
       auto AOGD = ints_cache_.template getIntegral<OnePInts, MatsT>(cacheAOGDStr);
      
 #ifdef _DEBUG_MOINTSTRANSFORMER_CACHE
-      std::cout << "AOCache = " << std::setw(20) << cacheAOGDStr; 
-      if (AOGD) std::cout << "----Find cache!!!" << std::endl;
+      std::cout << "AOCache = " << std::setw(25) << cacheAOGDStr;
+      if (AOGD) std::cout << "----Found cache!!!" << std::endl;
       else {
-        std::cout << "----Not find cache, do transformation" << std::endl;
+        std::cout << "----Didn't find cached ints, doing transformation" << std::endl;
 #else       
       if (not AOGD) { 
 #endif
@@ -115,10 +115,10 @@ namespace ChronusQ {
       auto AOHCore = ints_cache_.template getIntegral<OnePInts, MatsT>(cacheAOHCoreStr);
        
 #ifdef _DEBUG_MOINTSTRANSFORMER_CACHE
-      std::cout << "AOCache = " << std::setw(20) << cacheAOHCoreStr; 
-      if (AOHCore) std::cout << "----Find cache!!!" << std::endl;
+      std::cout << "AOCache = " << std::setw(25) << cacheAOHCoreStr;
+      if (AOHCore) std::cout << "----Found cache!!!" << std::endl;
       else {
-        std::cout << "----Not find cache, do transformation" << std::endl;
+        std::cout << "----Didn't find cached ints, doing transformation" << std::endl;
 #else       
       if (not AOHCore) {
 #endif

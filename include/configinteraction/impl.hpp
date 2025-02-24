@@ -112,12 +112,18 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
       // this->print1RDMs();
       
       // compute gradient 
+      auto orbGradStart = tick();
       double orbitalGradientNorm = 
         moRotator->computeOrbGradient(pert, *oneRDMSOI, *twoRDMSOI);
+      auto durationOrbGrad = tock(orbGradStart);
       
       // Gradient Convergence exam
+      // MPI Orbital Gradient only valid on Root so bcast (needed for convergence check)
+      MPIBCast(&(orbitalGradientNorm), 1, 0, this->comm);
       std::cout << "  Orbital Gradient Residue   = " << std::setw(18) 
                   << std::right << orbitalGradientNorm << std::left << std::endl;
+      std::cout << "  Orbital Gradient Duration  = " << std::setw(18)
+                   << std::right << durationOrbGrad  << " s " << std::left << std::endl;
       
       if(converged and orbitalGradientNorm < ciSettings.scfGradientConv) break;
         
@@ -130,6 +136,11 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
       FormattedLine(std::cout, "Performing Orbital Rotation ...");
       
       moRotator->rotateMO(pert, *oneRDMSOI, *twoRDMSOI);
+      // communicate new orbitals
+      auto& mo = this->reference()->mo[0];
+      auto mo_pointer = mo.pointer();
+      size_t bcast_size = mo.nRows() * mo.nColumns();
+      MPIBCast(mo_pointer,bcast_size,0,this->comm);
       
       ProgramTimer::tock("Orbital Rotation");
       

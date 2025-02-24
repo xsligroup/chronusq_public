@@ -74,17 +74,28 @@ void NewOrbitalRotation<MatsT, IntsT>::rotateMO(EMPerturbation & pert,
   }
   
   ProgramTimer::tick("Form Hessian");
+  auto orbHessStart = tick();
   // X = - H ^{-1} * G
   if (settings.alg == ORB_ROT_2ND_ORDER) {
     // this->computeOrbOrbHessian(H);
     CErr("2nd Order orbital rotation not implemented");
   } else {
     this->computeOrbOrbHessianDiag(pert, oneRDM, twoRDM, H);
-#pragma omp parallel for schedule(static) default(shared)
-    for (auto i = 0ul; i < nTOrb2; i++) X[i] = - G[i] / H[i];
+    #pragma omp parallel for simd schedule(static) default(shared)
+    for (auto i = 0ul; i < nTOrb2; i++)
+      X[i] = - G[i] / H[i];
   }
+  auto durationOrbHess = tock(orbHessStart);
   ProgramTimer::tock("Form Hessian");
-  
+  std::cout << "  Orbital Hessian Duration   = " << std::setw(18)
+               << std::right << durationOrbHess  << " s " << std::left << std::endl;
+
+  // Return early if we are not on the root node.
+  // The orbital gradient is only valid on the root node (but can use other
+  // ranks to compute the gradient). The rotated orbitals will be broadcast
+  // to all other ranks.
+  ROOT_ONLY(postHF_.comm);
+
   ProgramTimer::tick("Rotate MO");
   
   // Damp X to avoid Large Rotation

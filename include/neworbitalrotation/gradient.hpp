@@ -51,16 +51,17 @@ double NewOrbitalRotation<MatsT, IntsT>::computeOrbGradient(EMPerturbation & per
   if (not orbitalGradient_) 
     orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(corrS.nMO);
 
-  size_t nTOrb   = corrS.nMO;
-  size_t nCorrO  = corrS.nCorrO;
-  size_t nInact  = corrS.nInact;
-  size_t nSVirt  = corrS.nSVirt;
-  size_t nINCO   = nInact + nCorrO;
-  size_t SCRDim  = std::max(nCorrO, std::max(nInact, nSVirt));
+  const size_t nTOrb   = corrS.nMO;
+  const size_t nCorrO  = corrS.nCorrO;
+  const size_t nInact  = corrS.nInact;
+  const size_t nSVirt  = corrS.nSVirt;
+  const size_t nINCO   = nInact + nCorrO;
+  const size_t SCRDim  = std::max(nCorrO, std::max(nInact, nSVirt));
+  const size_t SCR2Dim  = nCorrO*nInact;
   
   // Allocate SCR
   MatsT * SCR  = CQMemManager::get().malloc<MatsT>(SCRDim*SCRDim);
-  MatsT * SCR2 = CQMemManager::get().malloc<MatsT>(nCorrO*nInact);
+  MatsT * SCR2 = CQMemManager::get().malloc<MatsT>(SCR2Dim);
   
   // zero out G
   std::fill_n(orbitalGradient_->pointer(), nTOrb * nTOrb, MatsT(0.));

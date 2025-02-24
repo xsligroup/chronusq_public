@@ -48,13 +48,21 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock1(EMPerturbation & per
   bool deltaPQ) {
   
   // unpack pq_size
+  const auto& corrS = postHF_.corrSpace;
   const auto pq_sizes = postHF_.mointsTF->parseMOType(moType);
   const size_t np   = pq_sizes[0].second;
   const size_t nq   = pq_sizes[1].second;
   const size_t npq  = np * nq;
   const size_t npqDim = deltaPQ ? np: npq;
-  const size_t nCorrO = postHF_.corrSpace.nCorrO;
+  const size_t nCorrO  = corrS.nCorrO;
+  const size_t nTOrb   = corrS.nMO;
+  const size_t nInact  = corrS.nInact;
+  const size_t nSVirt  = corrS.nSVirt;
   const size_t nCorrO2 = nCorrO * nCorrO;
+  const size_t SCRDim  = std::max(nCorrO, std::max(nInact, nSVirt));
+  if (not orbitalGradient_)
+    orbitalGradient_ = std::make_shared<cqmatrix::Matrix<MatsT>>(corrS.nMO);
+
   
   // populate F1 as hCore_pq
   postHF_.mointsTF->transformHCore(pert, F1, moType, deltaPQ, 'i');
@@ -113,8 +121,8 @@ void NewOrbitalRotation<MatsT, IntsT>::formGeneralizedFock2(EMPerturbation & per
     SCR, nq, MatsT(0.), F2, nCorrO);
 
   // populate ERI as (qu|vw)
-  postHF_.mointsTF->directTransformTPI(pert, SCR, moType + "uvw");
-  
+  postHF_.mointsTF->transformTPI(pert, SCR, moType + "uvw", true, false);
+
   blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans, 
     nCorrO, nq, nCorrO3, MatsT(1.), twoRDM.pointer(), nCorrO,
     SCR, nq, MatsT(1.), F2, nCorrO);
