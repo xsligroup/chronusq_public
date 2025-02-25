@@ -456,11 +456,10 @@ namespace ChronusQ {
 
       OPTOPT(ciSettings->doIVOs = input.getData<bool>("CI.GENIVO"); )
 
-      bool StateAverage = false;
+      bool StateAverage = (nR > 1);
       OPTOPT( StateAverage = input.getData<bool>("CI.STATEAVERAGE");)
       if(StateAverage) {
-        //TODO: make as input in the future
-        std::vector<double> SAWeights = HandleSAWeightsInputDAS(input, nR);//std::vector<double>(nR, 1./nR);
+        std::vector<double> SAWeights = HandleSAWeightsInputDAS(input, nR);
         ci->turnOnStateAverage(SAWeights);
       }
       

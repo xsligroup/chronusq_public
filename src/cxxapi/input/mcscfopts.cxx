@@ -683,7 +683,7 @@ namespace ChronusQ {
 
       OPTOPT(mcscfSettings->doIVOs = input.getData<bool>("MCSCF.GENIVO"); )
 
-      bool StateAverage = false;
+      bool StateAverage = (nR > 1);
       OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
       if(StateAverage) {
         std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
