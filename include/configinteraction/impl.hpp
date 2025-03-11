@@ -285,6 +285,12 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
   std::cout << "Total Number of Determinants = "<<newCategoricalSpace->nDeterminants()<<std::endl;
 
+  // Check and modify NStates to Ndets if NStates > Ndets
+  if (this->NStates > newCategoricalSpace->nDeterminants()) {
+    this->NStates = newCategoricalSpace->nDeterminants();
+    std::cout << "Requested Number of States > NDeterminants :: Modifying NStates to NDeterminants!" 
+      << "\nNew NRoots = " << this->NStates << "\n" << std::endl;
+  }
   // For MPI
   newCategoricalSpace->initializeDistributedCatMap(this->comm);
   
@@ -310,7 +316,6 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   
   // allocate CI vector
   size_t NS = this->NStates;
-
   CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, NS);
 
   auto dasciBuilder = std::make_shared<DASCIBuilder<MatsT>>(this->comm, this->moints, *detFactory);
