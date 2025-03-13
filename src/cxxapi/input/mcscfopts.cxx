@@ -645,6 +645,9 @@ namespace ChronusQ {
     // Parse CI Options
     if (isCI or isSCF) {
 
+      // Check if number of roots is valid
+      if( nR > mcscf->NDet ) CErr("# roots > # determinants");
+
       // Change default based on # determinants
       std::string ciALG;
       if( mcscf->NDet<750 ) ciALG = "FULLMATRIX";

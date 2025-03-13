@@ -417,8 +417,10 @@ namespace ChronusQ {
 
     // Parse CI Options
 
-    // Change default based on # determinants
     std::string ciALG;
+    // Change default based on # determinants
+    if( ci->NStates < 750 ) ciALG = "FULLMATRIX";
+    else ciALG = "DAVIDSON";
     OPTOPT( ciALG = input.getData<std::string>("CI.CIDIAGALG");)
     trim(ciALG);
 
