@@ -307,7 +307,7 @@ namespace ChronusQ{
 
     TA::get_default_world().gop.fence();
 
-    TA::get_default_world().gop.template reduce(raw1, length(false), std::plus<MatsT>());
+    TA::get_default_world().gop.reduce(raw1, length(false), std::plus<MatsT>());
 
     if (includeZeroBody)
       raw[0] = V0_;
@@ -358,7 +358,7 @@ namespace ChronusQ{
 
     TA::get_default_world().gop.fence();
 
-    TA::get_default_world().gop.template reduce(raw1, length(false), std::plus<MatsT>());
+    TA::get_default_world().gop.reduce(raw1, length(false), std::plus<MatsT>());
 
     if (includeZeroBody)
       raw[0] = V0_;
@@ -735,7 +735,7 @@ namespace ChronusQ{
     if (MPIRank(c) != 0)
       rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(eom, hasZeroBody));
 
-    TA::get_default_world().gop.template broadcast(rawPtr, nVec * length(eom, hasZeroBody), 0);
+    TA::get_default_world().gop.broadcast(rawPtr, nVec * length(eom, hasZeroBody), 0);
 
     for (size_t i = 0; i < nVec; i++)
       get(shiftThis + i).fromRaw(rawPtr + i * length(eom, hasZeroBody), eom, hasZeroBody);
@@ -767,7 +767,7 @@ namespace ChronusQ{
     if (MPIRank(c) != 0)
       rawPtr = CQMemManager::get().malloc<MatsT>(nVec * length(hasZeroBody));
 
-    TA::get_default_world().gop.template broadcast(rawPtr, nVec * length(hasZeroBody), 0);
+    TA::get_default_world().gop.broadcast(rawPtr, nVec * length(hasZeroBody), 0);
 
     for (size_t i = 0; i < nVec; i++)
       get(shiftThis + i).fromRaw(rawPtr + i * length(hasZeroBody), hasZeroBody);

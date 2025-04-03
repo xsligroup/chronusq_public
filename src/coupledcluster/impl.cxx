@@ -728,8 +728,8 @@ namespace ChronusQ {
       }
     });
     TA::get_default_world().gop.fence();
-    TA::get_default_world().gop.template reduce(eps.data(), nMO-nFZC-nFZV, std::plus<double>());
-    TA::get_default_world().gop.template reduce(eps_d.data(), nFZC, std::plus<double>());
+    TA::get_default_world().gop.reduce(eps.data(), nMO-nFZC-nFZV, std::plus<double>());
+    TA::get_default_world().gop.reduce(eps_d.data(), nFZC, std::plus<double>());
 
 #ifdef DEBUG_CCSD
     for (size_t i = 0; i < nMO-nFZC-nFZV; i++) {

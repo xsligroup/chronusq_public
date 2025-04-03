@@ -657,7 +657,7 @@ namespace ChronusQ{
 
     TA::get_default_world().gop.fence();
 
-    TA::get_default_world().gop.template reduce(Hbar, ldH*nCol, std::plus<MatsT>());
+    TA::get_default_world().gop.reduce(Hbar, ldH*nCol, std::plus<MatsT>());
     TA::get_default_world().gop.fence();
 
     return fullMat;

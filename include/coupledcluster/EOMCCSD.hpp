@@ -558,7 +558,7 @@ namespace ChronusQ{
     MatsT* rawPtr = const_cast<MatsT*>(VL_w0.getPtr(0));
     if (MPIRank() != 0)
       rawPtr = CQMemManager::get().malloc<MatsT>(this->getHbarDim(true));
-    TA::get_default_world().gop.template broadcast(rawPtr, this->getHbarDim(true), 0);
+    TA::get_default_world().gop.broadcast(rawPtr, this->getHbarDim(true), 0);
     Lg_.fromRaw(rawPtr, *this, true);
     if (MPIRank() != 0)
       CQMemManager::get().free(rawPtr);
@@ -1086,7 +1086,7 @@ namespace ChronusQ{
 
     TA::get_default_world().gop.fence();
 
-    TA::get_default_world().gop.template reduce(diag, Hbar_dim, std::plus<MatsT>());
+    TA::get_default_world().gop.reduce(diag, Hbar_dim, std::plus<MatsT>());
 
   }
 

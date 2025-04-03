@@ -245,7 +245,7 @@ namespace ChronusQ {
         << std::fixed << std::right << std::setw(5) << std::setprecision(1)
         << mem_postfix.first << mem_postfix.second << "B" << std::endl;
 
-    TA::get_default_world().gop.template reduce(&ta_high_water_mark, 1, std::plus<size_t>());
+    TA::get_default_world().gop.reduce(&ta_high_water_mark, 1, std::plus<size_t>());
     mem_postfix = memSize(ta_high_water_mark);
     out << "                      |- overall   "
         << std::fixed << std::right << std::setw(5) << std::setprecision(1)
