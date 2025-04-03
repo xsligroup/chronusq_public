@@ -96,6 +96,7 @@ namespace ChronusQ {
       BlockSize_ = BlockSize;
       NAlloc_ = 0;
       NAllocHigh_ = 0;
+      AllocatedBlocks_.clear();
       switch (type) {
         case CQMemBackendType::PREALLOCATED:
           mem_backend = std::make_unique<CustomMemManager>(N, BlockSize);
