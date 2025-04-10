@@ -30,7 +30,6 @@
 // explicit pointers
 #define X2C_COLLECTIVE_OP(OP_OP,OP_VEC_OP) \
   /* Handle Operators */\
-  OP_OP(IntsT,this,other,mapPrim2Cont);\
   OP_OP(IntsT,this,other,UK);\
   OP_OP(double,this,other,p);\
   OP_OP(MatsT,this,other,UL);\

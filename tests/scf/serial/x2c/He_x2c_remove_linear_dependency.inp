@@ -1,0 +1,50 @@
+#
+#  Molecule Specification
+#
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ He 0.0 0.0 0.0 
+
+#
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = SCF
+x2ctype = fock  #fock for mean-field X2C; onee for one-electron X2C
+
+
+[BASIS]
+definebasis = true
+basisdef:
+ ****
+ He     0
+ S    1   1.00
+      10.0       1.0000000
+ S    2   1.00
+       1.0       0.9990000
+       0.1       0.0010000
+ S    2   1.00
+       1.00001   0.0010000
+       0.10010   0.9990000
+ ****
+
+[SCF]
+GUESS = CORE
+
+[MISC]
+MEM = 1MB
+NSMP = 1
+
+[INTS]
+ALG = Direct
+LIBCINT = true
+FiniteNuclei = true
+# Following are only useful for Fock-X2C
+BareCoulomb = true
+DiracCoulomb = exact
+SSSS  = true
+Gaunt = true
+Gauge = true

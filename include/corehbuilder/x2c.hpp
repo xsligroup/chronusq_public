@@ -58,10 +58,19 @@ namespace ChronusQ {
     Integrals<IntsT>    uncontractedInts_;  ///< AOIntegrals for uncontracted basis
     size_t              nPrimUse_;          ///< Number of primitives used in p space
 
+
+    /**
+     * \brief Uncontracts the basis set and removes linearly dependent primitives
+     *        This updates the uncontracted basis set and sets the mapping matrix
+     * @param hamiltonianOptions flags for AO integrals evaluation
+     * @param linearDependencyThreshold threshold for linear dependency
+     */
+    void removeLinearDependency(const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold = 1e-10);
+
   public:
 
     // Operator storage
-    IntsT*  mapPrim2Cont = nullptr;
+    std::shared_ptr<cqmatrix::Matrix<IntsT>> mapPrim2Cont = nullptr; ///< Mapping of primitives to contracted basis
     std::shared_ptr<cqmatrix::Matrix<MatsT>> W  = nullptr; ///< W = (\sigma p) V (\sigma p)
 
     // Transformations for momentum space
@@ -99,7 +108,10 @@ namespace ChronusQ {
         const Molecule &mol, const BasisSet &basis, SingleSlaterOptions ssOptions) :
       aoints_(aoints), ssOptions_(ssOptions),
       molecule_(mol), basisSet_(basis),
-      uncontractedBasis_(basisSet_.uncontractBasis()) {}
+      uncontractedBasis_(basisSet_.uncontractBasis()) {
+
+      removeLinearDependency(ssOptions_.hamiltonianOptions);
+    }
 
     // Different type
     template <typename MatsU>

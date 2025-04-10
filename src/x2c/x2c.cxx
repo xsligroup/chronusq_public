@@ -240,6 +240,210 @@ namespace ChronusQ {
   }
 
   /**
+     * \brief Uncontracts the basis set and removes linearly dependent primitives
+     *        This updates the uncontracted basis set and sets the mapping matrix
+     * @param hamiltonianOptions flags for AO integrals evaluation
+     * @param linearDependencyThreshold threshold for linear dependency
+     */
+  template <typename MatsT, typename IntsT>
+  void X2C<MatsT, IntsT>::removeLinearDependency(
+      const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold) {
+
+    size_t nPrimitive = basisSet_.nPrimitive;
+    double lowestOverlapEigenvalue = 0.0;
+    double *eVal = CQMemManager::get().template malloc<double>(nPrimitive);
+    bool checkingSmallComponent = false;
+    std::vector<libint2::Shell> removedShells;
+    cqmatrix::Matrix<IntsT> overlapMatrix(nPrimitive);
+    cqmatrix::Matrix<IntsT> kineticMatrix(nPrimitive);
+
+    // Make a copy of the uncontracted basis set for indexing
+    BasisSet originalUncontractedBasis_ = uncontractedBasis_;
+    originalUncontractedBasis_.update();
+
+    // Compute overlap and kinetic matrices
+    OnePInts<IntsT> overlapInts(nPrimitive);
+    EMPerturbation emPert;
+    overlapInts.computeAOInts(uncontractedBasis_, molecule_, emPert, OPERATOR::OVERLAP, hamiltonianOptions);
+    overlapMatrix = overlapInts.matrix();
+    overlapInts.computeAOInts(uncontractedBasis_, molecule_, emPert, OPERATOR::KINETIC, hamiltonianOptions);
+    kineticMatrix = overlapInts.matrix();
+
+    // Index of current to full primitives
+    std::vector<size_t> cur2full(nPrimitive);
+    std::iota(cur2full.begin(), cur2full.end(), 0);
+
+    do {
+
+      // Compute the overlap matrix
+      size_t NB = uncontractedBasis_.nBasis;
+      cqmatrix::Matrix<IntsT> &referenceMatrix = (checkingSmallComponent ? kineticMatrix : overlapMatrix);
+      cqmatrix::Matrix<IntsT> currentOverlap(NB, NB);
+      for (size_t j = 0; j < NB; j++) {
+        for (size_t i = 0; i < NB; i++) {
+          currentOverlap(i, j) = referenceMatrix(cur2full[i], cur2full[j]);
+        }
+      }
+
+      // Compute the eigenvalues (singular values) of the overlap matrix
+      IntsT *eVec = currentOverlap.pointer();
+      int info = lapack::gesvd(lapack::Job::NoVec, lapack::Job::OverwriteVec, NB, NB, currentOverlap.pointer(), NB,
+                               eVal, nullptr, NB, nullptr, NB);
+      lowestOverlapEigenvalue = eVal[NB-1];
+      if (checkingSmallComponent) {// Scale the eigenvalue for kinetic matrix to small-component overlap matrix
+        lowestOverlapEigenvalue *= 1.0 / (2 * SpeedOfLight * SpeedOfLight);
+      }
+
+      if (lowestOverlapEigenvalue < linearDependencyThreshold) {
+
+        // Determine which shell to remove
+        std::vector<double> smallestEigAfterRemoveShell(uncontractedBasis_.nShell, 0.0);
+
+        // Loop over each shell and try removing it to compute the lowest eigenvalue after removing the shell
+        for (size_t i = 0; i < uncontractedBasis_.nShell; i++) {
+          // Remove the shell
+          BasisSet removeIBasis = uncontractedBasis_;
+          removeIBasis.shells.erase(removeIBasis.shells.begin() + i);
+          removeIBasis.update();
+
+          // Update the current to full primitive index
+          std::vector<size_t> removeIcur2full(nPrimitive);
+          size_t index = 0;
+          for (const libint2::Shell &shell : removeIBasis.shells) {
+            size_t primIndex = originalUncontractedBasis_.primitives.at(shell);
+            for (size_t i = 0; i < shell.size(); i++) {
+              removeIcur2full[index++] = primIndex++;
+            }
+          }
+
+          // Compute the overlap matrix
+          size_t removeINB = removeIBasis.nBasis;
+          cqmatrix::Matrix<IntsT> removeIOverlap(removeINB, removeINB);
+          for (size_t j = 0; j < removeINB; j++) {
+            for (size_t k = 0; k < removeINB; k++) {
+              removeIOverlap(j, k) = referenceMatrix(removeIcur2full[j], removeIcur2full[k]);
+            }
+          }
+
+          // Compute the eigenvalues of the overlap matrix
+          IntsT *eVec = removeIOverlap.pointer();
+          int info = lapack::gesvd(lapack::Job::NoVec, lapack::Job::OverwriteVec, removeINB, removeINB,
+                                   removeIOverlap.pointer(), removeINB,
+                                   eVal, nullptr, removeINB, nullptr, removeINB);
+          smallestEigAfterRemoveShell[i] = eVal[removeINB - 1];
+        }
+
+        // Find the shell with the largest eigenvalue
+        size_t linearDepShellIndex = std::distance(smallestEigAfterRemoveShell.begin(),
+            std::max_element(smallestEigAfterRemoveShell.begin(), smallestEigAfterRemoveShell.end()));
+
+        // Remove the basis function
+        auto it = uncontractedBasis_.shells.begin();
+        std::advance(it, linearDepShellIndex);
+        removedShells.push_back(*it);
+        uncontractedBasis_.shells.erase(it);
+        uncontractedBasis_.update();
+
+        // Update the current to full primitive index
+        size_t index = 0;
+        for (const libint2::Shell &shell : uncontractedBasis_.shells) {
+          size_t linearDepPrimIndex = originalUncontractedBasis_.primitives.at(shell);
+          for (size_t i = 0; i < shell.size(); i++) {
+            cur2full[index++] = linearDepPrimIndex++;
+          }
+        }
+
+      } else if (not checkingSmallComponent) { // After checking the large component, check the small component
+        checkingSmallComponent = true;
+        lowestOverlapEigenvalue = 0.0;
+      }
+
+    } while (lowestOverlapEigenvalue < linearDependencyThreshold);
+
+    // Free Scratch Space
+    if (eVal) CQMemManager::get().free(eVal);
+
+    // Compute the transformation matrix
+    mapPrim2Cont = std::make_shared<cqmatrix::Matrix<IntsT>>(basisSet_.nBasis, uncontractedBasis_.nBasis);
+
+    if (uncontractedBasis_.nBasis == nPrimitive) { // No primitives removed
+      basisSet_.makeMapPrim2Cont(overlapMatrix.pointer(), mapPrim2Cont->pointer());
+      return;
+
+    } else {
+      std::cout << "Warning: Linear dependency in uncontracted basis for X2C detected, we removed some primitives to avoid linear dependency." << std::endl;
+      std::cout << "Removed " << removedShells.size() << " Primitive Shells:" << std::endl << bannerTop << std::endl;
+
+      std::cout << "  " << "  " << std::left;
+      std::cout << std::setw(5) << "#" ;
+      std::cout << std::setw(5) << "L" ;
+      std::cout << std::setw(15) << std::right << "Exponents";
+      std::cout << std::setw(30) << std::right << "Basis Center";
+      std::cout << std::endl << std::endl;
+
+      for(auto iShell = 0; iShell < removedShells.size(); iShell++){
+        std::cout << "  " << "  " << std::left << std::setprecision(4)
+                  << std::scientific;
+        std::cout << std::setw(5) << iShell ;
+        std::cout << std::setw(5) << removedShells[iShell].contr[0].l << std::right;
+        std::cout << std::setw(15) << removedShells[iShell].alpha[0];
+        std::cout << "          ( " << removedShells[iShell].O[0] << ", " << removedShells[iShell].O[1] << ", " << removedShells[iShell].O[2] << " )";
+
+        std::cout << std::endl;
+      }
+      std::cout << std::endl << bannerEnd << std::endl << std::endl;
+
+      std::cout << "Primitives used in the X2C 4-component calculation:" << std::endl;
+      std::cout << uncontractedBasis_ << std::endl;
+    }
+
+    // Some primitives removed, computing the transformation matrix
+    cqmatrix::Matrix<IntsT> mapLinearDepPrim2Cont(basisSet_.nBasis, nPrimitive);
+    basisSet_.makeMapPrim2Cont(overlapMatrix.pointer(), mapLinearDepPrim2Cont.pointer());
+
+    // Compute the overlap matrix
+    size_t NB = uncontractedBasis_.nBasis;
+    cqmatrix::Matrix<IntsT> currentOverlap(NB, NB);
+    for (size_t j = 0; j < NB; j++) {
+      for (size_t i = 0; i < NB; i++) {
+        currentOverlap(i, j) = overlapMatrix(cur2full[i], cur2full[j]);
+      }
+    }
+
+    // Compute the inverse of overlap
+    SVDInverse(NB, currentOverlap.pointer(), NB, 0.0);
+
+    // Compute the raw projection matrix, which is a subset of the full overlap matrix
+    cqmatrix::Matrix<IntsT> rawProjectionMatrix(uncontractedBasis_.nBasis, nPrimitive);
+    for (size_t j = 0; j < nPrimitive; j++) {
+      for (size_t i = 0; i < uncontractedBasis_.nBasis; i++) {
+        rawProjectionMatrix(i, j) = overlapMatrix(cur2full[i], j);
+      }
+    }
+
+    // Compute the projection matrix
+    cqmatrix::Matrix<IntsT> projectionMatrix(uncontractedBasis_.nBasis, nPrimitive);
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, nPrimitive, NB,
+               IntsT(1.0), currentOverlap.pointer(), NB, rawProjectionMatrix.pointer(), uncontractedBasis_.nBasis,
+               IntsT(0.0), projectionMatrix.pointer(), uncontractedBasis_.nBasis);
+
+    // Compute the recontraction matrix
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans,
+               basisSet_.nBasis, uncontractedBasis_.nBasis, nPrimitive,
+               IntsT(1.0), mapLinearDepPrim2Cont.pointer(), basisSet_.nBasis, projectionMatrix.pointer(), uncontractedBasis_.nBasis,
+               IntsT(0.0), mapPrim2Cont->pointer(), basisSet_.nBasis);
+
+  };
+
+  template void X2C<double, double>::removeLinearDependency(
+      const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold);
+  template void X2C<dcomplex, double>::removeLinearDependency(
+      const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold);
+  template void X2C<dcomplex, dcomplex>::removeLinearDependency(
+      const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold);
+
+
+  /**
    *  \brief Compute the X2C Core Hamiltonian
    */
   template <typename MatsT, typename IntsT>
@@ -264,10 +468,6 @@ namespace ChronusQ {
     // Make copy of integrals
     IntsT *overlap   = CQMemManager::get().malloc<IntsT>(NP*NP);
     std::copy_n(uncontractedInts_.overlap->pointer(), NP*NP, overlap);
-
-    // Compute the mappings from primitives to CGTOs
-    mapPrim2Cont = CQMemManager::get().malloc<IntsT>(NP*NB);
-    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont);
 
     // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
     IntsT *SCR1  = CQMemManager::get().malloc<IntsT>(8*NP*NP);
@@ -467,7 +667,7 @@ namespace ChronusQ {
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NP,NPU,NP,IntsT(1.),uncontractedInts_.overlap->pointer(),NP,
          UK,NP,IntsT(0.),SUK,NP);
     // Store the Product of mapPrim2Cont and SUK
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NPU,NP,IntsT(1.),mapPrim2Cont,NB,
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NPU,NP,IntsT(1.),mapPrim2Cont->pointer(),NB,
          SUK,NP,IntsT(0.),CPSUK,NB);
 
     // Transform the spin components of the 2C CH into R-space
@@ -514,10 +714,6 @@ namespace ChronusQ {
     // Make copy of integrals
     dcomplex *overlap   = CQMemManager::get().malloc<dcomplex>(NP*NP);
     std::copy_n(uncontractedInts_.overlap->pointer(), NP*NP, overlap);
-
-    // Compute the mappings from primitives to GIAOs
-    mapPrim2Cont = CQMemManager::get().malloc<dcomplex>(NP*NB);
-    basisSet_.makeMapPrim2Cont(overlap,mapPrim2Cont);
 
     // Allocate Scratch Space (enough for 2*NP x 2*NP complex matricies)
     dcomplex *SCR1  = CQMemManager::get().malloc<dcomplex>(8*NP*NP);
@@ -1301,7 +1497,7 @@ namespace ChronusQ {
 #endif
 
     // Transform the spin components of the 2C CH into Contracted Basis
-    *coreH = HUn.transform('C', mapPrim2Cont, NB, NB);
+    *coreH = HUn.transform('C', mapPrim2Cont->pointer(), NB, NB);
 
 #ifdef DebugX2Cprint
     prettyPrintSmart(std::cout,"CH0 no Boettger",coreH->S().pointer(),NB,NB,NB);
@@ -1336,7 +1532,7 @@ namespace ChronusQ {
     // 1.  UP2CSUK = UP2C * S * UK
     IntsT *UP2CS = CQMemManager::get().malloc<IntsT>(NB*NP);
     std::fill_n(UP2CS,NB*NP,IntsT(0.));
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,IntsT(1.),mapPrim2Cont,NB,
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,IntsT(1.),mapPrim2Cont->pointer(),NB,
       uncontractedInts_.overlap->pointer(),NP,IntsT(0.),UP2CS,NB);
     IntsT *UP2CSUK = CQMemManager::get().malloc<IntsT>(4*NP*NPU);
     std::fill_n(UP2CSUK,4*NP*NPU,IntsT(0.));
@@ -1403,7 +1599,7 @@ namespace ChronusQ {
     std::fill_n(UP2CS,4*NB*NP,dcomplex(0.));
     dcomplex *UP2CSUK = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
     std::fill_n(UP2CSUK,4*NP*NP,dcomplex(0.));
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont,NB,
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NP,NP,dcomplex(1.),mapPrim2Cont->pointer(),NB,
       uncontractedInts_.overlap->pointer(),NP,dcomplex(0.),UP2CS,2*NB);
     SetMatDiag(NB,NP,UP2CS,2*NB,UP2CS,2*NB);
     // Recover UK
@@ -1540,7 +1736,7 @@ namespace ChronusQ {
     NRCoreH<MatsT, IntsT>(uncontractedInts_, ssOptions_.hamiltonianOptions)
         .computeNRCH(emPert, NRcoreH);
 
-    *coreH -= NRcoreH->transform('C', mapPrim2Cont, NB, NB);
+    *coreH -= NRcoreH->transform('C', mapPrim2Cont->pointer(), NB, NB);
 
   }
 
@@ -1765,10 +1961,8 @@ namespace ChronusQ {
                MatsT(0.0), USsub.pointer(), USsub.nRows());
 
     // Compute the mappings from primitives to CGTOs
-    mapPrim2Cont = CQMemManager::get().malloc<IntsT>(NB*NP);
-    basisSet_.makeMapPrim2Cont(uncontractedInts_.overlap->pointer(), mapPrim2Cont);
     MatsT *P2C2c = CQMemManager::get().malloc<MatsT>(4*NB*NP);
-    SetMatDiag(NB, NP, mapPrim2Cont, NB, P2C2c, 2*NB);
+    SetMatDiag(NB, NP, mapPrim2Cont->pointer(), NB, P2C2c, 2*NB);
 
     // Contract transformation matrices with P2C mapping
     UL = CQMemManager::get().malloc<MatsT>(4*NP*NB);

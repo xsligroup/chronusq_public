@@ -33,6 +33,15 @@ TEST( X2CHF, U_91_plus_defBasis ) {
 
 };
 
+// Remove linearly dependent primitive test with He atom system
+TEST( X2CHF, He_x2c_remove_linear_dependency ) {
+
+  CQSCFTEST( "scf/serial/x2c/He_x2c_remove_linear_dependency",
+             "He_x2c_remove_linear_dependency.bin.ref",1e-8,
+             false, false, false, false, false, true);
+
+};
+
 // Water 6-311+G(d,p) (Spherical) test
 TEST( X2CHF, Water_6311pGdp_sph ) {
 
