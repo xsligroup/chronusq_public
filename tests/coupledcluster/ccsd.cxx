@@ -27,14 +27,84 @@
 
 TEST( CCSD, H2O_STO3G_GHF_CCSD) {
   CQCCTEST("coupledcluster/serial/ccsd/h2o_sto3g_ghf_ccsd",
-    "h2o_sto3g_ghf_ccsd.bin.ref", false, false);
+    "h2o_sto3g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_STO3G_GHF_CCSD_DENOMSHIFT) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_sto3g_ghf_ccsd_denomshift",
+    "h2o_sto3g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_GHF_CCSD) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_631g_ghf_ccsd",
+           "h2o_631g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_GHF_CCSD_FROZENCORE) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_631g_ghf_ccsd_frozencore",
+           "h2o_631g_ghf_ccsd_frozencore.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_GHF_CCSD_FROZENVIRTUAL) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_631g_ghf_ccsd_frozenvirt",
+           "h2o_631g_ghf_ccsd_frozenvirt.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_GHF_CCSD_FROZENCOREVIRTUAL) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_631g_ghf_ccsd_frozencorevirt",
+           "h2o_631g_ghf_ccsd_frozencorevirt.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_GHF_CCSD_RESTART) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_sto3g_ghf_ccsd_t_restart",
+           "h2o_sto3g_ghf_ccsd_t_restart.bin.ref", "h2o_sto3g_ghf_ccsd.bin.ref", false, false, false, false);
+}
+
+TEST( CCSD, H2O_631G_1EX2C_CCSD_REBUILDFOCK) {
+  CQCCTEST("coupledcluster/serial/ccsd/h2o_631g_1ex2c_ccsd_rebuildfock",
+           "h2o_631g_1ex2c_ccsd_rebuildfock.bin.ref", "", false, false, false, false);
 }
 
 #ifdef _CQ_DO_PARTESTS
 
 TEST( CCSD, PAR_H2O_STO3G_GHF_CCSD) {
   CQCCTEST("coupledcluster/parallel/ccsd/h2o_sto3g_ghf_ccsd",
-           "h2o_sto3g_ghf_ccsd.bin.ref", false, false);
+           "h2o_sto3g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_STO3G_GHF_CCSD_DENOMSHIFT) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_sto3g_ghf_ccsd_denomshift",
+           "h2o_sto3g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_GHF_CCSD) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_631g_ghf_ccsd",
+           "h2o_631g_ghf_ccsd.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_GHF_CCSD_FROZENCORE) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_631g_ghf_ccsd_frozencore",
+           "h2o_631g_ghf_ccsd_frozencore.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_GHF_CCSD_FROZENVIRTUAL) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_631g_ghf_ccsd_frozenvirt",
+           "h2o_631g_ghf_ccsd_frozenvirt.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_GHF_CCSD_FROZENCOREVIRTUAL) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_631g_ghf_ccsd_frozencorevirt",
+           "h2o_631g_ghf_ccsd_frozencorevirt.bin.ref", "", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_GHF_CCSD_RESTART) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_sto3g_ghf_ccsd_t_restart",
+           "h2o_sto3g_ghf_ccsd_t_restart.bin.ref", "h2o_sto3g_ghf_ccsd.bin.ref", false, false, false, false);
+}
+
+TEST( CCSD, PAR_H2O_631G_1EX2C_CCSD_REBUILDFOCK) {
+  CQCCTEST("coupledcluster/parallel/ccsd/h2o_631g_1ex2c_ccsd_rebuildfock",
+           "h2o_631g_1ex2c_ccsd_rebuildfock.bin.ref", "", false, false, false, false);
 }
 
 #endif

@@ -37,6 +37,7 @@
 
 // #define DEBUG_DAVIDSON
 // #define DAVIDSON_PRINT_TIMING
+// #define PRINT_SUBSPACE_EIGS
 
 
 namespace ChronusQ {
@@ -252,6 +253,10 @@ namespace ChronusQ {
             GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);
 #ifdef DEBUG_DAVIDSON
           prettyPrintSmart(std::cout,"HH Davidson XR",XR,nVCur,nVCur,nVCur);
+#endif
+
+#ifdef PRINT_SUBSPACE_EIGS
+          prettyPrintSmart(std::cout,"Subspace Eigs",Eig,nVCur,1,nVCur);
 #endif
 
 #ifdef DAVIDSON_PRINT_TIMING
@@ -760,6 +765,11 @@ namespace ChronusQ {
       auto FINALst = tick();
 #endif
       VR->multiply_matrix(0, blas::Op::NoTrans,nR,nVCur,_F(1.),XR,nVCur,_F(0.),*this->VR_, 0);
+
+      if (DoSave) {
+         this->VR_->writeToBinaryFile(save_prefix);
+      }
+
 #ifdef DAVIDSON_PRINT_TIMING
       if( isRoot ) {
         std::cout << "      Final linear combination took "

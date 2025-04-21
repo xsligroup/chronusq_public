@@ -1,0 +1,46 @@
+#
+#  Molecule Specification 
+#
+[Molecule]
+charge = 1
+mult = 1 
+geom:
+ Na 0.0 0.0 0.0 
+# 
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+TABLKSIZE = 4
+USEDIIS = true
+
+[EOMCC]
+EOMTYPE = DIP
+NROOTS = 9
+IPLevel = 3
+ccsGuess = true
+HBARTYPE = IMPLICIT
+DavidsonCheckEVec = false
+DavidsonCheckEVal = false
+DavidsonResidualConv = 1e0
+DavidsonMaxMicroIter = 1
+DavidsonMaxMacroIter = 1
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+INCFOCK = off 
+
+[MISC]
+memtype = os
+nsmp = 4
+
+[INTS]
+ALG = INCORE
+Libcint = false
+

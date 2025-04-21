@@ -75,6 +75,7 @@
 #include <gauxcutils.hpp>
 //#include <TiledArray/util/bug.h>
 
+#include <intermediates.hpp>
 
 #include <job.hpp>
 
@@ -147,6 +148,8 @@ namespace ChronusQ {
     CQOutputHeader(output);
     if(rankfile and rank == 0) CQOutputHeader(std::cerr);
 
+    CQIntermediates::getInstance().clear();
+
     // Parse Input File
     CQInputFile input(inFileName);
     //SCFOptions scfOptions;
@@ -201,7 +204,10 @@ namespace ChronusQ {
 
     // Break into sequence of individual jobs
     std::vector<CQJob> jobs;
-    if( jobType != JobType::SCF ) {
+    if( jobType != JobType::SCF
+        and not ((jobType == JobType::CC or jobType == JobType::EOMCC)
+                  and ((input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF")) 
+                    or (input.containsData("CC.SKIPCC") and input.getData<bool>("CC.SKIPCC"))))) {
       jobs.push_back(JobType::SCF);
     }
     // if RT MR propagation add MR calculation
@@ -376,6 +382,9 @@ namespace ChronusQ {
           // For Real-time jobs, since basis functions are frozen, integrals do not need to be re-calculated.
           //                     assume we can re-use the same integrals from SCF job
           std::cout << "Skipping integral calculations for RT job. Assuming it's pre-computed." << std::endl;
+        } else if ((elecJob == JobType::CC or elecJob == JobType::EOMCC)
+                   and not (input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF"))) {
+          std::cout << "Skipping integral calculations for CC. Assuming it's pre-computed." << std::endl;
         } else {
           aoints->computeAOTwoE(*basis, mol, emPert);
 
@@ -525,6 +534,11 @@ namespace ChronusQ {
 
 #ifdef CQ_HAS_TA
 
+          if (input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF")) {
+            // compute the necessary 1e ints
+            std::vector<std::pair<OPERATOR,size_t>> ops{{LEN_ELECTRIC_MULTIPOLE,1}};
+            aoints->computeAOOneP(mol, *basis, emPert, ops, ssOptions.hamiltonianOptions);
+          }
           runCoupledCluster(jobType, mol, ss, aoints,  rstFile, input, output);
           TAManager::get().discard_cache();
           std::cout << TAManager::get() << std::endl;
@@ -584,6 +598,8 @@ namespace ChronusQ {
      
     // Output CQ footer
     CQOutputFooter(output);
+
+    CQIntermediates::getInstance().clear();
 
     // Reset std::cout and std::cerr
     if (rank == 0) {

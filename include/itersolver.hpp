@@ -545,6 +545,9 @@ namespace ChronusQ {
   template <typename _F>
   class Davidson : public IterDiagonalizer<_F> {
 
+    bool DoSave   = false;
+    std::string save_prefix = "/DAVIDSON/EVECS";
+
     bool DoLeftEigVec   = false;
 //    bool sortByDistance = false;
     size_t GramSchmidt_NRe = 1;
@@ -628,6 +631,10 @@ namespace ChronusQ {
     void setHerm(bool sSym) {
       DoHerm = sSym;
     }
+    
+    void setSaveOption(bool save) { DoSave = save;}
+
+    void setSavePrefix(std::string prefix) { save_prefix = prefix;}
 
     void setWhenSc(size_t _WhenSc) { whenSc = _WhenSc;}
 
@@ -726,8 +733,7 @@ namespace ChronusQ {
     virtual void setGuess(size_t nGuess,
         std::function<void(size_t, SolverVectors<_F> &, size_t)> func) override {
 
-      if( nGuess != this->nGuess_ )
-        CErr("Davison Requires nGuess = nGuess_",std::cout);
+      this->nGuess_ = nGuess;
 
       if (not Guess or Guess->size() < this->nGuess_)
         Guess = this->vecGen_(nGuess);

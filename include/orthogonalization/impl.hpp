@@ -60,7 +60,10 @@ void Orthogonalization<MatsT>::computeOrtho() {
     std::copy_n(overlap->pointer(),nSQ,SCR1);
     HermetianEigen('V', 'U', NB, SCR1, NB, sE);
 
-    if( std::abs(sE[0]) < 1e-10 ) CErr("Contracted Basis Set is Linearly Dependent!");
+    if( std::abs(sE[0]) < 1e-10 ) {
+      std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;
+      CErr("Contracted Basis Set is Linearly Dependent!");
+    }
 
     // Compute X = V * s^{-1/2}
     for( auto j = 0; j < NB; j++ )
@@ -362,8 +365,10 @@ void Orthogonalization<MatsT>::computeOrtho() {
       std::copy_n(overlap->pointer(),nSQ,sVecs);
       HermetianEigen('V','U',NB,sVecs,NB,sE);
 
-      if( std::abs( sE[0] ) < 1e-10 )
+      if( std::abs( sE[0] ) < 1e-12 ){
+        std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;
         CErr("Contracted Basis Set is Linearly Dependent!");
+      }
 
 
       // Compute weights = (sqrt(si) + sqrt(sj))^-1

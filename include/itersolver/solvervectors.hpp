@@ -225,6 +225,8 @@ namespace ChronusQ {
     }
     virtual double maxNormElement(size_t shift, size_t nVec) const = 0;
 
+    virtual void writeToBinaryFile(const std::string& saveEntryName) {}; 
+
     virtual ~SolverVectors() {}
 
   }; // class SolverVectors
@@ -350,6 +352,9 @@ namespace ChronusQ {
     using SolverVectors<_F>::maxNormElement;
     virtual double maxNormElement(size_t shift, size_t nVec) const override;
 
+    void writeToBinaryFile(const std::string& saveEntryName) {
+//        CErr("RawVectors: writeToBinaryFile NYI");
+    }
     virtual ~RawVectors() {
       if (data_)
         CQMemManager::get().free(data_);

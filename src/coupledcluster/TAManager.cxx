@@ -144,6 +144,7 @@ namespace ChronusQ {
       cTAstat_[ranges].cur_total--;
       cur_mem_ -= cTAstat_[ranges].mem_each_;
     } else
+      // if ta in cTAs_: CErr;
       cTAs_[ranges].push_back(std::forward<TA::TArray<dcomplex>>(ta));
     ta = TA::TArray<dcomplex>();
   }
@@ -245,7 +246,14 @@ namespace ChronusQ {
         << std::fixed << std::right << std::setw(5) << std::setprecision(1)
         << mem_postfix.first << mem_postfix.second << "B" << std::endl;
 
-    TA::get_default_world().gop.reduce(&ta_high_water_mark, 1, std::plus<size_t>());
+    TA::get_default_world().gop.fence();
+
+    size_t ta_high_water_mark_copy = ta_high_water_mark;
+    ta_high_water_mark = 0;
+    MPIAllReduce(&ta_high_water_mark_copy, 1, &ta_high_water_mark, MPI_COMM_WORLD);
+
+    TA::get_default_world().gop.fence();
+
     mem_postfix = memSize(ta_high_water_mark);
     out << "                      |- overall   "
         << std::fixed << std::right << std::setw(5) << std::setprecision(1)

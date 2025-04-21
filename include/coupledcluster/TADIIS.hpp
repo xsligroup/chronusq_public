@@ -28,7 +28,7 @@
 
 #include <util/files.hpp>
 #include <memmanager.hpp>
-#include <coupledcluster/EOMCCSDVector.hpp>
+#include <coupledcluster/MBExpansion.hpp>
 
 namespace ChronusQ {
 
@@ -57,14 +57,14 @@ public:
        *
        *  \param [in]  vector      array of tiled array object representing current solution
        */
-    void WriteVector(const EOMCCSDVector<T> &vector);
+    void WriteVector(const MBExpansion<T> &vector);
 
     /**
        *  WriteErrorVector. Set current error vector
        *
        *  \param [in]  vector      array of tiled array object representing current error vector
        */
-    void WriteErrorVector(const EOMCCSDVector<T> &vector);
+    void WriteErrorVector(const MBExpansion<T> &vector);
 
     /**
        *  extrapolate. solve DiskDIIS equations and extrapolation solution
@@ -72,7 +72,7 @@ public:
        *  \param [in]  vector      Vector of tiled array solution for setting extrapolation
        *  \param [out] vector      Vector of extrapolated tiled array amplitudes
        */
-    void Extrapolate(EOMCCSDVector<T> &vector);
+    void Extrapolate(MBExpansion<T> &vector);
 
     /// restart diis
     void restart();
@@ -80,10 +80,10 @@ public:
 protected:
 
     /// stores history of amplitude matrix
-    std::vector<EOMCCSDVector<T>> hist;
+    std::vector<MBExpansion<T>> hist;
 
     /// stores history of error vector
-    std::vector<EOMCCSDVector<T>> histerr;
+    std::vector<MBExpansion<T>> histerr;
 
     /// determine diis expansion coefficients
     void DIISCoefficients(int nvec);
@@ -139,7 +139,7 @@ protected:
 
 // Store current solution vector to DIIS history
     template <typename T>
-    void DIISTA<T>::WriteVector(const EOMCCSDVector<T> &vector){
+    void DIISTA<T>::WriteVector(const MBExpansion<T> &vector){
 
         if ( diis_iter_ <= maxdiis_ ){
             hist.push_back(vector);
@@ -151,7 +151,7 @@ protected:
 
 // Store current error vector to DIIS history
     template <typename T>
-    void DIISTA<T>::WriteErrorVector(const EOMCCSDVector<T> &vector){
+    void DIISTA<T>::WriteErrorVector(const MBExpansion<T> &vector){
 
         if ( diis_iter_ <= maxdiis_ ){
             histerr.push_back(vector);
@@ -163,7 +163,7 @@ protected:
 
 // Perform DIIS extrapolation.
     template <typename T>
-    void DIISTA<T>::Extrapolate(EOMCCSDVector<T> &vector){
+    void DIISTA<T>::Extrapolate(MBExpansion<T> &vector){
 
         if ( diis_iter_ > 1 ) {
 

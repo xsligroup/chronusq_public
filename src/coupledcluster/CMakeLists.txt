@@ -21,5 +21,14 @@
 #   E-Mail: xsli@uw.edu
 #
 if(CQ_HAS_TA)
-  target_sources( cq PRIVATE TAManager.cxx impl.cxx)
+  target_sources( cq PRIVATE TAManager.cxx
+                cvseomccsd_impl.cxx
+                eomccsd_impl.cxx
+                eomdipccsd_impl.cxx
+                eomdipccsdt_impl.cxx
+                eomea_impl.cxx
+                eomip2h1p_impl.cxx
+                eomip3h2p_impl.cxx
+                impl.cxx
+      )
 endif()

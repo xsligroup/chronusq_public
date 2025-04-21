@@ -1,0 +1,42 @@
+[MOLECULE]
+charge = 0 
+mult = 1 
+geom:
+ H    0.00   0.57111563922207  0.78033056532305
+ O    0.00   0.00000           0.00000
+ H    0.00   0.57111563922207 -0.78033056532305
+
+[QM]
+reference = x2chf
+job = cc
+snsotype = row_dep_dcb
+
+[CC]
+type = ccsd
+maxiter = 200
+tablksize = 4
+pertt3 = on
+crcc = on
+etol = 1.0e-8
+ttol = 1.0e-8
+triplesmpi = true
+loopabc = true
+
+[EOMCC]
+hbartype = implicit
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+incfock = off 
+accuracy = 1.0e-13
+printmos = 7
+
+[MISC]
+mem = 10 mb
+nsmp = 2
+
+[INTS]
+alg = incore
+libcint = true

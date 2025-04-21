@@ -24,17 +24,9 @@
 #pragma once
 
 #include <cxxapi/options.hpp>
+#include <intermediates.hpp>
 
 namespace ChronusQ {
-
-  /**
-   * \brief CQIntermediates class serves as a base class for all the intermediates
-   */
-  class CQIntermediates {
-  public:
-    virtual void saveToBin(const std::string &filename, const std::string &prefix) = 0;
-    virtual void readFromBin(const std::string &filename, const std::string &prefix) = 0;
-  };
 
   struct CQJob {
     JobType jobType; // Job type

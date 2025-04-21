@@ -29,6 +29,7 @@
 #include <singleslater.hpp>
 #include <util/math.hpp>
 #include <util/matout.hpp>
+#include <intermediates.hpp>
 
 namespace ChronusQ {
 
@@ -59,6 +60,10 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     savFile.safeWriteData(prefix + "1PDM", *this->onePDM);
 
     savFile.safeWriteData(prefix + "FOCK", *fockMatrix);
+    CQIntermediates::getInstance().addData(prefix + "FOCK", fockMatrix);
+
+    savFile.safeWriteData(prefix + "TWOEH", *twoeH);
+    CQIntermediates::getInstance().addData(prefix + "TWOEH", twoeH);
 
     savFile.safeWriteData(prefix + "1PDM_ORTHO", *onePDMOrtho);
 
@@ -71,6 +76,8 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     // Save MOs
     if (saveMO) {
       savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
+//      this->mo[0].output(std::cout, "mo1 write", true);
+      CQIntermediates::getInstance().addData(prefix + "MO1", std::make_shared<cqmatrix::Matrix<MatsT>>(this->mo[0]));
       if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
     }
 

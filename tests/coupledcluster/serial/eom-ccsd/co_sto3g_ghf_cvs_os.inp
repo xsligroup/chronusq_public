@@ -1,0 +1,41 @@
+#
+#  Molecule Specification
+#
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ C            0.000000000000     0.000000000000    -0.642259515271
+ O            0.000000000000     0.000000000000     0.481847785159
+#
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+ETOL = 1e-8
+FROZENOCCUPIED = 1,2
+
+[EOMCC]
+NROOTS = 8
+CVSCORE = 3,4
+OSCILLATORSTRENGTH = true
+
+[BASIS]
+basis = sto-3g
+
+[SCF]
+INCFOCK = off
+
+[MISC]
+MEM = 20 GB
+
+[INTS]
+ALG = INCORE
+
+[RESPONSE]
+CONV = 1.0e-10
+

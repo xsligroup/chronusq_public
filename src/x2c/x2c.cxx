@@ -2075,6 +2075,10 @@ namespace ChronusQ {
 
       if (not incore)
         threshSchwarz = tpi->threshSchwarz();
+      else {
+        threshSchwarz = 1e-12;
+        incore = false;
+      }
 
       // Initialize the returned dipole matrix
       ref.pchgDipole_[0] = std::make_shared<cqmatrix::PauliSpinorMatrices<dcomplex>>(basis.nBasis, true, true);

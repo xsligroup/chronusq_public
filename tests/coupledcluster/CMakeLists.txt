@@ -27,7 +27,7 @@ set(CC_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/coupledcluster" )
 
 
 # Set up compilation of Coupled-Cluster test exe
-add_executable(cctest ../ut.cxx ccsd.cxx eom-ccsd.cxx)
+add_executable(cctest ../ut.cxx ccsd.cxx ccsdt.cxx eom-ccsd.cxx eaip.cxx df-eomcc.cxx)
 
 target_include_directories(cctest PUBLIC ${CC_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
@@ -35,13 +35,22 @@ target_link_libraries(cctest PUBLIC cq)
 target_link_libraries(cctest PUBLIC gtest)
 
 file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/ccsdt)
 file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/eom-ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/eaip)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/serial/df-eomcc)
 file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/ccsdt)
 file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/eom-ccsd)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/eaip)
+file(MAKE_DIRECTORY ${CC_TEST_BINARY_ROOT}/parallel/df-eomcc)
 include( CQTestGeneration )
 
 add_cq_test( CCSD cctest "CCSD.*" )
+add_cq_test( CCSDT cctest "CCSDT.*" )
 add_cq_test( EOM_CCSD cctest "EOM_CCSD.*" )
+add_cq_test( EAIP_EOMCC cctest "EAIP_EOMCC.*" )
+add_cq_test( DF_EOMCC cctest "DF_EOMCC.*" )
 
   if( CQ_ENABLE_MPI )
 #    add_cq_mpi_test( CCSD_MPI          2   cctest "CCSD.*" )

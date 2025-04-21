@@ -93,7 +93,7 @@ namespace ChronusQ {
 
       TAManager &TAmanager = TAManager::get();
 
-      // Incore TPI case
+      // Incore 4-index TPI case
       try {
         const InCore4indexTPI<IntsT> &aoIncoreTPI = dynamic_cast<const InCore4indexTPI<IntsT>&>(aoTPI_);
 
@@ -103,6 +103,25 @@ namespace ChronusQ {
         });
 
         return aoTPIta;
+      } catch (const std::bad_cast&) {}
+
+      // Incore RI TPI case
+      try {
+        const InCoreRITPI<IntsT> &aoRITPI = dynamic_cast<const InCoreRITPI<IntsT>&>(aoTPI_);
+
+        TA::TArray<MatsT> aoTPIta = TAmanager.template malloc_fresh<MatsT>("baa");
+        aoTPIta.init_elements([&aoRITPI](const typename TA::TArray<MatsT>::index &i){
+          return aoRITPI(i[0], i[1], i[2]);
+        });
+
+        return aoTPIta;
+
+//        TA::TArray<MatsT> ao4ITPIta = TAmanager.template malloc<MatsT>("aaaa");
+//        ao4ITPIta("p,q,r,s") = aoTPIta("L,p,q") * aoTPIta("L,r,s");
+//        TA::get_default_world().gop.fence();
+//
+//        TAmanager.free("baa", std::move(aoTPIta), true);
+//        return ao4ITPIta;
       } catch (const std::bad_cast&) {}
 
       // Direct TPI case

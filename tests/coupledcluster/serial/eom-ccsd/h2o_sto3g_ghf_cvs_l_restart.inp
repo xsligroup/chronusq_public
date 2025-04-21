@@ -1,0 +1,56 @@
+#
+#  Molecule Specification
+#
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O      0.000000000000   0.000000000000  -0.068516219320
+ H      0.000000000000  -0.790689573744   0.543701060715
+ H      0.000000000000   0.790689573744   0.543701060715
+#
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = EOMCC
+
+[CC]
+TYPE = CCSD
+#TABLKSIZE = 2
+ETOL = 1e-12
+save = true
+skipSCF = true
+skipCC = true
+restart = true
+
+[EOMCC]
+SkipR = true
+RestartL = true
+NROOTS = 10
+CVSCORE = 1,2
+OSCILLATORSTRENGTH = true
+DavidsonResidualConv = 1e+2
+DavidsonCheckEVec = false
+DavidsonCheckEVal = false
+DavidsonMaxMacroIter = 1
+DavidsonMaxMicroIter = 1
+
+[BASIS]
+basis = sto-3g
+
+[SCF]
+INCFOCK = off
+
+[MISC]
+MEMTYPE = OS
+
+[INTS]
+ALG = INCORE
+
+#[RESPONSE]
+#CONV = 1.0e-10
+
+[MISC]
+nsmp = 1
+

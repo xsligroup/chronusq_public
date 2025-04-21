@@ -21,9 +21,6 @@ FROZENVIRTUAL = 21-26
 ETOL = 1.0e-8
 TTOL = 1.0e-8
 
-[EOMCC]
-hbartype = implicit
-
 [MISC]
 MEM = 256 MB
 nsmp = 4

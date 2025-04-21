@@ -1,0 +1,42 @@
+[MOLECULE]
+charge = 0 
+mult = 1 
+geom:
+ H  0.0  0.0 -1.5
+ H  0.0  0.0 -0.5
+ H  0.0  0.0  0.5
+ H  0.0  0.0  1.5
+
+[QM]
+reference = ghf
+job = eomcc
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+incfock = off 
+accuracy = 1.0e-13
+
+[INTS]
+libcint = true
+alg = incore
+
+[EOMCC]
+eomtype = ip
+iplevel = 3
+hbartype = implicit
+nroots = 4
+davidsonsubspacemultiplier = 40
+davidsonmaxmacroiter = 500
+davidsonmaxmicroiter = 50
+
+[CC]
+type = ccsdt
+maxiter = 200
+tablksize = 8
+
+[MISC]
+mem = 100 mb
+nsmp = 2
+

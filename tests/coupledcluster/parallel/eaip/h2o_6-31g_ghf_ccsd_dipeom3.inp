@@ -1,0 +1,40 @@
+[MOLECULE]
+charge = 0 
+mult = 1 
+geom:
+ H    0.00   0.57111563922207  0.78033056532305
+ O    0.00   0.00000           0.00000
+ H    0.00   0.57111563922207 -0.78033056532305
+
+[QM]
+reference = ghf
+job = eomcc
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+incfock = off 
+accuracy = 1.0e-13
+
+[INTS]
+libcint = true
+alg = incore
+
+[EOMCC]
+eomtype = dip
+hbartype = implicit
+nroots = 8
+davidsonresidualconv = 1.0e-7
+
+[CC]
+type = ccsd
+maxiter = 200
+tablksize = 8
+etol = 1.0e-8
+ttol = 1.0e-8
+
+[MISC]
+mem = 100 mb
+nsmp = 2
+

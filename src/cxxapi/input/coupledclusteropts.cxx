@@ -41,9 +41,21 @@ namespace ChronusQ {
       "MAXITER",
       "TABLKSIZE",
       "NEVARIATION",
+      "DENOMSHIFT",
+      "PERTT3",
+      "CRCC",
+      "TRIPLESMPI",
+      "TRIPLESBEGIN",
+      "TRIPLESEND",
+      "LOOPABC",
+      "CCSDINIT",
+      "RESTART",
+      "SAVE",
       "FROZENOCCUPIED",
       "FROZENVIRTUAL",
-      "REBUILDFOCK"
+      "REBUILDFOCK",
+      "SKIPSCF",
+      "SKIPCC"
     };
       // Specified keywords
     std::vector<std::string> ccKeywords = input.getDataInSection("CC");
@@ -64,11 +76,19 @@ namespace ChronusQ {
   void CQEOMCC_VALID( std::ostream& out, CQInputFile& input){
     //Allowed keywords
     std::vector<std::string> allowedKeywords = {
+        "EOMTYPE",
         "NROOTS",
         "HBARTYPE",
         "DIAGMETHOD",
         "CVSCORE",
-        "CVSCONTINUUM",
+        "ACTIVEOCCUPIED",
+        "ACTIVEVIRTUAL",
+        //"CVSCONTINUUM",
+        //"FROZENOCCUPIED",
+        //"FROZENVIRTUAL",
+        "IPLEVEL",
+        "DIPMAXEXTERNALHOLE",
+        "DIPMAXEXTERNALPARTICLE",
         "DAVIDSONWHENSC",
         "DAVIDSONMAXMACROITER",
         "DAVIDSONMAXMICROITER",
@@ -88,8 +108,14 @@ namespace ChronusQ {
         "GRAMSCHMIDTREPEAT",
         "GRAMSCHMIDTEPS",
         "OSCILLATORSTRENGTH",
-        "SAVEHAMILTONIAN"
-
+        "SAVEHAMILTONIAN",
+        "PRINTLARGEAMPLITUDE",
+        "CCSGUESS",
+        "RESTARTL",
+        "RESTARTR",
+        "SKIPR",
+        "SAVEL",
+        "SAVER"
     };
     // Specified keywords
     std::vector<std::string> eomccKeywords = input.getDataInSection("EOMCC");
@@ -117,19 +143,39 @@ namespace ChronusQ {
 
     // Determine  reference and construct CC object
 
-    bool isCCSD = false;
+    int cc_level = 0;
 
+    CoupledClusterSettings ccSettings;
     OPTOPT(
       std::string ccopts = input.getData<std::string>("CC.TYPE");
 
-      if( not ccopts.compare("CCSD") ) {isCCSD = true; }
-      else CErr(ccopts + " NOT RECOGNIZED CC.TYPE");
-
+      if( not ccopts.compare("CCSD") ) {
+        cc_level = 2;
+        ccSettings.cctype = CC_TYPE::CCSD;
+      }else if( not ccopts.compare("DFCCSD") ) {
+        cc_level = 2;
+        ccSettings.cctype = CC_TYPE::DFCCSD;
+      }else if( not ccopts.compare("CCSDT") ) {
+        cc_level = 3; 
+        ccSettings.cctype = CC_TYPE::CCSDT;
+      }else 
+        CErr(ccopts + " NOT RECOGNIZED CC.TYPE");
     );
 
-    CoupledClusterSettings ccSettings;
 
-    if (isCCSD){
+    if (cc_level){
+      if(input.containsData("CC.SKIPCC")){
+        OPTOPT(ccSettings.skipCC = input.getData<bool>("CC.SKIPCC");)
+        if (ccSettings.skipCC) { // must read T when skipping CC
+            ccSettings.restart = true;
+            ccSettings.skipSCF = true;
+        }
+      }
+
+      if(input.containsData("CC.SKIPSCF")){
+        OPTOPT(ccSettings.skipSCF = input.getData<bool>("CC.SKIPSCF");)
+      }
+
       if(input.containsData("CC.USEDIIS")){
         OPTOPT(ccSettings.useDIIS = input.getData<bool>("CC.USEDIIS");)
       }
@@ -163,10 +209,53 @@ namespace ChronusQ {
         OPTOPT(ccSettings.nEvariation = input.getData<int>("CC.NEVARIATION");)
       }
 
+      if(input.containsData("CC.DENOMSHIFT")){
+        OPTOPT(ccSettings.denomshift = input.getData<double>("CC.DENOMSHIFT");)
+      }
+
+      if(input.containsData("CC.PERTT3")){
+        OPTOPT(ccSettings.pertT3 = input.getData<bool>("CC.PERTT3");)
+      }
+
+      if(input.containsData("CC.CRCC")){
+        OPTOPT(ccSettings.crcc = input.getData<bool>("CC.CRCC");)
+      }
+
+      if(input.containsData("CC.TRIPLESMPI")){
+        OPTOPT(ccSettings.triplesMPI = input.getData<bool>("CC.TRIPLESMPI");)
+      }
+
+      if(input.containsData("CC.TRIPLESBEGIN")){
+        OPTOPT(ccSettings.triples_begin = input.getData<int>("CC.TRIPLESBEGIN");)
+      }
+
+      if(input.containsData("CC.TRIPLESEND")){
+        OPTOPT(ccSettings.triples_end = input.getData<int>("CC.TRIPLESEND");)
+      }
+
+      if(input.containsData("CC.LOOPABC")){
+        OPTOPT(ccSettings.loop_abc = input.getData<bool>("CC.LOOPABC");)
+      }
+
+      if(input.containsData("CC.CCSDINIT")){
+        OPTOPT(ccSettings.CCSDinit = input.getData<bool>("CC.CCSDINIT");)
+      }
+
+      if(input.containsData("CC.RESTART")){
+        OPTOPT(ccSettings.restart = input.getData<bool>("CC.RESTART");)
+      }
+
+      if(input.containsData("CC.SAVE")){
+        OPTOPT(ccSettings.save = input.getData<bool>("CC.SAVE");)
+      }
+
       if(input.containsData("CC.FROZENOCCUPIED")){
         std::string frozen_occ_str;
         OPTOPT(frozen_occ_str = input.getData<std::string>("CC.FROZENOCCUPIED"););
         ccSettings.frozen_occupied = parseOrbitalSelectionInput(frozen_occ_str);
+        // Frozen occupied requires rebuild Fock!
+        // DO NOT USE REBUILD FOCK FOR MMFX2C! YOU WILL HAVE THE WRONG FOCK MATRIX
+        // ccSettings.rebuildFock = true;
       }
 
       if(input.containsData("CC.FROZENVIRTUAL")){
@@ -185,11 +274,20 @@ namespace ChronusQ {
         if (not ccSettings.rebuildFock and ccSettings.nEvariation != 0) {
           CErr("CC.NEVARIATION being non-zero requires CC.REBUILDFOCK = True");
         }
+        if (ccSettings.rebuildFock) {
+          std::string X = "DEFAULT";
+          OPTOPT( X = input.getData<std::string>("QM.X2CTYPE")  );
+          trim(X);
+          if (not X.compare("FOCK")) {
+            CErr("CC.REBUILDFOCK should not be used with MMF-X2C");
+          }
+        }
       } else if (ccSettings.nEvariation != 0) {
         ccSettings.rebuildFock = true;
         std::cout << "      ccSettings.rebuildFock default to True for inequal number "
                   << "of electrons between reference and CCSD calculation." << std::endl;
       }
+
     }
     else {
       CErr("NYI");
@@ -198,8 +296,6 @@ namespace ChronusQ {
     return ccSettings;
   }
 
-
-  std::vector<size_t> parseOrbitalSelectionInput(std::string input_str);
 
 
   //Construct a EOMCCSettings object from input file
@@ -211,6 +307,23 @@ namespace ChronusQ {
     out << "\n  *** Parsing EOMCC options ***\n";
 
     EOMSettings eomSettings;
+    if(input.containsData("EOMCC.EOMTYPE")){
+      std::string eom_type_str = input.getData<std::string>("EOMCC.EOMTYPE");
+      if( not eom_type_str.compare("EE") )
+        eomSettings.eom_type = EOM_TYPE::EE;
+      else if( not eom_type_str.compare("IP") ){
+        eomSettings.eom_type = EOM_TYPE::IP;
+        eomSettings.ip_level = 2;
+      }
+      else if( not eom_type_str.compare("EA") )
+        eomSettings.eom_type = EOM_TYPE::EA;
+      else if( not eom_type_str.compare("DIP") ){
+        eomSettings.eom_type = EOM_TYPE::DIP;
+        eomSettings.ip_level = 3;
+      }
+      else
+        CErr(eom_type_str + " NOT RECOGNIZED EOMCC.EOMTYPE");
+    }
 
     if(input.containsData("EOMCC.HBARTYPE")){
       std::string hbar_type_str = input.getData<std::string>("EOMCC.HBARTYPE");
@@ -243,11 +356,48 @@ namespace ChronusQ {
       eomSettings.cvs_core = parseOrbitalSelectionInput(cvs_core_str);
     }
 
-    if(input.containsData("EOMCC.CVSCONTINUUM")){
-      std::string cvs_vir_str;
-      OPTOPT(cvs_vir_str = input.getData<std::string>("EOMCC.CVSCONTINUUM"););
-      eomSettings.cvs_virtual = parseOrbitalSelectionInput(cvs_vir_str);
+    if(input.containsData("EOMCC.ACTIVEOCCUPIED")){
+      std::string active_occupied_str;
+      OPTOPT(active_occupied_str = input.getData<std::string>("EOMCC.ACTIVEOCCUPIED"););
+      eomSettings.active_occupied = parseOrbitalSelectionInput(active_occupied_str);
     }
+
+    if(input.containsData("EOMCC.ACTIVEVIRTUAL")){
+      std::string active_virtual_str;
+      OPTOPT(active_virtual_str = input.getData<std::string>("EOMCC.ACTIVEVIRTUAL"););
+      eomSettings.active_virtual = parseOrbitalSelectionInput(active_virtual_str);
+    }
+
+    //if(input.containsData("EOMCC.CVSCONTINUUM")){
+    //  std::string cvs_vir_str;
+    //  OPTOPT(cvs_vir_str = input.getData<std::string>("EOMCC.CVSCONTINUUM"););
+    //  eomSettings.cvs_virtual = parseOrbitalSelectionInput(cvs_vir_str);
+    //}
+
+    if(input.containsData("EOMCC.IPLEVEL")){
+      OPTOPT(eomSettings.ip_level = input.getData<int>("EOMCC.IPLEVEL");)
+    }
+
+    if(input.containsData("EOMCC.DIPMAXEXTERNALHOLE")){
+      OPTOPT(eomSettings.dip_max_external_hole = input.getData<int>("EOMCC.DIPMAXEXTERNALHOLE");)
+    }
+
+    if(input.containsData("EOMCC.DIPMAXEXTERNALPARTICLE")){
+      OPTOPT(eomSettings.dip_max_external_particle = input.getData<int>("EOMCC.DIPMAXEXTERNALparticle");)
+    }
+
+
+    //if(input.containsData("EOMCC.FROZENOCCUPIED")){
+    //  std::string frozen_occ_str;
+    //  OPTOPT(frozen_occ_str = input.getData<std::string>("EOMCC.FROZENOCCUPIED"););
+    //  eomSettings.frozen_occupied = parseOrbitalSelectionInput(frozen_occ_str);
+    //}
+
+    //if(input.containsData("EOMCC.FROZENVIRTUAL")){
+    //  std::string frozen_vir_str;
+    //  OPTOPT(frozen_vir_str = input.getData<std::string>("EOMCC.FROZENVIRTUAL"););
+    //  eomSettings.frozen_virtual = parseOrbitalSelectionInput(frozen_vir_str);
+    //}
 
     if(input.containsData("EOMCC.NROOTS")){
 
@@ -341,16 +491,53 @@ namespace ChronusQ {
       OPTOPT(eomSettings.save_hamiltonian = input.getData<bool>("EOMCC.SAVEHAMILTONIAN");)
     }
 
-    if (eomSettings.doCVS()) {
-      if (eomSettings.hbar_type != EOM_HBAR_TYPE::EXPLICIT
-          or eomSettings.diag_method != EOM_DIAG_METHOD::FULL) {
-        eomSettings.hbar_type = EOM_HBAR_TYPE::EXPLICIT;
-        eomSettings.diag_method = EOM_DIAG_METHOD::FULL;
-        std::cout << "CVS-EOMCC only implemented with full diagonalization of explicit Hbar."
-                     "Settings changed accordingly." << std::endl;
+    if(input.containsData("EOMCC.PRINTLARGEAMPLITUDE")){
+      if (eomSettings.eom_type != EOM_TYPE::EE) {
+        CErr("PrintLargeAmplitude only implemented with EOMCCSD and CVS-EOMCCSD");
       }
+      OPTOPT(eomSettings.print_large_amplitude = input.getData<bool>("EOMCC.PRINTLARGEAMPLITUDE");)
     }
 
+    if(input.containsData("EOMCC.CCSGUESS")){
+      OPTOPT(eomSettings.ccs_guess = input.getData<bool>("EOMCC.CCSGUESS");)
+    }
+
+    if(input.containsData("EOMCC.SAVER")){
+      OPTOPT(eomSettings.save_r = input.getData<bool>("EOMCC.SAVER");)
+    }
+
+    if(input.containsData("EOMCC.SAVEL")){
+      OPTOPT(eomSettings.save_l = input.getData<bool>("EOMCC.SAVEL");)
+    }
+
+    if(input.containsData("EOMCC.RESTARTR")){
+      OPTOPT(eomSettings.restart_r = input.getData<bool>("EOMCC.RESTARTR");)
+      eomSettings.davidson_guess_multiplier = 1;
+    }
+
+    if(input.containsData("EOMCC.RESTARTL")){
+      OPTOPT(eomSettings.restart_l = input.getData<bool>("EOMCC.RESTARTL");)
+      if (eomSettings.restart_l && eomSettings.restart_r) {
+        CErr("You cannot restart both Left and Right EOM amplitudes in the same EOMCC calculation");
+      }
+      eomSettings.davidson_guess_multiplier = 1;
+      eomSettings.skip_r = true;
+    }
+    if(input.containsData("EOMCC.SKIPR")){
+      OPTOPT(eomSettings.skip_r = input.getData<bool>("EOMCC.SKIPR");)
+    }
+
+    //if (eomSettings.doCVS() && eomSettings.eom_type != EOM_TYPE::DIP) {
+    //  if (eomSettings.hbar_type != EOM_HBAR_TYPE::EXPLICIT
+    //      or eomSettings.diag_method != EOM_DIAG_METHOD::FULL) {
+    //    eomSettings.hbar_type = EOM_HBAR_TYPE::EXPLICIT;
+    //    eomSettings.diag_method = EOM_DIAG_METHOD::FULL;
+    //    std::cout << "CVS-EOMCC only implemented with full diagonalization of explicit Hbar."
+    //                 "Settings changed accordingly." << std::endl;
+    //  }
+    //}
+
+    eomSettings.eom_implementation = eomSettings.find_eom_implementation();
     return eomSettings;
   }
 #endif

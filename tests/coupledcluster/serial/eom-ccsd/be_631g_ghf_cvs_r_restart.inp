@@ -1,0 +1,52 @@
+#
+#  Molecule Specification 
+#
+[Molecule]
+charge = 0 
+mult = 1
+geom:
+ Be            0.000000000000     0.000000000000    0.000000000
+# 
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = EOMCC
+
+[CC]
+skipSCF = true # previous calculation must provide SCF
+skipCC = true # previous calculation must provide CC results by save=true
+restart = true
+TYPE = CCSD
+ETOL = 1e-12
+save = true 
+
+[EOMCC]
+restartR = true # previous calculation automatically saves R amplitude
+NROOTS = 2
+CVSCORE = 1
+OSCILLATORSTRENGTH = false
+DavidsonResidualConv = 1e+2
+DavidsonCheckEVec = false
+DavidsonCheckEVal = false
+DavidsonMaxMacroIter = 1
+DavidsonMaxMicroIter = 1
+
+[BASIS]
+basis = 6-31g
+
+[SCF]
+INCFOCK = off 
+
+[MISC]
+MEM = 2 GB
+NSMP = 1
+
+[INTS]
+ALG = INCORE
+LIBCINT = true
+
+[RESPONSE]
+CONV = 1.0e-10
+
+
