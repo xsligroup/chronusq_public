@@ -47,6 +47,7 @@ add_subdirectory(newcibuilder)
 add_subdirectory(configinteraction)
 add_subdirectory(geometrymodifier)
 add_subdirectory(perturb)
+add_subdirectory(mp)
 add_subdirectory(cubegen)
 
 

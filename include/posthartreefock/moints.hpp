@@ -137,13 +137,13 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
     }
   }
   
-  this->moints.addIntegral("hCore_Correlated_Space", 
+  this->moints->addIntegral("hCore_Correlated_Space", 
     std::make_shared<OnePInts<MatsT>>(hCore_tu));
-  this->moints.addIntegral("ERI_Correlated_Space",  
+  this->moints->addIntegral("ERI_Correlated_Space",  
     std::make_shared<InCore4indexTPI<MatsT>>(ERI_tuvw));
-  this->moints.addIntegral("hCore_tt",  
+  this->moints->addIntegral("hCore_tt",  
     std::make_shared<DASOnePInts<MatsT>>(hCore_tt));
-  this->moints.addIntegral("antiSymmetricERI_ttuu",  
+  this->moints->addIntegral("antiSymmetricERI_ttuu",  
     std::make_shared<OnePInts<MatsT>>(antiSymmetricERI_ttuu));
 
 } // PostHartreeFock::transformInts
@@ -163,7 +163,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
   const auto& corrS = this->corrSpace;
   const auto& corrSpaceOff = corrS.nNegMO + corrS.nFCore + corrS.nInact;
   const auto& activeSpaces = detFactory.ketCategoricalSpace()->activeSpaces();
-  const auto& ERI  = *(moints.template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
+  const auto& ERI  = *(moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
   
   for (const auto& term : detFactory.twoEExTerms()) {
     
@@ -211,10 +211,10 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
       CErr(term + " NYI"); 
     } 
     
-    this->moints.addIntegral(term, std::make_shared<DASTwoPInts<MatsT>>(ERI_sub));
+    this->moints->addIntegral(term, std::make_shared<DASTwoPInts<MatsT>>(ERI_sub));
   } // twoEExTerms
   
-  const auto& hCore = *(moints.template getIntegral<OnePInts,MatsT>("hCore_Correlated_Space"));
+  const auto& hCore = *(moints->template getIntegral<OnePInts,MatsT>("hCore_Correlated_Space"));
 
   for (const auto& term : detFactory.oneEExTerms()) {
     
@@ -237,7 +237,7 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
     }
     
     for (auto i = 1ul; i < termVec.size(); ++i) {
-      const auto& ERI_sub  = *(moints.template getIntegral<DASTwoPInts,MatsT>(termVec[i]));
+      const auto& ERI_sub  = *(moints->template getIntegral<DASTwoPInts,MatsT>(termVec[i]));
       #pragma omp parallel for schedule(static) collapse(2) default(shared)       
       for (auto u = 0ul; u < nu; u++)
       for (auto t = 0ul; t < nt; t++) {
@@ -246,13 +246,13 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
       }
     } 
     
-    this->moints.addIntegral(term, std::make_shared<DASOnePInts<MatsT>>(h1e_sub));
+    this->moints->addIntegral(term, std::make_shared<DASOnePInts<MatsT>>(h1e_sub));
   } // oneEExcitations 
   ProgramTimer::tock("MOINTSTRANSFORM DAS INTS");
   
   if (removeFullSpaceMOInts) {
-    this->moints.erase("hCore_Correlated_Space"); 
-    this->moints.erase("ERI_Correlated_Space");
+    this->moints->erase("hCore_Correlated_Space"); 
+    this->moints->erase("ERI_Correlated_Space");
   }
   return; 
 } // prepareMOIntegrals 

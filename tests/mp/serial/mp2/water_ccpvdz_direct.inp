@@ -1,0 +1,30 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O     0.0     -0.076    0.0                                                     
+ H     0.867    0.601    0.0 
+ H    -0.867    0.601    0.0
+
+[QM]
+reference = Real RHF
+job = MP2
+
+[SCF]
+PRINTMOS = 9
+EXTRAP = TRUE
+MAXITER = 512
+
+[BASIS]
+basis = cc-pvdz
+
+[MP2]
+NOS = FALSE
+
+[MISC]
+nsmp = 1
+mem = 100 MB
+
+[INTS]
+ALG = DIRECT
+

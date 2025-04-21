@@ -170,5 +170,41 @@ namespace ChronusQ {
 
       return; 
   }; // MOIntsTransformer<MatsT,IntsT>::subsetTransformTPIInCoreN5
+
+  // Assumes the off_sizes are pre-reordered to account for the different particle sets
+  template<typename MatsT, typename IntsT>
+  void MixedMOIntsTransformer<MatsT,IntsT>::subsetTransformAsymmTPIInCoreN5(const std::vector<std::pair<size_t,size_t>> & off_sizes,
+                                                                            MatsT * MOTPI,
+                                                                            bool cacheIntermediates,
+                                                                            TPI_TRANS_DELTA_TYPE delta)
+  {
+
+    // Cast the ep ints to an InCore4IndexTPI object since this is what actually calls the transform
+    std::shared_ptr<InCore4indexTPI<MatsT>> AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(*std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(epaoints_));
+
+    // Grab the number of atomic orbitals
+    size_t nAO_p1 = p1_.mo[0].nRows();
+    size_t nAO_p2 = p2_.mo[0].nRows();
+    
+    // Grab the pointer to the MO objects
+    auto MO_p1 = p1_.mo[0].pointer();
+    auto MO_p2 = p2_.mo[0].pointer();
+
+    // Memory in which the result will be stored
+    MatsT * SCR = nullptr;
+
+    if (delta != NO_KRONECKER_DELTA){
+      CErr("Non-NO_KRONECKER_DELTA in AsymmTPIInCoreN5 NYI");
+    } else {
+      SCR = MOTPI;
+    }
+
+    // Call the transformation from the InCore4IndexTPI object
+    AOTPI->subsetAsymmTransform('N',MO_p1,nAO_p1,'N',MO_p2,nAO_p2,off_sizes,SCR);
+    
+
+    return;
+  }
+
   
 }; // namespace ChronusQ

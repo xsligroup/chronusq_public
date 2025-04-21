@@ -21,26 +21,4 @@
 #   E-Mail: xsli@uw.edu
 #
 
-# Define global test variables
-set( TEST_ROOT ${PROJECT_SOURCE_DIR}/tests )
-set( TEST_BINARY_ROOT ${PROJECT_BINARY_DIR}/tests )
-
-# Common UT configuration header
-configure_file(
-  "${TEST_ROOT}/ut.hpp.in"
-  "${TEST_BINARY_ROOT}/ut.hpp"
-)
-
-#find_package( GTest REQUIRED )
-include( HandleGTest )
-
-add_subdirectory(scf)
-add_subdirectory(mp)
-add_subdirectory(rt)
-add_subdirectory(resp)
-add_subdirectory(func)
-add_subdirectory(mcscf)
-add_subdirectory(coupledcluster)
-add_subdirectory(pt)
-add_subdirectory(detfactory)
-add_subdirectory(dynamics)
+target_sources( cq PRIVATE impl.cxx)

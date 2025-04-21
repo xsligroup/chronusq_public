@@ -358,7 +358,7 @@ namespace ChronusQ {
 #ifdef TEST_MOINTSTRANSFORMER
     void MOIntsTransformationTest(EMPerturbation &);
 #endif    
-    std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> generateMOIntsTransformer();
+    std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> generateMOIntsTransformer(TPI_TRANSFORMATION_ALG alg = TPI_TRANSFORMATION_ALG::DIRECT_N6);
 
     // MO Transformations
     void MOFOCK();

@@ -63,7 +63,7 @@ public:
   // default constructors
   DASCIBuilder() = delete;
   DASCIBuilder(MPI_Comm comm,
-    const IntegralsCollection& moints,
+    const std::shared_ptr<const IntegralsCollection> moints,
     const DeterminantFactory& detF):
     NewCIBuilder<MatsT>(comm, moints, detF) {};
 

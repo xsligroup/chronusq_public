@@ -208,6 +208,15 @@ namespace ChronusQ {
       printSub("      -diagonalization", "Heff diag", "MS Heff", perturbId);
     }
 
+    auto MP2Id = timer.getLabelId("MP2 Total");
+    if(MP2Id != 0) {
+      printReg(" - MP2","MP2 Total",MP2Id);
+      printReg("   - Integral Transformation","Integral Transform",MP2Id);
+      printReg("   - Energy Eval","MP2 Energy Eval",MP2Id);
+      printReg("   - RDM Formation","MP2 RDM",MP2Id);
+      printReg("   - RDM Diagonalization","MP2 RDM Diag",MP2Id);
+    }
+
 
     auto ciId = timer.getLabelId("Configuration Interaction Total");
     if ( ciId != 0 ) {

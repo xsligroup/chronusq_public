@@ -206,4 +206,85 @@ public:
 
 }; // class MOIntsTransformer
 
+
+  /**
+   *  \brief Templated class to handle AO to MO integral transformation
+   *  for two body terms between different particle sets
+   *
+   *  WARNING: for 1C only alpha part of the MO (mo[0]) is used 
+   *
+   */
+
+  template<typename MatsT, typename IntsT>
+  class MixedMOIntsTransformer : public MOIntsTransformer<MatsT, IntsT>
+  {
+
+    protected:
+      std::shared_ptr<TwoPInts<IntsT>> epaoints_;
+      bool contractfirst_;
+
+      // References to the two single slater objects of
+      // particle type p1 and p2
+      SingleSlater<MatsT, IntsT> & p1_;
+      SingleSlater<MatsT, IntsT> & p2_;
+
+      // Things just inhereted from the MOIntsTransformer
+
+
+    public:
+      // Constructors
+      MixedMOIntsTransformer() = delete;
+      MixedMOIntsTransformer( const MixedMOIntsTransformer & ) = default;
+      MixedMOIntsTransformer( MixedMOIntsTransformer && ) = default;
+
+    /**
+     *  MixedMOIntsTransformer Constructor. Constructs a 
+     *   MixedMOIntsTransformer object
+     *
+     *  \param [in] p1  ... SingleSlater reference for the first particle set
+     *  \param [in] p2  ... SingleSlater reference for the second particle set
+     *  \param [in] epaoints ... TwoPInts pointer.  Since the inter-particle
+     *                           integrals don't belong to either SingleSlater
+     *                           base object, we need to explicitly pass them
+     *  \param [in] contractfirst ... Whether to contract the first index with
+     *                                the first particle set (currently unused)
+     *  \param [in] alg ... Algorithm for two particle integral transformation 
+     *                      As of 11/8/23, this REQUIRES INCORE_N5 for the
+     *                      transformation
+     */                      
+    MixedMOIntsTransformer(SingleSlater<MatsT,IntsT> & p1,
+                           SingleSlater<MatsT,IntsT> & p2,
+                           std::shared_ptr<TwoPInts<IntsT>> epaoints,
+                           bool contractfirst,
+                           TPI_TRANSFORMATION_ALG alg = INCORE_N5): 
+                           p1_(p1),
+                           p2_(p2),
+                           epaoints_(epaoints),
+                           contractfirst_(contractfirst),
+                           MOIntsTransformer<MatsT,IntsT>(p1,alg)
+    {
+      // TODO:
+      // Need 2 sets of MORanges to be able to define both electronic and protonic
+      // active spaces
+      //setMORanges();
+    };
+
+    void transformAsymmTPI(EMPerturbation & pert, 
+                           MatsT * MOTPI,
+                           const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p1tf,
+                           const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p2tf,
+                           const std::string & moType1 = "pqrs",
+                           const std::string & moType2 = "pqrs",
+                           bool cacheIntermediates = true,
+                           bool withExchange = false,
+                           TPI_TRANS_DELTA_TYPE delta = NO_KRONECKER_DELTA);
+
+    void subsetTransformAsymmTPIInCoreN5(const std::vector<std::pair<size_t,size_t>> & off_sizes,
+                                         MatsT * MOPTPI,
+                                         bool cacheIntermediates,
+                                         TPI_TRANS_DELTA_TYPE delta);
+
+  }; // class MixedMOIntsTransformer
+
+
 } // namespace ChronusQ

@@ -21,26 +21,33 @@
 #   E-Mail: xsli@uw.edu
 #
 
-# Define global test variables
-set( TEST_ROOT ${PROJECT_SOURCE_DIR}/tests )
-set( TEST_BINARY_ROOT ${PROJECT_BINARY_DIR}/tests )
+# Directories for RT tests
+set(MP_TEST_SOURCE_ROOT "${TEST_ROOT}/mp" )
+set(MP_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/mp" )
+  
 
-# Common UT configuration header
-configure_file(
-  "${TEST_ROOT}/ut.hpp.in"
-  "${TEST_BINARY_ROOT}/ut.hpp"
-)
+# Set up compilation of MCSCF test exe
+add_executable(mptest ../ut.cxx mp2.cxx neo_mp2.cxx)
 
-#find_package( GTest REQUIRED )
-include( HandleGTest )
+target_include_directories(mptest PUBLIC ${MP_TEST_SOURCE_ROOT} 
+  ${TEST_BINARY_ROOT})
+target_link_libraries(mptest PUBLIC cq)
+target_link_libraries(mptest PUBLIC gtest)
 
-add_subdirectory(scf)
-add_subdirectory(mp)
-add_subdirectory(rt)
-add_subdirectory(resp)
-add_subdirectory(func)
-add_subdirectory(mcscf)
-add_subdirectory(coupledcluster)
-add_subdirectory(pt)
-add_subdirectory(detfactory)
-add_subdirectory(dynamics)
+# Generate directories
+file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/serial/mp2)
+file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/serial/neo_mp2)
+
+file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/parallel/mp2)
+file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/parallel/neo_mp2)
+
+include( CQTestGeneration )
+
+# MP2 test
+add_cq_test(MP2 mptest "MP2.*")
+add_cq_test(NEO_MP2 mptest "NEO_MP2.*")
+
+if( CQ_ENABLE_MPI )
+
+endif()
+

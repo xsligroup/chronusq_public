@@ -284,7 +284,16 @@ namespace ChronusQ {
     auto GDStart = tick(); // Start time for G[D]
 
     // Form G[D]
-    formGD(ss,pert,increment,xHFX);
+    // See: https://doi.org/10.1016/j.cplett.2005.01.115
+    // regarding the option to NOT include the proton two body term
+    if(ss.particle.charge == 1.0 && this->hamiltonianOptions_.ignoreProtonTwoBody)
+    {
+      ss.twoeH->clear();
+    }
+    else
+    {
+      formGD(ss,pert,increment,xHFX);
+    }
 
     ss.GDDur = tock(GDStart); // G[D] Duraction
     //std::cout <<"formGD time = "<<ss.GDDur <<std::endl;
@@ -293,6 +302,7 @@ namespace ChronusQ {
 
     // Form Fock
     *ss.fockMatrix = *ss.coreH + *ss.twoeH;
+
 
     // Add in the electric field contributions
     // FIXME: the magnetic field contribution should go here as well to allow for RT

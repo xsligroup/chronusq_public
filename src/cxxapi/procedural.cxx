@@ -44,6 +44,7 @@
 #include <mcwavefunction.hpp>
 #include <mcscf.hpp>
 #include <perturb.hpp>
+#include <mp.hpp>
 
 #include <findiff/geomgrad.hpp>
 #include <particleintegrals/gradints.hpp>
@@ -436,6 +437,11 @@ namespace ChronusQ {
             if(cube) ss->runCube(cubes);
           }
 #endif // new SCF
+        }
+
+        if ( elecJob == JobType::MP2 ) {
+          auto mp2 = CQMP2Options(output,input,ss);
+          mp2->runMP2(emPert);
         }
 
 

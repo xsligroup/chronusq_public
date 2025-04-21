@@ -792,8 +792,8 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
    */
   template <typename MatsT, typename IntsT>
   std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> 
-    SingleSlater<MatsT, IntsT>::generateMOIntsTransformer() {
-      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(*this, this->aoints_->TPITransAlg);
+    SingleSlater<MatsT, IntsT>::generateMOIntsTransformer(TPI_TRANSFORMATION_ALG alg) {
+      return std::make_shared<MOIntsTransformer<MatsT, IntsT>>(*this, alg);
   }
 
 /**

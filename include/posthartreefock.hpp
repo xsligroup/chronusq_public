@@ -25,6 +25,7 @@
 
 #include <chronusq_sys.hpp>
 #include <singleslater.hpp>
+#include <singleslater/neoss.hpp>
 #include <detfactory.hpp>
 #include <integrals.hpp>
 #include <posthartreefock/base.hpp>
@@ -41,14 +42,14 @@ class PostHartreeFock : public PostHartreeFockBase {
 
 protected:  
   
-  std::shared_ptr<SingleSlater<MatsT, IntsT>> ref_;
-  
 public:
+  
+  std::shared_ptr<SingleSlater<MatsT, IntsT>> ref_;
   
   // Integrals here are computed and stored in correalted space by default
   // Only one set of integrals, means not working for UHF reference
   std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> mointsTF; 
-  IntegralsCollection moints = IntegralsCollection(); ///< MOIntegrals for the storage of integrals
+  std::shared_ptr<IntegralsCollection> moints = std::make_shared<IntegralsCollection>(); ///< MOIntegrals for the storage of integrals
   // fold the following intgrals into moints
   //oper_t moERI;   // Transformed MO 2e integral in correalted space
   //oper_t hCore;   // 1e integral with frozen core contribution

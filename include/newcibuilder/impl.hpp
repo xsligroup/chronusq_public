@@ -49,8 +49,8 @@ void NewCIBuilder<MatsT>::buildDiagH(DistributedVectors<MatsT>& diagH,
   
   auto diagHSt = tick();
 
-  const auto& hCore_tt = *(moints_.template getIntegral<DASOnePInts, MatsT>("hCore_tt"));
-  const auto& antiSymmetricERI_ttuu = *(this->moints_.template getIntegral<OnePInts, MatsT>("antiSymmetricERI_ttuu"));
+  const auto& hCore_tt = *(moints_->template getIntegral<DASOnePInts, MatsT>("hCore_tt"));
+  const auto& antiSymmetricERI_ttuu = *(this->moints_->template getIntegral<OnePInts, MatsT>("antiSymmetricERI_ttuu"));
   
   // std::cout << " hCore_tt_Correlated_Space dim = " << hCore_tt.nBasis1() << std::endl;
   // std::cout << " antiSymmetricERI_ttuu dim = " << antiSymmetricERI_ttuu.nBasis() <<  std::endl;

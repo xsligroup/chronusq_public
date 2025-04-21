@@ -121,6 +121,8 @@ namespace ChronusQ {
     bool updateGauge = false;      //Default False. True if open Gauge and need to update. False if do not update gauge term at current step  
 
     bool includeTau = false;
+    bool ignoreProtonTwoBody = false;  // Default False (calculate v_pp J-K terms).  If true, turn these terms off
+                              // See: https://doi.org/10.1016/j.cplett.2005.01.115
 
   }; // struct HamiltonianOptions
 

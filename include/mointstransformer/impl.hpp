@@ -333,4 +333,49 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
 }
 
 
+  template<typename MatsT, typename IntsT>
+  void MixedMOIntsTransformer<MatsT, IntsT>::transformAsymmTPI(EMPerturbation & pert,
+                                                               MatsT * MOTPI,
+                                                               const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p1tf,
+                                                               const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p2tf,
+                                                               const std::string & moType1,
+                                                               const std::string & moType2,
+                                                               bool cacheIntermediates,
+                                                               bool withExchange,
+                                                               TPI_TRANS_DELTA_TYPE delta)
+  {
+    std::string C_moType1 = moType1;
+    std::string X_moType1 = "";
+    std::string C_moType2 = moType2;
+    std::string X_moType2 = "";
+
+    TPI_TRANS_DELTA_TYPE C_delta = delta;
+    TPI_TRANS_DELTA_TYPE X_delta = NO_KRONECKER_DELTA;
+    bool swapCX = false;
+
+    // TODO: implement withExchange option
+    // Ignore withExchange for now
+    if(withExchange)
+      CErr("trasnformAsymmTPI with Exchange NYI (and I\'m not sure it should be?)");
+
+    // With references to each of the subsystem's MOIntsTransformers we can
+    // extract the offsets of the ranges to transform
+    // It is important that these are passed in the same order as the
+    // subsystem storage!
+    std::vector<std::pair<size_t,size_t>> off_sizes = p1tf->parseMOType(C_moType1);
+    std::vector<std::pair<size_t,size_t>> soff_sizes = p2tf->parseMOType(C_moType2);
+    for(size_t i = 2; i < 4; i++)
+    {
+      off_sizes[i].first = soff_sizes[i].first;
+      off_sizes[i].second = soff_sizes[i].second;
+    }
+
+    subsetTransformAsymmTPIInCoreN5(off_sizes,MOTPI,cacheIntermediates,C_delta);
+
+    return;
+
+  }; //MixedMOIntsTransformer::transformAsymmTPI
+
+
+
 } // namespace ChronusQ

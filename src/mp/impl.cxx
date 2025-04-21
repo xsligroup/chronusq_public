@@ -21,13 +21,16 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-#include <perturb/impl.hpp>
+#include <mp/impl.hpp>
 
 namespace ChronusQ {
 
-  template class PERTURB<double,double>;
-  template class PERTURB<dcomplex,double>;
-  template class PERTURB<dcomplex,dcomplex>;
+  template class MP2<double,double>;
+  template class MP2<dcomplex,double>;
+  template class MP2<dcomplex,dcomplex>;
 
-
+  template class NEOMP2<double,double>;
+  template class NEOMP2<dcomplex,double>;
+  template class NEOMP2<dcomplex,dcomplex>;
+  
 }; // namespace ChronusQ

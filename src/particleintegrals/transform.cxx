@@ -190,6 +190,67 @@ namespace ChronusQ {
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       dcomplex* out, bool increment) const;
 
+  template <typename IntsT>
+  template <typename TransT, typename OutT>
+  void InCore4indexTPI<IntsT>::subsetAsymmTransform(
+        char TRANS1, const TransT * T1, int LDT1,
+        char TRANS2, const TransT * T2, int LDT2,
+        const std::vector<std::pair<size_t,size_t>> &off_sizes,
+        OutT* out, bool increment) const {
+        typedef typename std::conditional<
+        (std::is_same<IntsT, dcomplex>::value or
+         std::is_same<TransT, dcomplex>::value),
+        dcomplex, double>::type ResultsT;
+
+    size_t NB_p1 = this->nBasis();
+    size_t NB_p2 = this->snBasis();
+    size_t NB_p12 = NB_p1*NB_p1;
+    size_t NB_p22 = NB_p2*NB_p2;
+    size_t np = off_sizes[0].second;
+    size_t nq = off_sizes[1].second;
+    size_t nr = off_sizes[2].second;
+    size_t ns = off_sizes[3].second;
+
+    ResultsT * SCR = CQMemManager::get().malloc<ResultsT>(NB_p12*NB_p22);
+    ResultsT * SCR2 = CQMemManager::get().malloc<ResultsT>(NB_p22*np*nq);
+    IntsT * intsTdummy = nullptr;
+    ResultsT * resultsTdummy = nullptr;
+
+    // Transform the first two indices
+    PairTransformation(TRANS1,T1,LDT1,off_sizes[0].first,off_sizes[1].first,
+    'N',pointer(),NB_p1,NB_p1,NB_p22,'T',SCR2,np,nq,intsTdummy,SCR,false);
+
+    // Transform the second two indices
+    PairTransformation(TRANS2,T2,LDT2,off_sizes[2].first,off_sizes[3].first,
+    'N', SCR2, NB_p2, NB_p2, np*nq, 'T', out, nr, ns,resultsTdummy, SCR, increment);
+
+    // Transform the second two indices
+    CQMemManager::get().free(SCR,SCR2);
+
+    return;
+  }
+
+  template void InCore4indexTPI<double>::subsetAsymmTransform(
+      char TRANS1, const double* T1, int LDT1,
+      char TRANS2, const double* T2, int LDT2,
+      const std::vector<std::pair<size_t,size_t>> &off_sizes,
+      double* out, bool increment) const;
+  template void InCore4indexTPI<double>::subsetAsymmTransform(
+      char TRANS1, const dcomplex* T1, int LDT1,
+      char TRANS2, const dcomplex* T2, int LDT2,
+      const std::vector<std::pair<size_t,size_t>> &off_sizes,
+      dcomplex* out, bool increment) const;
+  template void InCore4indexTPI<dcomplex>::subsetAsymmTransform(
+      char TRANS1, const dcomplex* T1, int LDT1,
+      char TRANS2, const dcomplex* T2, int LDT2,
+      const std::vector<std::pair<size_t,size_t>> &off_sizes,
+      dcomplex* out, bool increment) const;
+  template void InCore4indexTPI<dcomplex>::subsetAsymmTransform(
+      char TRANS1, const double* T1, int LDT1,
+      char TRANS2, const double* T2, int LDT2,
+      const std::vector<std::pair<size_t,size_t>> &off_sizes,
+      dcomplex* out, bool increment) const;
+
   //template <>
   //template <>
   //void InCore4indexTPI<dcomplex>::subsetTransform(

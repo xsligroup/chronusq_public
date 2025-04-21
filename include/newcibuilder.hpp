@@ -47,7 +47,7 @@ class NewCIBuilder {
 
  protected:
   MPI_Comm comm_;
-  const IntegralsCollection& moints_; // integrals
+  const std::shared_ptr<const IntegralsCollection> moints_; // integrals
   const DeterminantFactory& detFactory_;      // for CI vectors
   
   // for scratches
@@ -61,7 +61,7 @@ class NewCIBuilder {
   NewCIBuilder() = delete;
   
   NewCIBuilder(MPI_Comm comm, 
-      const IntegralsCollection& moints,
+      const std::shared_ptr<const IntegralsCollection> moints,
       const DeterminantFactory& detF):
       comm_(comm),
       moints_(moints), detFactory_(detF) { }

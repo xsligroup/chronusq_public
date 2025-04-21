@@ -231,6 +231,13 @@ namespace ChronusQ {
         const std::vector<std::pair<size_t,size_t>> &off_size,
         OutT* out, bool increment = false) const;
 
+    template <typename TransT, typename OutT>
+    void subsetAsymmTransform(
+        char TRANS1, const TransT * T1, int LDT1,
+        char TRANS2, const TransT * T2, int LDT2,
+        const std::vector<std::pair<size_t,size_t>> &off_size,
+        OutT* out, bool increment = false) const;
+
     virtual ~InCore4indexTPI() {
       if(TPI) CQMemManager::get().free(TPI);
     }

@@ -54,7 +54,7 @@ void DASCIBuilder<MatsT>::buildSigma1e(
     // MPI Parallelism
     if (not C.containsLocalCategory(oneEEx.categoricalIndices.second)) continue;
     
-    const auto& h1e = *(this->moints_.template getIntegral<DASOnePInts, MatsT>(oneEEx.term));
+    const auto& h1e = *(this->moints_->template getIntegral<DASOnePInts, MatsT>(oneEEx.term));
     // h1e.output(std::cout, oneEEx.term, true);
     const auto& braCategory = dynamic_cast<const FullDeterminantCategory&>(
         *braCategoricalSpace->getCategory(oneEEx.categoricalIndices.first));

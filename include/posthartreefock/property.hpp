@@ -162,7 +162,7 @@ namespace ChronusQ {
     if (MPIRank(this->comm) == 0) {
      
       // dipole AO -> MO transformation
-      auto MOdipole = moints.getIntegral<VectorInts, MatsT>("MOdipole");
+      auto MOdipole = moints->getIntegral<VectorInts, MatsT>("MOdipole");
 
       if (not MOdipole) {
         VectorInts<IntsT> AOdipole(nAO, 1, true);
@@ -181,10 +181,10 @@ namespace ChronusQ {
                   nAO, corrOffs, (*MOdipole_scr)[iXYZ]->pointer(), false);
         }
 
-        moints.addIntegral("MOdipole", MOdipole_scr);
+        moints->addIntegral("MOdipole", MOdipole_scr);
       }
 
-      MOdipole = moints.getIntegral<VectorInts,MatsT>("MOdipole");
+      MOdipole = moints->getIntegral<VectorInts,MatsT>("MOdipole");
 
       MatsT D = MatsT(0.);
       // dipole strength D = Tr(TDM \dot MOdiple) Tr(TDM^* \dot MOdipole)

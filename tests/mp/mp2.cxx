@@ -1,7 +1,7 @@
 /* 
  *  This file is part of the Chronus Quantum (ChronusQ) software package
  *  
- *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *  Copyright (C) 2014-2020 Li Research Group (University of Washington)
  *  
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,13 +21,29 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-#include <perturb/impl.hpp>
 
-namespace ChronusQ {
+#include "mp2.hpp"
 
-  template class PERTURB<double,double>;
-  template class PERTURB<dcomplex,double>;
-  template class PERTURB<dcomplex,dcomplex>;
+// MP2 tests, serial job
+TEST(MP2,h2o_ccpvdz_incore)
+{
+  CQMPTEST("mp/serial/mp2/water_ccpvdz_incore","water_ccpvdz.bin.ref");
+};
+
+TEST(MP2,h2o_ccpvdz_direct)
+{
+  CQMPTEST("mp/serial/mp2/water_ccpvdz_direct","water_ccpvdz.bin.ref");
+};
+
+// MP2 tests, parallel job
+TEST(MP2,par_h2o_ccpvdz_incore)
+{
+  CQMPTEST("mp/parallel/mp2/water_ccpvdz_incore","water_ccpvdz.bin.ref");
+};
+
+TEST(MP2,par_h2o_ccpvdz_direct)
+{
+  CQMPTEST("mp/parallel/mp2/water_ccpvdz_direct","water_ccpvdz.bin.ref");
+};
 
 
-}; // namespace ChronusQ

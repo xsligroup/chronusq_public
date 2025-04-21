@@ -37,6 +37,7 @@
 #include <regex>
 #include <cubegen.hpp> 
 #include <perturb.hpp>
+#include <mp.hpp>
 #include <memory>
 
 // Preprocessor directive to aid the digestion of optional 
@@ -70,6 +71,7 @@ namespace ChronusQ {
     EOMCC,
     MR,
     PT,
+    MP2,
     BOMD,
     EHRENFEST
   };
@@ -105,6 +107,9 @@ namespace ChronusQ {
     }
     else if( jobStr == "PERTURB" ) {
       job = JobType::PT;
+    }
+    else if( jobStr == "MP2" ) {
+      job = JobType::MP2;
     }
     else {
       jobStr = "Unrecognized job type \"" + jobStr + "\"!";
@@ -317,6 +322,14 @@ namespace ChronusQ {
   // Parse Perturb options
   std::shared_ptr<MCWaveFunctionBase> CQPerturbOptions(std::ostream &,
             CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &);
+
+  // Parse MP2 options
+  std::shared_ptr<MP2Base> CQMP2Options(std::ostream &, CQInputFile &, 
+              std::shared_ptr<SingleSlaterBase> &);
+
+
+  void CQMP2_VALID(std::ostream &, CQInputFile &);
+
   void CQPERTURB_VALID(std::ostream &, CQInputFile &);
 
   void CQMiscOptions(std::ostream &, CQInputFile &);
@@ -355,6 +368,7 @@ namespace ChronusQ {
     CQMCSCF_VALID(out,input);
     CQEOMCC_VALID(out,input);
     CQPERTURB_VALID(out,input);
+    CQMP2_VALID(out,input);
     CQCI_VALID(out,input);
     CQGAUXC_VALID(out,input);
 
