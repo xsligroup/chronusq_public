@@ -267,7 +267,10 @@ namespace ChronusQ {
 
       // MO swapping for electronic subsystem
       if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) 
+      {
+        neoss->getSubSSBase("Electronic")->scfControls = ss->scfControls;
         HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Electronic")));
+      }
 
       // Currently prot and elec share cube options.
       ParseSCFCubeSubsection(output, input, ss, cube);
