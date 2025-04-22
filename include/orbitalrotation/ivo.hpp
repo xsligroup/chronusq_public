@@ -85,8 +85,9 @@ namespace ChronusQ {
     // diagonalize virtual fock Matrix
     dcomplex * EIVOs = CQMemManager::get().malloc<dcomplex>(nFVirt);
     MatsT * U = CQMemManager::get().malloc<MatsT>(nFVirt * nFVirt);
-    MatsT * dummy = nullptr;
-    GeneralEigen('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt);
+    //GeneralEigen('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt);
+    HermetianEigen('V','L', nFVirt, virtualFock.pointer(), nFVirt, EIVOs);
+    std::copy_n(virtualFock.pointer(),nFVirt*nFVirt,U);
 
     /*****************************************************************/
     /* Step 3: transform virtal MO: C'(mu,b) = \sum_a C(mu,a) U(a,b) */
