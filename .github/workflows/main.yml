@@ -20,7 +20,7 @@ jobs:
         config:
           - {
             name: "GCC",
-            os: [self-hosted, gcc],
+            os: [self-hosted, cache],
             enable_mpi: OFF,
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
             parallel_build_tasks: 1
