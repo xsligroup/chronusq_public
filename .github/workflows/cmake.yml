@@ -26,7 +26,6 @@ jobs:
             # fc: "gfortran-12",
             enable_mpi: OFF,
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-            parallel_build_tasks: 1
           }
           - {
             name: "GCC-MPI",
@@ -36,7 +35,6 @@ jobs:
             # fc: "gfortran-12",
             enable_mpi: On,
             additional_cmake_args: -DCQ_ENABLE_MPI=ON,
-            parallel_build_tasks: 1
           }
           # - {
           #   name: "Intel",
@@ -59,6 +57,13 @@ jobs:
     steps:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
+      - name: Cache CMake dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/CMake
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}  # Unique key based on CMakeLists.txt changes
+          restore-keys: |
+            ${{ runner.os }}-cmake-
       - name: Set up environment
         run: |
           env
@@ -81,13 +86,15 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-          cmake --build . \
-                --config Release \
-                --parallel ${{ matrix.config.parallel_build_tasks }}
+              JOBS=$(nproc --ignore=2)
+              echo "Building with $JOBS threads"
+              cmake --build . --config Release --parallel $JOBS
       - name: Test
         shell: bash
         working-directory: build
         run: |
-          ctest . \
-                --output-on-failure \
-                --parallel ${{ matrix.config.parallel_build_tasks }}
+              JOBS=$(nproc --ignore=2)
+              echo "Testing with $JOBS threads"
+              ctest . \
+                    --output-on-failure \
+                    --parallel $JOBS
