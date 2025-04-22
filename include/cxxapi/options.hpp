@@ -165,6 +165,7 @@ namespace ChronusQ {
       SCFControls scfControls);
 
   void CQQM_VALID(std::ostream&, CQInputFile &);
+  void CQPROTQM_VALID(std::ostream&, CQInputFile &);
   void CQDFTINT_VALID(std::ostream&, CQInputFile &);
 
   // Parse RT options
@@ -356,6 +357,7 @@ namespace ChronusQ {
     CQBASIS_VALID(out,input,"DFBASIS");
     CQINTS_VALID(out,input);
     CQQM_VALID(out,input);
+    CQPROTQM_VALID(out,input);
     CQDFTINT_VALID(out,input);
     CQSCF_VALID(out,input);
     CQRT_VALID(out,input);

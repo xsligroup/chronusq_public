@@ -54,7 +54,6 @@ namespace ChronusQ {
     // Allowed keywords
     std::vector<std::string> allowedKeywords = {
       "REFERENCE",
-      "NUCREFERENCE",
       "JOB",
       "X2CTYPE",
       "SPINORBITSCALING",
@@ -74,6 +73,32 @@ namespace ChronusQ {
     }
     // Check for disallowed combinations (if any)
   }
+
+  /**
+   *
+   *  Check valid keywords in the Proton QM section.
+   *
+  */
+  void CQPROTQM_VALID( std::ostream &out, CQInputFile &input ) {
+
+    // Allowed keywords
+    std::vector<std::string> allowedKeywords = {
+      "REFERENCE",
+      "IGNOREPROTONTWOBODY"
+    };
+
+    // Specified keywords
+    std::vector<std::string> qmKeywords = input.getDataInSection("PROTQM");
+
+    // Make sure all of basisKeywords in allowedKeywords
+    for( auto &keyword : qmKeywords ) {
+      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
+      if( ipos == allowedKeywords.end() ) 
+        CErr("Keyword PROTQM." + keyword + " is not recognized",std::cout);// Error
+    }
+    // Check for disallowed combinations (if any)
+  }
+
 
   /**
    *
