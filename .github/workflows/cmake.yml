@@ -1,4 +1,4 @@
-name: CQ CI - CMake Configure, Build, Test
+name: CQ CI - CMake Configure, Build, Test, Cache
 
 on:
   push:
@@ -10,10 +10,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cmake-build:
+   cmake-build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
-    timeout-minutes: 1440
+    timeout-minutes: 200
     strategy:
       fail-fast: false
       matrix:
@@ -21,80 +21,92 @@ jobs:
           - {
             name: "GCC",
             os: [self-hosted, gcc],
-            # cc: "gcc-12",
-            # cxx: "g++-12",
-            # fc: "gfortran-12",
             enable_mpi: OFF,
             additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
           }
           - {
             name: "GCC-MPI",
             os: [self-hosted, gcc, mpi],
-            # cc: "gcc-12",
-            # cxx: "g++-12",
-            # fc: "gfortran-12",
             enable_mpi: On,
             additional_cmake_args: -DCQ_ENABLE_MPI=ON,
-          }
-          # - {
-          #   name: "Intel",
-          #   os: [self-hosted, intel],
-          #   cc: "icx",
-          #   cxx: "icpx",
-          #   fc: "ifx",
-          #   additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
-          #   parallel_build_tasks: 4
-          # }
-          # - {
-          #   name: "Intel-MPI",
-          #   os: [self-hosted, intel, mpi],
-          #   cc: "icx",
-          #   cxx: "icpx",
-          #   fc: "ifx",
-          #   additional_cmake_args: -DCQ_ENABLE_MPI=ON,
-          #   parallel_build_tasks: 4
-          # }
+          }           
     steps:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
-      - name: Cache CMake dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/CMake
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}  # Unique key based on CMakeLists.txt changes
-          restore-keys: |
-            ${{ runner.os }}-cmake-
+     
       - name: Set up environment
         run: |
           env
-          mkdir build
+          mkdir -p build
+
+      - name: Cache build based on CMakeLists.txt and mpi enabled
+        id: cache-build
+        uses: actions/cache@v3
+        with:
+          path: build
+          key: ${{ runner.os }}-build-${{ runner.name }}-${{ matrix.config.enable_mpi }}-${{ hashFiles('**/CMakeLists.txt') }}  # Unique key based on CMakeLists.txt and mpi enabled changes
+          restore-keys: |
+            ${{ runner.os }}-build-${{ runner.name }}-${{ matrix.config.enable_mpi }}-
+      
+      - name: Check if build is cached
+        run: |
+          if [[ "${{ steps.cache-build.outputs.cache-hit }}" == "true" ]]; then
+            echo "Build cache restored, skipping rebuild."
+            echo "skip_build=true" >> $GITHUB_ENV
+          else
+            echo "No cached build found, proceeding with rebuild."
+            echo "skip_build=false" >> $GITHUB_ENV
+          fi 
       - name: Configure
+        if: env.skip_build == 'false'
         shell: bash
         working-directory: build
         run: |
-          source scl_source enable gcc-toolset-13
-          cmake \
+          #Load environment
+          source /usr/share/Modules/init/bash
+          source /etc/profile.d/modules.sh
+          export MODULEPATH=/home/modulefiles/compilers:/home/modulefiles/compiler_dep/gcc/10.2.0:/home/modulefiles:$MODULEPATH
+
+          module load gcc
+          module load hdf5
+          module load libint
+          export PATH=/usr/lib64/openmpi/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
+          #build
+          cmake .. \
             -DCQ_ENABLE_MPI=${{ matrix.config.enable_mpi }} \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_COLOR_DIAGNOSTICS=On \
+            -DBLAS_LIBRARIES=/usr/lib64/libopenblas.so \
+            -DLAPACK_LIBRARIES=/usr/lib64/libopenblas.so \
             -G Ninja \
             -S .. -B .
-            # -DCMAKE_C_COMPILER=${{ matrix.config.cc }}  \
-            # -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
-            # -DCMAKE_Fortran_COMPILER=${{ matrix.config.fc }} \
+           
       - name: Build
+        if: env.skip_build == 'false'
         shell: bash
         working-directory: build
         run: |
-              JOBS=$(nproc --ignore=2)
+              JOBS=7
               echo "Building with $JOBS threads"
               cmake --build . --config Release --parallel $JOBS
+      
       - name: Test
         shell: bash
         working-directory: build
         run: |
-              JOBS=$(nproc --ignore=2)
+              JOBS=7
               echo "Testing with $JOBS threads"
-              ctest . \
-                    --output-on-failure \
-                    --parallel $JOBS
+              # Load environment
+              source /usr/share/Modules/init/bash
+              source /etc/profile.d/modules.sh
+              export MODULEPATH=/home/modulefiles/compilers:/home/modulefiles/compiler_dep/gcc/10.2.0:/home/modulefiles:$MODULEPATH
+
+              module load gcc
+              module load hdf5
+              module load libint
+              export PATH=/usr/lib64/openmpi/bin:$PATH
+              export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
+              #run tests
+              ctest --output-on-failure --parallel $JOBS
+
