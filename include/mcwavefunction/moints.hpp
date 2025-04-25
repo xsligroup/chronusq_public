@@ -169,9 +169,6 @@ namespace ChronusQ {
     // (for example from RT-CI)
     this->EFieldNuc = 0.0;
 
-    if(!pert_has_type(pert,Electric))
-      return;
-
     std::array<double,3> nucmoment = {0.0,0.0,0.0};
     for(auto & atom : this->reference().molecule().atoms)
     {

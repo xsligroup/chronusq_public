@@ -28,6 +28,47 @@
 
 namespace ChronusQ {
 
+  void MCWaveFunctionBase::partitionProtonMOSpace(std::vector<size_t> nActO, size_t nCorrE)
+  {
+    auto & mopart = this->MOPartition;
+    auto & wfn = referenceWaveFunction();
+
+    mopart.nElecMO = wfn.nAlphaOrbital();
+
+    mopart.nMO = mopart.nElecMO;
+
+    size_t nCorrO = std::accumulate(nActO.begin(), nActO.end(), 0);
+
+    // Hacky part where we work around the fact that this is not closed shell
+    mopart.nCorrEA = nCorrE;
+    mopart.nCorrEB = 0;
+    mopart.nInact = wfn.nOA - mopart.nCorrEA;
+
+    mopart.nFVirt = mopart.nElecMO - nCorrO - mopart.nInact;
+    mopart.nCorrO = nCorrO;
+    mopart.nCorrE = nCorrE;
+
+    // TODO: Construct the det string manager
+
+    if(mopart.scheme == CAS)
+    {
+      this->NDet=Comb(nCorrO,nCorrE);
+      this->detStr=std::dynamic_pointer_cast<DetStringManager>(std::make_shared<CASStringManager>(nCorrO,nCorrE));
+      this->detStrBeta=std::dynamic_pointer_cast<DetStringManager>(std::make_shared<CASStringManager>(nCorrO,0));
+    }
+    else
+    {
+      CErr("Non CAS NEOCI NYI");
+    }
+
+    setActiveSpaceAndReOrder();
+
+    setMORanges();
+
+  }
+
+
+
   void MCWaveFunctionBase::partitionMOSpace(std::vector<size_t> nActO, size_t nCorrE) {
   
     auto & mopart = this->MOPartition;

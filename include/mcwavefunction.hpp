@@ -59,11 +59,13 @@ namespace ChronusQ {
     typedef MatsT *                oper_t;
     typedef std::vector<oper_t>    oper_t_coll;
     
-    SingleSlater<MatsT, IntsT> &   ref_; 
     
     bool cacheHalfTransTPI_ = false;
     
   public:
+
+    // Hacky for now to make this public while calculating 1PDMS from 1RDMS in NEO
+    SingleSlater<MatsT, IntsT> &   ref_; 
     
 	// Integrals here are computed and stored in correalted space
 	// Only one set of integrals, means not working for UHF reference
@@ -140,7 +142,7 @@ namespace ChronusQ {
     void ReadGuessCIVector();
     virtual void saveCurrentStates(bool);
     void setMORanges();
-    void transformInts(EMPerturbation &);
+    virtual void transformInts(EMPerturbation &);
     void printMOSpacePatition();
     void print1RDMs();
     void printMOInfo(std::ostream&, size_t a = 0);
@@ -148,11 +150,12 @@ namespace ChronusQ {
     // Properties
     void populationAnalysis(size_t);
     void populationAnalysis();
-    void spinAnalysis(size_t);
-    void spinAnalysis();
-    double oscillator_strength(size_t, size_t s1 = 0);
-    void computeMultipole(size_t);
-    void computeMultipole();
+    virtual double oscillator_strength(size_t, size_t s1 = 0);
+    virtual void computeMultipole(size_t);
+    virtual void computeMultipole();
+    void formNaturalOrbs(cqmatrix::Matrix<MatsT>);
+    virtual void spinAnalysis(size_t);
+    virtual void spinAnalysis();
     // For dealing with electric fields
     void precompute_NucEField(EMPerturbation &);
 

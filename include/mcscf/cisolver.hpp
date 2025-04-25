@@ -26,6 +26,7 @@
 #include <mcscf.hpp>
 #include <cibuilder/casci/impl.hpp>
 #include <cibuilder/rasci/impl.hpp>
+#include <cibuilder/neo/impl.hpp>
 #include <cqlinalg/eig.hpp>
 #include <itersolver.hpp>
 

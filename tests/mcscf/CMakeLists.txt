@@ -58,6 +58,7 @@ add_cq_test(MCSCF_FIELD          mcscftest "MCSCF_FIELD.*")
 add_cq_test(OneC_CASSCF_READCI   mcscftest "OneC_CASSCF_READCI.*")
 add_cq_test(X2C_CASSCF_READCI   mcscftest "X2C_CASSCF_READCI.*")
 add_cq_test(FourC_CASSCF_READCI   mcscftest "FourC_CASSCF_READCI.*")
+add_cq_test(NEO_CASCI             mcscftest "NEO_CASCI.*")
 
 # RAS test
 add_cq_test(RASCI_DAVIDSON         mcscftest "RASCI_DAVIDSON.*")

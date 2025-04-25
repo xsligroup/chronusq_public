@@ -278,6 +278,11 @@ namespace ChronusQ {
   // Parse MCSCF options
   std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &, 
      CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);
+
+
+  // Parse NEOMCSCF options
+  std::shared_ptr<MCWaveFunctionBase> CQNEOMCSCFOptions(std::ostream &, 
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);  
   
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
   

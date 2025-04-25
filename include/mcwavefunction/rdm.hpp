@@ -90,6 +90,9 @@ namespace ChronusQ {
     if (isTDM == false) {
       fc1C = (reference().nC == 1) ? 2.0 : 1.0;}
 
+    // If NEO singly occupied core orbitals
+    if(this->reference().particle.charge == 1.0) fc1C = 1.0;
+
     cqmatrix::Matrix<MatsT> tmpPDM(nAO);
     tmpPDM.clear();
 

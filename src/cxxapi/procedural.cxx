@@ -550,9 +550,6 @@ namespace ChronusQ {
 
         if ( elecJob == JobType::MR or elecJob == JobType::PT ) {
 
-          if (doNEO)
-            CErr("NEO-MCSCF NYI!",output);
-
           EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
 
           if (input.containsSection("MCSCF") && input.containsSection("CI")){
@@ -565,7 +562,14 @@ namespace ChronusQ {
             CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
             
           if (input.containsSection("MCSCF")) {
-            mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
+            if (doNEO)
+            {
+              mcscf = CQNEOMCSCFOptions(output,input,ss,emPert,cube);
+            }
+            else
+            {
+              mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
+            }
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
             if(cube) mcscf->runCube(cubes);

@@ -125,6 +125,7 @@ namespace ChronusQ {
     std::shared_ptr<const ExcitationList> excitationList() const { return exList_; }
      
     void computeList();
+    int_matrix & get_addrArray(){return addrArray_;};
     
     void dealloc() { exList_ = nullptr; }
 

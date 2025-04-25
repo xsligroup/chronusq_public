@@ -180,6 +180,9 @@ namespace ChronusQ {
       std::shared_ptr<SingleSlaterBase> getSubSSBase(std::string label) override {
         return std::dynamic_pointer_cast<SingleSlaterBase>(subsystems.at(label));
       }
+      std::shared_ptr<SingleSlater<MatsT,IntsT>> getSubSS(std::string label){
+        return std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(subsystems.at(label));
+      }
       template <template <typename, typename> class T>
       std::vector<std::shared_ptr<T<MatsT,IntsT>>> getAllSubsystems() {
         std::vector<std::shared_ptr<T<MatsT,IntsT>>> results;

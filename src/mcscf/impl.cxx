@@ -22,6 +22,7 @@
  *  
  */
 #include <mcscf/impl.hpp>
+#include <mcscf/neo/impl.hpp>
 #include <orbitalrotation/impl.hpp>
 
 namespace ChronusQ {
@@ -38,4 +39,9 @@ namespace ChronusQ {
  template class OrbitalRotation<dcomplex,double>; 
  template class OrbitalRotation<dcomplex,dcomplex>; 
 
-} // namespace ChronusQ
+  template class NEOMCSCF<double,double>;
+  template class NEOMCSCF<dcomplex,double>;
+  template class NEOMCSCF<dcomplex,dcomplex>;
+
+}; // namespace ChronusQ
+

@@ -249,7 +249,36 @@ namespace ChronusQ {
       }
   } // MCWaveFunction::computeOverlaps
 
+  // Only takes the oneRDM of the active space
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::formNaturalOrbs(cqmatrix::Matrix<MatsT> OneRDM)
+  {
+    if(referenceWaveFunction().nC != 1) CErr("Natural orbitals for >1C untested");
+    size_t nCorrO = this->MOPartition.nCorrO;
+    size_t NB = this->ref_.nAlphaOrbital();
+    double * NOOccs = CQMemManager::get().template malloc<double>(nCorrO);
+    HermetianEigen('V','U',nCorrO,OneRDM.pointer(),nCorrO,NOOccs);
 
+    // Need to reverse the order of eigenvectors for rotation to basis
+    cqmatrix::Matrix<MatsT> Unitary(nCorrO);
+    MatsT * Eigvec = OneRDM.pointer() + (nCorrO-1)*nCorrO;
+    MatsT * SCR = Unitary.pointer();
+    for(size_t n = 0; n < nCorrO; n++, Eigvec-=nCorrO, SCR+=nCorrO)
+    {
+      std::copy_n(Eigvec,nCorrO,SCR);
+    }
+
+    size_t nInact = this->MOPartition.nInact;
+    //prettyPrintSmart(std::cout,"Unitary",Unitary.pointer(),nCorrO,nCorrO,nCorrO);
+    MatsT * newMOs = CQMemManager::get().template malloc<MatsT>(NB*nCorrO);
+
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,nCorrO,nCorrO,MatsT(1.0),this->ref_.mo[0].pointer()+nInact*NB,NB,Unitary.pointer(),nCorrO,MatsT(0.0),newMOs,NB);
+
+    std::copy_n(newMOs,NB*nCorrO,this->ref_.mo[0].pointer()+NB*nInact);
+
+    CQMemManager::get().free(NOOccs,newMOs);
+
+  }  
 
 }; // namespace ChronusQ
 

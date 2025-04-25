@@ -68,6 +68,7 @@ namespace ChronusQ {
     virtual void computeOneRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, cqmatrix::Matrix<MatsT> &) = 0;
     virtual void computeTwoRDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, InCore4indexTPI<MatsT> &) = 0;
     virtual void computeTDM(MCWaveFunction<MatsT, IntsT> &, MatsT *, MatsT *, cqmatrix::Matrix<MatsT> &) = 0;
+
   }; // class CIBuilder
   
 
@@ -76,5 +77,6 @@ namespace ChronusQ {
 // Include declaration for specialization of CIBuilder
 #include <cibuilder/casci.hpp>
 #include <cibuilder/rasci.hpp>
+#include <cibuilder/neo.hpp>
 
 

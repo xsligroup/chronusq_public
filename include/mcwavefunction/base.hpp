@@ -39,6 +39,10 @@ namespace ChronusQ {
     GENERIC_DET
   };
 
+  enum DetPrint {
+    ALLDET = -1,
+  };
+
   struct MOSpacePartition {
     // TODO: make variables for cases beyound CAS
     //Parameters for space partition
@@ -117,6 +121,7 @@ namespace ChronusQ {
     // This is additive to the diagonal in CI theory, so it can be 
     // simply added to the total state energies on convergence
     double EFieldNuc = 0.0;
+    std::array<double,3> nucmoment = {0.0,0.0,0.0};
 
     // Flags for avoiding redundant integral transformations
     // If the applied field changed, we'll need to clear the AO Cache
@@ -150,10 +155,18 @@ namespace ChronusQ {
     // Options for CubeGen
     CubeGenOptions cubeOptsMC;
 
+    // Do Natural Orbital Transformation
+    size_t NatOrbs = 0;
+    // By default we want to re-express the CI vectors
+    // in the new natural orbital basis
+    bool NatOrbRediag = true;
+
     // Print Settings
     size_t printMOCoeffs = 0;
     size_t printRDMs = 0;
     double rdmCut = 0.10;
+    size_t NDetPrint = 0;
+    bool printProtonDets = false;
 
     MCWaveFunctionBase() = delete;
     MCWaveFunctionBase(const MCWaveFunctionBase &) = default;
@@ -174,6 +187,7 @@ namespace ChronusQ {
     ~MCWaveFunctionBase() { dealloc(); };
 
     void partitionMOSpace(std::vector<size_t>, size_t);
+    void partitionProtonMOSpace(std::vector<size_t>, size_t);
     void turnOnStateAverage(const std::vector<double> &);
     std::vector<int> genfCat(std::vector<std::vector<size_t>>,
       std::vector<std::vector<size_t>>, size_t, size_t);
@@ -195,6 +209,11 @@ namespace ChronusQ {
     }
 
     void dealloc () { }
+
+    // Transform RDM's into PDMs
+    // TODO: This should be moved elsewhere
+    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getOnePDM(){return std::vector<std::shared_ptr<cqmatrix::Matrix<double>>>{};};
+    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getPOnePDM(){return std::vector<std::shared_ptr<cqmatrix::Matrix<double>>>{};};
 
   }; // class MCWaveFunctionBase
 
