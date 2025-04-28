@@ -94,6 +94,15 @@ TEST( FOURCHF, UPu_184_plus_P_DC_finitenuc_direct ) {
 
 };
 
+// Two electron U-Pu 184+ test scalar Dirac-Couloumb-SSSS AO Direct
+TEST( FOURCHF, UPu_184_plus_P_srDC_finitenuc_direct ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/UPu_184+_P_srDC_finitenuc_direct",
+    "UPu_184+_P_srDC_finitenuc.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
 // Two electron U-Pu 184+ test Dirac-Couloumb-Gaunt
 TEST( FOURCHF, UPu_184_plus_P_DCG_finitenuc ) {
 
@@ -117,6 +126,15 @@ TEST( FOURCHF, UPu_184_plus_P_DCGGS_finitenuc ) {
 
   CQSCFTEST( "scf/serial/fourcomp/UPu_184+_P_DCGGS_finitenuc",
     "UPu_184+_P_DCGGS_finitenuc.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test scalar Dirac-Couloumb-Gaunt-Gauge-SSSS AO Direct
+TEST( FOURCHF, UPu_184_plus_P_srDCGGS_finitenuc_direct ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/UPu_184+_P_srDCGGS_finitenuc_direct",
+    "UPu_184+_P_srDCGGS_finitenuc.bin.ref",1e-8,
     false, false, false, false, false, true);
 
 };

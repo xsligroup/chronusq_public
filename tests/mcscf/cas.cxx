@@ -63,8 +63,6 @@ TEST(FourC_CASSCF_FULLMATRIX, Al_631G ) {
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casscf_full_incore_n6", "al_6-31G_4c_dcssss_casscf.bin.ref");
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casscf_full_incore_n6", "al_6-31G_4c_dcg_casscf.bin.ref");
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_incore_n6", "al_6-31G_4c_dcb_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci", "U91+_DCB_fci.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci_no_nagetive_rotation", "U91+_DCB_fci_no_nagetive_rotation.bin.ref");
 
 #ifndef _CQ_GENERATE_TESTS
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n5", "al_6-31G_4c_bc_casscf.bin.ref");
@@ -76,6 +74,28 @@ TEST(FourC_CASSCF_FULLMATRIX, Al_631G ) {
   CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_direct_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); //, 1e-7);
 #endif
  
+};
+
+TEST(FourC_CASSCF_FULLMATRIX, U91_plus ) {
+
+  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci", "U91+_DCB_fci.bin.ref");
+  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci_no_nagetive_rotation", "U91+_DCB_fci_no_nagetive_rotation.bin.ref");
+
+#ifndef _CQ_GENERATE_TESTS
+#endif
+
+};
+
+TEST(FourC_CASSCF_FULLMATRIX, U90_plus ) {
+
+  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref");
+  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref");
+
+#ifndef _CQ_GENERATE_TESTS
+    CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref");
+    CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref");
+#endif
+
 };
 
 #ifndef _CQ_GENERATE_TESTS

@@ -1,0 +1,40 @@
+[Molecule]
+charge = 184
+mult = 1
+geom:
+ U   0.0 0.0 0.0
+ Pu  0.0 0.0 1.5
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = SCF
+X2CTYPE=SPINFREE
+
+[SCF]
+guess = core
+damp = false
+
+[INTS]
+alg = direct
+libcint = true
+FiniteNuclei = true
+DIRACCOULOMB = on,sf
+SSSS = on,sf
+
+[MISC]
+nsmp = 2
+
+[BASIS]
+DefineBasis = On
+BasisDef:
+ ****
+ U  0
+  P 1 1.00
+  15.0       1.0
+ ****
+ Pu  0
+  P 1 1.00
+  15.0       1.0

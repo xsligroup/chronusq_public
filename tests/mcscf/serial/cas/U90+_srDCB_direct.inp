@@ -1,0 +1,48 @@
+[Molecule]
+charge = 90
+mult = 3
+geom:
+ U   0.0 0.0 0.0
+
+
+# 
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = MCSCF
+X2CTYPE=SPINFREE
+
+[SCF]
+guess = core
+damp = false
+MaxIter = 2000
+
+[INTS]
+alg = direct 
+libcint = true
+FiniteNuclei = true 
+DC = True,sf
+SSSS = True,sf 
+GAUNT = True,sf
+GAUGE = True,sf
+
+
+[MCSCF]
+JOBTYPE = CASSCF
+NACTO = 6
+NACTE = 2
+NRoots = 15 
+stateaverage = true
+
+[MISC]
+nsmp = 1
+
+[BASIS]
+DefineBasis = On
+BasisDef:
+ ****
+ U  0
+  P 1 1.00
+  15.0       1.0
+
