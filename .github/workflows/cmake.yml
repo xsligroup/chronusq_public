@@ -95,7 +95,11 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-              JOBS=7
+              if [ "${{ matrix.config.enable_mpi }}" = "On" ]; then
+                JOBS=4 # Lower number of threads if using MPI
+              else
+                JOBS=7 
+              fi
               echo "Testing with $JOBS threads"
               # Load environment
               source /usr/share/Modules/init/bash
