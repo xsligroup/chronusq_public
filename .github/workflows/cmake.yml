@@ -22,13 +22,15 @@ jobs:
             name: "GCC",
             os: [self-hosted, gcc],
             enable_mpi: OFF,
-            additional_cmake_args: -DCQ_ENABLE_MPI=OFF,
+            para_build_jobs: 7,
+            para_test_jobs: 7
           }
           - {
             name: "GCC-MPI",
             os: [self-hosted, gcc, mpi],
-            enable_mpi: On,
-            additional_cmake_args: -DCQ_ENABLE_MPI=ON,
+            enable_mpi: ON,
+            para_build_jobs: 7,
+            para_test_jobs: 4
           }           
     steps:
       - name: Checkout Current CQ Branch
@@ -87,20 +89,14 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-              JOBS=7
-              echo "Building with $JOBS threads"
-              cmake --build . --config Release --parallel $JOBS
+              echo "Building with $${{ matrix.config.para_build_jobs }} threads"
+              cmake --build . --config Release --parallel ${{ matrix.config.para_build_jobs }}
       
       - name: Test
         shell: bash
         working-directory: build
         run: |
-              if [ "${{ matrix.config.enable_mpi }}" = "On" ]; then
-                JOBS=4 # Lower number of threads if using MPI
-              else
-                JOBS=7 
-              fi
-              echo "Testing with $JOBS threads"
+              echo "Testing with $${{ matrix.config.para_test_jobs }} threads"
               # Load environment
               source /usr/share/Modules/init/bash
               source /etc/profile.d/modules.sh
@@ -112,6 +108,6 @@ jobs:
               export PATH=/usr/lib64/openmpi/bin:$PATH
               export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
               #run test
-              ctest -E "GPLHR" --output-on-failure --parallel $JOBS # Run all test GPLHR in parrallel
+              ctest -E "GPLHR" --output-on-failure --parallel $${{ matrix.config.para_test_jobs }} # Run all test GPLHR in parrallel
               ctest -R "GPLHR" --output-on-failure # Run GPLHR in serial
 
