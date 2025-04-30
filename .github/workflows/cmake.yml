@@ -111,6 +111,7 @@ jobs:
               module load libint
               export PATH=/usr/lib64/openmpi/bin:$PATH
               export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
-              #run tests
-              ctest --output-on-failure --parallel $JOBS
+              #run test
+              ctest -E "GPLHR" --output-on-failure --parallel $JOBS # Run all test GPLHR in parrallel
+              ctest -R "GPLHR" --output-on-failure # Run GPLHR in serial
 
