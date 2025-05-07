@@ -881,7 +881,7 @@ namespace ChronusQ {
       /*
 
       double * O = CQMemManager::get().malloc<double>(nRoots);
-      HermetianEigen('V','L',nRoots,SCR,nRoots,O);
+      HermitianEigen('V','L',nRoots,SCR,nRoots,O);
 
       prettyPrintSmart(std::cout,"O",O,nRoots,1,nRoots);
 

@@ -41,7 +41,7 @@ namespace ChronusQ {
     std::copy_n(A,N*N,SCR); // Copy A to SCR
 
     // A = V * a * V**H
-    HermetianEigen('V','U',N,SCR,N,W);
+    HermitianEigen('V', 'U', N, SCR, N, W);
 
     // Compute X = V * func(a)
     for(auto j = 0; j < N; j++)

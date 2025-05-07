@@ -499,7 +499,7 @@ namespace ChronusQ {
   }; // GeneralEigen (complex)
   
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, double *W){
+  int HermitianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, double *W){
 
     lapack::Job JZ;
     lapack::Uplo UL;
@@ -514,10 +514,10 @@ namespace ChronusQ {
     
     return lapack::syev(JZ,UL,N,A,LDA,W);
   
-  }; // HermetianEigen (real / real eigenvalues)
+  }; // HermitianEigen (real / real eigenvalues)
   
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, double *W){
+  int HermitianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, double *W){
 
     lapack::Job JZ;
     lapack::Uplo UL;
@@ -532,15 +532,15 @@ namespace ChronusQ {
     
     return lapack::heev(JZ,UL,N,A,LDA,W);
   
-  }; // HermetianEigen (complex / real eigenvalues)
+  }; // HermitianEigen (complex / real eigenvalues)
 
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, dcomplex *W){
+  int HermitianEigen(char JOBZ, char UPLO, int N, dcomplex *A, int LDA, dcomplex *W){
   
     int INFO;
     double *WReal = CQMemManager::get().malloc<double>(N);
   
-    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal);
+    INFO = HermitianEigen(JOBZ,UPLO,N,A,LDA,WReal);
     
     for(auto i = 0; i < N; i++) W[i] = WReal[i];
 
@@ -548,15 +548,15 @@ namespace ChronusQ {
   
     return INFO;
   
-  }; // HermetianEigen (complex / complex eigenvalues )
+  }; // HermitianEigen (complex / complex eigenvalues )
 
   template<>
-  int HermetianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W){
+  int HermitianEigen(char JOBZ, char UPLO, int N, double *A, int LDA, dcomplex *W){
 
     int INFO;
     double *WReal = CQMemManager::get().malloc<double>(N);
 
-    INFO = HermetianEigen(JOBZ,UPLO,N,A,LDA,WReal);
+    INFO = HermitianEigen(JOBZ,UPLO,N,A,LDA,WReal);
 
     for(auto i = 0; i < N; i++) W[i] = WReal[i];
 
@@ -564,7 +564,7 @@ namespace ChronusQ {
 
     return INFO;
 
-  }; // HermetianEigen (real / complex eigenvalues )
+  }; // HermitianEigen (real / complex eigenvalues )
   
   
 

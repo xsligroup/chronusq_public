@@ -106,9 +106,9 @@ namespace ChronusQ {
     //MatsT * U = CQMemManager::get().malloc<MatsT>(nStates*nStates);
     dcomplex * Heff_diag = CQMemManager::get().malloc<dcomplex>(nStates); 
     MatsT * dummy = nullptr;
-    // TODO: GeneralEigen VS HermetianEigen?
+    // TODO: GeneralEigen VS HermitianEigen?
     //GeneralEigen('N','V',nStates,MfN.pointer(),nStates,Heff_diag,dummy,1,U,nStates);
-    HermetianEigen('V','L',nStates,MfN.pointer(),nStates,Heff_diag);
+    HermitianEigen('V','L',nStates,MfN.pointer(),nStates,Heff_diag);
 
 #ifdef _DEBUG_PT2_impl
     prettyPrintSmart(std::cout,"PT2 H_eff_0 eigenvectors", U, nStates, nStates, nStates);
@@ -207,12 +207,12 @@ namespace ChronusQ {
 //    std::cout<<"H_eff diagonalization starts:"<<std::endl;
     size_t nStates = this->NStates;
 
-    // GeneralEigen and HermetianEigen give the same results, but not the same eigvec.
+    // GeneralEigen and HermitianEigen give the same results, but not the same eigvec.
 //    MatsT * eigvec = CQMemManager::get().malloc<MatsT>(nStates*nStates);
     double * energy = CQMemManager::get().malloc<double>(nStates);
 //    dcomplex * energy = CQMemManager::get().malloc<dcomplex>(nStates);
 //    MatsT * dummy = nullptr;
-    HermetianEigen('V','L',nStates,H.pointer(),nStates,energy);
+    HermitianEigen('V', 'L', nStates, H.pointer(), nStates, energy);
 //    GeneralEigen('N','V',nStates,H.pointer(),nStates,energy,dummy,1,eigvec,nStates);
 #ifdef _DEBUG_PT2_impl
     MatsT * test = CQMemManager::get().malloc<MatsT>(nStates*nStates);

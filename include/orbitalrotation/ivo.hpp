@@ -86,7 +86,7 @@ namespace ChronusQ {
     dcomplex * EIVOs = CQMemManager::get().malloc<dcomplex>(nFVirt);
     MatsT * U = CQMemManager::get().malloc<MatsT>(nFVirt * nFVirt);
     //GeneralEigen('N','V', nFVirt, virtualFock.pointer(), nFVirt, EIVOs, dummy, 1, U, nFVirt);
-    HermetianEigen('V','L', nFVirt, virtualFock.pointer(), nFVirt, EIVOs);
+    HermitianEigen('V','L', nFVirt, virtualFock.pointer(), nFVirt, EIVOs);
     std::copy_n(virtualFock.pointer(),nFVirt*nFVirt,U);
 
     /*****************************************************************/

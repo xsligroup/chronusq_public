@@ -569,7 +569,7 @@ namespace ChronusQ {
     double *CHEV = CQMemManager::get().malloc<double>(4*NPU);
     std::fill_n(CHEV, 4*NPU, 0.0);
 
-    HermetianEigen('V','U',4*NPU,CH4C,4*NPU,CHEV);
+    HermitianEigen('V', 'U', 4 * NPU, CH4C, 4 * NPU, CHEV);
 
 
     // Get pointers to "L" and "S" components of eigenvectors
@@ -1208,7 +1208,7 @@ namespace ChronusQ {
 
     // Diagonalize the 4C CH
     double *CHEV = CQMemManager::get().malloc<double>(4*NP);
-    HermetianEigen('V','U',4*NP,CH4C,4*NP,CHEV);
+    HermitianEigen('V', 'U', 4 * NP, CH4C, 4 * NP, CHEV);
 
 #ifdef DebugX2Cprint
     prettyPrintSmart(std::cout,"4C eigen values",CHEV,4*NP,1,4*NP);
@@ -1244,7 +1244,7 @@ namespace ChronusQ {
 
     // Y -> V * y * V**H 
     // XXX: Store the eigenvalues of Y in CHEV
-    HermetianEigen('V','U',2*NP,Y,4*NP,CHEV);
+    HermitianEigen('V','U',2*NP,Y,4*NP,CHEV);
 
     // SCR1 -> V * y^-0.25
     for(auto j = 0ul; j < 2*NP; j++)
@@ -1399,7 +1399,7 @@ namespace ChronusQ {
 
     // Y -> V * y * V**H 
     // XXX: Store the eigenvalues of Y in CHEV
-    HermetianEigen('V','U',2*NP,Y->pointer(),Y->nRows(),CHEV);
+    HermitianEigen('V', 'U', 2 * NP, Y->pointer(), Y->nRows(), CHEV);
 
     // SCR1 -> V * y^-0.25
     for(auto j = 0ul; j < 2*NP; j++)

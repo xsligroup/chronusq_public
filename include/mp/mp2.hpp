@@ -434,7 +434,7 @@ namespace ChronusQ {
 
      // Diagonalize the MP2 1RDM
      MP2_NO_occs.resize(NB);
-     HermetianEigen('V','U',NB,this->oneRDM[0]->pointer(),NB,MP2_NO_occs.data());
+     HermitianEigen('V', 'U', NB, this->oneRDM[0]->pointer(), NB, MP2_NO_occs.data());
 
      // Need to reverse the order of the 1RDM
      std::reverse(MP2_NO_occs.begin(),MP2_NO_occs.end()); 

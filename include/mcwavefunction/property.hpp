@@ -257,7 +257,7 @@ namespace ChronusQ {
     size_t nCorrO = this->MOPartition.nCorrO;
     size_t NB = this->ref_.nAlphaOrbital();
     double * NOOccs = CQMemManager::get().template malloc<double>(nCorrO);
-    HermetianEigen('V','U',nCorrO,OneRDM.pointer(),nCorrO,NOOccs);
+    HermitianEigen('V','U',nCorrO,OneRDM.pointer(),nCorrO,NOOccs);
 
     // Need to reverse the order of eigenvectors for rotation to basis
     cqmatrix::Matrix<MatsT> Unitary(nCorrO);

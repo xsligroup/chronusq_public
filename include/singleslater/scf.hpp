@@ -232,15 +232,15 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     }
 
     // Diagonalize the Fock Matrix
-    int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
-    if( INFO != 0 ) CErr("HermetianEigen failed in Fock1",std::cout);
+    int INFO = HermitianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
+    if( INFO != 0 ) CErr("HermitianEigen failed in Fock1",std::cout);
 
     if(iRO) {
       this->mo[1] = this->mo[0]; // for ROHF
       std::copy_n(this->eps1, NB, this->eps2);
     } else if(nC == 1 and not iCS) {
-      INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
-      if( INFO != 0 ) CErr("HermetianEigen failed in Fock2",std::cout);
+      INFO = HermitianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
+      if( INFO != 0 ) CErr("HermitianEigen failed in Fock2",std::cout);
     }
 
 #if 0
@@ -279,15 +279,15 @@ void SingleSlater<MatsT, IntsT>::diagAOFock() {
   }
 
   // Diagonalize the Fock Matrix
-  int INFO = HermetianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
-  if( INFO != 0 ) CErr("HermetianEigen failed in Fock1", std::cout);
+  int INFO = HermitianEigen('V', 'L', NB, this->mo[0].pointer(), NB, this->eps1);
+  if( INFO != 0 ) CErr("HermitianEigen failed in Fock1", std::cout);
 
   if( iRO ) {
     this->mo[1] = this->mo[0];   // for ROHF
     std::copy_n(this->eps1, NB, this->eps2);
   } else if( nC == 1 and not iCS ) {
-    INFO = HermetianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
-    if( INFO != 0 ) CErr("HermetianEigen failed in Fock2", std::cout);
+    INFO = HermitianEigen('V', 'L', NB, this->mo[1].pointer(), NB, this->eps2);
+    if( INFO != 0 ) CErr("HermitianEigen failed in Fock2", std::cout);
   }
 
 #if 0

@@ -58,7 +58,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 
     // Diagonalize the overlap in scratch S = V * s * V**T
     std::copy_n(overlap->pointer(),nSQ,SCR1);
-    HermetianEigen('V', 'U', NB, SCR1, NB, sE);
+    HermitianEigen('V', 'U', NB, SCR1, NB, sE);
 
     if( std::abs(sE[0]) < 1e-10 ) {
       std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;
@@ -363,7 +363,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 
       // Diagonalize the overlap in scratch S = V * s * V**T
       std::copy_n(overlap->pointer(),nSQ,sVecs);
-      HermetianEigen('V','U',NB,sVecs,NB,sE);
+      HermitianEigen('V', 'U', NB, sVecs, NB, sE);
 
       if( std::abs( sE[0] ) < 1e-12 ){
         std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;

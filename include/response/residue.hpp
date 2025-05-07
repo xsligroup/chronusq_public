@@ -65,7 +65,7 @@ namespace ChronusQ {
         mat = resResults.VR;
       }
 
-      HermetianEigen(JOBVR,'U',nSingleDim_,mat,nSingleDim_,resResults.W);
+      HermitianEigen(JOBVR, 'U', nSingleDim_, mat, nSingleDim_, resResults.W);
 
     } else {
 

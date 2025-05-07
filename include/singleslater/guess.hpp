@@ -649,7 +649,7 @@ namespace ChronusQ {
         
 
         // Compute inverse of S_22 using eigendecomposition
-        HermetianEigen('V','L', NB_2, Vmat.pointer(), NB_2, Diag.data());
+        HermitianEigen('V', 'L', NB_2, Vmat.pointer(), NB_2, Diag.data());
         for(size_t it(0); it<NB_2; ++it) {
           DiagMat(it,it) = 1.0/Diag[it];
         }
@@ -1674,9 +1674,9 @@ namespace ChronusQ {
 
 
       // Diagonalize Density
-      int INFO  = HermetianEigen('V', 'L', NBC, SCR[0].pointer(), NBC, eVals);
+      int INFO  = HermitianEigen('V', 'L', NBC, SCR[0].pointer(), NBC, eVals);
       if( INFO != 0 )
-        CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
+        CErr("HermitianEigen failed in computing Natural Orbitals", std::cout);
 
       // Copy in reverse order to MO's
       // Because the highest occupation numbers are last
@@ -1695,9 +1695,9 @@ namespace ChronusQ {
 
       // Compute Beta Orbitals for Unrestricted
       if( not (this->iCS) ){
-        INFO  = HermetianEigen('V', 'L', NBC, SCR[1].pointer(), NBC, eVals);
+        INFO  = HermitianEigen('V', 'L', NBC, SCR[1].pointer(), NBC, eVals);
         if( INFO != 0 )
-          CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
+          CErr("HermitianEigen failed in computing Natural Orbitals", std::cout);
 
         // Copy in reverse order
         for( size_t i=0; i<NBC; i++ ){
@@ -1721,9 +1721,9 @@ namespace ChronusQ {
       double* eVals = CQMemManager::get().malloc<double>(NBC);
 
       // Diagonalize Density
-      int INFO  = HermetianEigen('V', 'L', NBC, SCR.pointer(), NBC, eVals);
+      int INFO  = HermitianEigen('V', 'L', NBC, SCR.pointer(), NBC, eVals);
       if( INFO != 0 )
-        CErr("HermetianEigen failed in computing Natural Orbitals", std::cout);
+        CErr("HermitianEigen failed in computing Natural Orbitals", std::cout);
 
       // Copy in reverse order to MOs
       if( this->nC == 4 ){

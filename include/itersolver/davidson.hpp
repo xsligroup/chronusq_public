@@ -247,7 +247,7 @@ namespace ChronusQ {
           auto EIGst = tick();
 #endif
           if( DoHerm ){
-            HermetianEigen('V', 'L', nVCur, SCR, nVCur, Eig);
+            HermitianEigen('V', 'L', nVCur, SCR, nVCur, Eig);
             std::copy_n(SCR,nVCur*nVCur,XR);
           }else
             GeneralEigen(JOBVL, 'V', nVCur, SCR, nVCur, Eig, XL, nVCur, XR, nVCur);

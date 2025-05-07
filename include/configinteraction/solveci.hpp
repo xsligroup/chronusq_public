@@ -126,7 +126,7 @@ void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
 #endif
     
 //    GeneralEigen('N', 'V', nDet, fullH_ptr, nDet, ciEigenvalues, dummy, 1, ciEigenvectors.getPtr(), nDet);
-      HermetianEigen('V', 'L', nDet, fullH_ptr, nDet, ciEigenvalues);
+      HermitianEigen('V', 'L', nDet, fullH_ptr, nDet, ciEigenvalues);
       std::copy_n(fullH_ptr,nDet*nDet,ciEigenvectors.getPtr());
 
 #ifdef _DEBUG_CISOLVER_IMPL

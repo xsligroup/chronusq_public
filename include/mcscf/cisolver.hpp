@@ -84,7 +84,7 @@ namespace ChronusQ {
         std::cout << "Magnetic field detected. GeneralEigen will be used." << std::endl;
         GeneralEigen('N','V', NDet, fullH, NDet, Energy, dummy, 1, EigVec, NDet);
       } else {
-        HermetianEigen('V', 'L', NDet, fullH, NDet, Energy);
+        HermitianEigen('V', 'L', NDet, fullH, NDet, Energy);
         std::copy_n(fullH,NDet*NDet,EigVec);
       }
       
