@@ -429,7 +429,7 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
       double sum;
       for(auto w : weighttokens)
         dweights.push_back(std::stod(w));
-      sum = std::accumulate(dweights.begin(),dweights.end(),0.0);
+      sum = std::inner_product(dweights.begin(),dweights.end(),dweights.begin(),0.0);
       for(size_t i = 0; i < dweights.size(); i++)
         vecManager->init_detail.push_back(std::make_pair<double,size_t>(dweights[i]/std::sqrt(sum),std::stoi(statetokens[i])));
 
