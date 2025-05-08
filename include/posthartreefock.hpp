@@ -122,7 +122,9 @@ public:
   void populationAnalysis(size_t);
   void populationAnalysis();
   double oscillator_strength(size_t, size_t s1 = 0);
-  void spinAnalysis(size_t);
+  std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
+  std::vector<cqmatrix::Matrix<MatsT>> spinOverlap();
+  void spinAnalysis(size_t, std::vector<cqmatrix::Matrix<MatsT>>*);
   void spinAnalysis();
   void saveOnePDMs(size_t);
   void saveOnePDMs();
