@@ -28,35 +28,34 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::formHamiltonian(double t) {
+void RealTimeCI<MatsT, IntsT>::formHamiltonian(double t) {
   ProgramTimer::timeOp("Form Hamiltonian", [&]() {
     // Get perturbation for the current time and build a Fock matrix
-    EMPerturbation pert_t = pert.getPert(t);
+    EMPerturbation pert_t = this->pert.getPert(t);
 
     // Add on the SCF Perturbation
-    if (intScheme.includeSCFField)
-      for (auto &field : scfPert.fields)
+    if (this->intScheme.includeSCFField)
+      for (auto &field : this->scfPert.fields)
         pert_t.addField(field);
 
     auto dipAmp = pert_t.getDipoleAmp(Electric);
     double sum = 0.0;
     for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-      sum += std::abs(dipAmp[iXYZ] - old_amp[iXYZ]);
+      sum += std::abs(dipAmp[iXYZ] - this->old_amp[iXYZ]);
     }
-    if (sum < transform_threshold) {
-       return;
+    if (sum < this->intScheme.transform_threshold) {
+      return;
     }
     for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-      old_amp[iXYZ] =  dipAmp[iXYZ];
+      this->old_amp[iXYZ] = dipAmp[iXYZ];
     }
-    auto derived_ref =
-        dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
-    if (time_independent_ham && !time_independent_ham_transformed) {
+    if (this->intScheme.time_independent_ham &&
+        !this->intScheme.time_independent_ham_transformed) {
       EMPerturbation dummy_field;
-      derived_ref->transformInts(dummy_field);
-      time_independent_ham_transformed = true;
+      reference_->transformInts(dummy_field);
+      this->intScheme.time_independent_ham_transformed = true;
     } else {
-      derived_ref->transformInts(pert_t);
+      reference_->transformInts(pert_t);
     }
   });
 };

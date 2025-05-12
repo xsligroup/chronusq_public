@@ -23,39 +23,42 @@
  */
 
 #include <realtime/realtimemultislater/impl.hpp>
+#include <realtime/realtimeci/impl.hpp>
 
 namespace ChronusQ {
 
   template <>
-  void RTMS::scal(std::shared_ptr<SolverVectors<double>> source, size_t vecSize_, dcomplex factor) {
+  void RTMS::scal(std::shared_ptr<SolverVectors<double>> source, dcomplex factor) {
     CErr("Invalid type combination for scal");
   };
 
   template <>
-  void RTMS::normalize(std::shared_ptr<SolverVectors<double>> source, size_t vecSize_, dcomplex &result) {
+  void RTMS::normalize(std::shared_ptr<SolverVectors<double>> source, dcomplex &result) {
     CErr("Invalid type combination for norm");
   };
   /*
   template <>
-  void RTMS::dot(std::shared_ptr<SolverVectors<dcomplex>> source_1, std::shared_ptr<SolverVectors<dcomplex>> source_2, size_t vecSize_, double &result) {
+  void RTMS::dot(std::shared_ptr<SolverVectors<dcomplex>> source_1, std::shared_ptr<SolverVectors<dcomplex>> source_2, double &result) {
     CErr("Invalid type combination for dot");
   };
   */
   
   template <>
-  void RealTimeMultiSlater<dcomplex, dcomplex>::propagateWFN_SSO(bool, bool) {
+  void RealTimeMultiSlaterBase<dcomplex, dcomplex>::propagateWFN_SSO(bool, bool) {
     CErr("Invalid");
   };
 
   template <>
-  void RealTimeMultiSlater<dcomplex, double>::propagateWFN_SSO(bool, bool) {
+  void RealTimeMultiSlaterBase<dcomplex, double>::propagateWFN_SSO(bool, bool) {
     CErr("Invalid");
   };
   template <>
-  void RealTimeMultiSlater<double, double>::propagateWFN_RK4(bool, bool) {
+  void RealTimeMultiSlaterBase<double, double>::propagateWFN_RK4(bool, bool) {
     CErr("Invalid");
   };
 
-  template class RealTimeMultiSlater<double, double >; 
-  template class RealTimeMultiSlater<dcomplex, double>; 
+  template class RealTimeMultiSlaterBase<double, double >; 
+  template class RealTimeMultiSlaterBase<dcomplex, double>; 
+  template class RealTimeCI<double, double >; 
+  template class RealTimeCI<dcomplex, double>; 
 }; // namespace ChronusQ

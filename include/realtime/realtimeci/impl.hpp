@@ -22,19 +22,10 @@
  *
  */
 #pragma once
-#include <realtime.hpp>
 
-namespace ChronusQ {
-
-template <typename MatsT, typename IntsT>
-void RealTimeMultiSlaterBase<MatsT, IntsT>::alloc() {
-  // allocating
-  vecManager->allocateMemory(this->intScheme.nonhermitian_propagation);
-};
-
-template <typename MatsT, typename IntsT>
-void RealTimeMultiSlaterBase<MatsT, IntsT>::dealloc() {
-  vecManager->cleanupMemory();
-};
-
-}; // namespace ChronusQ
+#include <realtime/realtimeci/cube.hpp>
+#include <realtime/realtimeci/dipole.hpp>
+#include <realtime/realtimeci/hamiltonian.hpp>
+#include <realtime/realtimeci/initialstate.hpp>
+#include <realtime/realtimeci/sigma.hpp>
+#include <realtime/realtimeci/statepopulation.hpp>

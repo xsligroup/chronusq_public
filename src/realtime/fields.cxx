@@ -149,5 +149,19 @@ namespace ChronusQ {
     }
   };
 
+double Cos2Field::getAmp(double t) {
+  t -= tp;
+  if(std::abs(t) > sigma) return 0;
+
+  auto cos_term = std::cos(omega * t + phi);
+  auto cos2_term = std::cos(M_PI/(2. * sigma) * t);
+  cos2_term *= cos2_term;
+
+  //std::cout << std::scientific << std::setprecision(10);
+  //std::cout << "@FIELD t = " << t << " f = " << cos_term * cos2_term << std::endl;
+
+  return cos_term * cos2_term;
+}
+
 
 }; // namespace ChronusQ

@@ -157,7 +157,7 @@ static void CQRTTEST(std::string in, std::string ref,
   resFile.readData("/RTNEW/ENERGY",&xDummy[0]);\
   refFile.readData("/RTNEW/ENERGY",&yDummy[0]);\
   \
-  for(auto i = 0; i < energyDim1[0]; i++){\ 
+  for(auto i = 0; i < energyDim1[0]; i++){\
     EXPECT_NEAR(xDummy[i], yDummy[i], tol);\
   }\
 \
@@ -167,9 +167,55 @@ static void CQRTTEST(std::string in, std::string ref,
   refFile.readData("/RTNEW/LEN_ELEC_DIPOLE",&yDummy[0]);\
   \
   for(auto i = 0; i < 3 * energyDim1[0]; i++) {\
-    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \   
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \
   }\
 }
+
+static void CQRTCITEST(std::string in, std::string ref, 
+   double tol = 1e-8,
+   bool readBin = false ){ 
+  
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
+  
+  SafeFile refFile(RT_TEST_REF + ref,true);
+  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  \
+  std::vector<double> xDummy, yDummy;\
+  \
+  auto energyDim1 = resFile.getDims("/RTNEW/ENERGY");\
+  auto energyDim2 = refFile.getDims("/RTNEW/ENERGY");\
+  ASSERT_EQ( energyDim1.size(), 1 );\
+  ASSERT_EQ( energyDim2.size(), 1 );\
+  ASSERT_EQ( energyDim1[0], energyDim2[0] );\
+  \
+  auto dipoleDim1 = resFile.getDims("/RTNEW/LEN_ELEC_DIPOLE");\
+  auto dipoleDim2 = refFile.getDims("/RTNEW/LEN_ELEC_DIPOLE");\
+  ASSERT_EQ( dipoleDim1.size(), 2 );\
+  ASSERT_EQ( dipoleDim2.size(), 2 );\
+  ASSERT_EQ( dipoleDim1[0], 21 );\
+  ASSERT_EQ( dipoleDim1[1], 3 );\
+  ASSERT_EQ( dipoleDim1[0], dipoleDim2[0] );\
+  ASSERT_EQ( dipoleDim1[1], dipoleDim2[1] );\
+  \
+  std::cout << "Checking RT energy" << std::endl;\
+  xDummy.resize(energyDim1[0]); yDummy.resize(energyDim1[0]);\
+  resFile.readData("/RTNEW/ENERGY",&xDummy[0]);\
+  refFile.readData("/RTNEW/ENERGY",&yDummy[0]);\
+  \
+  for(auto i = 0; i < energyDim1[0]; i++){\
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol);\
+  }\
+\
+  std::cout << "Checking RT Dipole" << std::endl;\
+  xDummy.resize(dipoleDim1[0]*3); yDummy.resize(dipoleDim2[0]*3);\
+  resFile.readData("/RTNEW/LEN_ELEC_DIPOLE",&xDummy[0]);\
+  refFile.readData("/RTNEW/LEN_ELEC_DIPOLE",&yDummy[0]);\
+  \
+  for(auto i = 0; i < 3 * energyDim1[0]; i++) {\
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \
+  }\
+}
+
 
 static void CQRTRESTARTTEST( std::string midr, std::string in, std::string ref, double tol = 1e-8 ) {
 

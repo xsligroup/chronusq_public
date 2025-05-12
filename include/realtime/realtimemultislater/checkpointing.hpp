@@ -36,65 +36,68 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
   if (restart)
     return;
 
-  auto derived_ref = dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
   if (maxPoints == 0)
-    maxPoints = (size_t)(((intScheme.tMax + intScheme.deltaT / 4) / intScheme.deltaT) + 1);
+    maxPoints = (size_t)(
+        ((intScheme.tMax + intScheme.deltaT / 4) / intScheme.deltaT) + 1);
   // maxPoints = intScheme.tMax / intScheme.deltaT + 1;
 
-  savFile.createGroup("RT");
-  savFile.createDataSet<size_t>("RT/ICUBE", {1});
-  savFile.createDataSet<double>("RT/TIME", {maxPoints});
-  savFile.createDataSet<double>("RT/ENERGY", {maxPoints});
-  savFile.createDataSet<double>("RT/LEN_ELEC_DIPOLE", {maxPoints, 3});
-  savFile.createDataSet<double>("RT/LEN_ELEC_DIPOLE_FIELD", {maxPoints, 3});
-  if (this->CIPopFreq != 0) {
-    hsize_t nPop = (maxPoints / this->CIPopFreq);
-    if (this->CIPopFreq != 1 && (maxPoints - 1) % this->CIPopFreq == 0)
+  savFile.createGroup("RTNEW");
+  savFile.createDataSet<size_t>("RTNEW/ICUBE", {1});
+  savFile.createDataSet<double>("RTNEW/TIME", {maxPoints});
+  savFile.createDataSet<double>("RTNEW/ENERGY", {maxPoints});
+  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE", {maxPoints, 3});
+  savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxPoints, 3});
+  if (this->intScheme.StatePopFreq != 0) {
+    hsize_t nPop = (maxPoints / this->intScheme.StatePopFreq);
+    if (this->intScheme.StatePopFreq != 1 &&
+        (maxPoints - 1) % this->intScheme.StatePopFreq == 0)
       nPop += 1;
     if (maxPoints == 1)
       nPop = 1;
-    hsize_t NStates = derived_ref->NStates;
-    savFile.createDataSet<double>("RT/CIPOPULATION", {nPop, NStates});
+    hsize_t NStates = this->intScheme.StatePopNStates;
+    savFile.createDataSet<double>("RTNEW/STATEPOPULATION", {nPop, NStates});
   }
-  if (this->RealTimeCorrelationFunctionFreq != 0) {
+  if (this->intScheme.RealTimeCorrelationFunctionFreq != 0) {
     hsize_t maxRTCorrPts = (intScheme.tMax + intScheme.deltaT / 4 -
-                            this->RealTimeCorrelationFunctionStart) /
+                            this->intScheme.RealTimeCorrelationFunctionStart) /
                                intScheme.deltaT +
                            1;
-    hsize_t nRTCorr = (maxRTCorrPts / this->RealTimeCorrelationFunctionFreq);
-    if (this->RealTimeCorrelationFunctionFreq != 1 &&
-        (maxRTCorrPts - 1) % this->RealTimeCorrelationFunctionFreq == 0)
+    hsize_t nRTCorr =
+        (maxRTCorrPts / this->intScheme.RealTimeCorrelationFunctionFreq);
+    if (this->intScheme.RealTimeCorrelationFunctionFreq != 1 &&
+        (maxRTCorrPts - 1) % this->intScheme.RealTimeCorrelationFunctionFreq ==
+            0)
       nRTCorr += 1;
     if (maxRTCorrPts == 1)
       nRTCorr = 1;
-    savFile.createDataSet<dcomplex>("RT/REALTIMECORRELATIONFUNCTION",
+    savFile.createDataSet<dcomplex>("RTNEW/REALTIMECORRELATIONFUNCTION",
                                     {nRTCorr});
   }
 
 }; // RealTimeMultiSlater::createRTDataSets
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::restoreState() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::restoreState() {
   CErr("NYI!");
   hsize_t maxPoints = intScheme.tMax / intScheme.deltaT + 1;
 
-  if (savFile.getDims("RT/TIME")[0] != maxPoints)
+  if (savFile.getDims("RTNEW/TIME")[0] != maxPoints)
     CErr("Mismatched requested and saved propagation length!");
 
   /*
   // Restore time dependent density
   try {
-    savFile.readData("RT/TD_1PDM", *propagator_.onePDM);
-    savFile.readData("RT/TD_1PDM_ORTHO", *propagator_.onePDMOrtho);
+    savFile.readData("RTNEW/TD_1PDM", *propagator_.onePDM);
+    savFile.readData("RTNEW/TD_1PDM_ORTHO", *propagator_.onePDMOrtho);
   } catch(...) { }
 
   // Find last time step that was checkpointed
   double* timeData = memManager_.template malloc<double>(maxPoints);
-  savFile.readData("RT/TIME", timeData);
+  savFile.readData("RTNEW/TIME", timeData);
   int offset = *timeData < 1e-10 ? -1 : 0;
   size_t restoreStep = offset + std::distance( timeData,
     std::find_if( timeData+1, timeData+maxPoints,
@@ -115,14 +118,14 @@ void RealTimeMultiSlater<MatsT, IntsT>::restoreState() {
 }; // RealTimeMultiSlater::restoreState
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
   data.Time.push_back(curState.xTime);
   data.Energy.push_back(this->total_energy);
   data.ElecDipole.push_back(Dipole);
   if (pert_t.fields.size() > 0)
     data.ElecDipoleField.push_back(pert_t.getDipoleAmp(Electric));
 
-  savFile.safeWriteData("RT/ICUBE",&intScheme.iCube,{1});
+  savFile.safeWriteData("RTNEW/ICUBE",&intScheme.iCube,{1});
 
   // Write to file
   if (savFile.exists()) {
@@ -136,9 +139,6 @@ void RealTimeMultiSlater<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
       nSteps = intScheme.iSave;
     else if (curState.iStep == maxStep) {
       nSteps = (curState.iStep - intScheme.restoreStep) % intScheme.iSave + 1;
-      for (auto a : data.Energy) {
-        std::cout << a << std::endl;
-      }
     }
 
     hsize_t lastPos = curState.iStep - nSteps + 1;
@@ -147,24 +147,24 @@ void RealTimeMultiSlater<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
     if (nSteps != 0) {
       if (printLevel > 0)
         std::cout << "  *** Saving data to binary file ***" << std::endl;
-      savFile.partialWriteData("RT/TIME", data.Time.data(), {lastPos}, {nSteps},
+      savFile.partialWriteData("RTNEW/TIME", data.Time.data(), {lastPos}, {nSteps},
                                {memLastPos}, {data.Time.size()});
-      savFile.partialWriteData("RT/ENERGY", data.Energy.data(), {lastPos},
+      savFile.partialWriteData("RTNEW/ENERGY", data.Energy.data(), {lastPos},
                                {nSteps}, {memLastPos}, {data.Energy.size()});
-      savFile.partialWriteData("RT/LEN_ELEC_DIPOLE", &data.ElecDipole[0][0],
+      savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &data.ElecDipole[0][0],
                                {lastPos, 0}, {nSteps, 3}, {memLastPos, 0},
                                {data.Time.size(), 3});
 
       if (data.ElecDipoleField.size() > 0)
         savFile.partialWriteData(
-            "RT/LEN_ELEC_DIPOLE_FIELD", &data.ElecDipoleField[0][0],
+            "RTNEW/LEN_ELEC_DIPOLE_FIELD", &data.ElecDipoleField[0][0],
             {lastPos, 0}, {nSteps, 3}, {memLastPos, 0}, {data.Time.size(), 3});
 
-      // savFile.safeWriteData("RT/TD_1PDM", *propagator_.onePDM);
+      // savFile.safeWriteData("RTNEW/TD_1PDM", *propagator_.onePDM);
       // if ( curState.curStep == PropagationStep::ModifiedMidpoint )
-      //   savFile.safeWriteData("RT/TD_1PDM_ORTHO",*DOSav[0]);
+      //   savFile.safeWriteData("RTNEW/TD_1PDM_ORTHO",*DOSav[0]);
       // else
-      //   savFile.safeWriteData("RT/TD_1PDM_ORTHO",*propagator_.onePDMOrtho);
+      //   savFile.safeWriteData("RTNEW/TD_1PDM_ORTHO",*propagator_.onePDMOrtho);
     }
   }
 }; // RealTimeMultiSlater::saveState

@@ -28,30 +28,28 @@
 namespace ChronusQ {
 
     template <typename MatsT, typename IntsT>
-    void RealTimeMultiSlater<MatsT, IntsT>::genCubes()
+    void RealTimeCI<MatsT, IntsT>::genCubes()
     {
         // Current iteration number
-        std::string curiter = std::to_string(curState.iStep);
+        std::string curiter = std::to_string(this->curState.iStep);
 
         // Because this is called AFTER the dipole is calculated
         // the onePDM is already populated in the singleslater reference
         // and we can simply evaluate the cube normally
-        auto cube = intScheme.rtcubes[PAR_TYPE::ELECTRONIC];
+        auto cube = this->intScheme.rtcubes[PAR_TYPE::ELECTRONIC];
 
         std::string cube_name;
-        if(intScheme.cubeOptsRTMS.cubeFileName.empty())
+        if(this->intScheme.cubeOptsRTMS.cubeFileName.empty())
         {
             cube_name = "RTCI";
         }
         else
         {
-            cube_name = intScheme.cubeOptsRTMS.cubeFileName + "_RTCI";
+            cube_name = this->intScheme.cubeOptsRTMS.cubeFileName + "_RTCI";
         }
-        auto derived_ref =
-            std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
 
-        SingleSlater<MatsT,IntsT> * ss_ptr = &derived_ref->reference();
-        cube_name += "_"+std::to_string(int(curState.iStep)); 
+        SingleSlater<MatsT,IntsT> * ss_ptr = &reference_->reference();
+        cube_name += "_"+std::to_string(int(this->curState.iStep)); 
         
         cube->evalDenCube(cube_name,ss_ptr->onePDM);
 

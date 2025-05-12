@@ -211,7 +211,8 @@ namespace ChronusQ {
     LinRamp,
     Gaussian,
     Step,
-    PlaneWave
+    PlaneWave,
+    Cos2
   };
 
   enum class RealTimeAlgorithm {

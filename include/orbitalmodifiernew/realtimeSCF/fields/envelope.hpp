@@ -55,6 +55,7 @@ namespace ChronusQ {
   using GaussianField  = FieldEnvelope<FieldEnvelopeType::Gaussian>;
   using StepField      = FieldEnvelope<FieldEnvelopeType::Step>;
   using PlaneWaveField = FieldEnvelope<FieldEnvelopeType::PlaneWave>;
+  using Cos2Field      = FieldEnvelope<FieldEnvelopeType::Cos2>;
 
   /**
    *  \brief FieldEnvelope specification for a Linear Ramp function
@@ -136,6 +137,28 @@ namespace ChronusQ {
     void setdoCos(bool doCos) { this->doCos = doCos; };
 
   }; // struct FieldEnvelop<PlaneWave>
+  /**
+   *  \brief FieldEnvelop specification for a pi pulse function
+   *  envelope.
+   */ 
+  template<>
+  struct FieldEnvelope<FieldEnvelopeType::Cos2> : FieldEnvelopeBase {
+
+    FieldEnvelope()                      = delete;
+    FieldEnvelope(const FieldEnvelope &) = default;
+    FieldEnvelope(FieldEnvelope &&)      = default;
+
+    FieldEnvelope(double on, double off, double omega, double sigma, 
+                  double tp, double phi): FieldEnvelopeBase(on,off),
+      omega(omega), sigma(sigma), tp(tp), phi(phi) { };
+
+    double getAmp(double t);
+
+    double omega, sigma, tp, phi;
+
+  }; // struct FieldEnvelop<Cos2>
+
+
 
 
   

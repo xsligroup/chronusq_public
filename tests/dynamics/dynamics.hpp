@@ -169,7 +169,7 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   resFile.readData("/MD/ETOT",&xDummy[0]);\
   refFile.readData("/MD/ETOT",&yDummy[0]);\
   \
-  for(auto i = 0; i < energyDim1[0]; i++){\ 
+  for(auto i = 0; i < energyDim1[0]; i++){\
     EXPECT_NEAR(xDummy[i], yDummy[i], tol);\
   }\
   \
@@ -179,7 +179,7 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   refFile.readData("/MD/FORCES",&yDummy[0]);\
   \
   for(auto i = 0; i < forceDim1[0]; i++) {\
-    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \   
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \
   }\
   \
   std::cout << "Checking Dynamics velocity" << std::endl;\
@@ -188,7 +188,7 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   refFile.readData("/MD/VELOCITY_FULLSTEP",&yDummy[0]);\
   \
   for(auto i = 0; i < velocityDim1[0]; i++) {\
-    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \   
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \
   }\
   \
   std::cout << "Checking Dynamics trajectory" << std::endl;\
@@ -197,7 +197,7 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   refFile.readData("/MD/TRAJECTORY",&yDummy[0]);\
   \
   for(auto i = 0; i < trajectoryDim1[0]; i++) {\
-    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \   
+    EXPECT_NEAR(xDummy[i], yDummy[i], tol); \
   }\
 }
 

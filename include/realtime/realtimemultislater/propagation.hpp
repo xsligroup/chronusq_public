@@ -36,11 +36,14 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::doPropagation() {
   ProgramTimer::tick("Real Time Total");
   printRTHeader();
   // Generate the initial wavefunction to propogate
   curState.curStep = intScheme.integrationAlgorithm;
+  if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator && this->intScheme.nonhermitian_propagation) {
+    CErr("Nonhermitian propagation and SSO is not implemented!");
+  }
   genInitialState();
   if (savFile.exists())
     if (restart)
@@ -50,7 +53,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
   bool Start(false);  // Start the RT iterations
   bool Finish(false); // Wrap up the RT iterations
   size_t RealTimeCorrelationFunctionFirstStep =
-      (size_t)((this->RealTimeCorrelationFunctionStart + intScheme.deltaT / 2) /
+      (size_t)((this->intScheme.RealTimeCorrelationFunctionStart +
+                intScheme.deltaT / 2) /
                intScheme.deltaT);
   curState.xTime = intScheme.restoreStep * intScheme.deltaT;
   for (curState.iStep = intScheme.restoreStep; curState.iStep <= maxStep;
@@ -79,20 +83,21 @@ void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
     calculateDipole();
     // Print progress line in the output file
     printRTStep();
-    if (this->CIPopFreq != 0 && curState.iStep % this->CIPopFreq == 0) {
-      CIPop();
+    if (this->intScheme.StatePopFreq != 0 &&
+        curState.iStep % this->intScheme.StatePopFreq == 0) {
+      statePop();
     }
-    if (this->RealTimeCorrelationFunctionFreq != 0 &&
+    if (this->intScheme.RealTimeCorrelationFunctionFreq != 0 &&
         curState.iStep == RealTimeCorrelationFunctionFirstStep) {
       vecManager->allocateCorrelationFunctionMemory();
       // we dont alloc in memory.h cause we dont know if we need it there yet
       // (RealTimeCorrelationFunctionFirstStep is not set)
       RealTimeCorrelationFunction();
     }
-    if (this->RealTimeCorrelationFunctionFreq != 0 &&
+    if (this->intScheme.RealTimeCorrelationFunctionFreq != 0 &&
         curState.iStep > RealTimeCorrelationFunctionFirstStep &&
         (curState.iStep - RealTimeCorrelationFunctionFirstStep) %
-                this->RealTimeCorrelationFunctionFreq ==
+                this->intScheme.RealTimeCorrelationFunctionFreq ==
             0) {
       RealTimeCorrelationFunction();
     }
@@ -100,10 +105,6 @@ void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
     // printing after the propagation forward in time
     // because the SSO method creates the imaginary component
     // at the current time during the forward propagation
-
-    // Printing out real-time CI vector
-    if (printCIVec)
-      CErr("Implement printCIVec");
 
     // Save data
     saveState(pert_t);
@@ -121,7 +122,8 @@ void RealTimeMultiSlater<MatsT, IntsT>::doPropagation() {
 }; // RealTimeMultiSlater::doPropagation
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::propagateWFN(bool Start, bool Finish) {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::propagateWFN(bool Start,
+                                                         bool Finish) {
   if (Start && Finish) {
     CErr("RealTimeMultiSlater::propagateWFN error. Can't be both starting and "
          "finishing propagation.");

@@ -36,41 +36,46 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::CIPop() {
+void RealTimeCI<MatsT, IntsT>::statePop() {
   std::vector<double> populations;
   std::vector<MatsT> overlaps;
-  if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
-    auto derived_ref = std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
-    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_real_t);
-    derived_ref->computeOverlaps(derived_C_real_t->getPtr(), overlaps);
+  if (this->curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
+    auto vecManagerDerived =
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(
+            this->vecManager);
+    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(
+        vecManagerDerived->C_real_t);
+    reference_->computeOverlaps(derived_C_real_t->getPtr(), overlaps);
     populations.resize(overlaps.size());
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);
     }
     overlaps.clear();
-    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_imag_t);
-    derived_ref->computeOverlaps(derived_C_imag_t->getPtr(), overlaps);
+    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(
+        vecManagerDerived->C_imag_t);
+    reference_->computeOverlaps(derived_C_imag_t->getPtr(), overlaps);
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);
     }
   } else {
-    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(vecManager);
-    auto derived_ref =
-        std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
-    auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
-    derived_ref->computeOverlaps(derived_C_t->getPtr(), overlaps);
+    auto vecManagerDerived =
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(
+            this->vecManager);
+    auto derived_C_t =
+        std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
+    reference_->computeOverlaps(derived_C_t->getPtr(), overlaps);
     populations.resize(overlaps.size());
     for (auto ovlp_i = 0; ovlp_i < overlaps.size(); ovlp_i++) {
       populations[ovlp_i] += std::pow(std::abs(overlaps[ovlp_i]), 2);
     }
   }
 
-  if (savFile.exists()) {
+  if (this->savFile.exists()) {
     size_t fullDim = populations.size();
-    hsize_t location = curState.iStep / this->CIPopFreq;
-    savFile.partialWriteData("RT/CIPOPULATION", populations.data(),
-                             {location, 0}, {1, fullDim}, {0, 0}, {1, fullDim});
+    hsize_t location = this->curState.iStep / this->intScheme.StatePopFreq;
+    this->savFile.partialWriteData("RTNEW/STATEPOPULATION", populations.data(),
+                                   {location, 0}, {1, fullDim}, {0, 0},
+                                   {1, fullDim});
   }
 
 }; // RealTimeMultiSlater:: CIPop

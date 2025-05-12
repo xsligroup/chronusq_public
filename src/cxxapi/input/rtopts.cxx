@@ -42,8 +42,8 @@ namespace ChronusQ {
       "UNITS",         // The units of time: FS (Default), AU //TODO: this option is never used
       "DELTAT",
       "IRSTRT",
-      "FIELD",
-      "FIELDINDEPENDENTHAMILTONIAN",
+      "FIELD", // Time dependent perturbation
+      "FIELDINDEPENDENTHAMILTONIAN", // RTMS are we applying the perturbation separately? Is the hamiltonian time independent?
       "INTALG",
       "PROT_INTALG",
       "RESTARTALG",
@@ -55,14 +55,15 @@ namespace ChronusQ {
       "RESTART",
       "SCFFIELD",
       "PRINTLEVEL",
-      "CIPOPULATION",
+      "STATEPOPULATION", //RTMS: are we projecting back onto the time independent states1
+      "STATEPOPULATIONNSTATES", 
       "INITTYPE",
       "LCWEIGHTS",
       "LCSTATES",
       "COEFFS",
       "DETS",
-      "REALTIMECORRELATIONFUNC",
-      "REALTIMECORRELATIONFUNCSTART",
+      "REALTIMECORRELATIONFUNC", // RTMS compute <psi(t) | psi(t_start)>
+      "REALTIMECORRELATIONFUNCSTART", // time to start collecting the RT correlation function
       "PRINTDEN",
       "PRINTCONTRACTIONTIMING",
       "PRINTSTEP",
@@ -117,61 +118,72 @@ namespace ChronusQ {
     if( not input.containsSection("RT") )
       CErr("RT Section must be specified for RT job",out);
 
-
     out << "  *** Parsing MRRT options ***\n";
 
-    std::shared_ptr<RealTimeMultiSlaterBase> rt;
+    std::shared_ptr<RealTimeBase > rt;
+    bool nonhermitian_prop = false;
+    if(mcscf){
+      nonhermitian_prop = false;
+    }
 
     // Determine  reference and construct RT object
 
     auto inputRTAlg = RealTimeAlgorithm::RTRungeKuttaOrderFour;
-    std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
-    try {
-      auto intAlg = input.getData<std::string>("RT.INTALG");
 
-      if ( not intAlg.compare("SSO") ) { 
-        inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
-        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double>>(ss->comm);
+    std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
+    if (mcscf) {
+      try {
+        auto intAlg = input.getData<std::string>("RT.INTALG");
+
+        if ( not intAlg.compare("SSO") ) { 
+          inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
+          std::function<std::shared_ptr<SolverVectors<double>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<double>>(ss->comm, mcscf->NDet, nVec); };
+
+          vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double>>(ss->comm, vecGen);
+        }
+        else if ( not intAlg.compare("RK4") ) {
+          std::function<std::shared_ptr<SolverVectors<dcomplex>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<dcomplex>>(ss->comm, mcscf->NDet, nVec); };
+          vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex>>(ss->comm, vecGen);
+        }
+        else {
+            CErr("No valid RTMS integration algorithm found.");
+        }
       }
-      else if ( not intAlg.compare("RK4") ) {
-      }
-      else {
-          std::cout << "Could not understand RT.INTALG. Defaulting to RK4.";
-          std::cout << std::endl;
-      }
+      catch(...) {
+        CErr("No valid RTMS integration algorithm found.");
+      };
     }
-    catch(...) {
-      std::cout << "Defaulting to RK4 integration algorithm" << std::endl;
-    };
     
     if (!vecManager) {
-        vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex>>(ss->comm);
+      CErr("RTMS vecManager was not constructed. This should not happen.");
     }
-    vecManager->set_vecSize_(mcscf->NDet);
 
     // Determines the initial CI vector to be propogated 
     HandleRTInitState(out,input,vecManager);
 
     bool found = false;
+    if (mcscf) {
+      #define CONSTRUCT_RT_MR(_REF,_MT,_IT,_RTALG,_MRWFN)             \
+      if( not found ) try {                          \
+        if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
+        rt =     std::make_shared< RealTimeCI<_MT, _IT> >(  \
+                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
+        found = true;                                \
+        } \
+      } catch(...) {  }
 
-    #define CONSTRUCT_RT_MR(_REF,_MT,_IT,_RTALG,_MRWFN)             \
-    if( not found ) try {                          \
-      if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
-      rt =     std::make_shared< RealTimeMultiSlater<_MT, _IT> >(  \
-              std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
-      found = true;                                \
-      } \
-    } catch(...) {  }
-
-    // Construct RT object (MatsT, IntsT, PropT)
-    if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
-        CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+      // Construct RT object (MatsT, IntsT, PropT)
+      if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
+          CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+      }
+      //CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+      CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+      // no magnetic fields... yet.
+      //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
     }
-    //CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
-    CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
-    // no magnetic fields... yet.
-    //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
 
+    // Are we doing a nonhermitian problem
+    rt->intScheme.nonhermitian_propagation = nonhermitian_prop;
     // Parse Options
     try {
       rt->intScheme.tMax = input.getData<double>("RT.TMAX");
@@ -216,24 +228,29 @@ namespace ChronusQ {
     )
 
     OPTOPT(
-      rt->CIPopFreq = input.getData<size_t>("RT.CIPOPULATION");
+      rt->intScheme.StatePopFreq = input.getData<size_t>("RT.STATEPOPULATION");
+    )
+    OPTOPT(
+      rt->intScheme.StatePopFreq = input.getData<size_t>("STATEPOPULATIONNSTATES");
+    )
+
+    if (rt->intScheme.StatePopFreq == 0 && rt->intScheme.StatePopNStates != 0){
+      std::cout << "Warning!: RT.STATEPOPULATION is set to 0, but RT.STATEPOPULATIONNSTATES is nonzero. This will not calculate STATEPOPULATIONS." << std::endl;
+    }
+    if (rt->intScheme.StatePopFreq != 0 && rt->intScheme.StatePopNStates == 0){
+      rt->intScheme.StatePopNStates = mcscf->NStates;
+    }
+
+    OPTOPT(
+      rt->intScheme.RealTimeCorrelationFunctionFreq = input.getData<size_t>("RT.REALTIMECORRELATIONFUNC");
     )
 
     OPTOPT(
-      rt->RealTimeCorrelationFunctionFreq = input.getData<size_t>("RT.REALTIMECORRELATIONFUNC");
+      rt->intScheme.RealTimeCorrelationFunctionStart = input.getData<double>("RT.REALTIMECORRELATIONFUNCSTART");
     )
 
     OPTOPT(
-      rt->RealTimeCorrelationFunctionStart = input.getData<double>("RT.REALTIMECORRELATIONFUNCSTART");
-    )
-
-    OPTOPT(
-      rt->time_independent_ham = input.getData<bool>("RT.FIELDINDEPENDENTHAMILTONIAN");
-    )
-
-    // Whether to print time-dependent density
-    OPTOPT(
-      rt->printCIVec = input.getData<bool>("RT.PRINTCIVEC");
+      rt->intScheme.time_independent_ham = input.getData<bool>("RT.FIELDINDEPENDENTHAMILTONIAN");
     )
 
     return rt;
@@ -375,6 +392,20 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
           FieldEnvelope<FieldEnvelopeType::PlaneWave>(stepOn,stepOff, omega, doCos)
           , DipoleField)
         )
+      );
+     } else if ( envelopeType == "COS2FIELD" ) {
+        std::vector<double> processedEnvelopeParameters(parameterTokens.size());
+        std::transform(parameterTokens.begin(), parameterTokens.end(), 
+          processedEnvelopeParameters.begin(), [](auto x){ return std::stod(x);});
+        double omega = processedEnvelopeParameters[0];
+        double sigma = processedEnvelopeParameters[1];
+        double tp    = processedEnvelopeParameters[2];
+        double phi   = processedEnvelopeParameters[3];
+      return 
+      std::dynamic_pointer_cast<TDEMFieldBase, TDEMField<cart_t>>(
+        std::make_shared<TDEMField<cart_t>>(fieldType,
+        FieldEnvelope<FieldEnvelopeType::Cos2>(stepOn,stepOff, omega,sigma,tp,phi)
+        , DipoleField)
       );
     } else if ( envelopeType == "GAUSSIANFIELD" ) {
        std::vector<double> processedEnvelopeParameters(parameterTokens.size());

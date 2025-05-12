@@ -27,36 +27,42 @@
 
 namespace ChronusQ {
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::calculateDipole() {
-  auto derived_ref =
-      std::dynamic_pointer_cast<MCWaveFunction<MatsT, IntsT>>(reference_);
+void RealTimeCI<MatsT, IntsT>::calculateDipole() {
 
-  SingleSlater<MatsT, IntsT> *ss_ptr = &derived_ref->reference();
-  size_t nCorrO = derived_ref->MOPartition.nCorrO;
+  SingleSlater<MatsT, IntsT> *ss_ptr = &reference_->reference();
+  size_t nCorrO = reference_->MOPartition.nCorrO;
 
   cqmatrix::Matrix<MatsT> oneRDM(nCorrO);
-  if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(vecManager);
-    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_real_t);
-    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_imag_t);
+  if (this->curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
+    auto vecManagerDerived =
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<MatsT>>(
+            this->vecManager);
+    auto derived_C_real_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(
+        vecManagerDerived->C_real_t);
+    auto derived_C_imag_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(
+        vecManagerDerived->C_imag_t);
     cqmatrix::Matrix<MatsT> oneRDM_r(nCorrO);
     cqmatrix::Matrix<MatsT> oneRDM_i(nCorrO);
-    derived_ref->ciBuilder->computeOneRDM(
-        *derived_ref, derived_C_real_t->getPtr(), oneRDM_r);
-    derived_ref->ciBuilder->computeOneRDM(
-        *derived_ref, derived_C_imag_t->getPtr(), oneRDM_i);
+    reference_->ciBuilder->computeOneRDM(*reference_,
+                                         derived_C_real_t->getPtr(), oneRDM_r);
+    reference_->ciBuilder->computeOneRDM(*reference_,
+                                         derived_C_imag_t->getPtr(), oneRDM_i);
     oneRDM = oneRDM_r + oneRDM_i;
-  } else if (curState.curStep == RealTimeAlgorithm::RTRungeKuttaOrderFour) {
-    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(vecManager);
-    auto derived_C_t = std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
-    derived_ref->ciBuilder->computeOneRDM(*derived_ref, derived_C_t->getPtr(),
-                                          oneRDM);
+  } else if (this->curState.curStep ==
+             RealTimeAlgorithm::RTRungeKuttaOrderFour) {
+    auto vecManagerDerived =
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerRK4<MatsT>>(
+            this->vecManager);
+    auto derived_C_t =
+        std::dynamic_pointer_cast<RawVectors<MatsT>>(vecManagerDerived->C_t);
+    reference_->ciBuilder->computeOneRDM(*reference_, derived_C_t->getPtr(),
+                                         oneRDM);
   }
   // Convert to AO basis and update PDM in ref
-  derived_ref->rdm2pdm(oneRDM);
+  reference_->rdm2pdm(oneRDM);
   EMPerturbation emPert;
   ss_ptr->computeMultipole(emPert);
   std::copy(ss_ptr->elecDipole.begin(), ss_ptr->elecDipole.end(),
-            Dipole.begin());
+            this->Dipole.begin());
 }
 }; // namespace ChronusQ

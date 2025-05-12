@@ -44,7 +44,7 @@ void RTMSFormattedLine(std::ostream &out, std::string s, T v, U u) {
 }
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::printRTHeader() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::printRTHeader() {
 
   // No printing if silent
   if (this->printLevel == 0)
@@ -147,7 +147,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::printRTHeader() {
 };
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::printRTStep() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::printRTStep() {
   if (this->printLevel == 1) {
     printStepSummary();
   } else if (this->printLevel > 1) {
@@ -156,7 +156,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::printRTStep() {
 };
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::printStepSummary() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::printStepSummary() {
   std::cout << std::fixed << std::right;
   std::cout << std::setprecision(4);
   std::cout << std::setw(11) << curState.xTime << " ";
@@ -170,7 +170,7 @@ void RealTimeMultiSlater<MatsT, IntsT>::printStepSummary() {
 };
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::printStepDetail() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::printStepDetail() {
   std::cout << bannerTop << "\n\n";
   std::cout << std::fixed << std::right;
   std::cout << "Step: " << std::setw(7) << curState.iStep << '\n';

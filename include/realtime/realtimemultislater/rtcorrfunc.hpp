@@ -36,35 +36,41 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-void RealTimeMultiSlater<MatsT, IntsT>::RealTimeCorrelationFunction() {
+void RealTimeMultiSlaterBase<MatsT, IntsT>::RealTimeCorrelationFunction() {
   dcomplex curr_corr(0.0, 0.0);
   if (curState.curStep == RealTimeAlgorithm::RTSymplecticSplitOperator) {
-    auto vecManagerDerived = std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<double>>(vecManager);
-    size_t NDet = vecManagerDerived->get_vecSize_();
+    auto vecManagerDerived =
+        std::dynamic_pointer_cast<RealTimeMultiSlaterVectorManagerSSO<double>>(
+            vecManager);
     // (Crealep, Cimagep) dot (Crealt, Cimagt)
     // (a + bi)\dagger dot (c + di)
     // (a dot c + b dot d) + (a dot d - b dot c) i
     double dot_val;
-    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_real_t, NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_real_t,
+              dot_val);
     curr_corr += dot_val;
-    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_imag_t, NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_imag_t,
+              dot_val);
     curr_corr += dot_val;
-    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_imag_t, NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_real_epsilon, vecManagerDerived->C_imag_t,
+              dot_val);
     curr_corr += dcomplex(0.0, dot_val);
-    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_real_t, NDet, dot_val);
+    RTMS::dot(vecManagerDerived->C_imag_epsilon, vecManagerDerived->C_real_t,
+              dot_val);
     curr_corr -= dcomplex(0.0, dot_val);
   } else {
     CErr("NYI");
   }
   size_t RealTimeCorrelationFunctionFirstStep =
-      (size_t)((this->RealTimeCorrelationFunctionStart + intScheme.deltaT / 2) /
+      (size_t)((this->intScheme.RealTimeCorrelationFunctionStart +
+                intScheme.deltaT / 2) /
                intScheme.deltaT);
   if (savFile.exists()) {
     hsize_t location = (curState.iStep - RealTimeCorrelationFunctionFirstStep) /
-                       this->RealTimeCorrelationFunctionFreq;
+                       this->intScheme.RealTimeCorrelationFunctionFreq;
     hsize_t lastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
     hsize_t memLastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
-    savFile.partialWriteData("RT/REALTIMECORRELATIONFUNCTION", &curr_corr,
+    savFile.partialWriteData("RTNEW/REALTIMECORRELATIONFUNCTION", &curr_corr,
                              {location}, {1}, {0}, {1});
   }
 }; // RealTimeMultiSlater:: RTCorrFunc

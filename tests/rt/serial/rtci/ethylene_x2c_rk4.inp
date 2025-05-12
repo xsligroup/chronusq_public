@@ -1,0 +1,39 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ C   -0.65300    0.00000    0.00000
+ C    0.65300    0.00000    0.00000
+ H   -1.229    0.916    0.00000
+ H   -1.229   -0.916    0.00000
+ H    1.229    0.916    0.00000
+ H    1.229   -0.916    0.00000
+
+[QM]
+reference = X2CHF
+job = RT
+
+[RT]
+TMAX   = 1.0
+DELTAT = 0.05
+StatePOPULATION = 1
+INTALG = RK4
+FIELD:
+ PlaneWaveField[0.532364,SIN](0.0,100.0) Electric    0.057 0.0 0.0
+
+[MCSCF]
+JOBTYPE = CASCI
+NACTO = 4
+NACTE = 2
+NRoots = 6
+StateAverage = false
+printmult=true
+
+[INTS]
+alg = direct
+
+[BASIS]
+basis = sto-3g
+
+[MISC]
+NSMP=1

@@ -27,38 +27,44 @@
 namespace ChronusQ {
 
 template <typename MatsT, typename IntsT>
-template <typename SigVecType>
-void RealTimeMultiSlater<MatsT, IntsT>::buildSigma(SigVecType &cin,
-                                                   SigVecType &sigma_out,
-                                                   double t) {
-  auto derived_ref =
-      dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
+void RealTimeCI<MatsT, IntsT>::buildSigma(
+    std::shared_ptr<SolverVectors<MatsT>> cin,
+    std::shared_ptr<SolverVectors<MatsT>> sigma_out, double t, bool do_left) {
+  if (do_left) {
+        CErr("RTCI should never build left vector.");
+  }
   auto derived_cin = std::dynamic_pointer_cast<RawVectors<MatsT>>(cin);
-  auto derived_sigma_out = std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
-  derived_ref->ciBuilder->buildSigma(*derived_ref, 1, derived_cin->getPtr(), derived_sigma_out->getPtr());
+  auto derived_sigma_out =
+      std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
 
-  if (time_independent_ham)
+  reference_->ciBuilder->buildSigma(*reference_, 1, derived_cin->getPtr(),
+                                    derived_sigma_out->getPtr());
+
+  if (this->intScheme.time_independent_ham)
     this->buildMu(cin, sigma_out, t);
 };
 
 template <typename MatsT, typename IntsT>
-template <typename SigVecType>
-void RealTimeMultiSlater<MatsT, IntsT>::buildMu(SigVecType &cin,
-                                                SigVecType &sigma_out,
-                                                double t) {
+void RealTimeCI<MatsT, IntsT>::buildMu(
+    std::shared_ptr<SolverVectors<MatsT>> cin,
+    std::shared_ptr<SolverVectors<MatsT>> sigma_out, double t, bool do_left) {
+  if (do_left) {
+        CErr("RTCI should never build left vector.");
+  }
   // Get perturbation for the current time and build a Fock matrix
-  EMPerturbation pert_t = pert.getPert(t);
+  EMPerturbation pert_t = this->pert.getPert(t);
 
   // Add on the SCF Perturbation
-  if (intScheme.includeSCFField)
-    for (auto &field : scfPert.fields)
+  if (this->intScheme.includeSCFField)
+    for (auto &field : this->scfPert.fields)
       pert_t.addField(field);
 
-  auto derived_ref =
-      dynamic_cast<MCWaveFunction<MatsT, IntsT> *>(reference_.get());
   auto derived_cin = std::dynamic_pointer_cast<RawVectors<MatsT>>(cin);
-  auto derived_sigma_out = std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
-  derived_ref->ciBuilder->buildMu(*derived_ref, 1, derived_cin->getPtr(), derived_sigma_out->getPtr(), pert_t);
+  auto derived_sigma_out =
+      std::dynamic_pointer_cast<RawVectors<MatsT>>(sigma_out);
+
+  reference_->ciBuilder->buildMu(*reference_, 1, derived_cin->getPtr(),
+                                 derived_sigma_out->getPtr(), pert_t);
 };
 
 }; // namespace ChronusQ
