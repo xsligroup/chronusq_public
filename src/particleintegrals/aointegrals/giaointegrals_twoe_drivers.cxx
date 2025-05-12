@@ -169,7 +169,6 @@ namespace ChronusQ {
         auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
           basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
-//std::cout<<"calculate bottom up GIAO ERI fuck!!!"<<std::endl;
         auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
           basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);

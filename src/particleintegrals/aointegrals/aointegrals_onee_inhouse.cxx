@@ -1659,7 +1659,6 @@ namespace ChronusQ {
       return tmpVal;
   
     } else if( ( LB > 0 ) and ( LA  ==  0 ) ) {
-  //    std::cout<<"here we are fucked"<<std::endl; 
       for( iWork = 0; iWork < 3; iWork++) lBm1[iWork] = lB[iWork];
       if( lB[0] > 0 ) iWork = 0;
       else if( lB[1] > 0 ) iWork=1;
@@ -1679,9 +1678,7 @@ namespace ChronusQ {
       return tmpVal;
     }
       
-  //  else if( LB>LA ) cout <<"fucked again"<<endl;
     else if( ( LB > 0 ) and ( LA > 0 ) ){
-  //   cout<<"here we are"<<endl;
       int lBm1[3],lAm1k[3];
       for(iWork = 0;iWork < 3;iWork++) {
         lAm1[iWork]=lA[iWork];

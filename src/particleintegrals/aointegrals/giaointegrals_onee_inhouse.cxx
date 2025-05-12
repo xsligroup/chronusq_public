@@ -3151,7 +3151,7 @@ std::cout<<"lA[0] "<<lA[0]<<" lA[1] "<<lA[1]<<" lA[2] "<<lA[2]<<" lApg[0] "<<lAp
 std::cout<<"lB[0] "<<lB[0]<<" lB[1] "<<lB[1]<<" lB[2] "<<lB[2]<<" lBpb[0] "<<lBpb[0]<<" lBpb[1] "<<lBpb[1]<<" lBpb[2] "<<lBpb[2]<<std::endl;
 
       tmpVal += -onei*ka[alpha]*( 2.0*shell2.alpha[pripair.p2]) ;
-auto shit=   ( comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair], LA+1, lApg, LB+1, lBpb));
+auto thing=   ( comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair], LA+1, lApg, LB+1, lBpb));
 
 std::cout<<"1"<<std::endl;
 
@@ -3878,16 +3878,16 @@ std::cout<<"T value "<<std::setprecision(12)<<(shell1.alpha[pripair.p1]+shell2.a
 //<<" "<<shell1.O[1]<<" "<<shell1.O[2]<<" B "<<shell2.O[0]
 //<<" "<<shell2.O[1]<<" "<<shell2.O[2]<<" C "<<C[0]<<" "<<C[1]<<" "<<C[2]<<std::endl;
 
-//auto shit1=   comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_primitive,LA+1,lAp1,LB+1,lBp1,0,iAtom,molecule);
+//auto thing1=   comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_primitive,LA+1,lAp1,LB+1,lBp1,0,iAtom,molecule);
 //std::cout<<"iatom "<<iAtom<<std::endl;
-//auto shit3 = 0.25032659*RealGTOIntEngine::hRRiPPVab(nucShell,pripair,shell1,shell2,LA+1,lAp1,
+//auto thing3 = 0.25032659*RealGTOIntEngine::hRRiPPVab(nucShell,pripair,shell1,shell2,LA+1,lAp1,
 //LB+1,lBp1,C,0,iAtom,molecule); 
    // - onei * kb[beta] *
 //std::cout<<"lA "<<lAp1[0]<<" "<<lAp1[1]<<lAp1[2]<<" lB "<<lBp1[0]<<" "<<lBp1[1]<<
-//" "<<lBp1[2]<<" shit1 "<<shit1<<" shit3 "<<shit3<<std::endl;
-//auto shit2 = comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_primitive,LA+1,lAp1,LB,lB,0,iAtom,molecule) ;
-//std::cout<<"shit2 "<<shit2<<std::endl;
-//tmpVal += 2*shell1.alpha[pripair.p1] * ( 2*shell2.alpha[pripair.p2]* shit1- onei * kb[beta] * shit2);
+//" "<<lBp1[2]<<" thing1 "<<thing1<<" thing3 "<<thing3<<std::endl;
+//auto thing2 = comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_primitive,LA+1,lAp1,LB,lB,0,iAtom,molecule) ;
+//std::cout<<"thing2 "<<thing2<<std::endl;
+//tmpVal += 2*shell1.alpha[pripair.p1] * ( 2*shell2.alpha[pripair.p2]* thing1- onei * kb[beta] * thing2);
 
 
     tmpVal -= onei*ka[alpha]* ( 2*shell2.alpha[pripair.p2]* 

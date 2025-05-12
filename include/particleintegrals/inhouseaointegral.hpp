@@ -243,7 +243,7 @@ namespace ChronusQ {
       libint2::Shell &, libint2::Shell &,
       libint2::Shell &, libint2::Shell &);
 
-    // SS shit : gradient of AC atoms for ERI
+    // SS : gradient of AC atoms for ERI
     static std::vector<std::vector<double>> ACderiv( 
       libint2::ShellPair &, libint2::ShellPair &, 
       libint2::Shell &, libint2::Shell &,
@@ -315,13 +315,13 @@ namespace ChronusQ {
     static double twoegaugeSSSS0( libint2::ShellPair&, libint2::ShellPair&, int, int, 
       libint2::Shell&, libint2::Shell&, libint2::Shell&, libint2::Shell& ); 
 
-    // SS shit : gradient of AC atoms for gauge integral
+    // SS : gradient of AC atoms for gauge integral
     static std::vector<std::vector<std::vector<double>>> ACgaugederiv( 
       libint2::ShellPair &, libint2::ShellPair &, 
       libint2::Shell &, libint2::Shell &,
       libint2::Shell &, libint2::Shell &);
 
-    // SS shit : gradient of BC atoms for gauge integral
+    // SS : gradient of BC atoms for gauge integral
     static std::vector<std::vector<std::vector<double>>> BCgaugederiv( 
       libint2::ShellPair &, libint2::ShellPair &, 
       libint2::Shell &, libint2::Shell &,
