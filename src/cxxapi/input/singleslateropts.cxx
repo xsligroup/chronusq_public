@@ -793,10 +793,12 @@ namespace ChronusQ {
   
     } catch(...) {}
 
+    bool hasGauntInput = false;
     // Gaunt
     try { 
       std::string GauntOptions = "FALSE";
       GauntOptions = input.getData<std::string>("INTS.GAUNT");
+      hasGauntInput = true;
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
@@ -846,10 +848,12 @@ namespace ChronusQ {
     } catch(...) {}
 
 
+    bool hasGaugeInput = false;
     // Gauge
     try { 
       std::string GaugeOptions = "FALSE";
       GaugeOptions = input.getData<std::string>("INTS.GAUGE");
+      hasGaugeInput = true;
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
@@ -902,6 +906,14 @@ namespace ChronusQ {
     try { 
       std::string BreitOptions = "FALSE";
       BreitOptions = input.getData<std::string>("INTS.BREIT");
+
+      if (hasGauntInput) {
+        CErr("INT.BREIT and INT.GAUNT options may conflict. Please only set one of them.");
+      }
+      if (hasGaugeInput) {
+        CErr("INT.BREIT and INT.GAUGE options may conflict. Please only set one of them.");
+      }
+
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
