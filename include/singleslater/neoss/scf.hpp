@@ -47,7 +47,7 @@ namespace ChronusQ {
     applyToEach([&focks](SubSSPtr& ss) {
       for( auto& X: ss->getFock() )
         focks.push_back(X);
-    });
+    },this->scfControls.NEOSubSystemOpt);
     return focks;
   };
 
@@ -58,7 +58,7 @@ namespace ChronusQ {
     applyToEach([&dens](SubSSPtr& ss) {
       for( auto& X: ss->getOnePDM() )
         dens.push_back(X);
-    });
+    },this->scfControls.NEOSubSystemOpt);
     return dens;
   };
 
@@ -69,7 +69,7 @@ namespace ChronusQ {
     applyToEach([&dens](SubSSPtr& ss) {
       for( auto& X: ss->getOnePDMOrtho() )
         dens.push_back(X);
-    });
+    },this->scfControls.NEOSubSystemOpt);
     return dens;
   };
 
@@ -116,7 +116,7 @@ namespace ChronusQ {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     applyToEach([this](SubSSPtr& ss) {
       ss->ortho2aoDen();
-    });
+    },this->scfControls.NEOSubSystemOpt);
   };
 
   template <typename MatsT, typename IntsT>
@@ -124,7 +124,7 @@ namespace ChronusQ {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     applyToEach([this](SubSSPtr& ss) {
       ss->ortho2aoMOs();
-    });
+    },this->scfControls.NEOSubSystemOpt);
   };
 
   template <typename MatsT, typename IntsT>
@@ -132,7 +132,7 @@ namespace ChronusQ {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     applyToEach([this](SubSSPtr& ss) {
       ss->ao2orthoDen();
-    });
+    },this->scfControls.NEOSubSystemOpt);
   };
 
   template <typename MatsT, typename IntsT>
@@ -142,7 +142,7 @@ namespace ChronusQ {
     applyToEach([&ortho](SubSSPtr& ss) {
       for( auto& X: ss->getOrtho() )
         ortho.push_back(X);
-    });
+    },this->scfControls.NEOSubSystemOpt);
     return ortho;
   };
 
@@ -151,7 +151,7 @@ namespace ChronusQ {
     using SubSSPtr = std::shared_ptr<SingleSlater<MatsT,IntsT>>;
     applyToEach([&val](NEOSS<MatsT,IntsT>::SubSSPtr& ss) {
       ss->setDenEqCoeff(val);
-    });
+    },this->scfControls.NEOSubSystemOpt);
   };
 
   template<typename MatsT, typename IntsT>
@@ -161,18 +161,20 @@ namespace ChronusQ {
     this->moCoefficients.clear();
     this->moEigenvalues.clear();
 
-    // Setup MO reference vector
+    // Setup MO reference vector, acknowledging we might only want to apply to some subsystems
     applyToEach([this](SubSSPtr& ss) {
       for( auto& m: ss->mo )
         this->moCoefficients.emplace_back(m);
-    });
+    },
+    this->scfControls.NEOSubSystemOpt);
 
     // Setup Eigenvalue vector
     applyToEach([this](SubSSPtr& ss) {
       this->moEigenvalues.push_back(ss->eps1);
       if( ss->nC == 1 and !ss->iCS )
         this->moEigenvalues.push_back(ss->eps2);
-    });
+    },
+    this->scfControls.NEOSubSystemOpt);
 
   }
 
@@ -241,5 +243,46 @@ namespace ChronusQ {
 
   };
 
+  template <typename MatsT, typename IntsT>
+  bool NEOSS<MatsT,IntsT>::secondSCF(){
+
+    // Handle NEO Stepwise optimization
+    if(this->scfControls.NEOStepwiseOpt)
+    {
+      // Check for stepwise convergence
+      bool energyConverged = std::abs(this->totalEnergy-this->lastE)<this->scfControls.eneConvTol;
+#ifdef CQ_ENABLE_MPI
+      // Broadcast whether or not we're converged to ensure that all
+      // MPI processes exit the NEO-SCF simultaneously
+      if( MPISize(this->comm) > 1 ) MPIBCast(energyConverged,0,this->comm);
+#endif
+
+      // We'll also do one final energyOnly step for populating all properties
+      if(energyConverged && !this->scfControls.NEOSubSystemOpt.size())
+        return false;
+
+      if(energyConverged)
+      {
+        std::cout << "          Converged both subsystems, running one energy only iteration" << std::endl;
+        this->scfControls.NEOSubSystemOpt.clear();
+        this->scfControls.energyOnly = true;
+        initializeSCF();
+        return true;
+      }
+
+      // If not converged we need to update some properties for the next SCF
+      this->lastE = this->totalEnergy;      
+      std::cout << "          Converged " << this->scfControls.NEOSubSystemOpt[0] << std::endl;
+      std::map<std::string,std::string> swaps = {{"Electronic","Protonic"},{"Protonic","Electronic"}};
+      this->scfControls.NEOSubSystemOpt[0] = swaps.at(this->scfControls.NEOSubSystemOpt[0]);
+      initializeSCF();
+      return true;
+    }
+
+    // Handle that the individual single slater objects may request another SCF cycle
+    // TODO: Implement
+    return false;
+
+  }
 }; // namespace ChronusQ
 

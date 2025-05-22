@@ -91,6 +91,8 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
       }
     }
 
+    // Reset Function
+    virtual void reInitialize(){};
 
     // getNewOrbitals performs only a single step in the optimization/simulation
     virtual void getNewOrbitals(EMPerturbation& pert) = 0;

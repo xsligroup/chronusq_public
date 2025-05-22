@@ -53,6 +53,13 @@ TEST( NEO_RHF, h2o_ccpvdz_pb4d ) {
  
 };
 
+TEST( NEO_RHF, water_sto3g_protsp_stepwise ) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_stepwise_rhf", "water_sto-3g_prot-sp_rhf.bin.ref", 1e-6,
+              true, true, true, true, false, "no", true, false);
+ 
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 // HF NEO-Test with minimal basis set, parallel job
@@ -80,6 +87,13 @@ TEST( NEO_RHF, par_h2o_ccpvdz_pb4d ) {
 
   CQNEOSCFTEST( "scf/parallel/neo_rhf/h2o_ccpvdz_pb4d", "h2o_ccpvdz_pb4d.bin.ref", 1e-6, 
               true, true, true, true, false, "no", true, false );
+ 
+};
+
+TEST( NEO_RHF, par_water_sto3g_protsp_stepwise ) {
+
+  CQNEOSCFTEST( "scf/parallel/neo_rhf/water_sto-3g_prot-sp_stepwise_rhf", "water_sto-3g_prot-sp_rhf.bin.ref", 1e-6,
+              true, true, true, true, false, "no", true, false);
  
 };
 

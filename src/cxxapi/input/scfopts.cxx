@@ -57,7 +57,10 @@ namespace ChronusQ {
       "NRLEVELSHIFT",
       "PRINTCONTRACTIONTIMING" ,
       "ACCURACY",
-      "CUBE"
+      "CUBE",
+      "NEOOPTIMIZEONLY",
+      "NEOOPTIMIZEFIRST",
+      "NEOSTEPWISEOPTIMIZE"
     };
 
     // Specified keywords
@@ -244,7 +247,44 @@ namespace ChronusQ {
     else
       CErr("Unrecognized entry for SCF.PROT_GUESS");
     
+    std::string neoonlyoptstring;
+    OPTOPT( neoonlyoptstring = input.getData<std::string>("SCF.NEOOPTIMIZEONLY"); )
+    trim(neoonlyoptstring);
+    if(!neoonlyoptstring.empty())
+    {
+      if ( ! neoonlyoptstring.compare("ELECTRONIC"))
+        scfControls.NEOSubSystemOpt.push_back("Electronic");
+      else if ( ! neoonlyoptstring.compare("PROTONIC"))
+        scfControls.NEOSubSystemOpt.push_back("Protonic");
+      else
+        CErr("Unrecognized entry for SCF.NEOOPTIMIZEONLY");
+    }
 
+    OPTOPT(scfControls.NEOStepwiseOpt = input.getData<bool>("SCF.NEOSTEPWISEOPTIMIZE");)
+    if(scfControls.NEOStepwiseOpt)
+    {
+      if(scfControls.NEOSubSystemOpt.size())
+        CErr("Cannot set both NEOOPTIMIZEONLY and NEOSTEPWISEOPTIMIZE");
+      std::cout << "NEO Stepwise optimization requested" << std::endl;
+      std::string neooptfirststring;
+      OPTOPT( neooptfirststring = input.getData<std::string>("SCF.NEOOPTIMIZEFIRST"); )
+      trim(neooptfirststring);
+      if(!neooptfirststring.empty())
+      {
+        if ( ! neooptfirststring.compare("ELECTRONIC"))
+          scfControls.NEOSubSystemOpt.push_back("Electronic");
+        else if ( ! neooptfirststring.compare("PROTONIC"))
+          scfControls.NEOSubSystemOpt.push_back("Protonic");
+        else
+          CErr("Unrecognized entry for SCF.NEOOPTIMIZEFIRST");
+      }
+      else
+      {
+        scfControls.NEOSubSystemOpt.push_back("Protonic");
+      }
+      std::cout << "NEO Stepwise optimization will begin with the " << scfControls.NEOSubSystemOpt[0] << " subsystem" << std::endl;
+    }
+ 
     // ALGORITHM
     std::string algString = "CONVENTIONAL";
     OPTOPT( algString = input.getData<std::string>("SCF.ALG"); )

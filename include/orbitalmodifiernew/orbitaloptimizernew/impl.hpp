@@ -58,6 +58,12 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
   // If guess is SAD or READDEN, then the first formDensity call can be skipped
   bool skipFormingDensity = (scfControls.guess = SAD) or (scfControls.guess = READDEN);
 
+  size_t macro_iter = 0;
+  do{
+  if(macro_iter) 
+  {
+    this->reInitialize();
+  }
   // SCF procedure
   for( this->scfConv.nSCFIter = 0; this->scfConv.nSCFIter < scfControls.maxSCFIter; this->scfConv.nSCFIter++ ) {
 
@@ -97,8 +103,11 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
     this->singleSlaterSystem.setDenEqCoeff(false);
 
     ProgramTimer::tock("SCF Iter");
+    if(!this->scfConv.nSCFIter) macro_iter++;
 
   };   // Iteration loop
+  }
+  while(this->singleSlaterSystem.secondSCF());
 
 #ifdef CQ_ENABLE_MPI
 
@@ -299,6 +308,7 @@ bool OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::evaluateProgress(EMPerturba
       if(this->scfConv.nSCFIter == 0) {
         // Allocate prevOnePDM
         vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
+        prevOnePDM.clear();
         for( size_t a = 0; a < onePDM.size(); a++ ) {
           prevOnePDM.emplace_back(onePDM[a]->nRows());
           prevOnePDM[a] = *onePDM[a];

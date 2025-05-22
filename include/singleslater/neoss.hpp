@@ -61,6 +61,21 @@ namespace ChronusQ {
       }
     }
 
+    template <typename F>
+    void applyToEach(F func, std::vector<std::string> subset) {
+      if(subset.size())
+      {
+        for(auto & label: subset)
+        {
+          func(subsystems.at(label));
+        }
+      }
+      else
+      {
+        applyToEach(func);
+      }
+    }
+
     protected:
 
       // typedefs
@@ -103,6 +118,7 @@ namespace ChronusQ {
       std::vector<std::vector<double>> EPCGradientP; ///< electron-proton correlation energy gradient with respect to protonic density
 
       cart_t protDipole;        ///< Protonic Dipole in the length gauge; only used in NEO
+      double lastE = 0.0;       ///< Energy storage if doing a stepwise optimization
 
     public:
 
@@ -241,11 +257,13 @@ namespace ChronusQ {
       void initializeSCF() override;
 
       void formGuess(EMPerturbation &pert, const SingleSlaterOptions& ssopt) {
-        applyToEach([&](SubSSPtr& ss){ ss->formGuess(pert, ssopt); });
+        // Avoid forming a new guess if we're doing a stepwise optimization
+        if(std::abs(this->lastE)==0.0)
+          applyToEach([&](SubSSPtr& ss){ ss->formGuess(pert, ssopt); });
       }
 
       virtual void formFock(EMPerturbation& emPert, bool increment = false, double xHFX = 1.) override {
-        applyToEach([&](SubSSPtr& ss){ ss->formFock(emPert, increment, xHFX); });
+        applyToEach([&](SubSSPtr& ss){ ss->formFock(emPert, increment, xHFX); },this->scfControls.NEOSubSystemOpt);
       }
 
       void formCoreH(EMPerturbation& emPert, bool save) override {
@@ -253,7 +271,7 @@ namespace ChronusQ {
       }
 
       virtual void formDensity() override {
-        applyToEach([&](SubSSPtr& ss){ ss->formDensity(); });
+        applyToEach([&](SubSSPtr& ss){ ss->formDensity(); },this->scfControls.NEOSubSystemOpt);
       }
 
       virtual void printOrbitalPopulation(std::ostream& out) {
@@ -305,6 +323,7 @@ namespace ChronusQ {
 
       // Cube
       virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) override;
+      virtual bool secondSCF() override;
 
       // Properties
       using QuantumBase::computeEnergy;

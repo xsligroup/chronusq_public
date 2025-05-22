@@ -60,6 +60,32 @@ public:
     if( this->scfControls.doExtrap ) allocExtrapStorage();
   };
 
+  void reInitialize() override
+  {
+
+    this->fockSquareOrtho.clear();
+    this->onePDMSquareOrtho.clear();
+    this->onePDMSquareAO.clear();
+    vecShrdPtrMat<MatsT> fock = this->singleSlaterSystem.getFock();
+    for( auto& f : fock ) this->fockSquareOrtho.emplace_back(f->nRows());
+
+    vecShrdPtrMat<MatsT> onePDM = this->singleSlaterSystem.getOnePDM();
+    for( auto& d : onePDM ) {
+      this->onePDMSquareOrtho.emplace_back(d->nRows());
+      this->onePDMSquareAO.emplace_back(d->nRows());
+    }
+    this->prevOnePDM.clear();
+    for(size_t a = 0; a < onePDM.size(); a++)
+    {
+      this->prevOnePDM.emplace_back(onePDM[a]->nRows());
+      this->prevOnePDM[a] = *onePDM[a];
+    }
+    orbGrad.clear();
+    for( auto& d : onePDM )
+      orbGrad.emplace_back(d->nRows());
+    if( this->scfControls.doExtrap ) allocExtrapStorage();
+  }
+
   // Destructor
   ~ConventionalSCFNew() {
     diisFock.clear();

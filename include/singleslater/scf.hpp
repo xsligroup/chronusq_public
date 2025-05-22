@@ -843,4 +843,10 @@ template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::setDenEqCoeff(bool val){
     this->denEqCoeff_ = val;
 }
+
+template<typename MatsT, typename IntsT>
+bool SingleSlater<MatsT, IntsT>::secondSCF(){
+  return false;
+}
+
 };   // namespace ChronusQ

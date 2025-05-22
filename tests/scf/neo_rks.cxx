@@ -32,6 +32,12 @@ TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc17) {
  
 }
 
+TEST( NEO_RKS, water_stepwise_epc17) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rks/water_stepwise_epc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref",  1e-6,
+              true, true, true, true, false, "no", true, false);
+ 
+}
 
 //NEO-DFT with minimal basis set, using epc19 functional
 TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc19) {
@@ -47,6 +53,13 @@ TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc19) {
 TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc17) {
 
   CQNEOSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref" );
+ 
+}
+
+TEST( NEO_RKS, par_water_stepwise_epc17) {
+
+  CQNEOSCFTEST( "scf/parallel/neo_rks/water_stepwise_epc17", "water_sto-3g_prot-sp_rb3lyp_uepc17.bin.ref",  1e-6,
+              true, true, true, true, false, "no", true, false);
  
 }
 

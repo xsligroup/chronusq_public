@@ -319,6 +319,7 @@ namespace ChronusQ {
     void orthoAOMO();
 
     // Post-processing functions
+    virtual bool secondSCF();
     void runCube(std::vector<std::shared_ptr<CubeGen>> cu, std::string prefix, std::shared_ptr<Molecule> mol) override;
 
     // SCF Specific Functions
