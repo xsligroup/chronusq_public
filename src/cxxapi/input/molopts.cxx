@@ -71,13 +71,17 @@ namespace ChronusQ {
     // Obtain Charge
     try { mol.charge = input.getData<int>("MOLECULE.CHARGE"); }
     catch (...) {
-      CErr("Unable to set Molecular Charge!", out);
+      mol.charge = 0;
+      out << "  * Molecular Charge not set in input. Automatically set to neutral." << std::endl;
     }
 
     // Obtain Multiplicity
+    bool autoMulti = false;
     try { mol.multip = input.getData<size_t>("MOLECULE.MULT"); }
     catch (...) {
       //CErr("Unable to set Molecular Spin Multiplicity!", out);
+      autoMulti = true;
+      out << "  * Molecular Spin Multiplicity not set in input. Automatically set to singlet or doublet." << std::endl;
     }
 
     // Parse Geometry Read Options
@@ -105,15 +109,15 @@ namespace ChronusQ {
 
 
     // Parse different files depending on READGEOM
-    if( geomReadStr == "INPUTFILE" ) parseGeomInp(mol,geomStr,out,doNEO);
-    else if( geomReadStr == "FCHK" ) parseGeomFchk(mol,scrName,out);
+    if( geomReadStr == "INPUTFILE" ) parseGeomInp(mol,geomStr,out,doNEO,autoMulti);
+    else if( geomReadStr == "FCHK" ) parseGeomFchk(mol,scrName,out,autoMulti);
     else CErr("INVALID OPTION FOR READGEOM KEYWORD!");
 
     return mol; // Return Molecule object (no intermediates)
 
   }; // CQMoleculeOptions
 
-  void parseGeomInp( Molecule &mol, std::string &geomStr, std::ostream &out, bool doNEO ) {
+  void parseGeomInp( Molecule &mol, std::string &geomStr, std::ostream &out, bool doNEO, bool autoMulti ) {
 
     std::istringstream geomStream; geomStream.str(geomStr);
     std::vector<std::string> tokens;
@@ -196,14 +200,14 @@ namespace ChronusQ {
     if ( atoms.size() == 0 )
       CErr("MOLECULE.GEOM must not be empty and must be indented");
     // Set the Atoms vector in Molecule (calls Molecule::update())
-    mol.setAtoms(atoms);
+    mol.setAtoms(std::move(atoms), autoMulti);
 
     // Output Molecule data
     out << mol << std::endl;
 
   } // parseGeomInp
 
-  void parseGeomFchk( Molecule &mol, std::string &fchkName, std::ostream &out ) {
+  void parseGeomFchk( Molecule &mol, std::string &fchkName, std::ostream &out, bool autoMulti ) {
 
     std::ifstream fchkFile;
     std::vector<Atom> atoms;
@@ -314,7 +318,7 @@ namespace ChronusQ {
     } // End of fchk file parsing
 
     // Set the Atoms vector in Molecule (calls Molecule::update())
-    mol.setAtoms(atoms);
+    mol.setAtoms(std::move(atoms), autoMulti);
 
     // Output Molecule data
     out << mol << std::endl;

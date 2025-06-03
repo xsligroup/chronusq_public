@@ -75,10 +75,16 @@ namespace ChronusQ {
      *  \param [in] M       Spin Multiplicity XXX: This implies <S^2>
      *  \param [in] _atoms  Atoms from which to construct Molecule object
      */ 
-    Molecule(const int C = 0, const int M = 0, std::vector<Atom> _atoms = {}) :
+    Molecule(const int C = 0, const int M = 0, std::vector<Atom> &&_atoms = {}) :
       charge(C), multip(M), nAtoms(_atoms.size()), atoms(std::move(_atoms)){ 
     
       if(nAtoms > 0) update();
+    };
+    // Constructor automatically assigns the multiplicity to 1 or 2
+    Molecule(const int C, std::vector<Atom> &&_atoms) :
+        charge(C), nAtoms(_atoms.size()), atoms(std::move(_atoms)){
+
+      if(nAtoms > 0) update(true);
     };
 
     /**
@@ -123,10 +129,10 @@ namespace ChronusQ {
      *
      *  \param [in] _atoms A collection of Atom object to construct a Molecule object
      */ 
-    void setAtoms(std::vector<Atom> _atoms) {
+    void setAtoms(std::vector<Atom> &&_atoms, bool autoMulti = false) {
       atoms = std::move(_atoms);
       nAtoms = atoms.size();
-      update();
+      update(autoMulti);
     }
 
     /**
@@ -144,7 +150,7 @@ namespace ChronusQ {
       // construct the molecule object
       // XXX: This needs to be updated
       auto multi = new_atoms.size()%2+1;
-      Molecule new_mole(0, multi, new_atoms);
+      Molecule new_mole(0, multi, std::move(new_atoms));
 
       // return it
       return new_mole;
@@ -166,7 +172,7 @@ namespace ChronusQ {
 
       // Detect number of quantum proton
       // construct the molecule object
-      Molecule new_mole(charge-atomsQ.size(), multip, new_atoms);
+      Molecule new_mole(charge-atomsQ.size(), multip, std::move(new_atoms));
 
       // return it
       return new_mole;
@@ -184,18 +190,24 @@ namespace ChronusQ {
 
     /**
      *  \brief Update Molecule member data
+     *  \param autoMulti Flag for automatically set multip to 1 or 2
      *
      *  Populates or repopulates the member data for a Molecule
      *  object.
      */ 
-    inline void update() {
+    inline void update(bool autoMulti = false) {
 
       // Compute the total number of 
       nTotalE = std::accumulate(atoms.begin(),atoms.end(),-charge,
                   [&](int c, const Atom &a){ return a.atomicNumber + c; }
                 );
-      
-      if(not ((nTotalE % 2) != 0 xor (multip % 2) != 0) or 
+
+      if (autoMulti) {
+        multip = 1;
+        if (nTotalE > 0) {
+          multip = nTotalE % 2 + 1;
+        }
+      } else if(not ((nTotalE % 2) != 0 xor (multip % 2) != 0) or
          multip > nTotalE + 1) {
         std::stringstream ss;
         ss << "Multiplicity = " << multip << " is not compatible with "

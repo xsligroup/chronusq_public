@@ -126,9 +126,9 @@ namespace ChronusQ {
 
   void CQMOLECULE_VALID(std::ostream&, CQInputFile &);
 
-  void parseGeomInp(Molecule &, std::string &, std::ostream &, bool);
+  void parseGeomInp(Molecule &, std::string &, std::ostream &, bool, bool);
 
-  void parseGeomFchk(Molecule &, std::string &, std::ostream &);
+  void parseGeomFchk(Molecule &, std::string &, std::ostream &, bool);
 
   RefOptions parseRef(std::ostream &, Molecule &, std::vector<std::string> &);
 

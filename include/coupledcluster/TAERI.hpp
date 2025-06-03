@@ -146,7 +146,7 @@ namespace ChronusQ {
           atoms.emplace_back("HE-4", center);
         }
 
-        Molecule mol(0,1,atoms);
+        Molecule mol(0,std::move(atoms));
         size_t nAtoms = mol.nAtoms;
         size_t nShells = basis.nShell;
 
