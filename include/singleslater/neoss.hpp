@@ -442,6 +442,8 @@ namespace ChronusQ {
        
       };
 
+      cart_t get_prot_dipole(){ return protDipole;}
+
       void computeSpin() override {
         applyToEach([](SubSSPtr& ss){ ss->computeSpin(); });      
       }

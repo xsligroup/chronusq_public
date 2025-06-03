@@ -232,6 +232,10 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::createRTDataSets(size_t maxPoints) 
   savFile.createDataSet<double>("RTNEW/ENERGY", {maxDim});
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE",       {maxDim*3});
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxDim*3});
+  // For NEO, we'll save a few additional quantities
+  if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
+    savFile.createDataSet<double>("RTNEW/LEN_PROT_DIPOLE",       {maxDim*3});
+  }
 
   for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
     size_t nBasis = this->onePDMSquareOrtho[i].nRows();
@@ -262,6 +266,12 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
   savFile.partialWriteData("RTNEW/STEP", &integrationProgress.currentStep, {integrationProgress.currentStep},{1},{0},{1});
   savFile.partialWriteData("RTNEW/ENERGY", &this->singleSlaterSystem.totalEnergy, {integrationProgress.currentStep},{1},{0},{1});
   savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &this->singleSlaterSystem.elecDipole[0],{integrationProgress.currentStep*3}, {3},{0},{3});
+  // For NEO, we'll save a few additional quantities
+  if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
+    auto ss = dynamic_cast<NEOSS<MatsT,IntsT>*>(&this->singleSlaterSystem);
+    savFile.partialWriteData("RTNEW/LEN_PROT_DIPOLE", &(ss->get_prot_dipole()[0]),{integrationProgress.currentStep*3}, {3},{0},{3});
+  }
+
   std::array<double,3> elecDipoleField = currentPerturbation.getDipoleAmp(Electric);
   if (integrationProgress.electricDipoleField.size() > 0)
     savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE_FIELD",&elecDipoleField[0], {integrationProgress.currentStep*3}, {3},{0},{3});
