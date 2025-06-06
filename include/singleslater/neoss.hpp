@@ -350,7 +350,7 @@ namespace ChronusQ {
 
       }
     
-      void computeMultipole(EMPerturbation& emPert) override {
+      void computeMultipole(EMPerturbation& emPert, const std::vector<PROPERTY> &properties = {}) override {
       // Zeroing our Dipole, Quadrupole, and Octopole
         for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
 
@@ -370,7 +370,7 @@ namespace ChronusQ {
 
         applyToEach([&](SubSSPtr& ss){
           // Computing the Multipole for each subsystem and then adding to the overall multipoles
-          ss->computeMultipole(emPert);
+          ss->computeMultipole(emPert, properties);
           for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
             this->elecDipole[iXYZ] += ss->elecDipole[iXYZ];
              
@@ -403,6 +403,7 @@ namespace ChronusQ {
           if (atom.quantum) {
             continue;
           }
+
 
         for(size_t iXYZ = 0; iXYZ < 3; iXYZ++)
         for(size_t jXYZ = 0; jXYZ < 3; jXYZ++) 

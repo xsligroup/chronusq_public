@@ -224,7 +224,7 @@ namespace ChronusQ {
 
     using QuantumBase::computeEnergy;
     void computeEnergy() override;
-    void computeMultipole(EMPerturbation &) override;
+    void computeMultipole(EMPerturbation &, const std::vector<PROPERTY> &properties = {}) override;
     void compute4CDipole(EMPerturbation &);
     void computeFockX2CDipole(EMPerturbation &);
     void computeSpin() override;

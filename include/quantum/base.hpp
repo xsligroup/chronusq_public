@@ -41,6 +41,13 @@ namespace ChronusQ {
     SCALAR=0,MZ=1,MY=2,MX=3
   }; ///< Enumerate the types of densities for contraction
 
+  enum PROPERTY {
+    ELECTRIC_DIPOLE,
+    ELECTRIC_QUADRUPOLE, 
+    ELECTRIC_OCTUPOLE,
+    SPIN,
+    METHOD_SPECIFIC
+  };
 
   // Helper function for operator traces
   template <typename Left, typename Right>
@@ -158,7 +165,7 @@ namespace ChronusQ {
       // electric field
       if(pert_has_type(pert,Electric))
       {
-        computeMultipole(pert);
+        computeMultipole(pert, {ELECTRIC_DIPOLE});
 
          auto elecDipoleField = pert.getDipoleAmp(Electric);
          field_delta +=
@@ -176,23 +183,41 @@ namespace ChronusQ {
       return {totalEnergy, OBEnergy, MBEnergy};
     }
    
-    virtual void computeMultipole(EMPerturbation &) = 0;
+    virtual void computeMultipole(EMPerturbation &, const std::vector<PROPERTY> &properties = {}) = 0;
     virtual void computeSpin() = 0;
     virtual void methodSpecificProperties() = 0;
 
 
 
-    inline void computeProperties(EMPerturbation &pert) {
+    inline void computeProperties(EMPerturbation &pert, const std::vector<PROPERTY> &properties = {}) {
 
       ROOT_ONLY(comm);
 
       ProgramTimer::tick("Compute Properties");
-
-      computeMultipole(pert);
       
-      //computeEnergy(pert);
-      if(nC != 4) computeSpin();
-      methodSpecificProperties();
+      // By default, compute all properties
+      std::vector<PROPERTY> propsToCompute = properties;
+      if (propsToCompute.empty()) 
+        propsToCompute = {ELECTRIC_DIPOLE, ELECTRIC_QUADRUPOLE, ELECTRIC_OCTUPOLE, SPIN, METHOD_SPECIFIC};
+      
+      auto hasProperty = [&](PROPERTY p){ return std::find(propsToCompute.begin(), propsToCompute.end(), p) != propsToCompute.end(); };
+
+      // Compute multipole properties
+      std::vector<PROPERTY> multipoleProps;
+      for (const auto& prop : propsToCompute) 
+        if (prop == ELECTRIC_DIPOLE || prop == ELECTRIC_QUADRUPOLE || prop == ELECTRIC_OCTUPOLE) 
+          multipoleProps.push_back(prop);
+      
+      if (multipoleProps.size() > 0)
+        computeMultipole(pert, multipoleProps);
+
+      // Compute spin information
+      if(hasProperty(SPIN) and nC != 4) 
+        computeSpin();
+
+      // Compute method specific properties (currently only include Mulliken population analysis)
+      if(hasProperty(METHOD_SPECIFIC)) 
+        methodSpecificProperties();
 
       ProgramTimer::tock("Compute Properties");
 

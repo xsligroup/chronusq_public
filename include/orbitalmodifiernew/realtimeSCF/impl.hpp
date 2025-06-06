@@ -135,7 +135,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     this->formFock(false, integrationProgress.currentTime);
     this->singleSlaterSystem.computeEnergy(currentPerturbation);
-    this->singleSlaterSystem.computeProperties(currentPerturbation);
+    this->singleSlaterSystem.computeProperties(currentPerturbation, {ELECTRIC_DIPOLE});
     if( printLevel > 0 and (MPIRank(this->mpiComm) == 0) ) printIteration();
 
     doPropagation(onePDMSquareOrthoSave, startMMUTStep, finalMMUTStep);

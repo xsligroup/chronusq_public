@@ -229,22 +229,27 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::computeMultipole(EMPerturbation &pert) {
+  void SingleSlater<MatsT,IntsT>::computeMultipole(EMPerturbation &pert, const std::vector<PROPERTY> &properties) {
     ROOT_ONLY(comm);
-    
-    if(this->nC == 4){
+
+    // By default, compute all multipole properties
+    std::vector<PROPERTY> propsToCompute = properties;
+    if(propsToCompute.empty()) propsToCompute = {ELECTRIC_DIPOLE, ELECTRIC_QUADRUPOLE, ELECTRIC_OCTUPOLE};
+
+    auto hasProperty = [&](PROPERTY p){ return std::find(propsToCompute.begin(), propsToCompute.end(), p) != propsToCompute.end(); };
+
+    if(this->nC == 4 and hasProperty(ELECTRIC_DIPOLE)){
       compute4CDipole(pert);
       return;
     }
 
-
-    if(this->nC == 2 and pchgDipole_[0] and pchgDipole_[1] and pchgDipole_[2]){
+    if(this->nC == 2 and pchgDipole_[0] and pchgDipole_[1] and pchgDipole_[2] and hasProperty(ELECTRIC_DIPOLE)){
       computeFockX2CDipole(pert);
       return;
     }
 
-
     // Compute elecric contribution to the dipoles
+    if(hasProperty(ELECTRIC_DIPOLE)){
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) 
       this->elecDipole[iXYZ] = -this->template computeOBProperty<SCALAR>((*this->aoints_->lenElectric)[iXYZ]->pointer());
 
@@ -255,6 +260,8 @@ namespace ChronusQ {
       MatAdd('N','N',3,1,1.,&this->elecDipole[0],3,atom.nucCharge,
           &atom.coord[0],3,&this->elecDipole[0],3);
     }
+    } // if(hasProperty(ELECTRIC_DIPOLE))
+
 
 #ifdef seperatemag
   // Here output orbital Zeeman energy
@@ -318,6 +325,7 @@ namespace ChronusQ {
 #endif
 
     // Electric contribution to the quadrupoles
+    if(hasProperty(ELECTRIC_QUADRUPOLE)){
     for(size_t iXYZ = 0, iX = 0; iXYZ < 3; iXYZ++)
     for(size_t jXYZ = iXYZ     ; jXYZ < 3; jXYZ++, iX++){
 
@@ -337,7 +345,10 @@ namespace ChronusQ {
       this->elecQuadrupole[iXYZ][jXYZ] +=
         atom.nucCharge * atom.coord[iXYZ] * atom.coord[jXYZ];
     }
+    } // if(hasProperty(ELECTRIC_QUADRUPOLE))
+
     // Electric contribution to the octupoles
+    if(hasProperty(ELECTRIC_OCTUPOLE)){
     for(size_t iXYZ = 0, iX = 0; iXYZ < 3; iXYZ++)
     for(size_t jXYZ = iXYZ     ; jXYZ < 3; jXYZ++)
     for(size_t kXYZ = jXYZ     ; kXYZ < 3; kXYZ++, iX++){
@@ -369,7 +380,7 @@ namespace ChronusQ {
         atom.nucCharge * atom.coord[iXYZ] * atom.coord[jXYZ] *
         atom.coord[kXYZ];
     }
-
+    } // if(hasProperty(ELECTRIC_OCTUPOLE))
     //std::cout << std::string(this->particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Dipole: " 
     //    << this->elecDipole[0] << " " << this->elecDipole[1] << " " << this->elecDipole[2] << std::endl;
   };
