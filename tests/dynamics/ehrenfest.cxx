@@ -26,7 +26,7 @@
 
 
 
-// Hydrogen Flouride RHF
+// Classical Hydrogen Flouride RHF
 TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rhf_mmut ) {
 
   CQDYNAMICSTEST( "dynamics/serial/ehrenfest/hf_ehrenfest_rhf_mmut",
@@ -34,23 +34,15 @@ TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rhf_mmut ) {
 
 }
 
-//// Hydrogen Flouride RB3LYP
-//TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rb3lyp_mmut ) {
-//
-//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/hf_ehrenfest_rb3lyp_mmut",
-//    "hf_ehrenfest_rb3lyp_mmut.bin.ref");
-//
-//}
-//
-//// NEO Water RB3LYP Fixed Proton Basis
-//TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut ) {
-//
-//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut",
-//    "h2o_neoehrenfest_rb3lyp_epc17_mmut.bin.ref");
-//
-//}
-//
-//// NEO Water RB3LYP Traveling Proton Basis
+// NEO Water RHF/UHF Fixed Proton Basis
+TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rhf_uhf_mmut_fpb",
+    "h2o_neoehrenfest_rhf_uhf_mmut_fpb.bin.ref");
+
+}
+
+//// NEO Water RB3LYP/UEPC17 Traveling Proton Basis
 //TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
 //
 //  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
@@ -60,3 +52,27 @@ TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rhf_mmut ) {
 
 
 
+
+//#ifdef _CQ_DO_PARTESTS
+//TEST( EHRENFEST_DYNAMICS, PAR_hf_ehrenfest_rhf_mmut ) {
+//
+//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/hf_ehrenfest_rhf_mmut",
+//    "hf_ehrenfest_rhf_mmut.bin.ref" );
+//
+//}
+//
+//TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
+//
+//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rhf_uhf_mmut_fpb",
+//    "h2o_neoehrenfest_rhf_uhf_mmut_fpb.bin.ref" );
+//
+//}
+
+//TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
+//
+//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
+//    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref" );
+//
+//}
+
+//#endif

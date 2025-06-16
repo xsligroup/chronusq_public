@@ -142,8 +142,10 @@ namespace ChronusQ {
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugetwoeH; ///< contributions from gaunt to twoeH
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> gaugeexchangeMatrix; ///< contributions from gaunt to exchangeMatrix
 
-    // Density Gradient (vector of N*atoms*3 for each R)
+    // Density Gradient (vector of length NAtoms*3 for each R)
     std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> onePDMGrad;
+    // Energy weighted density matrix W
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> W;
 
     // Constructors
       
@@ -262,6 +264,8 @@ namespace ChronusQ {
     // Get the total gradient
     virtual std::vector<double> getGrad(EMPerturbation&, bool equil,
       bool saveInts, double xHFX = 1.) override;
+    
+    void formEWDM(bool equil = false);
 
     // Form initial guess orbitals
     // see include/singleslater/guess.hpp for docs)

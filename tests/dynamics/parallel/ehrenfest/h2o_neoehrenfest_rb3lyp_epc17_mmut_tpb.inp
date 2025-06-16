@@ -46,7 +46,7 @@ RESTARTSTEP = magnus2
 PRINTLEVEL = 1
 
 [MISC]
-nsmp = 1
+nsmp = 2
 mem = os
 
 [INTS]

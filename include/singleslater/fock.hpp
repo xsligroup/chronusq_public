@@ -207,9 +207,7 @@ namespace ChronusQ {
        },
        opts
     );
-
     std::vector<double> coreGrad = coreHBuilder->getGrad(pert, *this);
-    // printGrad("Core H Gradient:", coreGrad);
 
 
     // 2e contribution
@@ -217,134 +215,21 @@ namespace ChronusQ {
       {{ELECTRON_REPULSION, 1}},
       opts
     );
-
     std::vector<double> twoEGrad = fockBuilder->getGDGrad(*this, pert, xHFX);
-    std::vector<double> pulayGrad;
+
+    
+    // Pulay gradient contribution
+    bool useW = true;
+    std::vector<double> pulayGrad = fockBuilder->getPulayGrad(*this, equil, useW);
+
+
+    // Add the nuclear gradient and assemble the total gradient
     std::vector<double> nucGrad;
-
-    // Pulay contribution
-    //
-    // NOTE: We may want to change these methods out to use just the energy
-    //   weighted density matrix - can probably get some speed up.
-    if( equil ) {
-      // TODO
-    }
-    else {
-
-      // S^{-1/2}
-      auto orthoForward = orthoAB->forwardPointer();
-      //auto orthoForward = orthoSpinor->forwardPointer();
-
-      // Allocate
-      cqmatrix::Matrix<MatsT> vdv(NB);
-      cqmatrix::Matrix<MatsT> dvv(NB);
-      cqmatrix::PauliSpinorMatrices<MatsT> SCR(NB, hasXY, hasZ);
-
-      // allocate one-PDM gradient matrices
-      if (onePDMGrad.size() == 0) {
-        onePDMGrad.reserve(nGrad);
-        for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) 
-        onePDMGrad.emplace_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, hasXY, hasZ));
-      }
-
-      // XXX: This requires copying the overlap gradients, but it is for
-      //      copying to MatsT != IntsT
-      std::vector<cqmatrix::Matrix<MatsT>> gradOverlap;
-      gradOverlap.reserve(nGrad);
-      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-        gradOverlap.emplace_back((*this->aoints_->gradOverlap)[iGrad]->matrix());
-      }
-
-      // Calculate dV
-      std::vector<cqmatrix::Matrix<MatsT>> gradOrtho;
-      gradOrtho.reserve(nGrad);
-      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-        gradOrtho.emplace_back(NB);
-      }
-      orthoAB->getOrthogonalizationGradients(gradOrtho, gradOverlap);
-
-      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-
-        // Form VdV and dVV
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-          NB,NB,NB,MatsT(1.),orthoForward->pointer(),NB,
-          gradOrtho[iGrad].pointer(),NB,MatsT(0.),vdv.pointer(),NB);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-          NB,NB,NB,MatsT(1.),gradOrtho[iGrad].pointer(),NB,
-          orthoForward->pointer(),NB,MatsT(0.),dvv.pointer(),NB);
-
-        // Form FVdV and dVVF for the non-xc part of F
-        for( auto iSp = 0; iSp < nSp; iSp++ ) {
-          auto comp = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(iSp);
-          
-          cqmatrix::Matrix<MatsT> nonXC_F(NB);
-          //nonXC_F = (*coreH)[comp] + (*twoeH)[comp];
-          nonXC_F = (*fockMatrix)[comp];
-
-          
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-            NB,NB,NB,MatsT(1.),nonXC_F.pointer(),NB,
-            vdv.pointer(),NB,MatsT(0.),SCR[comp].pointer(),NB);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-            NB,NB,NB,MatsT(1.),dvv.pointer(),NB,
-            nonXC_F.pointer(),NB,MatsT(1.),SCR[comp].pointer(),NB);
-        }
-
-        // Compute 1PDM Gradient and Save: dP/dR = -(VdV * P + P * dVV)
-        // S part:
-        // Compute VdV * P and negate the result
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-          NB,NB,NB,MatsT(-1.),vdv.pointer(),NB, // Note the change here from 1. to -1.
-          this->onePDM->S().pointer(),NB,MatsT(0.),onePDMGrad[iGrad]->S().pointer(),NB);
-
-        // Compute P * dVV, add to VdV * P with sign change, resulting in -(P * dVV + VdV * P)
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-          NB,NB,NB,MatsT(-1.),this->onePDM->S().pointer(),NB, // Note the change here from 1. to -1.
-          dvv.pointer(),NB,MatsT(1.),onePDMGrad[iGrad]->S().pointer(),NB); 
-
-        // Mz part:
-        if( hasZ ){
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-            NB,NB,NB,MatsT(-1.),vdv.pointer(),NB, 
-            this->onePDM->Z().pointer(),NB,MatsT(0.),onePDMGrad[iGrad]->Z().pointer(),NB);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-            NB,NB,NB,MatsT(-1.),this->onePDM->Z().pointer(),NB,
-            dvv.pointer(),NB,MatsT(1.),onePDMGrad[iGrad]->Z().pointer(),NB); 
-        }
-          
-        //this->onePDM->output(std::cout, "OnePDM in Gradient Contractions", true);
-        //prettyPrintSmart(std::cout, "S Grad" + std::to_string(iGrad), gradOrtho[iGrad].pointer(), NB, NB, NB);
-        //prettyPrintSmart(std::cout, "S" + std::to_string(iGrad), orthoForward->pointer(), NB, NB, NB);
-        //prettyPrintSmart(std::cout, "One PDM Grad S" + std::to_string(iGrad), onePDMGrad[iGrad]->S().pointer(), NB, NB, NB);
-        //if(hasZ)
-        //  prettyPrintSmart(std::cout, "One PDM Grad Z" + std::to_string(iGrad), onePDMGrad[iGrad]->Z().pointer(), NB, NB, NB);
-
-        // Trace
-        double gradVal = this->template computeOBProperty<SCALAR>(
-          SCR.S().pointer()
-        );
-
-        if( hasZ )
-          gradVal += this->template computeOBProperty<MZ>(
-            SCR.Z().pointer()
-        );
-        if( hasXY ) {
-          gradVal += this->template computeOBProperty<MY>(
-            SCR.Y().pointer()
-          );
-          gradVal += this->template computeOBProperty<MX>(
-            SCR.X().pointer()
-          );
-        }
-
-        pulayGrad.push_back(-0.5*gradVal);
-        size_t iAt = iGrad/3;
-        size_t iXYZ = iGrad%3;
-        gradient[iGrad] = coreGrad[iGrad] + twoEGrad[iGrad] - 0.5*gradVal
-                          + this->molecule().nucRepForce[iAt][iXYZ];
-        nucGrad.push_back(this->molecule().nucRepForce[iAt][iXYZ]);
-      }
-
+    for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+      size_t iAt = iGrad/3;
+      size_t iXYZ = iGrad%3;
+      nucGrad.push_back(this->molecule().nucRepForce[iAt][iXYZ]);
+      gradient[iGrad] = coreGrad[iGrad] + twoEGrad[iGrad] + pulayGrad[iGrad] + nucGrad[iGrad];
     }
 
     //printGrad("Nuclear Gradient:", nucGrad);

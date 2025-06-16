@@ -42,6 +42,8 @@
 #  define VXC_DEBUG_LEVEL 0
 #endif
 
+//#define USE_ONEPDMGRAD
+
 namespace ChronusQ {
   
   /**
@@ -273,6 +275,7 @@ namespace ChronusQ {
       // Obtain the 1PDM Gradient (stored in SingleSlater), which is calculated during Pulay Gradient
       std::vector<std::vector<double*>> Re1PDMGrad_scalar(nAtoms); 
       std::vector<std::vector<double*>> Re1PDMGrad_mz(nAtoms); 
+#ifdef USE_ONEPDMGRAD
       for(auto ic = 0; ic < nAtoms; ic++) {
         for (auto xyz = 0; xyz < 3; xyz++ )//{
           if( std::is_same<MatsT,double>::value )
@@ -295,6 +298,7 @@ namespace ChronusQ {
             }
         }
       }
+#endif
 
       auto vxcbuild = [&](size_t &res, std::vector<cart_t> &batch, 
         std::vector<double> &weights, std::vector<size_t> NBE_vec, 
@@ -699,7 +703,7 @@ namespace ChronusQ {
 
       // Freeing the memory
       // ----------------Main System-------------------------------------------- //
-      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n);
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval,U_n,dVU_n);
       for(size_t ic = 0; ic < nAtoms; ic++) {
         CQMemManager::get().free(VEC_SCRATCHNBNB[ic][0], VEC_SCRATCHNBNB[ic][1], VEC_SCRATCHNBNB[ic][2]);
         CQMemManager::get().free(VEC_SCRATCHNBNP[ic][0], VEC_SCRATCHNBNP[ic][1], VEC_SCRATCHNBNP[ic][2]);
@@ -710,7 +714,7 @@ namespace ChronusQ {
         CQMemManager::get().free(GradU_nX[ic],GradU_nY[ic],GradU_nZ[ic]);
       }
       if( isGGA ) {
-        CQMemManager::get().free(GDenS,U_gamma);
+        CQMemManager::get().free(GDenS,U_gamma,dVU_gamma);
         for(size_t ic = 0; ic < nAtoms; ic++) {
           CQMemManager::get().free(GGDenS_dxX[ic],GGDenS_dxY[ic],GGDenS_dxZ[ic]);
           CQMemManager::get().free(GGDenS_dyX[ic],GGDenS_dyY[ic],GGDenS_dyZ[ic]);

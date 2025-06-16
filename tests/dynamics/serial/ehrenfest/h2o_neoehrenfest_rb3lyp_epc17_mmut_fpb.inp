@@ -38,7 +38,7 @@ TMAX   = 10
 DELTAT = 2
 NNUCPGRAD = 10
 NELECPNUC = 10
-TPB = true
+TPB = False
 
 [RT]
 INTALG = mmut

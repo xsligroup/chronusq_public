@@ -419,7 +419,7 @@ namespace ChronusQ {
           };
         }
 
-        md->pertFirstAtom = [&, aoints, basis, ss](){
+        md->pertFirstAtom = [=, &mol, &emPert](){
           // Apply perturbation for first atom
           mol.atoms[0].coord[0] += md->mdOptions.pert_val_x;
           mol.atoms[0].coord[1] += md->mdOptions.pert_val_y;

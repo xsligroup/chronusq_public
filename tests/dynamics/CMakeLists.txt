@@ -26,7 +26,7 @@ set(DYNAMICS_TEST_SOURCE_ROOT "${TEST_ROOT}/dynamics" )
 set(DYNAMICS_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/dynamics" )
   
 # Set up compilation of DYNAMICS test exe
-add_executable(dynamicstest ../ut.cxx ehrenfest.cxx)
+add_executable(dynamicstest ../ut.cxx bomd.cxx ehrenfest.cxx)
 
 target_include_directories(dynamicstest PUBLIC ${DYNAMICS_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
@@ -42,5 +42,5 @@ file(MAKE_DIRECTORY ${DYNAMICS_TEST_BINARY_ROOT}/serial/bomd)
 
 include( CQTestGeneration )
 
+add_cq_test( BOMD   dynamicstest "BOMD.*"   )
 add_cq_test( EHRENFEST_DYNAMICS   dynamicstest "EHRENFEST_DYNAMICS.*"   )
-#add_cq_test( BOMD_DYNAMICS   dynamicstest "BOMD_DYNAMICS.*"   )

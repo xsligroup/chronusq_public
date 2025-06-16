@@ -78,6 +78,9 @@ namespace ChronusQ {
 
     // Compute the 2e gradient
     virtual std::vector<double> getGDGrad(SingleSlater<MatsT,IntsT>&, EMPerturbation&, double xHFX = 1.);
+    
+    // Compute the Pulay gradient
+    std::vector<double> getPulayGrad(SingleSlater<MatsT,IntsT>&, bool, bool useW = true);
 
     // Pointer convertor
     template <typename MatsU>

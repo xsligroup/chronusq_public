@@ -29,14 +29,14 @@ NELECPNUC = 10
 SAVEALLGEOMETRY = true
 
 [RT]
-INTALG = MNMUT
+INTALG = MMUT
 
 [MISC]
 nsmp = 1
-mem = 100MB
+mem = os
 
 [INTS]
-ALG = incore
+ALG = direct
 
 [BASIS]
 basis = sto-3g

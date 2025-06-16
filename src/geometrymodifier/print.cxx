@@ -47,6 +47,28 @@ namespace ChronusQ {
     }
   }
 
+  // Print current velocity 
+  void MolecularDynamics::printCurrentVelocity(Molecule &molecule){
+
+    size_t i = 0;
+
+    std::cout << std::endl;
+    std::cout << "MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD-MD"<<std::endl;
+    std::cout << "Molecular Dynamics Information for Step "<<std::setw(8)<<curState.iStep<<std::endl;
+    std::cout << std::scientific << std::setprecision(16);
+
+    std::cout << std::endl<<"Velocity: (Bohr/au)"<<std::endl;
+    for( Atom& atom : molecule.atoms ) {
+
+      std::cout << std::right <<"AtomicNumber = " << std::setw(4) << atom.atomicNumber 
+                << std::right <<"  X= "<< std::setw(24) << velocity[i  ]
+                << std::right <<"  Y= "<< std::setw(24) << velocity[i+1]
+                << std::right <<"  Z= "<< std::setw(24) << velocity[i+2] <<std::endl;
+      i += 3;
+ 
+    }
+  }
+
   // Print velocities, forces, energies, and predicted geometry 
   void MolecularDynamics::printMDInfo(Molecule &molecule, double totalEnergy){
     std::cout << std::setprecision(16);
@@ -55,9 +77,9 @@ namespace ChronusQ {
     for( Atom& atom : molecule.atoms ) {
 
       std::cout << std::right <<"AtomicNumber = " << std::setw(4) << atom.atomicNumber 
-                << std::right <<"  X= "<< std::setw(24) <<  velocityCurrent[i  ]
-                << std::right <<"  Y= "<< std::setw(24) <<  velocityCurrent[i+1]
-                << std::right <<"  Z= "<< std::setw(24) <<  velocityCurrent[i+2]<<std::endl;
+                << std::right <<"  X= "<< std::setw(24) <<  velocity[i  ]
+                << std::right <<"  Y= "<< std::setw(24) <<  velocity[i+1]
+                << std::right <<"  Z= "<< std::setw(24) <<  velocity[i+2]<<std::endl;
       i += 3;
  
     }
@@ -67,9 +89,9 @@ namespace ChronusQ {
     for( Atom& atom : molecule.atoms ) {
 
       std::cout <<"AtomicNumber = " << std::setw(4) <<  atom.atomicNumber 
-                << std::right <<"  X= "<< std::setw(24) <<  -gradientCurrent[i  ]
-                << std::right <<"  Y= "<< std::setw(24) <<  -gradientCurrent[i+1]
-                << std::right <<"  Z= "<< std::setw(24) <<  -gradientCurrent[i+2]<<std::endl;
+                << std::right <<"  X= "<< std::setw(24) <<  -gradient[i  ]
+                << std::right <<"  Y= "<< std::setw(24) <<  -gradient[i+1]
+                << std::right <<"  Z= "<< std::setw(24) <<  -gradient[i+2]<<std::endl;
 
       i += 3;
  
@@ -89,7 +111,7 @@ namespace ChronusQ {
 
 
     std::cout << std::setprecision(16);
-    std::cout << std::endl<<"Predicted Molecular Geometry: (Bohr)"<<std::endl;
+    std::cout << std::endl<<"Current Molecular Geometry: (Bohr)"<<std::endl;
     i = 0;
     for( Atom& atom : molecule.atoms ) {
 

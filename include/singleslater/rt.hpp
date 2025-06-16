@@ -332,7 +332,7 @@ template <typename MatsT, typename IntsT>
     // =========================================================================================
 
     // Restore P(t)
-    
+    *onePDMOrtho = onePDMOrthoSave;
     // Compute P^(k3) = P(t) + Δt * k3
     *onePDMOrtho += k3 * MatsT(dt);
     // Obtain new fock matrix at P^(k3)

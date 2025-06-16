@@ -31,12 +31,6 @@ namespace ChronusQ {
     if (mdOptions.restoreFromNuclearStep != 0) {
       restoreState(molecule, ss);
     } else {
-      // TODO: set arbitrary velocity
-      std::vector<double> velocityHalfTime(3*molecule.nAtoms, 0.);
-      std::vector<double> velocityCurrent(3*molecule.nAtoms, 0.);
-      std::vector<double> acceleration(3*molecule.nAtoms, 0.);
-      nuclearKineticEnergy = 0.0;
-
       createMDDataSets(molecule, ss);
     }
 
@@ -55,7 +49,7 @@ namespace ChronusQ {
               EMPerturbation& emPert, std::vector<std::shared_ptr<CubeGen>> cubes)
   {
 
-    // Update step and time
+    // Update step
     if ( firstStep ) {
       curState.iStep = 0;
       initializeMD(molecule, ss);
@@ -66,52 +60,117 @@ namespace ChronusQ {
     }
 
     // Determine if we re-calculate gradient at this step
-    bool doGrad = mdOptions.nMidpointFockSteps == 0 || 
-                  curState.iStep % mdOptions.nMidpointFockSteps == 0;
+    bool isBOMD = mdOptions.nMidpointFockSteps == 0;
+    bool isEhrenfest = mdOptions.nMidpointFockSteps != 0;
+    bool doGrad = isBOMD || curState.iStep % mdOptions.nMidpointFockSteps == 0;
+    bool isHalfNFockStep(false), OddNFockSteps(false);
+    if ( isEhrenfest ) {
+      // Determine if we are at a half-point of all midpoint fock steps (i.e. t = Δt_N/2 + iΔt_N )
+      isHalfNFockStep = curState.iStep%mdOptions.nMidpointFockSteps == (mdOptions.nMidpointFockSteps)/2+1;
+      // Determine if the number of midpoint fock steps is odd
+      OddNFockSteps = mdOptions.nMidpointFockSteps%2 == 1;
+    }
 
-    // Update gradient whenever we restart midpoint fock
-    if( doGrad ) {
 
-      // If we have midpoint fock steps, we need to take the final fock step to make sure geometry is at full \Delta t_N step
-      if( mdOptions.nMidpointFockSteps != 0 && !firstStep ) {
-        // Move geometry by half \Delta t_{N_q} step
+
+    // =========================================================================================
+    // Update gradient (if needed)
+    // =========================================================================================
+    if ( doGrad ) {
+
+      // If we have midpoint fock steps, we need to take the final fock step before updating gradient
+      // This will make sure geometry, velocity, and electronic density are all at full Δt_N step
+      if ( isEhrenfest && !firstStep ) {
+        
+        // Update velocity (at half-step) to be full-step (where geometry is at)
+        double dt = curState.currentStepSize; 
+        std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
+        //printCurrentVelocity(molecule);
+        velocityVV(molecule, velocity, velocity, gradient, dt);
+        curState.ptime += dt/2;
+        
+        // Set geometry step to be half Δt_{N_q} step
         double half_fock_dt = (mdOptions.timeStepAU/mdOptions.nMidpointFockSteps) / 2 ;
-        geometryVV(molecule, gradientCurrent, half_fock_dt);
+        
+        // Update velocity to be half-step
+        std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + half_fock_dt/2 << " au) ***"<< std::endl;
+        //printCurrentVelocity(molecule);
+        velocityVV(molecule, velocity, velocity, gradient, half_fock_dt);
+        curState.ptime += half_fock_dt/2;
+
+        // Update geometry using velocity at half-step
+        geometryVV(molecule, half_fock_dt);
         double totalTimeCur = curState.time;
         curState.time += half_fock_dt;
         molecule.update();
         electronicPotentialEnergy = finalMidpointFock();
-        std::cout << "  *** Moving Nuclei from x( t = " << totalTimeCur << " au) to x( t = " << curState.time << " au) ***"<< std::endl;
+        std::cout << "  *** Updating Geometry from x( t = " << totalTimeCur << " au) to x( t = " << curState.time << " au) ***"<< std::endl;
+        
       }
 
-      gradientCurrent = gradientGetter();
+      // Obtain new gradient 
+      gradient = gradientGetter();
       std::cout << "  *** Calculating Gradient at g( t = " << curState.time << " au) ***" << std::endl;
 
+      // If we have midpoint fock steps, we calculate velocity at full Δt_N step
+      // p(t+Δt_N) = p(t+0.5Δt_N) + 0.5 * g(t+Δt_N) / m * Δt_N
+      if ( isEhrenfest && !firstStep ) {
+        double dt = mdOptions.timeStepAU; 
+        std::cout << "  *** Updating Velocity from p( t = " << curState.ptimeHalf << " au) to p( t = " << curState.ptimeHalf + dt/2 << " au) ***"<< std::endl;
+        //printCurrentVelocity(molecule);
+        velocityVV(molecule, velocityHalfTN, velocity, gradient, dt);
+        curState.ptime = curState.ptimeHalf + dt/2 ;
+      }
+
     }
 
-    bool moveGeometry = true;
-    bool moveVelocity = doGrad;
-
-    if(print and doGrad) printCurrentGeometry(molecule);
 
 
-    // if velocity Verlet
-    if(moveVelocity) {
-      // compute p( t + 1/2 \Delta t_N) 
-      velocityVV(molecule, gradientCurrent, mdOptions.timeStepAU, firstStep);
-      std::cout << "  *** Calculating Velocity at p( t = " << curState.time + 0.5*mdOptions.timeStepAU << " au ) ***" << std::endl;
-      // compute kinetic energy
-      computeKineticEnergy(molecule);
+    // =========================================================================================
+    // Update half-step velocity to full-step velocity
+    // =========================================================================================
+    // Save velocity at half Δt_N step (for even number of midpoint fock steps)
+    if(isHalfNFockStep and not OddNFockSteps) {
+      velocityHalfTN = velocity;
+      curState.ptimeHalf = curState.ptime;
+      std::cout << "  *** Saving Half-Step Velocity from p( t = " << curState.ptimeHalf << " au) ***" << std::endl;
     }
-    
+
+    // Update velocity (at half-step) to be full-step (where geometry is at)
+    // p(t+Δt) = p(t+0.5Δt) + 0.5 * g(t+Δt) / m * Δt
+    if ( (isEhrenfest && !doGrad) || (isBOMD && !firstStep) ) {
+      double dt = curState.currentStepSize;
+      std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
+      //printCurrentVelocity(molecule);
+      velocityVV(molecule, velocity, velocity, gradient, dt);
+      curState.ptime += dt/2;
+    }
+
+    // Save velocity at half Δt_N step (for odd number of midpoint fock steps)
+    if(isHalfNFockStep and OddNFockSteps) {
+      velocityHalfTN = velocity;
+      curState.ptimeHalf = curState.ptime;
+      std::cout << "  *** Saving Half-Step Velocity from p( t = " << curState.ptimeHalf << " au) ***" << std::endl;
+    }
+
+
+
+    // =========================================================================================
+    // Compute important quantities and print/save information
+    // =========================================================================================
+    // compute kinetic energy
+    computeKineticEnergy(molecule);
+
     // Compute total energies
     currentTotalEnergy = electronicPotentialEnergy + nuclearKineticEnergy;
     if(firstStep and mdOptions.restoreFromNuclearStep == 0) totalEnergy0 = currentTotalEnergy;
     if(firstStep) previousTotalEnergy = currentTotalEnergy;
+    
+    // output important dynamic information
+    if(print and doGrad) printMDInfo(molecule, currentTotalEnergy);
+    previousTotalEnergy = currentTotalEnergy;
 
-
-
-    // At this point we have full-step geom, time, g, v, and half-step v. Save these to bin file
+    // At this point we have full-step geom, time, g, v. Save these to bin file
     if(doGrad or mdOptions.saveAllGeometry) saveState(molecule, ss);
 
     if (std::any_of(cubes.begin(), cubes.end(), [](const std::shared_ptr<CubeGen>& ptr) { return ptr != nullptr; })) 
@@ -119,39 +178,40 @@ namespace ChronusQ {
 
 
 
-    // Determine the stepsize at which we move the geometry:
-    // If JobType is BOMD, geometry move in full \Delta t_N step
-    // If JobType is Ehrenfest, then geometry move in \Delta t_{N_q} step ( \Delta t_{N_q} = \dfrac{ \Delta t_N }  { m } )
+    // =========================================================================================
+    // Compute half-step velocity &&
+    // Update geometry
+    // =========================================================================================
+    // Determine the geometry update step:
+    // If JobType is BOMD, geometry move in full Δt_N step
+    // If JobType is Ehrenfest, then geometry move in Δt_{N_q} step ( Δt_{N_q} = \dfrac{ Δt_N }  { m } )
     curState.currentStepSize = mdOptions.nMidpointFockSteps == 0 ? 
         mdOptions.timeStepAU : mdOptions.timeStepAU/ mdOptions.nMidpointFockSteps;
-    // For Ehrenfest job, if this step evaluates gradient, that means we are at full \Delta t_N step 
-    // If so, we need take half \Delta t_{N_q} to start mid-point fock algorithm
+    // For Ehrenfest job, if this step evaluates gradient, that means we are at full Δt_N step 
+    // If so, we need take half Δt_{N_q} to start mid-point fock algorithm
     if(mdOptions.nMidpointFockSteps != 0 and doGrad) curState.currentStepSize /= 2;
 
-
-    if(moveGeometry) {
-      // compute x( t + \Delta t_Nq)
-      geometryVV(molecule, gradientCurrent, curState.currentStepSize); 
-      // update molecular properties after changing the geometry
-      molecule.update();
-      double totalTimeCur = curState.time;
-      curState.time += curState.currentStepSize;
-      std::cout << "  *** Moving Nuclei from x( t = " << totalTimeCur << " au) to x( t = " << curState.time << " au) ***"<< std::endl;
-    }
-
-    // Update proton velocity
-    double timestep = curState.time - (curState.iStep / mdOptions.nMidpointFockSteps) * mdOptions.timeStepAU;
-    updateProtonVelocity(molecule, gradientCurrent, timestep);
-
-    
+    // Update velocity to be half-step
+    // p(t+0.5Δt) = p(t) + 0.5 * g(t) / m * Δt
+    double dt = curState.currentStepSize;
+    std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
+    //printCurrentVelocity(molecule);
+    velocityVV(molecule, velocity, velocity, gradient, dt);
+    curState.ptime += dt/2;
 
 
+    // Update geometry using velocity at half-step
+    // x(t+Δt) = x(t) + 0.5 * p(t+0.5Δt) * Δt
+    std::cout << "  *** Updating Geometry from x( t = " << curState.time << " au) to x( t = " << curState.time+curState.currentStepSize << " au) ***"<< std::endl;
+    geometryVV(molecule, curState.currentStepSize); 
+    molecule.update();
+    curState.time += curState.currentStepSize;
 
-    // output important dynamic information
-    if(print and doGrad) printMDInfo(molecule, currentTotalEnergy);
 
-    previousTotalEnergy = currentTotalEnergy;
 
+    // =========================================================================================
+    // Set up for next RT simulation
+    // =========================================================================================
     // Set next RT simulation length by increasing maxSteps
     if(firstStep and mdOptions.restoreFromNuclearStep != 0) {
       tdSCFOptions.restoreFromStep = (curState.lastSavePoint-1);
@@ -185,9 +245,9 @@ namespace ChronusQ {
 
       if(atom.quantum && !NEODynamicsOpts.includeQProtKE) continue;
 
-      nuclearKineticEnergy += 0.5*velocityCurrent[i  ]*velocityCurrent[i  ]*atom.atomicMass*AUPerAMU;
-      nuclearKineticEnergy += 0.5*velocityCurrent[i+1]*velocityCurrent[i+1]*atom.atomicMass*AUPerAMU;
-      nuclearKineticEnergy += 0.5*velocityCurrent[i+2]*velocityCurrent[i+2]*atom.atomicMass*AUPerAMU;
+      nuclearKineticEnergy += 0.5*velocity[i  ]*velocity[i  ]*atom.atomicMass*AUPerAMU;
+      nuclearKineticEnergy += 0.5*velocity[i+1]*velocity[i+1]*atom.atomicMass*AUPerAMU;
+      nuclearKineticEnergy += 0.5*velocity[i+2]*velocity[i+2]*atom.atomicMass*AUPerAMU;
       
     }
 

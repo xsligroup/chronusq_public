@@ -40,11 +40,12 @@ namespace ChronusQ {
     size_t nElectronicSteps = 5;         // Number of RT elctronic steps for electron dynamics
     long int restoreFromNuclearStep = 0; // < Restore MD from this nuclear step 
     
+    // Save data for all geometry steps, including all the mid-point Fock steps with a nuclear step
     bool saveAllGeometry = false;
 
     // Molecular Dynamics Options
     double timeStepAU; // Nuclear timestep for molecular dynamics in a.u.
-    double timeStepFS; // Nucleartimestep for molecular dynamics in fs
+    double timeStepFS; // Nuclear timestep for molecular dynamics in fs
 
     bool pertFirstAtom = false; ///< Perturb first atom's geometry at t=0
     double pert_val_x = 1e-5;   ///< perturbation value
@@ -67,7 +68,9 @@ namespace ChronusQ {
   struct MDProgress {
 
     size_t  iStep = 0;         ///< Step index of current time point
-    double  time = 0.;         ///< keeps track of the total timing during all the mid-point Fock steps
+    double  time = 0.;         ///< keeps track of the geometry time during all the mid-point Fock steps
+    double  ptime = 0.;        ///< keeps track of the velocity time during all the mid-point Fock steps
+    double  ptimeHalf = 0.;    ///< keeps track of the half-step velocity time during all the mid-point Fock steps
     double  currentStepSize;   ///< Current step size at which we move the geometry
     size_t  lastSavePoint = 0; ///< last nuclear step that was saved 
     size_t  lastGradientSavePoint = 0; ///< last gradient nuclear step that was saved (restart from here)
@@ -89,9 +92,10 @@ namespace ChronusQ {
     std::function<double()> finalMidpointFock;
     std::function<void()> updateBasisIntsHamiltonian;
     std::function<void()> pertFirstAtom;
-    std::vector<double> gradientCurrent;
-    std::vector<double> velocityHalfTime;  ///< nuclear velocity at half time, (t-1/2) upon entry and (t+1/2) upon exist
-    std::vector<double> velocityCurrent;   ///< nuclear velocity at the current time (t)
+    std::vector<double> gradient;
+    std::vector<double> velocity;          ///< nuclear velocity at the current time (t)
+    std::vector<double> velocityHalfTN;    ///< nuclear velocity at the half Δt_N step (t+0.5*Δt_N)
+                                           ///< We use this to get full tN step velocity
     std::vector<double> acceleration;      ///< acceleration at the current time (t)
 
     double   nuclearKineticEnergy;      ///< nuclear kinetic energy
@@ -107,9 +111,9 @@ namespace ChronusQ {
     MolecularDynamics() = delete;
     MolecularDynamics(MDOptions mdOptions, Molecule& molecule, SafeFile& rstFile):
       mdOptions(mdOptions),
-      gradientCurrent(3*molecule.nAtoms, 0.),
-      velocityHalfTime(3*molecule.nAtoms, 0.),
-      velocityCurrent(3*molecule.nAtoms, 0.),
+      gradient(3*molecule.nAtoms, 0.),
+      velocity(3*molecule.nAtoms, 0.),
+      velocityHalfTN(3*molecule.nAtoms, 0.),
       acceleration(3*molecule.nAtoms, 0.)
     {
       curState.currentStepSize = mdOptions.timeStepAU;
@@ -139,15 +143,15 @@ namespace ChronusQ {
         EMPerturbation& emPert, std::vector<std::shared_ptr<CubeGen>> cubes = {} ) override;
 
 
-    void velocityVV(Molecule &molecule, std::vector<double> gradientCurrent, double timeStep, bool firstStep);
+    void velocityVV(Molecule &molecule, std::vector<double>& vIn, std::vector<double>& vOut, std::vector<double> gradient, double timeStep);
 
-    void geometryVV(Molecule &molecule, std::vector<double> gradientCurrent, double timeStep);
+    void geometryVV(Molecule &molecule, double timeStep);
     
-    void updateProtonVelocity(Molecule &molecule, std::vector<double> gradientCurrent, double timeStep);
-
     void computeKineticEnergy(Molecule &molecule);
 
     void printCurrentGeometry(Molecule &molecule);
+    
+    void printCurrentVelocity(Molecule &molecule);
 
     void printMDInfo(Molecule &molecule, double totalEnergy);
     

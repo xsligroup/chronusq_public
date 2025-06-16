@@ -48,7 +48,6 @@ namespace ChronusQ {
     savFile.createDataSet<double>("MD/TRAJECTORY",        {maxPoints*mol.nAtoms*3});
     savFile.createDataSet<double>("MD/FORCES",            {maxPoints*mol.nAtoms*3});
     savFile.createDataSet<double>("MD/VELOCITY_FULLSTEP", {maxPoints*mol.nAtoms*3});
-    savFile.createDataSet<double>("MD/VELOCITY_HALFSTEP", {maxPoints*mol.nAtoms*3});
 
     if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
       createOnePDM<double,double>(ss_t);
@@ -87,12 +86,11 @@ namespace ChronusQ {
     std::vector<double> totalCoordinates = mol.getTotalCoordinates();
     savFile.partialWriteData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
 
-    std::vector<double> forces(gradientCurrent.size());
-    std::transform(gradientCurrent.begin(), gradientCurrent.end(), forces.begin(), [](double coord) { return -coord; });
+    std::vector<double> forces(gradient.size());
+    std::transform(gradient.begin(), gradient.end(), forces.begin(), [](double coord) { return -coord; });
     savFile.partialWriteData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
 
-    savFile.partialWriteData("MD/VELOCITY_FULLSTEP", &velocityCurrent[0], {offset3D},{len3D},{0},{len3D});
-    savFile.partialWriteData("MD/VELOCITY_HALFSTEP", &velocityHalfTime[0], {offset3D},{len3D},{0},{len3D});
+    savFile.partialWriteData("MD/VELOCITY_FULLSTEP", &velocity[0], {offset3D},{len3D},{0},{len3D});
 
     if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
       writeOnePDM<double,double>(ss_t);
@@ -130,6 +128,7 @@ namespace ChronusQ {
 
     savFile.partialReadData("MD/STEP", &curState.iStep, {curState.lastSavePoint}, {1}, {0}, {1});
     savFile.partialReadData("MD/TIME", &curState.time,  {curState.lastSavePoint}, {1}, {0}, {1});
+    curState.ptime = curState.time;
 
     std::cout << "  *** MD Reading step #"<< curState.iStep <<"( t = "<< curState.time <<" au) to binary file ***" << std::endl;
 
@@ -145,12 +144,11 @@ namespace ChronusQ {
     savFile.partialReadData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
     mol.setCoordinates(totalCoordinates);
 
-    std::vector<double> forces(gradientCurrent.size());
+    std::vector<double> forces(gradient.size());
     savFile.partialReadData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
-    std::transform(forces.begin(), forces.begin(), gradientCurrent.end(), [](double coord) { return -coord; });
+    std::transform(forces.begin(), forces.begin(), gradient.end(), [](double coord) { return -coord; });
 
-    savFile.partialReadData("MD/VELOCITY_FULLSTEP", &velocityCurrent[0],  {offset3D},{len3D},{0},{len3D});
-    savFile.partialReadData("MD/VELOCITY_HALFSTEP", &velocityHalfTime[0], {offset3D},{len3D},{0},{len3D});
+    savFile.partialReadData("MD/VELOCITY_FULLSTEP", &velocity[0],  {offset3D},{len3D},{0},{len3D});
 
     // Restore time dependent density
     if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
@@ -276,16 +274,16 @@ void MolecularDynamics::parseVelocityFromInput( Molecule &mol, std::string &velo
     if (velocity.size() != mol.nAtoms * 3) 
         CErr("The size of the velocity vector must be 3 times the number of atoms.");
     
-    std::copy(velocity.begin(), velocity.end(), velocityCurrent.begin());
+    std::copy(velocity.begin(), velocity.end(), velocity.begin());
 
     std::cout << "Read in Velocity:"<<std::endl;
     size_t i = 0;
     for( Atom& atom : mol.atoms ) {
 
       std::cout << std::right <<"AtomicNumber = " << std::setw(4) << atom.atomicNumber 
-                << std::right <<"  X= "<< std::setw(24) <<  velocityCurrent[i  ]
-                << std::right <<"  Y= "<< std::setw(24) <<  velocityCurrent[i+1]
-                << std::right <<"  Z= "<< std::setw(24) <<  velocityCurrent[i+2]<<std::endl;
+                << std::right <<"  X= "<< std::setw(24) <<  velocity[i  ]
+                << std::right <<"  Y= "<< std::setw(24) <<  velocity[i+1]
+                << std::right <<"  Z= "<< std::setw(24) <<  velocity[i+2]<<std::endl;
       i += 3;
  
     }

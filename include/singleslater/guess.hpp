@@ -1624,6 +1624,7 @@ namespace ChronusQ {
         std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(
             classicalSSOptions.buildSingleSlater(std::cout,  tempMol, 
                 this->basisSet(), tempaoints));
+    classicalSS->gauxcUtils = this->gauxcUtils;
 
     classicalSS->printLevel = 1;
     classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;

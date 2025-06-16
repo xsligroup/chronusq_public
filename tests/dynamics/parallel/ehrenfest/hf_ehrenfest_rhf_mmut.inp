@@ -9,7 +9,7 @@ geom:
 #  Job Specification
 #
 [QM]
-reference = complex RB3LYP
+reference = complex RHF
 job = Ehrenfest
 
 [SCF]
@@ -29,14 +29,14 @@ NELECPNUC = 10
 SAVEALLGEOMETRY = true
 
 [RT]
-INTALG = MNMUT
+INTALG = MMUT
 
 [MISC]
-nsmp = 1
-mem = 100MB
+nsmp = 2
+mem = os
 
 [INTS]
-ALG = incore
+ALG = direct
 
 [BASIS]
 basis = sto-3g

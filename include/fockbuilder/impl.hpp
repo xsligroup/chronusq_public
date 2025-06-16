@@ -41,6 +41,8 @@
 
 #include <typeinfo>
 
+//#define USE_ONEPDMGRAD
+
 namespace ChronusQ {
 
   /**
@@ -495,5 +497,144 @@ namespace ChronusQ {
     return gradient;
 
   } // FockBuilder::getGDGrad
+
+  
+  // Pulay contribution
+  //
+  // We have two options here: 
+  // 1. Compute the energy-weighted density matrix W and compute W * dS/dR 
+  //    (Int. J. Quantum Chem., Quant. Chem. Symp., S13 (1979) 225-41. DOI: 10.1002/qua.560160825)
+  // 2. Compute dV/dR and use that to compute the gradient 
+  //    (J. Chem. Phys. 22 August 2005; 123 (8): 084106. DOI: 10.1063/1.2008258)
+  template <typename MatsT, typename IntsT>
+  std::vector<double> FockBuilder<MatsT,IntsT>::getPulayGrad(
+    SingleSlater<MatsT,IntsT>& ss, bool equil, bool useW) {
+
+    std::vector<double> pulayGrad;
+
+    size_t NB = ss.basisSet().nBasis;
+    size_t nGrad = 3*ss.molecule().nAtoms;
+    size_t nSp = ss.fockMatrix->nComponent();
+    bool hasXY = ss.exchangeMatrix->hasXY();
+    bool hasZ = ss.exchangeMatrix->hasZ();
+
+    if( useW ) {
+
+      ss.formEWDM(equil);
+      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+        double gradVal = std::real(blas::dot(NB*NB, ss.W->real_part().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
+        pulayGrad.push_back(2*gradVal);
+      }
+
+    } else {
+
+      // S^{-1/2}
+      auto orthoForward = ss.orthoAB->forwardPointer();
+      //auto orthoForward = orthoSpinor->forwardPointer();
+
+      // Allocate
+      cqmatrix::Matrix<MatsT> vdv(NB);
+      cqmatrix::Matrix<MatsT> dvv(NB);
+      cqmatrix::PauliSpinorMatrices<MatsT> SCR(NB, hasXY, hasZ);
+
+      // allocate one-PDM gradient matrices
+      if (ss.onePDMGrad.size() == 0) {
+        ss.onePDMGrad.reserve(nGrad);
+        for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) 
+        ss.onePDMGrad.emplace_back(std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, hasXY, hasZ));
+      }
+
+      // XXX: This requires copying the overlap gradients, but it is for
+      //      copying to MatsT != IntsT
+      std::vector<cqmatrix::Matrix<MatsT>> gradOverlap;
+      gradOverlap.reserve(nGrad);
+      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+        gradOverlap.emplace_back((*ss.aoints_->gradOverlap)[iGrad]->matrix());
+      }
+
+      // Calculate dV
+      std::vector<cqmatrix::Matrix<MatsT>> gradOrtho;
+      gradOrtho.reserve(nGrad);
+      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+        gradOrtho.emplace_back(NB);
+      }
+      ss.orthoAB->getOrthogonalizationGradients(gradOrtho, gradOverlap);
+
+      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+
+        // Form VdV and dVV
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+          NB,NB,NB,MatsT(1.),orthoForward->pointer(),NB,
+          gradOrtho[iGrad].pointer(),NB,MatsT(0.),vdv.pointer(),NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+          NB,NB,NB,MatsT(1.),gradOrtho[iGrad].pointer(),NB,
+          orthoForward->pointer(),NB,MatsT(0.),dvv.pointer(),NB);
+
+        // Form FVdV and dVVF for the non-xc part of F
+        for( auto iSp = 0; iSp < nSp; iSp++ ) {
+          auto comp = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(iSp);
+          
+          cqmatrix::Matrix<MatsT> nonXC_F(NB);
+          //nonXC_F = (*coreH)[comp] + (*twoeH)[comp];
+          nonXC_F = (*ss.fockMatrix)[comp];
+
+          
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+            NB,NB,NB,MatsT(1.),nonXC_F.pointer(),NB,
+            vdv.pointer(),NB,MatsT(0.),SCR[comp].pointer(),NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+            NB,NB,NB,MatsT(1.),dvv.pointer(),NB,
+            nonXC_F.pointer(),NB,MatsT(1.),SCR[comp].pointer(),NB);
+        }
+  
+#ifdef USE_ONEPDMGRAD
+        // Compute 1PDM Gradient and Save: dP/dR = -(VdV * P + P * dVV)
+        // S part:
+        // Compute VdV * P and negate the result
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+          NB,NB,NB,MatsT(-1.),vdv.pointer(),NB, // Note the change here from 1. to -1.
+          this->onePDM->S().pointer(),NB,MatsT(0.),onePDMGrad[iGrad]->S().pointer(),NB);
+
+        // Compute P * dVV, add to VdV * P with sign change, resulting in -(P * dVV + VdV * P)
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+          NB,NB,NB,MatsT(-1.),this->onePDM->S().pointer(),NB, // Note the change here from 1. to -1.
+          dvv.pointer(),NB,MatsT(1.),onePDMGrad[iGrad]->S().pointer(),NB); 
+
+        // Mz part:
+        if( hasZ ){
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+            NB,NB,NB,MatsT(-1.),vdv.pointer(),NB, 
+            this->onePDM->Z().pointer(),NB,MatsT(0.),onePDMGrad[iGrad]->Z().pointer(),NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
+            NB,NB,NB,MatsT(-1.),this->onePDM->Z().pointer(),NB,
+            dvv.pointer(),NB,MatsT(1.),onePDMGrad[iGrad]->Z().pointer(),NB); 
+        }
+#endif
+
+        // Trace
+        double gradVal = ss.template computeOBProperty<SCALAR>(
+          SCR.S().pointer()
+        );
+
+        if( hasZ )
+          gradVal += ss.template computeOBProperty<MZ>(
+            SCR.Z().pointer()
+        );
+        if( hasXY ) {
+          gradVal += ss.template computeOBProperty<MY>(
+            SCR.Y().pointer()
+          );
+          gradVal += ss.template computeOBProperty<MX>(
+            SCR.X().pointer()
+          );
+        }
+
+        pulayGrad.push_back(-0.5*gradVal);
+      }
+    }
+
+    return pulayGrad;
+
+  } // FockBuilder::getPulayGrad
 
 }; // namespace ChronusQ

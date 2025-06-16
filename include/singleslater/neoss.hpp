@@ -305,6 +305,9 @@ namespace ChronusQ {
         });
       }
 
+      virtual void formEWDM(bool equil = false) {
+        applyToEach([&](SubSSPtr& ss){ ss->formEWDM(equil); });
+      }
       // Functions for OrbitalModifier
       virtual void runSCF(EMPerturbation&) override;
       virtual void buildOrbitalModifierOptions() override;

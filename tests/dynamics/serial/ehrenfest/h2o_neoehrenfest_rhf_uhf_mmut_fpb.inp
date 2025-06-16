@@ -6,22 +6,16 @@
 charge = 0
 mult = 1
 geom:
- O   0.000000   -0.073354    0.000000
- H   0.771088    0.600217    0.000000 Q
- H  -0.771088    0.600217    0.000000 Q
+ O   0.000000   -0.030189    0.000000
+ H   0.740102    0.578634    0.000000 Q
+ H  -0.740102    0.578634    0.000000 Q 
 
 [QM]
-reference = complex RB3LYP
+reference = complex RHF
 job = Ehrenfest
 
 [PROTQM]
-reference = complex UEPC17
-
-[DFTINT]
-inhouse = true
-nrad = 99
-nang = 302
-nmacro = 9
+reference = complex UHF
 
 [SCF]
 NEO = TRUE
@@ -38,7 +32,7 @@ TMAX   = 10
 DELTAT = 2
 NNUCPGRAD = 10
 NELECPNUC = 10
-TPB = true
+TPB = False
 
 [RT]
 INTALG = mmut

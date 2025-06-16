@@ -319,10 +319,11 @@ namespace ChronusQ {
         Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(ess->onePDM->real_part());
 
       // Obtain the 1PDM Gradient (stored in SingleSlater), which is calculated during Pulay Gradient
-      // Note: Currently the 1PDM gradient is NOT used in this function. 
+      // Note: Currently the 1PDM gradient is NOT used in exc energy gradient calculation. 
       //       We include this part of contribution in total pulay force
       std::vector<std::vector<double*>> Re1PDMGrad_scalar(nAtoms); 
       std::vector<std::vector<double*>> Re1PDMGrad_mz(nAtoms); 
+#ifdef USE_ONEPDMGRAD
       for(auto ic = 0; ic < nAtoms; ic++) {
         for (auto xyz = 0; xyz < 3; xyz++ )
           if( std::is_same<MatsT,double>::value )
@@ -343,6 +344,7 @@ namespace ChronusQ {
             }
         }
       }
+#endif
       // --------------------------------------------------------------------------------//
       // --------------------Finish Allocating Memory for Electronic System---------------//
       // --------------------------------------------------------------------------------//
@@ -473,10 +475,11 @@ namespace ChronusQ {
       else
         aux_Re1PDM = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(pss->onePDM->real_part());
 
-      // Note: Currently the 1PDM gradient is NOT used in this function. 
+      // Note: Currently the 1PDM gradient is NOT used in exc energy gradient calculation. 
       //       We include this part of contribution in total pulay force
       std::vector<std::vector<double*>> aux_Re1PDMGrad_scalar(nAtoms); 
       std::vector<std::vector<double*>> aux_Re1PDMGrad_mz(nAtoms); 
+#ifdef USE_ONEPDMGRAD
       for(auto ic = 0; ic < nAtoms; ic++) {
         for (auto xyz = 0; xyz < 3; xyz++ )
           if( std::is_same<MatsT,double>::value )
@@ -497,6 +500,7 @@ namespace ChronusQ {
             }
         }
       }
+#endif
       // --------------------------------------------------------------------------------//
       // --------------------Finish Allocating Memory for Protonic System---------------//
       // --------------------------------------------------------------------------------//
@@ -1058,7 +1062,7 @@ namespace ChronusQ {
 
       // Freeing the memory
       // ----------------Main System-------------------------------------------- //
-      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval_elec,epsEval_prot,U_n);
+      CQMemManager::get().free(SCRATCHNBNB,SCRATCHNBNP,DenS,epsEval_elec,epsEval_prot,U_n,dVU_n,dVU_n_elec,dVU_n_prot,epcEval_elec,epcEval_prot);
       for(size_t ic = 0; ic < nAtoms; ic++) {
         CQMemManager::get().free(VEC_SCRATCHNBNB[ic][0], VEC_SCRATCHNBNB[ic][1], VEC_SCRATCHNBNB[ic][2]);
         CQMemManager::get().free(VEC_SCRATCHNBNP[ic][0], VEC_SCRATCHNBNP[ic][1], VEC_SCRATCHNBNP[ic][2]);
@@ -1069,7 +1073,7 @@ namespace ChronusQ {
         CQMemManager::get().free(GradU_nX[ic],GradU_nY[ic],GradU_nZ[ic]);
       }
       if( isGGA ) {
-        CQMemManager::get().free(GDenS,U_gamma);
+        CQMemManager::get().free(GDenS,U_gamma,dVU_gamma);
         for(size_t ic = 0; ic < nAtoms; ic++) {
           CQMemManager::get().free(GGDenS_dxX[ic],GGDenS_dxY[ic],GGDenS_dxZ[ic]);
           CQMemManager::get().free(GGDenS_dyX[ic],GGDenS_dyY[ic],GGDenS_dyZ[ic]);
@@ -1099,7 +1103,7 @@ namespace ChronusQ {
       }
 
       // These quantities are used when there are multiple xc functionals
-      if( functionals.size() > 1 ) {
+      if( ess->functionals.size() > 1 ) {
         CQMemManager::get().free(epsSCR, dVU_n_SCR);
         if( isGGA ) CQMemManager::get().free(dVU_gamma_SCR);
       }
@@ -1113,7 +1117,7 @@ namespace ChronusQ {
       // -----------------End Main System-------------------------------------------- //
       
       // ----------------Auxiliary System-------------------------------------------- //
-      CQMemManager::get().free(AUX_SCRATCHNBNB,AUX_SCRATCHNBNP,aux_DenS,aux_U_n);
+      CQMemManager::get().free(AUX_SCRATCHNBNB,AUX_SCRATCHNBNP,aux_DenS,aux_U_n,aux_dVU_n);
       for(size_t ic = 0; ic < nAtoms; ic++) {
         CQMemManager::get().free(AUX_VEC_SCRATCHNBNB[ic][0], AUX_VEC_SCRATCHNBNB[ic][1], AUX_VEC_SCRATCHNBNB[ic][2]);
         CQMemManager::get().free(AUX_VEC_SCRATCHNBNP[ic][0], AUX_VEC_SCRATCHNBNP[ic][1], AUX_VEC_SCRATCHNBNP[ic][2]);
