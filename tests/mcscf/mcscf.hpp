@@ -31,7 +31,7 @@
 //#include <util/mpi.hpp>
 
 // Directory containing reference files
-#define MCSCF_TEST_REF TEST_ROOT "/mcscf/reference/"
+#define MCSCF_TEST_REF TEST_ROOT "mcscf/reference/"
 
 using namespace ChronusQ;
 

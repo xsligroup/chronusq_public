@@ -236,6 +236,8 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::saveCurrentStates( bool saveProp ) {
     
+    ROOT_ONLY(this->comm);
+
     MCWaveFunction<MatsT, IntsT>::saveCurrentStates(saveProp);
     
     // only save MO when doing orbital rotation

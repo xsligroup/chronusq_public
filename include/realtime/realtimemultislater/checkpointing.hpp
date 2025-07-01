@@ -52,25 +52,22 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE", {maxPoints, 3});
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxPoints, 3});
   if (this->intScheme.StatePopFreq != 0) {
-    hsize_t nPop = (maxPoints / this->intScheme.StatePopFreq);
-    if (this->intScheme.StatePopFreq != 1 &&
-        (maxPoints - 1) % this->intScheme.StatePopFreq == 0)
+    size_t nPop = (maxPoints / this->intScheme.StatePopFreq);
+    if (this->intScheme.StatePopFreq != 1 && (maxPoints - 1) % this->intScheme.StatePopFreq == 0)
       nPop += 1;
     if (maxPoints == 1)
       nPop = 1;
-    hsize_t NStates = this->intScheme.StatePopNStates;
+    size_t NStates = this->intScheme.StatePopNStates;
     savFile.createDataSet<double>("RTNEW/STATEPOPULATION", {nPop, NStates});
   }
   if (this->intScheme.RealTimeCorrelationFunctionFreq != 0) {
-    hsize_t maxRTCorrPts = (intScheme.tMax + intScheme.deltaT / 4 -
+    size_t maxRTCorrPts = (intScheme.tMax + intScheme.deltaT / 4 -
                             this->intScheme.RealTimeCorrelationFunctionStart) /
                                intScheme.deltaT +
                            1;
-    hsize_t nRTCorr =
-        (maxRTCorrPts / this->intScheme.RealTimeCorrelationFunctionFreq);
+    size_t nRTCorr = (maxRTCorrPts / this->intScheme.RealTimeCorrelationFunctionFreq);
     if (this->intScheme.RealTimeCorrelationFunctionFreq != 1 &&
-        (maxRTCorrPts - 1) % this->intScheme.RealTimeCorrelationFunctionFreq ==
-            0)
+        (maxRTCorrPts - 1) % this->intScheme.RealTimeCorrelationFunctionFreq == 0)
       nRTCorr += 1;
     if (maxRTCorrPts == 1)
       nRTCorr = 1;
@@ -83,7 +80,7 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::createRTDataSets(size_t maxPoints) {
 template <typename MatsT, typename IntsT>
 void RealTimeMultiSlaterBase<MatsT, IntsT>::restoreState() {
   CErr("NYI!");
-  hsize_t maxPoints = intScheme.tMax / intScheme.deltaT + 1;
+  size_t maxPoints = intScheme.tMax / intScheme.deltaT + 1;
 
   if (savFile.getDims("RTNEW/TIME")[0] != maxPoints)
     CErr("Mismatched requested and saved propagation length!");
@@ -130,7 +127,7 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
   // Write to file
   if (savFile.exists()) {
 
-    hsize_t nSteps = 0;
+    size_t nSteps = 0;
     size_t maxStep =
         (size_t)((intScheme.tMax + intScheme.deltaT / 4) / intScheme.deltaT);
 
@@ -141,8 +138,8 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
       nSteps = (curState.iStep - intScheme.restoreStep) % intScheme.iSave + 1;
     }
 
-    hsize_t lastPos = curState.iStep - nSteps + 1;
-    hsize_t memLastPos = data.Time.size() - nSteps;
+    size_t lastPos = curState.iStep - nSteps + 1;
+    size_t memLastPos = data.Time.size() - nSteps;
 
     if (nSteps != 0) {
       if (printLevel > 0)

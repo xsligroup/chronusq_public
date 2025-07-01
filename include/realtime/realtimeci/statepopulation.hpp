@@ -72,12 +72,11 @@ void RealTimeCI<MatsT, IntsT>::statePop() {
 
   if (this->savFile.exists()) {
     size_t fullDim = populations.size();
-    hsize_t location = this->curState.iStep / this->intScheme.StatePopFreq;
+    size_t location = this->curState.iStep / this->intScheme.StatePopFreq;
     this->savFile.partialWriteData("RTNEW/STATEPOPULATION", populations.data(),
-                                   {location, 0}, {1, fullDim}, {0, 0},
-                                   {1, fullDim});
+                             {location, 0}, {1, fullDim}, {0, 0}, {1, fullDim});
   }
 
-}; // RealTimeMultiSlater:: CIPop
+}; // RealTimeMultiSlater:: statePop
 
 }; // namespace ChronusQ

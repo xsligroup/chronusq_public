@@ -108,7 +108,7 @@ namespace ChronusQ {
   void MolecularDynamics::restoreState(Molecule& mol, std::shared_ptr<SingleSlaterBase> ss) {
    
 
-    hsize_t maxSavePoints, lastSavePoint;
+    size_t maxSavePoints, lastSavePoint;
     savFile.readData("MD/MAXSAVEPOINTS", &maxSavePoints);
     size_t expectedMaxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
     if ( maxSavePoints != expectedMaxPoints ) CErr("Mismatched requested and saved propagation length!");

@@ -325,7 +325,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
   // Restore integration progress and 1PDM ortho (on root process)
   if( MPIRank(this->mpiComm) == 0 ) {
 
-    hsize_t maxSavePoints, lastSavePoint;
+    size_t maxSavePoints, lastSavePoint;
     savFile.readData("RTNEW/MAXSAVEPOINTS", &maxSavePoints);
     if ( maxSavePoints != integrationProgress.maxSavePoints ) CErr("Mismatched requested and saved propagation length!");
     savFile.readData("RTNEW/LASTSAVEPOINT", &lastSavePoint);
@@ -362,7 +362,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::restoreState() {
       for (size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
         size_t nBasis = this->onePDMSquareOrtho[i].nRows();
         // NOTE: Reading from previous RT maxstep+1 density (density after the last propagation)
-        if(savFile.getDims("RTNEW/TD_1PDM_ORTHO" + std::to_string(i)) != std::vector<hsize_t>{integrationProgress.maxSavePoints*nBasis*nBasis})
+        if(savFile.getDims("RTNEW/TD_1PDM_ORTHO" + std::to_string(i)) != std::vector<size_t>{integrationProgress.maxSavePoints*nBasis*nBasis})
           CErr("Mismatched requested and saved propagation length!");
         savFile.partialReadData("RTNEW/TD_1PDM_ORTHO" + std::to_string(i), this->onePDMSquareOrtho[i].pointer(), {integrationProgress.lastSavePoint*nBasis*nBasis}, {nBasis * nBasis}, {0}, {nBasis * nBasis});
       }

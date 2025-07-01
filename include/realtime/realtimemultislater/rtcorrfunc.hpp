@@ -66,10 +66,10 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::RealTimeCorrelationFunction() {
                 intScheme.deltaT / 2) /
                intScheme.deltaT);
   if (savFile.exists()) {
-    hsize_t location = (curState.iStep - RealTimeCorrelationFunctionFirstStep) /
+    size_t location = (curState.iStep - RealTimeCorrelationFunctionFirstStep) /
                        this->intScheme.RealTimeCorrelationFunctionFreq;
-    hsize_t lastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
-    hsize_t memLastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
+    size_t lastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
+    size_t memLastPos = curState.iStep - RealTimeCorrelationFunctionFirstStep;
     savFile.partialWriteData("RTNEW/REALTIMECORRELATIONFUNCTION", &curr_corr,
                              {location}, {1}, {0}, {1});
   }

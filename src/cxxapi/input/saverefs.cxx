@@ -31,7 +31,7 @@ namespace ChronusQ {
 
     if( ss->savFile.exists() ){
 
-      std::string prefix = "REF/";
+      std::string prefix = "/REF/";
       bool type;
       type = ssOpt.refOptions.refType == RefType::isRRef;
 

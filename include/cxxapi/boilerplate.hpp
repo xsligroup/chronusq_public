@@ -28,7 +28,6 @@
 #include <libint2/cxxapi.h>
 #include <basisset/basisset_def.hpp>
 #include <util/threads.hpp>
-#include <H5Cpp.h>
 
 #include <util/mpi.hpp>
 
@@ -97,7 +96,6 @@ namespace ChronusQ {
 
     
 
-    H5::Exception::dontPrint();
 
   }; // initialize
 

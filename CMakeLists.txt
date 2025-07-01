@@ -86,14 +86,10 @@ include(HandleGauXC)
 include(FindLibXC)
 
 # HDF5
-# HDF5 targets aren't until CMake 3.19, so mock them here
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-target_link_libraries(cq INTERFACE HDF5::HDF5 )
-target_include_directories(cq PRIVATE ${HDF5_INCLUDE_DIRS})
+include(HandleHighfive)
 
 find_package(ZLIB)
 target_link_libraries(cq INTERFACE ZLIB::ZLIB)
-
 
 message( "\n\n" )
 
