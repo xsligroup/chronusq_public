@@ -242,7 +242,7 @@ namespace ChronusQ {
           matStr = "NDArray[" + s + "]";
         matStr += " (";
         for (size_t i = 0; i < dims_.size(); ++i) {
-          matStr += dims_[i];
+          matStr += std::to_string(dims_[i]);
           if (i < dims_.size() - 1) {
             matStr += ",";
           }
