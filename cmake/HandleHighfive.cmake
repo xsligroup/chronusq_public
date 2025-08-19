@@ -21,37 +21,49 @@
 #   E-Mail: xsli@uw.edu
 #
 
-message ( "\n == Highfive ==" )
+message("\n == HighFive ==")
 
- 
-# Method A(default): Pull from github branch
 include(FetchContent)
-# HDF5
-set(HIGHFIVE_UNIT_TESTS OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_EXAMPLES OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_BUILD_DOCS OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_SPAN OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_BOOST OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_BOOST_SPAN OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_EIGEN OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_OPENCV OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_XTENSOR OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_TEST_HALF_FLOAT OFF CACHE INTERNAL "")  # Forces the value
-set(HIGHFIVE_HAS_CONCEPTS ON CACHE INTERNAL "")  # Forces the value
-set(HDF5_USE_STATIC_LIBRARIES ON CACHE INTERNAL "")  # Forces the value
-set(HDF5_PREFER_PARALLEL ON CACHE INTERNAL "")  # Forces the value
 
-FetchContent_Declare(
-  HighFive
-  GIT_REPOSITORY https://github.com/highfive-devs/highfive.git
-  GIT_TAG v3.0.0-beta2)
-FetchContent_MakeAvailable(HighFive)
+# If GauXC or something else already added HighFive, just reuse it
+if(TARGET HighFive OR TARGET HighFive::HighFive)
+  message(STATUS "HighFive target already available (reusing)")
+else()
+  FetchContent_GetProperties(HighFive)
+  if(NOT HighFive_POPULATED)
+    # Only set options if *we* are going to fetch/build HighFive
+    set(HIGHFIVE_UNIT_TESTS        OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_EXAMPLES          OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_BUILD_DOCS        OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_SPAN         OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_BOOST        OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_BOOST_SPAN   OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_EIGEN        OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_OPENCV       OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_XTENSOR      OFF CACHE BOOL "" FORCE)
+    set(HIGHFIVE_TEST_HALF_FLOAT   OFF CACHE BOOL "" FORCE)
 
-add_library(HighFive::HighFive ALIAS HighFive) # Highfive doesn't export the namespaced target?
+    # If you want parallel HDF5 when CQ uses MPI:
+    if(CQ_ENABLE_MPI)
+      set(HIGHFIVE_PARALLEL_HDF5 ON CACHE BOOL "" FORCE)
+    endif()
+
+    FetchContent_Declare(
+      HighFive
+      GIT_REPOSITORY https://github.com/highfive-devs/highfive.git
+      GIT_TAG v3.0.0-beta2
+    )
+    FetchContent_MakeAvailable(HighFive)
+  endif()
+endif()
+
+if(TARGET HighFive AND NOT TARGET HighFive::HighFive)
+  add_library(HighFive::HighFive ALIAS HighFive)
+elseif(TARGET HighFive::HighFive AND NOT TARGET HighFive)
+  add_library(HighFive ALIAS HighFive::HighFive)
+endif()
 
 target_link_libraries(cq PUBLIC HighFive::HighFive)
 
-# Method B: Local Highfive install discovery (NOT SUPPORTED)
-#message("Linking a local version of Highfive")
+message(" == End HighFive ==\n")
 
-message ( " == End HighFive ==\n" )

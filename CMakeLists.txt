@@ -43,10 +43,14 @@ option(CQ_ENABLE_TA     "Enable TA"  OFF)
 option(ENABLE_COVERAGE  "Enable coverage and profiling"   OFF)
 option(CQ_ENABLE_CUDA   "Enable CUDA for GauXC"           OFF)
 option(CQ_ENABLE_MAGMA  "Enable MAGMA for GauXC"          OFF)
+option(CQ_PREFER_STATIC_HDF5 "Prefer static HDF5 and deps" OFF)
+set(HDF5_USE_STATIC_LIBRARIES ${CQ_PREFER_STATIC_HDF5} CACHE BOOL "" FORCE)
 
 # -----------------------------------------------------------------------------
 # Build the CQ Libaray
 # -----------------------------------------------------------------------------
+
+find_package(ZLIB)
 
 add_library( cq STATIC )
 target_compile_features(cq PUBLIC cxx_std_20)
@@ -88,8 +92,6 @@ include(FindLibXC)
 # HDF5
 include(HandleHighfive)
 
-find_package(ZLIB)
-target_link_libraries(cq INTERFACE ZLIB::ZLIB)
 
 message( "\n\n" )
 
