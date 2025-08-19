@@ -1,0 +1,58 @@
+# 
+#  Job Specification
+#  BORT NEO-DFT from optimized geometry
+#
+[Molecule]
+charge = 0
+mult = 1
+
+geom:
+C    5.986925753483207E-01   0.000000000000000E+00   0.000000000000000E+00
+O   -6.004928773842924E-01   0.000000000000000E+00   0.000000000000000E+00
+H    1.200868267672706E+00   9.585555972872630E-01   0.000000000000000E+00  Q
+H    1.200868267672706E+00  -9.585555972872630E-01   0.000000000000000E+00  Q
+
+[QM]
+reference = Complex HF
+job = RT
+
+[PROTQM]
+reference = Complex UHF
+
+[SCF]
+NEO = TRUE
+guess = classical
+prot_guess = tight
+MAXITER = 50000
+DIISALG = CDIIS
+accuracy = 1e-12
+
+[RT]            
+INTALG = BORT 
+PROT_INTALG = RK4                                                                  
+PRINTLEVEL = 1
+BORTPRINTLEVEL = 1
+BORTACCURACY = 1E-10  
+TMAX = 2.0
+DELTAT = 0.1
+FIELD:
+ StepField(0.,0.00001) Electric 0. 0.001 0.                                                  
+
+[INTS]
+ALG = INCORE
+
+[PINTS]
+ALG = INCORE
+
+[EPINTS]
+ALG = INCORE
+
+[MISC]
+nsmp = 4
+mem = os
+
+[BASIS]
+basis = sto-3g
+
+[PBASIS]
+basis = prot-sp

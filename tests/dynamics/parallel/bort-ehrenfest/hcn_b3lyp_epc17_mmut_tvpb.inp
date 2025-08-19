@@ -1,0 +1,64 @@
+# 
+#  Job Specification
+#  BORT NEO-DFT Ehrenfest from optimized geometry
+#
+[Molecule]
+charge = 0
+mult = 1
+
+geom:
+ N 0.0492158067 0.000 0.000
+ C 1.2046693425 0.000 0.000
+ H 2.1221148508 0.000 0.000 Q
+
+[QM]
+reference = Complex B3LYP
+job = Ehrenfest
+
+[PROTQM]
+reference = Complex Uepc17
+
+[SCF]
+NEO = TRUE
+guess = classical
+prot_guess = tight
+MAXITER = 50000
+DIISALG = CDIIS
+accuracy = 1e-12
+
+[DYNAMICS]
+TMAX = 10.0
+DELTAT = 4.0
+TPB = true
+NNUCPGRAD = 4
+NELECPNUC = 2
+velocity:
+N    4.3517836066302E-04   1.3178769468206E-13   1.4860945466380E-13
+C   -5.0781995902957E-04  -6.2828122990975E-15  -7.0847685117831E-15
+H    0.0000000000000       0.0000000000000       0.0000000000000
+
+[RT]                                                                            
+INTALG = BORT 
+PROT_INTALG = MMUT                                                                  
+PRINTLEVEL = 1
+BORTPRINTLEVEL = 1
+BORTACCURACY = 1E-10  
+
+[INTS]
+ALG = INCORE
+
+[PINTS]
+ALG = INCORE
+
+[EPINTS]
+ALG = INCORE
+
+[MISC]
+nsmp = 4
+mem = os
+
+[BASIS]
+basis = sto-3g
+
+[PBASIS]
+basis = prot-sp

@@ -508,6 +508,8 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert
     methString = "Explicit 2nd Order Magnus";
   else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour)
     methString = "Runge-Kutta 4th Order";
+  else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::ElectronicBornOppenheimer)
+    methString = "Electronic Born Oppenheimer";
   else 
     methString = "Forward Euler";
 

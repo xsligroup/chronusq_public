@@ -214,12 +214,12 @@ void MolecularDynamics::parseVelocityFromInput( Molecule &mol, std::string &velo
     std::istringstream velocityStream; velocityStream.str(velocityStr);
     std::vector<std::string> tokens;
     std::vector<Atom> atoms;
-    std::vector<double> velocity;
+    std::vector<double> velocity_local;
     std::locale loc;
 
     // Loop over lines of velocity specification
     size_t iAtom = 0;
-    velocity.reserve(mol.nAtoms*3);
+    velocity_local.reserve(mol.nAtoms*3);
     for(std::string line; std::getline(velocityStream, line); ){
       split(tokens,line," \t");
 
@@ -261,9 +261,9 @@ void MolecularDynamics::parseVelocityFromInput( Molecule &mol, std::string &velo
 
       // TODO: Handle unit conversion 
       // For now assuming it's already in atomic unit
-      velocity.emplace_back(std::stod(tokens[1]));
-      velocity.emplace_back(std::stod(tokens[2]));
-      velocity.emplace_back(std::stod(tokens[3]));
+      velocity_local.emplace_back(std::stod(tokens[1]));
+      velocity_local.emplace_back(std::stod(tokens[2]));
+      velocity_local.emplace_back(std::stod(tokens[3]));
 
       iAtom++;
     }
@@ -271,10 +271,10 @@ void MolecularDynamics::parseVelocityFromInput( Molecule &mol, std::string &velo
     //if ( atoms.size() == 0 )
     //  CErr("MOLECULE.GEOM must not be empty and must be indented");
 
-    if (velocity.size() != mol.nAtoms * 3) 
+    if (velocity_local.size() != mol.nAtoms * 3) 
         CErr("The size of the velocity vector must be 3 times the number of atoms.");
-    
-    std::copy(velocity.begin(), velocity.end(), velocity.begin());
+    velocity.resize(mol.nAtoms * 3); 
+    std::copy(velocity_local.begin(), velocity_local.end(), velocity.begin());
 
     std::cout << "Read in Velocity:"<<std::endl;
     size_t i = 0;

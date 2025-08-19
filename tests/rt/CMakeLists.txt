@@ -26,7 +26,7 @@ set(RT_TEST_SOURCE_ROOT "${TEST_ROOT}/rt" )
 set(RT_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/rt" )
   
 # Set up compilation of RT test exe
-add_executable(rttest ../ut.cxx rrt.cxx urt.cxx grt.cxx neo_rrt.cxx ri_neo_rrt.cxx rtci.cxx)
+add_executable(rttest ../ut.cxx rrt.cxx urt.cxx grt.cxx neo_rrt.cxx ri_neo_rrt.cxx rtci.cxx bort.cxx)
 
 target_include_directories(rttest PUBLIC ${RT_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
@@ -40,12 +40,14 @@ file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/grt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/neo_rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/ri_neo_rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/rtci)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/serial/bort)
 
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/urt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/grt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/neo_rrt)
 file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/rineo_rrt)
+file(MAKE_DIRECTORY ${RT_TEST_BINARY_ROOT}/parallel/bort)
 
 include( CQTestGeneration )
 
@@ -65,6 +67,7 @@ add_cq_test( NEO_RHF_RT   rttest "NEO_RHF_RT.*"   )
 add_cq_test( RESTART_RT rttest "RESTART_RT.*" )
 
 add_cq_test( RTCI_RT   rttest "RTCI_RT.*"   )
+add_cq_test( BORT_NEO_RT   rttest "BORT_NEO_RT.*"   )
 
 # Set up compilation of Functionality test exe
 add_executable(tdci_machinery ../ut.cxx tdci_machinery.cxx)

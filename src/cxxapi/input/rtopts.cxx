@@ -71,7 +71,9 @@ namespace ChronusQ {
       "RTPRINTDEN",
       "RTGAUGE",
       "RTBREIT",
-      "ORBITALPOPFREQ"
+      "ORBITALPOPFREQ",
+      "BORTPRINTLEVEL",
+      "BORTACCURACY"
     };
 
     // Specified keywords

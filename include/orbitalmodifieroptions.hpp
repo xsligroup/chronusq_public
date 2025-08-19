@@ -223,7 +223,8 @@ namespace ChronusQ {
       RTModifiedMidpoint,
       RTExplicitMagnus2,
       RTSymplecticSplitOperator,
-      RTRungeKuttaOrderFour
+      RTRungeKuttaOrderFour,
+      ElectronicBornOppenheimer
   };
 
   enum class MSInitialState {
@@ -251,6 +252,9 @@ namespace ChronusQ {
     size_t totalMDSteps        = 0; 
     size_t rtMaxStepsPerMDStep = 0;
 
+    size_t BORTPrintLevel = 0; ///< By default SCF will not print 
+    double BORTAccuracy = 1E-7; ///< Convergence criterea for BORT SCF calculations
+
     size_t iRestart  = 50;         ///< Restart MMUT every N steps
     size_t iSave     = 50;         ///< Save progress every N steps
     size_t iCube     = 0;         ///< Save cube every N steps
@@ -258,6 +262,7 @@ namespace ChronusQ {
     long int restoreFromStep = 0;    ///< Restore propagation from this step
 
     bool  includeSCFField = true;  ///< Whether to include the SCF field
+    
 
     size_t rtGaunt = 1; /// < Calculate Gaunt every N steps
     size_t rtGauge = 1; /// < Calculate Gauge every N steps

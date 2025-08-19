@@ -121,6 +121,7 @@ public:
   void propagateDenForAll();
   void unitaryProgatationForAll(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
   void doPropagation(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
+  void electronicBornOppenheimer();
   void computeTau();
   void addTauToFock();
   void saveState(EMPerturbation&);

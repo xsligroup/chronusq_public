@@ -2335,7 +2335,7 @@ namespace ChronusQ {
     size_t shell_atoms[4];
 
     // Always Loop over s2 <= s1
-    for(size_t s1(0ul), bf1_s(0ul), s12(0ul); s1 < nShell; bf1_s+=n1, s1++) { 
+    for(size_t s1(0ul), bf1_s(0ul); s1 < nShell; bf1_s+=n1, s1++) { 
 
       n1 = basisSet_.shells[s1].size(); // Size of Shell 1
       shell_atoms[0] = basisSet_.mapSh2Cen[s1]; // Atomic center of shell 1
@@ -2350,9 +2350,8 @@ namespace ChronusQ {
       const auto * sigPair12 = sigPair12_it->get();
       sigPair12_it++;
 
-      // Round-Robin work distribution
-      if( (s12++) % nThreads != thread_id ) continue;
-
+      // Round-Robin work distribution (deterministic hash, no per‑thread counter)
+      if( ((s1 * nShell + s2) % nThreads) != thread_id ) continue;
 
 #ifdef _FULL_DIRECT
       // Deneneracy factor for s1,s2 pair
@@ -2470,7 +2469,8 @@ namespace ChronusQ {
           if( gradList[iMat].HER ) { 
             if ( gradList[iMat].contType == COULOMB ) {
             // loop over basis functions in the shell quartet
-            for(auto i = 0ul, bf1 = bf1_s, ijkl(0ul); i < n1; i++, bf1++)
+            size_t ijkl = 0ul; // *** fixed: no re‑initialisation in i‑loop ***
+            for(auto i = 0ul, bf1 = bf1_s; i < n1; i++, bf1++)
             for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++) {
               // Cache i,j variables
               b1 = bf1 + nBasis*bf2;
@@ -2494,7 +2494,8 @@ namespace ChronusQ {
             } else if( gradList[iMat].contType == EXCHANGE ) {
               if (&basisSet_ != &basisSet2_)
                 CErr("No exchange contraction between two different basis!", std::cout);
-              for(auto i = 0ul, bf1 = bf1_s, ijkl(0ul); i < n1; i++, bf1++)      
+              size_t ijkl = 0ul; // *** fixed counter here as well ***
+              for(auto i = 0ul, bf1 = bf1_s; i < n1; i++, bf1++)      
               for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++)       
               for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++) {
 

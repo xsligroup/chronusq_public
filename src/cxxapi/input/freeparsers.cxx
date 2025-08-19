@@ -508,7 +508,7 @@ namespace ChronusQ {
         }
 
         // Check for RT algorithm, this has to be checked after restart algorithm to avoid conflict
-        auto const freeCQInputRTAlgorithm = std::regex("(MMUT)|(MODIFIEDMIDPOINT)|(FORWARDEULER)|(EULER)|(EXPLICITMAGNUS2)|(EXPLICITMAGNUSTWO)|(MAGNUS2)|(MAGNUSTWO)|(RK4)|(RUNGEKUTTAFOURTHORDER)\\s*([,;:]|$)", std::regex_constants::icase);
+        auto const freeCQInputRTAlgorithm = std::regex("(MMUT)|(MODIFIEDMIDPOINT)|(FORWARDEULER)|(EULER)|(EXPLICITMAGNUS2)|(EXPLICITMAGNUSTWO)|(MAGNUS2)|(MAGNUSTWO)|(RK4)|(RUNGEKUTTAFOURTHORDER)|(BORT)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRTAlgorithm) ) {
 //          if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) tdSCFControls.integrationAlgorithm = RTModifiedMidpoint;
 //          else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) tdSCFControls.integrationAlgorithm = RTForwardEuler;
@@ -518,6 +518,7 @@ namespace ChronusQ {
           else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) str = "FORWARDEULER";
           else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty() or !RTmatch.str(7).empty() or !RTmatch.str(8).empty()) str = "MAGNUS2";
           else if (!RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "RK4"; // New check for RK4 or RUNGEKUTTAFOURTHORDER
+          else if (!RTmatch.str(11).empty()) str = "BORT"; 
           //std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
           addData("RT.INTALG", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRTAlgorithm, "");
@@ -602,6 +603,22 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtprintden, "");
         }
 
+        // Check for BORTPrinting options
+        auto const freeCQInputBORTPrint = std::regex("BORTPRINT(\\s*=\\s*(\\d+))?\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputBORTPrint) ) {
+          if(!RTmatch.str(2).empty()) tdSCFControls.BORTPrintLevel = std::stoi(RTmatch.str(2));
+          addData("RT.BORTPRINTLEVEL", std::to_string(tdSCFControls.BORTPrintLevel));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputBORTPrint, "");
+        }
+
+        // Check for BORT SCF Convergence accuracy
+        auto const freeCQInputBORTAccuracy = std::regex("(BORTACCURACY)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+        if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputBORTAccuracy) ) {
+          tdSCFControls.BORTAccuracy = std::stod(RTmatch.str(2));
+          addData("RT.BORTACCURACY", doubleToString(tdSCFControls.BORTAccuracy));
+          RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputBORTAccuracy, "");
+        }
+
         auto const freeCQInputOrbitalPopFreq = std::regex("(ORBITALPOPFREQ)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputOrbitalPopFreq) ) {
           tdSCFControls.orbitalPopFreq = std::stoi(RTmatch.str(2));
@@ -637,6 +654,7 @@ namespace ChronusQ {
       else if (dict.at("INTALG") == "FORWARDEULER") integrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
       else if (dict.at("INTALG") == "MAGNUS2") integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
       else if (dict.at("INTALG") == "RK4") integrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
+      else if (dict.at("INTALG") == "BORT") integrationAlgorithm = RealTimeAlgorithm::ElectronicBornOppenheimer;
     }
     if (dict.count("PROT_INTALG")) {
       if (dict.at("PROT_INTALG") == "MMUT") protIntegrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
@@ -644,6 +662,8 @@ namespace ChronusQ {
       else if (dict.at("PROT_INTALG") == "MAGNUS2") protIntegrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
       else if (dict.at("PROT_INTALG") == "RK4") protIntegrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
     }
+    if (dict.count("BORTPRINTLEVEL")) BORTPrintLevel = std::stoi(dict.at("BORTPRINTLEVEL"));
+    if (dict.count("BORTACCURACY")) BORTAccuracy = std::stod(dict.at("BORTACCURACY"));
     // If the user didn't provide a specific protonic integration algorithm, use the same as electronic
     if (protIntegrationAlgorithm == RealTimeAlgorithm::Uninitialized) protIntegrationAlgorithm = integrationAlgorithm;
     // Currently we don't allow mixing of MMUT and RK4
