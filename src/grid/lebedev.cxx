@@ -17,8 +17,8 @@ namespace ChronusQ {
       #include "lebedev_74.cxx"
     } else if( nPts == 86 ) {
       #include "lebedev_86.cxx"
-    } else if( nPts == 110 ) {
-      #include "lebedev_110.cxx"
+//  } else if( nPts == 110 ) {
+//    #include "lebedev_110.cxx"
     } else if( nPts == 146 ) {
       #include "lebedev_146.cxx"
     } else if( nPts == 170 ) {

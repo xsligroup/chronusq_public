@@ -100,6 +100,15 @@ namespace ChronusQ {
     // Options for CubeGen
     CubeGenOptions cubeOptsSS;
 
+    // Options for orbital RDFs (TODO: make options struct)
+    bool doRDFs = false;
+    bool doOrbEne = false;
+    double initialRad = 0.0001;
+    double finalRad = 10.0000;
+    size_t numRadPts = 100;
+    size_t numAngPts = 974;
+    size_t numMOs = 0;
+
     // Pair function for SingleSlater MO swap
     std::vector<std::vector<std::pair<size_t, size_t>>> moPairs;
 

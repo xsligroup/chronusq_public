@@ -97,6 +97,10 @@ namespace ChronusQ {
     Integrator1D(size_t N, Args... args) :
       q(N,args...){ assert(N != 0); q.generateQuadrature(); }
 
+    size_t getnPts(){
+
+      return q.nPts;
+    }
  
     /**
      *  \brief Integrate function

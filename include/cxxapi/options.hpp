@@ -351,7 +351,12 @@ namespace ChronusQ {
   void ParseSCFCubeSubsection(std::ostream&, CQInputFile&,
     std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<CubeGen> cu);
 
+  void ParseOrbitalPropSubsection(std::ostream&, CQInputFile&,
+    std::shared_ptr<SingleSlaterBase> ss);
+
   void CQCUBE_VALID(std::ostream&, CQInputFile &, std::string);
+
+  void CQORBPROP_VALID(std::ostream&, CQInputFile &, std::string);
 
   void CQGAUXC_VALID(std::ostream&, CQInputFile &);
 
@@ -369,6 +374,7 @@ namespace ChronusQ {
     CQRESPONSE_VALID(out,input);
     CQMOR_VALID(out,input);
     CQCUBE_VALID(out,input,"");
+    CQORBPROP_VALID(out,input,"");
     CQMISC_VALID(out,input);
     CQCC_VALID(out,input);
     CQDYNAMICS_VALID(out,input);

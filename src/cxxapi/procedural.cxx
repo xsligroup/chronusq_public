@@ -291,6 +291,7 @@ namespace ChronusQ {
       // MO swapping
       HandleOrbitalSwaps(output, input, *ss);
 
+      ParseOrbitalPropSubsection(output, input, ss);
       ParseSCFCubeSubsection(output, input, ss, cube);
     }
 

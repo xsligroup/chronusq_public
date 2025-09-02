@@ -230,6 +230,9 @@ namespace ChronusQ {
     void compute4CDipole(EMPerturbation &);
     void computeFockX2CDipole(EMPerturbation &);
     void computeSpin() override;
+    void computeOrbitalProps() override;
+    void computeOrbitalRDFs() override;
+    void printOrbitalEnergies() override;
     virtual std::vector<double> getEnergySummary() override;
 
     // Compute various core Hamitlonian

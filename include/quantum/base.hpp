@@ -96,7 +96,8 @@ namespace ChronusQ {
     double extraEnergy = 0;
     double totalEnergy;///< The total energy
 
-
+    // Options for orbital property analysis
+    bool orbProp = false;
 
 
     // Constructors
@@ -186,7 +187,9 @@ namespace ChronusQ {
     virtual void computeMultipole(EMPerturbation &, const std::vector<PROPERTY> &properties = {}) = 0;
     virtual void computeSpin() = 0;
     virtual void methodSpecificProperties() = 0;
-
+    virtual void computeOrbitalProps() = 0;
+    virtual void computeOrbitalRDFs() = 0;
+    virtual void printOrbitalEnergies() = 0;
 
 
     inline void computeProperties(EMPerturbation &pert, const std::vector<PROPERTY> &properties = {}) {
@@ -218,6 +221,8 @@ namespace ChronusQ {
       // Compute method specific properties (currently only include Mulliken population analysis)
       if(hasProperty(METHOD_SPECIFIC)) 
         methodSpecificProperties();
+
+      if(orbProp) computeOrbitalProps();
 
       ProgramTimer::tock("Compute Properties");
 

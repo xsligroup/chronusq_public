@@ -58,6 +58,7 @@ namespace ChronusQ {
       "PRINTCONTRACTIONTIMING" ,
       "ACCURACY",
       "CUBE",
+      "ORBPROP",
       "NEOOPTIMIZEONLY",
       "NEOOPTIMIZEFIRST",
       "NEOSTEPWISEOPTIMIZE"
@@ -424,5 +425,92 @@ namespace ChronusQ {
     return scfControls;
 
   }; // CQSCFOptions
+
+  void CQORBPROP_VALID( std::ostream &out, CQInputFile &input, std::string section ) {
+
+    // Allowed keywords
+    std::vector<std::string> allowedKeywords = {
+      "RDF",
+      "INITIALRAD",
+      "FINALRAD",
+      "RADPTS",
+      "ANGPTS",
+      "ORBEN",
+      "NUMMOS"
+    };
+
+    std::string subSection = section + "ORBPROP";
+
+    // Specified keywords
+    std::vector<std::string> orbPropKeywords = input.getDataInSection(subSection);
+
+    // Make sure all of orbPropKeywords in allowedKeywords
+
+    for( auto &keyword : orbPropKeywords ) {
+      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
+      if( ipos == allowedKeywords.end() )
+        CErr("Keyword " + subSection + "." + keyword + " is not recognized",std::cout);// Error
+    }
+
+  }
+
+  void ParseOrbitalPropSubsection(std::ostream &out, CQInputFile &input,
+    std::shared_ptr<SingleSlaterBase> ss) {
+
+    // check if [SCF.ORBPROP] section
+    if( not input.containsSection("SCF.ORBPROP") ) return;
+
+    std::cout << " Found [SCF.ORBPROP] section" << std::endl;
+
+    ss->orbProp = true; //Do orbital properties if subsection present
+
+    CQORBPROP_VALID(out,input,"SCF.");
+
+    // Turn on RDF analysis
+    OPTOPT(
+      ss->doRDFs = input.getData<bool>("SCF.ORBPROP.RDF");
+    );
+
+    // Turn on orbital energy analysis
+    OPTOPT(
+      ss->doOrbEne = input.getData<bool>("SCF.ORBPROP.ORBEN");
+    );
+
+    // Check variables related to RDF analysis
+    if( ss->doRDFs ){
+
+      OPTOPT(
+        ss->initialRad =
+          input.getData<double>("SCF.ORBPROP.INITIALRAD");
+      );
+
+      OPTOPT(
+        ss->finalRad =
+          input.getData<double>("SCF.ORBPROP.FINALRAD");
+      );
+
+      OPTOPT(
+        ss->numRadPts =
+          input.getData<size_t>("SCF.ORBPROP.RADPTS");
+      );
+
+      OPTOPT(
+        ss->numAngPts =
+          input.getData<size_t>("SCF.ORBPROP.ANGPTS");
+      );
+
+      OPTOPT(
+        ss->numMOs =
+          input.getData<size_t>("SCF.ORBPROP.NUMMOS");
+      );
+
+      size_t N = ss->numAngPts;
+      if( N!=6 && N!=14 && N!=26 && N!=38 && N!=50 && N!=74 && N!=86 && N!=146 &&
+        N!=170 && N!=194 && N!=230 && N!=266 && N!=302 && N!=590 && N!=974 )
+          CErr("Number of Angular Points NYI. See src/grid/lebedev.cxx");
+
+    }
+
+  }
 
 }; // namespace ChronusQ
