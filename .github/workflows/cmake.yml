@@ -36,78 +36,79 @@ jobs:
       - name: Checkout Current CQ Branch
         uses: actions/checkout@v3
      
+      # Set Environment
       - name: Set up environment
         run: |
           env
           mkdir -p build
 
-      - name: Cache build based on CMakeLists.txt and mpi enabled
-        id: cache-build
+      # Restore ccache
+      - name: Cache ccache
         uses: actions/cache@v3
         with:
-          path: build
-          key: ${{ runner.os }}-build-${{ runner.name }}-${{ matrix.config.enable_mpi }}-${{ hashFiles('**/CMakeLists.txt') }}  # Unique key based on CMakeLists.txt and mpi enabled changes
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ runner.name }}-${{ matrix.config.enable_mpi }}-${{ hashFiles('**/CMakeLists.txt') }}  # Unique key based on CMakeLists.txt and mpi enabled changes
           restore-keys: |
-            ${{ runner.os }}-build-${{ runner.name }}-${{ matrix.config.enable_mpi }}-
-      
-      - name: Check if build is cached
+            ${{ runner.os }}-ccache-${{ runner.name }}-${{ matrix.config.enable_mpi }}-
+
+      - name: Install and configure ccache
+        shell: bash
         run: |
-          if [[ "${{ steps.cache-build.outputs.cache-hit }}" == "true" ]]; then
-            echo "Build cache restored, skipping rebuild."
-            echo "skip_build=true" >> $GITHUB_ENV
-          else
-            echo "No cached build found, proceeding with rebuild."
-            echo "skip_build=false" >> $GITHUB_ENV
-          fi 
+          if ! command -v ccache &> /dev/null; then
+            echo "ccache not found, please install it on runner."
+            exit 1
+          fi
+          ccache --zero-stats
+          ccache --show-config
+
+      # Configure
       - name: Configure
-        if: env.skip_build == 'false'
         shell: bash
         working-directory: build
         run: |
-          #Load environment
           source /usr/share/Modules/init/bash
           source /etc/profile.d/modules.sh
           export MODULEPATH=/home/modulefiles/compilers:/home/modulefiles/compiler_dep/gcc/10.2.0:/home/modulefiles:$MODULEPATH
-
-          module load gcc
-          module load hdf5
-          module load libint
+          module load gcc hdf5 libint
           export PATH=/usr/lib64/openmpi/bin:$PATH
           export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
-          #build
+
           cmake .. \
             -DCQ_ENABLE_MPI=${{ matrix.config.enable_mpi }} \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_COLOR_DIAGNOSTICS=On \
             -DBLAS_LIBRARIES=/usr/lib64/libopenblas.so \
             -DLAPACK_LIBRARIES=/usr/lib64/libopenblas.so \
             -G Ninja \
             -S .. -B .
-           
+
+      # Build
       - name: Build
-        if: env.skip_build == 'false'
         shell: bash
         working-directory: build
         run: |
-              echo "Building with $${{ matrix.config.para_build_jobs }} threads"
-              cmake --build . --config Release --parallel ${{ matrix.config.para_build_jobs }}
-      
+          echo "Building with ${{ matrix.config.para_build_jobs }} threads"
+          cmake --build . --config Release --parallel ${{ matrix.config.para_build_jobs }}
+
+      # Show ccache stats
+      - name: Show ccache stats
+        run: ccache --show-stats
+
+      # Test
       - name: Test
         shell: bash
         working-directory: build
         run: |
-              echo "Testing with $${{ matrix.config.para_test_jobs }} threads"
-              # Load environment
-              source /usr/share/Modules/init/bash
-              source /etc/profile.d/modules.sh
-              export MODULEPATH=/home/modulefiles/compilers:/home/modulefiles/compiler_dep/gcc/10.2.0:/home/modulefiles:$MODULEPATH
+          echo "Testing with ${{ matrix.config.para_test_jobs }} threads"
+          source /usr/share/Modules/init/bash
+          source /etc/profile.d/modules.sh
+          export MODULEPATH=/home/modulefiles/compilers:/home/modulefiles/compiler_dep/gcc/10.2.0:/home/modulefiles:$MODULEPATH
+          module load gcc hdf5 libint
+          export PATH=/usr/lib64/openmpi/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
 
-              module load gcc
-              module load hdf5
-              module load libint
-              export PATH=/usr/lib64/openmpi/bin:$PATH
-              export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:/home/software/gcc/10/2/0/install/lib64:$LD_LIBRARY_PATH
-              #run test
-              ctest -E "GPLHR" --output-on-failure --parallel $${{ matrix.config.para_test_jobs }} # Run all test GPLHR in parrallel
-              ctest -R "GPLHR" --output-on-failure # Run GPLHR in serial
+          ctest -E "GPLHR" --output-on-failure --parallel ${{ matrix.config.para_test_jobs }}
+          ctest -R "GPLHR" --output-on-failure
 
