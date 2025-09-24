@@ -59,7 +59,8 @@ namespace ChronusQ {
       "SPINORBITSCALING",
       "ATOMICX2C",
       "SNSOTYPE",
-      "IGNOREVPP"
+      "IGNOREVPP",
+      "DKSTYPE"
     };
 
     // Specified keywords
@@ -191,9 +192,10 @@ namespace ChronusQ {
       GRefs.emplace_back( "G" + f );
       X2CRefs.emplace_back( "X2C" + f );
       TwoCRefs.emplace_back( "2C" + f );
+      FourCRefs.emplace_back( "4C" + f );
     }
     RORefs.emplace_back( "ROHF" );
-    FourCRefs.emplace_back( "4CHF" );
+    
 
     // This is the reference string to be parsed
     std::string refString = tokens.back();
@@ -983,8 +985,6 @@ namespace ChronusQ {
   
     } catch(...) {}
 
-
-
     if (refOptions.refType != isFourCRef
         and hamiltonianOptions.x2cType != X2C_TYPE::FOCK) {
 
@@ -1008,6 +1008,26 @@ namespace ChronusQ {
 
     hamiltonianOptions.updateGaunt = hamiltonianOptions.Gaunt;
     hamiltonianOptions.updateGauge = hamiltonianOptions.Gauge;
+
+    // DKS
+    X = "DEFAULT";
+    OPTOPT( X = input.getData<std::string>(section + ".DKSTYPE")  );
+    trim(X);
+    if( not X.compare("VLL") ) {
+      if( not ( refOptions.isKSRef and (refOptions.refType == isFourCRef ))){
+    	CErr("DKS requires 4C + a DFT Functional", out);
+      } else {
+	hamiltonianOptions.dksType = DKS_TYPE::VLL;
+      } 
+    } else if ( not X.compare("DEFAULT") ) {
+      if( not ( refOptions.isKSRef and (refOptions.refType == isFourCRef ))){
+   	hamiltonianOptions.dksType = DKS_TYPE::OFF;
+	} else {
+  	  hamiltonianOptions.dksType = DKS_TYPE::VLL;
+	}
+    } else { 
+	CErr(X + " not a valid " + section + ".DKSTYPE",out);
+    } //DKS
 
     // For NEO (and in particular post-NEO-HF methods)
     OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + ".IGNOREPROTONTWOBODY"));
@@ -1227,6 +1247,12 @@ namespace ChronusQ {
               "Exact Two Component", "X2C-", KS_LIST(double)
             )
           );
+      else if( refOptions.isKSRef and (refOptions.refType == isFourCRef))
+         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
+            std::make_shared<KohnSham<dcomplex,double>>(
+              "Four Component","4C-", KS_LIST(double)
+            )
+          );
       else if( refOptions.isKSRef )
         ss = std::dynamic_pointer_cast<SingleSlaterBase>(
             std::make_shared<KohnSham<dcomplex,double>>( KS_LIST(double) )
@@ -1295,7 +1321,6 @@ namespace ChronusQ {
     if( refOptions.refType == isFourCRef ) {
 
       if(auto p = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
-
         p->coreHBuilder = std::make_shared<FourComponent<double,double>>(
             *std::dynamic_pointer_cast<Integrals<double>>(aoints), hamiltonianOptions);
 
@@ -1303,7 +1328,6 @@ namespace ChronusQ {
 
 //        CErr("4C + Real WFN is not a valid option",std::cout);
       } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
-
         p->coreHBuilder = std::make_shared<FourComponent<dcomplex,double>>(
             *std::dynamic_pointer_cast<Integrals<double>>(aoints), hamiltonianOptions);
 
@@ -1655,7 +1679,15 @@ namespace ChronusQ {
         << TYPE_4C_NAME[static_cast<int>(options.GaugeType)] << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Approximation---"
         << TYPE_4C_APPROXIMATION[static_cast<int>(options.GaugeApproximationType)] << std::endl;
+    out << std::endl;
 
+
+    char TYPE_DKS_NAME[2][20] = {"Off","VLL"};
+
+    out << "  " << std::setw(fieldNameWidth) << "Dirac-Kohn-Sham Options:" << std::endl;
+    out << bannerMid << std::endl;
+    out << "  " << std::setw(fieldNameWidth) << "Approximation---"
+	<< TYPE_DKS_NAME[static_cast<int>(options.dksType)] << std::endl;
 
     out << std::endl << BannerEnd << std::endl;
 

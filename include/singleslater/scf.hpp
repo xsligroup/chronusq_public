@@ -625,7 +625,7 @@ void SingleSlater<MatsT, IntsT>::setOnePDMAO(cqmatrix::Matrix<MatsT> *tempOnePDM
       size_t NB  = this->nAlphaOrbital() * nC;
       std::cerr  << "  *** Scattering the 1PDMAO ***\n";
       for(auto p : this->onePDM->SZYXPointers())
-        MPIBCast(p,NB*NB/nC/nC,0,comm);
+        MPIBCast(p,NB*NB/(std::min(2,nC))/(std::min(2,nC)),0,comm);
     }
   #endif
 

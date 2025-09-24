@@ -191,17 +191,82 @@ namespace ChronusQ {
           bool is_gks = this->onePDM->hasZ() and this->onePDM->hasXY();
           bool is_uks = this->onePDM->hasZ() and not this->onePDM->hasXY();
           bool is_rks = not is_uks and not is_gks; 
+          bool is_4C = this->nC == 4;
+
           size_t NB = this->basisSet().nBasis; 
 
           // Convert CQ matrices to be Eigen matrices to feed into GauXC
           Eigen::Matrix<double, -1, -1> Ps, Pz, Py, Px;
-          Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().S().pointer(), NB, NB); 
-
+          
           // Initialize return values
           double EXC = 0.0;
           Eigen::MatrixXd VXCs, VXCz, VXCx, VXCy;
 
+          // 4 component LL Approximation
+           if (is_4C) {
+
+            Eigen::MatrixXd VXCs_raw, VXCz_raw, VXCx_raw, VXCy_raw, VXC_zero;
+            Eigen::MatrixXd VXCs(2*NB,2*NB), VXCz(2*NB,2*NB), VXCx(2*NB,2*NB), VXCy(2*NB,2*NB);
+            VXC_zero = Eigen::MatrixXd::Zero(NB,NB);
+
+            // Initialize needed matrices for Component and Spin Scatter
+            bool allocateLLMS = true; 
+            bool allocateSS   = false;
+            bool allocateLSSL = false;
+
+            auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(0, false, false);
+
+            auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMSSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMLSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMSLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+
+            auto onePDMLL = allocateLLMS ? onePDMLLSCR: dummy_pauli;
+            auto onePDMSS = allocateSS   ? onePDMSSSCR: dummy_pauli;
+            auto onePDMLS = allocateLSSL ? onePDMLSSCR: dummy_pauli;
+            auto onePDMSL = allocateLSSL ? onePDMSLSCR: dummy_pauli;
+
+            // Scatter 1 Particle Density Matrix into component blocks.
+            this->onePDM->componentScatter(*onePDMLL, *onePDMLS, *onePDMSL, *onePDMSS);
+
+            // Scatter LL block of density into Pauli spin components.
+            Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().S().pointer(), NB, NB);
+            Px = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().X().pointer(), NB, NB);
+            Py = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Y().pointer(), NB, NB);
+            Pz = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Z().pointer(), NB, NB);
+
+            std::tie(EXC, VXCs_raw, VXCz_raw, VXCy_raw, VXCx_raw) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px);
+
+            // Form VXCLL mat in Pauli form by padding
+            VXCs << VXCs_raw, VXC_zero, VXC_zero, VXC_zero;
+            VXCz << VXCz_raw, VXC_zero, VXC_zero, VXC_zero;
+            VXCy << VXCy_raw, VXC_zero, VXC_zero, VXC_zero;
+            VXCx << VXCx_raw, VXC_zero, VXC_zero, VXC_zero;
+
+            // EXC Energy
+            this->XCEnergy = EXC;
+ 
+            // Add VXCLL terms to Fock Matrix
+            VXCs *= 2.0;
+            this->fockMatrix->S() +=  VXCs;
+           
+            if(!is_rks){
+              VXCz *= 2.0;
+              this->fockMatrix->Z() +=  VXCz;
+              if(is_gks or is_4C){
+                VXCy *= 2.0;
+                VXCx *= 2.0;
+                this->fockMatrix->Y() +=  VXCy;
+                this->fockMatrix->X() +=  VXCx;
+            
+              }
+            }
+          }
+           else {
+            
           // Call corresonding epc evaluation functions 
+          Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().S().pointer(), NB, NB); 
+
           if (is_rks) {                                        
             Ps /= 2.0; // Need to scale by 0.5 due to GauXC's RKS logic
             std::tie(EXC, VXCs) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps );
@@ -215,7 +280,7 @@ namespace ChronusQ {
               std::tie(EXC, VXCs, VXCz, VXCy, VXCx) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px);
             }
           }
-
+           
           // Assign computed EXC and VXC (with a scaling factor of 2)
           this->XCEnergy = EXC;
           VXCs *= 2.0;
@@ -229,7 +294,7 @@ namespace ChronusQ {
               this->fockMatrix->Y() +=  VXCy;
               this->fockMatrix->X() +=  VXCx;
             }
-          } 
+          } }
         }  // end GauXC
       } // end VXC
       ProgramTimer::tock("Form VXC"); 
@@ -280,13 +345,9 @@ namespace ChronusQ {
      */
     using QuantumBase::computeEnergy;
     virtual void computeEnergy() {
-
       SingleSlater<MatsT,IntsT>::computeEnergy();
       // Add EXC in the total energy
       this->totalEnergy += XCEnergy;
-
-      //std::cout << std::setprecision(16) << "XC Energy in computeEnergy(): " << this->XCEnergy << std::endl;
-        
     }; // computeEnergy
 
 

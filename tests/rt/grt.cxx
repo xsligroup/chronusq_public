@@ -180,6 +180,13 @@ TEST( FOURCHF_RT, ag2_sto2gunc_4chf_mmut_delta ) {
     "ag2_sto2gunc_4chf_mmut_delta.bin.ref",1e-6 );
 }
 
+// DKS
+TEST( DKS_RT, oxygen_dks_mmut ) {
+
+  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_dks_mmut",
+    "oxygen_6-31Gdunc_dks_mmut.bin.ref", 1e-6 );
+}
+
 
 #ifdef _CQ_DO_PARTESTS
 
@@ -212,6 +219,12 @@ TEST( FOURCHF_RT, PAR_oxygen_4chf_mmut_breit_rtbreit ) {
 
   CQRTTEST( "rt/parallel/grt/oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit",
     "oxygen_6-31Gdunc_4chf_mmut_breit_rtbreit.bin.ref" );
+}
+
+TEST( DKS_RT, PAR_oxygen_dks_mmut ) {
+
+  CQRTTEST( "rt/parallel/grt/oxygen_6-31Gdunc_dks_mmut",
+    "oxygen_6-31Gdunc_dks_mmut.bin.ref", 1e-7 );
 }
 #endif
 

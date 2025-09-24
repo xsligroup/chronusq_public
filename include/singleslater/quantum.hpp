@@ -111,7 +111,7 @@ namespace ChronusQ {
     if( MPISize(comm) > 1 ) {
       std::cerr  << "  *** Scattering the 1PDM ***\n";
       for(auto p : this->onePDM->SZYXPointers())
-        MPIBCast(p,NB*NB/nC/nC,0,comm);
+        MPIBCast(p,NB*NB/(std::min(2,nC))/(std::min(2,nC)),0,comm);
     }
 
 #endif

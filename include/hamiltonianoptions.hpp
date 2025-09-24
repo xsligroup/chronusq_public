@@ -36,6 +36,8 @@ namespace ChronusQ {
 
   enum class X2C_TYPE {OFF, ONEE, TWOE, FOCK};
 
+  enum class DKS_TYPE {OFF, VLL};
+
   /**
    * Type of screened nuclear spin–orbit approximation
    * BOETTGER:    Scaling factors proposed by Boettger, Phys. Rev. B 62, 7809 (2000)
@@ -123,6 +125,9 @@ namespace ChronusQ {
     bool includeTau = false;
     bool ignoreProtonTwoBody = false;  // Default False (calculate v_pp J-K terms).  If true, turn these terms off
                               // See: https://doi.org/10.1016/j.cplett.2005.01.115
+
+    // Dirac-Kohn-Sham (4C-DFT) Options
+    DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS
 
   }; // struct HamiltonianOptions
 

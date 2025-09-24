@@ -60,7 +60,16 @@ namespace ChronusQ {
     InCore4indexRelERI<IntsT> &relERI =
         *std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss.aoints_->TPI);
 
-    bool computeExchange = std::abs(xHFX) >= 1e-12; 
+    bool computeExchange;
+    
+    // Check if doing DFT
+    // DKS w/ VXCLL requires computeExchange for all functionals (even pure)
+    if (typeid(ss) == typeid(KohnSham<MatsT,IntsT>)){
+      computeExchange = 1;
+    }
+    else{
+      computeExchange = std::abs(xHFX) >= 1e-12;
+    }
     
     if (not HerDen and computeExchange) CErr("formGDInCore with exchange term NYI for non-Hermitian density ");
     
@@ -223,7 +232,7 @@ namespace ChronusQ {
       if(computeExchange) {
       for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
         cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
-        SetMat('N', NB1C, NB1C, MatsT(1.), exchangeMatrixLL[c].pointer(), NB1C,
+        SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), exchangeMatrixLL[c].pointer(), NB1C,
                (*ss.exchangeMatrix)[c].pointer(), NB2C);
       }
       }
@@ -2679,7 +2688,7 @@ namespace ChronusQ {
 
     // Form GD: G[D] = 2.0*J[D] - K[D]
     if(computeExchange) {
-      *ss.twoeH -= xHFX * *ss.exchangeMatrix;
+      *ss.twoeH -= *ss.exchangeMatrix;
     } 
     // G[D] += 2*J[D]
     *ss.twoeH += 2.0 * *ss.coulombMatrix;
@@ -3773,11 +3782,19 @@ namespace ChronusQ {
     size_t SL = NB1C;
 
     auto MS = SCALAR;
+    bool computeExchange;
 
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
-    bool   computeExchange = std::abs(xHFX) >= 1e-12; 
-    
+
+    // Check if doing DFT
+    // DKS w/ VXCLL requires computeExchange for all functionals (even pure)
+    if (typeid(ss) == typeid(KohnSham<MatsT,IntsT>)){
+      computeExchange = 1;
+    }
+    else{
+      computeExchange = std::abs(xHFX) >= 1e-12;
+    }
     cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(NB1C);
 
     cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(NB1C);
@@ -3922,13 +3939,14 @@ namespace ChronusQ {
         // Call the contraction engine to do the assembly of Dirac-Coulomb LLLL
         relERICon.twoBodyContract(ss.comm, true, contractLL, pert, computeExchange);
   
-        //SetMat('N', NB1C, NB1C, MatsT(1.), CScrLLMS, NB1C, ss.coulombMatrix->pointer(), NB2C);
+        /* Store LL block into 2C spin scattered matrices */
         SetMat('N', NB1C, NB1C, MatsT(2.), CScrLLMS, NB1C, ss.twoeH->S().pointer(), NB2C);
+        // Scaled by percent HF exchange
         if (computeExchange) {
-          SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMS, NB1C, ss.exchangeMatrix->S().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMX, NB1C, ss.exchangeMatrix->X().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMY, NB1C, ss.exchangeMatrix->Y().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.), XScrLLMZ, NB1C, ss.exchangeMatrix->Z().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMS, NB1C, ss.exchangeMatrix->S().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMX, NB1C, ss.exchangeMatrix->X().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMY, NB1C, ss.exchangeMatrix->Y().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMZ, NB1C, ss.exchangeMatrix->Z().pointer(), NB2C);
         }
 
       } else {
@@ -3962,7 +3980,7 @@ namespace ChronusQ {
         if(computeExchange) {
           for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
             cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
-            SetMat('N', NB1C, NB1C, MatsT(1.), exchangeMatrixLL[c].pointer(), NB1C,
+            SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), exchangeMatrixLL[c].pointer(), NB1C,
                    (*ss.exchangeMatrix)[c].pointer(), NB2C);
           }
         }
@@ -4132,8 +4150,7 @@ namespace ChronusQ {
       prettyPrintSmart(std::cout, "EXCHANGE-Z", ss.exchangeMatrix->Z().pointer(), NB2C, NB2C, NB2C);
     
 #endif //_PRINT_MATRICES
-      } 
-    
+      }
 #endif
 
     } //_DIRAC_COULOMB
@@ -4341,7 +4358,6 @@ namespace ChronusQ {
                       ss.gauntexchangeMatrix->Z().pointer()+LS, NB2C,
                       ss.gauntexchangeMatrix->Z().pointer()+LS, NB2C);
       }
-
     } 
 
       // Add gaunt contribution 
@@ -4573,9 +4589,11 @@ namespace ChronusQ {
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Y().pointer()+LS, NB2C, ss.twoeH->Y().pointer()+SL, NB2C);
     // Copy LS to SL part of the twoeH[MZ]
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Z().pointer()+LS, NB2C, ss.twoeH->Z().pointer()+SL, NB2C);
-
+    
     // Form GD: G[D] = 2.0*J[D] - K[D]
-    if(computeExchange) *ss.twoeH -= xHFX * *ss.exchangeMatrix;
+    *ss.twoeH -= *ss.exchangeMatrix;
+
+
 
 
     CQMemManager::get().free(CScrLLMS);
