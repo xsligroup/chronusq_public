@@ -79,6 +79,10 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
     mointsTF->transformGD(pert, 'I', GD_JJII, "JJ", true, true, "WithInactive-I");  
     // change it back
     mointsTF->ss_.comm = old_comm;
+    // destroy new comm
+    #ifdef CQ_ENABLE_MPI
+      MPI_Comm_free(&new_comm);
+    #endif
     
     MatsT ECore = 0.;
     // compute core enenrgy
