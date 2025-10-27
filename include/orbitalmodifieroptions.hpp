@@ -163,6 +163,7 @@ namespace ChronusQ {
     SS_GUESS guess = SAD;
     SS_GUESS prot_guess = NEOTightProton;
     std::shared_ptr<BasisSet> guessBasis;      ///< Optional guess basis set to project from
+    std::shared_ptr<BasisSet> prot_guessBasis; ///< Optional protonic guess basis set to project from
     std::string scfGuessOutFile;            ///< Optional guess save file name for SCF guess
     std::vector<std::string> NEOSubSystemOpt; ///< Optional only optimizing one of the subsystems
     bool NEOStepwiseOpt = false; ///< Optional for doing a non-simultaneous NEO optimization

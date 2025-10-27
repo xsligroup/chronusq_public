@@ -77,7 +77,7 @@ namespace ChronusQ {
 
     // Determine if we're parsing a protonic basis
     bool pBasis(false);
-    OPTOPT( pBasis = (!section.compare("PBASIS")); ); 
+    OPTOPT( pBasis = (!section.compare("PBASIS") or !section.compare("PGUESSBASIS")); ); 
 
     // Find the Basis Definition
     std::string basisName;

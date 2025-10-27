@@ -230,8 +230,9 @@ namespace ChronusQ {
 
     std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS"); // Create BasisSet object
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
-    std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Create BasisSet object for DFBasis if defined
+    std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Guess basis set for density projection
     std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation
+    std::shared_ptr<BasisSet> prot_guessbasis = input.containsSection("PGUESSBASIS") ? CQBasisSetOptions(output,input,mol,"PGUESSBASIS") : nullptr; // Protonic Guess basis set for density projection
 
     // Parse Integral options from input file
     IntegralOptions aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"INTS");
@@ -398,6 +399,7 @@ namespace ChronusQ {
         // Note, these guessSSOptions does not apply to NEO guess
         SingleSlaterOptions guessSSOptions(ssOptions);
         guessSSOptions.scfControls.guessBasis = guessbasis;
+        guessSSOptions.scfControls.prot_guessBasis = prot_guessbasis;
         guessSSOptions.scfControls.scfGuessOutFile = rstFileName;
         //guessSSOptions.refOptions.isKSRef = false;
         //guessSSOptions.refOptions.nC = 1;
