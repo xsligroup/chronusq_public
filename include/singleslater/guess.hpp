@@ -187,7 +187,8 @@ namespace ChronusQ {
 
     } else if( scfControls.guess == RANDOM ) RandomGuess();
       else if( scfControls.guess == READMO ) ReadGuessMO();
-      else if( scfControls.guess == READDEN ) ReadGuess1PDM( ssOptions.scfControls.guessBasis );
+      else if( scfControls.guess == READDEN ) { if( this->particle.charge == 1.0 ) ReadGuess1PDM( ssOptions.scfControls.prot_guessBasis );
+                                                else                               ReadGuess1PDM( ssOptions.scfControls.guessBasis ); }
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
       else if( scfControls.guess == NEOTightProton ) NEOTightProtonGuess();
       else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(pert,ssOptions);
