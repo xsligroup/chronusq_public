@@ -210,11 +210,6 @@ namespace ChronusQ {
 
     void dealloc () { }
 
-    // Transform RDM's into PDMs
-    // TODO: This should be moved elsewhere
-    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getOnePDM(){return std::vector<std::shared_ptr<cqmatrix::Matrix<double>>>{};};
-    virtual std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getPOnePDM(){return std::vector<std::shared_ptr<cqmatrix::Matrix<double>>>{};};
-
   }; // class MCWaveFunctionBase
 
 }; // namespace ChronusQ

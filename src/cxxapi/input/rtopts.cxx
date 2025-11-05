@@ -120,6 +120,8 @@ namespace ChronusQ {
     if( not input.containsSection("RT") )
       CErr("RT Section must be specified for RT job",out);
 
+    bool isNEO = ss->molecule().atomsQ.size()>0;
+
     out << "  *** Parsing MRRT options ***\n";
 
     std::shared_ptr<RealTimeBase > rt;
@@ -164,7 +166,7 @@ namespace ChronusQ {
     HandleRTInitState(out,input,vecManager);
 
     bool found = false;
-    if (mcscf) {
+    if (mcscf && !isNEO) {
       #define CONSTRUCT_RT_MR(_REF,_MT,_IT,_RTALG,_MRWFN)             \
       if( not found ) try {                          \
         if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
@@ -182,6 +184,23 @@ namespace ChronusQ {
       CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
       // no magnetic fields... yet.
       //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
+    }
+    else if(mcscf && isNEO)
+    {
+      #define CONSTRUCT_RT_MRNEO(_REF,_MT,_IT,_RTALG,_MRWFN)             \
+      if( not found ) try {                          \
+        if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
+        rt =     std::make_shared< RealTimeNEOCI<_MT, _IT> >(  \
+                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
+        found = true;                                \
+        } \
+      } catch(...) {  }
+
+      if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
+          CONSTRUCT_RT_MRNEO( NEOMCSCF, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+      }
+      CONSTRUCT_RT_MRNEO( NEOMCSCF, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+
     }
 
     // Are we doing a nonhermitian problem

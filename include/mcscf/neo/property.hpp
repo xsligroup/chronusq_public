@@ -171,7 +171,7 @@ namespace ChronusQ {
     void NEOMCSCF<MatsT,IntsT>::ProtonExpectationValue(size_t s1)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
-        std::shared_ptr<cqmatrix::Matrix<double>> PDM = this->getPOnePDM()[s1];
+        std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
         std::array<cqmatrix::Matrix<MatsT>,3> xyz = {(*protSS->aoints_->lenElectric)[0]->matrix(),
                                                      (*protSS->aoints_->lenElectric)[1]->matrix(),
                                                      (*protSS->aoints_->lenElectric)[2]->matrix()};
@@ -185,7 +185,7 @@ namespace ChronusQ {
     } // Proton Expectation value
 
     template<typename MatsT, typename IntsT>
-    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonExpectationValue(cqmatrix::Matrix<double> PDM)
+    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonExpectationValue(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         std::array<cqmatrix::Matrix<MatsT>,3> xyz = {(*protSS->aoints_->lenElectric)[0]->matrix(),
@@ -204,7 +204,7 @@ namespace ChronusQ {
     template<typename MatsT, typename IntsT>
     void NEOMCSCF<MatsT,IntsT>::ProtonVariance(size_t s1)
     {
-        std::shared_ptr<cqmatrix::Matrix<double>> PDM = this->getPOnePDM()[s1];
+        std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
         std::vector<std::string> xyzstrs({"<X^2>-<X>^2 = ","<Y^2>-<Y>^2 = ","<Z^2>-<Z>^2 = "});
         std::cout << "Poton variance (bohr^2): " << std::endl; 
         std::array<double,3> var = ProtonVariance(*PDM);
@@ -213,7 +213,7 @@ namespace ChronusQ {
     } // Proton Variance
 
     template<typename MatsT, typename IntsT>
-    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonVariance(cqmatrix::Matrix<double> PDM)
+    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonVariance(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         std::array<cqmatrix::Matrix<MatsT>,3> xyz = {(*protSS->aoints_->lenElectric)[0]->matrix(),
@@ -236,13 +236,13 @@ namespace ChronusQ {
     template<typename MatsT, typename IntsT>
     void NEOMCSCF<MatsT,IntsT>::ProtonKE(size_t s1)
     {
-        std::shared_ptr<cqmatrix::Matrix<double>> PDM = this->getPOnePDM()[s1];
+        std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
         std::cout << "Kinetc Energy Expectation value (au): ";
         std::cout << std::setw(10) << std::left << std::setprecision(6) << ProtonKE(*PDM) << std::endl;
     } // Proton KE
 
     template<typename MatsT, typename IntsT>
-    double NEOMCSCF<MatsT,IntsT>::ProtonKE(cqmatrix::Matrix<double> PDM)
+    double NEOMCSCF<MatsT,IntsT>::ProtonKE(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         cqmatrix::Matrix<MatsT> AOKE = protSS->aoints_->kinetic->matrix();

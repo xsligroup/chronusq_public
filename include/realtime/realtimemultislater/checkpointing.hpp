@@ -148,7 +148,7 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::saveState(EMPerturbation &pert_t) {
                                {memLastPos}, {data.Time.size()});
       savFile.partialWriteData("RTNEW/ENERGY", data.Energy.data(), {lastPos},
                                {nSteps}, {memLastPos}, {data.Energy.size()});
-      savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &data.ElecDipole[0][0],
+      savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &data.ElecDipole[memLastPos][0],
                                {lastPos, 0}, {nSteps, 3}, {memLastPos, 0},
                                {data.Time.size(), 3});
 

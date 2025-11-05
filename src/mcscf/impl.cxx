@@ -39,9 +39,9 @@ namespace ChronusQ {
  template class OrbitalRotation<dcomplex,double>; 
  template class OrbitalRotation<dcomplex,dcomplex>; 
 
-  template class NEOMCSCF<double,double>;
-  template class NEOMCSCF<dcomplex,double>;
-  template class NEOMCSCF<dcomplex,dcomplex>;
+ template class NEOMCSCF<double,double>;
+ template class NEOMCSCF<dcomplex,double>;
+ template class NEOMCSCF<dcomplex,dcomplex>;
 
 }; // namespace ChronusQ
 

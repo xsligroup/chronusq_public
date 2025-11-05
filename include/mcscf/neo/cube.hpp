@@ -84,10 +84,10 @@ namespace ChronusQ {
 
             for(const auto Root : RootsToCube)
             {
-                std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> etemp_pdm = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(ePDMs[Root]->nRows(),false,false);
+                std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> etemp_pdm = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(ePDMs[Root]->nRows(),false,false);
                 etemp_pdm->S() = *ePDMs[Root];
                 ecube->evalDenCube(cube_name+"_ELEC_"+std::to_string(Root+1),etemp_pdm);
-                std::shared_ptr<cqmatrix::PauliSpinorMatrices<double>> ptemp_pdm = std::make_shared<cqmatrix::PauliSpinorMatrices<double>>(pPDMs[Root]->nRows(),false,false);
+                std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ptemp_pdm = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(pPDMs[Root]->nRows(),false,false);
                 ptemp_pdm->S() = *pPDMs[Root];
                 pcube->evalDenCube(cube_name+"_PROT_"+std::to_string(Root+1),ptemp_pdm,1.0);
 

@@ -28,6 +28,7 @@
 #include <manybodywavefunction.hpp>
 #include <cubegen.hpp>
 #include <mcwavefunction.hpp>
+#include <mcscf.hpp>
 #include <singleslater.hpp>
 #include <singleslater/neoss.hpp>
 
@@ -111,6 +112,9 @@ namespace ChronusQ {
     std::vector<double> Time;
     std::vector<double> Energy;
     std::vector<std::array<double, 3>> ElecDipole;
+
+    // For NEO calculations we'll save the proton dipole separately for convenience
+    std::vector<std::array<double, 3>> ProtDipole;
   
     // Field
     std::vector<std::array<double, 3>> ElecDipoleField;
@@ -204,7 +208,7 @@ namespace ChronusQ {
     void propagateWFN_RK4(bool Start, bool Finish);
   
     void RealTimeCorrelationFunction();
-    void saveState(EMPerturbation &);
+    virtual void saveState(EMPerturbation &);
     void restoreState();
     void run(bool firstStep, EMPerturbation &emPert) override {
       // Get correct time length
@@ -286,7 +290,44 @@ namespace ChronusQ {
     };
   
     // Generate cube files
-    void genCubes();
+    virtual void genCubes();
   }; // class RealTimeMultiSlater
+
+  template <typename MatsT, typename IntsT>
+  class RealTimeNEOCI : public RealTimeCI<MatsT, IntsT> {
+
+    cart_t classicalNucDipole={0.0,0.0,0.0};
+    cart_t protDipole;
+
+    std::shared_ptr<NEOMCSCF<MatsT,IntsT>> neomcref_;
+    std::shared_ptr<NEOCASCI<MatsT,IntsT>> neocibuilder_;
+
+  public:
+
+    RealTimeNEOCI(std::shared_ptr<NEOMCSCF<MatsT, IntsT>> reference,
+               std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager_,
+               RealTimeAlgorithm MRRTAlg)
+        : neomcref_(reference),
+          RealTimeCI<MatsT,IntsT>(reference,vecManager_,MRRTAlg)
+          {
+            // For convenience and making sure the proper CI builder types are available
+            neocibuilder_ = std::dynamic_pointer_cast<NEOCASCI<MatsT,IntsT>>(neomcref_->ciBuilder);
+            if(!neocibuilder_)
+              CErr("RT-NEO-CI Only Implemented for NEO-CAS-CI wavefunctions!");
+            // Cache this so the different dipole components can be saved individually
+            for(const auto & atom : neomcref_->ewfn_->reference().molecule().atoms)
+            {
+              if(atom.quantum) continue;
+              MatAdd('N','N',3,1,1.,&classicalNucDipole[0],3,atom.nucCharge,&atom.coord[0],3,&classicalNucDipole[0],3);
+            }
+          };
+
+    void calculateDipole() override;          
+    void genCubes() override;
+    void saveState(EMPerturbation&) override;
+    void createRTDataSets(size_t maxPoints) override;
+
+  }; // class RealTimeNEOCI
+
 
 }; // namespace ChronusQ

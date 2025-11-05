@@ -61,7 +61,7 @@ void RealTimeCI<MatsT, IntsT>::calculateDipole() {
   // Convert to AO basis and update PDM in ref
   reference_->rdm2pdm(oneRDM);
   EMPerturbation emPert;
-  ss_ptr->computeMultipole(emPert);
+  ss_ptr->computeMultipole(emPert,{ELECTRIC_DIPOLE});
   std::copy(ss_ptr->elecDipole.begin(), ss_ptr->elecDipole.end(),
             this->Dipole.begin());
 }

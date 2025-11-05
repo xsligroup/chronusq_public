@@ -150,6 +150,7 @@ namespace ChronusQ {
       // construct the molecule object
       // XXX: This needs to be updated
       auto multi = new_atoms.size()%2+1;
+      multi = multip_proton;
       Molecule new_mole(0, multi, std::move(new_atoms));
 
       // return it
@@ -224,10 +225,13 @@ namespace ChronusQ {
       for ( Atom& atom : atoms ) {
         if ( atom.quantum ) {
           // return an error if not hydrogen
-          if ( atom.atomicNumber != 1 )
+          if ( atom.atomicNumber != 1 && atom.atomicNumber != 0 )
             CErr("Non-Hydrogen quantum nuclei NYI.");
 
-          nTotalP += 1;
+          if ( atom.atomicNumber == 1)
+          {
+            nTotalP += 1;
+          }
           atomsQ.push_back(ind);
         }
         else 

@@ -35,6 +35,7 @@ namespace ChronusQ {
     void NEOMCSCF<MatsT,IntsT>::computeOneRDM(size_t i)
     {
         this->ciBuilder->computeOneRDM(*this,this->CIVecs[i],this->oneRDM[i]);
+        NEOCIBuilder->computePOneRDM(*this,this->CIVecs[i],this->PoneRDM[i]);
     }
 
     template <typename MatsT, typename IntsT>
@@ -47,69 +48,49 @@ namespace ChronusQ {
     }
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computePOneRDM(size_t i)
-    {
-//        std::shared_ptr<NEOCASCI<MatsT,IntsT>> NEOCI = std::make_shared<NEOCASCI<MatsT,Ints>>(dynamic_cast(this->ciBuilder));
-        NEOCIBuilder->computePOneRDM(*this,this->CIVecs[i],this->PoneRDM[i]);
-    }
-
-    template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computePOneRDM()
-    {
-        for(size_t i = 0; i < this->NStates; i++)
-        {
-            computePOneRDM(i);
-        }
-    }
-
-    // TODO: The two functions below are specialized to doubles to get this working quickly
-    // These functions should probably be extracted elsewhere, or made more general members
-    // of the parent classes of (NEO)MCSCF
-
-    template <typename MatsT, typename IntsT>
-    std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> NEOMCSCF<MatsT,IntsT>::getOnePDM()
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCSCF<MatsT,IntsT>::getOnePDM()
     {
         // Get the orbital offsets for the state
         size_t nInact = this->ewfn_->MOPartition.nInact;
         size_t nCorrO = this->ewfn_->MOPartition.nCorrO;
         size_t nAO = this->ewfn_->ref_.mo[0].nRows();
-        double * MO = (double*)this->ewfn_->ref_.mo[0].pointer() + nAO * nInact;
+        MatsT* MO = this->ewfn_->ref_.mo[0].pointer() + nAO * nInact;
 
-        std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> PDMs;
+        std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> PDMs;
         PDMs.reserve(this->NStates);
 
-        cqmatrix::Matrix<double> SCR(nAO);
+        cqmatrix::Matrix<MatsT> SCR(nAO);
         for(size_t i = 0; i < this->NStates; i++)
         {
-            cqmatrix::Matrix<double> PDM(nAO);
-            double * rdm = (double*)this->oneRDM[i].pointer();
-            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,1.0,MO,nAO,rdm,nCorrO,0.0,SCR.pointer(),nAO);
-            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,1.0,SCR.pointer(),nAO,MO,nAO,0.0,PDM.pointer(),nAO);
-            PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<double>>(PDM));
+            cqmatrix::Matrix<MatsT> PDM(nAO);
+            MatsT * rdm = this->oneRDM[i].pointer();
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,MatsT(1.0),MO,nAO,rdm,nCorrO,0.0,SCR.pointer(),nAO);
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,MatsT(1.0),SCR.pointer(),nAO,MO,nAO,0.0,PDM.pointer(),nAO);
+            PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(PDM));
         }
         return PDMs;
     }
 
     template <typename MatsT, typename IntsT>
-    std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> NEOMCSCF<MatsT,IntsT>::getPOnePDM()
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCSCF<MatsT,IntsT>::getPOnePDM()
     {
         // Get the orbital offsets for the state
         size_t nInact = this->pwfn_->MOPartition.nInact;
         size_t nCorrO = this->pwfn_->MOPartition.nCorrO;
         size_t nAO = this->pwfn_->ref_.mo[0].nRows();
-        double * MO = (double*)this->pwfn_->ref_.mo[0].pointer() + nAO * nInact;
+        MatsT * MO = this->pwfn_->ref_.mo[0].pointer() + nAO * nInact;
 
-        std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> PDMs;
+        std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> PDMs;
         PDMs.reserve(this->NStates);
 
-        cqmatrix::Matrix<double> SCR(nAO);
+        cqmatrix::Matrix<MatsT> SCR(nAO);
         for(size_t i = 0; i < this->NStates; i++)
         {
-            cqmatrix::Matrix<double> PDM(nAO);
-            double * rdm = (double*)this->PoneRDM[i].pointer();
-            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,double(1.0),MO,nAO,rdm,nCorrO,double(0.0),SCR.pointer(),nAO);
-            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,double(1.0),SCR.pointer(),nAO,MO,nAO,double(0.0),PDM.pointer(),nAO);
-            PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<double>>(PDM));
+            cqmatrix::Matrix<MatsT> PDM(nAO);
+            MatsT* rdm = this->PoneRDM[i].pointer();
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,MatsT(1.0),MO,nAO,rdm,nCorrO,MatsT(0.0),SCR.pointer(),nAO);
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,MatsT(1.0),SCR.pointer(),nAO,MO,nAO,MatsT(0.0),PDM.pointer(),nAO);
+            PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(PDM));
         }
         return PDMs;
     }

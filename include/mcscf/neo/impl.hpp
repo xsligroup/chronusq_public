@@ -283,117 +283,6 @@ namespace ChronusQ {
     return;
   }
 
-
-
-  template <typename MatsT, typename IntsT>
-  void NEOMCSCF<MatsT, IntsT>::run(EMPerturbation & externalPert){
-    // SMG 09/11/23
-    // Note this structure mostly duplicates the structure of the MCSCF.run()
-    // function defined in /include/mcscf/impl.hpp
-    ProgramTimer::tick("MCSCF Total");
-
-    // Create combined perturbation
-    EMPerturbation pert;
-    // Add on the MCSCF Perturbation if present
-    for( auto& field : this->mcscfPert.fields )
-      pert.addField( field );
-    // Finally add any additional Perturbations
-    for( auto& field : externalPert.fields )
-      pert.addField( field );
-
-    // Allocate required memory and create CI solver
-    alloc();
-
-    // Print the header announcing we're goign to do MCSCF
-    this->printMCSCFHeader(pert);
-
-    // Transform the integrals, 
-    // this is 3 integral transformations of (ee|ee), (PP|PP) {both of these
-    // also transform the 1 body parts}, and (ee|PP)
-    ProgramTimer::tick("Integral Trans");
-    this->transformMultipleInts(pert);
-    ProgramTimer::tock("Integral Trans");
-
-    // Run the CISolver
-    this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this),pert);
-
-    // Run SCF if requested
-    if (this->settings.doSCF)
-    {
-      CErr("NEO-CASSCF NYI");
-    }
-
-    this->computeOneRDM();
-    this->computePOneRDM();
-
-    if (this->NatOrbs)
-    {
-      // Form and rotate to the natural orbital basis
-      this->pwfn_->formNaturalOrbs(this->PoneRDM[this->NatOrbs-1]);
-      this->ewfn_->formNaturalOrbs(this->oneRDM[this->NatOrbs-1]);
-
-      if(this->NatOrbRediag)
-      {
-        // Clear previous transformed integrals
-        this->moints->clear();      
-
-        // Retransform integrals in new NO basis
-        this->transformMultipleInts(pert);
-        // If we read in the previous CI Vector, use Davison by default
-        if(this->ciSolver->getAlg()==SKIP)
-          this->ciSolver->switchAlgorithm(CI_DAVIDSON);
-        this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this),pert);
-      }
-    }
-
-    // Print the CI energies
-    this->printStateEnergy();
-
-    // Pretty Printing
-    this->printMCSCFFooter();
-
-    // Multipole Evaluation
-    if (this->multipoleMoment)
-      this->computeMultipole();
-
-    // SMG 10/03/23
-    // TODO:
-    // Properties, 1&2 RDM, TDM
-    if(this->NosS1)
-    {
-      this->osc_str = CQMemManager::get().template malloc<double>(this->NosS1*this->NStates);
-      for(size_t s1 = 0; s1 < this->NosS1; s1++)
-      {
-        for(size_t s2 = 0; s2 < this->NStates; s2++)
-        {
-          if(s2<=s1)
-          {
-            this->osc_str[s2 + s1*this->NStates] = 0.0;
-          }
-          else
-          {
-            this->osc_str[s2 + s1*this->NStates] = this->oscillator_strength(s2,s1);
-          }
-        }
-      }
-    }
-
-    // SMG 08/09/24
-    // Need to reintegrate with Latest CubeGen implementation
-
-    //if(this->doCubeGen)
-    //{
-    //  cubegen();
-    //}
-
-    // Save the CI Vectors
-    // This is just the unmodified MCWaveFunction call for now, so 
-    // this DOES NOT save the proper MO partitions
-    this->saveCurrentStates(true);
-
-    ProgramTimer::tock("MCSCF Total");
-  }
-
   template<typename MatsT, typename IntsT>
   void NEOMCSCF<MatsT,IntsT>::alloc()
   {
@@ -447,6 +336,13 @@ namespace ChronusQ {
       this->settings.maxCIIter, this->settings.ciVectorConv,
       this->settings.maxDavidsonSpace, this->settings.nDavidsonGuess,
       this->settings.energyRefs);
+  }
+
+  template<typename MatsT, typename IntsT>
+  void NEOMCSCF<MatsT,IntsT>::formNaturalOrbitals()
+  {
+    this->pwfn_->formNaturalOrbs(this->PoneRDM[this->NatOrbs-1]);
+    this->ewfn_->formNaturalOrbs(this->oneRDM[this->NatOrbs-1]);
   }
 
 

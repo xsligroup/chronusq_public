@@ -29,3 +29,4 @@
 #include <realtime/realtimeci/initialstate.hpp>
 #include <realtime/realtimeci/sigma.hpp>
 #include <realtime/realtimeci/statepopulation.hpp>
+#include <realtime/realtimeci/neo/impl.hpp>

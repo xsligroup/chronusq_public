@@ -178,6 +178,16 @@ namespace ChronusQ {
 
     // MCSCF procedural functions
     virtual void run(EMPerturbation &);       // From MCWaveFunctionBase
+
+    // Functions that generally are wrappers around MCWavefunction, 
+    // but might be overwritten by classes which derive from MCSCF
+    virtual void transformInts(EMPerturbation & pert);
+    virtual void computeMultipole();
+    virtual void populationAnalysis();
+    virtual void spinAnalysis();
+    virtual double oscillator_strength(size_t, size_t);
+    virtual void formNaturalOrbitals();
+
     
     // compute all RDM (and state average) if no inputs 
     virtual void computeOneRDM();
@@ -284,7 +294,6 @@ namespace ChronusQ {
     };
 
       ~NEOMCSCF(){};
-      void run(EMPerturbation & ) override;
       void transformInts(EMPerturbation & pert) override
       {
         transformMultipleInts(pert);
@@ -302,16 +311,16 @@ namespace ChronusQ {
       // RDM functionality
       void computeOneRDM(size_t) override;
       void computeOneRDM() override;
-      void computePOneRDM(size_t);
-      void computePOneRDM();
+
+      void formNaturalOrbitals() override;
 
       // Functionality for properties of 1 proton systems
       void ProtonExpectationValue(size_t);
       void ProtonVariance(size_t);
       void ProtonKE(size_t);
-      std::array<double,3> ProtonExpectationValue(cqmatrix::Matrix<double>);
-      std::array<double,3> ProtonVariance(cqmatrix::Matrix<double>);
-      double ProtonKE(cqmatrix::Matrix<double>);
+      std::array<double,3> ProtonExpectationValue(cqmatrix::Matrix<MatsT>);
+      std::array<double,3> ProtonVariance(cqmatrix::Matrix<MatsT>);
+      double ProtonKE(cqmatrix::Matrix<MatsT>);
 
       // Moment calculator
       void computeMultipole() override;
@@ -321,8 +330,8 @@ namespace ChronusQ {
       void runCube(std::vector<std::shared_ptr<CubeGen>>) override;
 
       // Transform RDM's into PDMs
-      std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getOnePDM() override;
-      std::vector<std::shared_ptr<cqmatrix::Matrix<double>>> getPOnePDM() override;
+      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
+      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getPOnePDM();
 
       // Get oscillator strengths for the
       double oscillator_strength(size_t, size_t s1 = 0) override;
