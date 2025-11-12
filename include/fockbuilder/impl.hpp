@@ -197,6 +197,11 @@ namespace ChronusQ {
           contract.push_back(
             {onePDMs[i]->Z().pointer(), exchangeMatrices[i]->Z().pointer(), HerDen, EXCHANGE}
           );
+        // TangDD: do full K contraction for 2C proton
+        if (exchangeMatrices[i]->hasXY() and ss.particle.charge>0)
+          contract.push_back(
+            {onePDMs[i]->Z().pointer(), exchangeMatrices[i]->Z().pointer(), HerDen, EXCHANGE}
+          ); 
         if (exchangeMatrices[i]->hasXY()) {
           contract.push_back(
             {onePDMs[i]->Y().pointer(), exchangeMatrices[i]->Y().pointer(), HerDen, EXCHANGE}
@@ -215,6 +220,8 @@ namespace ChronusQ {
 
     // Copy the S component of protonic K matrix to its Z component
     if(computeExchange and ss.particle.charge>0)
+      // TangDD: do full K contraction for 2C proton 
+      if (ss.nC == 1)
         for (auto i = 0ul; i < nBatch; i++)  std::copy_n(exchangeMatrices[i]->S().pointer(),NB*NB,exchangeMatrices[i]->Z().pointer());
 
     if(ss.TPI->printContractionTiming)

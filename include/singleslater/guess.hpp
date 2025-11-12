@@ -1580,8 +1580,14 @@ namespace ChronusQ {
     size_t numProt = this->nOA, NB = this->basisSet().nBasis, NB_per_prot = NB / numProt;
     
     this->onePDM->S().clear();
+    if (this->nC == 2) {
+      this->onePDM->X().clear();
+      this->onePDM->Y().clear(); 
+    }
     this->mo[0].clear();
-    this->mo[1].clear();
+    // GNEO still keep a high-alpha guess
+    if (this->nC == 1)
+      this->mo[1].clear();
     for(int i = 0; i < numProt; i++) {
       this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = IntsT(1.0);
       this->mo[0](i*NB_per_prot, i) = IntsT(1.0);
