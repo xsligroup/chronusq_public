@@ -60,7 +60,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
     std::copy_n(overlap->pointer(),nSQ,SCR1);
     HermitianEigen('V', 'U', NB, SCR1, NB, sE);
 
-    if( std::abs(sE[0]) < 1e-10 ) {
+    if( std::abs(sE[0]) < linearDepTol ) {
       std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;
       CErr("Contracted Basis Set is Linearly Dependent!");
     }
@@ -315,7 +315,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
 #endif
 
     // Compute Orthogonalization Matrices
-    Orthogonalization<MatsT> orthoMO(stateOverlap);
+    Orthogonalization<MatsT> orthoMO(stateOverlap, linearDepTol);
 
     // Transform MO's in place
     MatsT* SCR = CQMemManager::get().template malloc<MatsT>(NB * NB);
@@ -365,7 +365,7 @@ void Orthogonalization<MatsT>::computeOrtho() {
       std::copy_n(overlap->pointer(),nSQ,sVecs);
       HermitianEigen('V', 'U', NB, sVecs, NB, sE);
 
-      if( std::abs( sE[0] ) < 1e-12 ){
+      if( std::abs( sE[0] ) < linearDepTol ){
         std::cout<< "error is "<< std::abs( sE[0] ) << std::endl;
         CErr("Contracted Basis Set is Linearly Dependent!");
       }

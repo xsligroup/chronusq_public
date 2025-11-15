@@ -22,9 +22,6 @@
  *  
  */
 #pragma once
-#include <basisset.hpp>
-#include <particleintegrals.hpp>
-
 
 namespace ChronusQ {
 

@@ -285,6 +285,15 @@ TEST( FOURCHF, Water_ccpVDZ_DCHF_DCHFGuess_READMO_restart ) {
 
 };
 
+// Remove linearly dependent primitive test with He atom system
+TEST( FOURCHF, He_4c_remove_linear_dependency ) {
+
+  CQSCFTEST( "scf/serial/fourcomp/He_4c_remove_linear_dependency",
+             "He_4c_remove_linear_dependency.bin.ref",1e-8,
+             false, false, false, false, false, true);
+
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 // Two electron U-Pu 184+ test Dirac-HF no 2ERI relativitic, LLLL only

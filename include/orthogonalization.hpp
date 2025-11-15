@@ -37,11 +37,12 @@ private:
   std::shared_ptr<cqmatrix::Matrix<MatsT>> forwardTrans;    ///< Transformation from the nonorthogonal basis to orthogonal basis (S^{-1/2})
   std::shared_ptr<cqmatrix::Matrix<MatsT>> backwardTrans;   ///< Transformation from the orthogonal basis to the nonorthogonal basis (S^{1/2})
   ORTHO_TYPE orthoType = LOWDIN;                        ///< Using Lowdin Type Orthogonalization
+  double linearDepTol = 1e-12;                          ///< Linear Dependence Tolerance
 
 public:
   // Constructors
   Orthogonalization() {};
-  Orthogonalization(cqmatrix::Matrix<MatsT>& s) {setOverlap(s);};
+  Orthogonalization(cqmatrix::Matrix<MatsT>& s, double linearDepTol = 1e-12) : linearDepTol(linearDepTol) {setOverlap(s);};
 
   // Copy/Move Constructors
   Orthogonalization(Orthogonalization<MatsT>&)  = default;

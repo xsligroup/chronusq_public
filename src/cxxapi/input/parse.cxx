@@ -457,7 +457,7 @@ namespace ChronusQ {
    *  \return     Value of query data field as a std::string
    */
   template<>
-  std::string CQInputFile::getData(std::string query) {
+  std::string CQInputFile::getData(std::string query) const {
       auto kv = dict_.find(query);
   
       if(kv != dict_.end())
@@ -475,7 +475,7 @@ namespace ChronusQ {
    *  \return     Value of query data field as a int
    */
   template<>
-  int CQInputFile::getData(std::string query) {
+  int CQInputFile::getData(std::string query) const {
   
     return std::stoi(getData<std::string>(query));
   
@@ -489,7 +489,7 @@ namespace ChronusQ {
    *  \return     Value of query data field as a bool
    */
   template<>
-  bool CQInputFile::getData(std::string query) {
+  bool CQInputFile::getData(std::string query) const {
   
     query = getData<std::string>(query);
     if (not query.compare("TRUE") or not query.compare("ON")){
@@ -513,7 +513,7 @@ namespace ChronusQ {
    *  \return     Value of query data field as a size_t
    */
   template<>
-  size_t CQInputFile::getData(std::string query) {
+  size_t CQInputFile::getData(std::string query) const {
   
     return std::stoul(getData<std::string>(query));
   
@@ -527,7 +527,7 @@ namespace ChronusQ {
    *  \return     Value of query data field as a double
    */
   template<>
-  double CQInputFile::getData(std::string query) {
+  double CQInputFile::getData(std::string query) const {
   
     return std::stod(getData<std::string>(query));
   

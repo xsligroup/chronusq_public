@@ -38,6 +38,7 @@
 #include <cerr.hpp>
 #include <molecule.hpp>
 #include <basisset.hpp>
+#include <basisset/remove_linear_dep_shells.hpp>
 #include <integrals.hpp>
 #include <singleslater.hpp>
 #include <coupledcluster.hpp>
@@ -229,6 +230,8 @@ namespace ChronusQ {
     Molecule mol(std::move(CQMoleculeOptions(output,input,scrFileName))); // Create Molecule object
 
     std::shared_ptr<BasisSet> basis = CQBasisSetOptions(output,input,mol,"BASIS"); // Create BasisSet object
+    read_option_and_remove_linear_dependency(input, *basis, mol, output); // Remove linear dependent basis functions if requested
+
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
     std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Guess basis set for density projection
     std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation

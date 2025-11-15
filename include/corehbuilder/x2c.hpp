@@ -65,7 +65,8 @@ namespace ChronusQ {
      * @param hamiltonianOptions flags for AO integrals evaluation
      * @param linearDependencyThreshold threshold for linear dependency
      */
-    void removeLinearDependency(const HamiltonianOptions &hamiltonianOptions, double linearDependencyThreshold = 1e-10);
+    void removeLinearDependency(const HamiltonianOptions &hamiltonianOptions,
+                                double linearDependencyThreshold = 1e-12, bool rmAtomicLinDepOnly = false);
 
   public:
 
@@ -110,7 +111,10 @@ namespace ChronusQ {
       molecule_(mol), basisSet_(basis),
       uncontractedBasis_(basisSet_.uncontractBasis()) {
 
-      removeLinearDependency(ssOptions_.hamiltonianOptions);
+      double linearDepTol = ssOptions_.scfControls.linearDepTol;
+      if (not ssOptions_.scfControls.rmLinearDep)
+        linearDepTol = 0.0;
+      removeLinearDependency(ssOptions_.hamiltonianOptions, linearDepTol, ssOptions_.scfControls.rmAtomicLinDepOnly);
     }
 
     // Different type

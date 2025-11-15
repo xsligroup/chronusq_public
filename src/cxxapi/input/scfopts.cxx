@@ -61,7 +61,10 @@ namespace ChronusQ {
       "ORBPROP",
       "NEOOPTIMIZEONLY",
       "NEOOPTIMIZEFIRST",
-      "NEOSTEPWISEOPTIMIZE"
+      "NEOSTEPWISEOPTIMIZE",
+      "REMOVELINEARDEP",
+      "REMOVEATOMICLINEARDEPONLY",
+      "LINEARDEPTOL"
     };
 
     // Specified keywords
@@ -402,6 +405,17 @@ namespace ChronusQ {
 
     // Parse whether to print contraction timing during SCF
     OPTOPT( scfControls.printContractionTiming = input.getData<bool>("SCF.PRINTCONTRACTIONTIMING"); )
+
+    // Linear dependency tolerance
+    if ( input.containsData("SCF.REMOVELINEARDEP")) {
+      scfControls.rmLinearDep = input.getData<bool>("SCF.REMOVELINEARDEP");
+    }
+    if ( input.containsData("SCF.REMOVEATOMICLINEARDEPONLY")) {
+      scfControls.rmAtomicLinDepOnly = input.getData<bool>("SCF.REMOVEATOMICLINEARDEPONLY");
+    }
+    if ( input.containsData("SCF.LINEARDEPTOL")) {
+      scfControls.linearDepTol = input.getData<double>("SCF.LINEARDEPTOL");
+    }
 
 
 

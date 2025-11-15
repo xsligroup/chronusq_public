@@ -21,4 +21,4 @@
 #   E-Mail: xsli@uw.edu
 #
 
-target_sources( cq PRIVATE reference.cxx basisset.cxx basisset_eval.cxx )
+target_sources( cq PRIVATE reference.cxx basisset.cxx basisset_eval.cxx remove_linear_dep_shells.cxx)

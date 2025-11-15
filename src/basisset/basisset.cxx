@@ -199,26 +199,44 @@ namespace ChronusQ {
    */
   void BasisSet::updateNuclearCoordinates(const Molecule &mol) {
 
-    // Early return if this basis set doesn't actually contain anything
-    if( basisName == "" and basisDef == "" and shells.size() == 0 )
-      return;
-
-    // Generate the reference basis set of that keyword
-    ReferenceBasisSet ref(basisName, basisDef, inputDef, forceCart, false, nucBasis);
-
-    // update appropriate shell set and coefficients for the Molecule
-    // object
-    std::tie(shells,unNormCont) = std::move(ref.generateShellSet(mol));
-
-    // clear the old list of centers
-    centers.clear();
-
-    // Update the copy of the basis centers
+    cartvec_t new_centers;
+    // List new basis centers
     std::for_each(mol.atoms.begin(),mol.atoms.end(),
                   [&]( const Atom &at ){
-                    centers.emplace_back(at.coord);
+                    new_centers.emplace_back(at.coord);
                   }
     );
+    // Check if the centers have changed
+    std::vector<bool> changed(centers.size(),false);
+    for (size_t i = 0; i < centers.size(); ++i) {
+      if (centers[i][0] != new_centers[i][0] or
+          centers[i][1] != new_centers[i][1] or
+          centers[i][2] != new_centers[i][2]) {
+        changed[i] = true;
+      }
+    }
+    // Check if the centers have changed
+    if (std::all_of(changed.begin(), changed.end(),
+                    [](bool x){ return !x; })) {
+      return; // No change
+    }
+
+    // Update the copy of the basis centers
+    centers = new_centers;
+
+    // Update the centers in Shells
+    for (size_t i = 0; i < centers.size(); ++i) {
+      if (not changed[i])
+        continue;
+
+      for (size_t j = 0; j < shells.size(); ++j) {
+        if (mapSh2Cen[j] == i) {
+          shells[j].O[0] = centers[i][0];
+          shells[j].O[1] = centers[i][1];
+          shells[j].O[2] = centers[i][2];
+        }
+      }
+    }
 
     // Update the BasisSet member data
     update();

@@ -11,9 +11,8 @@ geom:
 #  Job Specification
 #
 [QM]
-reference = X2CHF
+reference = 4CHF
 job = SCF
-x2ctype = fock  #fock for mean-field X2C; onee for one-electron X2C
 
 
 [BASIS]
@@ -23,12 +22,14 @@ basisdef:
  He     0
  S    1   1.00
       10.0       1.0000000
- S    2   1.00
-       1.0       0.9990000
-       0.1       0.0010000
- S    2   1.00
-       1.00001   0.0010000
-       0.10010   0.9990000
+ S    1   1.00
+       1.0       1.0000000
+ S    1   1.00
+       0.1       1.0000000
+ S    1   1.00
+       1.00001   1.0000000
+ S    1   1.00
+       0.10010   1.0000000
  ****
 
 [SCF]
@@ -50,3 +51,4 @@ DiracCoulomb = exact
 SSSS  = true
 Gaunt = true
 Gauge = true
+

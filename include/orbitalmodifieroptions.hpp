@@ -183,6 +183,11 @@ namespace ChronusQ {
     bool   doIncFock = false; ///< Whether to perform an incremental fock build
     size_t nIncFock  = 20;   ///< Restart incremental fock build after n steps
 
+    // Linear dependency removal control
+    bool rmLinearDep    = false; ///< Whether to remove linear dependencies
+    bool rmAtomicLinDepOnly = false; ///< Whether to only remove atomic linear dependencies
+    double linearDepTol = 1e-12; ///< Linear dependence threshold
+
     // Misc control
     size_t maxSCFIter = 128; ///< Maximum SCF iterations.
 

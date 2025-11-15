@@ -279,7 +279,7 @@ namespace ChronusQ {
                overlapSpinor.pointer()+NB*NB/2+NB/2,NB);
       //prettyPrintSmart(std::cout,"S Metric Spinor",overlapSpinor.pointer(),NB,NB,NB);
     }
-    orthoSpinor = std::make_shared<Orthogonalization<MatsT>>(overlapSpinor);
+    orthoSpinor = std::make_shared<Orthogonalization<MatsT>>(overlapSpinor, scfControls.linearDepTol);
 
     // Copy to block diagonal for alpha/beta basis
     if( nC > 1 ){
@@ -290,7 +290,7 @@ namespace ChronusQ {
     } else {
       overlapAB = overlapSpinor;
     }
-    orthoAB = std::make_shared<Orthogonalization<MatsT>>(overlapAB);
+    orthoAB = std::make_shared<Orthogonalization<MatsT>>(overlapAB, scfControls.linearDepTol);
 
   }; // computeOrtho
 

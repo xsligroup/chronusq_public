@@ -186,7 +186,7 @@ namespace ChronusQ {
      *  \param [in] s Formatted query string to be parsed
      *  \return       Value of query data field as specified datatype
      */ 
-    template <typename T> T getData(std::string) ; 
+    template <typename T> T getData(std::string) const;
   
   
   
