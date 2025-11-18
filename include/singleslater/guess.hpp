@@ -1289,7 +1289,7 @@ namespace ChronusQ {
     }
 
     // MO coefficients from AO to othonormalized basis
-    orthoAOMO();
+    //orthoAOMO(); Not needed since formDensity expects AO basis now
 
     // MO swapping if requested
     if( this->moPairs[0].size() != 0 ){
@@ -1560,7 +1560,7 @@ namespace ChronusQ {
     if( this->nC == 2 ) reorderSpinMO();
 
     // Orthogonalize MOs
-    orthoAOMO();
+    //orthoAOMO(); Not needed since formDensity expects AO basis now
 
     // Form density from MOs
     formDensity();
