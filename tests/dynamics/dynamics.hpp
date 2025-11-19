@@ -47,6 +47,10 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
   
+  // print the reference file path
+  std::cout << "Reference file: " << DYNAMICS_TEST_REF + ref << std::endl;
+  std::cout << "Result file: " << TEST_OUT + in + ".bin" << std::endl;
+  
   SafeFile refFile(DYNAMICS_TEST_REF + ref,true);
   SafeFile resFile(TEST_OUT + in + ".bin",true);
   \

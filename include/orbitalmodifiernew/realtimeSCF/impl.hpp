@@ -56,6 +56,13 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
   // Disable RI-K-Coefficient Contraction during RT as coefficients are not updated.
   // Use density contration during RT instead
   this->singleSlaterSystem.setDenEqCoeff(false);
+    
+  // Evaluate D3 correction energy for current geometry
+#ifdef CQ_HAS_D3
+    if (this->singleSlaterSystem.d3Utils) {
+      this->singleSlaterSystem.d3Utils->evaluate(this->singleSlaterSystem.molecule());
+    }
+#endif
 
   // Initialize RT or Restore 1PDM Ortho and integration process (on root process)
   // If first step,form density in AO and Ortho basis
@@ -135,6 +142,12 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     this->formFock(false, integrationProgress.currentTime);
     this->singleSlaterSystem.computeEnergy(currentPerturbation);
+    // Add D3 correction to the total energy
+#ifdef CQ_HAS_D3
+    if (this->singleSlaterSystem.d3Utils) {
+      this->singleSlaterSystem.totalEnergy += this->singleSlaterSystem.d3Utils->result().energy;
+    }
+#endif
     this->singleSlaterSystem.computeProperties(currentPerturbation, {ELECTRIC_DIPOLE});
     if( printLevel > 0 and (MPIRank(this->mpiComm) == 0) ) printIteration();
 

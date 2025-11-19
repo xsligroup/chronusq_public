@@ -33,7 +33,7 @@ add_executable(scftest ../ut.cxx
 	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx 
         neo_rhf.cxx neo_rks.cxx neo_giao.cxx
         gauxc_ks.cxx dks.cxx
-        misc.cxx ri.cxx cediis.cxx qn.cxx
+        misc.cxx ri.cxx cediis.cxx qn.cxx d3.cxx
 )
 
 target_include_directories(scftest PUBLIC ${SCF_TEST_SOURCE_ROOT}
@@ -137,6 +137,12 @@ add_cq_test( DKS_SCF      scftest "DKS.*"  )
 #add_cq_test( FOURC_QN_SCF scftest "FOURC_QN_SCF*"  )
 
 add_cq_test( MISC_SCF     scftest "MISC_SCF.*" )
+
+if(CQ_HAS_D3)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/d3)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/d3)
+add_cq_test(D3_SCF  scftest "D3.*")
+endif()
 
 
 if( CQ_ENABLE_MPI )

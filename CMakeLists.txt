@@ -45,6 +45,7 @@ option(CQ_ENABLE_CUDA   "Enable CUDA for GauXC"           OFF)
 option(CQ_ENABLE_MAGMA  "Enable MAGMA for GauXC"          OFF)
 option(CQ_PREFER_STATIC_HDF5 "Prefer static HDF5 and deps" OFF)
 set(HDF5_USE_STATIC_LIBRARIES ${CQ_PREFER_STATIC_HDF5} CACHE BOOL "" FORCE)
+option(CQ_ENABLE_D3     "Enable Grimme D3 dispersion via simple-dftd3" OFF)
 
 # -----------------------------------------------------------------------------
 # Build the CQ Libaray
@@ -91,6 +92,9 @@ include(FindLibXC)
 
 # HDF5
 include(HandleHighfive)
+
+# DFT-D3
+include(HandleSimpleDFTD3)
 
 
 message( "\n\n" )

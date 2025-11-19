@@ -26,11 +26,27 @@
 
 
 
-// Classical Water RB3LYP BOMD
-TEST( BOMD, h2o_bomd_rb3lyp ) {
+// HF PBEXPBEC-D3 BOMD
+TEST( D3, hf_bomd_pbexpbec_d3 ) {
 
-  CQDYNAMICSTEST( "dynamics/serial/bomd/h2o_bomd_rb3lyp",
-    "h2o_bomd_rb3lyp.bin.ref");
+  CQDYNAMICSTEST( "dynamics/serial/d3/hf_bomd_pbexpbec-d3",
+    "hf_bomd_pbexpbec-d3.bin.ref");
+
+}
+
+// HF PBEXPBEC-D3 Ehrenfest
+TEST( D3, hf_ehrenfest_pbexpbec_d3 ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/d3/hf_ehrenfest_pbexpbec-d3",
+    "hf_ehrenfest_pbexpbec-d3.bin.ref");
+
+}
+
+// H2O NEO B3LYP-D3/EPC17 Ehrenfest
+TEST( D3, h2o_neoehrenfest_b3lyp_d3_epc17 ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/d3/h2o_neoehrenfest_b3lyp-d3_epc17",
+    "h2o_neoehrenfest_b3lyp-d3_epc17.bin.ref");
 
 }
 
@@ -38,10 +54,24 @@ TEST( BOMD, h2o_bomd_rb3lyp ) {
 
 
 #ifdef _CQ_DO_PARTESTS
-TEST( BOMD, PAR_h2o_bomd_rb3lyp ) {
+TEST( D3, PAR_hf_bomd_pbexpbec_d3 ) {
 
-  CQDYNAMICSTEST( "dynamics/parallel/bomd/h2o_bomd_rb3lyp",
-    "h2o_bomd_rb3lyp.bin.ref" );
+  CQDYNAMICSTEST( "dynamics/parallel/d3/hf_bomd_pbexpbec-d3",
+    "hf_bomd_pbexpbec-d3.bin.ref");
+
+}
+
+TEST( D3, PAR_hf_ehrenfest_pbexpbec_d3 ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/d3/hf_ehrenfest_pbexpbec-d3",
+    "hf_ehrenfest_pbexpbec-d3.bin.ref");
+
+}
+
+TEST( D3, PAR_h2o_neoehrenfest_b3lyp_d3_epc17 ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/d3/h2o_neoehrenfest_b3lyp-d3_epc17",
+    "h2o_neoehrenfest_b3lyp-d3_epc17.bin.ref");
 
 }
 

@@ -49,6 +49,7 @@
 #cmakedefine CQ_ENABLE_CUDA
 #cmakedefine LONG_INT_IS_INT64_T
 #cmakedefine CQ_HAS_TA
+#cmakedefine CQ_HAS_D3
 
 /*
 // Add a fatal preprocessor error if less than ICC 17.0.4

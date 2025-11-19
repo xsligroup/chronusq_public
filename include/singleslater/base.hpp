@@ -31,6 +31,7 @@
 #include <util/files.hpp>
 #include <orbitalmodifieroptions.hpp>
 #include <gauxcutils.hpp> 
+#include <d3utils.hpp>
 
 // #define TEST_MOINTSTRANSFORMER
 
@@ -78,6 +79,9 @@ namespace ChronusQ {
 
     // GauXC utility class                                                      
     std::shared_ptr<GauXCUtils>  gauxcUtils;
+#ifdef CQ_HAS_D3
+    std::shared_ptr<D3Utils>     d3Utils;
+#endif
 
     // Save / Restart File
     SafeFile savFile;

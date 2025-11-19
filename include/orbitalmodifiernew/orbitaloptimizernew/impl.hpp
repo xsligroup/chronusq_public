@@ -144,6 +144,16 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
               << this->scfConv.nSCFIter << " SCF Iterations" << std::endl;
   }
 
+#ifdef CQ_HAS_D3
+  if( this->singleSlaterSystem.d3Utils ) {
+    this->singleSlaterSystem.d3Utils->evaluate(this->singleSlaterSystem.molecule());
+    this->singleSlaterSystem.totalEnergy = this->singleSlaterSystem.getTotalEnergy() + this->singleSlaterSystem.d3Utils->result().energy;
+    std::cout << std::endl;
+    std::cout << "D3 correction: " << this->singleSlaterSystem.d3Utils->result().energy << " Eh\n";
+    std::cout << "D3 Corrected Energy: E(" << scfControls.refShortName_ << "-" + this->singleSlaterSystem.d3Utils->model() + ") = " << std::fixed << std::setprecision(10) << this->singleSlaterSystem.totalEnergy << " Eh" << std::endl;
+  }
+#endif
+
   if( scfControls.printLevel > 0 ) std::cout << BannerEnd << std::endl;
 
   if( scfControls.printLevel > 1 ) this->singleSlaterSystem.printProperties();

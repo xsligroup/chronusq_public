@@ -74,6 +74,7 @@
 #include <coupledcluster/TAManager.hpp>
 #include <orbitalmodifiernew.hpp>
 #include <gauxcutils.hpp>
+#include <d3utils.hpp>
 //#include <TiledArray/util/bug.h>
 
 #include <intermediates.hpp>
@@ -303,7 +304,14 @@ namespace ChronusQ {
     if (ssOptions.refOptions.isKSRef and ssOptions.intParam.useGauXC) {                                    
       GauXCOptions gauxcOptions = CQGauXCOptions(output, input, ssOptions, prot_ssOptions);     
       ss->gauxcUtils = gauxcOptions.buildGauXCUtils(basis, prot_basis, ss->molecule(), MPI_COMM_WORLD);
-    }                                                                             
+    }                    
+    
+    // Dispersion correction
+#ifdef CQ_HAS_D3
+    if(ssOptions.refOptions.useD3) {
+      ss->d3Utils = std::make_shared<ChronusQ::D3Utils>(ssOptions.refOptions.d3RefString, ssOptions.refOptions.d3ModelString, true, false, true);
+    }
+#endif
 
     if( (ss->scfControls.guess == READMO or
          ss->scfControls.guess == READDEN or

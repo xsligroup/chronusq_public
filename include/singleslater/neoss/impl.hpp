@@ -391,7 +391,7 @@ namespace ChronusQ {
     }
 
     // Add additional printout for debugging NEO-Ehrenfest
-    auto printGrad = [&](std::string name, std::vector<double>& vecgrad) {
+    auto printGrad = [&](std::string name, const std::vector<double>& vecgrad) {
       std::cout << name << std::endl;
       std::cout << std::setprecision(12);
       for( auto iAt = 0; iAt < nAtoms; iAt++ ) {
@@ -403,6 +403,20 @@ namespace ChronusQ {
       }
       std::cout << std::endl;
     };
+    
+    // Add D3 correction to the gradient
+#ifdef CQ_HAS_D3
+    if (this->d3Utils) {
+      this->d3Utils->evaluate(this->molecule());
+      for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+        size_t iAt = iGrad/3;
+        size_t iXYZ = iGrad%3;
+        gradient[iGrad] += this->d3Utils->result().gradient[iAt*3 + iXYZ];
+      }
+      //printGrad("D3 Gradient:", this->d3Utils->result().gradient);
+    }
+#endif
+
     //printGrad("Total NEO Gradient:", gradient);
 
     return gradient;
@@ -413,8 +427,8 @@ namespace ChronusQ {
   void NEOSS<MatsT,IntsT>::buildOrbitalModifierOptions() {
     // Modify SCFControls
     this->scfControls.printLevel    = this->printLevel;
-    this->scfControls.refLongName_  = this->refLongName_;
-    this->scfControls.refShortName_ = this->refShortName_;
+    this->scfControls.refLongName_  = subsystems["Electronic"]->refLongName_ + "-" + subsystems["Protonic"]->refLongName_;
+    this->scfControls.refShortName_ = subsystems["Electronic"]->refShortName_ + "-" + subsystems["Protonic"]->refShortName_;
 
     // Initialize ModifyOrbitalOptions
     OrbitalModifierDrivers<MatsT> modOrbOpt;

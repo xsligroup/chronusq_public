@@ -185,7 +185,7 @@ namespace ChronusQ {
 
     HamiltonianOptions opts = this->aoints_->options_;
 
-    auto printGrad = [&](std::string name, std::vector<double>& vecgrad) {
+    auto printGrad = [&](std::string name, const std::vector<double>& vecgrad) {
       std::cout << name << std::endl;
       std::cout << std::setprecision(12);
       for( auto iAt = 0; iAt < nAtoms; iAt++ ) {
@@ -231,6 +231,18 @@ namespace ChronusQ {
       nucGrad.push_back(this->molecule().nucRepForce[iAt][iXYZ]);
       gradient[iGrad] = coreGrad[iGrad] + twoEGrad[iGrad] + pulayGrad[iGrad] + nucGrad[iGrad];
     }
+
+#ifdef CQ_HAS_D3
+  if (this->d3Utils) {
+    this->d3Utils->evaluate(this->molecule());
+    for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
+      size_t iAt = iGrad/3;
+      size_t iXYZ = iGrad%3;
+      gradient[iGrad] += this->d3Utils->result().gradient[iAt*3 + iXYZ];
+    }
+    //printGrad("D3 Gradient:", this->d3Utils->result().gradient);
+  }
+#endif
 
     //printGrad("Nuclear Gradient:", nucGrad);
     //printGrad("Core H Gradient:", coreGrad);

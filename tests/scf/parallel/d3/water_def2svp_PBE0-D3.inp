@@ -1,0 +1,33 @@
+#
+#  testDFT - Water RB3LYP/sto-3g / SCF Serial
+#  SMP
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 1
+geom: 
+ O    -3.2939688    0.4402024    0.1621802
+ H    -3.8134112    1.2387332    0.2637577
+ H    -2.3770466    0.7564365    0.1766203
+
+# 
+#  Job Specification
+#
+[QM]
+reference = PBE0-D3
+job = SCF
+
+[DFTINT]
+NANG = 590
+NRAD = 99
+NMACRO = 1
+
+[BASIS]
+basis = def2-svp
+[SCF]
+
+[MISC]
+nsmp = 2
+mem = 200MB
+

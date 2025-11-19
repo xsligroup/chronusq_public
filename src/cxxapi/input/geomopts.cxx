@@ -375,6 +375,13 @@ namespace ChronusQ {
             // Recompute fock matrix and get updated energy
             ss->formFock(emPert,false);
             ss->computeEnergy(emPert);
+            // Add D3 correction to the total energy
+#ifdef CQ_HAS_D3
+            if (ss->d3Utils) {
+              ss->d3Utils->evaluate(ss->molecule());
+              ss->totalEnergy += ss->d3Utils->result().energy;
+            }
+#endif
             return ss->totalEnergy;
           };
         }
@@ -415,6 +422,13 @@ namespace ChronusQ {
             // Recompute fock matrix and get updated energy
             ss->formFock(emPert,false);
             ss->computeEnergy(emPert);
+            // Add D3 correction to the total energy
+#ifdef CQ_HAS_D3
+            if (ss->d3Utils) {
+              ss->d3Utils->evaluate(ss->molecule());
+              ss->totalEnergy += ss->d3Utils->result().energy;
+            }
+#endif
             return ss->totalEnergy;
           };
         }

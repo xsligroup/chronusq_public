@@ -20,36 +20,37 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-add_subdirectory(cqlinalg)
-add_subdirectory(matrix)
-add_subdirectory(grid)
-add_subdirectory(dispersion)
-add_subdirectory(dft)
-add_subdirectory(molecule)
-add_subdirectory(basisset)
-add_subdirectory(particleintegrals)
-add_subdirectory(quantum)
-add_subdirectory(wavefunction)
-add_subdirectory(orthogonalization)
-add_subdirectory(x2c)
-add_subdirectory(fourcomp)
-add_subdirectory(singleslater)
-add_subdirectory(realtime)
-add_subdirectory(itersolver)
-add_subdirectory(response)
-add_subdirectory(coupledcluster)  
-add_subdirectory(findiff)
-add_subdirectory(mcwavefunction)
-add_subdirectory(manybodywavefunction)
-add_subdirectory(mcscf)
-add_subdirectory(neworbitalrotation)
-add_subdirectory(posthatreefock)
-add_subdirectory(newcibuilder)
-add_subdirectory(configinteraction)
-add_subdirectory(geometrymodifier)
-add_subdirectory(perturb)
-add_subdirectory(mp)
-add_subdirectory(cubegen)
+
+include(FetchContent)
+
+# Do nothing if D3 is disabled
+  if( CQ_ENABLE_D3 )
+  message("\n == Simple-DFTD3 ==")
+  
+  FetchContent_Declare(
+    simple_dftd3
+    GIT_REPOSITORY https://github.com/dftd3/simple-dftd3.git
+    GIT_TAG        v1.2.1
+  )
+  
+  FetchContent_MakeAvailable(simple_dftd3)
+  
+  if(TARGET s-dftd3)
+    add_library(SimpleDFTD3::dftd3 ALIAS s-dftd3)
+  elseif(TARGET dftd3)
+    add_library(SimpleDFTD3::dftd3 ALIAS dftd3)
+  else()
+    message(FATAL_ERROR "simple-dftd3: expected target 's-dftd3' (or 'dftd3') not found.")
+  endif()
+  
+  target_link_libraries(cq PUBLIC SimpleDFTD3::dftd3)
+  
+  set(CQ_HAS_D3 ON CACHE BOOL "" FORCE)
+  
+  message(" == End Simple-DFTD3 ==\n")
+
+else()
+  message(STATUS "simple-dftd3 not enabled; dispersion corrections (D3) are disabled.")
+endif()
 
 
-add_subdirectory(cxxapi)

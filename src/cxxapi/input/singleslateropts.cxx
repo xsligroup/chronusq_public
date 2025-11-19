@@ -199,6 +199,15 @@ namespace ChronusQ {
 
     // This is the reference string to be parsed
     std::string refString = tokens.back();
+
+    // If dispersion is enabled, parse the d3 model after '-'
+#ifdef CQ_HAS_D3
+    std::string d3String;
+    if( auto pos = refString.find('-'); pos != std::string::npos ) {
+      d3String = refString.substr(pos + 1);
+      refString  = refString.substr(0, pos);
+    }
+#endif    
    
     // Boolean for 2cHF specified as GHF in input
     bool isGHF = false;
@@ -245,6 +254,35 @@ namespace ChronusQ {
 
     ref.isEPCRef =
       std::find(EPCRefs.begin(),EPCRefs.end(),refString) != EPCRefs.end();
+
+    // Handle D3 dispersion parsing
+#ifdef CQ_HAS_D3
+    if( !d3String.empty() ) {
+      
+      if (ref.isEPCRef) CErr("D3 dispersion not supported for EPC references", out);
+
+      // normalize suffix to upper
+      std::string d3ModelString = d3String;
+      std::transform(d3ModelString.begin(), d3ModelString.end(), d3ModelString.begin(), [](unsigned char c){ return std::toupper(c); });
+      if(d3ModelString == "D3") d3ModelString = "D3BJ"; // For plain -D3, default to -D3BJ
+
+      // Allowed D3 Models
+      static const std::vector<std::string> d3Models { "D3BJ","D3ZERO","D3BJM","D3ZEROM","D3OP" };
+      if( std::find(d3Models.begin(), d3Models.end(), d3ModelString) == d3Models.end() )
+        CErr("QM.REFERENCE: unknown D3 Model '-" + d3String + "'", out);
+
+      ref.useD3   = true;
+      ref.d3ModelString = d3ModelString;
+
+      ref.d3RefString = refString;
+      if(ref.d3RefString == "PBEXPBEC") ref.d3RefString = "PBE";
+      std::transform(ref.d3RefString.begin(), ref.d3RefString.end(), ref.d3RefString.begin(),
+                     [](unsigned char c){ return std::tolower(c); });
+
+    }
+    std::cout << "      D3 Reference: " << ref.d3RefString   << std::endl;
+    std::cout << "      D3 Model:     " << ref.d3ModelString << std::endl;
+#endif
 
     // Raw reference
     if( ref.refType == isRawRef ) {

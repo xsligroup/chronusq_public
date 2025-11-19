@@ -42,37 +42,37 @@ TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
 
 }
 
-//// NEO Water RB3LYP/UEPC17 Traveling Proton Basis
-//TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
-//
-//  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
-//    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref");
-//
-//}
+// NEO Water RB3LYP/UEPC17 Traveling Proton Basis
+TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
+    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref");
+
+}
 
 
 
 
-//#ifdef _CQ_DO_PARTESTS
-//TEST( EHRENFEST_DYNAMICS, PAR_hf_ehrenfest_rhf_mmut ) {
-//
-//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/hf_ehrenfest_rhf_mmut",
-//    "hf_ehrenfest_rhf_mmut.bin.ref" );
-//
-//}
-//
-//TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
-//
-//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rhf_uhf_mmut_fpb",
-//    "h2o_neoehrenfest_rhf_uhf_mmut_fpb.bin.ref" );
-//
-//}
+#ifdef _CQ_DO_PARTESTS
+TEST( EHRENFEST_DYNAMICS, PAR_hf_ehrenfest_rhf_mmut ) {
 
-//TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
-//
-//  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
-//    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref" );
-//
-//}
+  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/hf_ehrenfest_rhf_mmut",
+    "hf_ehrenfest_rhf_mmut.bin.ref" );
 
-//#endif
+}
+
+TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rhf_uhf_mmut_fpb",
+    "h2o_neoehrenfest_rhf_uhf_mmut_fpb.bin.ref" );
+
+}
+
+TEST( EHRENFEST_DYNAMICS, PAR_h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb",
+    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb.bin.ref" );
+
+}
+
+#endif

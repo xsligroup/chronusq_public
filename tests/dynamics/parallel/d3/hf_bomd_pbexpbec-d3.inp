@@ -1,0 +1,36 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ H   0.750  0.0  0.0
+ F  -0.750  0.0  0.0
+
+#
+#  Job Specification
+#
+[QM]
+reference = complex RPBEXPBEC-D3
+job = BOMD
+
+[SCF]
+#GUESS = CLASSICAL
+#PROT_GUESS = TIGHT
+PRINTMOS = 0
+EXTRAP = TRUE
+MAXITER = 5000
+DIISALG = CDIIS
+accuracy = 1e-12
+
+[DYNAMICS]
+TMAX   = 10
+DELTAT = 2.
+
+[MISC]
+nsmp = 2
+mem = os
+
+[INTS]
+ALG = direct
+
+[BASIS]
+basis = sto-3g

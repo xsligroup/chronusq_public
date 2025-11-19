@@ -28,6 +28,7 @@
 #include <cxxapi/input.hpp>
 #include <basisset.hpp>
 #include <cubegenoptions.hpp>
+#include <d3utils.hpp>
 
 namespace ChronusQ {
 
@@ -75,6 +76,10 @@ namespace ChronusQ {
           return "";
       }
     } 
+
+    bool useD3 = false;
+    std::string d3ModelString;  // D3, D3BJ, D3ZERO, D3BJM, D3ZEROM, D3OP
+    std::string d3RefString; // hf, pbe0, b3lyp, etc.
   };
 
 
