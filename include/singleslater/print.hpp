@@ -33,6 +33,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::printFock(std::ostream &out) {
 
     size_t NB = this->basisSet().nBasis;
+    if(this->nC == 4){ NB *= 2;}
 
     prettyPrintSmart(out,"Fock (AO) Scalar",fockMatrix->S().pointer(),NB,NB,NB);
 
@@ -51,6 +52,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::print1PDMOrtho(std::ostream &out) {
 
     size_t NB = this->basisSet().nBasis;
+    if(this->nC == 4){ NB *= 2;}
 
     prettyPrintSmart(out,"1PDM (Ortho) Scalar",onePDMOrtho->S().pointer(),NB,NB,NB);
 
@@ -69,6 +71,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::printGD(std::ostream &out) {
 
     size_t NB = this->basisSet().nBasis;
+    if(this->nC == 4){ NB *= 2;}
 
     prettyPrintSmart(out,"GD (AO) Scalar",twoeH->S().pointer(),NB,NB,NB);
     if (twoeH->hasZ())
@@ -85,9 +88,15 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::printJ(std::ostream &out) {
 
     size_t NB = this->basisSet().nBasis;
+    if(this->nC == 4){ NB *= 2;}
 
     prettyPrintSmart(out,"J (AO) Scalar",coulombMatrix->pointer(),NB,NB,NB);
-
+    if (twoeH->hasZ())
+      prettyPrintSmart(out,"J (AO) MZ",twoeH->Z().pointer(),NB,NB,NB);
+    if (twoeH->hasXY()) {
+      prettyPrintSmart(out,"J (AO) MY",twoeH->Y().pointer(),NB,NB,NB);
+      prettyPrintSmart(out,"J (AO) MX",twoeH->X().pointer(),NB,NB,NB);
+    }
 
   }; // SingleSlater<T>::printJ
 
@@ -96,6 +105,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::printK(std::ostream &out) {
 
     size_t NB = this->basisSet().nBasis;
+    if(this->nC == 4){ NB *= 2;}
 
     prettyPrintSmart(out,"K (AO) Scalar",exchangeMatrix->S().pointer(),NB,NB,NB);
     if (exchangeMatrix->hasZ())
