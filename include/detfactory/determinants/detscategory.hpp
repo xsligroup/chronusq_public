@@ -257,6 +257,23 @@ class FullDetsCatAddresser {
        s += groupAddressers_[i].detToString(dets[i]); 
     return s;
   }
+  
+  std::vector<size_t> addressToOccInfo(size_t addr) const { 
+    std::vector<size_t> occInfo;
+    std::vector<size_t> detOccInfo;
+    std::vector<DetsT> dets(groupAddressers_.size(), DetsT(0));
+    addressToBitStrings(addr, dets);
+    size_t orbOffset = 0ul;
+    for (auto i = 0ul; i < dets.size(); ++i) {
+       detOccInfo.clear();
+       detOccInfo = groupAddressers_[i].detOccInfo(dets[i]); 
+       for (auto occOrb : detOccInfo) {
+         occInfo.push_back(occOrb + orbOffset);
+       }
+       orbOffset += groupAddressers_[i].nOrbitals();
+    }
+    return occInfo;
+  }
 
   void stringToDets(const std::string& detString, std::vector<DetsT>& dets) const {
     const auto sIt = detString.begin();

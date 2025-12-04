@@ -49,6 +49,10 @@ namespace ChronusQ {
         CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
       }
     }
+
+    // Print determinant occupations?
+    OPTOPT( postHF->printDetailedCICoeffs = input.getData<bool>(postHFSection + ".PRINTDETOCC"); )
+
     if ( postHF->printMOCoeffs >= 10 ) CErr(postHFSection + " print level is not valid!");
   
   }; // 

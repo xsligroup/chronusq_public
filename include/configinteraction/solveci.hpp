@@ -35,23 +35,24 @@ namespace {
 // davidson guess
 template <typename MatsT>
 void davidsonGuess(size_t nGuess, const DistributedVectors<MatsT>& diagH, 
-    SolverVectors<MatsT>& Guess) { 
+    SolverVectors<MatsT>& Guess,
+   std::vector<std::pair<double, size_t>> energyRefs ) {
   
   std::cout << "  * use unit vector guess based on diagonal elements:" << std::endl;
    
   std::vector<size_t> nGuessMinDiagHIndices;
   std::vector<MatsT> nGuessMinDiagHValues;
 
-  diagH.getKIndicesAndValues(nGuess, 0ul, nGuessMinDiagHIndices, nGuessMinDiagHValues, 
+  diagH.getKIndicesAndValues(nGuess, 0ul, nGuessMinDiagHIndices, nGuessMinDiagHValues, energyRefs,
       [](const MatsT& a, const MatsT& b) { return std::real(a) < std::real(b); }
   );
   
   Guess.clear();
 
   for(auto i = 0ul; i < nGuess; i++) { 
-    Guess.set(nGuessMinDiagHIndices[i], i, MatsT(1.));
     std::cout << "    " << std::setw(9) << std::left << nGuessMinDiagHIndices[i]
               << std::setw(40) << std::left << nGuessMinDiagHValues[i] << std::endl;
+    Guess.set(nGuessMinDiagHIndices[i], i, MatsT(1.));
   }
   
 
@@ -226,9 +227,22 @@ void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
     davidson.setkG(kG);
     davidson.setEigForT(curEigenvalues);
     davidson.setHerm(true);
+    std::vector<std::pair<double, size_t>> energyWindows;
+    if (not ciSettings.energyRefs.empty()) {
+      for (auto& [energy, energy_roots] : ciSettings.energyRefs)
+      {
+        energyWindows.emplace_back(energy, energy_roots * kG);
+      } 
+    } else {
+        energyWindows.emplace_back(0.0, nG);
+    }
     davidson.setGuess(nG, [&] (size_t nGuess, SolverVectors<MatsT> &Guess, size_t N) {
-      davidsonGuess(std::min(nGuess, N), *diagH, Guess);
+      davidsonGuess(std::min(nGuess, N), *diagH, Guess, energyWindows);
     });
+
+    if (!ciSettings.energyRefs.empty()) {
+      davidson.setEnergySpecific(ciSettings.energyRefs);
+    }
 
     davidson.run();
     

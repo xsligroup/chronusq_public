@@ -51,6 +51,7 @@ struct CISettings {
    double ciVectorConv     = 1.0e-6;    
    size_t maxDavidsonSpace = 20;
    size_t nDavidsonGuess   = 3;
+   std::vector<std::pair<double, size_t>> energyRefs;
 
    // SCF Settings 
    bool doSCF           = false;

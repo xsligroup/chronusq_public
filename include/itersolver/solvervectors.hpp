@@ -660,6 +660,7 @@ namespace ChronusQ {
     template <typename Compare>
     void getKIndicesAndValues(size_t K, size_t iVec, 
         std::vector<size_t>& kIndices, std::vector<_F>& kValues,
+        const std::vector<std::pair<double, size_t>>& energyRefs,
         Compare comp) const {
        
        std::vector<size_t> localIndices(localLength());
@@ -670,13 +671,45 @@ namespace ChronusQ {
          [&] (size_t i, size_t j) {
            return comp(vecPointer[i], vecPointer[j]);
          });
+       _F energyOffset = vecPointer[localIndices[0]];
+       if (MPISize() > 1) {
+         std::vector<_F> recv_energyOffset = MPIGather(energyOffset, 0, this->comm_);
+         std::stable_sort(recv_energyOffset.begin(), recv_energyOffset.end(), comp);
+         if (MPIRank(this->comm_) == 0) {
+         energyOffset = recv_energyOffset[0];
+         }
+         MPIBCast(energyOffset, 0, this->comm_);
+       }
+        // create NGuess per energy window
+        if (not energyRefs.empty()) {
+          size_t nRoots = 0;
+          for (auto& [energy, energy_roots] : energyRefs)
+          {
+            nRoots += energy_roots;
+          }
+          if (nRoots != K){
+            CErr("Wrong number of roots in Davidson guess!");
+          }
+        } else {
+          CErr("No energyRefs provided to Davidson guess");
+        } 
        
-       size_t nLocalK = std::min(K, localLength());
-       
-       if (MPISize() == 1) {
-         for (auto i = 0ul; i < nLocalK; ++i) {
-           kIndices.push_back(localIndices[i]);
-           kValues.push_back(vecPointer[kIndices.back()]);
+        if (MPISize() == 1) {
+         for (auto& [energy, energy_roots] : energyRefs){
+           size_t startIt = std::distance(localIndices.begin(),
+                            std::lower_bound(localIndices.begin(), localIndices.end(), _F(energy) + energyOffset,
+                            [&] (size_t i, _F e) {
+                              return comp(vecPointer[i], e);
+                            })
+                            );
+           size_t nLocalK = std::min(startIt + energy_roots, localLength());
+           if (startIt + energy_roots > nLocalK){ 
+             startIt = std::max(localLength() - energy_roots, 0ul);
+           }
+           for (auto i = startIt; i < nLocalK; ++i) {
+             kIndices.push_back(localIndices[i]);
+             kValues.push_back(vecPointer[kIndices.back()]);
+           }
          }
          return;
        }
@@ -686,10 +719,24 @@ namespace ChronusQ {
         */
        std::vector<size_t> kLocalIndices;
        std::vector<_F> kLocalValues;
-       for (auto i = 0ul; i < nLocalK; ++i) {
-         kLocalIndices.push_back(localIndices[i] + localOffset_);
-         kLocalValues.push_back(vecPointer[localIndices[i]]);
+       for (auto& [energy, energy_roots] : energyRefs){
+         size_t startIt = std::distance(localIndices.begin(),
+                            std::lower_bound(localIndices.begin(), localIndices.end(), _F(energy) + energyOffset,
+                            [&] (size_t i, _F e) {
+                              return comp(vecPointer[i], e);
+                            })
+                          );
+         size_t nLocalK = std::min(startIt + energy_roots, localLength());
+         if (localLength() - nLocalK < energy_roots){
+           startIt = localLength() - energy_roots;
+         }
+         for (auto i = startIt; i < nLocalK; ++i) {
+           kLocalIndices.push_back(localIndices[i] + localOffset_);
+           kLocalValues.push_back(vecPointer[localIndices[i]]);
+         }
        }
+
+       size_t nLocalK = kLocalIndices.size();
 
        // reduction
        size_t nResultK = std::min(K, length());
@@ -707,16 +754,32 @@ namespace ChronusQ {
        kIndices.resize(nResultK);
        kValues.resize(nResultK);
        if (MPIRank(this->comm_) == 0) {
+         size_t rootsInserted = 0;
          localIndices.resize(totalGatheredSize);
          std::iota(localIndices.begin(), localIndices.end(), 0ul);
          std::stable_sort(localIndices.begin(), localIndices.end(),
            [&] (size_t i, size_t j) {
              return comp(gatheredValues[i], gatheredValues[j]);
            });
-         
-         for (auto i = 0ul; i < nResultK; ++i) {
-           kIndices[i] = gatheredIndices[localIndices[i]];
-           kValues[i] = gatheredValues[localIndices[i]];
+         for (auto& [energy, energy_roots] : energyRefs){
+           size_t startIt = std::distance(localIndices.begin(),
+                            std::lower_bound(localIndices.begin(), localIndices.end(), _F(energy) + energyOffset,
+                            [&] (size_t i, _F e) {
+                              return comp(gatheredValues[i], e);
+                            })
+                            );
+           if (totalGatheredSize - startIt < energy_roots){
+             startIt = totalGatheredSize - energy_roots;
+           }
+           auto nGuessInWindow = 0;
+           for (size_t i = startIt, nGuessInWindow = 0ul; i < totalGatheredSize and nGuessInWindow < energy_roots; ++i, ++nGuessInWindow) {
+             kIndices[rootsInserted] = gatheredIndices[localIndices[i]];
+             kValues[rootsInserted] = gatheredValues[localIndices[i]];
+             rootsInserted++;
+           }
+         }
+         if (rootsInserted != nResultK) {
+           CErr("Energy specific guess error. Not enough roots per window??");
          }
        }
        MPIBCast(&kIndices[0], nResultK, 0, this->comm_);

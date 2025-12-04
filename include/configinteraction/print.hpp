@@ -65,6 +65,7 @@ void CISettings::print(bool fourComp) {
     FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
     FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
     FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
+
   } else CErr("NYI CI Algorithm");
   
   if(this->doSCF) {
@@ -138,7 +139,16 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIHeader() {
   detFactory->ketCategoricalSpace()->output(std::cout, "Categories Genererated in Configuration Interaction"); 
   
   ciSettings.print(ref.nC == 4);
-  
+   if (!this->ciSettings.energyRefs.empty()) {
+    FormattedLine(std::cout,"  Energy specific settings:");
+    size_t nLowRoots = this->NStates;
+    for (auto & pair: this->ciSettings.energyRefs) {
+      FormattedLine(std::cout, "  Energy threshold:", pair.first, " #Roots:", pair.second);        
+      nLowRoots -= pair.second;
+    }
+    FormattedLine(std::cout,"  Number of low energy roots:", nLowRoots);
+  }
+ 
   std::cout << std::endl;
   if(this->ciSettings.doSCF and this->StateAverage) {
     FormattedLine(std::cout,"  State Average is ON, with weights:");
@@ -171,10 +181,11 @@ void ConfigurationInteraction<MatsT, IntsT>::printStateEnergy() {
 
 namespace {
 template <typename MatsT>
-void printCIState(std::ostream &out, size_t i, double energy, 
+void printCIState(std::shared_ptr<DeterminantFactory> detFactory, std::ostream &out, size_t i, double energy, 
   const std::vector<size_t>& kLargestCAddr, 
   const std::vector<MatsT>& kLargestC,
-  const size_t n_item_per_row = 5) {
+  const size_t n_item_per_row = 5,
+  const bool expandAddressToOcc = false) {
   
   out << std::fixed << std::right<< std::setprecision(10);
   out.fill(' ');
@@ -192,8 +203,28 @@ void printCIState(std::ostream &out, size_t i, double energy,
     size_t jEnd = std::min((i + 1) * n_item_per_row, nPrint);
     
     for (auto j = jBegin; j < jEnd; ++j) {
-      out << "(" << std::setw(5) << kLargestCAddr[j] << ") " 
-          << std::setw(C_length) << std::real(kLargestC[j]); 
+      out << "(";
+      out << std::setw(5) << kLargestCAddr[j];
+      if (expandAddressToOcc){
+        out << " occ: ";
+        const auto ketSpace = detFactory->ketCategoricalSpace();
+        const auto ketCatIdx = ketSpace->getCategoryIdx(kLargestCAddr[j]);
+        //const auto& ketCat = ketSpace->getCategory(ketCatIdx);
+        const auto& ketCat = dynamic_cast<const FullDeterminantCategory&>(*ketSpace->getCategory(ketCatIdx));
+        const auto addresser = ketCat.template addresser<uint64_t>();
+        auto occInfo = addresser.addressToOccInfo(kLargestCAddr[j]);
+        //std::cout << "CAT " << ketCatIdx << " " << ketCat.offset()  << "," << ketCat.offset() + ketCat.nDeterminants() << "   " << j << std::endl;
+        auto count = 0;
+        for (auto occOrb : occInfo){
+          if (count != 0)
+            out << ", ";
+          out << occOrb + 1;
+          count++;
+        }
+        //const auto detGen = ketCat->generator();
+        //const auto addresser = ketCat->addresser();
+      }
+      out << ") " << std::setw(C_length) << std::real(kLargestC[j]); 
       if(std::is_same<MatsT, dcomplex>::value)  
         out << " " << std::setw(C_length) << std::imag(kLargestC[j]);
       out << "  ";  
@@ -228,12 +259,15 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIFooter( ) {
   for (auto i = 0ul; i < nS; i++) { 
      kLargestCAddr.clear();
      kLargestC.clear();
-     CIVectors->getKIndicesAndValues(nPrintC, i, kLargestCAddr, kLargestC,
+     std::vector<std::pair<double, size_t>> CWindows;
+     CWindows.emplace_back(0.0, nPrintC);
+     CIVectors->getKIndicesAndValues(nPrintC, i, kLargestCAddr, kLargestC, CWindows,
          [](const MatsT& a, const MatsT& b) { return std::norm(a) > std::norm(b); }
      );
 
-     // only print k Largerst coefficient
-     printCIState(std::cout, i, this->StateEnergy[i], kLargestCAddr, kLargestC);  
+     // only print k Largest coefficient
+     size_t nDetPerLine = this->printDetailedCICoeffs ? 1 : 5;
+     printCIState(this->detFactory, std::cout, i, this->StateEnergy[i], kLargestCAddr, kLargestC, nDetPerLine, this->printDetailedCICoeffs);  
   }
 
   this->print1RDMs();

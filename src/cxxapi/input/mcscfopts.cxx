@@ -97,6 +97,7 @@ namespace ChronusQ {
                     std::vector<std::pair<double, size_t>> &energyRefs) {
 
     size_t nRoots = 0;
+    size_t nlowRoots = 0;
     bool lowRoots = false;
     std::vector<std::string> nRTokens;
     std::istringstream nRStream(nroots);
@@ -109,6 +110,7 @@ namespace ChronusQ {
         // only allow one entry of the number of low energy roots
         if (!lowRoots) {
           nRoots += std::stoul(nRTokens[0]);
+          nlowRoots += std::stoul(nRTokens[0]);
           lowRoots = true;
           continue;
         }
@@ -135,6 +137,27 @@ namespace ChronusQ {
 
       energyRefs.emplace_back(Ethres / unit, std::stoul(nRTokens[1]));
       nRoots += std::stoul(nRTokens[1]);
+    }
+    
+    if (lowRoots){
+      // lowRoots is True so we did something like 
+    // nRoots:
+    //     NROOTS:
+    // 5
+    // 0.   5
+    // 100. 10
+    // This should yield 10 roots at 0.0 and 10 roots at 100.0
+      bool found = false;
+      for (auto& [energy, energy_roots] : energyRefs)
+      {
+        if (energy == 0.0 and not found){
+          energy_roots += nlowRoots;
+          found = true;
+        }
+      }
+      if (not found) {
+        energyRefs.emplace_back(0.0, nlowRoots);
+      }
     }
 
     return nRoots;

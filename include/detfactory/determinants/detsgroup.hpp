@@ -141,7 +141,10 @@ class DetGroupAddresser {
   DetGroupAddresser(DetGroupAddresser&&) = default;
 
   DetGroupAddresser(size_t nE, size_t nO): nE_(nE), nO_(nO) { }
-  
+
+  size_t nOrbitals() const { return nO_; }
+  size_t nElectrons() const { return nE_; }
+
   DetsT bitStringToAddress(DetsT d) const {
     return detToLexicographicAddr(d, nE_, nO_); 
   }
@@ -160,6 +163,10 @@ class DetGroupAddresser {
 
   DetsT stringToDet(const std::string::iterator sIt) const {
     return stringToDeterminant<DetsT>(sIt, nO_); 
+  }
+
+  std::vector<size_t> detOccInfo(DetsT d) const {
+    return occupiedInfo(d, nO_, nE_);
   }
 }; // class DetGroupAddresser
 

@@ -75,9 +75,27 @@ public:
     if (i >= categories_.size() ) return nullptr;
     else return categories_[i];
   }
+
+  size_t getCategoryIdx(size_t i) {
+    size_t idx = 0;
+    if ( i > nDeterminants_)
+      CErr("CategoricalSpace::getCategoryIdx error. Searching for i > nDets!");
+    while (idx < categories_.size()) {
+      if (i >= categories_[idx]->offset() and i < categories_[idx]->offset() + categories_[idx]->nDeterminants()){
+        return idx;
+      } else {
+        idx++;
+      }
+    }
+    CErr("CategoricalSpace::getCategoryIdx error. Could not locate Category");
+  }
   
   std::shared_ptr<const DeterminantCategory> getCategory(size_t i) const {
     return const_cast<CategoricalSpace*>(this)->getCategory(i); 
+  }
+
+  size_t getCategoryIdx(size_t i) const {
+    return const_cast<CategoricalSpace*>(this)->getCategoryIdx(i); 
   }
   
   size_t getCategoricalIndex(const std::string& id) const {

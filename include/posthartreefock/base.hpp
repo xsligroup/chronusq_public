@@ -70,6 +70,7 @@ public:
   CubeGenOptions cubeOptsPostHF;
 
   // Print Settings
+  bool printDetailedCICoeffs = false;
   size_t printMOCoeffs = 0;
   size_t printRDMs     = 0;
   double rdmCut        = 0.10;

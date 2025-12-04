@@ -66,6 +66,7 @@ namespace ChronusQ {
       "GENIVO",
       "PRINTMOS",
       "PRINTRDMS",
+      "PRINTDETOCC",
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
       "PRINTSPIN",
@@ -93,7 +94,6 @@ namespace ChronusQ {
     // Check for disallowed combinations (if any)
   }
   
-
   std::vector<double> HandleSAWeightsInputDAS(CQInputFile &input,
     size_t nR) {
 
@@ -209,13 +209,14 @@ namespace ChronusQ {
     }
 
     // parse number of roots
-    size_t nR; 
-	  try {
-      nR = input.getData<int>("CI.NROOTS"); 
-    } catch (...) {
-      nR = 1;
+    size_t nR = 1; 
+    std::string nRoots;
+    std::vector<std::pair<double, size_t>> EnergyRefs;
+    OPTOPT(nRoots = input.getData<std::string>("CI.NROOTS");)
+    if ( not nRoots.empty() ) {
+      nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
-    
+
     // parse space partition
     std::string sActO;
     std::vector<size_t> nActOs;
@@ -436,6 +437,7 @@ namespace ChronusQ {
                 input.getData<size_t>("CI.MAXDAVIDSONSPACE");)
       OPTOPT( ciSettings->nDavidsonGuess = 
                 input.getData<size_t>("CI.NDAVIDSONGUESS");)
+      if (!EnergyRefs.empty()) ciSettings->energyRefs = EnergyRefs;
     } else if(not ciALG.empty())
       CErr(ciALG + "is not a valid CI.CIDIAGALG",out);
     
