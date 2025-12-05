@@ -952,7 +952,10 @@ namespace ChronusQ {
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
-    
+
+    std::shared_ptr<MCWaveFunctionBase> ewfn_;
+    std::shared_ptr<MCWaveFunctionBase> pwfn_;
+
     // Construct NEOMCSCF object
     #define CONSTRUCT_MCSCF(_MT,_IT)             \
     if( not found ) try {                          \
@@ -960,6 +963,9 @@ namespace ChronusQ {
           std::make_shared<NEOMCSCF<_MT,_IT>>( \
             dynamic_cast<NEOSS<_MT,_IT>& >(*ss), nR)); \
       mcscfSettings = &(std::dynamic_pointer_cast<MCSCF<_MT,_IT>>(mcscf)->settings); \
+      auto mc = std::dynamic_pointer_cast<NEOMCSCF<_MT,_IT>>(mcscf); \
+      ewfn_ = mc->get_ewfn(); \
+      pwfn_ = mc->get_pwfn(); \
       found = true;                 \
 	} catch(...) { }
 
@@ -1053,18 +1059,18 @@ namespace ChronusQ {
     
     std::cout << std::endl <<BannerTop << std::endl;
 
-    auto mc = std::dynamic_pointer_cast<NEOMCSCF<double,double>>(mcscf);
+    //auto mc = std::dynamic_pointer_cast<NEOMCSCF<dcomplex,dcomplex>>(mcscf);
 
     // Note these calls construct the individual string managers 
-    mc->ewfn_->partitionMOSpace(nActEO,nActE);
-    mc->pwfn_->partitionProtonMOSpace(nActPO,nActP);
+    ewfn_->partitionMOSpace(nActEO,nActE);
+    pwfn_->partitionProtonMOSpace(nActPO,nActP);
 
     // Total number of determinant strings is the product of these two
-    mcscf->NDet = mc->ewfn_->NDet * 
-                  mc->pwfn_->NDet;
+    mcscf->NDet = ewfn_->NDet * 
+                  pwfn_->NDet;
     // Set the base MCWaveFunction object number of correlating orbitals
-    mcscf->MOPartition.nCorrO = mc->ewfn_->MOPartition.nCorrO+
-                                mc->pwfn_->MOPartition.nCorrO;
+    mcscf->MOPartition.nCorrO = ewfn_->MOPartition.nCorrO+
+                                pwfn_->MOPartition.nCorrO;
 
     // MO Selections or Swaps
     std::string casMOStrings, fcMOStrings, fvMOStrings;
@@ -1096,9 +1102,9 @@ namespace ChronusQ {
 
       std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
       // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = mc->ewfn_->MOPartition.nNegMO;  
+      size_t fourCOffSet = ewfn_->MOPartition.nNegMO;  
       
-      std::vector<char> inputOrbIndices(mc->ewfn_->MOPartition.nMO, 'N');
+      std::vector<char> inputOrbIndices(ewfn_->MOPartition.nMO, 'N');
       
       // parse input
       for (size_t i : parseOrbitalSelectionInput(fcMOStrings))
@@ -1119,25 +1125,25 @@ namespace ChronusQ {
       // fill default index for those undefined ones
       size_t mo_iter = fourCOffSet;
       if (fcMOStrings.empty()) {
-        size_t n_char = mc->ewfn_->MOPartition.nInact;
+        size_t n_char = ewfn_->MOPartition.nInact;
         FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
       }
       
       if (isCASJob or isDMRGJob) {
         if (casMOStrings.empty()) {
-          size_t n_char = mc->ewfn_->MOPartition.nCorrO;
+          size_t n_char = ewfn_->MOPartition.nCorrO;
           FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
         }
       } else if (isRASJob) {
         for (auto i = 0; i < 3; i++) { 
           char i_char = '1' + i;
-          size_t n_char = mc->ewfn_->MOPartition.nActOs[i];
+          size_t n_char = ewfn_->MOPartition.nActOs[i];
           if (rasMOStrings[i].empty())
             FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, i_char, n_char);
         }
       }
       if (fvMOStrings.empty()) 
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', mc->ewfn_->MOPartition.nFVirt);
+        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', ewfn_->MOPartition.nFVirt);
       
       std::cout << std::endl;
 
@@ -1158,8 +1164,8 @@ namespace ChronusQ {
       
       std::cout << std::endl << std::endl;
       
-      mc->ewfn_->MOPartition.orbIndices = inputOrbIndices;
-      mc->ewfn_->setActiveSpaceAndReOrder();
+      ewfn_->MOPartition.orbIndices = inputOrbIndices;
+      ewfn_->setActiveSpaceAndReOrder();
     }
 
     // MO Selections or Swaps
@@ -1180,9 +1186,9 @@ namespace ChronusQ {
       std::cout << "  * Selecting Proton Active Space Explicitly:" << std::endl;
       
       // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = mc->pwfn_->MOPartition.nNegMO;  
+      size_t fourCOffSet = pwfn_->MOPartition.nNegMO;  
       
-      std::vector<char> inputOrbIndices(mc->pwfn_->MOPartition.nMO, 'N');
+      std::vector<char> inputOrbIndices(pwfn_->MOPartition.nMO, 'N');
       
       // parse input
       for (size_t i : parseOrbitalSelectionInput(pfcMOStrings))
@@ -1197,19 +1203,19 @@ namespace ChronusQ {
       // fill default index for those undefined ones
       size_t mo_iter = fourCOffSet;
       if (pfcMOStrings.empty()) {
-        size_t n_char = mc->pwfn_->MOPartition.nInact;
+        size_t n_char = pwfn_->MOPartition.nInact;
         FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
       }
       
       if (isCASJob or isDMRGJob) {
         if (pcasMOStrings.empty()) {
-          size_t n_char = mc->pwfn_->MOPartition.nCorrO;
+          size_t n_char = pwfn_->MOPartition.nCorrO;
           FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
         }
       } 
      
       if (pfvMOStrings.empty()) 
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', mc->pwfn_->MOPartition.nFVirt);
+        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', pwfn_->MOPartition.nFVirt);
       
       std::cout << std::endl;
 
@@ -1230,8 +1236,8 @@ namespace ChronusQ {
       
       std::cout << std::endl << std::endl;
       
-      mc->pwfn_->MOPartition.orbIndices = inputOrbIndices;
-      mc->pwfn_->setActiveSpaceAndReOrder();
+      pwfn_->MOPartition.orbIndices = inputOrbIndices;
+      pwfn_->setActiveSpaceAndReOrder();
     }
     
 

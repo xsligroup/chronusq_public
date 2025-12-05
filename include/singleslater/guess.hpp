@@ -1639,6 +1639,9 @@ namespace ChronusQ {
     classicalSS->scfControls.diisAlg =   CDIIS;
     classicalSS->buildOrbitalModifierOptions();
 
+    // Build X2C-NEO Classical guess
+    if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)
+      compute_X2C_CoreH_Fock( tempMol, this->basisSet(), tempaoints, pert, classicalSS, classicalSSOptions, false);
     classicalSS->formCoreH(pert, false);
     classicalSS->formGuess(pert, classicalSSOptions);
     classicalSS->formFock(pert, false);
@@ -1653,8 +1656,13 @@ namespace ChronusQ {
     SetMat('N',NB,NB,MatsT(1.),classicalSS->onePDM->S().pointer(),NB,
       this->onePDM->S().pointer(),NB);
 
-    if( this->onePDM->hasZ() ) 
-      this->onePDM->Z() = (MatsT(this->nOA - this->nOB) / MatsT(this->nO)) * this->onePDM->S();
+    if( this->onePDM->hasZ() ) {
+      SetMat('N',NB,NB,MatsT(1.),classicalSS->onePDM->Z().pointer(),NB,this->onePDM->Z().pointer(),NB);
+      if( this->onePDM->hasXY() ) {
+        SetMat('N',NB,NB,MatsT(1.),classicalSS->onePDM->X().pointer(),NB,this->onePDM->X().pointer(),NB);
+        SetMat('N',NB,NB,MatsT(1.),classicalSS->onePDM->Y().pointer(),NB,this->onePDM->Y().pointer(),NB);
+      }
+    }
 
     ao2orthoDen();
     computeNaturalOrbitals();

@@ -1937,7 +1937,7 @@ namespace ChronusQ {
   void X2C<MatsT, IntsT>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions) {
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C) {
 
     if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::ONEE)
       ROOT_ONLY(ss->comm);
@@ -2047,7 +2047,8 @@ namespace ChronusQ {
     // U transformation to bin file
     if(not (ssOptions.hamiltonianOptions.AtomicX2C
             and ssOptions.hamiltonianOptions.AtomicX2CType.diagonalOnly == true))
-      x2c->saveX2C(ss);
+      if (saveX2C)
+        x2c->saveX2C(ss);
 
 //    CErr("Requested X2C type NYI.");
 
@@ -2057,39 +2058,39 @@ namespace ChronusQ {
   template void X2C<dcomplex, dcomplex>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C);
     //CErr("X2C + Complex Ints NYI",std::cout);
 
   template void X2C<dcomplex, double>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C);
 
   template void X2C<double, double>::compute_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C);
 
 
   void compute_X2C_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions) {
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C) {
 
     if(auto p = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
 
       X2C<double, double>::compute_CoreH_Fock(
-          mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions, saveX2C);
 
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
       X2C<dcomplex, double>::compute_CoreH_Fock(
-          mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions, saveX2C);
 
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
       X2C<dcomplex, dcomplex>::compute_CoreH_Fock(
-          mol, basis, aoints, emPert, ss, ssOptions);
+          mol, basis, aoints, emPert, ss, ssOptions, saveX2C);
 
     } else {
 

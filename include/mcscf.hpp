@@ -333,6 +333,9 @@ namespace ChronusQ {
       std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
       std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getPOnePDM();
 
+      std::shared_ptr<MCWaveFunctionBase> get_ewfn(){return std::dynamic_pointer_cast<MCWaveFunctionBase>(ewfn_);};
+      std::shared_ptr<MCWaveFunctionBase> get_pwfn(){return std::dynamic_pointer_cast<MCWaveFunctionBase>(pwfn_);};
+
       // Get oscillator strengths for the
       double oscillator_strength(size_t, size_t s1 = 0) override;
       

@@ -31,7 +31,7 @@ add_executable(scftest ../ut.cxx
 	rhf.cxx uhf.cxx ghf.cxx rohf.cxx x2chf.cxx fourcomphf.cxx
         rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx x2c_giao.cxx
 	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx 
-        neo_rhf.cxx neo_rks.cxx neo_giao.cxx
+        neo_rhf.cxx neo_rks.cxx neo_giao.cxx neo_ghf.cxx
         gauxc_ks.cxx dks.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx d3.cxx
 )
@@ -67,6 +67,7 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/ri_neo_rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/cediis)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/qn)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rhf)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_ghf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/gauxc_ks)
@@ -92,6 +93,7 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_uks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_x2c)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/ri_neo_rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_rhf)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_ghf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/gauxc_ks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/dks)
@@ -129,6 +131,7 @@ add_cq_test( RI_UKS_SCF   scftest "RI_UKS.*"     )
 add_cq_test( RI_X2CKS_SCF scftest "RI_X2CKS.*"   )
 #add_cq_test( NEO_RKS_SCF  scftest "NEO_RKS.*"  )
 add_cq_test( NEO_RHF_SCF  scftest "NEO_RHF.*"  )
+add_cq_test( NEO_GHF_SCF  scftest "NEO_GHF.*"  )
 add_cq_test( NEO_GIAO     scftest "NEO_GIAO.*"  )
 add_cq_test( GAUXC_KS_SCF  scftest "GAUXC_KS.*"  )
 add_cq_test( DKS_SCF      scftest "DKS.*"  )
@@ -168,6 +171,7 @@ if( CQ_ENABLE_MPI )
   #add_cq_mpi_test( QN_SCF_MPI       2   scftest "QN_SCF*"  )
   #add_cq_mpi_test( NEO_RKS_MPI          2    scftest "NEO_RKS.*"  )
   add_cq_mpi_test( NEO_RHF_MPI          2    scftest "NEO_RHF.*"  )
+  add_cq_mpi_test( NEO_GHF_MPI          2    scftest "NEO_GHF.*"  )
   add_cq_mpi_test( RI_NEO_RHF_SCF_MPI   2   scftest "RI_NEO_RHF.*"   )
   add_cq_mpi_test( GAUXC_KS_SCF_MPI     2   scftest "GAUXC_KS.*"  )
   add_cq_mpi_test( DKS_SCF_MPI     2   scftest "DKS.*"  )

@@ -159,7 +159,7 @@ namespace ChronusQ {
     static void compute_CoreH_Fock(Molecule &mol,
         BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
         EMPerturbation &emPert,
-        std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+        std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C = true);
 
     // Compute the gradient
     virtual std::vector<double> getGrad(EMPerturbation&, SingleSlater<MatsT,IntsT>&) {
@@ -172,6 +172,6 @@ namespace ChronusQ {
   void compute_X2C_CoreH_Fock(Molecule &mol,
       BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
       EMPerturbation &emPert,
-      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions);
+      std::shared_ptr<SingleSlaterBase> ss, SingleSlaterOptions ssOptions, bool saveX2C = true);
 
 }; // namespace ChronusQ

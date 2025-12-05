@@ -421,7 +421,17 @@ namespace ChronusQ {
         if( elecJob == JobType::SCF ) {
 
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
-            compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
+            if (doNEO) {
+              auto neoss = std::dynamic_pointer_cast<NEOBase>(ss);
+              auto essbase =  neoss->getSubSSBase("Electronic");
+              auto pssbase =  neoss->getSubSSBase("Protonic");
+              compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, essbase, ssOptions);
+              if (prot_ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)
+                CErr("Protonic X2C not implemented yet", output);
+              else
+                pssbase->formCoreH(emPert, true);
+            } else
+              compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
             if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
               // If X2C.FOCK, the 2-component computation should be energy-only
               ss->scfControls.energyOnly = true;
