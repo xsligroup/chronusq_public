@@ -1326,28 +1326,32 @@ namespace ChronusQ {
       return;
 #endif
     }
+    
+    // Retain only the classical nuclei for NEO V integrals
+    Molecule cmol = mol.retainCNuc();
 
     std::vector<double*> _potential(1, pointer());
-    if (options.finiteWidthNuc)
+    if (options.finiteWidthNuc) {
       OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<double>> {
-            return RealGTOIntEngine::computePotentialV(mol.chargeDist,
-                pair,sh1,sh2,mol);
+            return RealGTOIntEngine::computePotentialV(cmol.chargeDist,
+                pair,sh1,sh2,cmol);
             }, basis.shells,_potential);
+    }
     else
-      OnePDriverLibint(libint2::Operator::nuclear,mol,basis,_potential,options.particle);
+      OnePDriverLibint(libint2::Operator::nuclear,cmol,basis,_potential,options.particle);
 
     // Point nuclei is used when chargeDist is empty
     const std::vector<libint2::Shell> &chargeDist = options.finiteWidthNuc ?
-        mol.chargeDist : std::vector<libint2::Shell>();
+        cmol.chargeDist : std::vector<libint2::Shell>();
 
     std::vector<double*> _PVdP(1, scalar().pointer());
     OnePInts<double>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<double>> {
             return RealGTOIntEngine::computepVdotp(chargeDist,
-                pair,sh1,sh2,mol);
+                pair,sh1,sh2,cmol);
             }, basis.shells, _PVdP);
 
     if (options.OneESpinOrbit) {
@@ -1359,7 +1363,7 @@ namespace ChronusQ {
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<double>> {
               return RealGTOIntEngine::computeSL(chargeDist,
-                  pair,sh1,sh2,mol);
+                  pair,sh1,sh2,cmol);
               }, basis.shells, SOXYZPointers());
     }
 

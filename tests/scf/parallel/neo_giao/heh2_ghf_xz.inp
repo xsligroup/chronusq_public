@@ -1,0 +1,54 @@
+[Molecule]
+charge = 2
+mult = 1
+geom:
+ H -0.42426406871 0. -0.42426406871 Q
+He  0.  0. 0.
+ H  0.42426406871 0. 0.42426406871 Q
+
+[QM]
+reference = Complex GHF
+job = SCF
+
+[PROTQM]
+reference = Complex GHF
+
+[SCF]
+#alg = skip
+#accuracy = 1e-9
+NEO = TRUE
+GUESS = Classical
+PROT_GUESS = TIGHT
+#PROT_GUESS = Classical
+PRINTMOS = 0
+EXTRAP = TRUE
+MAXITER = 6666
+diisalg = cdiis
+#NEOStepwise = true
+field = Magnetic -0.70710678118 0. 0.70710678118
+
+[BASIS]
+forcecart = true
+basis = cc-pvdz
+basistype = GIAO
+
+[PBASIS]
+forcecart = true
+basis = prot-sp
+basistype = GIAO
+
+[MISC]
+nsmp = 2
+mem = 4 GB
+
+[INTS]
+ALG = incore
+
+[PINTS]
+ALG = incore
+
+[EPINTS]
+ALG = incore
+
+
+

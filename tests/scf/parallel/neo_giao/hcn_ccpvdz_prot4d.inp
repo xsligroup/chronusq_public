@@ -1,0 +1,52 @@
+[Molecule]
+charge = 0.
+mult = 1
+geom:
+ C 0. 0. -0.54325
+ N 0. 0. 0.58087
+ H -0.79377 0. -1.6003 Q
+
+[QM]
+reference = Complex RHF
+job = SCF
+
+[PROTQM]
+reference = Complex UHF
+
+[SCF]
+#accuracy = 1e-9
+NEO = TRUE
+GUESS = CORE
+PROT_GUESS = tight
+PRINTMOS = 0
+EXTRAP = TRUE
+MAXITER = 6000
+field = Magnetic 0.0 0.0 1.
+diisalg = cdiis
+#NEOStepwise = true
+
+[BASIS]
+forcecart = true
+basis = cc-pvdz
+basistype = GIAO
+
+[PBASIS]
+forcecart = true
+basis = PROT-PB4-D
+basistype = GIAO
+
+[MISC]
+nsmp = 2
+mem = 4 GB
+
+[INTS]
+ALG = incore
+
+[PINTS]
+ALG = incore
+
+[EPINTS]
+ALG = incore
+
+
+

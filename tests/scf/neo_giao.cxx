@@ -32,8 +32,30 @@ TEST( NEO_GIAO, hcn_ccpvdz_prot4d) {
  
 }
 
+// NEO-GIAO Rotation Test, only test energy
+TEST( NEO_GIAO, heh2_ghf_xz) {
 
+  CQNEOSCFTEST( "scf/serial/neo_giao/heh2_ghf_xz", "heh2_ghf_z.bin.ref" , 1e-6, 
+    false, false, false, false, false, "no", true, false );
+ 
+}
 
+#ifdef _CQ_DO_PARTESTS
+
+TEST( NEO_GIAO, par_hcn_ccpvdz_prot4d) {
+
+  CQNEOSCFTEST( "scf/parallel/neo_giao/hcn_ccpvdz_prot4d", "hcn_ccpvdz_prot4d.bin.ref" );
+ 
+}
+
+TEST( NEO_GIAO, par_heh2_ghf_xz) {
+
+  CQNEOSCFTEST( "scf/parallel/neo_giao/heh2_ghf_xz", "heh2_ghf_z.bin.ref" , 1e-6, 
+    false, false, false, false, false, "no", true, false );
+ 
+}
+
+#endif
 
 
 
