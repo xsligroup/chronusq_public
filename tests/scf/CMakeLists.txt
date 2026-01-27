@@ -32,7 +32,7 @@ add_executable(scftest ../ut.cxx
         rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx x2c_giao.cxx
 	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx 
         neo_rhf.cxx neo_rks.cxx neo_giao.cxx neo_ghf.cxx
-        gauxc_ks.cxx dks.cxx
+        gauxc_ks.cxx dks.cxx proj.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx d3.cxx
 )
 
@@ -72,6 +72,7 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/neo_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/gauxc_ks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/dks)
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/proj)
 
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rhf)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/rks)
@@ -139,6 +140,7 @@ add_cq_test( DKS_SCF      scftest "DKS.*"  )
 #add_cq_test( CEDIIS_SCF   scftest "CEDIIS.*"  )
 #add_cq_test( QN_SCF       scftest "QN_SCF*"  )
 #add_cq_test( FOURC_QN_SCF scftest "FOURC_QN_SCF*"  )
+add_cq_test( PROJ_SCF     scftest "PROJ.*" )
 
 add_cq_test( MISC_SCF     scftest "MISC_SCF.*" )
 

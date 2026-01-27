@@ -323,6 +323,10 @@ namespace ChronusQ {
              ss->scfControls.prot_guess == FCHKMO )
       ss->fchkFileName = scrFileName;
 
+    // Error out if guess basis is specified and four-component slater
+    if( ss->nC == 4 and guessbasis )
+      CErr("Four-component guess basis projection NYI");
+
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Create the restart and scratch files
