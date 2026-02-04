@@ -1,16 +1,4 @@
-/* 
- *  This file is part of the Chronus Quantum (ChronusQ) software package
- *  
- *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
- *  
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *  
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ /*
  *  GNU General Public License for more details.
  *  
  *  You should have received a copy of the GNU General Public License along
@@ -24,6 +12,8 @@
 #pragma once
 
 #include <mcscf.hpp>
+#include <cibuilder/neo.hpp>
+#include <cibuilder/neo/impl.hpp>
 #include <util/matout.hpp>
 #include <util/print.hpp>
 #include <cxxapi/output.hpp>
@@ -32,14 +22,14 @@
 namespace ChronusQ {
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computeOneRDM(size_t i)
+    void NEOMCWaveFunction<MatsT,IntsT>::computeOneRDM(size_t i)
     {
-        this->ciBuilder->computeOneRDM(*this,this->CIVecs[i],this->oneRDM[i]);
-        NEOCIBuilder->computePOneRDM(*this,this->CIVecs[i],this->PoneRDM[i]);
+        this->ciBuilder->computeOneRDM(*this,this->CIVecs[i],this->ewfn_->oneRDM[i]);
+        NEOCIBuilder->computePOneRDM(*this,this->CIVecs[i],this->pwfn_->oneRDM[i]);
     }
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computeOneRDM()
+    void NEOMCWaveFunction<MatsT,IntsT>::computeOneRDM()
     {
         for(size_t i = 0; i < this->NStates; i++)
         {
@@ -48,7 +38,7 @@ namespace ChronusQ {
     }
 
     template <typename MatsT, typename IntsT>
-    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCSCF<MatsT,IntsT>::getOnePDM()
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCWaveFunction<MatsT,IntsT>::getOnePDM()
     {
         // Get the orbital offsets for the state
         size_t nInact = this->ewfn_->MOPartition.nInact;
@@ -63,7 +53,7 @@ namespace ChronusQ {
         for(size_t i = 0; i < this->NStates; i++)
         {
             cqmatrix::Matrix<MatsT> PDM(nAO);
-            MatsT * rdm = this->oneRDM[i].pointer();
+            MatsT * rdm = this->ewfn_->oneRDM[i].pointer();
             blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,MatsT(1.0),MO,nAO,rdm,nCorrO,0.0,SCR.pointer(),nAO);
             blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,MatsT(1.0),SCR.pointer(),nAO,MO,nAO,0.0,PDM.pointer(),nAO);
             PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(PDM));
@@ -72,7 +62,7 @@ namespace ChronusQ {
     }
 
     template <typename MatsT, typename IntsT>
-    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCSCF<MatsT,IntsT>::getPOnePDM()
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> NEOMCWaveFunction<MatsT,IntsT>::getPOnePDM()
     {
         // Get the orbital offsets for the state
         size_t nInact = this->pwfn_->MOPartition.nInact;
@@ -87,7 +77,7 @@ namespace ChronusQ {
         for(size_t i = 0; i < this->NStates; i++)
         {
             cqmatrix::Matrix<MatsT> PDM(nAO);
-            MatsT* rdm = this->PoneRDM[i].pointer();
+            MatsT* rdm = this->pwfn_->oneRDM[i].pointer();
             blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,nAO,nCorrO,nCorrO,MatsT(1.0),MO,nAO,rdm,nCorrO,MatsT(0.0),SCR.pointer(),nAO);
             blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,nAO,nAO,nCorrO,MatsT(1.0),SCR.pointer(),nAO,MO,nAO,MatsT(0.0),PDM.pointer(),nAO);
             PDMs.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(PDM));

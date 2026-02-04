@@ -60,7 +60,7 @@ namespace ChronusQ {
     this->mointsTF->printMORangesSummary();
     std::cout << std::left  << std::endl;
   
-  }; // PostHartreeFock::printMOSpacePatition
+  }; // PostHartreeFock::printMOSpacePartition
   
   template <typename MatsT, typename IntsT>
   void PostHartreeFock<MatsT,IntsT>::print1RDMs() {

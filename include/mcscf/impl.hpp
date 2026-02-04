@@ -29,6 +29,7 @@
 #include <mcscf/rdm.hpp>
 #include <mcscf/cisolver.hpp>
 #include <util/matout.hpp>
+#include <mcscf/base/impl.hpp>
 #include <orbitalrotation.hpp>
 
 // #define DEBUG_MCSCF_IMPL
@@ -61,16 +62,16 @@ namespace ChronusQ {
     ProgramTimer::tick("Solve CI");
     
     ProgramTimer::tick("Integral Trans");
-    if (!this->readCI or this->settings.doSCF)
+    if (!mcwfn_->readCI or this->settings.doSCF)
       this->transformInts(pert);
     ProgramTimer::tock("Integral Trans");
     
     std::cout << std::left << std::setprecision(10); 
-    FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
+    FormattedLine(std::cout, "Inactive Energy:", mcwfn_->InactEnergy);
 
     ProgramTimer::tick("Diagonalization");
-    if (!this->readCI)
-      this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), pert);
+    if (!mcwfn_->readCI)
+      this->ciSolver->solveCI(*mcwfn_, pert);
     ProgramTimer::tock("Diagonalization");
     
     ProgramTimer::tock("Solve CI");
@@ -96,13 +97,13 @@ namespace ChronusQ {
           EDiff = 0.;
           std::vector<double> EDiff2 = std::vector<double>(this->NStates);
           for (auto i = 0ul; i < this->NStates; i++)
-            EDiff2[i] = this->StateEnergy[i] - EPrev[i];
+            EDiff2[i] = mcwfn_->StateEnergy->at(i) - EPrev[i];
           
           EDiff = *std::max_element(EDiff2.begin(), EDiff2.end(), 
             [&] (double a, double b) { return std::abs(a) < std::abs(b); });
 
         } else {
-          EDiff = this->StateEnergy.back() - EPrev.back(); 
+          EDiff = mcwfn_->StateEnergy->back() - EPrev.back(); 
         }
         
         std::cout << "  (Maximum) Energy Difference = " << std::setw(18) 
@@ -142,11 +143,11 @@ namespace ChronusQ {
         
         ProgramTimer::tock("Orbital Rotation");
         
-        this->mointsTF->clearAllCache();
-        this->moints->clear();
+        mcwfn_->mointsTF->clearAllCache();
+        mcwfn_->moints->clear();
 
         // print energy and update EPrev
-        std::copy_n(this->StateEnergy.begin(), this->NStates, EPrev.begin());
+        std::copy_n(mcwfn_->StateEnergy->begin(), this->NStates, EPrev.begin());
 
         ProgramTimer::tick("Solve CI");
         
@@ -157,9 +158,9 @@ namespace ChronusQ {
         ProgramTimer::tock("Integral Trans");
 
         std::cout << std::left << std::setprecision(10); 
-        FormattedLine(std::cout, "Inactive Energy:", this->InactEnergy);
+        FormattedLine(std::cout, "Inactive Energy:", mcwfn_->InactEnergy);
         ProgramTimer::tick("Diagonalization");
-        this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), pert);
+        this->ciSolver->solveCI(*mcwfn_, pert);
         ProgramTimer::tock("Diagonalization");
         
         ProgramTimer::tock("Solve CI");
@@ -190,20 +191,21 @@ namespace ChronusQ {
     std::cout << "\n\nMCSCF Complete!" << std::endl;
     std::cout << bannerEnd << std::endl;
 
-    if(this->NatOrbs)
+    if(this->settings.NatOrbs)
     {
       this->formNaturalOrbitals();
-      if(this->NatOrbRediag)
+      if(this->settings.NatOrbRediag)
       {
         // Clear previous transformed integrals
-        this->moints->clear();      
+        mcwfn_->moints->clear();      
 
         // Retransform integrals in new NO basis
         this->transformInts(pert);
         // If we read in the previous CI Vector, use Davison by default
         if(this->ciSolver->getAlg()==SKIP)
           this->ciSolver->switchAlgorithm(CI_DAVIDSON);
-        this->ciSolver->solveCI(dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this),pert);
+        this->ciSolver->solveCI(*mcwfn_, pert);
+        this->computeOneRDM();
       }
     }
 
@@ -213,30 +215,30 @@ namespace ChronusQ {
     ProgramTimer::tick("Property Eval");
 
     // dipole moment
-    if( this->multipoleMoment )
+    if( this->settings.multipoleMoment )
       this->computeMultipole();
 
     // mulliken analysis
-    if (this->PopulationAnalysis) {
+    if (this->settings.PopulationAnalysis) {
       std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
       this->populationAnalysis();
     }
 
-    if (this->printRDMs==0 && this->SpinAnalysis) {
+    if (mcwfn_->printRDMs==0 && this->settings.SpinAnalysis) {
       std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
       this->spinAnalysis();
     }    
 
     // oscillator strength
-    if (this->NosS1) {
+    if (this->settings.NosS1) {
 
 
-      this->osc_str = CQMemManager::get().malloc<double>(this->NosS1*this->NStates);
-      for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
+      mcwfn_->osc_str.resize(this->settings.NosS1*this->NStates);
+      for (size_t s1 = 0ul; s1 < this->settings.NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
 //        if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
-        if (s2 <= s1) this->osc_str[s2+s1*this->NStates] = 0.;
-        else this->osc_str[s2+s1*this->NStates] = 
+        if (s2 <= s1) mcwfn_->osc_str[s2+s1*this->NStates] = 0.;
+        else mcwfn_->osc_str[s2+s1*this->NStates] = 
                 this->oscillator_strength(s2,s1);
       }
 
@@ -255,12 +257,12 @@ namespace ChronusQ {
     
     ROOT_ONLY(this->comm);
 
-    MCWaveFunction<MatsT, IntsT>::saveCurrentStates(saveProp);
+    mcwfn_->saveCurrentStates(saveProp);
     
     // only save MO when doing orbital rotation
     if (settings.doSCF and this->savFile.exists()) {
-      auto mo_dim = this->reference().mo[0].nRows();
-      this->savFile.safeWriteData("SCF/MO1", this->reference().mo[0].pointer(), {mo_dim, mo_dim});
+      auto mo_dim = mcwfn_->reference().mo[0].nRows();
+      this->savFile.safeWriteData("SCF/MO1", mcwfn_->reference().mo[0].pointer(), {mo_dim, mo_dim});
     }
 
   }; // MCSCF::saveCurrentStates
@@ -269,7 +271,9 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::alloc() {
     
-    MCWaveFunction<MatsT,IntsT>::alloc();
+    mcwfn_->savFile = this->savFile;
+    mcwfn_->alloc();
+    if(mcwfn_->readCI) mcwfn_->ReadGuessCIVector();
     
     ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(settings.ciAlg, 
       settings.maxCIIter, settings.ciVectorConv,
@@ -278,14 +282,25 @@ namespace ChronusQ {
     
     if (this->settings.doSCF) {
       
-      this->cacheHalfTransTPI_ = true;
+      mcwfn_->cacheHalfTransTPI_ = true;
       
-      size_t nCorrO = this->MOPartition.nCorrO;
+      size_t nCorrO = mcwfn_->MOPartition.nCorrO;
       oneRDMSOI = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
       twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
+
+      // Pass these pointers to the MCWaveFunction Object
+      mcwfn_->oneRDMSOI = oneRDMSOI;
+      mcwfn_->twoRDMSOI = twoRDMSOI;
+
+      // If doing state-averaging, we need to inform the MCWaveFunction of this primarily
+      // for CubeGen of the average density
+      if(this->StateAverage)
+      {
+        mcwfn_->StateAverage = true;
+        mcwfn_->SAWeight = this->SAWeight;
+      }
       
-      moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(
-        dynamic_cast<MCWaveFunction<MatsT,IntsT>&>(*this), settings.ORSettings);
+      moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(*mcwfn_,settings.ORSettings);
     }
   }
 
@@ -300,37 +315,43 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::transformInts(EMPerturbation & pert) 
   {
-    MCWaveFunction<MatsT,IntsT>::transformInts(pert);
+    mcwfn_->transformInts(pert);
   }
 
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::computeMultipole() 
   {
-    MCWaveFunction<MatsT,IntsT>::computeMultipole();
+    mcwfn_->computeMultipole();
   }
 
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::populationAnalysis() 
   {
-    MCWaveFunction<MatsT,IntsT>::populationAnalysis();
+    mcwfn_->populationAnalysis();
   }
 
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::spinAnalysis() 
   {
-    MCWaveFunction<MatsT,IntsT>::spinAnalysis();
+    mcwfn_->spinAnalysis();
   }
 
   template <typename MatsT, typename IntsT>
   double MCSCF<MatsT,IntsT>::oscillator_strength(size_t s1, size_t s2) 
   {
-    return MCWaveFunction<MatsT,IntsT>::oscillator_strength(s1,s2);
+    return mcwfn_->oscillator_strength(s1,s2);
   }
 
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::formNaturalOrbitals() 
   {
-    MCWaveFunction<MatsT,IntsT>::formNaturalOrbs(this->oneRDM[this->NatOrbs-1]);
+    mcwfn_->formNaturalOrbs(this->settings.NatOrbs-1);
+  }
+
+  template <typename MatsT, typename IntsT>
+  void MCSCF<MatsT,IntsT>::runCube(std::vector<std::shared_ptr<CubeGen>> cu)
+  {
+    mcwfn_->runCube(cu);
   }
 
 }; // namespace ChronusQ

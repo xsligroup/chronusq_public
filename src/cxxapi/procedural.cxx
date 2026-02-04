@@ -361,7 +361,7 @@ namespace ChronusQ {
     }
 
     // If we are doing RTCI we need a pointer to an mcscf object that is in this scope
-    std::shared_ptr<MCWaveFunctionBase> mcscf(nullptr);
+    std::shared_ptr<MCWaveFunctionBase> mcwfn(nullptr);
     std::shared_ptr<TDEMPerturbation> tdPert = std::make_shared<TDEMPerturbation>();
     std::shared_ptr<RealTimeBase> rt;
 
@@ -376,7 +376,7 @@ namespace ChronusQ {
 //        compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
 //      }
 
-      JobType elecJob = CQGeometryOptions(output, input, rstFile, job.jobType, mol, ss, mcscf, rt, tdPert,
+      JobType elecJob = CQGeometryOptions(output, input, rstFile, job.jobType, mol, ss, mcwfn, rt, tdPert,
         ep_aoints, emPert, tdSCFOptions);
 
       // Loop over various structures
@@ -500,8 +500,8 @@ namespace ChronusQ {
           // }
           //rt->doPropagation();
 
-          if (mcscf){
-          rt->intScheme.cubeOptsRTMS = mcscf->cubeOptsMC;
+          if (mcwfn){
+          rt->intScheme.cubeOptsRTMS = mcwfn->cubeOptsMC;
           rt->intScheme.rtcubes = cubes;
           rt->run(firstStep, emPert);
           } else {
@@ -597,20 +597,23 @@ namespace ChronusQ {
             CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
             
           if (input.containsSection("MCSCF")) {
-            if (doNEO)
-            {
-              mcscf = CQNEOMCSCFOptions(output,input,ss,emPert,cube);
-            }
-            else
-            {
-              mcscf = CQMCSCFOptions(output,input,ss,emPert,cube);
-            }
+            std::shared_ptr<MCSCFBase> mcscf= CQMCSCFOptions(output,input,ss,mcwfn,emPert,cube,doNEO);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
             if(cube) mcscf->runCube(cubes);
+
+            /*
+            if(doNEO)
+              mcscf = CQNEOMCSCFOptions(output,input,ss,emPert,cube);
+            else
+              mcscf = CQMCSCFOptions(output,input,ss,emPert,cube,doNEO);
+            mcscf->savFile = rstFile;
+            mcscf->run(additionalPert);
+            if(cube) mcscf->runCube(cubes);
+            */
             
             if (input.containsSection("PERTURB")) {
-              auto perturb = CQPerturbOptions(output,input,mcscf);
+              auto perturb = CQPerturbOptions(output,input,mcwfn);
               perturb->savFile = rstFile;
               perturb->run(emPert);  /// LXL: need to change the fields accordingly
             }

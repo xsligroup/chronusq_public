@@ -13,6 +13,9 @@ geom:
 reference = complex RHF
 job = RT
 
+[SCF]
+ACCURACY = 1E-10
+
 [RT]
 TMAX   = 1.0
 DELTAT = 0.05

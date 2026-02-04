@@ -96,6 +96,7 @@ namespace ChronusQ {
 #endif
     
     mointsTF = ref_.generateMOIntsTransformer();
+    this->setMORanges();
     
     oneRDM.reserve(NStates);
     for (cqmatrix::Matrix<MatsU> &mat : other.oneRDM) 
@@ -194,7 +195,7 @@ namespace ChronusQ {
       savFile.safeWriteData(prefix + "FIELD_TYPE", &t_hash, {1});
       savFile.safeWriteData(prefix + "NSTATES", &NS, {1});
       savFile.safeWriteData(prefix + "INACT_ENERGY", &(this->InactEnergy), {1});
-      savFile.safeWriteData(prefix + "STATE_ENERGY", this->StateEnergy.data(), {NS});
+      savFile.safeWriteData(prefix + "STATE_ENERGY", this->StateEnergy->data(), {NS});
 
       auto & mopart = this->MOPartition;
       savFile.safeWriteData(prefix + "ORB_INDEX", & (mopart.orbIndices[0]),{mopart.nMO});
@@ -207,12 +208,13 @@ namespace ChronusQ {
       if( sProp ){
 
         // Save oscillator strength
-        if(NosS1) {
-          savFile.safeWriteData(prefix + "OSC_STR", osc_str, {NosS1, NS});
+        if(osc_str.size()) {
+          size_t NosS1 = osc_str.size()/NS;
+          savFile.safeWriteData(prefix + "OSC_STR", &osc_str[0], {NosS1, NS});
         }
 
         // Save Multipoles
-        if( multipoleMoment ){
+        if(elecDipoles.size()){
           savFile.safeWriteData(prefix + "LEN_ELECTRIC_DIPOLE", & elecDipoles[0][0], {NS, 3});
           savFile.safeWriteData(prefix + "LEN_ELECTRIC_QUADRUPOLE", & elecQuadrupoles[0][0][0], {NS, 3, 3});
           savFile.safeWriteData(prefix + "LEN_ELECTRIC_OCTUPOLE", & elecOctupoles[0][0][0][0], {NS, 3, 3, 3});

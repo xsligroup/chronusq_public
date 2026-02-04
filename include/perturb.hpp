@@ -75,7 +75,7 @@ namespace ChronusQ {
 
     oper_t E0_; /// < zero-order energies
 
-    std::shared_ptr<MCSCF<MatsT,IntsT>> refMCwfn = nullptr; /// < MCSCF reference
+    std::shared_ptr<MCWaveFunction<MatsT,IntsT>> refMCwfn = nullptr; /// < MCSCF reference
     std::shared_ptr<cqmatrix::Matrix<MatsT>> LHS_ = nullptr; /// < LHS matrix
     std::shared_ptr<cqmatrix::Matrix<MatsT>> ptFock_ = nullptr; /// < Fock matrix
     oper_t diagLHS = nullptr;
@@ -101,7 +101,7 @@ namespace ChronusQ {
      *  Obtain references from a "reference" MCSCF object
      *
      */
-    PERTURB(std::shared_ptr<MCSCF<MatsT,IntsT>> refMCwfn, std::vector<size_t> SoI) : 
+    PERTURB(std::shared_ptr<MCWaveFunction<MatsT,IntsT>> refMCwfn, std::vector<size_t> SoI) : 
         MCWaveFunction<MatsT,IntsT>(refMCwfn->reference(), SoI.size()), 
         SoI_(SoI), refMCwfn(refMCwfn) { 
 
@@ -115,7 +115,7 @@ namespace ChronusQ {
 
     ~PERTURB() { dealloc(); }
 
-    std::shared_ptr<MCSCF<MatsT,IntsT>> mcwfnRef() { return refMCwfn; }
+    std::shared_ptr<MCWaveFunction<MatsT,IntsT>> mcwfnRef() { return refMCwfn; }
 //    std::shared_ptr<MCWaveFunction<MatsT,IntsT>> ptwfn() { return PTwfn; }
 
     // PERTURB procedural functions

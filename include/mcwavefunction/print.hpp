@@ -31,17 +31,19 @@
 namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::printMOSpacePatition() {
+  void MCWaveFunction<MatsT,IntsT>::printMOSpacePartition() {
       
     auto & mopart = this->MOPartition;
     auto & ref = this->reference();
+
+    std::string particletype = this->reference().particle.charge < 0 ? "Electron" : "Proton";
   
     std::cout << std::left << std::endl;
     FormattedLine(std::cout,"* MO Space Partition:");
-    FormattedLine(std::cout,"  Number of Electronic MOs:", mopart.nElecMO);
+    FormattedLine(std::cout,"  Number of " + particletype + "ic MOs:", mopart.nElecMO);
     if (ref.nC == 4)
       FormattedLine(std::cout,"  Number of Negative MOs:", mopart.nNegMO);
-    FormattedLine(std::cout,"  Number of Electrons in Full Space:",  ref.nO);
+    FormattedLine(std::cout,"  Number of " + particletype + "s in Full Space:",  ref.nO);
     
     std::cout << std::endl;
     FormattedLine(std::cout,"  Number of Inactive Orbitals:",     mopart.nInact);
@@ -57,10 +59,10 @@ namespace ChronusQ {
     }
 
     std::cout << std::endl;
-    FormattedLine(std::cout,"  Number of Correlated Electrons:",     mopart.nCorrE);
+    FormattedLine(std::cout,"  Number of Correlated " + particletype + "s:",     mopart.nCorrE);
     if (ref.nC == 1) {
-      FormattedLine(std::cout,"  Number of Correlated Alpha Electrons:", mopart.nCorrEA);
-      FormattedLine(std::cout,"  Number of Correlated Beta Electrons:",  mopart.nCorrEB);
+      FormattedLine(std::cout,"  Number of Correlated Alpha " + particletype + "s:", mopart.nCorrEA);
+      FormattedLine(std::cout,"  Number of Correlated Beta " + particletype + "s:",  mopart.nCorrEB);
     }
     
     std::cout << std::endl;
@@ -72,7 +74,7 @@ namespace ChronusQ {
     this->mointsTF->printMORangesSummary();
     std::cout << std::left  << std::endl;
   
-  }; // MCWaveFunction::printMOSpacePatition
+  }; // MCWaveFunction::printMOSpacePartition
   
   template <typename MatsT, typename IntsT>
   void MCWaveFunction<MatsT,IntsT>::print1RDMs() {
@@ -94,7 +96,7 @@ namespace ChronusQ {
         prettyPrintSmart(std::cout, "State " + std::to_string(i),
           this->oneRDM[i].pointer(), nCorrO, nCorrO, nCorrO);
 
-        if (this->SpinAnalysis)
+        //if (this->SpinAnalysis)
           this->spinAnalysis(i);
       }
     } else if( printRDMs==2 ){
@@ -119,7 +121,7 @@ namespace ChronusQ {
         }
 
         std::cout << std::endl;
-        if (this->SpinAnalysis)
+        //if (this->SpinAnalysis)
           this->spinAnalysis(i);
       }
     }
@@ -143,6 +145,78 @@ namespace ChronusQ {
     ss_ptr->WaveFunction<MatsT,IntsT>::printMOInfo(out, printMOLevel);
 
   } //MCWaveFunction::printMOInfo
+
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::printMCStates()
+  {
+    size_t NDet  = this->NDet;
+    size_t nS    = this->NStates;
+    size_t NPrintC = std::min(NDet, size_t(25));   
+    if(this->NDetPrint)
+    {
+        if(this->NDetPrint == DetPrint::ALLDET)
+        {
+            NPrintC = NDet;
+        }
+        else
+        {
+            NPrintC = this->NDetPrint;
+        }
+    }
+    for (auto i = 0ul; i < nS; i++) { 
+       
+       // sort coeffients based on the norm 
+       auto C = this->CIVecs[i];
+       std::vector<size_t> Cindx(NDet);        
+       std::iota(Cindx.begin(), Cindx.end(), 0);
+       
+       std::stable_sort(Cindx.begin(), Cindx.end(), 
+         [&] (size_t i , size_t j) {
+           return std::norm(C[i]) > std::norm(C[j]);
+         }
+       );
+       
+       // only print k Largerst coefficient
+       this->printMCState(std::cout, i, this->StateEnergy->at(i), C, Cindx, NPrintC);  
+    }
+  }
+
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::printMCState(std::ostream & out, 
+                                                 size_t i,
+                                                 double energy,
+                                                 MatsT * C,
+                                                 std::vector<size_t> & sorted_CAddr,
+                                                 size_t N,
+                                                 const size_t n_item_per_row)
+  {
+    out << std::fixed << std::right<< std::setprecision(10);
+    out.fill(' ');
+    
+    out << std::endl <<  "State:" << std::setw(4) << i + 1 << "  Energy (Hartree):" 
+    << std::setw(16) << energy <<  std::endl;
+    
+    out << std::fixed << std::right<< std::setprecision(7);
+    
+    size_t C_length = 10;
+    size_t CAddr;
+    
+    for (auto j = 0ul; j < (N-1)/n_item_per_row + 1; j++) {
+      size_t l = j*n_item_per_row;
+      size_t r = std::min((j+1)*n_item_per_row, N);
+      
+      for (auto p = l; p < r; p++) {
+        CAddr = sorted_CAddr[p]; 
+        out << "(" << std::setw(5) << CAddr << ") " 
+            << std::setw(C_length) << std::real(C[CAddr]); 
+        if(std::is_same<MatsT, dcomplex>::value)  
+          out << " " << std::setw(C_length) << std::imag(C[CAddr]);
+        out << "  ";  
+      }
+      out << std::endl;
+    }
+ 
+  } // MCWaveFunction::printMCWaveFunctionState
 
 
 

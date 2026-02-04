@@ -95,7 +95,7 @@ namespace ChronusQ {
     
       // copy over eigenvalues and eigenvectors
       for (auto i = 0ul; i < nR; i++) {
-        StateEnergy[i] = std::real(Energy[i]);
+        StateEnergy->at(i) = std::real(Energy[i]);
         std::copy_n(EigVec+i*NDet, NDet, CIVecs[i]);
       }
       CQMemManager::get().free(Energy, fullH, EigVec);
@@ -175,7 +175,7 @@ namespace ChronusQ {
         auto davidsonEig = davidson.eigVal();
         auto davidsonVec = tryGetRawVectorsPointer(*davidson.VR());
 	    for (auto i = 0ul; i < nR; i++) {
-	      StateEnergy[i] = std::real(davidsonEig[i]);
+	      StateEnergy->at(i) = std::real(davidsonEig[i]);
           std::copy_n(davidsonVec+i*NDet, NDet, CIVecs[i]);
 	    }
       }
@@ -188,7 +188,7 @@ namespace ChronusQ {
       
     // add other parts of the energy 
      double EOther = mcwfn.reference().molecule().nucRepEnergy + mcwfn.InactEnergy + mcwfn.EFieldNuc;
-     for (auto i = 0ul; i < nR; i++) StateEnergy[i] += EOther;
+     for (auto i = 0ul; i < nR; i++) StateEnergy->at(i) += EOther;
   
   } // CISolver::solveCI
   

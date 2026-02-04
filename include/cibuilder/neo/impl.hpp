@@ -28,7 +28,7 @@
 #include <cibuilder.hpp>
 
 #define NEOCASCI_LOOP_INIT() \
-  auto neowfn = dynamic_cast<NEOMCSCF<MatsT,IntsT>*>(&mcwfn);\
+  auto neowfn = dynamic_cast<NEOMCWaveFunction<MatsT,IntsT>*>(&mcwfn);\
   size_t nC = mcwfn.reference().nC; \
   size_t NDet = mcwfn.NDet; \
   std::shared_ptr<const ExcitationList> exList_a = \

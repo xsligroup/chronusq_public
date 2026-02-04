@@ -32,7 +32,7 @@
 //#define _DEBUG_PT2_impl
 
 #define PT2_LOOP_INIT() \
-  size_t nC = refMCwfn->referenceWaveFunction().nC; \
+  size_t nC = refMCwfn->getnC(); \
   auto ciBuilder = dynamic_cast<RASCI<MatsT,IntsT>&>(*this->ciBuilder); \
   auto  RASString = std::dynamic_pointer_cast<RASStringManager>(this->detStr); \
   std::vector<size_t> nActO = this->MOPartition.nActOs; \

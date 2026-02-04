@@ -3,7 +3,7 @@
  *  
  *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
  *  
- *  This program is free software; you can redistribute it and/or modify
+ *  This program is free software; you ca redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
@@ -21,22 +21,15 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-#include <mcscf/impl.hpp>
-#include <orbitalrotation/impl.hpp>
+#pragma once
 
+#include <mcwavefunction.hpp>
+#include <quantum/preprocessor.hpp>
+#include <util/preprocessor.hpp>
+#include <util/print.hpp>
+ 
 namespace ChronusQ {
- 
- template class MCSCF<double,double>;
- template class MCSCF<dcomplex,double>;
- template class MCSCF<dcomplex,dcomplex>;
- 
- template class CISolver<double,double>;
- template class CISolver<dcomplex,double>;
- template class CISolver<dcomplex,dcomplex>;
-
- template class OrbitalRotation<double,double>; 
- template class OrbitalRotation<dcomplex,double>; 
- template class OrbitalRotation<dcomplex,dcomplex>; 
 
 }; // namespace ChronusQ
 
+#include <mcwavefunction/multicomponent/neo/impl.hpp>

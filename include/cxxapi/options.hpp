@@ -276,14 +276,16 @@ namespace ChronusQ {
   void CQDYNAMICS_VALID( std::ostream& out, CQInputFile& input );
 
   // Parse MCSCF options
-  std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &, 
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);
+  struct MCSCFJobType;
+  std::shared_ptr<MCWaveFunctionBase> CQBuildMCWaveFunction(std::ostream &,
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, std::string &,
+     std::shared_ptr<MCSCFJobType>&);
+  std::shared_ptr<MCSCFBase> CQMCSCFOptions(std::ostream &,
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, bool isNEO);
+  std::shared_ptr<MCSCFBase> CQBuildMCSCFOptions(std::ostream &,
+     CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, std::string &,
+     std::shared_ptr<MCSCFJobType>&mcscfjob);
 
-
-  // Parse NEOMCSCF options
-  std::shared_ptr<MCWaveFunctionBase> CQNEOMCSCFOptions(std::ostream &, 
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen> cu);  
-  
   void CQMCSCF_VALID(std::ostream &, CQInputFile &);
   
   void HandlePostHFProperties(std::ostream &, CQInputFile &,

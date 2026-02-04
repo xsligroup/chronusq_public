@@ -115,7 +115,7 @@ namespace ChronusQ {
         binFile.readData(prefix + "CIVec_"+std::to_string(i+1), CIVecs[fileNR+i]);
       }
       // read in state energies
-      binFile.readData(prefix + "STATE_ENERGY", this->StateEnergy.data() + fileNR);
+      binFile.readData(prefix + "STATE_ENERGY", this->StateEnergy->data() + fileNR);
       fileNR += tempNR;
     }
 

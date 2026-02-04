@@ -34,10 +34,15 @@
 namespace ChronusQ {
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::runCube(std::vector<std::shared_ptr<CubeGen>> cubes)
+    void NEOMCWaveFunction<MatsT,IntsT>::runCube(std::vector<std::shared_ptr<CubeGen>> cubes)
     {
         SingleSlater<MatsT,IntsT> * ess = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->ewfn_->reference());
         SingleSlater<MatsT,IntsT> * pss = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
+
+        // Currently both ewfn_ and pwfn_ get copies of CubeOptsMC, but NEOMCWaveFunction does not
+        // could allow in the future for separate cube determinations for different particle wavefunctions
+        // but for now simply assume the same set of cubes for both
+        this->cubeOptsMC = ewfn_->cubeOptsMC;
 
         // cubes[0] is the electronic cube
         // cubes[1] is the protonic

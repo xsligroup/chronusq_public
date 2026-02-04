@@ -108,7 +108,7 @@ namespace ChronusQ {
       std::cout << std::fixed << std::right<< std::setprecision(10);
       std::cout.fill(' ');
       std::cout <<  "State:" << std::setw(4) << SoI_[i]
-      << "  Energy (Hartree):" << std::setw(16) << this->StateEnergy[i] <<  std::endl;
+      << "  Energy (Hartree):" << std::setw(16) << this->StateEnergy->at(i) <<  std::endl;
     }
     std::cout << BannerTop << std::endl;
 

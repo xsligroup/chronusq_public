@@ -28,48 +28,7 @@
 
 namespace ChronusQ {
 
-  void MCWaveFunctionBase::partitionProtonMOSpace(std::vector<size_t> nActO, size_t nCorrE)
-  {
-    auto & mopart = this->MOPartition;
-    auto & wfn = referenceWaveFunction();
-
-    mopart.nElecMO = wfn.nAlphaOrbital();
-
-    mopart.nMO = mopart.nElecMO;
-
-    size_t nCorrO = std::accumulate(nActO.begin(), nActO.end(), 0);
-
-    // Hacky part where we work around the fact that this is not closed shell
-    mopart.nCorrEA = nCorrE;
-    mopart.nCorrEB = 0;
-    mopart.nInact = wfn.nOA - mopart.nCorrEA;
-
-    mopart.nFVirt = mopart.nElecMO - nCorrO - mopart.nInact;
-    mopart.nCorrO = nCorrO;
-    mopart.nCorrE = nCorrE;
-
-    // TODO: Construct the det string manager
-
-    if(mopart.scheme == CAS)
-    {
-      this->NDet=Comb(nCorrO,nCorrE);
-      this->detStr=std::dynamic_pointer_cast<DetStringManager>(std::make_shared<CASStringManager>(nCorrO,nCorrE));
-      this->detStrBeta=std::dynamic_pointer_cast<DetStringManager>(std::make_shared<CASStringManager>(nCorrO,0));
-    }
-    else
-    {
-      CErr("Non CAS NEOCI NYI");
-    }
-
-    setActiveSpaceAndReOrder();
-
-    setMORanges();
-
-  }
-
-
-
-  void MCWaveFunctionBase::partitionMOSpace(std::vector<size_t> nActO, size_t nCorrE) {
+  void MCWaveFunctionBase::partitionMOSpace(std::vector<size_t> nActO, size_t nCorrE, bool HighSpin) {
   
     auto & mopart = this->MOPartition;
     auto & wfn = referenceWaveFunction();
@@ -100,7 +59,12 @@ namespace ChronusQ {
       if (wfn.iCS) {
         mopart.nCorrEA = nCorrE / 2;
         mopart.nCorrEB = mopart.nCorrEA;  
-      } else {
+      } 
+      else if (HighSpin) {
+        mopart.nCorrEA = nCorrE;
+        mopart.nCorrEB = 0;
+      }
+      else {
         int singleE   = wfn.nOA - wfn.nOB;
         mopart.nCorrEA = (nCorrE + singleE) / 2;
         mopart.nCorrEB = nCorrE - mopart.nCorrEA;  
@@ -190,19 +154,6 @@ namespace ChronusQ {
 
   }; // partiation MOSpace
   
-
-  void MCWaveFunctionBase::turnOnStateAverage(const std::vector<double> & weight) {
-    
-    size_t NS = this->NStates;
-    
-    if( weight.size() != NS) 
-      CErr("MCSCF needs "+std::to_string(NS)+" weights for state average" );   
-
-    this->StateAverage = true;
-    this->SAWeight = std::vector<double>(NS);
-    std::copy_n(weight.begin(), NS, this->SAWeight.begin());
-  };
-  
   // Generate the category offset for nC=1: fCat[iCata+iCatb*nCat]
   std::vector<int> MCWaveFunctionBase::genfCat(std::vector<std::vector<size_t>> LCata,
     std::vector<std::vector<size_t>> LCatb, size_t nCata, size_t nCatb) {
@@ -261,7 +212,7 @@ namespace ChronusQ {
     std::vector<size_t> nOrbs;
     std::vector<char> orbIdentifiers;
     
-    if (referenceWaveFunction().nC == 4) {
+    if (this->getnC() == 4) {
       nOrbs.push_back(MOPartition.nNegMO);
       orbIdentifiers.push_back('N');
     }

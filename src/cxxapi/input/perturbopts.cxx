@@ -133,10 +133,9 @@ namespace ChronusQ {
 
     #define CONSTRUCT_PERTURB(_MT,_IT)             \
     if( not found ) try {                          \
-      auto &tmp = dynamic_cast<MCSCF<_MT,_IT>&>(*ref);\
       perturb = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
             std::make_shared<PERTURB<_MT,_IT>>( \
-            std::dynamic_pointer_cast<MCSCF<_MT,_IT>>(ref),SoI)); \
+            std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(ref),SoI)); \
       PTopts = &(std::dynamic_pointer_cast<PERTURB<_MT,_IT>>(perturb)->PTopts); \
       std::cout<<"Perturb constructed."<<std::endl; \
       found = true;\

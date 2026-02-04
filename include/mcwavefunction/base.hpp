@@ -100,8 +100,6 @@ namespace ChronusQ {
 
   public:
 
-    typedef std::vector<std::vector<int>> int_matrix;
-
     SafeFile savFile;    ///< Data File, for restart
     MPI_Comm comm;
 
@@ -116,7 +114,7 @@ namespace ChronusQ {
     std::shared_ptr<DetStringManager> detStrBeta = nullptr; // only for 1C
 
     double InactEnergy;
-    std::vector<double> StateEnergy;
+    std::shared_ptr<std::vector<double>> StateEnergy;
     // Storage for Field-Nuclear dipole interactions
     // This is additive to the diagonal in CI theory, so it can be 
     // simply added to the total state energies on convergence
@@ -133,14 +131,16 @@ namespace ChronusQ {
     // at that time
     bool orbital_changed = false;
 
+    // These are really members of MCSCF, but we hold onto them here
+    // for CubeGen
     bool StateAverage    = false;
     std::vector<double> SAWeight;
-    
-    bool PopulationAnalysis = false; // default is do not do Mulliken analysis
-    bool SpinAnalysis = false; // default is do not do Spin analysis
-    size_t NosS1 = 0; // number of initial states s1 for oscillator strength
-    double * osc_str = nullptr; // matrix to save oscillator strength
-    bool multipoleMoment = false; // default is do not compute multipole moments
+
+    // For integral transform
+    bool cacheHalfTransTPI_ = false;
+   
+    // osc_str stays with MCWaveFunction to save
+    std::vector<double> osc_str; // matrix to save oscillator strength
 
     // Length gauge electric multipoles
     std::vector<cart_t> elecDipoles;        ///< Electric Dipole in the length gauge
@@ -149,24 +149,14 @@ namespace ChronusQ {
 
     bool readCI = false; ///< Read CI vectors and state energies from rstfiles
 
-    // Perturbation
-    EMPerturbation mcscfPert;
-
     // Options for CubeGen
     CubeGenOptions cubeOptsMC;
-
-    // Do Natural Orbital Transformation
-    size_t NatOrbs = 0;
-    // By default we want to re-express the CI vectors
-    // in the new natural orbital basis
-    bool NatOrbRediag = true;
 
     // Print Settings
     size_t printMOCoeffs = 0;
     size_t printRDMs = 0;
     double rdmCut = 0.10;
     size_t NDetPrint = 0;
-    bool printProtonDets = false;
 
     MCWaveFunctionBase() = delete;
     MCWaveFunctionBase(const MCWaveFunctionBase &) = default;
@@ -186,9 +176,7 @@ namespace ChronusQ {
 
     ~MCWaveFunctionBase() { dealloc(); };
 
-    void partitionMOSpace(std::vector<size_t>, size_t);
-    void partitionProtonMOSpace(std::vector<size_t>, size_t);
-    void turnOnStateAverage(const std::vector<double> &);
+    void partitionMOSpace(std::vector<size_t>, size_t,bool HighSpin = false);
     std::vector<int> genfCat(std::vector<std::vector<size_t>>,
       std::vector<std::vector<size_t>>, size_t, size_t);
     std::vector<int> genfCat(std::vector<std::vector<size_t>>, size_t);
@@ -199,16 +187,21 @@ namespace ChronusQ {
     virtual WaveFunctionBase & referenceWaveFunction() = 0;
     virtual void swapMOs(std::vector<std::vector<std::pair<size_t, size_t>>>&, SpinType) = 0;
     void setActiveSpaceAndReOrder();
+    virtual size_t getnC() const = 0;
+    virtual BASIS_FUNCTION_TYPE getBasisType() const = 0;
 
     // Post-processing functions
     virtual void runCube(std::vector<std::shared_ptr<CubeGen>>) = 0;
 
     void alloc() {
-      this->StateEnergy.clear();
-      this->StateEnergy.resize(this->NStates, 0.);
+      this->StateEnergy = std::make_shared<std::vector<double>>();
+      this->StateEnergy->clear();
+      this->StateEnergy->resize(this->NStates, 0.);
     }
 
     void dealloc () { }
+
+    virtual void addMCWaveFunction(std::shared_ptr<MCWaveFunctionBase>,std::string){CErr("");};
 
   }; // class MCWaveFunctionBase
 

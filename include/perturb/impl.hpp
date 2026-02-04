@@ -102,7 +102,7 @@ namespace ChronusQ {
       MatsT * HV = CQMemManager::get().malloc<MatsT>(this->NDet);
       computeHV(HV, this->CIVecs[0]);
 
-      this->StateEnergy[0] = refMCwfn->StateEnergy[SoI_[0]]
+      this->StateEnergy->at(0) = refMCwfn->StateEnergy->at(SoI_[0])
                         + std::real(computeCHV(this->CIVecs[0], HV))
                         - std::real(computeShiftCorrection(0));
       CQMemManager::get().free(HV);

@@ -102,7 +102,7 @@ namespace ChronusQ {
     std::vector<std::string> nRTokens;
     std::istringstream nRStream(nroots);
     for( std::string line; std::getline(nRStream, line); ) {
-      std::cout<<line<<std::endl;
+      //std::cout<<line<<std::endl;
       split(nRTokens, line, " \t,");
 
       if( nRTokens.size() == 0) continue;
@@ -249,7 +249,7 @@ namespace ChronusQ {
   };
 
   void HandleMCSCFOrbitalSwaps(std::ostream &out, CQInputFile &input,
-    std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcwf) {
+    std::shared_ptr<MCWaveFunctionBase> &mcwf) {
 
     // MO swapping
     std::string swapMOStrings;
@@ -399,35 +399,97 @@ namespace ChronusQ {
     return s;
   }
 
+
   /**
-   *  \brief Construct a MCSCF object using the input 
-   *  file.
    *
-   *  \param [in] out    Output device for data / error output.
-   *  \param [in] input  Input file datastructure
-   *  \param [in] ss     SingleSlater reference
-   *                     
+   * \brief Primary interface for which an MCSCF job is built
    *
-   *  \returns shared_ptr to a RealTimeBase object
-   *    constructed from the input options.
+   * \return A MCSCFBase pointer from which MCSCF calculations are run
    *
-   */ 
-  std::shared_ptr<MCWaveFunctionBase> CQMCSCFOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube ) {
+   */
 
-    if( not input.containsSection("MCSCF") )
-      CErr("MCSCF section must be specified for MCSCF job",out);
+  std::shared_ptr<MCSCFBase> CQMCSCFOptions(std::ostream &out, 
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> & mcwfn, EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube, bool doNEO ) 
+  {
 
-    std::string jobType;
+    std::cout << std::endl << std::endl << std::endl << std::endl;
+
+    std::cout << "           *********************************************************" << std::endl;      
+    std::cout << "           *                                                       *" << std::endl;      
+    std::cout << "           *  Multi Configurational Self Consistent Field (MCSCF)  *" << std::endl;      
+    std::cout << "           *                                                       *" << std::endl;      
+    std::cout << "           *********************************************************" << std::endl;      
     
-    try {
-      jobType = input.getData<std::string>("MCSCF.JOBTYPE");
-    } catch(...) {
-      CErr("A specific job Type is needed for MCSCF job");
+    std::cout << std::endl << BannerTop << std::endl;
+ 
+
+    std::string prefix = "";
+    std::shared_ptr<MCWaveFunctionBase> auxmcwfn;
+    std::shared_ptr<MCSCFJobType> mcscfjob = nullptr;
+    if(!doNEO)
+    {
+      mcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjob);
     }
-    
-    //trim spaces
-    trim(jobType);
+    else
+    {
+      std::shared_ptr<NEOBase> neobase;
+      std::shared_ptr<SingleSlaterBase> tempss;
+
+      #define GETNEOBASE(_MT,_IT)             \
+      if( not found ) try {                          \
+        neobase = std::dynamic_pointer_cast<NEOBase>( \
+            std::dynamic_pointer_cast<NEOSS<_MT,_IT>>(ss)); \
+        found = true;                 \
+      } catch(...) { }
+
+      bool found = false;
+      GETNEOBASE(double,double);
+      GETNEOBASE(dcomplex,double);
+      GETNEOBASE(dcomplex,dcomplex);
+
+      tempss = neobase->getSubSSBase("Electronic");
+      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob);
+
+      #define MAKENEOMCWFN(_MT,_IT) \
+      if(not found) try { \
+       mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
+              std::make_shared<NEOMCWaveFunction<_MT,_IT>>( \
+                dynamic_cast<NEOSS<_MT,_IT>&>(*ss),auxmcwfn->NStates)); \
+       found = true; \
+       } catch(...) { }
+
+      found = false;
+      MAKENEOMCWFN(double,double);
+      MAKENEOMCWFN(dcomplex,double);
+      MAKENEOMCWFN(dcomplex,dcomplex);
+
+      mcwfn->addMCWaveFunction(auxmcwfn,"Electronic");
+
+      prefix = "PROT";
+      tempss = neobase->getSubSSBase("Protonic");
+      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob);
+      mcwfn->addMCWaveFunction(auxmcwfn,"Protonic");
+      prefix="";
+
+    }
+
+    return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjob);
+  }
+
+
+  // A struct for convenience for parsing the exact job type requested by the user
+  struct MCSCFJobType
+  {
+    // Data members 
+    std::string jobType;
+    bool isCASJob;
+    bool isRASJob;
+    bool isDMRGJob;
+
+    bool isCI;
+    bool isSCF;
+    bool isPT2;
+    bool isPDFT;
 
     // MC Methods Keywords
     std::vector<std::string> MCMethods {
@@ -437,264 +499,95 @@ namespace ChronusQ {
       // "PDFT",
       // "SELECTIVE",
     };
-    
-    // Construct valid job types 
-    std::vector<std::string> CASJobs, RASJobs, DMRGJobs;
-    for (auto &m: MCMethods) {
-      CASJobs.emplace_back("CAS" + m);
-      RASJobs.emplace_back("RAS" + m);
-      DMRGJobs.emplace_back("DMRG" + m);
-    }
-     
-    // Determine Scheme    
-    bool isCASJob = 
-      std::find(CASJobs.begin(),CASJobs.end(),jobType) != CASJobs.end();
-    bool isRASJob = 
-      std::find(RASJobs.begin(),RASJobs.end(),jobType) != RASJobs.end();
-    bool isDMRGJob = 
-      std::find(DMRGJobs.begin(),DMRGJobs.end(),jobType) != DMRGJobs.end();
-    
-    if(not isCASJob and not isRASJob and not isDMRGJob) 
-      CErr(jobType + " is not a valid MCSCF.JOBTYPE",out);
-    
-    // erase scheme and get methods
-    if(isDMRGJob) jobType.erase(0,4);
-    else jobType.erase(0,3);
-    
-    bool isCI  = not jobType.compare("CI");
-    bool isSCF = not jobType.compare("SCF");
-    bool isPT2 = not jobType.compare("PT2");
-    bool isPDFT = not jobType.compare("PDFT");
 
-    // Disabling functionality NYI
-    // RASSCF NYI
-    if( isRASJob and isSCF )
-      CErr("RASSCF not yet implemented",out);
+    void parseMCSCFJobType(std::ostream&out,CQInputFile&input,std::string&prefix)
+    {
+      try {
+        jobType = input.getData<std::string>(prefix+"MCSCF.JOBTYPE");
+      } catch(...) {
+        CErr("A specific job Type is needed for MCSCF job");
+      }
+      //trim spaces
+      trim(jobType);
 
-    // 1c+RAS NYI
-    if( ss->nC==1 and isRASJob )
-      CErr("1c + RAS not yet implemented",out);
+      // Construct valid job types 
+      std::vector<std::string> CASJobs, RASJobs, DMRGJobs;
+      for (auto &m: MCMethods) {
+        CASJobs.emplace_back("CAS" + m);
+        RASJobs.emplace_back("RAS" + m);
+        DMRGJobs.emplace_back("DMRG" + m);
+      }
 
-    // See if reference is RO for USCF check
-    #define IsRO(MT,IT) \
-    std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss) ? (std::dynamic_pointer_cast<ROFock<MT,IT>>(std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss)->fockBuilder) != nullptr) : false
-    bool isRO = IsRO(double,double) || IsRO(double,dcomplex) || IsRO(dcomplex,dcomplex);
+      // Determine Scheme    
+      isCASJob = std::find(CASJobs.begin(),CASJobs.end(),jobType) != CASJobs.end();
+      isRASJob = std::find(RASJobs.begin(),RASJobs.end(),jobType) != RASJobs.end();
+      isDMRGJob = std::find(DMRGJobs.begin(),DMRGJobs.end(),jobType) != DMRGJobs.end();
 
-    // USCF MOs NYI
-    if( ss->nC==1 and not ss->iCS and not isRO ){
-      CErr("Unrestricted MOs not yet implemented",out);
+      if(!isCASJob and !isRASJob and !isDMRGJob) 
+        CErr(jobType + " is not a valid MCSCF.JOBTYPE",out);
+      
+        // erase scheme and get methods
+      if(isDMRGJob) jobType.erase(0,4);
+      else jobType.erase(0,3);
+    
+      isCI  = not jobType.compare("CI");
+      isSCF = not jobType.compare("SCF");
+      isPT2 = not jobType.compare("PT2");
+      isPDFT = not jobType.compare("PDFT");
+
+      // Disabling functionality NYI
+      // RASSCF NYI
+      if( isRASJob and isSCF )
+        CErr("RASSCF not yet implemented");
+
+    };
+  };
+
+  // Builds the MCSCF options
+  // Takes a MCWaveFunctionBase object, which may be of type MCWaveFunction or MultiComponentMCWaveFunction
+  std::shared_ptr<MCSCFBase> CQBuildMCSCFOptions(std::ostream &out,
+    CQInputFile &input, std::shared_ptr<MCWaveFunctionBase> &mcwfn,  EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube, std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob) {
+
+    if( not input.containsSection(prefix+"MCSCF") )
+      CErr("MCSCF section must be specified for MCSCF job",out);
+
+    if(!mcscfjob)
+    {
+      mcscfjob = std::make_shared<MCSCFJobType>();
+      mcscfjob->parseMCSCFJobType(out,input,prefix);
     }
 
     // construct object
-    std::shared_ptr<MCWaveFunctionBase> mcscf;
+    std::shared_ptr<MCSCFBase> mcscf;
     MCSCFSettings * mcscfSettings;   
-    
-    // parse number of roots
-    size_t nR = 1;
+    bool found = false;    
+    #define CONSTRUCT_MCSCF(_MT,_IT)             \
+    if( not found ) try {                          \
+      if(std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn)){ \
+      mcscf = std::dynamic_pointer_cast<MCSCFBase>( \
+          std::make_shared<MCSCF<_MT,_IT>>( \
+            std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn))); \
+      found = true;}                \
+  	} catch(...) { }
+
+    CONSTRUCT_MCSCF(double,double);
+    CONSTRUCT_MCSCF(dcomplex,double);
+    CONSTRUCT_MCSCF(dcomplex,dcomplex);
+
+    mcscfSettings = &mcscf->settings;
+
     std::string nRoots;
+    size_t nR;
     std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>("MCSCF.NROOTS");)
+    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF.NROOTS");)
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
-    
-    // Construct MCSCF object
-    #define CONSTRUCT_MCSCF(_MT,_IT)             \
-    if( not found ) try {                          \
-      mcscf = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
-          std::make_shared<MCSCF<_MT,_IT>>( \
-            dynamic_cast<SingleSlater<_MT,_IT>& >(*ss), nR)); \
-      mcscfSettings = &(std::dynamic_pointer_cast<MCSCF<_MT,_IT>>(mcscf)->settings); \
-      found = true;                 \
-	} catch(...) { }
 
-    
-    bool found = false;
-    if (isCI or isSCF) {
-      CONSTRUCT_MCSCF( double,   double   );
-      CONSTRUCT_MCSCF( dcomplex, double   );
-      CONSTRUCT_MCSCF( dcomplex, dcomplex );
-    } else {
-      CErr("Not Implemented yet");
-    }
-
-    // OPTOPT( mcscf.FourCompNoPair = input.getData<bool>("MCSCF.FOURCOMPNOPAIR"));
-    
-    // set up scheme
-    if      (isCASJob) mcscf->MOPartition.scheme = CAS;
-    else if (isRASJob) mcscf->MOPartition.scheme = RAS;
-    
-    // Parse space partition
-    std::string sActO;
-    std::vector<size_t> nActO;
-	size_t nActE;
-
-	try {
-      sActO = input.getData<std::string>("MCSCF.NACTO");
-    } catch(...) {
-      CErr("Must specify MCSCF.NActO for # active orbitals");
-    }
-    try {
-      nActE = input.getData<int>("MCSCF.NACTE");
-    } catch(...) {
-      CErr("Must specify MCSCF.NActE for # active electrons");
-    }
-    
-    std::vector<std::string> nactoTokens;
-    split(nactoTokens, sActO, " ,;");
-    for (auto & nacto_i: nactoTokens)
-      nActO.push_back(std::stoul(nacto_i));
-
-    if(not isRASJob) {
-      if (nActO.size() != 1) CErr("Wrong input of MCSCF.NACTO for" + jobType);
-    } else if (isRASJob) {
-      if (nActO.size() != 3) CErr("Wrong input of MCSCF.NACTO for" + jobType);
-      try {
-        mcscf->MOPartition.mxHole = input.getData<int>("MCSCF.RAS1MAXHOLE");
-      } catch(...) {
-        CErr("Must specify MCSCF.RAS1MAXHOLE for a RAS job");
-      }
-      try {
-        mcscf->MOPartition.mxElec = input.getData<int>("MCSCF.RAS3MAXELEC");
-      } catch(...) {
-        CErr("Must specify MCSCF.RAS3MAXELEC for a RAS Job");
-      }
-    }   
-    
-    std::cout << std::endl << std::endl << std::endl << std::endl;
-
-    std::cout << "           *********************************************************" << std::endl;      
-    std::cout << "           *                                                       *" << std::endl;      
-    std::cout << "           *  Multi Configurational Self Consistent Field (MCSCF)  *" << std::endl;      
-    std::cout << "           *                                                       *" << std::endl;      
-    std::cout << "           *********************************************************" << std::endl;      
-    
-    std::cout << std::endl <<BannerTop << std::endl;
-	
-    mcscf->partitionMOSpace(nActO, nActE);
-    
-    // MO Selections or Swaps
-    std::string casMOStrings, fcMOStrings, fvMOStrings;
-    std::vector<std::string> rasMOStrings(3);
-    OPTOPT( casMOStrings    = input.getData<std::string>("MCSCF.CASORBITAL"));
-    OPTOPT( rasMOStrings[0] = input.getData<std::string>("MCSCF.RAS1ORBITAL"));
-    OPTOPT( rasMOStrings[1] = input.getData<std::string>("MCSCF.RAS2ORBITAL"));
-    OPTOPT( rasMOStrings[2] = input.getData<std::string>("MCSCF.RAS3ORBITAL"));
-    OPTOPT( fcMOStrings     = input.getData<std::string>("MCSCF.INORBITAL"));
-    OPTOPT( fvMOStrings     = input.getData<std::string>("MCSCF.FVORBITAL"));
-
-//    #define SET_ORBITAL_INDEX(ORBINDEX, INPUTSTRING, C) \
-//      if (not ORBINDEX.empty()) { \
-//        std::vector<std::string> moTokens; \
-//        split(moTokens, INPUTSTRING, ", "); \
-//        for (auto & mo: moTokens)  { \
-//          std::vector<std::string> mo2; \
-//          split(mo2, mo, "-"); \
-//          if (mo2.size() == 1) { \
-//            ORBINDEX[std::stoul(mo2[0])-1] = C; \
-//          } else if (mo2.size() == 2) { \
-//            for (auto i = std::stoul(mo2[0]); i <= std::stoul(mo2[1]); i++) \
-//              ORBINDEX[i-1] = C; \
-//          } else CErr("Unrecogonized pattern in orbital selection"); }}
-//    
-//    #define FILL_DEFAULT_INDEX(ORBINDEX, ITER, C, N) \
-//      { for (auto i = 0ul; i < N; i++) { \
-//          while (ITER < ORBINDEX.size()) { \
-//            if (ORBINDEX[ITER] == 'N') break; \
-//            ITER++; \
-//          } \
-//          ORBINDEX[ITER] = C; }}
-
-    bool selectMO = not fcMOStrings.empty() or not fvMOStrings.empty();
-    
-    if (isCASJob or isDMRGJob) 
-      selectMO = selectMO or not casMOStrings.empty();
-    else if (isRASJob)
-      selectMO = selectMO or not rasMOStrings[0].empty() or 
-                 not rasMOStrings[1].empty() or not rasMOStrings[2].empty();
-
-    if (selectMO) {
-
-      std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
-      
-      // accommodate cases for no no-pair approximation
-      size_t fourCOffSet = mcscf->MOPartition.nNegMO;  
-      
-      std::vector<char> inputOrbIndices(mcscf->MOPartition.nMO, 'N');
-      
-      // parse input
-//      SET_ORBITAL_INDEX(inputOrbIndices, fcMOStrings, 'I');
-//      SET_ORBITAL_INDEX(inputOrbIndices, fvMOStrings, 'S');
-      set_orbital_index(inputOrbIndices, fcMOStrings, 'I');
-      set_orbital_index(inputOrbIndices, fvMOStrings, 'S');
-      if (isCASJob or isDMRGJob) {
-//        SET_ORBITAL_INDEX(inputOrbIndices, casMOStrings, 'A');
-        set_orbital_index(inputOrbIndices, casMOStrings, 'A');
-      } else if (isRASJob) {
-        for (auto i = 0; i < 3; i++) {
-          char i_char = '1' + i;
-//          SET_ORBITAL_INDEX(inputOrbIndices, rasMOStrings[i], i_char);
-          set_orbital_index(inputOrbIndices, rasMOStrings[i], i_char);
-        }
-      }
-      
-      // fill default index for those undefined ones
-      size_t mo_iter = fourCOffSet;
-      if (fcMOStrings.empty()) {
-        size_t n_char = mcscf->MOPartition.nInact;
-//        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
-        fill_default_index(inputOrbIndices, mo_iter, 'I', n_char);
-      }
-      
-      if (isCASJob or isDMRGJob) {
-        if (casMOStrings.empty()) {
-          size_t n_char = mcscf->MOPartition.nCorrO;
-//          FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
-          fill_default_index(inputOrbIndices, mo_iter, 'A', n_char);
-        }
-      } else if (isRASJob) {
-        for (auto i = 0; i < 3; i++) { 
-          char i_char = '1' + i;
-          size_t n_char = mcscf->MOPartition.nActOs[i];
-          if (rasMOStrings[i].empty())
-//            FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, i_char, n_char);
-            fill_default_index(inputOrbIndices, mo_iter, i_char, n_char);
-        }
-      }
-      if (fvMOStrings.empty()) 
-//        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', mcscf->MOPartition.nFVirt);
-        fill_default_index(inputOrbIndices, mo_iter, 'S', mcscf->MOPartition.nFVirt);
-
-      print_orbIndices(inputOrbIndices);
-//      std::cout << std::endl;
-//
-//      std::cout << "    Construct Orbital Indices as:" << std::endl;
-//      
-//      // print 10 per line
-//      for (auto i = 0ul, sPerLine = 10ul; i < inputOrbIndices.size(); i++) {
-//        
-//        if (i % sPerLine == 0) 
-//          std::cout << "      MO " << std::setw(5) << i + 1 << " ~ " 
-//                    << std::setw(5) 
-//                    << std::min(i + sPerLine, inputOrbIndices.size()) << ":    ";
-//        
-//        std::cout << inputOrbIndices[i] << "  ";
-//
-//        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
-//      } 
-//      
-//      std::cout << std::endl << std::endl;
-      
-      mcscf->MOPartition.orbIndices = inputOrbIndices;
-      mcscf->setActiveSpaceAndReOrder();
-    }    
-
-    OPTOPT( mcscf->readCI = input.getData<bool>("MCSCF.READCI");)
-
-    if( mcscf->readCI and nR>1 ) CErr("READCI not implemented for more than 1 state");
+    if( mcwfn->readCI and nR > 1 ) CErr("READCI not implemented for more than 1 state");
  
     // Parse CI Options
-    if (isCI or isSCF) {
+    if (mcscfjob->isCI or mcscfjob->isSCF) {
 
       // Check if number of roots is valid
       if( nR > mcscf->NDet ) CErr("# roots > # determinants");
@@ -703,7 +596,7 @@ namespace ChronusQ {
       std::string ciALG;
       if( mcscf->NDet<750 ) ciALG = "FULLMATRIX";
       else ciALG = "DAVIDSON";
-      OPTOPT( ciALG = input.getData<std::string>("MCSCF.CIDIAGALG");)
+      OPTOPT( ciALG = input.getData<std::string>(prefix+"MCSCF.CIDIAGALG");)
       trim(ciALG);
 
       if( not ciALG.compare("FULLMATRIX") ) {
@@ -711,13 +604,13 @@ namespace ChronusQ {
       } else if( not ciALG.compare("DAVIDSON") ) {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
         OPTOPT( mcscfSettings->maxCIIter = 
-                  input.getData<size_t>("MCSCF.MAXCIITER"); )
+                  input.getData<size_t>(prefix+"MCSCF.MAXCIITER"); )
         OPTOPT( mcscfSettings->ciVectorConv = 
-                  input.getData<double>("MCSCF.CICONV"); )
+                  input.getData<double>(prefix+"MCSCF.CICONV"); )
         OPTOPT( mcscfSettings->maxDavidsonSpace = 
-                  input.getData<size_t>("MCSCF.MAXDAVIDSONSPACE");)
+                  input.getData<size_t>(prefix+"MCSCF.MAXDAVIDSONSPACE");)
         OPTOPT( mcscfSettings->nDavidsonGuess = 
-                  input.getData<size_t>("MCSCF.NDAVIDSONGUESS");)
+                  input.getData<size_t>(prefix+"MCSCF.NDAVIDSONGUESS");)
         if (!EnergyRefs.empty()) mcscfSettings->energyRefs = EnergyRefs;
       } else if( not ciALG.compare("SKIP") )
       {
@@ -728,35 +621,35 @@ namespace ChronusQ {
     } // CI Options
     
     // Parse Orbital Rotation Options
-    if (isSCF) {
+    if (mcscfjob->isSCF) {
       
       mcscfSettings->doSCF = true;
       
-      if (ss->nC == 4) {
+      if (mcwfn->getnC() == 4) {
         // default as true
         mcscfSettings->ORSettings.rotate_negative_positive = true;
         OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
-          = input.getData<bool>("MCSCF.ROTATENEGORBS"); )
+          = input.getData<bool>(prefix+"MCSCF.ROTATENEGORBS"); )
       }
 
-      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>("MCSCF.GENIVO"); )
+      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>(prefix+"MCSCF.GENIVO"); )
 
       bool StateAverage = (nR > 1);
-      OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
+      OPTOPT( StateAverage = input.getData<bool>(prefix+"MCSCF.STATEAVERAGE");)
       if(StateAverage) {
         std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
         mcscf->turnOnStateAverage(SAWeights);
       }
       
       size_t maxSCFIter = 128; // default
-      OPTOPT( maxSCFIter = input.getData<size_t>("MCSCF.MAXSCFITER"); )
+      OPTOPT( maxSCFIter = input.getData<size_t>(prefix+"MCSCF.MAXSCFITER"); )
       mcscfSettings->maxSCFIter = maxSCFIter;
        
       auto & ORSettings = mcscfSettings->ORSettings;
       
       std::string scfALG = "AQ2ND";
       
-      OPTOPT( scfALG = input.getData<std::string>("MCSCF.SCFALG");)
+      OPTOPT( scfALG = input.getData<std::string>(prefix+"MCSCF.SCFALG");)
        
       if( not scfALG.compare("AQ2ND") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER;
@@ -771,85 +664,53 @@ namespace ChronusQ {
       }
 
       OPTOPT( mcscfSettings->scfEnergyConv = 
-                input.getData<double>("MCSCF.SCFENECONV"); )
+                input.getData<double>(prefix+"MCSCF.SCFENECONV"); )
       
       OPTOPT( mcscfSettings->scfGradientConv = 
-                input.getData<double>("MCSCF.SCFGRADCONV"); )
+                input.getData<double>(prefix+"MCSCF.SCFGRADCONV"); )
       
       OPTOPT( ORSettings.hessianDiagScale = 
-              input.getData<double>("MCSCF.HESSDIAGSCALE"); )
+              input.getData<double>(prefix+"MCSCF.HESSDIAGSCALE"); )
      
    } // SCF Options
 
    // Natural orbitals
-   OPTOPT( mcscf->NatOrbs = input.getData<int>("MCSCF.NATORB"); )
-   OPTOPT( mcscf->NatOrbRediag = input.getData<bool>("MCSCF.NATORBREDIAG"); )
+   OPTOPT( mcscfSettings->NatOrbs = input.getData<int>(prefix+"MCSCF.NATORB"); )
+   OPTOPT( mcscfSettings->NatOrbRediag = input.getData<bool>(prefix+"MCSCF.NATORBREDIAG"); )
 
    // Mulliken charge analysis
-   OPTOPT( mcscf->PopulationAnalysis = input.getData<bool>("MCSCF.POPULATION"); )
+   OPTOPT( mcscfSettings->PopulationAnalysis = input.getData<bool>(prefix+"MCSCF.POPULATION"); )
 
    // Mulliken charge analysis
-   OPTOPT( mcscf->SpinAnalysis = input.getData<bool>("MCSCF.PRINTSPIN"); )
+   OPTOPT( mcscfSettings->SpinAnalysis = input.getData<bool>(prefix+"MCSCF.PRINTSPIN"); )
 
    // Oscillator strength
-   OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )
+   OPTOPT( mcscfSettings->NosS1 = input.getData<size_t>(prefix+"MCSCF.OSCISTREN"); )
 
    // Multipole moments
-   OPTOPT( mcscf->multipoleMoment = input.getData<bool>("MCSCF.PRINTMULT"); )
+   OPTOPT( mcscfSettings->multipoleMoment = input.getData<bool>(prefix+"MCSCF.PRINTMULT"); )
 
    // MCSCF Field
    std::string fieldStr;
-   OPTOPT(
-      fieldStr = input.getData<std::string>("MCSCF.FIELD");
-   )
+   OPTOPT( fieldStr = input.getData<std::string>(prefix+"MCSCF.FIELD");)
    EMPerturbation parsedField;
    handleField(fieldStr, parsedField, scfPert);
    mcscf->mcscfPert.addField(parsedField);
 
    if( pert_has_type(mcscf->mcscfPert,Magnetic) ) {
-      if (ss->basisSet_.basisType != COMPLEX_GIAO) 
+      if (mcwfn->getBasisType() != COMPLEX_GIAO) 
         CErr("NYI - MCSCF with magnetic field only works with GIAO!");
-   } else if (pert_has_type(mcscf->mcscfPert, Electric) && ss->nC == 4) {
+   } else if (pert_has_type(mcscf->mcscfPert, Electric) && mcwfn->getnC() == 4) {
        CErr("NYI - 4C MCSCF with electric field might work, but unverified.");
    }
 
-   // Printing Options
-   // MOs
-   if ( input.containsData("MCSCF.PRINTMOS") ) {
-     try { mcscf->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
-     catch(...) {
-       CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
-     }
-   }
-   if (mcscf->printMOCoeffs >= 10 ) CErr("MCSCF print level is not valid!");
-
-   // RDMs
-   HandleRDMPrinting(out, input,  mcscf);
-
-   // MO swapping
-   // Should occur after active orbital selection
-   HandleMCSCFOrbitalSwaps(out, input, ss, mcscf);
-
-   if( cube ){
-
-     auto &cubeOptions = cube->getCubeOptions();
-     mcscf->cubeOptsMC = cubeOptions;
-
-   }
-
-   // Check for CubeGen subsection
-   if( input.containsSection("MCSCF.CUBE") ){
-     std::cout << " Found [MCSCF.CUBE] section" << std::endl;
-     CQCUBE_VALID(out,input,"MCSCF.");
-     CQCUBEOptionalKeywords(out,input,mcscf->cubeOptsMC,"MCSCF.");
-   }
-   
-   return mcscf;
+  return mcscf;
 
   }; // CQCIOptions
 
+
   /**
-   *  \brief Construct a NEOMCSCF object using the input 
+   *  \brief Construct a MCWaveFunction object using the input 
    *  file.
    *
    *  \param [in] out    Output device for data / error output.
@@ -857,73 +718,47 @@ namespace ChronusQ {
    *  \param [in] ss     SingleSlater reference
    *                     
    *
-   *  \returns shared_ptr to a RealTimeBase object
+   *  \returns shared_ptr to a MCWaveFunction object
    *    constructed from the input options.
    *
    */ 
-  std::shared_ptr<MCWaveFunctionBase> CQNEOMCSCFOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, EMPerturbation& scfPert , std::shared_ptr<CubeGen> cube) {
-//    EMPerturbation& scfPert ) {
-
-    if( not input.containsSection("MCSCF") )
-      CErr("MCSCF section must be specified for MCSCF job",out);
-    if( not input.containsSection("PROTMCSCF") )
-      CErr("MCSCF section must be specified for MCSCF job",out);    
-    std::string jobType;
-    
-    try {
-      jobType = input.getData<std::string>("MCSCF.JOBTYPE");
-    } catch(...) {
-      CErr("A specific job Type is needed for MCSCF job");
-    }
-    
-    //trim spaces
-    trim(jobType);
-
-    // MC Methods Keywords
-    std::vector<std::string> MCMethods {
-      "CI",
-      "SCF"
-      // "PT2"
-      // "PDFT",
-      // "SELECTIVE",
-    };
-    
-    // Construct valid job types 
-    std::vector<std::string> CASJobs, RASJobs, DMRGJobs;
-    for (auto &m: MCMethods) {
-      CASJobs.emplace_back("CAS" + m);
-      RASJobs.emplace_back("RAS" + m);
-      DMRGJobs.emplace_back("DMRG" + m);
-    }
+  std::shared_ptr<MCWaveFunctionBase> CQBuildMCWaveFunction(std::ostream & out,
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> & ss, EMPerturbation & scfPert, std::shared_ptr<CubeGen> cube, std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob)
+  {
+    // construct object
+    std::shared_ptr<MCWaveFunctionBase> mcwfn;
      
-    // Determine Scheme    
-    bool isCASJob = 
-      std::find(CASJobs.begin(),CASJobs.end(),jobType) != CASJobs.end();
-    bool isRASJob = 
-      std::find(RASJobs.begin(),RASJobs.end(),jobType) != RASJobs.end();
-    bool isDMRGJob = 
-      std::find(DMRGJobs.begin(),DMRGJobs.end(),jobType) != DMRGJobs.end();
-    
-    if(not isCASJob and not isRASJob and not isDMRGJob) 
-      CErr(jobType + " is not a valid MCSCF.JOBTYPE",out);
-    
-    // erase scheme and get methods
-    if(isDMRGJob) jobType.erase(0,4);
-    else jobType.erase(0,3);
-    
-    bool isCI  = not jobType.compare("CI");
-    bool isSCF = not jobType.compare("SCF");
-    bool isPT2 = not jobType.compare("PT2");
-    bool isPDFT = not jobType.compare("PDFT");
+    // parse number of roots
+    size_t nR = 1;
+    std::string nRoots;
+    std::vector<std::pair<double, size_t>> EnergyRefs;
+    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF.NROOTS");)
+    if ( not nRoots.empty() ) {
+      nR = HandleNRootsInput(nRoots, EnergyRefs);
+    }
 
-    // Disabling functionality NYI
-    // RASSCF NYI
-    if( isRASJob and isSCF )
-      CErr("RASSCF not yet implemented",out);
+    // Construct the MCWaveFuction object
+    #define CONSTRUCT_MCWFN(_MT,_IT)             \
+    if( not found ) try {                          \
+      mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
+          std::make_shared<MCWaveFunction<_MT,_IT>>( \
+            dynamic_cast<SingleSlater<_MT,_IT>& >(*ss), nR)); \
+      found = true;                 \
+    } catch(...) { }
 
-    // 1c+RAS NYI
-    if( ss->nC==1 and isRASJob )
+    bool found = false;
+    CONSTRUCT_MCWFN( double,   double   );
+    CONSTRUCT_MCWFN( dcomplex, double   );
+    CONSTRUCT_MCWFN( dcomplex, dcomplex );
+
+    if(!mcscfjob)
+    {
+      mcscfjob = std::make_shared<MCSCFJobType>();
+      mcscfjob->parseMCSCFJobType(out,input,prefix);
+    }
+
+   // 1c+RAS NYI
+    if( ss->nC==1 and mcscfjob->isRASJob )
       CErr("1c + RAS not yet implemented",out);
 
     // See if reference is RO for USCF check
@@ -931,464 +766,162 @@ namespace ChronusQ {
     std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss) ? (std::dynamic_pointer_cast<ROFock<MT,IT>>(std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss)->fockBuilder) != nullptr) : false
     bool isRO = IsRO(double,double) || IsRO(double,dcomplex) || IsRO(dcomplex,dcomplex);
 
-    // For now need to avoid crashing out due to unrestricted component of the Protonic wavefunction
-    if(false)
-    {
-      // USCF MOs NYI
-      if( ss->nC==1 and not ss->iCS and not isRO ){
-        CErr("Unrestricted MOs not yet implemented",out);
-      }
+    // USCF MOs NYI
+    if( ss->nC==1 and not ss->iCS and not isRO and ss->particle.charge < 0){
+      CErr("Unrestricted MOs not yet implemented",out);
     }
 
-    // construct object
-    std::shared_ptr<MCWaveFunctionBase> mcscf;
-    MCSCFSettings * mcscfSettings;   
-    
-    // parse number of roots
-    size_t nR = 1;
-    std::string nRoots;
-    std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>("MCSCF.NROOTS");)
-    if ( not nRoots.empty() ) {
-      nR = HandleNRootsInput(nRoots, EnergyRefs);
-    }
+    // Build the MCWaveFunction
 
-    std::shared_ptr<MCWaveFunctionBase> ewfn_;
-    std::shared_ptr<MCWaveFunctionBase> pwfn_;
-
-    // Construct NEOMCSCF object
-    #define CONSTRUCT_MCSCF(_MT,_IT)             \
-    if( not found ) try {                          \
-      mcscf = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
-          std::make_shared<NEOMCSCF<_MT,_IT>>( \
-            dynamic_cast<NEOSS<_MT,_IT>& >(*ss), nR)); \
-      mcscfSettings = &(std::dynamic_pointer_cast<MCSCF<_MT,_IT>>(mcscf)->settings); \
-      auto mc = std::dynamic_pointer_cast<NEOMCSCF<_MT,_IT>>(mcscf); \
-      ewfn_ = mc->get_ewfn(); \
-      pwfn_ = mc->get_pwfn(); \
-      found = true;                 \
-	} catch(...) { }
-
-    
-    bool found = false;
-    if (isCI or isSCF) {
-      CONSTRUCT_MCSCF( double,   double   );
-      CONSTRUCT_MCSCF( dcomplex, double   );
-      CONSTRUCT_MCSCF( dcomplex, dcomplex );
-    } else {
-      CErr("Not Implemented yet");
-    }
-
-    // OPTOPT( mcscf.FourCompNoPair = input.getData<bool>("MCSCF.FOURCOMPNOPAIR"));
-    
     // set up scheme
-    if      (isCASJob) mcscf->MOPartition.scheme = CAS;
-    else if (isRASJob) mcscf->MOPartition.scheme = RAS;
-    
+    if      (mcscfjob->isCASJob) mcwfn->MOPartition.scheme = CAS;
+    else if (mcscfjob->isRASJob) mcwfn->MOPartition.scheme = RAS;
+
     // Parse space partition
-    std::string sActEO;
-    std::vector<size_t> nActEO;
-  	size_t nActE;
-    // Parse space partition
-    std::string sActPO;
-    std::vector<size_t> nActPO;
-  	size_t nActP;
+    std::string sActO;
+    std::vector<size_t> nActO;
+  	size_t nActE = 0;
+    size_t nActP = 0;
 
     try {
-      sActEO = input.getData<std::string>("MCSCF.NACTO");
+      sActO = input.getData<std::string>(prefix+"MCSCF.NACTO");
     } catch(...) {
       CErr("Must specify MCSCF.NActO for # active orbitals");
     }
-    try {
-      nActE = input.getData<int>("MCSCF.NACTE");
-    } catch(...) {
-      CErr("Must specify MCSCF.NActE for # active electrons");
-    }
-    try {
-      sActPO = input.getData<std::string>("PROTMCSCF.NACTO");
-    } catch(...) {
-      CErr("Must specify PROTMCSCF.NActO for # active orbitals");
-    }
-    try {
-      nActP = input.getData<int>("PROTMCSCF.NACTP");
-    } catch(...) {
-      CErr("Must specify PROTMCSCF.NActP for # active protons");
-    }
+    OPTOPT(nActE = input.getData<int>(prefix+"MCSCF.NACTE"));
+    OPTOPT(nActP = input.getData<int>(prefix+"MCSCF.NACTP"));
+    if(!nActE && !nActP)
+      CErr("Must specify active number of particles in MCSCF with NACTE or NACTP");
+   
+    std::vector<std::string> nactoTokens;
+    split(nactoTokens, sActO, " ,;");
+    for (auto & nacto_i: nactoTokens)
+      nActO.push_back(std::stoul(nacto_i));
 
-    // Handle the electron subspaces 
-    std::vector<std::string> nactETokens;
-    split(nactETokens, sActEO, " ,;");
-    for (auto & nacto_i: nactETokens)
-      nActEO.push_back(std::stoul(nacto_i));
+    if(not mcscfjob->isRASJob) {
+      if (nActO.size() != 1) CErr("Wrong input of MCSCF.NACTO for" + mcscfjob->jobType);
+    } else if (mcscfjob->isRASJob) {
+      if (nActO.size() != 3) CErr("Wrong input of MCSCF.NACTO for" + mcscfjob->jobType);
+      try {
+        mcwfn->MOPartition.mxHole = input.getData<int>(prefix+"MCSCF.RAS1MAXHOLE");
+      } catch(...) {
+        CErr("Must specify MCSCF.RAS1MAXHOLE for a RAS job");
+      }
+      try {
+        mcwfn->MOPartition.mxElec = input.getData<int>(prefix+"MCSCF.RAS3MAXELEC");
+      } catch(...) {
+        CErr("Must specify MCSCF.RAS3MAXELEC for a RAS Job");
+      }
+    }   
 
-    // Handle the electron subspaces 
-    std::vector<std::string> nactPTokens;
-    split(nactPTokens, sActPO, " ,;");
-    for (auto & nacto_i: nactPTokens)
-      nActPO.push_back(std::stoul(nacto_i));
-
-    if(not isRASJob) {
-      if (nActEO.size() != 1) CErr("Wrong input of MCSCF.NACTO for" + jobType);
-      if (nActPO.size() != 1) CErr("Wrong input of PROTMCSCF.NACTO for" + jobType);
-    } 
-    else
-    {
-      CErr("Non CAS NEO-CI NYI");
-    }
-//    else if (isRASJob) {
-//      if (nActEO.size() != 3) CErr("Wrong input of MCSCF.NACTO for" + jobType);
-//      try {
-//        mcscf->MOPartition.mxHole = input.getData<int>("MCSCF.RAS1MAXHOLE");
-//      } catch(...) {
-//        CErr("Must specify MCSCF.RAS1MAXHOLE for a RAS job");
-//      }
-//      try {
-//        mcscf->MOPartition.mxElec = input.getData<int>("MCSCF.RAS3MAXELEC");
-//      } catch(...) {
-//        CErr("Must specify MCSCF.RAS3MAXELEC for a RAS Job");
-//      }
-//    }   
-    
-    std::cout << std::endl << std::endl << std::endl << std::endl;
-
-    std::cout << "           *********************************************************" << std::endl;      
-    std::cout << "           *                                                       *" << std::endl;      
-    std::cout << "           *  Multi Configurational Self Consistent Field (MCSCF)  *" << std::endl;      
-    std::cout << "           *                                                       *" << std::endl;      
-    std::cout << "           *********************************************************" << std::endl;      
-    
-    std::cout << std::endl <<BannerTop << std::endl;
-
-    //auto mc = std::dynamic_pointer_cast<NEOMCSCF<dcomplex,dcomplex>>(mcscf);
-
-    // Note these calls construct the individual string managers 
-    ewfn_->partitionMOSpace(nActEO,nActE);
-    pwfn_->partitionProtonMOSpace(nActPO,nActP);
-
-    // Total number of determinant strings is the product of these two
-    mcscf->NDet = ewfn_->NDet * 
-                  pwfn_->NDet;
-    // Set the base MCWaveFunction object number of correlating orbitals
-    mcscf->MOPartition.nCorrO = ewfn_->MOPartition.nCorrO+
-                                pwfn_->MOPartition.nCorrO;
+    mcwfn->partitionMOSpace(nActO,ss->particle.charge < 0 ? nActE : nActP);
 
     // MO Selections or Swaps
     std::string casMOStrings, fcMOStrings, fvMOStrings;
     std::vector<std::string> rasMOStrings(3);
-    OPTOPT( casMOStrings    = input.getData<std::string>("MCSCF.CASORBITAL"));
-    OPTOPT( rasMOStrings[0] = input.getData<std::string>("MCSCF.RAS1ORBITAL"));
-    OPTOPT( rasMOStrings[1] = input.getData<std::string>("MCSCF.RAS2ORBITAL"));
-    OPTOPT( rasMOStrings[2] = input.getData<std::string>("MCSCF.RAS3ORBITAL"));
-    OPTOPT( fcMOStrings     = input.getData<std::string>("MCSCF.INORBITAL"));
-    OPTOPT( fvMOStrings     = input.getData<std::string>("MCSCF.FVORBITAL"));
-    
-    #define FILL_DEFAULT_INDEX(ORBINDEX, ITER, C, N) \
-      { for (auto i = 0ul; i < N; i++) { \
-          while (ITER < ORBINDEX.size()) { \
-            if (ORBINDEX[ITER] == 'N') break; \
-            ITER++; \
-          } \
-          ORBINDEX[ITER] = C; }}
+    OPTOPT( casMOStrings    = input.getData<std::string>(prefix+"MCSCF.CASORBITAL"));
+    OPTOPT( rasMOStrings[0] = input.getData<std::string>(prefix+"MCSCF.RAS1ORBITAL"));
+    OPTOPT( rasMOStrings[1] = input.getData<std::string>(prefix+"MCSCF.RAS2ORBITAL"));
+    OPTOPT( rasMOStrings[2] = input.getData<std::string>(prefix+"MCSCF.RAS3ORBITAL"));
+    OPTOPT( fcMOStrings     = input.getData<std::string>(prefix+"MCSCF.INORBITAL"));
+    OPTOPT( fvMOStrings     = input.getData<std::string>(prefix+"MCSCF.FVORBITAL"));
 
     bool selectMO = not fcMOStrings.empty() or not fvMOStrings.empty();
     
-    if (isCASJob or isDMRGJob) 
+    if (mcscfjob->isCASJob or mcscfjob->isDMRGJob) 
       selectMO = selectMO or not casMOStrings.empty();
-    else if (isRASJob)
+    else if (mcscfjob->isRASJob)
       selectMO = selectMO or not rasMOStrings[0].empty() or 
                  not rasMOStrings[1].empty() or not rasMOStrings[2].empty();
 
     if (selectMO) {
 
       std::cout << "  * Selecting Active Space Explicitly:" << std::endl;
-      // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = ewfn_->MOPartition.nNegMO;  
       
-      std::vector<char> inputOrbIndices(ewfn_->MOPartition.nMO, 'N');
+      // accommodate cases for no no-pair approximation
+      size_t fourCOffSet = mcwfn->MOPartition.nNegMO;  
+      
+      std::vector<char> inputOrbIndices(mcwfn->MOPartition.nMO, 'N');
       
       // parse input
-      for (size_t i : parseOrbitalSelectionInput(fcMOStrings))
-        inputOrbIndices[i] = 'I';
-      for (size_t i : parseOrbitalSelectionInput(fvMOStrings))
-        inputOrbIndices[i] = 'S';
-      if (isCASJob or isDMRGJob) {
-        for (size_t i : parseOrbitalSelectionInput(casMOStrings))
-          inputOrbIndices[i] = 'A';
-      } else if (isRASJob) {
+      set_orbital_index(inputOrbIndices, fcMOStrings, 'I');
+      set_orbital_index(inputOrbIndices, fvMOStrings, 'S');
+      if (mcscfjob->isCASJob or mcscfjob->isDMRGJob) {
+        set_orbital_index(inputOrbIndices, casMOStrings, 'A');
+      } else if (mcscfjob->isRASJob) {
         for (auto i = 0; i < 3; i++) {
           char i_char = '1' + i;
-          for (size_t i : parseOrbitalSelectionInput(rasMOStrings[i]))
-            inputOrbIndices[i] = i_char;
+          set_orbital_index(inputOrbIndices, rasMOStrings[i], i_char);
         }
       }
       
       // fill default index for those undefined ones
       size_t mo_iter = fourCOffSet;
       if (fcMOStrings.empty()) {
-        size_t n_char = ewfn_->MOPartition.nInact;
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
+        size_t n_char = mcwfn->MOPartition.nInact;
+        fill_default_index(inputOrbIndices, mo_iter, 'I', n_char);
       }
       
-      if (isCASJob or isDMRGJob) {
+      if (mcscfjob->isCASJob or mcscfjob->isDMRGJob) {
         if (casMOStrings.empty()) {
-          size_t n_char = ewfn_->MOPartition.nCorrO;
-          FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
+          size_t n_char = mcwfn->MOPartition.nCorrO;
+          fill_default_index(inputOrbIndices, mo_iter, 'A', n_char);
         }
-      } else if (isRASJob) {
+      } else if (mcscfjob->isRASJob) {
         for (auto i = 0; i < 3; i++) { 
           char i_char = '1' + i;
-          size_t n_char = ewfn_->MOPartition.nActOs[i];
+          size_t n_char = mcwfn->MOPartition.nActOs[i];
           if (rasMOStrings[i].empty())
-            FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, i_char, n_char);
+            fill_default_index(inputOrbIndices, mo_iter, i_char, n_char);
         }
       }
       if (fvMOStrings.empty()) 
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', ewfn_->MOPartition.nFVirt);
-      
-      std::cout << std::endl;
+        fill_default_index(inputOrbIndices, mo_iter, 'S', mcwfn->MOPartition.nFVirt);
 
-      std::cout << "    Construct Orbital Indices as:" << std::endl;
-      
-      // print 10 per line
-      for (auto i = 0ul, sPerLine = 10ul; i < inputOrbIndices.size(); i++) {
-        
-        if (i % sPerLine == 0) 
-          std::cout << "      MO " << std::setw(5) << i + 1 << " ~ " 
-                    << std::setw(5) 
-                    << std::min(i + sPerLine, inputOrbIndices.size()) << ":    ";
-        
-        std::cout << inputOrbIndices[i] << "  ";
-
-        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
-      } 
-      
-      std::cout << std::endl << std::endl;
-      
-      ewfn_->MOPartition.orbIndices = inputOrbIndices;
-      ewfn_->setActiveSpaceAndReOrder();
-    }
-
-    // MO Selections or Swaps
-    std::string pcasMOStrings, pfcMOStrings, pfvMOStrings;
-    OPTOPT( pcasMOStrings    = input.getData<std::string>("PROTMCSCF.CASORBITAL"));
-    OPTOPT( pfcMOStrings     = input.getData<std::string>("PROTMCSCF.INORBITAL"));
-    OPTOPT( pfvMOStrings     = input.getData<std::string>("PROTMCSCF.FVORBITAL"));
-
-    // Reset for the protonic space
-    selectMO = false;
-    selectMO = not pfcMOStrings.empty() or not pfvMOStrings.empty();
-    
-    if (isCASJob or isDMRGJob) 
-      selectMO = selectMO or not pcasMOStrings.empty();
-
-    if (selectMO) {
-
-      std::cout << "  * Selecting Proton Active Space Explicitly:" << std::endl;
-      
-      // accomondate cases for no no-pair approximation
-      size_t fourCOffSet = pwfn_->MOPartition.nNegMO;  
-      
-      std::vector<char> inputOrbIndices(pwfn_->MOPartition.nMO, 'N');
-      
-      // parse input
-      for (size_t i : parseOrbitalSelectionInput(pfcMOStrings))
-        inputOrbIndices[i] = 'I';
-      for (size_t i : parseOrbitalSelectionInput(pfvMOStrings))
-        inputOrbIndices[i] = 'S';
-      if (isCASJob or isDMRGJob) {
-        for (size_t i : parseOrbitalSelectionInput(pcasMOStrings))
-          inputOrbIndices[i] = 'A';
-      }      
-
-      // fill default index for those undefined ones
-      size_t mo_iter = fourCOffSet;
-      if (pfcMOStrings.empty()) {
-        size_t n_char = pwfn_->MOPartition.nInact;
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'I', n_char);
-      }
-      
-      if (isCASJob or isDMRGJob) {
-        if (pcasMOStrings.empty()) {
-          size_t n_char = pwfn_->MOPartition.nCorrO;
-          FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'A', n_char);
-        }
-      } 
+      print_orbIndices(inputOrbIndices);
      
-      if (pfvMOStrings.empty()) 
-        FILL_DEFAULT_INDEX(inputOrbIndices, mo_iter, 'S', pwfn_->MOPartition.nFVirt);
-      
-      std::cout << std::endl;
+      mcwfn->MOPartition.orbIndices = inputOrbIndices;
+      mcwfn->setActiveSpaceAndReOrder();
+    }    
 
-      std::cout << "    Construct Orbital Indices as:" << std::endl;
-      
-      // print 10 per line
-      for (auto i = 0ul, sPerLine = 10ul; i < inputOrbIndices.size(); i++) {
-        
-        if (i % sPerLine == 0) 
-          std::cout << "      MO " << std::setw(5) << i + 1 << " ~ " 
-                    << std::setw(5) 
-                    << std::min(i + sPerLine, inputOrbIndices.size()) << ":    ";
-        
-        std::cout << inputOrbIndices[i] << "  ";
+    // MO swapping
+    // Should occur after active orbital selection
+    HandleMCSCFOrbitalSwaps(out, input, mcwfn);
 
-        if ( (i+1) % sPerLine == 0) std::cout << std::endl;
-      } 
-      
-      std::cout << std::endl << std::endl;
-      
-      pwfn_->MOPartition.orbIndices = inputOrbIndices;
-      pwfn_->setActiveSpaceAndReOrder();
+    // Handling of printing determinants
+    HandleDetPrinting(std::cout,input,mcwfn);
+
+    // Printing Options
+    // MOs
+    if ( input.containsData("MCSCF.PRINTMOS") ) {
+      try { mcwfn->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
+      catch(...) {
+        CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
+      }
     }
-    
+    if (mcwfn->printMOCoeffs >= 10 ) CErr("MCSCF print level is not valid!");
 
-    OPTOPT( mcscf->readCI = input.getData<bool>("MCSCF.READCI");)
- 
-    // Parse CI Options
-    if (isCI or isSCF) {
+    // RDMs
+    HandleRDMPrinting(out, input, mcwfn);
 
-      // Change default based on # determinants
-      std::string ciALG;
-      if( mcscf->NDet<750 ) ciALG = "FULLMATRIX";
-      else ciALG = "DAVIDSON";
-      OPTOPT( ciALG = input.getData<std::string>("MCSCF.CIDIAGALG");)
-      trim(ciALG);
 
-      if( not ciALG.compare("FULLMATRIX") ) {
-        mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
-      } else if( not ciALG.compare("DAVIDSON") ) {
-        mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
-        OPTOPT( mcscfSettings->maxCIIter = 
-                  input.getData<size_t>("MCSCF.MAXCIITER"); )
-        OPTOPT( mcscfSettings->ciVectorConv = 
-                  input.getData<double>("MCSCF.CICONV"); )
-        OPTOPT( mcscfSettings->maxDavidsonSpace = 
-                  input.getData<size_t>("MCSCF.MAXDAVIDSONSPACE");)
-        OPTOPT( mcscfSettings->nDavidsonGuess = 
-                  input.getData<size_t>("MCSCF.NDAVIDSONGUESS");)
-        if (!EnergyRefs.empty()) mcscfSettings->energyRefs = EnergyRefs;
-      } else if( not ciALG.compare("SKIP") ) {
-        mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::SKIP;
-      } else CErr(ciALG + "is not a valid MCSCF.CIDIAGALG",out);
-      
-    } // CI Options
-    
-    // Parse Orbital Rotation Options
-    if (isSCF) {
-      CErr("NEO MC -SCF- NYI");
-      
-      mcscfSettings->doSCF = true;
-      
-      if (ss->nC == 4) {
-        // default as true
-        mcscfSettings->ORSettings.rotate_negative_positive = true;
-        OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
-          = input.getData<bool>("MCSCF.ROTATENEGORBS"); )
-      }
+    // ReadCI
+    OPTOPT( mcwfn->readCI = input.getData<bool>("MCSCF.READCI");)
 
-      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>("MCSCF.GENIVO"); )
-
-      bool StateAverage = false;
-      OPTOPT( StateAverage = input.getData<bool>("MCSCF.STATEAVERAGE");)
-      if(StateAverage) {
-        std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
-        mcscf->turnOnStateAverage(SAWeights);
-      }
-      
-      size_t maxSCFIter = 128; // default
-      OPTOPT( maxSCFIter = input.getData<size_t>("MCSCF.MAXSCFITER"); )
-      mcscfSettings->maxSCFIter = maxSCFIter;
-       
-      auto & ORSettings = mcscfSettings->ORSettings;
-      
-      std::string scfALG = "AQ2ND";
-      
-      OPTOPT( scfALG = input.getData<std::string>("MCSCF.SCFALG");)
-       
-      if( not scfALG.compare("AQ2ND") ) {
-        ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER;
-      } else if( not scfALG.compare("Q2ND") ) {
-        ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_QUASI_2ND_ORDER;
-        CErr("Quasi Second Order method is not implemented yet");
-      } else if( not scfALG.compare("2ND") ) {
-        ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_2ND_ORDER;
-        CErr("Second Order method is not implemented yet");
-      } else {
-        CErr(scfALG + " is not a valid MCSCF.SCFALG",out);
-      }
-
-      OPTOPT( mcscfSettings->scfEnergyConv = 
-                input.getData<double>("MCSCF.SCFENECONV"); )
-      
-      OPTOPT( mcscfSettings->scfGradientConv = 
-                input.getData<double>("MCSCF.SCFGRADCONV"); )
-      
-      OPTOPT( ORSettings.hessianDiagScale = 
-              input.getData<double>("MCSCF.HESSDIAGSCALE"); )
-     
-   } // SCF Options
-
-   // Natural orbitals
-   OPTOPT( mcscf->NatOrbs = input.getData<int>("MCSCF.NATORB"); )
-   OPTOPT( mcscf->NatOrbRediag = input.getData<bool>("MCSCF.NATORBREDIAG"); )
-
-   // Mulliken charge analysis
-   OPTOPT( mcscf->PopulationAnalysis = input.getData<bool>("MCSCF.POPULATION"); )
-
-   // Oscillator strength
-   OPTOPT( mcscf->NosS1 = input.getData<size_t>("MCSCF.OSCISTREN"); )
-
-   // Multipole moments
-   OPTOPT( mcscf->multipoleMoment = input.getData<bool>("MCSCF.PRINTMULT"); )
-
-   // Printing Protonic Determinants 
-   //OPTOPT( mcscf->printProtonDets = input.getData<bool>("MCSCF.PRINTPROTONDETS");)
-
-  // Printing Options
-   // MOs
-   if ( input.containsData("MCSCF.PRINTMOS") ) {
-     try { mcscf->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
-     catch(...) {
-       CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
-     }
-   }
-   if (mcscf->printMOCoeffs >= 10 ) CErr("MCSCF print level is not valid!");
-
-   // Printing customization
-   HandleDetPrinting(out,input,mcscf);
-
-   // RDMs
-   HandleRDMPrinting(out, input,  mcscf);
-
-   // MO swapping
-   // Should occur after active orbital selection
-   HandleMCSCFOrbitalSwaps(out, input, ss, mcscf);
-
-   // CubeGen
    if( cube ){
      auto &cubeOptions = cube->getCubeOptions();
-     mcscf->cubeOptsMC = cubeOptions;
+     mcwfn->cubeOptsMC = cubeOptions;
    }
 
    // Check for CubeGen subsection
-   if( input.containsSection("MCSCF.CUBE") ){
+   if( input.containsSection(prefix+"MCSCF.CUBE") ){
      std::cout << " Found [MCSCF.CUBE] section" << std::endl;
-     CQCUBE_VALID(out,input,"MCSCF.");
-     CQCUBEOptionalKeywords(out,input,mcscf->cubeOptsMC,"MCSCF.");
+     CQCUBE_VALID(out,input,prefix+"MCSCF.");
+     CQCUBEOptionalKeywords(out,input,mcwfn->cubeOptsMC,prefix+"MCSCF.");
    }
  
-   // MCSCF Field
-   std::string fieldStr;
-   OPTOPT(
-      fieldStr = input.getData<std::string>("MCSCF.FIELD");
-   )
-   EMPerturbation parsedField;
-   handleField(fieldStr, parsedField, scfPert);
-   mcscf->mcscfPert.addField(parsedField);
-
-
-   return mcscf;
-
-  }; // CQNEOCIOptions
+    return mcwfn;
+  }
 
 }; // namespace ChronusQ
 

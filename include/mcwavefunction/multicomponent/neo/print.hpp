@@ -28,46 +28,18 @@
 #include <util/print.hpp>
 #include <cxxapi/output.hpp>
 #include <mointstransformer/moranges.hpp>
+#include <mcwavefunction.hpp>
 
 namespace ChronusQ {
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::printMCSCFHeader(EMPerturbation & pert)
+    void NEOMCWaveFunction<MatsT,IntsT>::printMOSpacePartition()
     {
         std::cout << "Electronic space paritioning: " << std::endl;
-        this->ewfn_->printMOSpacePatition();
+        this->ewfn_->printMOSpacePartition();
         std::cout << "Protonic space paritioning: " << std::endl;
-        this->pwfn_->printMOSpacePatition();
-
-        // Field print
-        if( pert.fields.size() != 0 ) {
-
-            std::cout << "\n\n  * MCSCF will be performed in the presence of an EM "
-                << "perturbation:\n\n";
-
-            for(auto &field : pert.fields) {
-
-                auto amp = field->getAmp();
-
-                std::cout << "     * ";
-                if( field->emFieldTyp == Electric ) std::cout << "Electric";
-                else                                std::cout << "Magnetic";
-                
-                std::cout << " ";
-            
-                if( field->size == 3 )        std::cout << "Dipole";
-                else if ( field->size == 6 )  std::cout << "Quadrupole";
-                else if ( field->size == 10 ) std::cout << "Octupole";
-                
-                std::cout << " Field: ";
-                std::cout << "{ ";
-                for(auto i = 0; i < amp.size(); i++) {
-                std::cout << amp[i]; if(i != amp.size() - 1) std::cout << ", ";
-                }
-                std::cout << " }\n";
-
-                }
-        }
+        this->pwfn_->printMOSpacePartition();
+    }
 
         // SMG 04/24/24
         // Removing this behavior as it was mostly useful in debugging
@@ -81,32 +53,8 @@ namespace ChronusQ {
         //    printDetOrder(std::cout,this->pwfn_->detStr);
         //}
 
-// Code for generating signs of excitation lists
-/*
-        std::shared_ptr<const ExcitationList> exList_a = std::dynamic_pointer_cast<CASStringManager>(this->ewfn_->detStr)->excitationList();
-        size_t nStr_a = exList_a->nString();
-        size_t nNZa = exList_a->nNonZero();
 
-        int k,l,Ka,signkl;
-        int i,j,Ja,signij;
-        // Goal is the sign convention is all relative to the 0'th (if HF) det
-        const int * exList_La = exList_a->pointerAtDet(0);
-        for(size_t Ekl = 0; Ekl < nNZa; Ekl++, exList_La+=4)
-        {
-            UNPACK_EXCITATIONLIST_4(exList_La,k,l,Ka,signkl);
-            std::cout << "Single excitation: " << l << " " << k << " to index: " << Ka << " with sign: " << signkl << std::endl;
-            const int * exList_Ka = exList_a->pointerAtDet(Ka);
-            for(size_t Eij= 0; Eij < nNZa; Eij++, exList_Ka+=4)
-            {
-                UNPACK_EXCITATIONLIST_4(exList_Ka,i,j,Ja,signij);
-                std::cout << "Double excitation: " << j << " " << i << " to index: " << Ja << " with sign: " << signij * signkl << std::endl;
-            }
-        }
-*/
-
-    }
-
-    void printOccKet(std::ostream & out, std::vector<size_t> occ)
+    static void printOccKet(std::ostream & out, std::vector<size_t> occ)
     {
         // If no particles of the type, print empty ket
         // This can happen if say doing a high spin radical calculation
@@ -121,9 +69,17 @@ namespace ChronusQ {
             out << occ[i] << " ";
         out << occ[occ.size()-1] << "> ";
     }
-    
+
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::printNEOMCSCFState(std::ostream & out, 
+    void NEOMCWaveFunction<MatsT,IntsT>::printMCState(std::ostream &out, size_t i, double energy, 
+                                                      MatsT* C, std::vector<size_t> & sorted_CAddr, 
+                                                      size_t N, const size_t n_item_per_row)
+    {
+        printNEOMCState(out,i,energy,C,sorted_CAddr,N);
+    }
+ 
+    template <typename MatsT, typename IntsT>
+    void NEOMCWaveFunction<MatsT,IntsT>::printNEOMCState(std::ostream & out, 
     size_t i, double energy, MatsT * C, std::vector<size_t> & sorted_CAddr,
     size_t N)
     {
@@ -178,7 +134,7 @@ namespace ChronusQ {
     }
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::printDetOrder(std::ostream & out, std::shared_ptr<DetStringManager> & detstr)
+    void NEOMCWaveFunction<MatsT,IntsT>::printDetOrder(std::ostream & out, std::shared_ptr<DetStringManager> & detstr)
     {
         std::shared_ptr<CASStringManager> subsys= std::dynamic_pointer_cast<CASStringManager>(detstr);
         size_t nStr = subsys->excitationList()->nString();
@@ -203,84 +159,13 @@ namespace ChronusQ {
     }
 
 
-/*
-    template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::printDetOrder(std::ostream & out)
+    template<typename MatsT, typename IntsT>
+    void NEOMCWaveFunction<MatsT,IntsT>::printMOInfo(std::ostream & out,
+                                            size_t printMOLevel)
     {
-        std::shared_ptr<CASStringManager> pstr = std::dynamic_pointer_cast<CASStringManager>(this->pwfn_->detStr);
-        size_t nStr_p = pstr->excitationList()->nString();
-        std::vector<std::vector<int>> pdarray = pstr->buildDeAddressingArray(pstr->addrArray_);
-        std::vector<size_t> p_occ;
-
-        out << std::endl;
-        std::cout << " *------------------------------------------------*" << std::endl;      
-        out <<       " * Printing Protonic Determinant Basis (In Order) *" << std::endl;
-        std::cout << " *------------------------------------------------*" << std::endl;      
-        for(size_t i = 0; i < nStr_p; i++)
-        {
-            out << i << "\t";
-            p_occ = pstr->address2DetString(i,pstr->addrArray_,pdarray);
-            printOccKet(out,p_occ);
-            out << std::endl;
-        }
-        std::cout << " *------------------------------------------------*" << std::endl;      
-        out <<       " * End Protonic Determinants                      *" << std::endl;
-        std::cout << " *------------------------------------------------*" << std::endl;      
-        out << std::endl << std::endl;
-    }
-*/
-    template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::printMCSCFFooter()
-    {
-        std::cout << std::endl << "MCSCF Results:" << std::endl;
         std::cout << BannerTop << std::endl;
-
-        this->printMOInfo(std::cout);
-
-        std::cout << " *---------------------------------------------*" << std::endl;      
-        std::cout << " * Configuration Interaction (CI) Eigen States *" << std::endl;      
-        std::cout << " *---------------------------------------------*" << std::endl;      
-        
+        std::cout << "NEO-MCSCF Print MO Info NYI" << std::endl;
         std::cout << std::endl << BannerTop << std::endl;
-
-        size_t NDet  = this->NDet;
-        size_t nS    = this->NStates;
-        size_t NPrintC = std::min(NDet, size_t(25));   
-        if(this->NDetPrint)
-        {
-            if(this->NDetPrint == DetPrint::ALLDET)
-            {
-                NPrintC = NDet;
-            }
-            else
-            {
-                NPrintC = this->NDetPrint;
-            }
-        }
-
-        for (auto i = 0ul; i < nS; i++) { 
-        
-            // sort coeffients based on the norm 
-            auto C = this->CIVecs[i];
-            std::vector<size_t> Cindx(NDet);        
-            std::iota(Cindx.begin(), Cindx.end(), 0);
-            
-            std::stable_sort(Cindx.begin(), Cindx.end(), 
-                [&] (size_t i , size_t j) {
-                return std::norm(C[i]) > std::norm(C[j]);
-                }
-            );
-            
-            // only print k Largerst coefficient
-            this->printNEOMCSCFState(std::cout, i, this->StateEnergy[i], C, Cindx, NPrintC);  
-        }
-
-
-        this->print1RDMs();
-        
-        std::cout << BannerTop << std::endl;
-    
-    
-    }; // NEOMCSCF::printMCSCFFooter
+    }
 
 }; // namespace ChronusQ

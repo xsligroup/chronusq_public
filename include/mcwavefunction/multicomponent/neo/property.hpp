@@ -37,7 +37,7 @@
 namespace ChronusQ {
 
     template<typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computeMultipole()
+    void NEOMCWaveFunction<MatsT,IntsT>::computeMultipole()
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         size_t nTotalP = protSS->molecule_.nTotalP;
@@ -59,13 +59,13 @@ namespace ChronusQ {
     }
 
     template <typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::computeMultipole(size_t s1)
+    void NEOMCWaveFunction<MatsT,IntsT>::computeMultipole(size_t s1)
     {
         // Grab a reference to the NEOSS object
         NEOSS<MatsT,IntsT> * neo_ss = &neoref_;
 
-        this->ewfn_->rdm2pdm(this->oneRDM[s1]);
-        this->pwfn_->rdm2pdm(this->PoneRDM[s1]);
+        this->ewfn_->rdm2pdm(this->ewfn_->oneRDM[s1]);
+        this->pwfn_->rdm2pdm(this->pwfn_->oneRDM[s1]);
 
         EMPerturbation emPert;
         neo_ss->computeMultipole(emPert);
@@ -85,7 +85,7 @@ namespace ChronusQ {
     }
 
     template<typename MatsT, typename IntsT>
-    double NEOMCSCF<MatsT,IntsT>::oscillator_strength(size_t s2, size_t s1)
+    double NEOMCWaveFunction<MatsT,IntsT>::oscillator_strength(size_t s2, size_t s1)
     {
         // Need to do both the electronic and nuclear dipole calculations
         // result is the sum of the two
@@ -155,12 +155,12 @@ namespace ChronusQ {
               *blas::dotu(nCorrO*nCorrO,ptmpTDM2.pointer(),1,(*PMOdipole)[iXYZ]->pointer(),1);
         } 
 
-        double f = (2./3.) * (this->StateEnergy[s2]-this->StateEnergy[s1]) * std::real(D);
+        double f = (2./3.) * (this->StateEnergy->at(s2)-this->StateEnergy->at(s1)) * std::real(D);
 
         std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
                 << " to state: " << std::setw(3) << std::right << s1+1 << ":";
         std::cout << std::setw(15) << std::right << "E(Eh) = "
-                << std::setprecision(8) << std::fixed << (this->StateEnergy[s2] - this->StateEnergy[s1])*EVPerHartree;
+                << std::setprecision(8) << std::fixed << (this->StateEnergy->at(s2) - this->StateEnergy->at(s1))*EVPerHartree;
         std::cout << std::setw(15) << std::right << "f = "
                 << std::setprecision(12) << std::fixed << f << std::endl;
 
@@ -168,7 +168,7 @@ namespace ChronusQ {
     }
 
     template<typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::ProtonExpectationValue(size_t s1)
+    void NEOMCWaveFunction<MatsT,IntsT>::ProtonExpectationValue(size_t s1)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
@@ -185,7 +185,7 @@ namespace ChronusQ {
     } // Proton Expectation value
 
     template<typename MatsT, typename IntsT>
-    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonExpectationValue(cqmatrix::Matrix<MatsT> PDM)
+    std::array<double,3> NEOMCWaveFunction<MatsT,IntsT>::ProtonExpectationValue(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         std::array<cqmatrix::Matrix<MatsT>,3> xyz = {(*protSS->aoints_->lenElectric)[0]->matrix(),
@@ -202,7 +202,7 @@ namespace ChronusQ {
     } // Proton Expectation value
 
     template<typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::ProtonVariance(size_t s1)
+    void NEOMCWaveFunction<MatsT,IntsT>::ProtonVariance(size_t s1)
     {
         std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
         std::vector<std::string> xyzstrs({"<X^2>-<X>^2 = ","<Y^2>-<Y>^2 = ","<Z^2>-<Z>^2 = "});
@@ -213,7 +213,7 @@ namespace ChronusQ {
     } // Proton Variance
 
     template<typename MatsT, typename IntsT>
-    std::array<double,3> NEOMCSCF<MatsT,IntsT>::ProtonVariance(cqmatrix::Matrix<MatsT> PDM)
+    std::array<double,3> NEOMCWaveFunction<MatsT,IntsT>::ProtonVariance(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         std::array<cqmatrix::Matrix<MatsT>,3> xyz = {(*protSS->aoints_->lenElectric)[0]->matrix(),
@@ -234,7 +234,7 @@ namespace ChronusQ {
     } // Proton Variance
 
     template<typename MatsT, typename IntsT>
-    void NEOMCSCF<MatsT,IntsT>::ProtonKE(size_t s1)
+    void NEOMCWaveFunction<MatsT,IntsT>::ProtonKE(size_t s1)
     {
         std::shared_ptr<cqmatrix::Matrix<MatsT>> PDM = this->getPOnePDM()[s1];
         std::cout << "Kinetc Energy Expectation value (au): ";
@@ -242,7 +242,7 @@ namespace ChronusQ {
     } // Proton KE
 
     template<typename MatsT, typename IntsT>
-    double NEOMCSCF<MatsT,IntsT>::ProtonKE(cqmatrix::Matrix<MatsT> PDM)
+    double NEOMCWaveFunction<MatsT,IntsT>::ProtonKE(cqmatrix::Matrix<MatsT> PDM)
     {
         SingleSlater<MatsT,IntsT> * protSS = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->pwfn_->reference());
         cqmatrix::Matrix<MatsT> AOKE = protSS->aoints_->kinetic->matrix();

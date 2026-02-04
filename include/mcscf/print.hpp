@@ -68,11 +68,13 @@ namespace ChronusQ {
 
   }; // MCSCFSettings::print
 
+  // MCSCF printing
+  // Above MCSCF printing will eventually be deleted
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::printMCSCFHeader(EMPerturbation & pert) {
     
-    auto & mopart = this->MOPartition;
-    auto & ref = this->reference();
+    auto & mopart = mcwfn_->MOPartition;
+    auto & ref = mcwfn_->reference();
 
     std::cout << std::endl;
     std::cout << bannerTop << std::endl;
@@ -99,11 +101,11 @@ namespace ChronusQ {
     
     std::cout << std::endl;
     if (ref.nC == 4)  {
-      FormattedLine(std::cout,"* No-pair Approxmiation:", this->FourCompNoPair);
+      FormattedLine(std::cout,"* No-pair Approxmiation:", mcwfn_->FourCompNoPair);
     }
     
     std::cout << std::endl;
-    this->printMOSpacePatition();
+    mcwfn_->printMOSpacePartition();
 
     settings.print(ref.nC == 4, this->NStates);
  
@@ -163,44 +165,10 @@ namespace ChronusQ {
     
     for (auto i = 0ul; i < this->NStates; i++)
       std::cout << "      State " << std::setw(5) << i + 1 << ":" 
-                << std::setw(20) << this->StateEnergy[i] << std::endl;;
+                << std::setw(20) << mcwfn_->StateEnergy->at(i) << std::endl;;
   
     std::cout << std::left << std::endl;
   } // printStateEnergy 
-  
-  
-  template <typename MatsT>
-  void printMCSCFState(std::ostream &out, size_t i, double energy, 
-    MatsT* C, std::vector<size_t> & sorted_CAddr, 
-    size_t N, const size_t n_item_per_row = 5) {
-    
-    out << std::fixed << std::right<< std::setprecision(10);
-    out.fill(' ');
-    
-    out << std::endl <<  "State:" << std::setw(4) << i + 1 << "  Energy (Hartree):" 
-    << std::setw(16) << energy <<  std::endl;
-    
-    out << std::fixed << std::right<< std::setprecision(7);
-    
-    size_t C_length = 10;
-    size_t CAddr;
-    
-    for (auto j = 0ul; j < (N-1)/n_item_per_row + 1; j++) {
-      size_t l = j*n_item_per_row;
-      size_t r = std::min((j+1)*n_item_per_row, N);
-      
-      for (auto p = l; p < r; p++) {
-        CAddr = sorted_CAddr[p]; 
-        out << "(" << std::setw(5) << CAddr << ") " 
-            << std::setw(C_length) << std::real(C[CAddr]); 
-        if(std::is_same<MatsT, dcomplex>::value)  
-          out << " " << std::setw(C_length) << std::imag(C[CAddr]);
-        out << "  ";  
-      }
-      out << std::endl;
-    }
-  
-  }; // printMCSCFState
   
   
   template <typename MatsT, typename IntsT>
@@ -209,7 +177,7 @@ namespace ChronusQ {
     std::cout << std::endl << "MCSCF Results:" << std::endl;
     std::cout << BannerTop << std::endl;
 
-    this->printMOInfo(std::cout);
+    mcwfn_->printMOInfo(std::cout);
     
     std::cout << " *---------------------------------------------*" << std::endl;      
     std::cout << " * Configuration Interaction (CI) Eigen States *" << std::endl;      
@@ -217,34 +185,15 @@ namespace ChronusQ {
     
     std::cout << std::endl << BannerTop << std::endl;
     
-    size_t NDet  = this->NDet;
-    size_t nS    = this->NStates;
-    size_t NPrintC = std::min(NDet, size_t(25));   
-    std::vector<size_t> kLargestCAddr = std::vector<size_t>(NPrintC, 0);
-    std::vector<MatsT> kLargestC = std::vector<MatsT>(NPrintC, MatsT(0.));
+    mcwfn_->printMCStates();
 
-    for (auto i = 0ul; i < nS; i++) { 
-       
-       // sort coeffients based on the norm 
-       auto C = this->CIVecs[i];
-       std::vector<size_t> Cindx(NDet);        
-       std::iota(Cindx.begin(), Cindx.end(), 0);
-       
-       std::stable_sort(Cindx.begin(), Cindx.end(), 
-         [&] (size_t i , size_t j) {
-           return std::norm(C[i]) > std::norm(C[j]);
-         }
-       );
-       
-       // only print k Largerst coefficient
-       printMCSCFState(std::cout, i, this->StateEnergy[i], C, Cindx, NPrintC);  
-    }
-
-    this->print1RDMs();
+    mcwfn_->print1RDMs();
     
     std::cout << BannerTop << std::endl;
   
   }; //MCSCF::printMCSCFFooter
+
+ 
  
 }; // namespace ChronusQ
 

@@ -299,12 +299,12 @@ namespace ChronusQ {
     cart_t classicalNucDipole={0.0,0.0,0.0};
     cart_t protDipole;
 
-    std::shared_ptr<NEOMCSCF<MatsT,IntsT>> neomcref_;
+    std::shared_ptr<NEOMCWaveFunction<MatsT,IntsT>> neomcref_;
     std::shared_ptr<NEOCASCI<MatsT,IntsT>> neocibuilder_;
 
   public:
 
-    RealTimeNEOCI(std::shared_ptr<NEOMCSCF<MatsT, IntsT>> reference,
+    RealTimeNEOCI(std::shared_ptr<NEOMCWaveFunction<MatsT, IntsT>> reference,
                std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager_,
                RealTimeAlgorithm MRRTAlg)
         : neomcref_(reference),

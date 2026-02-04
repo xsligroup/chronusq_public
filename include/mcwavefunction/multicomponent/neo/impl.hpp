@@ -24,21 +24,45 @@
 #pragma once
 
 #include <mcwavefunction.hpp>
-#include <mcscf.hpp>
-#include <mcscf/print.hpp>
-#include <mcscf/rdm.hpp>
-#include <mcscf/cisolver.hpp>
 #include <util/matout.hpp>
-#include <mcscf/neo/print.hpp>
-#include <mcscf/neo/rdm.hpp>
-#include <mcscf/neo/property.hpp>
-#include <mcscf/neo/cube.hpp>
-#include <orbitalrotation.hpp>
 
 namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
-  void NEOMCSCF<MatsT, IntsT>::transformMultipleInts(EMPerturbation & pert)
+  void NEOMCWaveFunction<MatsT,IntsT>::addMCWaveFunction(std::shared_ptr<MCWaveFunctionBase> wfn, std::string label)
+  {
+    // SMG 01/30/26
+    // Very temporary way to get this up and running sooner than latter
+    if(label=="Electronic")
+    {
+      ewfn_ = std::dynamic_pointer_cast<MCWaveFunction<MatsT,IntsT>>(wfn);
+      ewfn_->moints = this->moints;
+      eeTF = ewfn_->mointsTF;
+      this->NDet = ewfn_->NDet;
+    }
+    else if (label=="Protonic")
+    {
+      pwfn_ = std::dynamic_pointer_cast<MCWaveFunction<MatsT,IntsT>>(wfn);
+      pwfn_->moints = this->moints;
+      PPTF = pwfn_->mointsTF;
+      this->NDet *= pwfn_->NDet;
+    }
+    // Grab the crossed integrals between the two 
+    interIntegrals = neoref_.getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second;
+    contractfirst = neoref_.getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first;
+    ePTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>(*(neoref_.getSubSS(std::string("Electronic"))),
+                                                                *(neoref_.getSubSS(std::string("Protonic"))),
+                                                                interIntegrals,
+                                                                contractfirst); 
+
+    this->printMOCoeffs = ewfn_->printMOCoeffs;
+    this->printRDMs = ewfn_->printRDMs;
+    this->rdmCut = ewfn_->rdmCut;
+    this->NDetPrint = ewfn_->NDetPrint;                                                                
+  }
+
+  template <typename MatsT, typename IntsT>
+  void NEOMCWaveFunction<MatsT, IntsT>::transformMultipleInts(EMPerturbation & pert)
   {
 
     // Precompute field - nuclear moment contributions 
@@ -283,8 +307,9 @@ namespace ChronusQ {
     return;
   }
 
+  
   template<typename MatsT, typename IntsT>
-  void NEOMCSCF<MatsT,IntsT>::alloc()
+  void NEOMCWaveFunction<MatsT,IntsT>::alloc()
   {
     // Instead of letting MCWavefunction do the allocation, we'll just do it all here
     //MCWaveFunction<MatsT,IntsT>::alloc();
@@ -293,11 +318,11 @@ namespace ChronusQ {
 
     // oneRDM is the electronic subsystem
     // using the base MCWaveFunction oneRDM member
-    this->oneRDM.reserve(this->NStates); 
+    this->ewfn_->oneRDM.reserve(this->NStates); 
     size_t enCorrO = this->ewfn_->MOPartition.nCorrO;
 
     // PoneRDM is protonoic subsystem
-    this->PoneRDM.reserve(this->NStates);
+    this->pwfn_->oneRDM.reserve(this->NStates);
     size_t PnCorrO = this->pwfn_->MOPartition.nCorrO;
 
     this->ciBuilder = std::make_shared<NEOCASCI<MatsT,IntsT>>();
@@ -306,8 +331,8 @@ namespace ChronusQ {
     try {
       for (auto i = 0ul; i < this->NStates; i++) {
         this->CIVecs[i] = CQMemManager::get().template malloc<MatsT>(this->NDet);
-        this->oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(enCorrO)); 
-        this->PoneRDM.emplace_back(cqmatrix::Matrix<MatsT>(PnCorrO)); 
+        this->ewfn_->oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(enCorrO)); 
+        this->pwfn_->oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(PnCorrO)); 
       }
     } catch (...) {
       CErr("Not enough Memory to allocate CIVector for the specified number of determiants");
@@ -332,18 +357,24 @@ namespace ChronusQ {
     // End what would normally be called by MCWaveFunction
 
     // ciSolver is a member of the MCSCF class
-    this->ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(this->settings.ciAlg,
-      this->settings.maxCIIter, this->settings.ciVectorConv,
-      this->settings.maxDavidsonSpace, this->settings.nDavidsonGuess,
-      this->settings.energyRefs);
+    //this->ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(this->settings.ciAlg,
+    //  this->settings.maxCIIter, this->settings.ciVectorConv,
+    //  this->settings.maxDavidsonSpace, this->settings.nDavidsonGuess,
+    //  this->settings.energyRefs);
   }
 
   template<typename MatsT, typename IntsT>
-  void NEOMCSCF<MatsT,IntsT>::formNaturalOrbitals()
+  void NEOMCWaveFunction<MatsT,IntsT>::formNaturalOrbs(size_t root)
   {
-    this->pwfn_->formNaturalOrbs(this->PoneRDM[this->NatOrbs-1]);
-    this->ewfn_->formNaturalOrbs(this->oneRDM[this->NatOrbs-1]);
+    this->pwfn_->formNaturalOrbs(root);
+    this->ewfn_->formNaturalOrbs(root);
   }
+  
 
 
 }; // namespace ChronusQ
+
+#include <mcwavefunction/multicomponent/neo/print.hpp>
+#include <mcwavefunction/multicomponent/neo/rdm.hpp>
+#include <mcwavefunction/multicomponent/neo/property.hpp>
+#include <mcwavefunction/multicomponent/neo/cube.hpp>

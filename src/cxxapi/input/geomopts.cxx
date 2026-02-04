@@ -204,7 +204,7 @@ namespace ChronusQ {
   }
 
   JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
-    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
+    JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcwfn,
     std::shared_ptr<RealTimeBase>& rt, 
     std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert, TDSCFOptions& tdSCFOptions)
@@ -502,8 +502,8 @@ namespace ChronusQ {
       } catch(...) { 
         out << "  *** No TD Field Defaulting to Trivial Propagation ***\n";
       }
-      if(mcscf){
-        rt = CQRealTimeOptions(out,input,ss,mcscf,tdPert, emPert);
+      if(mcwfn){
+        rt = CQRealTimeOptions(out,input,ss,mcwfn,tdPert, emPert);
         rt->setTDPerturbation(*tdPert);
         rt->savFile = ss->savFile;
         rt->createRTDataSets(0);

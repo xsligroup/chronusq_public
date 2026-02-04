@@ -29,34 +29,34 @@ namespace ChronusQ {
   
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT, IntsT>::computeOneRDM(size_t i) {
-    MCWaveFunction<MatsT, IntsT>::computeOneRDM(i);
-    if (this->settings.doSCF) *oneRDMSOI = this->oneRDM[i];
+    mcwfn_->computeOneRDM(i);
+    if (this->settings.doSCF) *oneRDMSOI = mcwfn_->oneRDM[i];
   }; // MCSCF::computeOneRDM(i)
   
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::computeOneRDM() {
 
-    MCWaveFunction<MatsT, IntsT>::computeOneRDM();
+    mcwfn_->computeOneRDM();
     
     if (this->StateAverage) {
       
-      size_t nCorrO  = this->MOPartition.nCorrO;
+      size_t nCorrO  = mcwfn_->MOPartition.nCorrO;
       auto & weights = this->SAWeight;
 
       oneRDMSOI->clear();
       
       for (auto i = 0ul; i < this->NStates; i++)
-        *oneRDMSOI += weights[i] * this->oneRDM[i];
+        *oneRDMSOI += weights[i] * mcwfn_->oneRDM[i];
     }    
 
   }; // MCSCF::computeOneRDM()
 
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT, IntsT>::computeTwoRDM(size_t i) {
-    this->ciBuilder->computeTwoRDM(*this, this->CIVecs[i], *twoRDMSOI);
+    mcwfn_->ciBuilder->computeTwoRDM(*mcwfn_, mcwfn_->CIVecs[i], *twoRDMSOI);
     
-    size_t nCorrO  = this->MOPartition.nCorrO;
-    if(this->detStr->scheme() == PRECOMPUTED_CONFIGURATION_DRIVEN_LIST) {
+    size_t nCorrO  = mcwfn_->MOPartition.nCorrO;
+    if(mcwfn_->detStr->scheme() == PRECOMPUTED_CONFIGURATION_DRIVEN_LIST) {
       auto & RDM2 = *twoRDMSOI;
       auto & RDM1 = *oneRDMSOI;
 #pragma omp parallel for schedule(static) default(shared)       
@@ -71,7 +71,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::computeTwoRDM() {
     
-    size_t nCorrO  = this->MOPartition.nCorrO;
+    size_t nCorrO  = mcwfn_->MOPartition.nCorrO;
     size_t nCorrO2 = nCorrO * nCorrO; 
     
     if(this->StateAverage) {
@@ -81,13 +81,13 @@ namespace ChronusQ {
       twoRDMSOI->clear();
 
       for (auto i = 0ul; i < this->NStates; i++) {
-        this->ciBuilder->computeTwoRDM(*this, this->CIVecs[i], twoRDMtmp);
+        mcwfn_->ciBuilder->computeTwoRDM(*mcwfn_, mcwfn_->CIVecs[i], twoRDMtmp);
         MatAdd('N', 'N', nCorrO2, nCorrO2, 
           MatsT(weights[i]), twoRDMtmp.pointer(), nCorrO2, 
           MatsT(1.), twoRDMSOI->pointer(), nCorrO2, twoRDMSOI->pointer(), nCorrO2);
       }  
       
-      if(this->detStr->scheme() == PRECOMPUTED_CONFIGURATION_DRIVEN_LIST) {
+      if(mcwfn_->detStr->scheme() == PRECOMPUTED_CONFIGURATION_DRIVEN_LIST) {
         auto & RDM2 = *twoRDMSOI;
         auto & RDM1 = *oneRDMSOI;
 #pragma omp parallel for schedule(static) default(shared)       

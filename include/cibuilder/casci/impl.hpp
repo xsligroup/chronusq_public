@@ -602,9 +602,9 @@ namespace ChronusQ {
       std::vector<std::pair<size_t, size_t>> active(2, {mcwfn.MOPartition.nFCore+nInact, nCorrO});
 
       for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-        if (mcwfn.referenceWaveFunction().nC == 1)
+        if (mcwfn.getnC() == 1)
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*mcwfn.reference().aoints_->lenElectric)[iXYZ]) );
-        else if (mcwfn.referenceWaveFunction().nC == 2)
+        else if (mcwfn.getnC() == 2)
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( (*mcwfn.reference().aoints_->lenElectric)[iXYZ]->template spatialToSpinBlock<IntsT>() ) ;
         
         (*AOdipole)[iXYZ]->subsetTransform('N',mcwfn.reference().mo[0].pointer(),

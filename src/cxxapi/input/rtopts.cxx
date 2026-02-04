@@ -103,19 +103,19 @@ namespace ChronusQ {
    */ 
 
   std::shared_ptr<RealTimeBase> CQRealTimeOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcscf,
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcwfn,
     std::shared_ptr<TDEMPerturbation>& tdPert,
     EMPerturbation& scfPert ) {
 
     std::shared_ptr<RealTimeBase> rt;
-    if(mcscf) {
-        rt = CQRealTimeMultiSlaterOptions(out, input, ss, mcscf, scfPert);
+    if(mcwfn) {
+        rt = CQRealTimeMultiSlaterOptions(out, input, ss, mcwfn, scfPert);
     }
     return rt;
   }
 
   std::shared_ptr<RealTimeBase> CQRealTimeMultiSlaterOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcscf,
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> &mcwfn,
     EMPerturbation& scfPert ) {
     if( not input.containsSection("RT") )
       CErr("RT Section must be specified for RT job",out);
@@ -126,7 +126,7 @@ namespace ChronusQ {
 
     std::shared_ptr<RealTimeBase > rt;
     bool nonhermitian_prop = false;
-    if(mcscf){
+    if(mcwfn){
       nonhermitian_prop = false;
     }
 
@@ -135,18 +135,18 @@ namespace ChronusQ {
     auto inputRTAlg = RealTimeAlgorithm::RTRungeKuttaOrderFour;
 
     std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
-    if (mcscf) {
+    if (mcwfn) {
       try {
         auto intAlg = input.getData<std::string>("RT.INTALG");
 
         if ( not intAlg.compare("SSO") ) { 
           inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
-          std::function<std::shared_ptr<SolverVectors<double>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<double>>(ss->comm, mcscf->NDet, nVec); };
+          std::function<std::shared_ptr<SolverVectors<double>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<double>>(ss->comm, mcwfn->NDet, nVec); };
 
           vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerSSO<double>>(ss->comm, vecGen);
         }
         else if ( not intAlg.compare("RK4") ) {
-          std::function<std::shared_ptr<SolverVectors<dcomplex>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<dcomplex>>(ss->comm, mcscf->NDet, nVec); };
+          std::function<std::shared_ptr<SolverVectors<dcomplex>>(size_t)> vecGen = [&] (size_t nVec) { return std::make_shared<RawVectors<dcomplex>>(ss->comm, mcwfn->NDet, nVec); };
           vecManager = std::make_shared<RealTimeMultiSlaterVectorManagerRK4<dcomplex>>(ss->comm, vecGen);
         }
         else {
@@ -166,40 +166,40 @@ namespace ChronusQ {
     HandleRTInitState(out,input,vecManager);
 
     bool found = false;
-    if (mcscf && !isNEO) {
+    if (mcwfn && !isNEO) {
       #define CONSTRUCT_RT_MR(_REF,_MT,_IT,_RTALG,_MRWFN)             \
       if( not found ) try {                          \
         if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
         rt =     std::make_shared< RealTimeCI<_MT, _IT> >(  \
-                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
+                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcwfn), vecManager, _RTALG); \
         found = true;                                \
         } \
       } catch(...) {  }
 
       // Construct RT object (MatsT, IntsT, PropT)
       if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
-          CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+          CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcwfn);
       }
       //CONSTRUCT_RT_MR( MCWaveFunction, double, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
-      CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+      CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcwfn);
       // no magnetic fields... yet.
       //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
     }
-    else if(mcscf && isNEO)
+    else if(mcwfn && isNEO)
     {
       #define CONSTRUCT_RT_MRNEO(_REF,_MT,_IT,_RTALG,_MRWFN)             \
       if( not found ) try {                          \
         if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
         rt =     std::make_shared< RealTimeNEOCI<_MT, _IT> >(  \
-                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcscf), vecManager, _RTALG); \
+                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcwfn), vecManager, _RTALG); \
         found = true;                                \
         } \
       } catch(...) {  }
 
       if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
-          CONSTRUCT_RT_MRNEO( NEOMCSCF, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcscf);
+          CONSTRUCT_RT_MRNEO( NEOMCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcwfn);
       }
-      CONSTRUCT_RT_MRNEO( NEOMCSCF, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcscf);
+      CONSTRUCT_RT_MRNEO( NEOMCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcwfn);
 
     }
 
@@ -259,7 +259,7 @@ namespace ChronusQ {
       std::cout << "Warning!: RT.STATEPOPULATION is set to 0, but RT.STATEPOPULATIONNSTATES is nonzero. This will not calculate STATEPOPULATIONS." << std::endl;
     }
     if (rt->intScheme.StatePopFreq != 0 && rt->intScheme.StatePopNStates == 0){
-      rt->intScheme.StatePopNStates = mcscf->NStates;
+      rt->intScheme.StatePopNStates = mcwfn->NStates;
     }
 
     OPTOPT(

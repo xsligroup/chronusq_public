@@ -131,7 +131,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCWaveFunction<MatsT,IntsT>::computeMultipole() {
 
-    if( referenceWaveFunction().nC == 4 ){
+    if( this->getnC() == 4 ){
       std::cout << "Skipping dipole moments for 4c since NYI" << std::endl;
       return;
     }
@@ -154,7 +154,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   double MCWaveFunction<MatsT,IntsT>::oscillator_strength(size_t s2, size_t s1) {
 
-    if (referenceWaveFunction().nC == 4) CErr("4C has no dipole.");
+    if (this->getnC() == 4) CErr("4C has no dipole.");
 
     size_t nAO = reference().nAlphaOrbital() * reference().nC;
     size_t nCorrO = MOPartition.nCorrO;
@@ -180,9 +180,9 @@ namespace ChronusQ {
       std::vector<std::pair<size_t, size_t>> active(2, {MOPartition.nFCore+nInact, nCorrO});
 
       for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
-        if (referenceWaveFunction().nC == 1)
+        if (this->getnC() == 1)
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( *((*reference().aoints_->lenElectric)[iXYZ]) );
-        else if (referenceWaveFunction().nC == 2)
+        else if (this->getnC() == 2)
             (*AOdipole)[iXYZ] = std::make_shared<OnePInts<IntsT>>( (*reference().aoints_->lenElectric)[iXYZ]->template spatialToSpinBlock<IntsT>() ) ;
        
         (*AOdipole)[iXYZ]->subsetTransform('N',reference().mo[0].pointer(),
@@ -201,13 +201,13 @@ namespace ChronusQ {
     }
 
     // oscillator strength f = 2/3 (E2 - E1) D.
-    double f = (2./3.) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(D);
+    double f = (2./3.) * (StateEnergy->at(s2) - StateEnergy->at(s1)) * std::real(D);
 
     // output
     std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
               << " to state: " << std::setw(3) << std::right << s1+1 << ":";
     std::cout << std::setw(15) << std::right << "E(Eh) = "
-              << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);
+              << std::setprecision(8) << std::fixed << (StateEnergy->at(s2) - StateEnergy->at(s1));
     std::cout << std::setw(15) << std::right << "f = "
               << std::setprecision(12) << std::fixed << f << std::endl;
 
@@ -251,9 +251,10 @@ namespace ChronusQ {
 
   // Only takes the oneRDM of the active space
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::formNaturalOrbs(cqmatrix::Matrix<MatsT> OneRDM)
+  void MCWaveFunction<MatsT,IntsT>::formNaturalOrbs(size_t root)
   {
-    if(referenceWaveFunction().nC != 1) CErr("Natural orbitals for >1C untested");
+    if(this->getnC() != 1) CErr("Natural orbitals for >1C untested");
+    cqmatrix::Matrix<MatsT> OneRDM = this->oneRDM[root];
     size_t nCorrO = this->MOPartition.nCorrO;
     size_t NB = this->ref_.nAlphaOrbital();
     double * NOOccs = CQMemManager::get().template malloc<double>(nCorrO);

@@ -177,7 +177,7 @@ namespace ChronusQ {
     for (auto m = 0ul; m < nStates; m++)
     for (auto n = 0ul; n < nStates; n++) {
       if (m == n) {
-        H(m, m) += refMCwfn->StateEnergy[SoI_[m]] + 0.5 * (computeCHV(this->CIVecs[m], HV[m])
+        H(m, m) += refMCwfn->StateEnergy->at(SoI_[m]) + 0.5 * (computeCHV(this->CIVecs[m], HV[m])
                 + SmartConj(computeCHV(this->CIVecs[m], HV[m])))
                 - std::real(computeShiftCorrection(m));
       } else {
@@ -223,7 +223,7 @@ namespace ChronusQ {
 #endif
 
     for (auto i = 0ul; i < nStates; i++) {
-      this->StateEnergy[i] = std::real(energy[i]);
+      this->StateEnergy->at(i) = std::real(energy[i]);
 //      std::cout<<"state: "<<i<<" energy raw: "<< std::setprecision(12)<<energy[i]<<std::endl;
     }
     CQMemManager::get().free(energy);
