@@ -229,6 +229,12 @@ namespace ChronusQ {
         return realMat;
       }
 
+      NDArray<double> imag_part() {
+        NDArray<double> imagMat(dims_);
+        GetMatIM('N', 1, nElements(), 1., pointer(), 1, imagMat.pointer(), 1);
+        return imagMat;
+      }
+
       void clear() {
         std::fill_n(ptr_, nElements(), MatsT(0.));
       }

@@ -248,6 +248,13 @@ public:
     return realMats;
   }
 
+  PauliSpinorMatrices<double> imag_part() {
+    PauliSpinorMatrices<double> imagMats(S().imag_part(), false, false);
+    for (size_t i = 1; i < components_.size(); i++)
+      imagMats.components_.emplace_back(components_[i].imag_part());
+    return imagMats;
+  }
+
   void clear() {
     for (Matrix<MatsT>& c : components_)
       c.clear();

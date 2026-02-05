@@ -190,6 +190,10 @@ public:
   Matrix<double> real_part() {
     return array_->real_part();
   }
+
+  Matrix<double> imag_part() {
+    return array_->imag_part();
+  }
   
   // transform and return the transformed matrix
   Matrix<MatsT> T(char TRANS = 'T') const { return scaleT(1.0, TRANS); }
