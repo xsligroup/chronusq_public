@@ -492,7 +492,7 @@ namespace ChronusQ {
 
     }
 
-
+    if( not intParam.useGauXC ){
     out << "\nDFT Integration Settings:\n" << BannerTop << "\n\n" ;
     out << std::left;
 
@@ -509,7 +509,14 @@ namespace ChronusQ {
     out <<  (intParam.useGauXC ? "GauXC" : "In-house") << " DFT Engine" << std::endl;
 
     out << std::endl << BannerEnd << std::endl;
+    } else {
+    out << "\nDFT Integration Settings:\n" << BannerTop << "\n\n" ;
+    out << std::left;
 
+    out <<  (intParam.useGauXC ? "GauXC" : "In-house") << " DFT Engine" << std::endl;
+
+    out << std::endl << BannerEnd << std::endl;
+    }
   }
 
   /**

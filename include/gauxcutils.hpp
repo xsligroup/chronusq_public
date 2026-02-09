@@ -63,6 +63,9 @@ namespace ChronusQ {
     GauXC::XCWeightAlg xcWeightAlg     = GauXC::XCWeightAlg::SSF;
     GauXC::RadialQuad radialQuad       = GauXC::RadialQuad::MurrayHandyLaming;
     std::string intKernel              = "Default";
+    GauXC::RadialSize nrad             = GauXC::RadialSize(99);
+    GauXC::AngularSize nang            = GauXC::AngularSize(590);
+    bool custom_grid                   = false;
 
     static const std::map<std::string, GauXC::AtomicGridSizeDefault> mg_map;
     static const std::map<std::string, GauXC::PruningScheme> prune_map;

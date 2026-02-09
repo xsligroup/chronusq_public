@@ -114,10 +114,8 @@ namespace ChronusQ {
         } else if (dftGrid == std::pair<size_t, size_t>(250, 974)){
           inputGrid = "SUPERFINE";
         } else { 
-          out << "  Warning: Grid not set in GauXC section " << std::endl;
-          out << "           and Grid specified in 'DFTINTS' section is not available for GauXC" << std::endl;
-          out << "  Set to default (Ultrafine)" << std::endl;
-          inputGrid = "ULTRAFINE"; 
+          out << "  Warning: Grid not set in GauXC section: Using Custom Grid. " << std::endl;
+          gauxcOpts.custom_grid = true;
         }
       } else{
         out << "  " << std::setw(39) << "Invalid GAUXC.GRID Keyword!"; 
@@ -125,7 +123,22 @@ namespace ChronusQ {
         inputGrid = "ULTRAFINE"; 
       }
     } 
-    gauxcOpts.grid = GauXCOptions::mg_map.at(inputGrid);
+    
+    if(gauxcOpts.custom_grid){
+      
+      // Check if nAng input is a valid Lebedev number.
+      size_t N = ssOptions.intParam.nAng;
+      if( N!=6 && N!=14 && N!=26 && N!=38 && N!=50 && N!=74 && N!=86 && N!=110 && N!=146 &&
+        N!=170 && N!=194 && N!=230 && N!=266 && N!=302 && N!=590 && N!=974 )
+          CErr("Number of Angular Points NYI.");
+
+      GauXC::RadialSize nRad = GauXC::RadialSize(ssOptions.intParam.nRad);
+      GauXC::AngularSize nAng = GauXC::AngularSize(ssOptions.intParam.nAng);
+      gauxcOpts.nrad = nRad;
+      gauxcOpts.nang = nAng;
+    } else{
+      gauxcOpts.grid = GauXCOptions::mg_map.at(inputGrid);
+    }
 
     // Parse pruning scheme, default to unpruned
     OPTOPT( inputPruningScheme = input.getData<std::string>("GAUXC.PRUNINGSCHEME"); )
@@ -218,8 +231,10 @@ namespace ChronusQ {
       #endif
 
       // Set up molecular grid
-      auto mg = GauXC::MolGridFactory::create_default_molgrid(
-          gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, grid);
+      GauXC::MolGrid mg = custom_grid ? GauXC::MolGridFactory::create_default_molgrid(
+            gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, nrad, nang) :
+            GauXC::MolGridFactory::create_default_molgrid(
+            gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, grid);
 
       // Screen shells 
       for( auto& sh : gauxcUtils->gbasis  ){ sh.set_shell_tolerance( basisTol ); }
@@ -297,11 +312,12 @@ namespace ChronusQ {
     }
 
     out << "  " << std::setw(width) << "Grid:";
-    out << (grid==GauXC::AtomicGridSizeDefault::UltraFineGrid ? "UltraFineGrid (99,590)" 
+    out << ( custom_grid ? "Custom ("+std::to_string(nrad.get())+","+std::to_string(nang.get())+")"
+        :   grid==GauXC::AtomicGridSizeDefault::UltraFineGrid ? "UltraFineGrid (99,590)" 
         :   grid==GauXC::AtomicGridSizeDefault::SuperFineGrid ? "SuperFineGrid (175(Z<2) or 250(Z>=2), 974)" 
         :   grid==GauXC::AtomicGridSizeDefault::FineGrid ?      "FineGrid (75,302)" 
         :   grid==GauXC::AtomicGridSizeDefault::GM3 ?           "GM3 (35,110)" 
-        :   "GM5 (50,302)")  << std::endl;
+        :                                                       "GM5 (50,302)" )  << std::endl;
 
     out << "  " << std::setw(width) << "Pruning Scheme:";
     out << (pruningScheme==GauXC::PruningScheme::Unpruned ? "Unpruned" 
@@ -313,7 +329,7 @@ namespace ChronusQ {
         :   xcWeightAlg==GauXC::XCWeightAlg::Becke ? "Becke" 
         :   "LKO")  << std::endl;
 
-    out << "  " << std::setw(width) << "Radial Quadruture:";
+    out << "  " << std::setw(width) << "Radial Quadrature:";
     out << (radialQuad==GauXC::RadialQuad::MurrayHandyLaming ? "MurrayHandyLaming" 
         :   radialQuad==GauXC::RadialQuad::MuraKnowles ?       "MuraKnowles" 
         :   "TreutlerAldrichs")  << std::endl;

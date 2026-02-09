@@ -25,6 +25,9 @@ FIELD:
 [DFTINT]
 inhouse=false
 
+[GAUXC]
+GRID=ULTRAFINE
+
 [INTS]
 Libcint = true
 ALG = direct

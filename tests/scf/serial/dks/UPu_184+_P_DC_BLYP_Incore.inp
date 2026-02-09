@@ -19,6 +19,9 @@ guess = core
 [DFTINT]
 inhouse=false
 
+[GAUXC]
+GRID=ULTRAFINE
+
 [INTS]
 alg = incore
 libcint = true
