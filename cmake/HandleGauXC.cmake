@@ -50,7 +50,7 @@ FetchContent_Declare(
   gauxc
   # Using Aodong's merge_neo branch (master + NEO CPU)
   GIT_REPOSITORY https://github.com/aodongliu/GauXC.git
-  GIT_TAG merge_neo
+  GIT_TAG e144e5c73f09f559da1bacab55b3ae8b480adbbb
 )
 
 #CMAKE_ARGS "-DGAUXC_ENABLE_MPI=${CQ_ENABLE_MPI} -DGAUXC_ENABLE_CUDA=${CQ_ENABLE_CUDA}"

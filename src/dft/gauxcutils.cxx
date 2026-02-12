@@ -25,7 +25,7 @@ const std::map< std::string, GauXC::XCWeightAlg > GauXCOptions::xcweight_map = {
 const std::map< std::string, GauXC::RadialQuad > GauXCOptions::radialquad_map = {
     {"MURAKNOWLES",         GauXC::RadialQuad::MuraKnowles},
     {"MURRAYHANDYLAMING",   GauXC::RadialQuad::MurrayHandyLaming},
-    {"TREUTLERALDRICHS",    GauXC::RadialQuad::TreutlerAldrichs}
+    {"TREUTLERAHLRICHS",    GauXC::RadialQuad::TreutlerAhlrichs}
 };
 
 

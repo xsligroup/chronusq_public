@@ -31,7 +31,7 @@ namespace ChronusQ {
 
   public:
   
-    SlaterExchange() : LDA(XC_LDA_X) { }
+    SlaterExchange() : LDA(xc_functional_get_number("LDA_X")) { }
 
   }; // class SlaterExchage
 
@@ -41,7 +41,7 @@ namespace ChronusQ {
   public:
 
     //VWNIII() : LDA(XC_LDA_C_VWN_RPA) { }
-    VWNIII() : LDA(XC_LDA_C_VWN_3) { }
+    VWNIII() : LDA(xc_functional_get_number("LDA_C_VWN_3")) { }
 
 
   }; // class VWNIII
@@ -51,7 +51,7 @@ namespace ChronusQ {
 
   public:
 
-    VWNV() : LDA(XC_LDA_C_VWN_RPA) { }
+    VWNV() : LDA(xc_functional_get_number("LDA_C_VWN_RPA")) { }
 
   }; // class VWNV
 
@@ -61,7 +61,7 @@ namespace ChronusQ {
 
   public:
 
-    VWNV_G() : LDA(XC_LDA_C_VWN) { }
+    VWNV_G() : LDA(xc_functional_get_number("LDA_C_VWN")) { }
 
   }; // class VWNV_GAUSSIAN
 
@@ -69,7 +69,7 @@ namespace ChronusQ {
 
   public:
   
-    BEightyEight() : GGA(XC_GGA_X_B88) { }
+    BEightyEight() : GGA(xc_functional_get_number("GGA_X_B88")) { }
 
   }; // class B88
 
@@ -77,7 +77,7 @@ namespace ChronusQ {
 
   public:
   
-    PBEX() : GGA(XC_GGA_X_PBE) { }
+    PBEX() : GGA(xc_functional_get_number("GGA_X_PBE")) { }
 
   }; // class PBE exchange
 
@@ -87,7 +87,7 @@ namespace ChronusQ {
 
   public:
   
-    LYP() : GGA(XC_GGA_C_LYP) { }
+    LYP() : GGA(xc_functional_get_number("GGA_C_LYP")) { }
 
   }; // class B88
 
@@ -95,7 +95,7 @@ namespace ChronusQ {
 
   public:
   
-    PBEC() : GGA(XC_GGA_C_PBE) { }
+    PBEC() : GGA(xc_functional_get_number("GGA_C_PBE")) { }
 
   }; // class PBE correlation
 
@@ -103,7 +103,7 @@ namespace ChronusQ {
 
   public:
   
-    B3LYP() : GGA(XC_HYB_GGA_XC_B3LYP) { }
+    B3LYP() : GGA(xc_functional_get_number("HYB_GGA_XC_B3LYP")) { }
 
   }; // class B3LYP hybrid
 
@@ -111,7 +111,7 @@ namespace ChronusQ {
 
   public:
   
-    B3PW91() : GGA(XC_HYB_GGA_XC_B3PW91) { }
+    B3PW91() : GGA(xc_functional_get_number("HYB_GGA_XC_B3PW91")) { }
 
   }; // class B3LYP hybrid
 
@@ -119,7 +119,7 @@ namespace ChronusQ {
 
   public:
   
-    PBE0() : GGA(XC_HYB_GGA_XC_PBEH) { }
+    PBE0() : GGA(xc_functional_get_number("HYB_GGA_XC_PBEH")) { }
 
   }; // class PBE0 hybrid
 
@@ -127,7 +127,7 @@ namespace ChronusQ {
 
   public:
   
-    BHANDH() : GGA(XC_HYB_GGA_XC_BHANDH) { }
+    BHANDH() : GGA(xc_functional_get_number("HYB_GGA_XC_BHANDH")) { }
 
   }; // class BHANDH hybrid
 
@@ -135,7 +135,7 @@ namespace ChronusQ {
 
   public:
   
-    BHANDHLYP() : GGA(XC_HYB_GGA_XC_BHANDHLYP) { }
+    BHANDHLYP() : GGA(xc_functional_get_number("HYB_GGA_XC_BHANDHLYP")) { }
 
   }; // class BHANDHLYP hybrid
 
