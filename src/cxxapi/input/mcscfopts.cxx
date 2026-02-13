@@ -93,8 +93,32 @@ namespace ChronusQ {
     // Check for disallowed combinations (if any)
   }
 
+  /**
+   *  \brief Handle NRoots input parsing for multiple-root calculation.
+   *  \details Parses the NRoots input string to extract energy references and number of roots.
+   *         Supports both low-energy roots and energy-specific roots with specified thresholds.
+   *         The format of the input string include lines with either a single number (for low-energy roots)
+   *         or pairs of numbers (energy threshold and number of roots) separated by spaces, tabs, or commas.
+   *         e.g.:
+   *         NROOTS = "5
+   *         0.3  3
+   *         2.5  2"
+   *         This will return 10 for a total of 10 roots, and
+   *         energyRefs will contain: {{-inf, 5}, {0.3, 3}, {2.5, 2}}
+   *         for 5 low-energy roots, 3 roots above 0.3, and 2 roots above 2.5.
+   *
+   *  \param nroots String input for NRoots.
+   *  \param energyRefs Vector of pairs to store energy references and number of roots.
+   *         Will be cleared at the beginning and filled during parsing as return.
+   *         Each pair consists of (energy reference, number of roots).
+   *
+   *  \return Total number of roots requested.
+   *
+   */
   size_t HandleNRootsInput(std::string nroots,
                     std::vector<std::pair<double, size_t>> &energyRefs) {
+
+    energyRefs.clear();
 
     size_t nRoots = 0;
     size_t nlowRoots = 0;
@@ -156,7 +180,7 @@ namespace ChronusQ {
         }
       }
       if (not found) {
-        energyRefs.emplace_back(0.0, nlowRoots);
+        energyRefs.emplace_back(-std::numeric_limits<double>::infinity(), nlowRoots);
       }
     }
 

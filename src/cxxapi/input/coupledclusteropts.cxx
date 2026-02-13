@@ -405,6 +405,10 @@ namespace ChronusQ {
       nRoots = input.getData<std::string>("EOMCC.NROOTS");
       if ( not nRoots.empty() ) {
         eomSettings.nroots = HandleNRootsInput(nRoots, eomSettings.davidson_Eref);
+        if (eomSettings.davidson_Eref.size() == 1 and
+            eomSettings.davidson_Eref[0].first == -std::numeric_limits<double>::infinity()) {
+          eomSettings.davidson_Eref.clear();
+        }
         size_t lowR = eomSettings.nroots;
         for (auto & pair: eomSettings.davidson_Eref) lowR -= pair.second;
         eomSettings.davidson_nLowRoots = lowR;
