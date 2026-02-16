@@ -278,7 +278,7 @@ namespace ChronusQ {
     void SCFGuess(SingleSlaterOptions);
     void TightGuess();
     void RandomGuess();
-    void ReadGuessMO();
+    void ReadGuessMO( const std::shared_ptr<BasisSet> guessBasis );
     void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis );
     void FchkGuessMO();
     void NEOTightProtonGuess();
@@ -297,7 +297,9 @@ namespace ChronusQ {
 
     // ReadGuessMO functions
     void readSameTypeMOBin();
-    void readDiffTypeMOBin(std::string binName);
+    void readDiffTypeMOBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet );
+    template <typename ScrMatsT>
+    void getScrMO(SafeFile &, const std::shared_ptr<BasisSet> );
     template <typename ScrMatsT>
     void getScrMO(SafeFile &);
     template <typename ScrMatsT>
@@ -310,6 +312,14 @@ namespace ChronusQ {
     void convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
     void convert2CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, SafeFile &);
+
+    // MO Projection functions
+    std::tuple<std::shared_ptr<cqmatrix::Matrix<MatsT>>, std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>> projectMatrix( const Molecule& mol, const BasisSet& fromBasis,
+      const BasisSet& toBasis, const std::shared_ptr<cqmatrix::Matrix<MatsT>>& fromMatrix, bool doFull = true );
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> getProjectionMatrix( const cqmatrix::Matrix<MatsT>& overlap21, const cqmatrix::Matrix<MatsT>& overlap22);
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> projectFullMatrix( const std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>& projMat, const std::shared_ptr<cqmatrix::Matrix<MatsT>>&fromMatrix );
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> projectHalfMatrix( const std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>& projMat, const std::shared_ptr<cqmatrix::Matrix<MatsT>>&fromMatrix );
+
 
     // Fchk-related functions
     std::vector<int> fchkToCQMO();

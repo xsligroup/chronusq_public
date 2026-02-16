@@ -32,7 +32,7 @@ add_executable(scftest ../ut.cxx
         rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx x2c_giao.cxx
 	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx 
         neo_rhf.cxx neo_rks.cxx neo_giao.cxx neo_ghf.cxx
-        gauxc_ks.cxx dks.cxx proj.cxx
+        gauxc_ks.cxx dks.cxx proj_ks.cxx proj_hf.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx d3.cxx
 )
 
@@ -99,7 +99,7 @@ file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_rks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/neo_giao)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/gauxc_ks)
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/dks)
-
+file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/parallel/proj)
 
 include( CQTestGeneration )
 
@@ -140,7 +140,8 @@ add_cq_test( DKS_SCF      scftest "DKS.*"  )
 #add_cq_test( CEDIIS_SCF   scftest "CEDIIS.*"  )
 #add_cq_test( QN_SCF       scftest "QN_SCF*"  )
 #add_cq_test( FOURC_QN_SCF scftest "FOURC_QN_SCF*"  )
-add_cq_test( PROJ_SCF     scftest "PROJ.*" )
+add_cq_test( PROJ_KS     scftest "PROJ_KS.*" )
+add_cq_test( PROJ_HF     scftest "PROJ_HF.*" )
 
 add_cq_test( MISC_SCF     scftest "MISC_SCF.*" )
 
@@ -179,4 +180,5 @@ if( CQ_ENABLE_MPI )
   add_cq_mpi_test( RI_NEO_RHF_SCF_MPI   2   scftest "RI_NEO_RHF.*"   )
   add_cq_mpi_test( GAUXC_KS_SCF_MPI     2   scftest "GAUXC_KS.*"  )
   add_cq_mpi_test( DKS_SCF_MPI     2   scftest "DKS.*"  )
+  add_cq_mpi_test( PROJ_HF_MPI   2  scftest "PROJ_HF.*" )
 endif()

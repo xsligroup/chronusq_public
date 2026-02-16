@@ -27,7 +27,7 @@
 
 
 // Water RKS/cc-pvdz with RKS/6-31Gd guess (READDEN)
-TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_RKSGuess_READDEN ) {
+TEST( PROJ_KS, Water_ccpVDZ_RKS_6_31Gd_RKSGuess_READDEN ) {
 
   CQSCFTEST( "scf/serial/proj/water_cc-pvdz_RKS_6-31Gd_RKSGuess",
     "water_cc-pvdz_RKS_6-31Gd_RKSGuess_READDEN.bin.ref",1e-8,
@@ -37,7 +37,7 @@ TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_RKSGuess_READDEN ) {
 };
 
 // Water RKS/cc-pvdz with UKS/6-31Gd guess (READDEN)
-TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_UKSGuess_READDEN ) {
+TEST( PROJ_KS, Water_ccpVDZ_RKS_6_31Gd_UKSGuess_READDEN ) {
 
   CQSCFTEST( "scf/serial/proj/water_cc-pvdz_RKS_6-31Gd_UKSGuess",
     "water_cc-pvdz_RKS_6-31Gd_UKSGuess_READDEN.bin.ref",1e-8,
@@ -47,7 +47,7 @@ TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_UKSGuess_READDEN ) {
 };
 
 // Water RKS/cc-pvdz with GKS/6-31Gd guess (READDEN)
-TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_GKSGuess_READDEN ) {
+TEST( PROJ_KS, Water_ccpVDZ_RKS_6_31Gd_GKSGuess_READDEN ) {
 
   CQSCFTEST( "scf/serial/proj/water_cc-pvdz_RKS_6-31Gd_GKSGuess",
     "water_cc-pvdz_RKS_6-31Gd_GKSGuess_READDEN.bin.ref",1e-8,
@@ -57,7 +57,7 @@ TEST( PROJ, Water_ccpVDZ_RKS_6_31Gd_GKSGuess_READDEN ) {
 };
 
 // Water GKS/cc-pvdz with RKS/6-31Gd guess (READDEN)
-TEST( PROJ, Water_ccpVDZ_GKS_6_31Gd_RKSGuess_READDEN ) {
+TEST( PROJ_KS, Water_ccpVDZ_GKS_6_31Gd_RKSGuess_READDEN ) {
 
   CQSCFTEST( "scf/serial/proj/water_cc-pvdz_GKS_6-31Gd_RKSGuess",
     "water_cc-pvdz_GKS_6-31Gd_RKSGuess_READDEN.bin.ref",1e-8,
@@ -67,7 +67,7 @@ TEST( PROJ, Water_ccpVDZ_GKS_6_31Gd_RKSGuess_READDEN ) {
 };
 
 // Water UKS/cc-pvdz with RKS/6-31Gd guess (READDEN)
-TEST( PROJ, Water_ccpVDZ_UKS_6_31Gd_RKSGuess_READDEN ) {
+TEST( PROJ_KS, Water_ccpVDZ_UKS_6_31Gd_RKSGuess_READDEN ) {
 
   CQSCFTEST( "scf/serial/proj/water_cc-pvdz_UKS_6-31Gd_RKSGuess",
     "water_cc-pvdz_UKS_6-31Gd_RKSGuess_READDEN.bin.ref",1e-8,

@@ -20,6 +20,7 @@ job = SCF
 
 [SCF]
 guess = readden
+alg = skip
 
 [BASIS]
 basis = cc-pvdz

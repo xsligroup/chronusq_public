@@ -186,7 +186,7 @@ namespace ChronusQ {
       getNewOrbitals();
 
     } else if( scfControls.guess == RANDOM ) RandomGuess();
-      else if( scfControls.guess == READMO ) ReadGuessMO();
+      else if( scfControls.guess == READMO ) ReadGuessMO( ssOptions.scfControls.guessBasis );
       else if( scfControls.guess == READDEN ) { if( this->particle.charge == 1.0 ) ReadGuess1PDM( ssOptions.scfControls.prot_guessBasis );
                                                 else                               ReadGuess1PDM( ssOptions.scfControls.guessBasis ); }
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
@@ -628,111 +628,6 @@ namespace ChronusQ {
 
   } // SingleSlater<T>::ReadGuess1PDM
   
-  /*
-   * \brief Returns the projection matrix that maps matrices in basis 1 to basis 2
-   *        (matrix in basis 2) = (Proj).(matrix in basis 1).(Proj)^T
-   **/
-  template <typename MatsT>
-  static cqmatrix::Matrix<MatsT> getProjectionMatrix( const cqmatrix::Matrix<MatsT>& overlap21, const cqmatrix::Matrix<MatsT>& overlap22) {
-    const size_t NB_1 = overlap21.nColumns();
-    const size_t NB_2 = overlap22.nColumns();
-
-        if( overlap21.nRows() != NB_2 )
-          CErr("Bad dimensions in getOrthoProjection");
-        
-        // Allocate temporaries for eigendecomposition
-        auto Vmat     = overlap22;                         //<<< (will be overwritten) Orthogonal V matrix (transposed)
-        auto Diag     = std::vector<double>(NB_2);         //<<< Holds eigenvalues
-        auto DiagMat  = cqmatrix::Matrix<MatsT>(NB_2, NB_2);  //<<< Holds eigenvalues on its diagonal
-        auto tmp      = cqmatrix::Matrix<MatsT>(NB_2, NB_2);  
-        auto overlap22_inv  = cqmatrix::Matrix<MatsT>(NB_2, NB_2); 
-        std::fill_n(DiagMat.pointer(), NB_2*NB_2, 0.0);    // Only DiagMat needs to be zeroed out since the others are overwritten entirely
-        
-
-        // Compute inverse of S_22 using eigendecomposition
-        HermitianEigen('V', 'L', NB_2, Vmat.pointer(), NB_2, Diag.data());
-        for(size_t it(0); it<NB_2; ++it) {
-          DiagMat(it,it) = 1.0/Diag[it];
-        }
-
-        // DiagMat^inv * V^T --> tmp
-        // XXX: We could eliminate this blas call because DiagMat is... well... diagonal
-        // (aka just rescale the matrix and multiply each col by diag element)
-        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::Trans, NB_2, NB_2, NB_2, MatsT(1.), DiagMat.pointer(), NB_2, Vmat.pointer(), NB_2, MatsT(0.), tmp.pointer(), NB_2);
-
-        // V * tmp --> overlap22_inv
-        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
-            NB_2, NB_2, NB_2, MatsT(1.), Vmat.pointer(), NB_2, tmp.pointer(), NB_2, MatsT(0.), overlap22_inv.pointer(), NB_2);
-        
-        // Form left-projection matrix: S22_inv * S21
-        auto LeftProj = cqmatrix::Matrix<MatsT>(NB_2, NB_1); //<<< Final projection matrix
-        
-        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
-            NB_2, NB_1, NB_2, MatsT(1.), overlap22_inv.pointer(), NB_2, overlap21.pointer(), NB_2, MatsT(0.), LeftProj.pointer(), NB_2);
-        
-        return LeftProj;
-
-  } // Matrix<MatsT> getProjectionMatrix
- 
-  /**
-   * \brief Driver for basis set projection with a given projection matrix
-   **/
-  template <typename MatsT>
-  static cqmatrix::Matrix<MatsT> projectMatrix( const cqmatrix::Matrix<MatsT>& projMat, const cqmatrix::Matrix<MatsT>&fromMatrix ) {
-    // Allocate return and temporary matrices
-    const size_t tNB = projMat.nRows();
-    const size_t fNB = projMat.nColumns();
-    auto toMatrix = cqmatrix::Matrix<MatsT>(tNB, tNB);
-    auto Intermediate = cqmatrix::Matrix<MatsT>(fNB, tNB);
-
-    // **********************************************************************************
-    // Form density in "to" basis: projMat * fromMatrix * projMat^T --> toMatrix
-    // **********************************************************************************
-    
-
-    // Do fromMatrix  * ( projMat  )^T --> Intermediate
-    //     (fNB, fNB) * (tNB, fNB)^T     --> (fNB, tNB)
-    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans, fNB, tNB, fNB, MatsT(1.), fromMatrix.pointer(), fNB, projMat.pointer(), tNB, MatsT(0.), Intermediate.pointer(), fNB);
-
-
-    // Do     projMat * Intermediate  --> toMatrix
-    //  (tNB, fNB) * (fNB, tNB)    --> (tNB, tNB)
-    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, tNB, tNB, fNB, MatsT(1.), projMat.pointer(), tNB, Intermediate.pointer(), fNB, MatsT(0.), toMatrix.pointer(), tNB);
-
-    return toMatrix;
-
-  }
-  /**
-   *  \brief Driver for basis set projection.
-   *  Returns both the projected matrix and projection matrix (for re-use)
-   **/
-  template <typename MatsT>
-  static std::tuple<cqmatrix::Matrix<MatsT>, cqmatrix::Matrix<MatsT>> projectMatrix( const Molecule& mol, const BasisSet& fromBasis, const BasisSet& toBasis, const cqmatrix::Matrix<MatsT>& fromMatrix ){
-    const size_t tNB = toBasis.nBasis;
-    const size_t fNB  = fromBasis.nBasis;
-
-    // Generate overlap matrix between fromBasis and and toBasis
-    // <double>, because libint doesn't support GIAOs yet. We will cast to MatsT later.
-    auto overlapSTF = cqmatrix::Matrix<double>(tNB, fNB); 
-    std::vector<double*> MatVecS21;
-    MatVecS21.emplace_back(overlapSTF.pointer());
-    OnePInts<double>::OnePDriverLibint( libint2::Operator::overlap, mol, toBasis, fromBasis, MatVecS21, Particle {-1.,1.}, 0);
-    
-    // Generate overlap between toBasis and itself
-    auto overlapSTT = cqmatrix::Matrix<double>(tNB, tNB); 
-    std::vector<double*> MatVecS22;
-    MatVecS22.emplace_back(overlapSTT.pointer());
-    OnePInts<double>::OnePDriverLibint( libint2::Operator::overlap, mol, toBasis, MatVecS22, Particle {-1.,1.}, 0);
-
-    // Get projection matrix from overlaps
-    cqmatrix::Matrix<MatsT> projectionMat = getProjectionMatrix( overlapSTF, overlapSTT );
-    auto projectedMat = projectMatrix(projectionMat, fromMatrix);
-
-    return std::make_tuple(
-        projectedMat, projectionMat);
-  } // Matrix<T> projectMatrix()
-
-
   /**
    *  \brief Reads in 1PDM from bin file
    *  of the same type as calculation.
@@ -912,184 +807,6 @@ namespace ChronusQ {
 
   /**
    *  \brief Reads in 1PDM from bin file
-   *  of different type as calculation
-   *  and uses it as initial guess.
-   *
-   **/
-  template <typename MatsT, typename IntsT>
-  template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin) { 
-    getScr1PDM<ScrMatsT>(scrBin, nullptr);
-  }
-
-
-  template <typename MatsT, typename IntsT>
-  template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
-
-    if( MPIRank(comm) == 0 ) {
-
-      // dimension of 1PDM
-      auto NB = basisSet().nBasis;
-      if( this->nC == 4 ) NB=2*NB;
-      auto NB2 = NB*NB;
-    
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-          prefix = "/PROT_SCF/";
-
-      auto DSdims = scrBin.getDims( prefix + "1PDM_SCALAR" );
-      auto DZdims = scrBin.getDims( prefix + "1PDM_MZ" );
-      auto DYdims = scrBin.getDims( prefix + "1PDM_MY" );
-      auto DXdims = scrBin.getDims( prefix + "1PDM_MX" );
-
-      bool hasDS = DSdims.size() != 0;
-      bool hasDZ = DZdims.size() != 0;
-      bool hasDY = DYdims.size() != 0;
-      bool hasDX = DXdims.size() != 0;
-
-      bool r2DS = DSdims.size() == 2;
-      bool r2DZ = DZdims.size() == 2;
-      bool r2DY = DYdims.size() == 2;
-      bool r2DX = DXdims.size() == 2;
-
-      int scrRefType, binRefType;
-      scrBin.readData("REF/REFTYPE",&scrRefType);
-      savFile.readData("REF/REFTYPE",&binRefType);
-
-      std::cout << "    * Converting from " << refMap[scrRefType] << " to "
-        << refMap[binRefType] << std::endl;
-
-
-      // onePDM on scr bin file
-      std::shared_ptr<cqmatrix::PauliSpinorMatrices<ScrMatsT>> onePDMtmp;
-      onePDMtmp = std::make_shared<cqmatrix::PauliSpinorMatrices<ScrMatsT>>(DSdims[0],hasDY,hasDZ);
-      
-
-      // Errors in 1PDM SCALAR
-      if( not hasDS )
-        CErr(prefix + "1PDM_SCALAR does not exist in " + scrBin.fName(), std::cout);
-
-      else if( not r2DS )
-        CErr(prefix + "1PDM_SCALAR not saved as a rank-2 tensor in " +
-            scrBin.fName(), std::cout);
-
-      // Error out if any dimensions don't line up
-      //size_t NBCheck = guessBasisSet ? guessBasisSet->nBasis : NB;
-      //std::cout << "DSdims[0] = " << DSdims[0] << std::endl;
-      //std::cout << "nC = " << this->nC << std::endl;
-      //std::cout << "NBCheck = " << NBCheck << std::endl;
-      //if( NBCheck != DSdims[0] or (hasDZ and (NBCheck != DZdims[0])) or (hasDY and (NBCheck != DYdims[0])) or (hasDX and (NBCheck != DXdims[0])) )
-      //  CErr("Scratch file 1PDM dimensions do not match basis dimensions!");
-      
-      // Let the user know guessbasis is being used
-      if( guessBasisSet )
-        std::cout << "    * GUESSBASIS section specified, projecting basis set " <<
-         guessBasisSet->basisName << " -> " << this->basisSet().basisName << std::endl;
-
-
-      // Read in 1PDM SCALAR
-      std::cout << "    * Looking for " << prefix << "1PDM_SCALAR... ";
-      scrBin.readData(prefix + "1PDM_SCALAR", onePDMtmp->S().pointer());
-      std::cout << "Found." << std::endl;
-
-      // MZ
-      if( onePDMtmp->hasZ() ){
-
-        std::cout << "    * Looking for " << prefix << "1PDM_MZ... " << std::endl;
-        if( not r2DZ )
-          CErr(prefix + "1PDM_MZ not saved as a rank-2 tensor in " +
-            scrBin.fName(), std::cout);
-        scrBin.readData(prefix + "1PDM_MZ", onePDMtmp->Z().pointer());
-        std::cout << "Found." << std::endl;
-      }
-
-      // MY
-      if( onePDMtmp->hasXY() ){
-
-        std::cout << "    * Looking for " << prefix << "1PDM_MX... " << std::endl;
-        if( not r2DX )
-          CErr(prefix + "1PDM_MX not saved as a rank-2 tensor in " +
-            scrBin.fName(), std::cout);
-        scrBin.readData(prefix + "1PDM_MX",onePDMtmp->X().pointer());
-        std::cout << "Found." << std::endl;
-
-        std::cout << "    * Looking for " << prefix << "1PDM_MY... " << std::endl;
-        if( not r2DY )
-          CErr(prefix + "1PDM_MY not saved as a rank-2 tensor in " +
-            scrBin.fName(), std::cout);
-        scrBin.readData(prefix + "1PDM_MY",onePDMtmp->Y().pointer());
-        std::cout << "Found." << std::endl;
-
-      }
-
-      // Initialize onePDM
-      auto scr1PDMSize = onePDMtmp->nRows();
-      if( not guessBasisSet ) {
-        // Guess 1PDM same size as calculation 1PDM
-        if( scr1PDMSize == NB ) *this->onePDM = *onePDMtmp;
-        // Guess 1PDM smaller than 1PDM
-        else if( scr1PDMSize < NB ){
-            auto p1Comps = this->onePDM->SZYXPointers();
-            auto p2Comps = onePDMtmp->SZYXPointers();
-            auto nComp = p1Comps.size();
-            auto n2Comp = p2Comps.size();
-            for( auto iComp=0; iComp<nComp; iComp++ ){
-              if( iComp < n2Comp )
-                SetMat('N',scr1PDMSize,scr1PDMSize,MatsT(1.),
-                   p2Comps[iComp],scr1PDMSize,p1Comps[iComp],NB);
-            }
-          } else CErr("Cannot use a guess of larger size. Specify GUESSBASIS section if guess is in a different basis.");
-      } else {
-
-        // If GUESSBASIS section is specified, project that basis!
-        std::cout << "    * Projecting 1PDM_SCALAR" << std::endl;
-        auto [onePDMS, projMat] = projectMatrix( this->molecule(), *guessBasisSet, this->basisSet(), onePDMtmp->S() );
-
-        this->onePDM->S() = std::move(onePDMS);
-        if( onePDMtmp->hasZ() ) {
-          if( this->onePDM->hasZ() ) {
-            std::cout << "    * Projecting 1PDM_MZ" << std::endl;
-            this->onePDM->Z() = projectMatrix( projMat, onePDMtmp->Z() );
-          }
-          else std::cout << "    * WARNING: Guess has 1PDM_MZ but this reference doesn't! Zeroing out guess MZ..." << std::endl;
-        }
-        if( onePDMtmp->hasXY() ) {
-          if( this->onePDM->hasXY() ) {
-            std::cout << "    * Projecting 1PDM_MY" << std::endl;
-            this->onePDM->Y() = projectMatrix( projMat, onePDMtmp->Y() );
-            std::cout << "    * Projecting 1PDM_MX" << std::endl;
-            this->onePDM->X() = projectMatrix( projMat, onePDMtmp->X() );
-          } 
-          else std::cout << "    * WARNING: Guess has 1PDM_MY/MX but this reference doesn't! Zeroing out guess MY/MX..." << std::endl;
-        }
-      }
-
-      std::cout << "\n" << std::endl;
-      onePDMtmp = nullptr;
-
-    }
-
-  } // SingleSlater<T>::getScr1PDM()
-
-  template <>
-  template <>
-  void SingleSlater<double,double>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
-
-    CErr("Cannot do complex guess density for real calculation.");
-
-  }
-
-  template <>
-  template <>
-  void SingleSlater<double,dcomplex>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
-
-    CErr("Cannot do complex guess density for real calculation.");
-
-  }
-
-  /**
-   *  \brief Reads in 1PDM from bin file
    *  of different type as calculation.
    *
    **/
@@ -1226,13 +943,13 @@ namespace ChronusQ {
     // Extract 1PDM and project onto our own
     auto& guessDen = guessSS->onePDM;
 
-    auto [onePDMS, projMat] = projectMatrix( mol, *guessBasis, this->basisSet(), guessDen->S() );
-    this->onePDM->S() = std::move(onePDMS);  // If std changes to allow instantiation and assignment in one structured binding, these lines can be combined...
+    auto [onePDMS, projMat] = projectMatrix( mol, *guessBasis, this->basisSet(), std::make_shared<cqmatrix::Matrix<MatsT>>(guessDen->S() ) );
+    this->onePDM->S() = *onePDMS;  // If std changes to allow instantiation and assignment in one structured binding, these lines can be combined...
     if( guessDen->hasZ() ) {
-      this->onePDM->Z() = projectMatrix( projMat, guessDen->Z() );
+      this->onePDM->Z() = *(projectFullMatrix( projMat, std::make_shared<cqmatrix::Matrix<MatsT>>(guessDen->Z() ) ) );
       if( guessDen->hasXY() ) {
-        this->onePDM->Y() = projectMatrix( projMat, guessDen->Y() );
-        this->onePDM->X() = projectMatrix( projMat, guessDen->X() );
+        this->onePDM->Y() = *(projectFullMatrix( projMat, std::make_shared<cqmatrix::Matrix<MatsT>>(guessDen->Y() ) ) );
+        this->onePDM->X() = *(projectFullMatrix( projMat, std::make_shared<cqmatrix::Matrix<MatsT>>(guessDen->X() ) ) );
       }
     }
 
@@ -1246,7 +963,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::ReadGuessMO() {
+  void SingleSlater<MatsT,IntsT>::ReadGuessMO( const std::shared_ptr<BasisSet> guessBasisSet ) {
 
     //Check if MOs come from save file or scratch file
     if( MPIRank(comm) == 0 ) {
@@ -1256,6 +973,9 @@ namespace ChronusQ {
         if( printLevel > 0 )
           std::cout << "    * Reading in guess MOs (restart file) from file "
             << savFile.fName() << std::endl;
+        
+        // The -z flag is not compatible with basis set projection. Use -s instead!
+        if( guessBasisSet ) CErr("    * ERROR: -z is incompatible with basis set projection, use -s instead.");
 
         readSameTypeMOBin();
 
@@ -1265,7 +985,7 @@ namespace ChronusQ {
           std::cout << "    * Reading in guess MOs (scratch file) from file "
             << scrBinFileName << std::endl;
 
-        readDiffTypeMOBin(scrBinFileName);
+        readDiffTypeMOBin(scrBinFileName, guessBasisSet);
 
         if( printLevel > 0 )
           std::cout << "    * Saving prepared MOs to file "
@@ -1464,7 +1184,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName) {
+  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName, const std::shared_ptr<BasisSet> guessBasis ) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -1505,11 +1225,11 @@ namespace ChronusQ {
       // Determine storage of MOs on scr bin file
       if( s_is_double ){
 
-        getScrMO<double>(binFile);
+        getScrMO<double>(binFile,guessBasis);
 
       } else if( s_is_complex ){
 
-        getScrMO<dcomplex>(binFile);
+        getScrMO<dcomplex>(binFile,guessBasis);
 
       } else CErr("Could not determine type of scratch bin file");
 
