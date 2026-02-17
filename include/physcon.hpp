@@ -30,7 +30,8 @@ namespace ChronusQ {
   // Physical Constants 
   // XXX: Could use some citations / more accurate values here
   constexpr double AngPerBohr    = 0.52917721092;
-  constexpr double KgPerAMU      = 1.6650538921e-27;
+  constexpr double KgPerAMU      = 1.66053906892e-27;
+  constexpr double KgPerE        = 9.1093837139e-31;
   constexpr double CouPerEl      = 1.602176565e-19;
   constexpr double PlanckConst   = 6.62606957e-34;
   constexpr double AvogConst     = 6.02214129e+23;
@@ -41,8 +42,11 @@ namespace ChronusQ {
   //constexpr double SpeedOfLight  = 137.03599967994; // PySCF
   constexpr double FSPerAUTime   = 2.4188843265857e-2;
   constexpr double JPerHartree   = 4.35974434e-18;
-  constexpr double ProtMassPerE  = 1836.15267343;
-  constexpr double AUPerAMU      = 1822.888486217313;
+  constexpr double ProtMassPerE  = 1836.152673426;
+  constexpr double DeutMassPerE  = 3670.482967655;
+  constexpr double TritMassPerE  = 5496.92153551;
+  //constexpr double AUPerAMU      = 1822.888486217313;
+  constexpr double AUPerAMU      = KgPerAMU/KgPerE;
 
   // Things in odd unit systems / derived
   constexpr double SpeedOfLight_CM = 2.99792458e+10; 

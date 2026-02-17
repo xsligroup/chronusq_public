@@ -1174,6 +1174,15 @@ namespace ChronusQ {
       
       // Determine EPC functional is available in CQ/GauXC, and edit keywords in needed
       if(options.refOptions.isEPCRef){
+        bool isHMass = true;
+        for(const auto & atomQIndex : mol.atomsQ)
+        {
+          if(mol.atoms[atomQIndex].atomicMass != atomicReference["H-1"].atomicMass)
+            bool isHMass = false;
+        }
+        if(!options.refOptions.funcName.compare("ECP19") && !isHMass)
+          CErr("EPC19 currently hardcoded for H-1, while H-2 was requested!");
+
         if(not options.intParam.useGauXC){
           if(!options.refOptions.funcName.compare("EPC17_1"))
             CErr("EPC17_1 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
@@ -1767,7 +1776,43 @@ namespace ChronusQ {
     MPI_COMM_WORLD,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
 
     SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
-    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., ProtMassPerE}, "PROTQM");
+
+    // If doing a NEO calculation with different Deuterium, scale the mass here
+    // Note this also checks that all quantum particles are the same mass, as right now
+    // this is the only options with how NEOSS is constructed
+    double massAMU, mass;
+    size_t nelec;
+    if(mol.atomsQ.size())
+    {
+      massAMU = mol.atoms[mol.atomsQ[0]].atomicMass;
+      nelec = mol.atoms[mol.atomsQ[0]].atomicNumber;
+      for(const auto & atomQIndex : mol.atomsQ)
+      {
+        if(mol.atoms[atomQIndex].atomicMass != massAMU)
+          CErr("All particles for a NEO calculation must have the same mass!");
+      }
+    }
+    // HardCoded masses for H/D/T based on NIST standards:
+    if(massAMU == atomicReference["H-1"].atomicMass)
+    {
+      mass = ProtMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mpsme
+    }
+    else if(massAMU = atomicReference["H-2"].atomicMass)
+    {
+      mass = DeutMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mdsme
+    }
+    else if(massAMU = atomicReference["H-3"].atomicMass)
+    {
+      mass = TritMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mtsme
+    }
+    else
+    {
+      // Atomic masses are mass of nuclei + mass of associated electrons, so we need
+      // to subtract out the electron mass to just get the nuclear mass
+      mass = massAMU * AUPerAMU - nelec;
+    }
+   
+    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., mass}, "PROTQM");
 
     std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
     std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
