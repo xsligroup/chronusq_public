@@ -1,21 +1,21 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index db74f84..5252922 100644
+index 26a1520..df36da2 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -75,7 +75,7 @@ set(cintSrc
+@@ -68,7 +68,7 @@ set(cintSrc
    src/fblas.c src/g1e.c src/g2e.c src/misc.c src/optimizer.c
-   src/fmt.c src/rys_wheeler.c src/eigh.c src/rys_roots.c
+   src/fmt.c src/rys_wheeler.c src/eigh.c src/rys_roots.c src/find_roots.c
    src/cint2c2e.c src/g2c2e.c src/cint3c2e.c src/g3c2e.c
 -  src/cint3c1e.c src/g3c1e.c src/breit.c
-+  src/cint3c1e.c src/g3c1e.c src/breit.c src/breit_sf.c
++  src/cint3c1e.c src/g3c1e.c src/breit.c src/briet_sf.c
    src/cint1e_a.c src/cint3c1e_a.c
    src/cint1e_grids.c src/g1e_grids.c
    src/autocode/breit1.c src/autocode/dkb.c src/autocode/gaunt1.c
-diff --git a/src/breit_sf.c b/src/breit_sf.c
+diff --git a/src/briet_sf.c b/src/briet_sf.c
 new file mode 100644
-index 0000000..4a4eaa1
+index 0000000..5b32082
 --- /dev/null
-+++ b/src/breit_sf.c
++++ b/src/briet_sf.c
 @@ -0,0 +1,1242 @@
 +#include <stdlib.h>
 +#include <stdio.h>
