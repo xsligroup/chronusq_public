@@ -1401,7 +1401,11 @@ namespace ChronusQ {
     //if( printLevel > 0 ) std::cout << "  *** Computing Natural Orbitals from Guess Density ***" << std::endl << std::endl;
 
     size_t NBC = this->nC*basisSet().nBasis;
-    bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
     if( this->nC == 1 ){
       // Allocate Local Matrices

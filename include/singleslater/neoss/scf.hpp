@@ -163,15 +163,30 @@ namespace ChronusQ {
 
     // Setup MO reference vector, acknowledging we might only want to apply to some subsystems
     applyToEach([this](SubSSPtr& ss) {
-      for( auto& m: ss->mo )
-        this->moCoefficients.emplace_back(m);
+      auto* fb = ss->fockBuilder.get();
+      if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+        fb = neofb->getNonNEOUpstream();
+      }
+      bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
+      if( iRO ) {
+        this->moCoefficients.emplace_back(ss->mo[0]);
+      } else {
+        for( auto& m: ss->mo ) {
+          this->moCoefficients.emplace_back(m);
+        }
+      }
     },
     this->scfControls.NEOSubSystemOpt);
 
     // Setup Eigenvalue vector
     applyToEach([this](SubSSPtr& ss) {
       this->moEigenvalues.push_back(ss->eps1);
-      if( ss->nC == 1 and !ss->iCS )
+      auto* fb = ss->fockBuilder.get();
+      if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+        fb = neofb->getNonNEOUpstream();
+      }
+      bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
+      if( ss->nC == 1 and not(ss->iCS or iRO) )
         this->moEigenvalues.push_back(ss->eps2);
     },
     this->scfControls.NEOSubSystemOpt);

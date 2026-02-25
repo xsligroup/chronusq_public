@@ -221,7 +221,11 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::FDCommutator(cqmatrix::PauliSpinorMatrices<MatsT> &FDC) {
 
     size_t NB    = this->basisSet().nBasis;
-    bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT,IntsT>>(fockBuilder) != nullptr);
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
     if( this->nC == 4 ) NB = 2 * NB;
 
     if(this->nC == 1) {

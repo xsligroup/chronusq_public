@@ -787,7 +787,16 @@ namespace ChronusQ {
 
     // See if reference is RO for USCF check
     #define IsRO(MT,IT) \
-    std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss) ? (std::dynamic_pointer_cast<ROFock<MT,IT>>(std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss)->fockBuilder) != nullptr) : false
+    (std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss) ? ([](auto const& ss_sp) { \
+        auto fb = ss_sp->fockBuilder; \
+        if (auto neo = std::dynamic_pointer_cast<NEOFockBuilder<MT,IT>>(fb)) { \
+          /* getNonNEOUpstream() returns raw pointer; do not re-own it */ \
+          auto* up = neo->getNonNEOUpstream(); \
+          return dynamic_cast<ROFock<MT,IT>*>(up) != nullptr; \
+        } \
+        return std::dynamic_pointer_cast<ROFock<MT,IT>>(fb) != nullptr; \
+      })(std::dynamic_pointer_cast<SingleSlater<MT,IT>>(ss)) \
+    : false)
     bool isRO = IsRO(double,double) || IsRO(double,dcomplex) || IsRO(dcomplex,dcomplex);
 
     // USCF MOs NYI

@@ -26,6 +26,7 @@
 //#define seperatemag
 
 #include <singleslater.hpp>
+#include <singleslater/neoss.hpp>
 #include <cqlinalg/blasext.hpp>
 #include <cqlinalg/blasutil.hpp>
 #include <cqlinalg/blas3.hpp>
@@ -45,7 +46,11 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::formDensity() {
 
     size_t NB  = this->nAlphaOrbital() * nC;
-    bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();              // still a raw pointer
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
     // ROHF copy modified orbitals to redundant set
     if( iRO ){

@@ -217,7 +217,11 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     ROOT_ONLY(comm); 
     size_t NB = this->nAlphaOrbital() * nC;
     size_t NB2 = NB*NB;
-    bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT,IntsT>>(fockBuilder) != nullptr);
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
 
     // Copy over the fockMatrixOrtho into MO storage
@@ -263,7 +267,11 @@ void SingleSlater<MatsT, IntsT>::diagAOFock() {
   ROOT_ONLY(comm);
   size_t NB  = this->nAlphaOrbital() * nC;
   size_t NB2 = NB * NB;
-  bool iRO   = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
   // Copy over the fockMatrix into MO storage
   if( nC == 1 and iCS )
@@ -460,7 +468,11 @@ void SingleSlater<MatsT, IntsT>::initializeSCF() {
 
   this->moCoefficients.clear();
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
   // Setup MO reference vector
   if( iRO ) {
@@ -481,7 +493,11 @@ void SingleSlater<MatsT, IntsT>::initializeSCF() {
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(this->fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
 
   // Initialize properties
   //if( not std::dynamic_pointer_cast<SkipSCF<MatsT>>(this->orbitalModifier) ) getNewOrbitals();
@@ -564,7 +580,11 @@ void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
 template<typename MatsT, typename IntsT>
 std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>::getFock() {
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
   if( this->nC == 1 and iCS ) {
     return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * fockMatrix->S())};
   } else if( this->nC == 1 and iRO ) {
@@ -634,7 +654,11 @@ void SingleSlater<MatsT, IntsT>::setOnePDMAO(cqmatrix::Matrix<MatsT> *tempOnePDM
 template<typename MatsT, typename IntsT>
 std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>::getOnePDM() {
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
   if( this->nC == 1 and iCS ) {
     return {std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * this->onePDM->S())};
   } else if( this->nC == 1 and iRO ) {
@@ -655,7 +679,11 @@ std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>
 template<typename MatsT, typename IntsT>
 std::vector<cqmatrix::Matrix<MatsT>> SingleSlater<MatsT, IntsT>::getOnePDMOrtho() {
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
   if( this->nC == 1 and iCS ) {
     return {cqmatrix::Matrix<MatsT>(MatsT(0.5) * onePDMOrtho->S())};
   } else if( this->nC == 1 and iRO ) {
@@ -676,7 +704,11 @@ std::vector<cqmatrix::Matrix<MatsT>> SingleSlater<MatsT, IntsT>::getOnePDMOrtho(
 template<typename MatsT, typename IntsT>
 std::vector<std::shared_ptr<Orthogonalization<MatsT>>> SingleSlater<MatsT, IntsT>::getOrtho() {
 
-  bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr);
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+    fb = neofb->getNonNEOUpstream();
+  }
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
   if( this->nC == 1 and not(iCS or iRO) ) {
     return {orthoAB, orthoAB};
   } else {

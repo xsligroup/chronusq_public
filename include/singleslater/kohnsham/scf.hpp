@@ -59,7 +59,11 @@ void KohnSham<MatsT, IntsT>::buildOrbitalModifierOptions() {
         std::make_shared<ConventionalSCF<MatsT>>(this->scfControls, this->comm, modOrbOpt));
   } else if( this->scfControls.scfAlg == _NEWTON_RAPHSON_SCF ) {
 
-    bool iRO = (std::dynamic_pointer_cast<ROFock<MatsT,IntsT>>(this->fockBuilder) != nullptr);
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
     // The orbital gradient is wrong for ROHF. Also, it neglects the mixing
     // between the doubly occupied orbitals and the singly occupied orbitals
     if( iRO ) CErr("NewtonRaphson SCF is not yet implemented for Restricted Open Shell");
