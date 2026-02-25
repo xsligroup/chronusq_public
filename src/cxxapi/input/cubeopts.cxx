@@ -67,7 +67,7 @@ namespace ChronusQ {
     std::cout << " Found [CUBE] Section " << std::endl;
 
     // >>Keywords needed for constructor
-    std::string resString = "";
+    std::string resString = "COARSE";
     std::string spts;
     std::string ssteps;
     std::vector<std::string> nptstokens;
@@ -94,8 +94,10 @@ namespace ChronusQ {
     for (auto & nstep: stepstokens)
       steps.push_back(std::stod(nstep));
 
+    bool customRes = false;
     // Handle strange cases
     if(!npts.empty()) {
+        customRes = true;
         if(steps.empty()) {
           CErr("Number of points in grid also requires step size");
         } else {
@@ -110,7 +112,7 @@ namespace ChronusQ {
           }
           // strange cases
           if( npts[0]*npts[1]*npts[2]<= 0 ) CErr("Step needs to be positive"); 
-          if( steps[0]*steps[1]*steps[2]<= 0 ) CErr("Step size needs to be positive"); 
+          if( steps[0]*steps[1]*steps[2] < 0 ) CErr("Step size needs to be positive");
         }
     } else {
       if(!steps.empty()) CErr("Step size in grid also requires number of points");
@@ -122,11 +124,11 @@ namespace ChronusQ {
     std::shared_ptr<CubeGen> cubeptr;
 
     // Construct cubegen
-    if( !resString.empty() and abs(pad) != 0.0 ){
+    if( !customRes and abs(pad) != 0.0 ){
 
       cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, emPert, particleCharge, pad));
 
-    } else if( !resString.empty() ){
+    } else if( !customRes ){
 
       cubeptr = std::make_shared<CubeGen>(CubeGen(mol,basis, resString, emPert, particleCharge));
 
@@ -279,9 +281,37 @@ namespace ChronusQ {
       handle_orbital_requests(out,input,cubeOpts,subSection);
     }
 
+    // Handle Roots for MCSCF
+    handle_root_requests(out,input,cubeOpts,subSection);
+
     // If Magnitude & Phase Cubes are requested
     OPTOPT( cubeOpts.MagnitudeAndPhase = input.getData<bool>(subSection+"CUBE.MAGANDPHASE") );
 
   }; //CQCUBEOptionalKeywords
+
+  void ParseCubeSubsection(std::ostream &out, CQInputFile &input, std::string subsection,
+    CubeGenOptions & cubeopts, std::shared_ptr<CubeGen> cube) {
+
+    if( cube ){
+
+      // Copy the internal cube options to the input cube options
+      cubeopts = cube->getCubeOptions();
+
+    }
+
+    // Check if additional options are specified in [subsection.CUBE]
+    if( not input.containsSection(subsection+".CUBE") ) return;
+
+    // Handle the case where [subsection.CUBE] is provided, but [CUBE] is not
+    // In this case, cube is not initialized and cubes cannot be generated
+    if(input.containsSection(subsection+".CUBE") && !cube)
+      CErr("Must specify Cube Settings in [CUBE] section!");
+
+    std::cout << " Found [" << subsection << ".CUBE] section" << std::endl;
+    CQCUBE_VALID(out,input,subsection+".");
+    CQCUBEOptionalKeywords(out,input,cubeopts,subsection+".");
+
+  }; // ParseCubeSubsection
+
 
 }; // namespace ChronusQ

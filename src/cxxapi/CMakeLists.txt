@@ -27,7 +27,7 @@ set(OPT_SRC input/molopts.cxx input/basisopts.cxx
     input/singleslateropts.cxx input/scfopts.cxx input/rtopts.cxx
     input/intsopts.cxx input/miscopts.cxx input/respopts.cxx 
     input/coupledclusteropts.cxx input/geomopts.cxx input/mcscfopts.cxx
-    input/cubeopts.cxx input/scfcubeopts.cxx
+    input/cubeopts.cxx 
     input/saverefs.cxx input/perturbopts.cxx input/mpopts.cxx
     input/posthfopts.cxx input/configinteractionopts.cxx
     input/gauxcopts.cxx procedural.cxx output.cxx)

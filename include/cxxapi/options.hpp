@@ -350,8 +350,8 @@ namespace ChronusQ {
   void CQCUBEOptionalKeywords(std::ostream&, CQInputFile&,
     CubeGenOptions&, std::string);
 
-  void ParseSCFCubeSubsection(std::ostream&, CQInputFile&,
-    std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<CubeGen> cu);
+  void ParseCubeSubsection(std::ostream&, CQInputFile&, std::string,
+    CubeGenOptions &, std::shared_ptr<CubeGen> cu);
 
   void ParseOrbitalPropSubsection(std::ostream&, CQInputFile&,
     std::shared_ptr<SingleSlaterBase> ss);

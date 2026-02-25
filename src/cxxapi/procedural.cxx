@@ -285,8 +285,8 @@ namespace ChronusQ {
       }
 
       // Currently prot and elec share cube options.
-      ParseSCFCubeSubsection(output, input, ss, cube);
-      ParseSCFCubeSubsection(output, input, ss, pcube);
+      ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);
+      ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, pcube);
     } else {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
@@ -297,7 +297,7 @@ namespace ChronusQ {
       HandleOrbitalSwaps(output, input, *ss);
 
       ParseOrbitalPropSubsection(output, input, ss);
-      ParseSCFCubeSubsection(output, input, ss, cube);
+      ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);
     }
 
     // GAUXC                                                                       
@@ -596,18 +596,9 @@ namespace ChronusQ {
             std::shared_ptr<MCSCFBase> mcscf= CQMCSCFOptions(output,input,ss,mcwfn,emPert,cube,doNEO);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
+            ParseCubeSubsection(output,input,"MCSCF",mcwfn->cubeOptsMC,cube);
             if(cube) mcscf->runCube(cubes);
-
-            /*
-            if(doNEO)
-              mcscf = CQNEOMCSCFOptions(output,input,ss,emPert,cube);
-            else
-              mcscf = CQMCSCFOptions(output,input,ss,emPert,cube,doNEO);
-            mcscf->savFile = rstFile;
-            mcscf->run(additionalPert);
-            if(cube) mcscf->runCube(cubes);
-            */
-            
+           
             if (input.containsSection("PERTURB")) {
               auto perturb = CQPerturbOptions(output,input,mcwfn);
               perturb->savFile = rstFile;
