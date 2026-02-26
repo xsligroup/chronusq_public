@@ -1797,11 +1797,11 @@ namespace ChronusQ {
     {
       mass = ProtMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mpsme
     }
-    else if(massAMU = atomicReference["H-2"].atomicMass)
+    else if(massAMU == atomicReference["H-2"].atomicMass)
     {
       mass = DeutMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mdsme
     }
-    else if(massAMU = atomicReference["H-3"].atomicMass)
+    else if(massAMU == atomicReference["H-3"].atomicMass)
     {
       mass = TritMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mtsme
     }
