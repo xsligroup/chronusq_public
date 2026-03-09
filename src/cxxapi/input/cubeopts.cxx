@@ -61,8 +61,28 @@ namespace ChronusQ {
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream &out, CQInputFile &input,
     std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &basis, EMPerturbation &emPert, double particleCharge) {
 
+    std::string substring = "";
     // CUBE section not required
-    if( not input.containsSection("CUBE") ) return nullptr;
+    if( not input.containsSection("CUBE") ) 
+    {
+      // Check in case [SUBSECTION.CUBE] is specified instead
+      if(input.containsSection("SCF.CUBE"))
+      {
+        std::cout << "[CUBE] settings detected in [SCF.CUBE]" << std::endl;
+        std::cout << "These settings are useed globally!" << std::endl;
+        substring = "SCF.";
+      }
+      else if(input.containsSection("MCSCF.CUBE"))
+      {
+        std::cout << "[CUBE] settings detected in [MCSCF.CUBE]" << std::endl;
+        std::cout << "These settings are useed globally!" << std::endl;
+        substring = "MCSCF.";
+      }
+      else 
+      {
+        return nullptr;
+      }
+    }
 
     std::cout << " Found [CUBE] Section " << std::endl;
 
@@ -77,14 +97,14 @@ namespace ChronusQ {
     double pad = 0.0;
 
     // change resolution 
-    OPTOPT( resString = input.getData<std::string>("CUBE.RES") );
+    OPTOPT( resString = input.getData<std::string>(substring+"CUBE.RES") );
 
     // change padding. Used to avoid cube cutoffs
-    OPTOPT( pad = input.getData<double>("CUBE.PADDING") );
+    OPTOPT( pad = input.getData<double>(substring+"CUBE.PADDING") );
 
     // Create custom grid with points and stepsize 
-    OPTOPT( spts = input.getData<std::string>("CUBE.POINTS") );
-    OPTOPT( ssteps = input.getData<std::string>("CUBE.STEPS") );
+    OPTOPT( spts = input.getData<std::string>(substring+"CUBE.POINTS") );
+    OPTOPT( ssteps = input.getData<std::string>(substring+"CUBE.STEPS") );
 
     split(nptstokens, spts, " ,;");
     for (auto & npt: nptstokens)
@@ -147,7 +167,7 @@ namespace ChronusQ {
     // >>Keywords not needed for constructor
 
     auto &cubeOptions = cubeptr->getCubeOptions();
-    CQCUBEOptionalKeywords(out,input,cubeOptions,"");
+    CQCUBEOptionalKeywords(out,input,cubeOptions,substring);
 
     return cubeptr;
 
