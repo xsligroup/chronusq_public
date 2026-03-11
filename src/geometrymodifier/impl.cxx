@@ -65,10 +65,16 @@ namespace ChronusQ {
     bool doGrad = isBOMD || curState.iStep % mdOptions.nMidpointFockSteps == 0;
     bool isHalfNFockStep(false), OddNFockSteps(false);
     if ( isEhrenfest ) {
-      // Determine if we are at a half-point of all midpoint fock steps (i.e. t = Δt_N/2 + iΔt_N )
-      isHalfNFockStep = curState.iStep%mdOptions.nMidpointFockSteps == (mdOptions.nMidpointFockSteps)/2+1;
-      // Determine if the number of midpoint fock steps is odd
-      OddNFockSteps = mdOptions.nMidpointFockSteps%2 == 1;
+      // Special case for NMidpointFockSteps=2
+      if (mdOptions.nMidpointFockSteps == 2) {
+        isHalfNFockStep = curState.iStep%mdOptions.nMidpointFockSteps == 1;
+        OddNFockSteps = false;
+      } else {
+        // Determine if we are at a half-point of all midpoint fock steps (i.e. t = Δt_N/2 + iΔt_N )
+        isHalfNFockStep = curState.iStep%mdOptions.nMidpointFockSteps == (mdOptions.nMidpointFockSteps)/2+1;
+        // Determine if the number of midpoint fock steps is odd
+        OddNFockSteps = mdOptions.nMidpointFockSteps%2 == 1;
+      }
     }
 
 
@@ -128,9 +134,12 @@ namespace ChronusQ {
 
     // =========================================================================================
     // Update half-step velocity to full-step velocity
+    // Here we save the velocity at t+0.5Δt_N step, which we later use to compute next full-step velocity
+    // For even number of midpoint fock steps, p will arrive to t+0.5Δt_N before the velocity update
+    // For odd number of midpoint fock steps,  p will arrive to t+0.5Δt_N after the velocity update
     // =========================================================================================
-    // Save velocity at half Δt_N step (for even number of midpoint fock steps)
-    if(isHalfNFockStep and not OddNFockSteps) {
+    // Save velocity at half Δt_N step (for even number of midpoint fock steps NMidpointFockSteps>2)
+    if(isHalfNFockStep and not OddNFockSteps and mdOptions.nMidpointFockSteps != 2) {
       velocityHalfTN = velocity;
       curState.ptimeHalf = curState.ptime;
       std::cout << "  *** Saving Half-Step Velocity from p( t = " << curState.ptimeHalf << " au) ***" << std::endl;
@@ -146,7 +155,7 @@ namespace ChronusQ {
       curState.ptime += dt/2;
     }
 
-    // Save velocity at half Δt_N step (for odd number of midpoint fock steps)
+    // Save velocity at half Δt_N step (for odd number of midpoint fock steps NMidpointFockSteps>=3)
     if(isHalfNFockStep and OddNFockSteps) {
       velocityHalfTN = velocity;
       curState.ptimeHalf = curState.ptime;
@@ -199,6 +208,13 @@ namespace ChronusQ {
     velocityVV(molecule, velocity, velocity, gradient, dt);
     curState.ptime += dt/2;
 
+    // Save velocity at half Δt_N step (special case for NMidpointFockSteps=2)
+    // For NMidpointFockSteps=2, p will arrive to t+0.5Δt_N after this half-step velocity update
+    if(isHalfNFockStep and mdOptions.nMidpointFockSteps == 2) {
+      velocityHalfTN = velocity;
+      curState.ptimeHalf = curState.ptime;
+      std::cout << "  *** Saving Half-Step Velocity from p( t = " << curState.ptimeHalf << " au) ***" << std::endl;
+    }
 
     // Update geometry using velocity at half-step
     // x(t+Δt) = x(t) + 0.5 * p(t+0.5Δt) * Δt
