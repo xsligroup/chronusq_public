@@ -64,6 +64,12 @@ namespace ChronusQ {
       if ( input.containsData("SCF.LINEARDEPTOL")) {
         linearDepTol = input.getData<double>("SCF.LINEARDEPTOL");
       }
+      // For NEO, it's possible to set different thresholds for electronic
+      // and nuclear bases
+      if ( basis.nucBasis && input.containsData("SCF.PROT_LINEARDEPTOL")){
+        linearDepTol = input.getData<double>("SCF.PROT_LINEARDEPTOL");
+      }
+
       bool atomicOnly = false;
       if ( input.containsData("SCF.REMOVEATOMICLINEARDEPONLY")) {
         atomicOnly = input.getData<bool>("SCF.REMOVEATOMICLINEARDEPONLY");

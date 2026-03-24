@@ -64,7 +64,8 @@ namespace ChronusQ {
       "NEOSTEPWISEOPTIMIZE",
       "REMOVELINEARDEP",
       "REMOVEATOMICLINEARDEPONLY",
-      "LINEARDEPTOL"
+      "LINEARDEPTOL",
+      "PROT_LINEARDEPTOL"
     };
 
     // Specified keywords

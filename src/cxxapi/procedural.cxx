@@ -236,6 +236,7 @@ namespace ChronusQ {
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
     std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Guess basis set for density projection
     std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation
+    if(prot_basis) read_option_and_remove_linear_dependency(input,*prot_basis,mol,output);
     std::shared_ptr<BasisSet> prot_guessbasis = input.containsSection("PGUESSBASIS") ? CQBasisSetOptions(output,input,mol,"PGUESSBASIS") : nullptr; // Protonic Guess basis set for density projection
 
     // Parse Integral options from input file
