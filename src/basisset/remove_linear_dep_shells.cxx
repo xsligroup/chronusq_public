@@ -100,7 +100,7 @@ namespace ChronusQ {
 
     // Determine shells to keep (center by center)
     std::vector<size_t> keptShells = two_step_remove_linearly_dependent_shells(
-        basis, overlapMatrix, kineticMatrix, linearDependencyThreshold, is4C, atomicOnly);
+        basis, mol, overlapMatrix, kineticMatrix, linearDependencyThreshold, is4C, atomicOnly);
 
     // Find out which shells are removed in keptShells
     std::vector<libint2::Shell> removedShells;
@@ -163,11 +163,81 @@ namespace ChronusQ {
 
   template<typename IntsT>
   std::vector<size_t> two_step_remove_linearly_dependent_shells(
-      BasisSet &originalBasis,
+      BasisSet &originalBasis, Molecule &mol,
       std::shared_ptr<cqmatrix::Matrix<IntsT>> overlapMatrix,
       std::shared_ptr<cqmatrix::Matrix<IntsT>> kineticMatrix,
       double linearDependencyThreshold,
       bool is4C, bool atomicOnly) {
+
+    // Record atoms finished linear dependency removal, and the corresponding shells
+    std::vector<size_t> finishedAtomNumbers;
+    std::vector<std::pair<size_t, size_t>> finishedAtomOriginalShellRanges;
+    std::vector<std::vector<size_t>> finishedAtomKeptShells;
+    // A function to check if a finished atom matches the current shell center
+    auto match_finished_atom = [&finishedAtomNumbers, &finishedAtomOriginalShellRanges, &originalBasis, &mol](
+        const std::pair<size_t, size_t> &curShellRange) -> std::optional<size_t> {
+      auto shellCenter = originalBasis.shells[curShellRange.first].O;
+      size_t atomIndex = std::distance(mol.atoms.begin(),
+          std::find_if( mol.atoms.begin(),
+                        mol.atoms.end(),
+                        [&shellCenter](const Atom &a){
+                          return a.coord == shellCenter;
+                        }));
+      size_t atomNumber = mol.atoms[atomIndex].atomicNumber;
+      for (size_t i = 0; i < finishedAtomNumbers.size(); i++) {
+        if (atomNumber != finishedAtomNumbers[i])
+          continue; // Different element, skip
+        std::pair<size_t, size_t> &finishedShellRangeI = finishedAtomOriginalShellRanges[i];
+        if (finishedShellRangeI.second - finishedShellRangeI.first != curShellRange.second - curShellRange.first)
+          continue; // Different number of shells, skip
+        bool allMatch = true;
+        size_t shellOffset = curShellRange.first - finishedShellRangeI.first;
+        for (size_t j = finishedShellRangeI.first; j < finishedShellRangeI.second; j++) {
+          libint2::Shell &curShell = originalBasis.shells[j + shellOffset];
+          libint2::Shell &finishedShell = originalBasis.shells[j];
+          if (curShell.alpha != finishedShell.alpha or curShell.contr != finishedShell.contr) {
+            allMatch = false; // Shell not found in finished atom, mismatch
+            break;
+          }
+        }
+        if (allMatch) { // Same atom and same shells, match found
+          return i; // Return the index of the finished atom
+        }
+      }
+      finishedAtomNumbers.push_back(atomNumber);
+      return std::nullopt; // No match found
+    };
+
+    // Function to remove linearly dependent shells for a given center, and record the kept shells for potential future matching
+    auto remove_atomic_linearly_dependent_shells = [&](
+        const std::pair<size_t, size_t> &curShellRange, std::vector<size_t> &keptShells) -> void {
+      // Check if we have processed the same atom before, if so reuse the result
+      std::optional<size_t> matchedFinishedAtomIndex = match_finished_atom({curShellRange.first, curShellRange.second});
+      if (matchedFinishedAtomIndex.has_value()) { // Match found, reuse the kept shells from the finished atom
+        size_t matchedIndex = matchedFinishedAtomIndex.value();
+        size_t shellOffset = curShellRange.first - finishedAtomOriginalShellRanges[matchedIndex].first;
+        for (size_t shellIndex : finishedAtomKeptShells[matchedIndex]) {
+          keptShells.push_back(shellIndex + shellOffset); // Append the matched shells with the appropriate offset
+        }
+
+      } else { // No match found, process the current center shells and record the result for potential future reuse
+        std::vector<size_t> centerShellsKept(curShellRange.second - curShellRange.first);
+        std::iota(centerShellsKept.begin(), centerShellsKept.end(), curShellRange.first);
+        remove_linearly_dependent_shells(
+            originalBasis, *overlapMatrix, centerShellsKept, linearDependencyThreshold);
+        if (is4C) {
+          remove_linearly_dependent_shells(
+              originalBasis, *kineticMatrix, centerShellsKept,
+              2.0 * SpeedOfLight * SpeedOfLight * linearDependencyThreshold);
+        }
+        // Append to keptShells
+        keptShells.insert(keptShells.end(), centerShellsKept.begin(), centerShellsKept.end());
+
+        // Record finished atom shells for potential matching with future centers
+        finishedAtomOriginalShellRanges.emplace_back(curShellRange.first, curShellRange.second);
+        finishedAtomKeptShells.push_back(std::move(centerShellsKept));
+      }
+    };
 
     // Determine shells to keep (center by center)
     std::vector<size_t> keptShells;
@@ -176,34 +246,15 @@ namespace ChronusQ {
     for (size_t i = 0; i < originalBasis.nShell; i++) {
       if (originalBasis.shells[i].O != preShellCenter) {
         // New center encountered, process the previous center shells
-        std::vector<size_t> centerShellsKept(i - curentCenterShellStart);
-        std::iota(centerShellsKept.begin(), centerShellsKept.end(), curentCenterShellStart);
-        remove_linearly_dependent_shells(
-            originalBasis, *overlapMatrix, centerShellsKept, linearDependencyThreshold);
-        if (is4C) {
-          remove_linearly_dependent_shells(
-              originalBasis, *kineticMatrix, centerShellsKept,
-              2.0 * SpeedOfLight * SpeedOfLight * linearDependencyThreshold);
-        }
-        // Append to keptShells
-        keptShells.insert(keptShells.end(), centerShellsKept.begin(), centerShellsKept.end());
+        remove_atomic_linearly_dependent_shells({curentCenterShellStart, i}, keptShells);
+
         // Update for new center
         preShellCenter = originalBasis.shells[i].O;
         curentCenterShellStart = i;
       }
       if (i == originalBasis.nShell - 1) {
         // Last shell, process the last center shells
-        std::vector<size_t> centerShellsKept(i - curentCenterShellStart + 1);
-        std::iota(centerShellsKept.begin(), centerShellsKept.end(), curentCenterShellStart);
-        remove_linearly_dependent_shells(
-            originalBasis, *overlapMatrix, centerShellsKept, linearDependencyThreshold);
-        if (is4C) {
-          remove_linearly_dependent_shells(
-              originalBasis, *kineticMatrix, centerShellsKept,
-              2.0 * SpeedOfLight * SpeedOfLight * linearDependencyThreshold);
-        }
-        // Append to keptShells
-        keptShells.insert(keptShells.end(), centerShellsKept.begin(), centerShellsKept.end());
+        remove_atomic_linearly_dependent_shells({curentCenterShellStart, i+1}, keptShells);
       }
     }
 
@@ -227,14 +278,14 @@ namespace ChronusQ {
   }
 
   template std::vector<size_t> two_step_remove_linearly_dependent_shells(
-      BasisSet &originalBasis,
+      BasisSet &originalBasis, Molecule &mol,
       std::shared_ptr<cqmatrix::Matrix<double>> overlapMatrix,
       std::shared_ptr<cqmatrix::Matrix<double>> kineticMatrix,
       double linearDependencyThreshold,
       bool is4C, bool atomicOnly);
 
   template std::vector<size_t> two_step_remove_linearly_dependent_shells(
-      BasisSet &originalBasis,
+      BasisSet &originalBasis, Molecule &mol,
       std::shared_ptr<cqmatrix::Matrix<dcomplex>> overlapMatrix,
       std::shared_ptr<cqmatrix::Matrix<dcomplex>> kineticMatrix,
       double linearDependencyThreshold,

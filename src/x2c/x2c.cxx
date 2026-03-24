@@ -265,7 +265,7 @@ namespace ChronusQ {
 
     // Determine shells to keep (center by center)
     std::vector<size_t> keptShells = two_step_remove_linearly_dependent_shells(
-        uncontractedBasis_, overlapMatrix, kineticMatrix, linearDependencyThreshold, true, rmAtomicLinDepOnly);
+        uncontractedBasis_, molecule_, overlapMatrix, kineticMatrix, linearDependencyThreshold, true, rmAtomicLinDepOnly);
 
     // Find out which shells are removed in keptShells
     std::vector<libint2::Shell> removedShells;

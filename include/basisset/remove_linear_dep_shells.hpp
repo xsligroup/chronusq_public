@@ -39,7 +39,7 @@ namespace ChronusQ {
 
   template<typename IntsT>
   std::vector<size_t> two_step_remove_linearly_dependent_shells(
-      BasisSet &originalBasis,
+      BasisSet &originalBasis, Molecule &mol,
       std::shared_ptr<cqmatrix::Matrix<IntsT>> overlapMatrix,
       std::shared_ptr<cqmatrix::Matrix<IntsT>> kineticMatrix,
       double linearDependencyThreshold,
