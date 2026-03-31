@@ -22,6 +22,9 @@
  *  
  */
 
+#ifdef CQ_ENABLE_MPI
+#include <mpi.h>
+#endif
 #include <cqlinalg.hpp>
 #include <cqlinalg/blasutil.hpp>
 #include <util/timer.hpp>
@@ -86,22 +89,18 @@ namespace ChronusQ {
   template <typename IntsT>
   void InCoreRITPI<IntsT>::saveRawERI3J() {
     if (not saveRawERI_) return;
-
-    size_t NB3 = NBRI * this->nBasis()*(this->nBasis() + 1) / 2;
-    if (rawERI3J_) {
-      if (CQMemManager::get().getSize(rawERI3J_) == NB3)
-        return;
-      CQMemManager::get().free(rawERI3J_);
+    
+    if (distributed_) {
+      rawERI3J_ = std::make_shared<DistributedERI3J<IntsT>>(comm_,this->nBasis(), NBRI);
+      if (auto eri3j_casted = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(eri3j_)) {
+        std::copy_n(eri3j_casted->data(), eri3j_casted->localSize()*this->nBasis()*NBRI, rawERI3J_->data());
+      } else {
+        CErr("ERI3J is not a DistributedERI3J");
+      }
+    } else {
+      rawERI3J_ = std::make_shared<IncoreERI3J<IntsT>>(this->nBasis(), NBRI);
+      std::copy_n(eri3j_->data(), this->nBasis()*NBNBRI, rawERI3J_->data());
     }
-    try { rawERI3J_ = CQMemManager::get().calloc<IntsT>(NB3); }
-    catch(...) {
-      std::cout << std::fixed;
-      std::cout << "Insufficient memory for the full RI-ERI tensor ("
-      << (NB3/1e9) * sizeof(double) << " GB)" << std::endl;
-      std::cout << std::endl << CQMemManager::get() << std::endl;
-      CErr();
-    }
-    std::copy_n(ERI3J, NB3, rawERI3J_);
   }
 
   /**
@@ -155,17 +154,19 @@ namespace ChronusQ {
    *         Save L(Q|ij) in ERI3J
    */
   template <>
-  void InCoreRITPI<dcomplex>::contract2CenterERI() {
+  void InCoreRITPI<dcomplex>::contract2CenterERI(bool useCompoundIndex) {
     CErr("Only real GTOs are allowed",std::cout);
   };
   template <>
-  void InCoreRITPI<double>::contract2CenterERI() {
+  void InCoreRITPI<double>::contract2CenterERI(bool useCompoundIndex) {
 
     auto topGemm = tick();
 
     double *S = twocenterERI_->pointer();
 
-    size_t NB2   = NB*(NB+1)/2;
+    size_t NB2   = useCompoundIndex ? NB*(NB+1)/2 : NB*NB;
+    if (auto eri3j_casted = std::dynamic_pointer_cast<DistributedERI3J<double>>(eri3j_)) 
+      NB2 = eri3j_casted->localSize()*NB;
     size_t NB3   = NB2*NBRI;
     // S^{-1/2}(Q|ij)
     auto ijK = CQMemManager::get().calloc<double>(NB3);
@@ -191,10 +192,15 @@ namespace ChronusQ {
 
     auto topCopy = tick();
 
-    for (size_t pq = 0; pq < NB2; pq++) {
-      auto pqAna = anaCompound(pq);
-      std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.first, pqAna.second, NB));
-      std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NB));
+    if (useCompoundIndex) {
+      for (size_t pq = 0; pq < NB2; pq++) {
+        auto pqAna = anaCompound(pq);
+        std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.first, pqAna.second, NB));
+        std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NB));
+      }
+    } else{
+      // Symmetrization is done when raw ERI3J is computed
+      std::copy_n(ijK, NB3, pointer());
     }
 
     CQMemManager::get().free(ijK);
@@ -217,6 +223,18 @@ namespace ChronusQ {
   template <>
   void InCoreAuxBasisRIERI<double>::compute3CenterERI(
       BasisSet &basisSet, BasisSet &auxBasisSet) {
+    int rank = 0, size = 1;
+    std::shared_ptr<DistributedERI3J<double>> eri3j = nullptr;
+    size_t subBf3Begin = 0ul;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+    if (this->isDistributed()) {
+      eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(eri3j_);
+      if (!eri3j) CErr("ERI3J is not distributed", std::cout);
+      subBf3Begin = eri3j->splitStart(NB, rank, size);
+    }
+#endif
     // Determine the number of OpenMP threads
     size_t nthreads = GetNumThreads();
 
@@ -235,18 +253,32 @@ namespace ChronusQ {
     for(size_t i = 1; i < nthreads; i++) engines[i] = engines[0];
 
     // Allocate and zero out ERIs
+    bool useCompoundIndex = not this->isDistributed();
     size_t NB    = basisSet.nBasis;
     this->setNRIBasis( auxBasisSet.nBasis );
     size_t NB2   = NB*NB;
     size_t NBRI2 = NBRI*NBRI;
     size_t NBNBRI= NB*NBRI;
     size_t NB3   = NB2*NBRI;
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      if (this->isDistributed()) {
+#ifdef CQ_ENABLE_MPI
+        indexer = [NB, subBf3Begin](size_t p, size_t q) { return p + (q - subBf3Begin) * NB; };
+#endif
+      } else
+        indexer = [NB](size_t p, size_t q) { return p + q * NB; };
+    }
 
+    // === Initialize Tensor to zero ===
+    clear();
 
+    // === Compute 3-index ERI on rank 0 ===
+    if (rank == 0 and not this->isDistributed()) {
 
     auto topERI3 = tick();
-    std::fill_n(ERI3J,NB3,0.);
-    InCoreRITPI<double> &eri3j = *this;
 
     #pragma omp parallel
     {
@@ -293,12 +325,18 @@ namespace ChronusQ {
             if (s2 == s3) {
               for(k = j, bf3 = bf2, ijk += j; k < n3; ++k, bf3++, ++ijk) {
                 // (Q|12) -> RI-J
-                eri3j.pointer()[bf1 + toCompound(bf2, bf3) * NBRI] = buff[ijk];
+                pointer()[bf1 + indexer(bf2, bf3) * NBRI] = buff[ijk];
+                if (!useCompoundIndex) {
+                  pointer()[bf1 + indexer(bf3, bf2) * NBRI] = buff[ijk];
+                }
               }; // ijk loop
             } else {
               for(k = 0ul, bf3 = bf3_s; k < n3; ++k, bf3++, ++ijk) {
                 // (Q|12) -> RI-J
-                eri3j.pointer()[bf1 + toCompound(bf2, bf3) * NBRI] = buff[ijk];
+                pointer()[bf1 + indexer(bf2, bf3) * NBRI] = buff[ijk];
+                if (!useCompoundIndex) {
+                  pointer()[bf1 + indexer(bf3, bf2) * NBRI] = buff[ijk];
+                }
               }; // ijk loop
             }
 
@@ -307,8 +345,92 @@ namespace ChronusQ {
       }; // s1
     }; // omp region
 
-    auto durERI3 = tock(topERI3);
-    std::cout << "  Libint-RI-ERI3 duration   = " << durERI3 << " s " << std::endl;
+      auto durERI3 = tock(topERI3);
+      std::cout << "  Libint-RI-ERI3 duration   = " << durERI3 << " s " << std::endl;
+    }
+#ifdef CQ_ENABLE_MPI
+    else {
+
+      auto topERI3 = tick();
+
+      size_t subBf3End = subBf3Begin + eri3j->splitSize(NB, rank, size);
+
+#pragma omp parallel
+      {
+        int thread_id = GetThreadID();
+
+        // Get threads result buffer
+        const auto& buf_vec = engines[thread_id].results();
+
+        size_t n1,n2,n3,i,j,k,ijk,bf1,bf2,bf3;
+        size_t nShellDF = auxBasisSet.nShell;
+        size_t nShell   = basisSet.nShell;
+        size_t bf3_e = 0ul;
+
+        for(auto s3=0ul, bf3_s=0ul, s123=0ul; s3 < nShell; bf3_s = bf3_e, s3++) {
+
+          n3 = basisSet.shells[s3].size(); // Size of Shell 3
+          bf3_e = bf3_s + n3;
+
+          if (bf3_s >= subBf3End or bf3_e <= subBf3Begin)
+            continue; // Skip this shell if it is not in the current MPI split
+
+          size_t bf3BeginShift = bf3_s < subBf3Begin ? subBf3Begin - bf3_s : 0ul;
+          size_t bf3EndShift   = bf3_e > subBf3End ? bf3_e - subBf3End : 0ul;
+          bf3_s += bf3BeginShift; // Adjust bf3_s to the start of the split
+          size_t kEnd = n3 - bf3EndShift;
+
+          // The outer loop runs over all DFBasis shells
+          for(auto s1=0ul, bf1_s=0ul; s1 < nShellDF; bf1_s+=n1, s1++) {
+
+            n1 = auxBasisSet.shells[s1].size(); // Size of DFShell 1
+
+            for(auto s2=0ul, bf2_s=0ul; s2 < nShell; bf2_s+=n2, s2++, s123++) {
+
+              n2 = basisSet.shells[s2].size(); // Size of Shell 2
+
+              // Round Robbin work distribution
+#ifdef _OPENMP
+              if( s123 % nthreads != thread_id ) continue;
+#endif
+
+              // Evaluate ERI3 for shell quartet
+              engines[thread_id].compute2<
+                  libint2::Operator::coulomb, libint2::BraKet::xs_xx, 0>(
+                  auxBasisSet.shells[s1],
+                  unitshell,
+                  basisSet.shells[s2],
+                  basisSet.shells[s3]
+              );
+              const auto *buff =  buf_vec[0] ;
+              if(buff == nullptr) continue;
+
+              // Place shell triplet into persistent storage
+              for(i = 0ul, bf1 = bf1_s, ijk = 0ul  ; i < n1; ++i, bf1++)
+                for(j = 0ul, bf2 = bf2_s; j < n2; ++j, bf2++) {
+                  for (k = bf3BeginShift, ijk += bf3BeginShift, bf3 = bf3_s; k < kEnd; ++k, bf3++, ijk++) {
+                    // (Q|12) -> RI-J
+                    pointer()[bf1 + indexer(bf2, bf3) * NBRI] = buff[ijk];
+                  }; // ijk loop
+                  ijk += bf3EndShift; // Adjust ijk for the end shift
+                }
+
+            }; // s3
+          }; // s2
+        }; // s1
+      }; // omp region
+
+      auto durERI3 = tock(topERI3);
+      std::cout << "  Libint-RI-ERI3 duration   = " << durERI3 << " s " << std::endl;
+
+    }
+
+    // === Distribute Raw ERI3J on all ranks ===
+    if (this->isDistributed()) {
+//      prettyPrintSmart(std::cout, "Partial Raw ERI3J (rank " + std::to_string(rank) + ")",
+//                       eri3j->data(), NBRI, eri3j->localSize()*NB, NBRI);
+    }
+#endif
 
   }; // InCoreAuxBasisRIERI<double>::compute3CenterERI
 
@@ -406,6 +528,12 @@ namespace ChronusQ {
   template <>
   void InCoreAuxBasisRIERI<double>::computeAOInts(BasisSet &basisSet, Molecule&,
       EMPerturbation&, OPERATOR op, const HamiltonianOptions &options) {
+    
+    int rank = 0, size = 1;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+#endif
 
     if (op != ELECTRON_REPULSION)
       CErr("Only Electron repulsion integrals in InCoreAuxBasisRIERI<double>",std::cout);
@@ -418,21 +546,33 @@ namespace ChronusQ {
     saveRawERI3J();
 
     twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(NBRI);
+    if (rank == 0) {
+      compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
+    }
+     
+    // === Broadcast Two-center ERI on all ranks ===
+#ifdef CQ_ENABLE_MPI
+    if (MPISize(this->comm()) > 1) {
+        //std::cerr << "  *** Scattering Two-center ERI ***\n";
+        size_t nTwocenterERI = NBRI*NBRI;
+        MPIBCast(twocenterERI_->pointer(), nTwocenterERI, 0, this->comm());
+    }
+#endif
 
-    compute2CenterERI(*auxBasisSet_, twocenterERI_->pointer());
     if (saveRawERI_)
       rawERI2C_ = std::make_shared<cqmatrix::Matrix<double>>(*twocenterERI_);
 
     auto topERI3Trans = tick();
     halfInverse2CenterERI(*twocenterERI_);
-    contract2CenterERI();
+    bool useCompoundIndex = not this->isDistributed();
+    contract2CenterERI(useCompoundIndex);
 
     auto durERI3Trans = tock(topERI3Trans);
     std::cout << "  RI-ERI3-Transformation duration = " << durERI3Trans << " s " << std::endl;
 
     auto durLibintRI = tock(topLibintRI);
     std::cout << "  Libint-RI duration   = " << durLibintRI << " s " << std::endl;
-
+    
   }; // InCoreAuxBasisRIERI<double>::computeAOInts
 
 
@@ -4421,11 +4561,19 @@ namespace ChronusQ {
    *         in pivots_.
    */
   template <>
-  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibcint(BasisSet&) {
+  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibcint(BasisSet&, bool) {
     CErr("Only real GTOs are allowed",std::cout);
   };
   template <>
-  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibcint(BasisSet &basisSet) {
+  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibcint(BasisSet &basisSet, bool useCompoundIndex) {
+
+    size_t NB = this->nBasis();
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB](size_t p, size_t q) { return p + q * NB; };
+    }
 
     // Determine the number of OpenMP threads
     size_t nthreads = GetNumThreads();
@@ -4507,7 +4655,9 @@ namespace ChronusQ {
                   for (size_t q(p),
                        rspq = rsp * pSize + p - pBegin;
                        q < pEnd; q++, rspq++) {
-                    this->pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                    pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                    if (!useCompoundIndex)
+                      pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                   }
                 }
               } else {
@@ -4521,7 +4671,9 @@ namespace ChronusQ {
                        qEnd(q + qSize),
                        rspq = rsp * qSize;
                        q < qEnd; q++, rspq++) {
-                    this->pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                    pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                    if (!useCompoundIndex)
+                      pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                   }
                 }
               }
@@ -4545,8 +4697,10 @@ namespace ChronusQ {
                 for (size_t r(rBegin); r < rEnd; r++) {
                   for (size_t s(R == S ? r : sBegin);
                        s < sEnd; s++) {
-                    this->pointer()[pivot_index + toCompound(r,s) * NBRI] =
+                    pointer()[pivot_index + indexer(r,s) * NBRI] =
                         buff[(((r-rBegin) * sSize + (s-sBegin)) * pSize + (p - pBegin)) * qSize + (q - qBegin)];
+                    if (!useCompoundIndex)
+                      pointer()[pivot_index + indexer(s,r) * NBRI] = pointer()[pivot_index + indexer(r,s) * NBRI];
                   }
                 }
               }
@@ -4566,16 +4720,39 @@ namespace ChronusQ {
 
   /**
    *  \brief Compute the Cholesky RI 3-index ERI tensor
-   *         using Libint over the CGTO basis for pivot RI algorithm.
+   *         using Libcint over the CGTO basis for pivot RI algorithm.
    *         Pivots are assumed to be already computed and stored
    *         in pivots_.
    */
   template <>
-  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibint(BasisSet&) {
+  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibcintMPI(BasisSet&, bool) {
     CErr("Only real GTOs are allowed",std::cout);
   };
   template <>
-  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibint(BasisSet &basisSet) {
+  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibcintMPI(BasisSet &basisSet, bool useCompoundIndex) {
+
+#ifdef CQ_ENABLE_MPI
+    size_t NB = this->nBasis();
+
+    int rank = 0, size = 1;
+    std::shared_ptr<DistributedERI3J<double>> eri3j = nullptr;
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+    if (this->isDistributed()) {
+      eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(eri3j_);
+      if (!eri3j) CErr("ERI3J is not distributed", std::cout);
+    }
+
+    size_t subqBegin = eri3j->splitStart(NB, rank, size);
+    size_t subqEnd = subqBegin + eri3j->splitSize(NB, rank, size);
+    
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      CErr("Compound indexing is not supported in MPI mode", std::cout);
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB, subqBegin](size_t p, size_t q) { return p + (q - subqBegin) * NB; };
+    }
 
     // Determine the number of OpenMP threads
     size_t nthreads = GetNumThreads();
@@ -4592,7 +4769,128 @@ namespace ChronusQ {
 
     size_t lc2ERI = 0;
     double lt2ERI = 0.0;
-    #pragma omp parallel reduction(+:lc2ERI,lt2ERI)
+#pragma omp parallel reduction(+:lc2ERI,lt2ERI)
+    {
+      size_t thread_id = GetThreadID();
+
+      double *buff = buffAll + buffN4*thread_id;
+      double *cache = cacheAll + cache_size*thread_id;
+
+      for (size_t I = 0, IPQ = 0; I < pivotShellSize; I++) {
+
+        const auto &RSpair = pivotShells[I];
+        auto &shell_pivot = pivotIndicesByShell[RSpair];
+
+        size_t R = RSpair.first;
+        size_t S = RSpair.second;
+
+        size_t rBegin = basisSet.mapSh2Bf[R];
+        size_t sBegin = basisSet.mapSh2Bf[S];
+        size_t rSize = basisSet.shells[R].size();
+        size_t sSize = basisSet.shells[S].size();
+        size_t rEnd = rBegin + rSize;
+        size_t sEnd = sBegin + sSize;
+
+        int shls[4]{int(0), int(0), int(S), int(R)};
+
+        for (size_t Q(0), PQ(0); Q < basisSet.nShell; Q++) {
+
+          size_t qBegin = basisSet.mapSh2Bf[Q];
+          size_t qSize = basisSet.shells[Q].size();
+          size_t qEnd = qBegin + qSize;
+          if (qBegin >= subqEnd or qEnd <= subqBegin)
+            continue; // Skip this shell if it is not in the current MPI split
+
+          size_t qShift = qBegin < subqBegin ? subqBegin - qBegin : 0;
+          qBegin = std::max(qBegin, subqBegin);
+          qEnd = std::min(qEnd, subqEnd);
+          
+          for (size_t P(0); P < basisSet.nShell; P++, PQ++, IPQ++) {
+
+            // Round Robbin work distribution
+#ifdef _OPENMP
+            if( IPQ % nthreads != thread_id ) continue;
+#endif
+
+            shls[0] = int(Q);
+            shls[1] = int(P);
+
+            auto beginERI = tick();
+            if(int2e_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) {
+              lt2ERI += tock(beginERI);
+              lc2ERI++;
+              continue;
+            }
+            lt2ERI += tock(beginERI);
+            lc2ERI++;
+
+            for (auto &pivot_index : shell_pivot) {
+
+              auto rs = anaSquare(pivots_[pivot_index], basisSet.nBasis);
+              size_t r = rs.first;
+              size_t s = rs.second;
+
+              for (size_t p(basisSet.mapSh2Bf[P]),
+                       pSize(basisSet.shells[P].size()),
+                       pEnd(p + pSize),
+                       rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
+                   p < pEnd; p++, rsp++) {
+                for (size_t q(qBegin), rspq = rsp * qSize + qShift;
+                     q < qEnd; q++, rspq++) {
+                  pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                }
+              }
+            }
+
+          }; // Q
+        }; // P
+
+      }
+    }; // omp region
+    c2ERI += lc2ERI;
+    t2ERI += lt2ERI;
+
+#endif
+  }; // InCoreCholeskyRIERI<double>::computePivotRI3indexERILibcintMPI
+
+
+  /**
+   *  \brief Compute the Cholesky RI 3-index ERI tensor
+   *         using Libint over the CGTO basis for pivot RI algorithm.
+   *         Pivots are assumed to be already computed and stored
+   *         in pivots_.
+   */
+  template <>
+  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibint(BasisSet&, bool) {
+    CErr("Only real GTOs are allowed",std::cout);
+  };
+  template <>
+  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibint(BasisSet &basisSet, bool useCompoundIndex) {
+
+    size_t NB = this->nBasis();
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB](size_t p, size_t q) { return p + q * NB; };
+    }
+
+    // Determine the number of OpenMP threads
+    size_t nthreads = GetNumThreads();
+
+    std::map<std::pair<size_t,size_t>, std::vector<size_t>>
+        pivotIndicesByShell = groupPivotsByShell(basisSet, pivots_);
+
+    size_t pivotShellSize = pivotIndicesByShell.size();
+    std::vector<std::pair<size_t,size_t>> pivotShells;
+    pivotShells.reserve(pivotShellSize);
+    for (auto &shell_pivot : pivotIndicesByShell) {
+      pivotShells.push_back(shell_pivot.first);
+    }
+
+    size_t lc2ERI = 0;
+    double lt2ERI = 0.0;
+#pragma omp parallel reduction(+:lc2ERI,lt2ERI)
     {
       size_t thread_id = GetThreadID();
 
@@ -4618,9 +4916,9 @@ namespace ChronusQ {
           for (size_t Q = P; Q < basisSet.nShell; Q++, PQ++, IPQ++) {
 
             // Round Robbin work distribution
-            #ifdef _OPENMP
+#ifdef _OPENMP
             if( IPQ % nthreads != thread_id ) continue;
-            #endif
+#endif
 
             auto PQpair = std::make_pair(P,Q);
             bool hasPivot = pivotIndicesByShell.find(PQpair) != pivotIndicesByShell.end();
@@ -4632,11 +4930,11 @@ namespace ChronusQ {
               // Evaluate ERI for shell quartet
               auto beginERI = tick();
               engines[thread_id].compute2<
-                libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-                    basisSet.shells[R],
-                    basisSet.shells[S],
-                    basisSet.shells[P],
-                    basisSet.shells[Q]
+                  libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                  basisSet.shells[R],
+                  basisSet.shells[S],
+                  basisSet.shells[P],
+                  basisSet.shells[Q]
               );
               lt2ERI += tock(beginERI);
               lc2ERI++;
@@ -4651,29 +4949,33 @@ namespace ChronusQ {
 
                 if (P == Q) {
                   for (size_t pBegin(basisSet.mapSh2Bf[P]),
-                       pSize(basisSet.shells[P].size()),
-                       pEnd(pBegin + pSize),
-                       p(pBegin),
-                       rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
+                           pSize(basisSet.shells[P].size()),
+                           pEnd(pBegin + pSize),
+                           p(pBegin),
+                           rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
                        p < pEnd; p++, rsp++) {
                     for (size_t q(p),
-                         rspq = rsp * pSize + p - pBegin;
+                             rspq = rsp * pSize + p - pBegin;
                          q < pEnd; q++, rspq++) {
-                      this->pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                      pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                     }
                   }
                 } else {
                   for (size_t p(basisSet.mapSh2Bf[P]),
-                       pSize(basisSet.shells[P].size()),
-                       pEnd(p + pSize),
-                       rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
+                           pSize(basisSet.shells[P].size()),
+                           pEnd(p + pSize),
+                           rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
                        p < pEnd; p++, rsp++) {
                     for (size_t q(basisSet.mapSh2Bf[Q]),
-                         qSize(basisSet.shells[Q].size()),
-                         qEnd(q + qSize),
-                         rspq = rsp * qSize;
+                             qSize(basisSet.shells[Q].size()),
+                             qEnd(q + qSize),
+                             rspq = rsp * qSize;
                          q < qEnd; q++, rspq++) {
-                      this->pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                      pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                     }
                   }
                 }
@@ -4697,8 +4999,10 @@ namespace ChronusQ {
                   for (size_t r(rBegin); r < rEnd; r++) {
                     for (size_t s(R == S ? r : sBegin);
                          s < sEnd; s++) {
-                      this->pointer()[pivot_index + toCompound(r,s) * NBRI] =
+                      pointer()[pivot_index + indexer(r,s) * NBRI] =
                           buff[(((r-rBegin) * sSize + (s-sBegin)) * pSize + (p - pBegin)) * qSize + (q - qBegin)];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(s,r) * NBRI] = pointer()[pivot_index + indexer(r,s) * NBRI];
                     }
                   }
                 }
@@ -4739,8 +5043,8 @@ namespace ChronusQ {
 
                 if (P == Q) {
                   for (size_t q(0),
-                       qBegin(basisSet.mapSh2Bf[Q]),
-                       qSize(basisSet.shells[Q].size());
+                           qBegin(basisSet.mapSh2Bf[Q]),
+                           qSize(basisSet.shells[Q].size());
                        q < qSize; q++) {
 
                     size_t QQ = q / qAMSize, qq = q % qAMSize;
@@ -4749,30 +5053,34 @@ namespace ChronusQ {
 
                       size_t PP = p / pAMSize, pp = p % pAMSize;
 
-                      this->pointer()[pivot_index + toCompound(p + qBegin, q + qBegin) * NBRI] =
+                      pointer()[pivot_index + indexer(p + qBegin, q + qBegin) * NBRI] =
                           resPQRS[(ss + sAMSize * (rr + rAMSize * (qq + qAMSize * pp)))
                                   + pqrsAMSize * (PP + pContrSize * (QQ + qContrSize * (RR + rContrSize * SS)))];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(q + qBegin, p + qBegin) * NBRI] = pointer()[pivot_index + indexer(p + qBegin, q + qBegin) * NBRI];
                     }
                   }
 
                 } else {
                   for (size_t q(0),
-                       qBegin(basisSet.mapSh2Bf[Q]),
-                       qSize(basisSet.shells[Q].size());
+                           qBegin(basisSet.mapSh2Bf[Q]),
+                           qSize(basisSet.shells[Q].size());
                        q < qSize; q++) {
 
                     size_t QQ = q / qAMSize, qq = q % qAMSize;
 
                     for (size_t p(0),
-                         pBegin(basisSet.mapSh2Bf[P]),
-                         pSize(basisSet.shells[P].size());
+                             pBegin(basisSet.mapSh2Bf[P]),
+                             pSize(basisSet.shells[P].size());
                          p < pSize; p++) {
 
                       size_t PP = p / pAMSize, pp = p % pAMSize;
 
-                      this->pointer()[pivot_index + toCompound(p + pBegin, q + qBegin) * NBRI] =
+                      pointer()[pivot_index + indexer(p + pBegin, q + qBegin) * NBRI] =
                           resPQRS[(ss + sAMSize * (rr + rAMSize * (qq + qAMSize * pp)))
                                   + pqrsAMSize * (PP + pContrSize * (QQ + qContrSize * (RR + rContrSize * SS)))];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(q + qBegin, p + pBegin) * NBRI] = pointer()[pivot_index + indexer(p + pBegin, q + qBegin) * NBRI];
                     }
                   }
                 }
@@ -4804,9 +5112,11 @@ namespace ChronusQ {
 
                       size_t RR = r / rAMSize, rr = r % rAMSize;
 
-                      this->pointer()[pivot_index + toCompound(r + rBegin, s + sBegin) * NBRI] =
+                      pointer()[pivot_index + indexer(r + rBegin, s + sBegin) * NBRI] =
                           resPQRS[(ss + sAMSize * (rr + rAMSize * (qq + qAMSize * pp)))
                                   + pqrsAMSize * (PP + pContrSize * (QQ + qContrSize * (RR + rContrSize * SS)))];
+                      if (!useCompoundIndex)
+                        pointer()[pivot_index + indexer(s + sBegin, r + rBegin) * NBRI] = pointer()[pivot_index + indexer(r + rBegin, s + sBegin) * NBRI];
                     }
                   }
                 }
@@ -4826,16 +5136,212 @@ namespace ChronusQ {
   }; // InCoreCholeskyRIERI<double>::computePivotRI3indexERILibint
 
 
+  /**
+   *  \brief Compute the Cholesky RI 3-index ERI tensor
+   *         using Libint over the CGTO basis for pivot RI algorithm.
+   *         Pivots are assumed to be already computed and stored
+   *         in pivots_.
+   */
+  template <>
+  void InCoreCholeskyRIERI<dcomplex>::computePivotRI3indexERILibintMPI(BasisSet&, bool) {
+    CErr("Only real GTOs are allowed",std::cout);
+  };
+  template <>
+  void InCoreCholeskyRIERI<double>::computePivotRI3indexERILibintMPI(BasisSet &basisSet, bool useCompoundIndex) {
+
+#ifdef CQ_ENABLE_MPI
+    size_t NB = this->nBasis();
+
+    int rank = 0, size = 1;
+    std::shared_ptr<DistributedERI3J<double>> eri3j = nullptr;
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+    if (this->isDistributed()) {
+      eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(eri3j_);
+      if (!eri3j) CErr("ERI3J is not distributed", std::cout);
+    } else {
+      CErr("InCoreCholeskyRIERI::computePivotRI3indexERILibintMPI is only available in distributed mode", std::cout);
+    }
+
+    size_t subqBegin = eri3j->splitStart(NB, rank, size);
+    size_t subqEnd = subqBegin + eri3j->splitSize(NB, rank, size);
+
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      CErr("Compound indexing is not supported in MPI mode", std::cout);
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB, subqBegin](size_t p, size_t q) { return p + (q - subqBegin) * NB; };
+    }
+
+    // Determine the number of OpenMP threads
+    size_t nthreads = GetNumThreads();
+
+    std::map<std::pair<size_t,size_t>, std::vector<size_t>>
+        pivotIndicesByShell = groupPivotsByShell(basisSet, pivots_);
+
+    size_t pivotShellSize = pivotIndicesByShell.size();
+    std::vector<std::pair<size_t,size_t>> pivotShells;
+    pivotShells.reserve(pivotShellSize);
+    for (auto &shell_pivot : pivotIndicesByShell) {
+      pivotShells.push_back(shell_pivot.first);
+    }
+
+    size_t lc2ERI = 0;
+    double lt2ERI = 0.0;
+    #pragma omp parallel reduction(+:lc2ERI,lt2ERI)
+    {
+      size_t thread_id = GetThreadID();
+
+      // Get threads result buffer
+      const auto& buf_vec = engines[thread_id].results();
+
+      for (size_t I = 0, IPQ = 0; I < pivotShellSize; I++) {
+
+        const auto &RSpair = pivotShells[I];
+        auto &shell_pivot = pivotIndicesByShell[RSpair];
+
+        size_t R = RSpair.first;
+        size_t S = RSpair.second;
+
+        size_t rBegin = basisSet.mapSh2Bf[R];
+        size_t sBegin = basisSet.mapSh2Bf[S];
+        size_t rSize = basisSet.shells[R].size();
+        size_t sSize = basisSet.shells[S].size();
+        size_t rEnd = rBegin + rSize;
+        size_t sEnd = sBegin + sSize;
+
+        for (size_t Q(0), PQ(0); Q < basisSet.nShell; Q++) {
+
+          size_t qBegin = basisSet.mapSh2Bf[Q];
+          size_t qSize = basisSet.shells[Q].size();
+          size_t qEnd = qBegin + qSize;
+          if (qBegin >= subqEnd or qEnd <= subqBegin)
+            continue; // Skip this shell if it is not in the current MPI split
+
+          size_t qShift = qBegin < subqBegin ? subqBegin - qBegin : 0;
+          qBegin = std::max(qBegin, subqBegin);
+          qEnd = std::min(qEnd, subqEnd);
+
+          for (size_t P(0); P < basisSet.nShell; P++, PQ++, IPQ++) {
+
+            // Round Robbin work distribution
+            #ifdef _OPENMP
+            if( IPQ % nthreads != thread_id ) continue;
+            #endif
+
+            if (basisSet.shells[P].ncontr() == 1 and basisSet.shells[Q].ncontr() == 1
+                and basisSet.shells[R].ncontr() == 1 and basisSet.shells[S].ncontr() == 1) {
+              // Evaluate ERI for shell quartet
+              auto beginERI = tick();
+              engines[thread_id].compute2<
+                libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                    basisSet.shells[R],
+                    basisSet.shells[S],
+                    basisSet.shells[P],
+                    basisSet.shells[Q]
+              );
+              lt2ERI += tock(beginERI);
+              lc2ERI++;
+              const auto *buff =  buf_vec[0] ;
+              if(buff == nullptr) continue;
+
+              for (auto &pivot_index : shell_pivot) {
+
+                auto rs = anaSquare(pivots_[pivot_index], basisSet.nBasis);
+                size_t r = rs.first;
+                size_t s = rs.second;
+
+                for (size_t p(basisSet.mapSh2Bf[P]),
+                     pSize(basisSet.shells[P].size()),
+                     pEnd(p + pSize),
+                     rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
+                     p < pEnd; p++, rsp++) {
+                  for (size_t q(qBegin), rspq = rsp * qSize + qShift;
+                       q < qEnd; q++, rspq++) {
+                    pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                  }
+                }
+              }
+
+            } else {
+
+              size_t pContrSize = basisSet.shells[P].contr.size();
+              size_t qContrSize = basisSet.shells[Q].contr.size();
+              size_t rContrSize = basisSet.shells[R].contr.size();
+
+              size_t pAMSize = shellPrims_[P][0].size();
+              size_t qAMSize = shellPrims_[Q][0].size();
+              size_t rAMSize = shellPrims_[R][0].size();
+              size_t sAMSize = shellPrims_[S][0].size();
+
+              size_t pqrsAMSize = pAMSize * qAMSize * rAMSize * sAMSize;
+
+              const double *resPQRS;
+              std::pair<size_t, double> counter_timer = libintGeneralContractionERI(
+                  P, Q, R, S,
+                  basisSet, engines[thread_id],
+                  shellPrims_, coefBlocks_, workBlocks[thread_id],
+                  resPQRS);
+              lt2ERI += counter_timer.second;
+              lc2ERI += counter_timer.first;
+
+              for (auto &pivot_index : shell_pivot) {
+
+                auto rs = anaSquare(pivots_[pivot_index], basisSet.nBasis);
+
+                size_t r = rs.first - rBegin;
+                size_t RR = r / rAMSize, rr = r % rAMSize;
+
+                size_t s = rs.second - sBegin;
+                size_t SS = s / sAMSize, ss = s % sAMSize;
+
+                for (size_t q(qBegin),
+                     qShellBegin(basisSet.mapSh2Bf[Q]);
+                     q < qEnd; q++) {
+
+                  size_t QQ = (q - qShellBegin) / qAMSize, qq = (q - qShellBegin) % qAMSize;
+
+                  for (size_t p(0),
+                       pBegin(basisSet.mapSh2Bf[P]),
+                       pSize(basisSet.shells[P].size());
+                       p < pSize; p++) {
+
+                    size_t PP = p / pAMSize, pp = p % pAMSize;
+
+                    pointer()[pivot_index + indexer(p + pBegin, q) * NBRI] =
+                        resPQRS[(ss + sAMSize * (rr + rAMSize * (qq + qAMSize * pp)))
+                                + pqrsAMSize * (PP + pContrSize * (QQ + qContrSize * (RR + rContrSize * SS)))];
+                  }
+                }
+              }
+
+            }
+
+          }; // Q
+        }; // P
+
+      }
+    }; // omp region
+    c2ERI += lc2ERI;
+    t2ERI += lt2ERI;
+
+#endif
+  }; // InCoreCholeskyRIERI<double>::computePivotRI3indexERILibintMPI
+
+
   template <>
   void InCoreCholeskyRIERI<dcomplex>::extractTwoCenterSubsetFrom3indexERI(
       const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
-      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly) {
+      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly,
+      bool useCompoundIndex) {
     CErr("Only real GTOs are allowed",std::cout);
   }
   template <>
   void InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
       const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
-      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly) {
+      const double* eri3J, size_t LD3J, double* S, size_t LDS, bool upperTriOnly,
+      bool useCompoundIndex) {
 
     auto topLibintPivot2Index = tick();
 
@@ -4843,7 +5349,12 @@ namespace ChronusQ {
     size_t qMax = pivots.size();
     #pragma omp parallel for
     for (size_t Q = 0; Q < qMax; Q++) {
-      const double *ptr = eri3J + squareToCompound(pivots[Q],NB) * LD3J;
+      const double* ptr = nullptr;
+      if (useCompoundIndex) {
+        ptr = eri3J + squareToCompound(pivots[Q],NB) * LD3J;
+      } else {
+        ptr = eri3J + pivots[Q] * LD3J;
+      }
       for (size_t P = upperTriOnly ? Q : 0; P < NBRI; P++) {
 
         S[Q + P*LDS] = ptr[P];
@@ -4860,6 +5371,49 @@ namespace ChronusQ {
   }; // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI
 
 
+  template <>
+  void InCoreCholeskyRIERI<dcomplex>::extractTwoCenterSubsetFrom3indexERIMPI(
+      const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+      const DistributedERI3J<double>& eri3J, double* S, size_t LDS, bool upperTriOnly) {
+    CErr("Only real GTOs are allowed",std::cout);
+  }
+  template <>
+  void InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERIMPI(
+      const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+      const DistributedERI3J<double>& eri3J, double* S, size_t LDS, bool upperTriOnly) {
+
+    auto topLibintPivot2Index = tick();
+
+    // Clear the output tensor
+    std::fill_n(S, NBRI * LDS, 0.0);
+
+    size_t localStart = eri3J.localStart();
+    size_t localEnd = localStart + eri3J.localSize();
+
+    // Only build Upper triangular part of S for Cholesky decomposition
+    size_t qMax = pivots.size();
+#pragma omp parallel for
+    for (size_t Q = 0; Q < qMax; Q++) {
+      size_t p = pivots[Q] % NB, q = pivots[Q] / NB;
+      if (q < localStart or q >= localEnd) continue; // Skip if not in the local range
+      const double* ptr = eri3J.data() + (p + (q - localStart) * NB) * NBRI;
+      for (size_t P = upperTriOnly ? Q : 0; P < NBRI; P++) {
+
+        S[Q + P*LDS] = ptr[P];
+
+      }
+    }
+
+    MPIAllReduce(S, NBRI * LDS, S, eri3J.comm());
+#ifdef __DEBUGERI__
+    prettyPrintSmart(std::cout, "S", S, NBRI, NBRI, LDS);
+#endif
+
+    auto durLibintPivot2Index = tock(topLibintPivot2Index);
+    std::cout << "  Cholesky-RI-PivotRI-2index duration = " << durLibintPivot2Index << " s " << std::endl;
+  }; // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERIMPI
+
+
   /**
    *  \brief Allocate, compute and store the Cholesky RI
    *         3-index ERI tensor using Libint2 over the CGTO basis.
@@ -4874,35 +5428,77 @@ namespace ChronusQ {
   template <>
   void InCoreCholeskyRIERI<double>::computePivotRI(BasisSet &basisSet) {
 
+    int rank = 0, size = 1;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+#endif
+
     std::cout << std::endl << "Build 3-index RIERI tensor:" << std::endl;
     std::cout << bannerMid << std::endl;
-
-    size_t NB2 = NB*NB, NBC = NB*(NB+1)/2;
 
     auto topLibintPivotRI = tick();
 
     setNRIBasis(pivots_.size());
+    // === Initialize Tensor to zero ===
     clear();
 
+    bool useCompoundIndex = not this->isDistributed();
+    size_t NB2 = NB*NB;
+    size_t NBC = useCompoundIndex ? NB*(NB+1)/2 : NB*NB;
+
+    // === Check ERI3J type ===
+    std::shared_ptr<DistributedERI3J<double>> eri3j = nullptr;
+#ifdef CQ_ENABLE_MPI
+    if (this->isDistributed()) {
+      eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(eri3j_);
+      if (!eri3j) CErr("ERI3J is not distributed", std::cout);
+    }
+#endif
+
+    // === Compute 3-index ERI on rank 0 ===
     if (eri4I_) {
 
-      #pragma omp parallel for
-      for (size_t P = 0; P < NBRI; P++) {
-        size_t pivot_index = pivots_[P];
-        double *Lrs = eri4I_->pointer() + pivot_index * NB2;
+      if (isDistributed()) {
+        size_t subTensorStart = eri3j->splitStart(NB, rank, size) * NB;
+        size_t subTensorEnd = subTensorStart + eri3j->splitSize(NB, rank, size) * NB;
 
-        for (size_t ij = 0; ij < NBC; ij++) {
-          this->pointer()[P + ij * NBRI] = Lrs[compoundToSquare(ij, NB)];
+        #pragma omp parallel for
+        for (size_t P = 0; P < NBRI; P++) {
+          size_t pivot_index = pivots_[P];
+          double *Lrs = eri4I_->pointer() + pivot_index * NB2;
+
+          for (size_t ij = subTensorStart; ij < subTensorEnd; ij++) {
+            pointer()[P + (ij - subTensorStart) * NBRI] = Lrs[ij];
+          }
         }
-      }
+
+
+      } else {
+        #pragma omp parallel for
+        for (size_t P = 0; P < NBRI; P++) {
+          size_t pivot_index = pivots_[P];
+          double *Lrs = eri4I_->pointer() + pivot_index * NB2;
+
+          for (size_t ij = 0; ij < NBC; ij++) {
+            size_t index = useCompoundIndex ? compoundToSquare(ij, NB) : ij;
+            pointer()[P + ij * NBRI] = Lrs[index];
+          }
+        }
+
+      } // if (isDistributed())
 
     } else if (libcint_) {
-
-      computePivotRI3indexERILibcint(basisSet);
+      if (isDistributed())
+        computePivotRI3indexERILibcintMPI(basisSet, useCompoundIndex);
+      else
+        computePivotRI3indexERILibcint(basisSet, useCompoundIndex);
 
     } else {
-
-      computePivotRI3indexERILibint(basisSet);
+      if (isDistributed())
+        computePivotRI3indexERILibintMPI(basisSet, useCompoundIndex);
+      else
+        computePivotRI3indexERILibint(basisSet, useCompoundIndex);
 
     }; // if (eri4I_)
 
@@ -4917,16 +5513,16 @@ namespace ChronusQ {
         std::cout << "[";
         for (size_t q = 0; q < NB; q++) {
           if (p < q)
-            std::cout << this->pointer()[Q + toCompound(p,q) * NBRI] << "\t";
+            std::cout << pointer()[Q + toCompound(p,q) * NBRI] << "\t";
           else
-            std::cout << this->pointer()[Q + toCompound(q,p) * NBRI] << "\t";
+            std::cout << pointer()[Q + toCompound(q,p) * NBRI] << "\t";
         }
         std::cout << "]" << std::endl;
       }
-//      for (size_t ij = 0; ij < NBC; ij++)
-//        std::cout << this->pointer()[Q + ij * NBRI] << "\t";
       std::cout << "]" << std::endl;
     }
+//      for (size_t ij = 0; ij < NBC; ij++)
+//        std::cout << this->pointer()[Q + ij * NBRI] << "\t";
     std::cout << "]" << std::endl;
 #endif
 
@@ -4936,11 +5532,29 @@ namespace ChronusQ {
     std::cout << "  Cholesky-RI-PivotRI-ERI duration    = " << t2ERI << " s " << std::endl;
     std::cout << "  Cholesky-RI-PivotRI-3index duration = " << durLibintPivot3Index << " s " << std::endl;
 
+    // === Print Raw ERI3J on all ranks ===
+#ifdef CQ_ENABLE_MPI
+    if (this->isDistributed()) {
+//      prettyPrintSmart(std::cout, "Partial Raw ERI3J (rank " + std::to_string(rank) + ")",
+//                       eri3j->data(), NBRI, eri3j->localSize()*NB, NBRI);
+    }
+#endif
+
+    // === Save Raw ERI3J ===
     saveRawERI3J();
 
+    // === Extract and Broadcast Two-center ERI on all ranks ===
     twocenterERI_ = std::make_shared<cqmatrix::Matrix<double>>(NBRI);
     double *S = twocenterERI_->pointer();
-    extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI);
+#ifdef CQ_ENABLE_MPI
+    if (this->isDistributed())
+      extractTwoCenterSubsetFrom3indexERIMPI(pivots_, NBRI, NB, *eri3j, S, NBRI, true);
+    else
+      extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI, true, useCompoundIndex);
+#else
+    extractTwoCenterSubsetFrom3indexERI(pivots_, NBRI, NB, pointer(), NBRI, S, NBRI, true, useCompoundIndex);
+#endif
+
     if (saveRawERI_)
       rawERI2C_ = std::make_shared<cqmatrix::Matrix<double>>(*twocenterERI_);
 
@@ -4952,7 +5566,7 @@ namespace ChronusQ {
 
     auto topERI3Trans = tick();
     halfInverse2CenterERI(*twocenterERI_);
-    contract2CenterERI();
+    contract2CenterERI(useCompoundIndex);
 
     auto durERI3Trans = tock(topERI3Trans);
     std::cout << "  RI-ERI3-Transformation duration = " << durERI3Trans << " s " << std::endl;
@@ -4976,6 +5590,11 @@ namespace ChronusQ {
   void InCoreCholeskyRIERI<double>::computeAOInts(BasisSet &basisSet, Molecule &mol,
       EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &options) {
 
+    int rank = 0, size = 1;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+#endif
 
     std::cout << std::left;
     std::cout << std::endl << "ERI Cholesky Decomposition";
@@ -4994,55 +5613,61 @@ namespace ChronusQ {
       }
     }
 
-    std::cout << "Parameters and options:" << std::endl;
-    std::cout << bannerMid << std::endl;
-    const int fieldNameWidth(40);
-    std::cout << "  " << std::setw(fieldNameWidth) << "Algorithm:";
-    switch (alg_) {
-    case CHOLESKY_ALG::TRADITIONAL:
-      std::cout << "Traditional";
-      break;
-    case CHOLESKY_ALG::DYNAMIC_ALL:
-      std::cout << "Dynamic-All";
-      break;
-    case CHOLESKY_ALG::SPAN_FACTOR:
-      std::cout << "Span-Factor";
-      break;
-    case CHOLESKY_ALG::DYNAMIC_ERI:
-      std::cout << "Dynamic-ERI";
-      break;
-    case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
-      std::cout << "Span-Factor-Reuse";
-      break;
+    if (updatePivots_) {
+      std::cout << "Parameters and options:" << std::endl;
+      std::cout << bannerMid << std::endl;
+      const int fieldNameWidth(40);
+      std::cout << "  " << std::setw(fieldNameWidth) << "Algorithm:";
+
+      switch (alg_) {
+      case CHOLESKY_ALG::TRADITIONAL:
+        std::cout << "Traditional";
+        break;
+      case CHOLESKY_ALG::DYNAMIC_ALL:
+        std::cout << "Dynamic-All";
+        break;
+      case CHOLESKY_ALG::SPAN_FACTOR:
+        std::cout << "Span-Factor";
+        break;
+      case CHOLESKY_ALG::DYNAMIC_ERI:
+        std::cout << "Dynamic-ERI";
+        break;
+      case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
+        std::cout << "Span-Factor-Reuse";
+        break;
+      case CHOLESKY_ALG::READ_PIVOTS:
+        std::cout << "Read-Pivots";
+        break;
+      }
+      std::cout << std::endl;
+      std::cout << "  " << std::setw(fieldNameWidth) << "Threshold:"
+          << tau_ << std::endl;
+      std::cout << "  " << std::setw(fieldNameWidth) << "ERI library:"
+          << (libcint_ ? "Libcint" : "Libint2") << std::endl;
+      std::cout << "  " << std::setw(fieldNameWidth) << "General contraction:"
+          << (generalContraction_ ? "True" : "False") << std::endl;
+      std::cout << "  " << std::setw(fieldNameWidth) << "Have already computed 4-index ERI:"
+          << (eri4I_ ? "True" : "False") << std::endl;
+      std::cout << "  " << std::setw(fieldNameWidth) << "Build 4-index ERI:"
+          << (build4I_ ? "True" : "False") << std::endl;
+      switch (alg_) {
+      case CHOLESKY_ALG::DYNAMIC_ALL:
+        std::cout << "  " << std::setw(fieldNameWidth) << "Min shrink cycle:"
+            << minShrinkCycle_ << std::endl;
+        break;
+      case CHOLESKY_ALG::SPAN_FACTOR:
+      case CHOLESKY_ALG::DYNAMIC_ERI:
+      case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
+        std::cout << "  " << std::setw(fieldNameWidth) << "Sigma:"
+            << sigma_ << std::endl;
+        std::cout << "  " << std::setw(fieldNameWidth) << "Max qualification:"
+            << maxQual_ << std::endl;
+        break;
+      default:
+        break;
+      }
+      std::cout << std::endl;
     }
-    std::cout << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "Threshold:"
-        << tau_ << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "ERI library:"
-        << (libcint_ ? "Libcint" : "Libint2") << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "General contraction:"
-        << (generalContraction_ ? "True" : "False") << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "Have already computed 4-index ERI:"
-        << (eri4I_ ? "True" : "False") << std::endl;
-    std::cout << "  " << std::setw(fieldNameWidth) << "Build 4-index ERI:"
-        << (build4I_ ? "True" : "False") << std::endl;
-    switch (alg_) {
-    case CHOLESKY_ALG::DYNAMIC_ALL:
-      std::cout << "  " << std::setw(fieldNameWidth) << "Min shrink cycle:"
-          << minShrinkCycle_ << std::endl;
-      break;
-    case CHOLESKY_ALG::SPAN_FACTOR:
-    case CHOLESKY_ALG::DYNAMIC_ERI:
-    case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
-      std::cout << "  " << std::setw(fieldNameWidth) << "Sigma:"
-          << sigma_ << std::endl;
-      std::cout << "  " << std::setw(fieldNameWidth) << "Max qualification:"
-          << maxQual_ << std::endl;
-      break;
-    default:
-      break;
-    }
-    std::cout << std::endl;
 
 
     if (build4I_ and not eri4I_) {
@@ -5207,34 +5832,83 @@ namespace ChronusQ {
       }
     }
 
-    switch (alg_) {
-    case CHOLESKY_ALG::TRADITIONAL:
-      computeCD_Traditional(groupedBasisSet);
-      break;
+    if (updatePivots_) {
+      switch (alg_) {
+      case CHOLESKY_ALG::TRADITIONAL:
+        computeCD_Traditional(groupedBasisSet);
+        break;
 
-    case CHOLESKY_ALG::DYNAMIC_ALL:
-      computeCDPivots_DynamicAll(groupedBasisSet);
-      std::cout << "  Cholesky-RI auxiliary dimension = " << pivots_.size() << std::endl;
-      computePivotRI(groupedBasisSet);
-      break;
+      case CHOLESKY_ALG::DYNAMIC_ALL:
+        if (rank == 0) 
+          computeCDPivots_DynamicAll(groupedBasisSet);
+        break;
 
-    case CHOLESKY_ALG::SPAN_FACTOR:
-      computeCDPivots_SpanFactor(groupedBasisSet);
-      std::cout << "  Cholesky-RI auxiliary dimension = " << pivots_.size() << std::endl;
-      computePivotRI(groupedBasisSet);
-      break;
+      case CHOLESKY_ALG::SPAN_FACTOR:
+        if (rank == 0)
+          computeCDPivots_SpanFactor(groupedBasisSet);
+        break;
 
-    case CHOLESKY_ALG::DYNAMIC_ERI:
-      computeCDPivots_DynamicERI(groupedBasisSet);
-      std::cout << "  Cholesky-RI auxiliary dimension = " << pivots_.size() << std::endl;
-      computePivotRI(groupedBasisSet);
-      break;
+      case CHOLESKY_ALG::DYNAMIC_ERI:
+        if (rank == 0)
+          computeCDPivots_DynamicERI(groupedBasisSet);
+        break;
 
-    case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
-      computeCDPivots_SpanFactorReuse(groupedBasisSet);
+      case CHOLESKY_ALG::SPAN_FACTOR_REUSE:
+        if (rank == 0)
+          computeCDPivots_SpanFactorReuse(groupedBasisSet);
+        break;
+
+      case CHOLESKY_ALG::READ_PIVOTS: {
+        if (rank == 0) {
+          bool electron = (options.particle.charge < 0.);
+          std::string path = (electron ? "INTS/" : "PINTS/") + std::string("PIVOTS");
+          // get size of pivots
+          size_t n = 0;
+          {
+            HighFive::File f(this->savFile.fName(), HighFive::File::ReadOnly);
+            n = static_cast<size_t>(f.getDataSet(path).getSpace().getElementCount());
+          }
+          pivots_.resize(n);
+          // read pivots
+          this->savFile.readData(path, pivots_.data());
+          std::cout << "    * Found " << pivots_.size() << " pivots\n";
+        }
+        break;
+      }
+    }
+    }
+    
+    // === Broadcast Pivots on all ranks ===
+#ifdef CQ_ENABLE_MPI
+    if (size > 1) {
+        std::cerr << "  *** Scattering Pivots ***\n";
+        size_t npiv = pivots_.size();
+        MPIBCast(&npiv, 1, 0, this->comm());
+        if (rank != 0) pivots_.resize(npiv);
+        MPIBCast(pivots_.data(), npiv, 0, this->comm());
+    }
+#endif
+
+    // === Sanity check ===
+    if (pivots_.empty()) CErr("No pivots for 3-index ERI computation",std::cout);
+
+    // === Save Pivots ===
+    if (rank == 0) {
+      if( this->savFile.exists() ) {
+        bool electron = (options.particle.charge < 0.);
+        std::string path = (electron ? "INTS/" : "PINTS/") + std::string("PIVOTS");
+        this->savFile.safeWriteData(path,pivots_.data(),{pivots_.size()});
+      }
+    }
+
+    if (alg_ != CHOLESKY_ALG::TRADITIONAL) {
       std::cout << "  Cholesky-RI auxiliary dimension = " << pivots_.size() << std::endl;
+      // === Allocate ERI3J on all MPI processes ===
+      setNRIBasis(pivots_.size());
+      // === Compute Partial ERI3J on all MPI processes ===
       computePivotRI(groupedBasisSet);
-      break;
+    } else {
+      if (this->isDistributed()) CErr("Traditional Cholesky-RI does not support MPI", std::cout);
     }
 
     if (generalContraction_) {

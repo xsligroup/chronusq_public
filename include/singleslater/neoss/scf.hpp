@@ -191,6 +191,46 @@ namespace ChronusQ {
     },
     this->scfControls.NEOSubSystemOpt);
 
+    applyToEach([this](SubSSPtr& ss) {
+      // Redistribution of ERI3J before SCF
+      if (auto tpi = std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(ss->aoints_->TPI)) {
+        if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(tpi->eri3j())) {
+          //prettyPrintSmart(std::cout, "Partial ERI3J (rank " + std::to_string(MPIRank(comm)) + ")",
+          //                 eri3j->data(), eri3j->nRIBasis(), eri3j->localSize()*eri3j->nRIBasis(), eri3j->nRIBasis());
+          if (tpi->redistribute()) {
+            std::string label = std::string(ss->particle.charge>0 ? "Protonic" : "Electronic");
+            std::cout << "Redistributing " << label << " ERI3J to be split over auxiliary basis functions" << std::endl;
+            eri3j->redistributeToSplitNBRI();
+            //prettyPrintSmart(std::cout, "Partial ERI3J (rank " + std::to_string(MPIRank(comm)) + ")",
+            //                 eri3j->data(), eri3j->localSize(), eri3j->nBasis()*eri3j->nBasis(), eri3j->nBasis());
+          }
+        }
+      }
+    });
+    // Redistribute asymmetric ERI3J
+    if (auto ep_ints = std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(getCrossTPIs(std::string("Electronic"), std::string("Protonic")).second)) {
+      if (ep_ints->redistribute()) {
+        std::cout << "Redistributing Asymmetric ERI3J to be split over auxiliary basis functions" << std::endl;
+        auto asymmAlg = ep_ints->asymmCDalg();
+        if (asymmAlg == ASYMM_CD_ALG::INT1_AUX or asymmAlg == ASYMM_CD_ALG::INT2_AUX) {
+          if (auto asymm3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(ep_ints->partialTPI())) {
+            asymm3j->redistributeToSplitNBRI();
+          } else {
+            CErr("Failed to cast partial TPI to a DistributedERI3J object");
+          }
+        } else if (asymmAlg == ASYMM_CD_ALG::COMBINEAUXBASIS) {
+          if (auto aux1 = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(ep_ints->getAux1()->eri3j());
+              auto aux2 = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(ep_ints->getAux2()->eri3j())) {
+            aux1->redistributeToSplitNBRI();
+            aux2->redistributeToSplitNBRI();
+          } else {
+            CErr("Failed to cast aux1 or aux2 to a DistributedERI3J object");
+          }
+        } else {
+          CErr("Unsupported asymmetric CD algorithm for ERI3J redistribution");
+        }
+      }
+    }
   }
 
   template<typename MatsT, typename IntsT>

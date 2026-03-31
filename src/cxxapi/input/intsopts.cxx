@@ -52,6 +52,8 @@ namespace ChronusQ {
       "RI",           // String, determines which algorithm to use for RI/CD
                       // For INTS/PINTS section: "AUXBASIS" or "TRADITIONAL" or "DYNAMICALL" or "SPANFACTOR" or "DYNAMICERI" or "CHOLESKY" or "SPANFACTOREUSE"
                       // For EPINTS section:     "INT1_AUX" (="ELEC_AUX") or "INT2_AUX" (="PROT_AUX")) or "CONNECTOR" (="ELEC_AND_PROT_AUX") or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
+      "RIDISTRIBUTE", // True or False, whether to distribute the 3-index ERI across MPI processes
+      "RIREDISTRIBUTE", // True or False, whether to redistribute the 3-index ERI across MPI processes 
       "RITHRESHOLD",  // double
       "RISIGMA",      // double
       "RIMINSHRINK",  // size_t
@@ -195,7 +197,8 @@ namespace ChronusQ {
           CErr(reportError + " is not a valid " + int_sec + ".RIREPORTERROR keyword", out);
         }
 
-
+        OPTOPT( options.cdriintsoptions.CDRI_asymmDistributed = input.getData<bool>(int_sec+".RIDISTRIBUTE"); )
+        OPTOPT( options.cdriintsoptions.CDRI_asymmRedistribute = input.getData<bool>(int_sec+".RIREDISTRIBUTE"); )
 
       } else{
         // Decode RI keywrod for INTS / PINTS sections
@@ -212,6 +215,8 @@ namespace ChronusQ {
             options.cdriintsoptions.CDalg = CHOLESKY_ALG::DYNAMIC_ERI;
           } else if (not RI.compare("SPANFACTORREUSE")) {
             options.cdriintsoptions.CDalg = CHOLESKY_ALG::SPAN_FACTOR_REUSE;
+          } else if (not RI.compare("READPIVOTS")) {
+            options.cdriintsoptions.CDalg = CHOLESKY_ALG::READ_PIVOTS;
           } else {
             CErr(RI + "is not a valid "+ int_sec + ".RI keyword",out);
           }
@@ -228,7 +233,8 @@ namespace ChronusQ {
     OPTOPT( options.cdriintsoptions.CDRI_max_qual = input.getData<size_t>(int_sec+".RIMAXQUAL"); )
     OPTOPT( options.cdriintsoptions.CDRI_minShrinkCycle = input.getData<size_t>(int_sec+".RIMINSHRINK"); )
     OPTOPT( options.cdriintsoptions.CDRI_build4I = input.getData<bool>(int_sec+".RIBUILD4INDEX"); )
-
+    OPTOPT( options.cdriintsoptions.CDRI_distributed = input.getData<bool>(int_sec+".RIDISTRIBUTE"); )
+    OPTOPT( options.cdriintsoptions.CDRI_redistribute = input.getData<bool>(int_sec+".RIREDISTRIBUTE"); )
     return options;
   }
 
@@ -286,14 +292,14 @@ namespace ChronusQ {
       if(basicintsoptions.RI.compare("FALSE")) {
         if(not basicintsoptions.RI.compare("AUXBASIS"))
           aoint->TPI =
-              std::make_shared<InCoreAuxBasisRIERI<double>>(basis->nBasis,dfbasis);
+              std::make_shared<InCoreAuxBasisRIERI<double>>(basis->nBasis,dfbasis,MPI_COMM_WORLD,cdriintsoptions.CDRI_distributed, cdriintsoptions.CDRI_redistribute);
         else
           aoint->TPI =
               std::make_shared<InCoreCholeskyRIERI<double>>(
                   basis->nBasis, cdriintsoptions.CDRI_thresh, cdriintsoptions.CDalg, 
                   cdriintsoptions.CDRI_genContr, cdriintsoptions.CDRI_sigma, 
                   cdriintsoptions.CDRI_max_qual, cdriintsoptions.CDRI_minShrinkCycle, 
-                  cdriintsoptions.CDRI_build4I);
+                  cdriintsoptions.CDRI_build4I, MPI_COMM_WORLD, cdriintsoptions.CDRI_distributed, cdriintsoptions.CDRI_redistribute);
       } else if (basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE) {
         aoint->TPI =
             std::make_shared<InCore4indexTPI<double>>(basis->nBasis);
@@ -369,6 +375,8 @@ namespace ChronusQ {
             // First detect if there are aux basis available:
             std::shared_ptr<InCoreRITPI<double>> aux1 = std::dynamic_pointer_cast<InCoreRITPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(aoi)->TPI));
             std::shared_ptr<InCoreRITPI<double>> aux2 = std::dynamic_pointer_cast<InCoreRITPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(paoi)->TPI));
+            std::shared_ptr<InCoreCholeskyRIERI<double>> aux1_ref = std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(aoi)->TPI));
+            std::shared_ptr<InCoreCholeskyRIERI<double>> aux2_ref = std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(paoi)->TPI));
 
             // If user choose alg to be auto, use flags to determine which to build:
             bool auto_int1_aux = false, auto_int2_aux = false, auto_two_aux = false, auto_4I = false;
@@ -381,8 +389,9 @@ namespace ChronusQ {
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
                 out << "   Will use (ee|ee) to approxiamate (ee|pp) " << std::endl;
-                if(aux1){
+                if(aux1 and (aux1->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
                   out << "     * Found existing aux basis from (ee|ee)!" << std::endl;
+                  aux1_ref = nullptr;
                 } else{
                   out << "     * Can't find existing aux basis from (ee|ee) " << std::endl;
                   out << "       Will use CD to build aux basis on the fly at " << eopts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl; 
@@ -391,7 +400,7 @@ namespace ChronusQ {
                       basis->nBasis, eopts.cdriintsoptions.CDRI_thresh, eopts.cdriintsoptions.CDalg, 
                       eopts.cdriintsoptions.CDRI_genContr, eopts.cdriintsoptions.CDRI_sigma, 
                       eopts.cdriintsoptions.CDRI_max_qual, eopts.cdriintsoptions.CDRI_minShrinkCycle, 
-                      eopts.cdriintsoptions.CDRI_build4I);
+                      eopts.cdriintsoptions.CDRI_build4I, MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, eopts.cdriintsoptions.CDRI_redistribute);
                   // If TPI set to be incore 4-index, we can use that to do CD, which brings some saving
                   if (auto eri4I = std::dynamic_pointer_cast<InCore4indexTPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(aoi)->TPI)))
                     std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux1)->setFourIndexERI(eri4I);
@@ -408,8 +417,9 @@ namespace ChronusQ {
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
                 std::cout << "   Will use (pp|pp) to approxiamate (ee|pp) " << std::endl;
-                if(aux2){
+                if(aux2 and (aux2->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
                   out << "     * Found existing aux basis from (pp|pp)!" << std::endl;
+                  aux2_ref = nullptr;
                 } else{
                   out << "     * Can't find existing aux basis from (pp|pp)" << std::endl;
                   out << "       Will use CD to build aux basis on the fly at " << popts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl;
@@ -418,7 +428,7 @@ namespace ChronusQ {
                       basis2->nBasis, popts.cdriintsoptions.CDRI_thresh, popts.cdriintsoptions.CDalg, 
                       popts.cdriintsoptions.CDRI_genContr, popts.cdriintsoptions.CDRI_sigma, 
                       popts.cdriintsoptions.CDRI_max_qual, popts.cdriintsoptions.CDRI_minShrinkCycle, 
-                      popts.cdriintsoptions.CDRI_build4I);
+                      popts.cdriintsoptions.CDRI_build4I, MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, popts.cdriintsoptions.CDRI_redistribute);
                   // If TPI set to be incore 4-index, we can do dynamicERI CD algorithm on exisiting 4-index ERI, which can bring some savings
                   if (auto eri4I = std::dynamic_pointer_cast<InCore4indexTPI<double>> ((std::dynamic_pointer_cast<Integrals<double>>(paoi)->TPI)))
                     std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux2)->setFourIndexERI(eri4I);
@@ -452,11 +462,13 @@ namespace ChronusQ {
             }
 
             if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or auto_int1_aux){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I);
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I,
+                                                                        MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use electronic aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or auto_int2_aux){
-              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I);
+              epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I,
+                                                                        MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use protonic aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR 
@@ -469,7 +481,8 @@ namespace ChronusQ {
               double combineBasisThresh = (cdriintsoptions.CDRI_combineBasisTruncate and cdriintsoptions.CDRI_combineBasisThresh == 0.0) ?
                   sqrt(eopts.cdriintsoptions.CDRI_thresh * popts.cdriintsoptions.CDRI_thresh) : cdriintsoptions.CDRI_combineBasisThresh;
               epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, aux2, two_aux_alg, cdriintsoptions.CDRI_build4I,
-                  cdriintsoptions.CDRI_combineBasisTruncate, combineBasisThresh);
+                                                                        cdriintsoptions.CDRI_combineBasisTruncate, combineBasisThresh,
+                                                                        MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
               out << "Built (ee|pp) object that will use both electronic and protonic aux basis. " << std::endl;
             } else if (auto_4I) {
@@ -478,6 +491,10 @@ namespace ChronusQ {
             } else {
               CErr ("aux basis for (ee|pp) is set up wrong. Can't build IncoreAsymmRITPI object!! ");
             }
+
+            if (aux1_ref) (std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI))->setAux1Ref(aux1_ref);
+            if (aux2_ref) (std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI))->setAux2Ref(aux2_ref);
+
           }  
         }
         epaoi = std::dynamic_pointer_cast<IntegralsBase>(epaoint);

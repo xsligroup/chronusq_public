@@ -69,6 +69,10 @@ namespace ChronusQ {
     } else if (tID == typeid(InCoreRITPIContraction<MatsT,IntsT>)) {
       return std::make_shared<InCoreRITPIContraction<MatsU,IntsT>>(
                *std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT,IntsT>>(ch));
+    
+    } else if (tID == typeid(DistributedRITPIContraction<MatsT,IntsT>)) {
+      return std::make_shared<DistributedRITPIContraction<MatsU,IntsT>>(
+               *std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT,IntsT>>(ch));
 
     } else {
       std::stringstream errMsg;

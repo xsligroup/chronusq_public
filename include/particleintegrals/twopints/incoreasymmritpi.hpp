@@ -62,9 +62,16 @@ class InCoreAsymmRITPI :
     friend class InCoreAsymmRITPI;
 
   protected:
+    MPI_Comm comm_ = MPI_COMM_NULL;
+    bool distributed_ = false;
+    bool redistribute_ = false;
     std::shared_ptr<InCoreRITPI<IntsT>> aux1_ = nullptr;
     std::shared_ptr<InCoreRITPI<IntsT>> aux2_ = nullptr;
-    IntsT *partialTPI_ = nullptr; /// The missing part that needs to be built, to be used together with existing 3-index tensor 
+    std::shared_ptr<ERI3JBase<IntsT>> partialTPI_ = nullptr; // The missing 3-index integrals for INT1_AUX or INT2_AUX algorithms
+    IntsT *M2J_ = nullptr; /// The asymmetric Coulumb matrix for CONNECTOR algorithm
+    std::shared_ptr<InCoreCholeskyRIERI<IntsT>> aux1_ref_ = nullptr; // Reference aux1 when distribution is mismatched 
+    std::shared_ptr<InCoreCholeskyRIERI<IntsT>> aux2_ref_ = nullptr; // Reference aux2 when distribution is mismatched 
+
 
     ASYMM_CD_ALG asymmCDalg_ = ASYMM_CD_ALG::AUTO;
     bool build4I_ = false; // Explicitly build four-index TPI
@@ -79,20 +86,28 @@ class InCoreAsymmRITPI :
     // Disable defualt constructor
     // InCoreAsymmRITPI() = delete;
     // Constructor for when one aux basis is given
-    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
-        TwoPInts<IntsT>(aux1->nBasis(), sNB), aux1_(aux1), asymmCDalg_(asymmCDalg), build4I_(build4I){}
-    InCoreAsymmRITPI(size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false):
-        TwoPInts<IntsT>(NB, aux2->nBasis()), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I){}
+    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, size_t sNB, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false,
+        MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        TwoPInts<IntsT>(aux1->nBasis(), sNB), aux1_(aux1), asymmCDalg_(asymmCDalg), build4I_(build4I), 
+        comm_(comm), distributed_(distributed), redistribute_(redistribute){}
+    InCoreAsymmRITPI(size_t NB, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false,
+        MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        TwoPInts<IntsT>(NB, aux2->nBasis()), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I), 
+        comm_(comm), distributed_(distributed), redistribute_(redistribute){}
     // Constructor for when two aux basis are given
-    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false, bool combineBasisTruncate = false, double combineBasisThresh=0.0):
-        TwoPInts<IntsT>(aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I),combineBasisTruncate_(combineBasisTruncate),combineBasisThresh_(combineBasisThresh){}
+    InCoreAsymmRITPI(std::shared_ptr<InCoreRITPI<IntsT>> aux1, std::shared_ptr<InCoreRITPI<IntsT>> aux2, ASYMM_CD_ALG asymmCDalg = ASYMM_CD_ALG::AUTO, bool build4I = false, bool combineBasisTruncate = false, double combineBasisThresh=0.0,
+        MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        TwoPInts<IntsT>(aux1->nBasis(), aux2->nBasis()), aux1_(aux1), aux2_(aux2), asymmCDalg_(asymmCDalg), build4I_(build4I),combineBasisTruncate_(combineBasisTruncate),combineBasisThresh_(combineBasisThresh), 
+        comm_(comm), distributed_(distributed), redistribute_(redistribute){}
 
 
     // COPY CONSTRUCTOR:
     InCoreAsymmRITPI(const InCoreAsymmRITPI &other): TwoPInts<IntsT>(other),
-      aux1_(other.getAux1()), aux2_(other.getAux2()), build4I_(other.build4I_), eri4I_(other.eri4I_) {
+      aux1_(other.getAux1()), aux2_(other.getAux2()), build4I_(other.build4I_), eri4I_(other.eri4I_), partialTPI_(other.partialTPI_){
       malloc();
-      std::copy_n(other.partialTPI_, getPartialTPISize(), this->partialTPI_);
+      if (other.M2J_) {
+        std::copy_n(other.M2J_, getM2JSize(), M2J_);
+      }
     }
     template <typename IntsU>
     InCoreAsymmRITPI( const InCoreAsymmRITPI<IntsU> &other, int = 0 ): TwoPInts<IntsT>(other)
@@ -105,7 +120,7 @@ class InCoreAsymmRITPI :
 
     // DESTRUCTOR:
     virtual ~InCoreAsymmRITPI() {
-      if(partialTPI_) CQMemManager::get().free(partialTPI_);
+      if(M2J_) CQMemManager::get().free(M2J_);
     }
 
     // MOVE CONSTRUCTOR:
@@ -113,6 +128,10 @@ class InCoreAsymmRITPI :
         aux1_(other.getAux1()), aux2_(other.getAux2()), partialTPI_(other.partialTPI_),build4I_(other.build4I_),
         eri4I_(other.eri4I_) {
       other.partialTPI_ = nullptr;
+      if (other.M2J_) {
+        std::copy_n(other.M2J_, getM2JSize(), M2J_);
+        other.M2J_ = nullptr;
+      }
     }
 
     // ASSIGNMENT OPERATOR
@@ -123,8 +142,11 @@ class InCoreAsymmRITPI :
         this->aux2_ = other.getAux2();
         build4I_ = other.build4I_;
         this->eri4I_ = other.eri4I_;
+        this->partialTPI_ = other.partialTPI_;
         malloc(); // reallocate memory
-        std::copy_n(other.partialTPI_, getPartialTPISize(), this->partialTPI_);
+        if (other.M2J_) {
+          std::copy_n(other.M2J_, getM2JSize(), M2J_);
+        }
       }
       return *this;
     }
@@ -133,13 +155,15 @@ class InCoreAsymmRITPI :
     InCoreAsymmRITPI& operator=( InCoreAsymmRITPI &&other ) {
       if (this != &other) { // self-assignment check expected
         TwoPInts<IntsT>::operator=(std::move(other));
-        CQMemManager::get().free(partialTPI_);
         this->aux1_ = other.getAux1();
         this->aux2_ = other.getAux2();
         build4I_ = other.build4I_;
         this->eri4I_ = other.eri4I_;
-        this->partialTPI_ = other.partialTPI_;
-        other.partialTPI_ = nullptr;
+        this->partialTPI_ = std::move(other.partialTPI_);
+        if (other.M2J_) {
+          std::copy_n(other.M2J_, getM2JSize(), M2J_);
+          CQMemManager::get().free(other.M2J_);
+        }
       }
       return *this;
     }
@@ -156,7 +180,9 @@ class InCoreAsymmRITPI :
     void prebuilt4Index(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
         OPERATOR, const HamiltonianOptions&);
 
-    void computeOneCholeskyRawSubTPILibint(BasisSet&, BasisSet&);
+    void computeOneCholeskyRawSubTPILibint(BasisSet&, BasisSet&, bool useCompoundIndex=true);
+
+    void computeOneCholeskyRawSubTPILibintMPI(BasisSet&, BasisSet&, bool useCompoundIndex=true);
 
     void computeTwoCholeskyRawSubTPILibint(BasisSet&, BasisSet&);
 
@@ -164,7 +190,7 @@ class InCoreAsymmRITPI :
 
     void computeTwoCholeskyRawSubTPIPrebuilt4Index();
 
-    void computeOneCholeskyPartialTPI();
+    void computeOneCholeskyPartialTPI(bool useCompoundIndex=true);
 
     void computeTwoCholeskyPartialTPI();
 
@@ -187,7 +213,7 @@ class InCoreAsymmRITPI :
           if (asymmCDalg_ == ASYMM_CD_ALG::CONNECTOR) {
             size_t NBRI2 = aux2_->nRIBasis();
             double *SCR = CQMemManager::get().malloc<IntsT>(NBRI1 * NB2_Squared);
-            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans, NBRI1, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI1, aux2_->pointer(), NBRI2, IntsT(0.), SCR, NBRI1);
+            blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans, NBRI1, NB2_Squared, NBRI2, IntsT(1.), pointer(), NBRI1, aux2_->pointer(), NBRI2, IntsT(0.), SCR, NBRI1);
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans, NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, SCR, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
             CQMemManager::get().free(SCR);
           } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEAUXBASIS) {
@@ -198,17 +224,21 @@ class InCoreAsymmRITPI :
             CErr("Invalid Asymm-CD two-aux algorithm in to4indexERI()");
           }
         } else{
-          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, partialTPI_, NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI1, IntsT(1.), aux1_->pointer(), NBRI1, pointer(), NBRI1, IntsT(0.), eri4i.pointer(), NB1_Squared);
         }
       } else {
         if(aux2_){
           size_t NBRI2 = aux2_->nRIBasis();
-          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI2, IntsT(1.), partialTPI_, NBRI2, aux2_->pointer(), NBRI2, IntsT(0.), eri4i.pointer(), NB1_Squared);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1_Squared, NB2_Squared, NBRI2, IntsT(1.), pointer(), NBRI2, aux2_->pointer(), NBRI2, IntsT(0.), eri4i.pointer(), NB1_Squared);
         } else{
           CErr ("No aux basis found. Can't convert to 4-index in to4indexERI()");
         } 
       }
       return eri4i;
+    }
+
+    size_t getM2JSize(){
+      return (aux1_ and aux2_) ? aux1_->nRIBasis()*aux2_->nRIBasis() : 0;
     }
     
     // Determine the size of partialTPI_
@@ -225,23 +255,41 @@ class InCoreAsymmRITPI :
     // Allocate memory for partialTPI_
     void malloc() {
 
-      size_t sizePartialTPI = getPartialTPISize();
-      if (sizePartialTPI == 0) CErr("No Auxiliary basis available to form InCoreAsymmRITPI object");
-      
-      // delete old partialTPI_ if size is wrong
-      if (partialTPI_) {
-        if (CQMemManager::get().getSize(partialTPI_) == sizePartialTPI)
-          return;
-        CQMemManager::get().free(partialTPI_);
-      }
-      
-      try { partialTPI_ = CQMemManager::get().malloc<IntsT>(sizePartialTPI); }
-      catch(...) {
-        std::cout << std::fixed;
-        std::cout << "Insufficient memory for the full RI-ERI tensor ("
-                  << (sizePartialTPI/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << CQMemManager::get() << std::endl;
-        CErr();
+      if (aux1_ and aux2_) {
+        // Connector Algorithm: Allocate M2J_
+        if (asymmCDalg_ == ASYMM_CD_ALG::CONNECTOR) {
+          size_t M2J_Size = getM2JSize();
+          if (M2J_Size == 0) CErr("No Auxiliary basis available to form InCoreAsymmRITPI object");
+          if (M2J_ and CQMemManager::get().getSize(M2J_) != M2J_Size) CQMemManager::get().free(M2J_);
+          try { M2J_ = CQMemManager::get().malloc<IntsT>(M2J_Size); }
+          catch(...) {
+            std::cout << std::fixed;
+            std::cout << "Insufficient memory for the M2J matrix ("
+                      << (M2J_Size/1e9) * sizeof(double) << " GB)" << std::endl;
+            std::cout << std::endl << CQMemManager::get() << std::endl;
+            CErr();
+          }
+        } else if (asymmCDalg_ == ASYMM_CD_ALG::COMBINEAUXBASIS) {
+          //std::cout << "Combining aux basis requires no memory allocation at this step" << std::endl;
+        }
+      } else {
+        // INT1_AUX or INT2_AUX Algorithm: Allocate partialTPI_
+        size_t tempNBasis(0), tempNBRI(0);
+        if (aux1_ and !aux2_) {
+          // INT1_AUX Algorithm
+          tempNBasis = this->snBasis();
+          tempNBRI = aux1_->nRIBasis();
+        } 
+        if (!aux1_ and aux2_) {
+          // INT2_AUX Algorithm
+          tempNBasis = this->nBasis();
+          tempNBRI = aux2_->nRIBasis();
+        }
+        if (distributed_) {
+          partialTPI_ = std::make_shared<DistributedERI3J<IntsT>>(comm(),tempNBasis, tempNBRI);
+        } else {
+          partialTPI_ = std::make_shared<IncoreERI3J<IntsT>>(tempNBasis, tempNBRI);
+        }
       }
     }
 
@@ -271,20 +319,28 @@ class InCoreAsymmRITPI :
     }
 
 
-    virtual void clear() override{
-      std::fill_n(partialTPI_, getPartialTPISize(), IntsT(0.));
-    }
+    virtual void clear() override { partialTPI_->clear(); }
 
     // pointers direct access
     std::shared_ptr<InCoreRITPI<IntsT>> getAux1() const {return aux1_;}
     std::shared_ptr<InCoreRITPI<IntsT>> getAux2() const {return aux2_;}
     
-    void setPartialTPI(const IntsT* partialTPI){
-      std::copy_n(partialTPI, getPartialTPISize() ,partialTPI_);
+    void setPartialTPI(const std::shared_ptr<ERI3JBase<IntsT>> &partialTPI){
+      partialTPI_ = partialTPI;
     }
 
-    IntsT* pointer() { return partialTPI_; }
-    const IntsT* pointer() const { return partialTPI_; }
+    IntsT* pointer() { return partialTPI_->data(); }
+    const IntsT* pointer() const { return partialTPI_->data(); }
+    IntsT* M2J() { return M2J_; }
+    const IntsT* M2J() const { return M2J_; }
+    MPI_Comm comm() const { return comm_; }
+    bool isDistributed() const { return distributed_; }
+    bool redistribute() const { return redistribute_; }
+    ASYMM_CD_ALG asymmCDalg() const { return asymmCDalg_; }
+    std::shared_ptr<ERI3JBase<IntsT>> partialTPI() const { return partialTPI_; }
+
+    void setAux1Ref(const std::shared_ptr<InCoreCholeskyRIERI<IntsT>> &aux1_ref) { aux1_ref_ = aux1_ref; }
+    void setAux2Ref(const std::shared_ptr<InCoreCholeskyRIERI<IntsT>> &aux2_ref) { aux2_ref_ = aux2_ref; }
 
     void setReportError(bool reportError) { reportError_ = reportError;}
 
@@ -319,8 +375,8 @@ class InCoreAsymmRITPI :
         if(partialTPI_ and debug){
           IntsT *SCR = CQMemManager::get().malloc<IntsT>(NB2*NB2*NB2*NB2);
           size_t NBRI = aux1_->nRIBasis();
-          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2*NB2,NB2*NB2,NBRI,IntsT(1.),partialTPI_,NBRI,
-            partialTPI_,NBRI,IntsT(0.),SCR,NB2*NB2);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2*NB2,NB2*NB2,NBRI,IntsT(1.),pointer(),NBRI,
+            pointer(),NBRI,IntsT(0.),SCR,NB2*NB2);
           std::cout<< "       - Error of (pp|pp) for debugging" << std::endl;        
           calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, SCR, NB2*NB2*NB2*NB2);
           CQMemManager::get().free(SCR);
@@ -338,8 +394,8 @@ class InCoreAsymmRITPI :
         if(partialTPI_ and debug){
           IntsT *SCR = CQMemManager::get().malloc<IntsT>(NB1*NB1*NB1*NB1);
           size_t NBRI = aux2_->nRIBasis();
-          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1*NB1,NB1*NB1,NBRI,IntsT(1.),partialTPI_,NBRI,
-            partialTPI_,NBRI,IntsT(0.),SCR,NB1*NB1);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB1*NB1,NB1*NB1,NBRI,IntsT(1.),pointer(),NBRI,
+            pointer(),NBRI,IntsT(0.),SCR,NB1*NB1);
           std::cout<< "       - Error of (ee|ee) for testing" << std::endl;        
           calculateDifferece(basisSet1, basisSet1, mol, emPert, {-1., 1.}, ELECTRON_REPULSION, SCR, NB1*NB1*NB1*NB1);
           CQMemManager::get().free(SCR);
@@ -395,7 +451,7 @@ class InCoreAsymmRITPI :
   }; // class InCoreAsymmRITPI
 
   template <typename MatsT, typename IntsT>
-  class InCoreAsymmRITPIContraction : public InCore4indexTPIContraction<MatsT,IntsT> {
+  class InCoreAsymmRITPIContraction : public RITPIContraction<MatsT,IntsT> {
 
     template <typename MatsU, typename IntsU>
     friend class InCoreAsymmRITPIContraction;
@@ -407,7 +463,7 @@ class InCoreAsymmRITPI :
     InCoreAsymmRITPIContraction() = delete;
     
     InCoreAsymmRITPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
-      InCore4indexTPIContraction<MatsT,IntsT>(tpi) {}
+      RITPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>
     InCoreAsymmRITPIContraction(
@@ -426,11 +482,11 @@ class InCoreAsymmRITPI :
     // Computation interfaces
     virtual void JContract(
         MPI_Comm,
-        TwoBodyContraction<MatsT>&) const;
+        TwoBodyContraction<MatsT>&) const override;
 
     virtual void KContract(
         MPI_Comm,
-        TwoBodyContraction<MatsT>&) const
+        TwoBodyContraction<MatsT>&) const override
       {CErr("K Contraction for (ee|pp) integrals are not valid");}
 
     virtual ~InCoreAsymmRITPIContraction() {}

@@ -27,6 +27,7 @@
 #include <molecule.hpp>
 #include <fields.hpp>
 #include <hamiltonianoptions.hpp>
+#include <util/files.hpp>
 
 #include <type_traits>
 
@@ -57,6 +58,7 @@ namespace ChronusQ {
 
   protected:
     size_t NB;
+    SafeFile savFile;
 
   public:
 
@@ -67,6 +69,7 @@ namespace ChronusQ {
     ParticleIntegrals(size_t nb): NB(nb) {}
 
     size_t nBasis() const{ return NB; }
+    void setSavFile(const SafeFile& savFile) { this->savFile = savFile; }
 
     // Computation interfaces
     /// Evaluate AO Integrals according to a basis set.

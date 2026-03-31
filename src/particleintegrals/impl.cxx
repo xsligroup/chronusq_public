@@ -24,7 +24,9 @@
 
 #include <integrals.hpp>
 #include <particleintegrals/contract/incore.hpp>
+#include <particleintegrals/contract/incore3index.hpp>
 #include <particleintegrals/contract/direct.hpp>
+#include <particleintegrals/contract/distributed3index.hpp>
 #include <particleintegrals/contract/direct3index.hpp>
 #include <particleintegrals/contract/direct4C_libint.hpp>
 #include <particleintegrals/contract/direct4C_libcint.hpp>
@@ -51,6 +53,13 @@ namespace ChronusQ {
   void InCoreRITPIContraction<double,dcomplex>::KContract(
       MPI_Comm, TwoBodyContraction<double>&) const { CErr("NYI"); }
 
+  template <>
+  void DistributedRITPIContraction<double,dcomplex>::JContract(
+      MPI_Comm, TwoBodyContraction<double>&) const { CErr("NYI"); }
+  template <>
+  void DistributedRITPIContraction<double,dcomplex>::KContract(
+      MPI_Comm, TwoBodyContraction<double>&) const { CErr("NYI"); }
+
   template class OnePInts<double>;
   template class OnePInts<dcomplex>;
 
@@ -70,13 +79,25 @@ namespace ChronusQ {
   template class InCore4indexTPIContraction<dcomplex, double>;
   template class InCore4indexTPIContraction<dcomplex, dcomplex>;
 
+  template class RITPIContraction<double, double>;
+  template class RITPIContraction<dcomplex, double>;
+  template class RITPIContraction<dcomplex, dcomplex>;
+
   template class InCoreRITPIContraction<double, double>;
   template class InCoreRITPIContraction<dcomplex, double>;
   template class InCoreRITPIContraction<dcomplex, dcomplex>;
 
+  template class DistributedRITPIContraction<double, double>;
+  template class DistributedRITPIContraction<dcomplex, double>;
+  template class DistributedRITPIContraction<dcomplex, dcomplex>;
+
   template class InCoreAsymmRITPIContraction<double, double>;
   template class InCoreAsymmRITPIContraction<dcomplex, double>;
   template class InCoreAsymmRITPIContraction<dcomplex, dcomplex>;
+
+  template class DistributedAsymmRITPIContraction<double, double>;
+  template class DistributedAsymmRITPIContraction<dcomplex, double>;
+  template class DistributedAsymmRITPIContraction<dcomplex, dcomplex>;
 
   template class GTODirectTPIContraction<double, double>;
   template class GTODirectTPIContraction<dcomplex, double>;

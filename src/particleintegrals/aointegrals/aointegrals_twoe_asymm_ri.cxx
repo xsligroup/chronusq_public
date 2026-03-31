@@ -50,10 +50,17 @@ namespace ChronusQ {
 
   template <>
   void InCoreAsymmRITPI<double>::computeOneCholeskyRawSubTPILibint(
-      BasisSet &auxBasis, BasisSet &completeBasis) {
+      BasisSet &auxBasis, BasisSet &completeBasis, bool useCompoundIndex) {
     const InCoreCholeskyRIERI<double> &aux =
         *std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux1_ ? aux1_ : aux2_);
     size_t NBRI = aux.nRIBasis();
+    size_t NB = completeBasis.nBasis;
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB](size_t p, size_t q) { return p + q * NB; };
+    }
     
     auto beginSelectIndex = tick();
     // Group pivots into shells
@@ -142,7 +149,9 @@ namespace ChronusQ {
                   for (size_t q(p),
                       rspq = rsp * pSize + p - pBegin;
                       q < pEnd; q++, rspq++) {
-                    pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                    pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                    if (!useCompoundIndex) 
+                      pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                   }
                 }
               } else {
@@ -156,7 +165,9 @@ namespace ChronusQ {
                       qEnd(q + qSize),
                       rspq = rsp * qSize;
                       q < qEnd; q++, rspq++) {
-                    pointer()[pivot_index + toCompound(p,q) * NBRI] = buff[rspq];
+                    pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                    if (!useCompoundIndex) 
+                      pointer()[pivot_index + indexer(q,p) * NBRI] = buff[rspq];
                   }
                 }
               }
@@ -173,19 +184,171 @@ namespace ChronusQ {
   } //InCoreAsymmRITPI<double>::computeOneCholeskyRawSubTPILibint
 
   template <>
-  void InCoreAsymmRITPI<dcomplex>::computeOneCholeskyRawSubTPILibint(BasisSet&, BasisSet&) {
+  void InCoreAsymmRITPI<dcomplex>::computeOneCholeskyRawSubTPILibint(BasisSet&, BasisSet&, bool) {
     CErr("Complex TPI for InCoreAsymmRITPI NYI",std::cout);
   }
 
   template <>
-  void InCoreAsymmRITPI<double>::computeOneCholeskyPartialTPI() {
+  void InCoreAsymmRITPI<double>::computeOneCholeskyRawSubTPILibintMPI(
+      BasisSet &auxBasis, BasisSet &completeBasis, bool useCompoundIndex) {
+
+#ifdef CQ_ENABLE_MPI
+
+    int rank = 0, size = 1;
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+
+    const InCoreCholeskyRIERI<double> &aux =
+        *std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux1_ ? aux1_ : aux2_);
+
+    size_t NBRI = aux.nRIBasis();
+    size_t NB = completeBasis.nBasis;
+
+    std::shared_ptr<DistributedERI3J<double>> aux_eri3j = nullptr;
+    if (this->isDistributed()) {
+      aux_eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(aux.eri3j());
+      if (!aux_eri3j) CErr("Auxiliary ERI3J is not distributed", std::cout);
+    } else {
+      CErr("InCoreAsymmRITPI::computeOneCholeskyRawSubTPILibintMPI is only available in distributed mode", std::cout);
+    }
+
+    size_t subqBegin = aux_eri3j->splitStart(NB, rank, size);
+    size_t subqEnd = subqBegin + aux_eri3j->splitSize(NB, rank, size);
+
+    std::function<size_t(size_t, size_t)> indexer;
+    if (useCompoundIndex) {
+      CErr("Compound indexing is not supported in MPI mode", std::cout);
+      indexer = [](size_t p, size_t q) { return p + q * (q + 1) / 2; };
+    } else {
+      indexer = [NB, subqBegin](size_t p, size_t q) { return p + (q - subqBegin) * NB; };
+    }
+
+    auto beginSelectIndex = tick();
+    // Group pivots into shells
+    const std::vector<size_t> &pivots = aux.pivots();
+    std::map<std::pair<size_t,size_t>, std::vector<size_t>>
+        pivotIndicesByShell = InCoreCholeskyRIERI<double>::groupPivotsByShell(auxBasis, pivots);
+
+    size_t pivotShellSize = pivotIndicesByShell.size();
+    std::vector<std::pair<size_t,size_t>> pivotShells;
+    pivotShells.reserve(pivotShellSize);
+    for (auto &shell_pivot : pivotIndicesByShell) {
+      pivotShells.push_back(shell_pivot.first);
+    }
+
+
+    // Initialize libint engine
+    // Determine the number of OpenMP threads
+    size_t nthreads = GetNumThreads();
+    std::vector<libint2::Engine> engines(nthreads);
+
+    // Initialize the first engine for the integral evaluation
+    engines[0] = libint2::Engine(libint2::Operator::coulomb,
+                                 std::max(auxBasis.maxPrim, completeBasis.maxPrim),
+                                 std::max(auxBasis.maxL, completeBasis.maxL),0);
+    engines[0].set_precision(0.);
+
+    // Copy over the engines to other threads if need be
+    for(size_t i = 1; i < nthreads; i++) engines[i] = engines[0];
+
+
+    // Compute TPI elements
+#pragma omp parallel
+    {
+      size_t thread_id = GetThreadID();
+
+      // Get threads result buffer
+      const auto& buf_vec = engines[thread_id].results();
+
+      for (size_t I = 0, IPQ = 0; I < pivotShellSize; I++) {
+
+        const auto &RSpair = pivotShells[I];
+        auto &shell_pivot = pivotIndicesByShell[RSpair];
+
+        size_t R = RSpair.first;
+        size_t S = RSpair.second;
+
+        size_t rBegin = auxBasis.mapSh2Bf[R];
+        size_t sBegin = auxBasis.mapSh2Bf[S];
+        size_t rSize = auxBasis.shells[R].size();
+        size_t sSize = auxBasis.shells[S].size();
+        size_t rEnd = rBegin + rSize;
+        size_t sEnd = sBegin + sSize;
+
+        for (size_t Q(0), PQ(0); Q < completeBasis.nShell; Q++) {
+
+          size_t qBegin = completeBasis.mapSh2Bf[Q];
+          size_t qSize = completeBasis.shells[Q].size();
+          size_t qEnd = qBegin + qSize;
+          if (qBegin >= subqEnd or qEnd <= subqBegin)
+            continue; // Skip this shell if it is not in the current MPI split
+
+          size_t qShift = qBegin < subqBegin ? subqBegin - qBegin : 0;
+          qBegin = std::max(qBegin, subqBegin);
+          qEnd = std::min(qEnd, subqEnd);
+
+          for (size_t P(0); P < completeBasis.nShell; P++, PQ++, IPQ++) {
+
+            // Round Robbin work distribution
+#ifdef _OPENMP
+            if( IPQ % nthreads != thread_id ) continue;
+#endif
+
+            // Evaluate ERI for shell quartet
+            engines[thread_id].compute2<
+                libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                auxBasis.shells[R],
+                auxBasis.shells[S],
+                completeBasis.shells[P],
+                completeBasis.shells[Q]
+            );
+            const auto *buff =  buf_vec[0] ;
+            if(buff == nullptr) continue;
+
+            for (auto &pivot_index : shell_pivot) {
+
+              auto rs = anaSquare(pivots[pivot_index], auxBasis.nBasis);
+              size_t r = rs.first;
+              size_t s = rs.second;
+
+              for (size_t p(completeBasis.mapSh2Bf[P]),
+                       pSize(completeBasis.shells[P].size()),
+                       pEnd(p + pSize),
+                       rsp = ((r-rBegin) * sSize + (s-sBegin)) * pSize;
+                   p < pEnd; p++, rsp++) {
+                for (size_t q(qBegin), rspq = rsp * qSize + qShift;
+                     q < qEnd; q++, rspq++) {
+                  pointer()[pivot_index + indexer(p,q) * NBRI] = buff[rspq];
+                }
+              }
+            }
+
+          }; // Q
+        }; // P
+
+      }
+    }; // omp region
+
+    double durSelectIndex = tock(beginSelectIndex);
+    std::cout<< "  Cholesky-Asymm-Select-PartialTPI-Index duration = " << durSelectIndex << " s " << std::endl;
+
+#endif // CQ_ENABLE_MPI
+  } //InCoreAsymmRITPI<double>::computeOneCholeskyRawSubTPILibintMPI
+
+  template <>
+  void InCoreAsymmRITPI<dcomplex>::computeOneCholeskyRawSubTPILibintMPI(BasisSet&, BasisSet&, bool) {
+    CErr("Complex TPI for InCoreAsymmRITPI NYI",std::cout);
+  }
+
+  template <>
+  void InCoreAsymmRITPI<double>::computeOneCholeskyPartialTPI(bool useCompoundIndex) {
     auto beginBuildPartialTPI = tick();
 
     const InCoreCholeskyRIERI<double> &aux =
         *std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux1_ ? aux1_ : aux2_);
     size_t NBRI = aux.nRIBasis();
     size_t NBcomplete = asymmCDalg_ == ASYMM_CD_ALG::INT1_AUX ? sNB : NB;
-    size_t NB2   = NBcomplete*(NBcomplete+1)/2;
+    size_t NB2   = useCompoundIndex ? NBcomplete*(NBcomplete+1)/2 : NBcomplete*NBcomplete;
     size_t NB3   = NB2*NBRI;
     // S^{-1/2}(Q|ij)
     auto ijK = CQMemManager::get().malloc<double>(NB3);
@@ -193,10 +356,14 @@ namespace ChronusQ {
                NBRI,NB2,NBRI,double(1.),aux.twoIndexERI()->pointer(),NBRI,
                pointer(),NBRI,double(0.),ijK,NBRI);
 
-    for (size_t pq = 0; pq < NB2; pq++) {
-      auto pqAna = anaCompound(pq);
-      std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.first, pqAna.second, NBcomplete));
-      std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NBcomplete));
+    if (useCompoundIndex) {
+      for (size_t pq = 0; pq < NB2; pq++) {
+        auto pqAna = anaCompound(pq);
+        std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.first, pqAna.second, NBcomplete));
+        std::copy(&ijK[pq*NBRI], &ijK[pq*NBRI+NBRI], pointer()+NBRI*toSquare(pqAna.second, pqAna.first, NBcomplete));
+      }
+    } else {
+      std::copy_n(ijK, NB3, pointer());
     }
 
     CQMemManager::get().free(ijK);
@@ -207,7 +374,7 @@ namespace ChronusQ {
   } //InCoreAsymmRITPI<double>::computeOneCholeskyPartialTPI
 
   template <>
-  void InCoreAsymmRITPI<dcomplex>::computeOneCholeskyPartialTPI() {
+  void InCoreAsymmRITPI<dcomplex>::computeOneCholeskyPartialTPI(bool) {
     CErr("Complex TPI for InCoreAsymmRITPI NYI",std::cout);
   }
 
@@ -332,7 +499,7 @@ namespace ChronusQ {
               size_t q = pqPair.second;
               size_t rspq = (rs + (p-pBegin)) * qSize + (q-qBegin);
               
-              pointer()[pivot1_index + pivot2_index * NBRI1] = buff[rspq];
+              M2J_[pivot1_index + pivot2_index * NBRI1] = buff[rspq];
               
             }
           }
@@ -362,9 +529,9 @@ namespace ChronusQ {
 
     double *SCR = CQMemManager::get().template malloc<double>(NBRI1 * NBRI2);
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-               NBRI1, NBRI2, NBRI2, 1., pointer(), NBRI1, aux2.twoIndexERI()->pointer(), NBRI2, 0., SCR, NBRI1);
+               NBRI1, NBRI2, NBRI2, 1., M2J_, NBRI1, aux2.twoIndexERI()->pointer(), NBRI2, 0., SCR, NBRI1);
     blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-               NBRI1, NBRI2, NBRI1, 1., aux1.twoIndexERI()->pointer(), NBRI1, SCR, NBRI1, 0., pointer(), NBRI1);
+               NBRI1, NBRI2, NBRI1, 1., aux1.twoIndexERI()->pointer(), NBRI1, SCR, NBRI1, 0., M2J_, NBRI1);
     CQMemManager::get().free(SCR);
 
     double durBuildPartialTPI = tock(beginBuildPartialTPI);
@@ -483,6 +650,11 @@ namespace ChronusQ {
   void InCoreAsymmRITPI<double>::computeAOInts(BasisSet &basisSet, BasisSet &basisSet2,
       Molecule& mol, EMPerturbation& emPert, OPERATOR, const HamiltonianOptions& options) {
     
+    int rank = 0, size = 1;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(this->comm(), &rank);
+    MPI_Comm_size(this->comm(), &size);
+#endif
     std::cout << "\nCalculating (ee|pp) Integrals Using Asymmetric Cholesky Decomposition: \n" << std::endl;
 
     prebuilt4Index(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
@@ -505,11 +677,25 @@ namespace ChronusQ {
           // (which cou be the case if the user forces to use two-aux asymm algorithms, but we dont have existing aux basis/bases)
           // Compute them first 
           if(cd_aux1->pivots().empty()) {
+
+            if (aux1_ref_) {
+              std::cout << "Using existing pivots from (ee|ee) aux basis" << std::endl;
+              cd_aux1->setPivots(aux1_ref_->pivots());
+              cd_aux1->setUpdatePivots(false);
+            }
+
             HamiltonianOptions temp_opt;
             temp_opt.particle = {-1., 1.};
             cd_aux1->computeAOInts(basisSet, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
           if(cd_aux2->pivots().empty()) {
+
+            if (aux2_ref_) {
+              std::cout << "Using existing pivots from (pp|pp) aux basis" << std::endl;
+              cd_aux2->setPivots(aux2_ref_->pivots());
+              cd_aux2->setUpdatePivots(false);
+            }
+
             HamiltonianOptions temp_opt;
             temp_opt.particle = {1., ProtMassPerE};
             cd_aux2->computeAOInts(basisSet2, mol, emPert, ELECTRON_REPULSION, temp_opt);
@@ -527,7 +713,7 @@ namespace ChronusQ {
 
           *************************************************************/
           if (asymmCDalg_ == ASYMM_CD_ALG::CONNECTOR) {
-            if (!partialTPI_) malloc();
+            if (!M2J_) malloc();
             // Compute raw two-index TPI (\beta \vert \Theta) 
             if (eri4I_) {
               std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
@@ -556,28 +742,121 @@ namespace ChronusQ {
                     \end{pmatrix}
 
           *************************************************************/
-            InCoreAsymmRITPI<double> asymmAux1Comp2(aux1_, basisSet2.nBasis, ASYMM_CD_ALG::INT1_AUX, build4I_);
+            // (R S \vert \beta)
+            InCoreAsymmRITPI<double> asymmAux1Comp2(aux1_, basisSet2.nBasis, ASYMM_CD_ALG::INT1_AUX, build4I_, comm(), isDistributed(), redistribute());
             asymmAux1Comp2.malloc();
-            InCoreAsymmRITPI<double> asymmAux2Comp1(basisSet.nBasis, aux2_, ASYMM_CD_ALG::INT2_AUX, build4I_);
+            asymmAux1Comp2.clear();
+            // (r s \vert \Gamma)
+            InCoreAsymmRITPI<double> asymmAux2Comp1(basisSet.nBasis, aux2_, ASYMM_CD_ALG::INT2_AUX, build4I_, comm(), isDistributed(), redistribute());
             asymmAux2Comp1.malloc();
+            asymmAux2Comp1.clear();
 
+            bool useCompoundIndex = not this->isDistributed();
+
+            // === Allocate scratch tensor on rank 0 if distributed ===
+            size_t NB1 = basisSet.nBasis;
+            size_t NB2 = basisSet2.nBasis;
+            size_t NBRI1 = aux1_->nRIBasis();
+            size_t NBRI2 = aux2_->nRIBasis();
+            size_t localNB1 = NB1;
+            size_t localNB2 = NB2;
+
+            // === Check ERI3J type ===
+            std::shared_ptr<DistributedERI3J<double>> asymmAux1Comp2ERI3J = nullptr;
+            std::shared_ptr<DistributedERI3J<double>> asymmAux2Comp1ERI3J = nullptr;
+#ifdef CQ_ENABLE_MPI
+            if (this->isDistributed()) {
+              asymmAux1Comp2ERI3J = std::dynamic_pointer_cast<DistributedERI3J<double>>(asymmAux1Comp2.partialTPI());
+              if (!asymmAux1Comp2ERI3J) CErr("In asymmAux1Comp2 ERI3J is not distributed", std::cout);
+              localNB2 = asymmAux1Comp2ERI3J->localSize();
+              asymmAux2Comp1ERI3J = std::dynamic_pointer_cast<DistributedERI3J<double>>(asymmAux2Comp1.partialTPI());
+              if (!asymmAux2Comp1ERI3J) CErr("In asymmAux2Comp1 ERI3J is not distributed", std::cout);
+              localNB1 = asymmAux2Comp1ERI3J->localSize();
+            }
+#endif
+
+            // === Compute 3-index ERI on rank 0 ===
             // \kappa,\lambda \in B_c    is the union of     \alpha,beta \in B_e      and       \Gamma,Theta in \B_n
-            // To build raw 3-index (p q \vert lambda) and (R S \vert lambda), we already have (p q \vert \beta) and (R S \vert \Gamma) from symm CD 
+            // To build raw 3-index (p q \vert lambda) and (R S \vert lambda), we already have (p q \vert \beta) and (R S \vert \Gamma) from symm CD
             // We just need to build (p q \vert \Gamma) in asymmAux2Comp1
             //                   and (R S \vert \beta)  in asymmAux1Comp2 (same procedure as single one-component RI)
             if (build4I_) {
+              CErr("Prebuilt 4-index ERI is not supported for Asymm CD CombineAuxBasis algorithm",std::cout);
               asymmAux1Comp2.prebuilt4Index(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
               asymmAux1Comp2.computeOneCholeskyRawSubTPIPrebuilt4Index();
               asymmAux2Comp1.prebuilt4Index(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
               asymmAux2Comp1.computeOneCholeskyRawSubTPIPrebuilt4Index();
             } else {
-              asymmAux1Comp2.computeOneCholeskyRawSubTPILibint(basisSet, basisSet2);
-              asymmAux2Comp1.computeOneCholeskyRawSubTPILibint(basisSet2, basisSet);
+              if (this->isDistributed()) {
+                asymmAux1Comp2.computeOneCholeskyRawSubTPILibintMPI(basisSet, basisSet2, useCompoundIndex);
+                asymmAux2Comp1.computeOneCholeskyRawSubTPILibintMPI(basisSet2, basisSet, useCompoundIndex);
+              } else {
+                asymmAux1Comp2.computeOneCholeskyRawSubTPILibint(basisSet, basisSet2, useCompoundIndex);
+                asymmAux2Comp1.computeOneCholeskyRawSubTPILibint(basisSet2, basisSet, useCompoundIndex);
+              }
             }
+
+            // == Distribute Raw Asymm ERI3Js on all ranks ==
+#ifdef CQ_ENABLE_MPI
+            if (this->isDistributed()) {
+//              prettyPrintSmart(std::cout, "asymm3J1 (rank " + std::to_string(rank) + ")",
+//                               asymmAux1Comp2ERI3J->data(), NBRI1, asymmAux1Comp2ERI3J->localSize()*NB2, NBRI1);
+//              prettyPrintSmart(std::cout, "asymm3J2 (rank " + std::to_string(rank) + ")",
+//                               asymmAux2Comp1ERI3J->data(), NBRI2, asymmAux2Comp1ERI3J->localSize()*NB1, NBRI2);
+            }
+#endif  
 
             // Allocate J matrix (dimension is NBRI1+NBRI2)
             size_t combineNBRI = aux1_->nRIBasis() + aux2_->nRIBasis();
             cqmatrix::Matrix<double> twocenterERI(combineNBRI);
+            twocenterERI.clear();
+
+            // === Build two-component Coulomb J matrix on rank 0 ===
+
+#ifdef CQ_ENABLE_MPI
+            if (this->isDistributed()) {
+              // Fill (\alpha \vert \Gamma) in upper right corner of square matrix J
+              // Achieved by only selecting \alpha in B_e in all (p q \vert \Gamma) elements
+              InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERIMPI(
+                  cd_aux1->pivots(), aux2_->nRIBasis(), NB, *asymmAux2Comp1ERI3J,
+                  twocenterERI.pointer() + aux1_->nRIBasis() * combineNBRI, combineNBRI, false);
+
+              // Lower triangle is not necessary
+              // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+              //     cd_aux2->pivots(), aux1_->nRIBasis(), sNB,
+              //     asymmAux1Comp2.pointer(), aux1_->nRIBasis(),
+              //     twocenterERI.pointer() + aux1_->nRIBasis(), combineNBRI, false);
+
+            } else {
+              // Fill (\alpha \vert \Gamma) in upper right corner of square matrix J
+              // Achieved by only selecting \alpha in B_e in all (p q \vert \Gamma) elements
+              InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+                  cd_aux1->pivots(), aux2_->nRIBasis(), NB,
+                  asymmAux2Comp1.pointer(), aux2_->nRIBasis(),
+                  twocenterERI.pointer() + aux1_->nRIBasis() * combineNBRI, combineNBRI, false, useCompoundIndex);
+
+              // Lower triangle is not necessary
+              // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+              //     cd_aux2->pivots(), aux1_->nRIBasis(), sNB,
+              //     asymmAux1Comp2.pointer(), aux1_->nRIBasis(),
+              //     twocenterERI.pointer() + aux1_->nRIBasis(), combineNBRI, false);
+
+            }
+#else
+            // Fill (\alpha \vert \Gamma) in upper right corner of square matrix J
+            // Achieved by only selecting \alpha in B_e in all (p q \vert \Gamma) elements
+            InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+                cd_aux1->pivots(), aux2_->nRIBasis(), NB,
+                asymmAux2Comp1.pointer(), aux2_->nRIBasis(),
+                twocenterERI.pointer() + aux1_->nRIBasis() * combineNBRI, combineNBRI, false, useCompoundIndex);
+
+            // Lower triangle is not necessary
+            // InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
+            //     cd_aux2->pivots(), aux1_->nRIBasis(), sNB,
+            //     asymmAux1Comp2.pointer(), aux1_->nRIBasis(),
+            //     twocenterERI.pointer() + aux1_->nRIBasis(), combineNBRI, false);
+
+#endif
 
             auto asymmCopyBegin = tick();
             // Copy (\alpha \vert \beta) to upper left corner of square matrix J
@@ -591,29 +870,16 @@ namespace ChronusQ {
             double durAsymmCopy = tock(asymmCopyBegin);
             std::cout<< "  Cholesky-Asymm-TwoIndex-Copy duration = " << durAsymmCopy << " s " << std::endl;
 
-            // Fill (\alpha \vert \Gamma) in upper right corner of square matrix J
-            // Achieved by only selecting \alpha in B_e in all (p q \vert \Gamma) elements
-            InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
-                cd_aux1->pivots(), aux2_->nRIBasis(), NB,
-                asymmAux2Comp1.pointer(), aux2_->nRIBasis(),
-                twocenterERI.pointer() + aux1_->nRIBasis() * combineNBRI, combineNBRI, false);
-
-            // Lower triangle is not necessary
-//            InCoreCholeskyRIERI<double>::extractTwoCenterSubsetFrom3indexERI(
-//                cd_aux2->pivots(), aux1_->nRIBasis(), sNB,
-//                asymmAux1Comp2.pointer(), aux1_->nRIBasis(),
-//                twocenterERI.pointer() + aux1_->nRIBasis(), combineNBRI, false);
+            // Output two-center ERI for debugging
+//            twocenterERI.output(std::cout, "Two-center ERI (Cholesky Asymm)", true);
 
             // Calculate K^{-T} by calling cholesky decomposition on J
             InCoreRITPI<double>::halfInverse2CenterERI(twocenterERI);
 
-            size_t maxNB = std::max(NB, sNB);
-            auto ijK = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto ijK1 = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto ijK2 = CQMemManager::get().malloc<double>(combineNBRI * maxNB * (maxNB+1)/2);
-            auto Scra = CQMemManager::get().malloc<double>(combineNBRI);
-
-            size_t NB2 = NB * (NB+1)/2;
+            size_t maxNB = std::max(localNB1,localNB2);
+            size_t ijKsize = useCompoundIndex ? combineNBRI*maxNB*(maxNB+1)/2 : combineNBRI*std::max(localNB1*NB1,localNB2*NB2);
+            auto ijK = CQMemManager::get().malloc<double>(ijKsize);
+            size_t NB1_squared = useCompoundIndex ? localNB1*(localNB1+1)/2 : localNB1*NB1;
             
             auto asymmGemm1Begin = tick();
             
@@ -621,11 +887,11 @@ namespace ChronusQ {
 
             // 1. K^{-T} from 0 to NBRI1 column  * (p q \vert alpha) , save in ijK
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                       combineNBRI,NB2,aux1_->nRIBasis(),double(1.),twocenterERI.pointer(),combineNBRI,
+                       combineNBRI,NB1_squared,aux1_->nRIBasis(),double(1.),twocenterERI.pointer(),combineNBRI,
                        aux1_->rawERI3J(),aux1_->nRIBasis(),double(0.),ijK,combineNBRI);
             // 2. K^{-T} from NBRI1 column to the end * (p q \vert Gamma)  , add to ijK
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                       combineNBRI,NB2,aux2_->nRIBasis(),double(1.),twocenterERI.pointer()+aux1_->nRIBasis(),combineNBRI,
+                       combineNBRI,NB1_squared,aux2_->nRIBasis(),double(1.),twocenterERI.pointer()+aux1_->nRIBasis(),combineNBRI,
                        asymmAux2Comp1.pointer(),aux2_->nRIBasis(),double(1.),ijK,combineNBRI);
 
             double durAsymmGemm1 = tock(asymmGemm1Begin);
@@ -634,29 +900,33 @@ namespace ChronusQ {
             // Expand to full index 
             auto asymmConvertIndex1Begin = tick();
             std::shared_ptr<InCoreRITPI<double>> combineAux1 =
-                std::make_shared<InCoreRITPI<double>>(NB, combineNBRI);
-            for (size_t pq = 0; pq < NB2; pq++) {
-              auto pqAna = anaCompound(pq);
-              std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
-                          combineAux1->pointer()+combineNBRI*toSquare(pqAna.first, pqAna.second, NB));
-              std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
-                          combineAux1->pointer()+combineNBRI*toSquare(pqAna.second, pqAna.first, NB));
+                std::make_shared<InCoreRITPI<double>>(NB, combineNBRI, comm(), isDistributed(), redistribute());
+            if (useCompoundIndex) {
+              for (size_t pq = 0; pq < NB1_squared; pq++) {
+                auto pqAna = anaCompound(pq);
+                std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
+                            combineAux1->pointer()+combineNBRI*toSquare(pqAna.first, pqAna.second, NB));
+                std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
+                            combineAux1->pointer()+combineNBRI*toSquare(pqAna.second, pqAna.first, NB));
+              }
+            } else {
+              std::copy_n(ijK, combineNBRI*NB1_squared, combineAux1->pointer());
             }
             double durConvertIndex1 = tock(asymmConvertIndex1Begin);
             std::cout<< "  Cholesky-Asymm-ConvertIndex1 duration = " << durConvertIndex1 << " s " << std::endl;
             
             auto asymmGemm2Begin = tick();
-            NB2 = sNB * (sNB+1)/2;
+            size_t NB2_squared = useCompoundIndex ? localNB2*(localNB2+1)/2 : localNB2*NB2;
 
             // Compute L_{R S, \kappa} &= \sum_{\lambda \in B_c} ( R S \vert \lambda ) ( K^{-T}_{\lambda, \kappa } in two steps
 
             // 1. K^{-T} from 0 to NBRI1 column  * (R S \vert alpha) , save in ijK
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                       combineNBRI,NB2,aux1_->nRIBasis(),double(1.),twocenterERI.pointer(),combineNBRI,
+                       combineNBRI,NB2_squared,aux1_->nRIBasis(),double(1.),twocenterERI.pointer(),combineNBRI,
                        asymmAux1Comp2.pointer(),aux1_->nRIBasis(),double(0.),ijK,combineNBRI);
             // 2. K^{-T} from NBRI1 column to the end * (R S \vert Gamma)  , add to ijK           
             blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                       combineNBRI,NB2,aux2_->nRIBasis(),
+                       combineNBRI,NB2_squared,aux2_->nRIBasis(),
                        double(1.),twocenterERI.pointer() + aux1_->nRIBasis(),combineNBRI,
                        aux2_->rawERI3J(),aux2_->nRIBasis(),double(1.),ijK,combineNBRI);
             double durAsymmGemm2 = tock(asymmGemm2Begin);
@@ -665,18 +935,22 @@ namespace ChronusQ {
             // Expand to full index 
             auto asymmConvertIndex2Begin = tick();
             std::shared_ptr<InCoreRITPI<double>> combineAux2 =
-                std::make_shared<InCoreRITPI<double>>(sNB, combineNBRI);
-            for (size_t pq = 0; pq < NB2; pq++) {
-              auto pqAna = anaCompound(pq);
-              std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
+                std::make_shared<InCoreRITPI<double>>(sNB, combineNBRI, comm(), isDistributed(), redistribute());
+            if (useCompoundIndex) {
+              for (size_t pq = 0; pq < NB2_squared; pq++) {
+                auto pqAna = anaCompound(pq);
+                std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
                           combineAux2->pointer()+combineNBRI*toSquare(pqAna.first, pqAna.second, sNB));
-              std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
+                std::copy_n(&ijK[pq*combineNBRI], combineNBRI,
                           combineAux2->pointer()+combineNBRI*toSquare(pqAna.second, pqAna.first, sNB));
+              }
+            } else {
+              std::copy_n(ijK, combineNBRI*NB2_squared, combineAux2->pointer());
             }
             double durConvertIndex2 = tock(asymmConvertIndex2Begin);
             std::cout<< "  Cholesky-Asymm-ConvertIndex2 duration = " << durConvertIndex2 << " s " << std::endl;
 
-            CQMemManager::get().free(ijK, ijK1, ijK2, Scra);
+            CQMemManager::get().free(ijK);
 
             aux1_->clearRawERI();
             aux2_->clearRawERI();
@@ -708,25 +982,51 @@ namespace ChronusQ {
                "but requested algorithm is not INT1_AUX");
         if (cd_aux1) {
           if(cd_aux1->pivots().empty()) {
+
+            if (aux1_ref_) {
+              cd_aux1->setPivots(aux1_ref_->pivots());
+              cd_aux1->setUpdatePivots(false);
+            }
+
             HamiltonianOptions temp_opt;
             temp_opt.particle = {-1., 1.};
             cd_aux1->computeAOInts(basisSet, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
 
           if (!partialTPI_) malloc();
-          
-          std::cout<< "     * Using elec aux basis" << std::endl;
-          // Compute raw three-index TPI ( R S \vert \beta) 
+          clear();
           auto topCDEP = tick();
+
+          bool useCompoundIndex = not this->isDistributed();
+          size_t NB2 = basisSet2.nBasis;
+          size_t NBRI1 = cd_aux1->nRIBasis();
+
+          // === Compute 3-index ERI ===
+          std::cout<< "     * Using elec aux basis" << std::endl;
+          // Compute raw three-index TPI ( R S \vert \beta)
           if (eri4I_){
+            CErr("Prebuilt 4-index ERI is not supported for Asymm CD ElecAux algorithm",std::cout);
             std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
             computeOneCholeskyRawSubTPIPrebuilt4Index();
           } else {
             std::cout<< "     * Computing PartialTPI for (ee|pp) on the fly\n" << std::endl;
-            computeOneCholeskyRawSubTPILibint(basisSet, basisSet2);
+            if (this->isDistributed())
+              computeOneCholeskyRawSubTPILibintMPI(basisSet, basisSet2, useCompoundIndex);
+            else
+              computeOneCholeskyRawSubTPILibint(basisSet, basisSet2, useCompoundIndex);
           }
+
+          // == Distribute Orthonormalized Asymm ERI3J on all ranks ==
+#ifdef CQ_ENABLE_MPI
+          if (this->isDistributed()) {
+//            auto asymm3J = std::dynamic_pointer_cast<DistributedERI3J<double>>(partialTPI_);
+//            prettyPrintSmart(std::cout, "Partial Asymm ERI3J (rank " + std::to_string(rank) + ")",
+//                             asymm3J->data(), NBRI1, asymm3J->localSize()*NB2, NBRI1);
+          }
+#endif
+
           // Compute  K^{-T} ( R S \vert \beta )
-          computeOneCholeskyPartialTPI();
+          computeOneCholeskyPartialTPI(useCompoundIndex);
           auto durCDEP = tock(topCDEP);
           std::cout<< "  Cholesky-Asymm-Total duration = " << durCDEP << " s " << std::endl;
 
@@ -753,25 +1053,51 @@ namespace ChronusQ {
             std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(aux2_);
         if (cd_aux2) {
           if(cd_aux2->pivots().empty()) {
+
+            if (aux2_ref_) {
+              cd_aux2->setPivots(aux2_ref_->pivots());
+              cd_aux2->setUpdatePivots(false);
+            }
+
             HamiltonianOptions temp_opt;
             temp_opt.particle = {1., ProtMassPerE};
             cd_aux2->computeAOInts(basisSet2, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
 
           if (!partialTPI_) malloc();
-
-          std::cout<< "     * Using prot aux basis" << std::endl; 
+          clear();
           auto topCDEP = tick();
+
+          bool useCompoundIndex = not this->isDistributed();
+          size_t NB1 = basisSet.nBasis;
+          size_t NBRI2 = cd_aux2->nRIBasis();
+
+          // === Compute 3-index ERI ===
+          std::cout<< "     * Using prot aux basis" << std::endl;
           // Compute raw three-index TPI ( p q \vert \Gamma)
           if(eri4I_){
+            CErr("Prebuilt 4-index ERI is not supported for Asymm CD ProtAux algorithm",std::cout);
             std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
             computeOneCholeskyRawSubTPIPrebuilt4Index();
           }else{
             std::cout<< "     * Computing PartialTPI for (ee|pp) on the fly\n" << std::endl;
-            computeOneCholeskyRawSubTPILibint(basisSet2, basisSet);
+            if (this->isDistributed())
+              computeOneCholeskyRawSubTPILibintMPI(basisSet2, basisSet, useCompoundIndex);
+            else
+              computeOneCholeskyRawSubTPILibint(basisSet2, basisSet, useCompoundIndex);
           }
+
+          // == Distribute Orthonormalized Asymm ERI3J on all ranks ==
+#ifdef CQ_ENABLE_MPI
+          if (this->isDistributed()) {
+//            auto asymm3J = std::dynamic_pointer_cast<DistributedERI3J<double>>(partialTPI_);
+//            prettyPrintSmart(std::cout, "Partial Asymm ERI3J (rank " + std::to_string(rank) + ")",
+//                             asymm3J->data(), NBRI2, asymm3J->localSize()*NB1, NBRI2);
+          }
+#endif
+
           // Compute K^{-T} ( p q \vert \Gamma)
-          computeOneCholeskyPartialTPI();
+          computeOneCholeskyPartialTPI(useCompoundIndex);
           auto durCDEP = tock(topCDEP);
           std::cout<< "  Cholesky-Asymm-Total duration = " << durCDEP << " s " << std::endl;
 

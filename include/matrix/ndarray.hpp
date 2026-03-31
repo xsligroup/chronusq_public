@@ -94,7 +94,7 @@ namespace ChronusQ {
 
     public:
       size_t nElements() const {
-        return std::accumulate(dims_.begin(), dims_.end(), 1, std::multiplies<size_t>());
+        return std::accumulate(dims_.begin(), dims_.end(), 1ul, std::multiplies<size_t>());
       }
 
       const std::vector<size_t>& dimensions() const { return dims_; }

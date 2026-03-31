@@ -177,6 +177,8 @@ namespace ChronusQ {
 
   protected:
     std::shared_ptr<TwoPInts<IntsT>> ints_;
+    bool oneCenterK_ = false;
+    std::vector<size_t> mapCen2BfSt_;
 
   public:
 
@@ -205,6 +207,11 @@ namespace ChronusQ {
     }
 
     std::shared_ptr<TwoPInts<IntsT>> ints() const { return ints_; }
+
+    bool oneCenterK() const { return oneCenterK_; }
+    const std::vector<size_t>& mapCen2BfSt() const { return mapCen2BfSt_; }
+    void setOneCenterK(bool oneCenterK) { oneCenterK_ = oneCenterK; }
+    void setMapCen2BfSt(const std::vector<size_t>& mapCen2BfSt) { mapCen2BfSt_ = mapCen2BfSt; }
 
     // Computation interfaces
 
@@ -241,6 +248,24 @@ namespace ChronusQ {
         MPI_Comm comm,
         std::vector<TwoBodyContraction<MatsT>> &contList) const {
       twoBodyContract(comm,true,contList);
+    }
+
+    void printTiming(const char* label, double elapsed, MPI_Comm comm, int rank, int size) const {
+      #ifdef CQ_ENABLE_MPI
+        double minT, maxT, avgT;
+        MPI_Reduce(&elapsed, &minT, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+        MPI_Reduce(&elapsed, &maxT, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+        MPI_Reduce(&elapsed, &avgT, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+        avgT /= size;
+        if (rank == 0) {
+          std::cout << "        " << std::left << std::setw(38) << label
+                    << "min = " << minT
+                    << ", max = " << maxT
+                    << ", avg = " << avgT << std::endl;
+        }
+      #else
+        std::cout << "        " << std::left << std::setw(38) << label << elapsed << " s " << std::endl;
+      #endif
     }
 
     // Destructor

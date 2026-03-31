@@ -194,8 +194,13 @@ namespace ChronusQ {
         other_cont = std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_t);
       }
       else if( auto tpi_t = std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(tpi)) {
-        this_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
-        other_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        if (tpi_t->isDistributed()) {
+          this_cont = std::make_shared<DistributedAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+          other_cont = std::make_shared<DistributedAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        } else {
+          this_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+          other_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        }
       }
       else {
         CErr("Invalid TwoPInts type for NEO!");
@@ -468,8 +473,16 @@ namespace ChronusQ {
 
       if( auto tpi_t = std::dynamic_pointer_cast<InCoreAsymmRITPI<IntsT>>(tpi)){
 
-        std::shared_ptr<InCoreAsymmRITPIContraction<MatsT,IntsT>> elec_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
-        std::shared_ptr<InCoreAsymmRITPIContraction<MatsT,IntsT>> prot_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        std::shared_ptr<RITPIContraction<MatsT,IntsT>> elec_cont = nullptr;
+        std::shared_ptr<RITPIContraction<MatsT,IntsT>> prot_cont = nullptr;
+        
+        if(tpi_t->isDistributed()){
+          elec_cont = std::make_shared<DistributedAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+          prot_cont = std::make_shared<DistributedAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        }else{
+          elec_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+          prot_cont = std::make_shared<InCoreAsymmRITPIContraction<MatsT,IntsT>>(tpi_t);
+        }
 
         elec_cont->contractSecond = false;
         prot_cont->contractSecond = true;

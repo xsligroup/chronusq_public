@@ -122,6 +122,8 @@ namespace ChronusQ {
     bool includeTau = false;
     bool ignoreProtonTwoBody = false;  // Default False (calculate v_pp J-K terms).  If true, turn these terms off
                               // See: https://doi.org/10.1016/j.cplett.2005.01.115
+    
+    bool oneCenterK = false;       // Default False. If true, use one-center approximation for K contraction
 
     // Dirac-Kohn-Sham (4C-DFT) Options
     DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS

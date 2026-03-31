@@ -1362,6 +1362,16 @@ namespace ChronusQ {
     // Build X2C-NEO Classical guess
     if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)
       compute_X2C_CoreH_Fock( tempMol, this->basisSet(), tempaoints, pert, classicalSS, classicalSSOptions, false);
+    // Redistribution of ERI3J before SCF
+    if (auto tpi = std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(tempaoints->TPI)) {
+      if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(tpi->eri3j())) {
+        if (tpi->redistribute()) {
+          std::cout << "    * Redistributing ERI3J to be split over auxiliary basis functions" << std::endl;
+          eri3j->redistributeToSplitNBRI();
+        }
+      }
+    }
+
     classicalSS->formCoreH(pert, false);
     classicalSS->formGuess(pert, classicalSSOptions);
     classicalSS->formFock(pert, false);

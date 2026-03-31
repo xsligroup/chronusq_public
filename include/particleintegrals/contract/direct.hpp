@@ -1736,6 +1736,11 @@ namespace ChronusQ {
         size_t bf4_s = basisSet2_.mapSh2Bf[s4];
         n4 = basisSet2_.shells[s4].size(); // Size of Shell 4
 
+        const bool sameCenter1234 =
+          basisSet_.shells[s1].O == basisSet_.shells[s2].O &&
+          basisSet_.shells[s1].O == basisSet_.shells[s3].O &&
+          basisSet_.shells[s1].O == basisSet_.shells[s4].O;
+
 #ifdef _SHZ_SCREEN
 
         double shMax = 0;
@@ -1886,6 +1891,8 @@ namespace ChronusQ {
               if (&basisSet_ != &basisSet2_)
                 CErr("No exchange contraction between two different basis!", std::cout);
 
+              if (this->oneCenterK() and not sameCenter1234) continue;
+
               for(auto i = 0ul, bf1 = bf1_s, ijkl(0ul); i < n1; i++, bf1++)      
               for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++)       
               for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++) {
@@ -1951,7 +1958,10 @@ namespace ChronusQ {
             } // kl loop
             } // ij loop
 
-            else if( matList[iMat].contType == EXCHANGE )
+            else if( matList[iMat].contType == EXCHANGE ) {
+
+            if (this->oneCenterK() and not sameCenter1234) continue;
+
             for(auto i = 0ul, bf1 = bf1_s, ijkl(0ul); i < n1; i++, bf1++)      
             for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++)       
             for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++) {
@@ -1996,7 +2006,7 @@ namespace ChronusQ {
 
             } // l loop
             } // ijk
-
+          }
           } // Symmetry check
 
         } // iMat loop

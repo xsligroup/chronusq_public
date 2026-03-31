@@ -407,7 +407,6 @@ namespace ChronusQ {
             ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
           }
         }
-        
         // Note, these guessSSOptions does not apply to NEO guess
         SingleSlaterOptions guessSSOptions(ssOptions);
         guessSSOptions.scfControls.guessBasis = guessbasis;

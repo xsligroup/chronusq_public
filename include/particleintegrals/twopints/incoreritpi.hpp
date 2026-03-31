@@ -29,7 +29,7 @@
 #include <cqlinalg/blas3.hpp>
 #include <cqlinalg/blasutil.hpp>
 #include <cxxapi/output.hpp>
-
+#include <particleintegrals/twopints/eri3j.hpp>
 namespace ChronusQ {
 
   enum class CHOLESKY_ALG {
@@ -37,7 +37,8 @@ namespace ChronusQ {
     DYNAMIC_ALL,      // Individual ERI and CD vectors are all dynamically controlled
     SPAN_FACTOR,      // Koch's span-factor algorithm
     SPAN_FACTOR_REUSE,// Span-factor algorithm that reuses residual matrix from previous steps
-    DYNAMIC_ERI       // Span-factor algorithm that reuses ERI vectors from previous steps
+    DYNAMIC_ERI,      // Span-factor algorithm that reuses ERI vectors from previous steps
+    READ_PIVOTS       // Read pivots from file
   };
 
 
@@ -60,28 +61,31 @@ namespace ChronusQ {
 
   protected:
     size_t NBRI, NBNBRI;
-    IntsT* ERI3J = nullptr; ///< Electron-Electron repulsion integrals (3 index)
+    std::shared_ptr<ERI3JBase<IntsT>> eri3j_ = nullptr;
+    MPI_Comm comm_ = MPI_COMM_NULL;
+    bool distributed_ = false;
+    bool redistribute_ = false;
     std::shared_ptr<cqmatrix::Matrix<IntsT>> twocenterERI_ = nullptr;// L=(P|Q)^-1/2
     bool saveRawERI_ = false; ///< Save raw ERI before contraction with (P|Q)^-1/2
-    IntsT* rawERI3J_ = nullptr; ///< raw Electron-Electron repulsion integrals (P|rs), compound rs
+    std::shared_ptr<ERI3JBase<IntsT>> rawERI3J_ = nullptr; ///< raw Electron-Electron repulsion integrals (P|rs), compound rs
     std::shared_ptr<cqmatrix::Matrix<IntsT>> rawERI2C_ = nullptr;// (P|Q)
-
     void saveRawERI3J();
 
   public:
 
     // Constructor
     InCoreRITPI() = delete;
-    InCoreRITPI(size_t nb):
-        TwoPInts<IntsT>(nb), NBRI(0), NBNBRI(0) {}
-    InCoreRITPI(size_t nb, size_t nbri):
-        TwoPInts<IntsT>(nb), NBRI(nbri) {
-      NBNBRI = this->nBasis()*nRIBasis();
+    InCoreRITPI(size_t nb, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        TwoPInts<IntsT>(nb), NBRI(0), NBNBRI(0), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
+      malloc();
+    }
+    InCoreRITPI(size_t nb, size_t nbri, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        TwoPInts<IntsT>(nb), NBRI(nbri), NBNBRI(nb*nbri), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
       malloc();
     }
     InCoreRITPI( const InCoreRITPI &other ):
         InCoreRITPI(other.nBasis(), other.nRIBasis()) {
-      std::copy_n(other.ERI3J, this->nBasis()*NBNBRI, ERI3J);
+      std::copy_n(other.eri3j_->data(), this->nBasis()*NBNBRI, eri3j_->data());
     }
     template <typename IntsU>
     InCoreRITPI( const InCoreRITPI<IntsU> &other, int = 0 ):
@@ -89,11 +93,11 @@ namespace ChronusQ {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real InCoreRITPI from a Complex one.");
-      std::copy_n(other.ERI3J, this->nBasis()*NBNBRI, ERI3J);
+      std::copy_n(other.eri3j_->data(), this->nBasis()*NBNBRI, eri3j_->data());
     }
-    InCoreRITPI( InCoreRITPI &&other ): TwoPInts<IntsT>(std::move(other)),
-        NBRI(other.NBRI), NBNBRI(other.NBNBRI), ERI3J(other.ERI3J) {
-      other.ERI3J = nullptr;
+    InCoreRITPI( InCoreRITPI &&other ) noexcept: TwoPInts<IntsT>(std::move(other)),
+        NBRI(other.NBRI), NBNBRI(other.NBNBRI), comm_(other.comm_), distributed_(other.distributed_), 
+        eri3j_(std::move(other.eri3j_)), redistribute_(other.redistribute_) {
     }
 
     InCoreRITPI& operator=( const InCoreRITPI &other ) {
@@ -102,20 +106,24 @@ namespace ChronusQ {
           this->NB = other.NB;
           NBRI = other.NBRI;
           NBNBRI = other.NBNBRI;
+          comm_ = other.comm_;
+          distributed_ = other.distributed_;
+          redistribute_ = other.redistribute_;
           malloc(); // reallocate memory
         }
-        std::copy_n(other.ERI3J, this->nBasis()*NBNBRI, ERI3J);
+        std::copy_n(other.eri3j_->data(), this->nBasis()*NBNBRI, eri3j_->data());
       }
       return *this;
     }
-    InCoreRITPI& operator=( InCoreRITPI &&other ) {
+    InCoreRITPI& operator=( InCoreRITPI &&other ) noexcept {
       if (this != &other) { // self-assignment check expected
-        CQMemManager::get().free(ERI3J);
         this->NB = other.NB;
         NBRI = other.NBRI;
         NBNBRI = other.NBNBRI;
-        ERI3J = other.ERI3J;
-        other.ERI3J = nullptr;
+        comm_ = other.comm_;
+        distributed_ = other.distributed_;
+        redistribute_ = other.redistribute_;
+        eri3j_ = std::move(other.eri3j_);
       }
       return *this;
     }
@@ -134,24 +142,28 @@ namespace ChronusQ {
       return operator()(p+q*this->nBasis(), r+s*this->nBasis());
     }
     virtual IntsT operator()(size_t pq, size_t rs) const {
-      return blas::dot(NBRI, &ERI3J[pq*NBRI], 1, &ERI3J[rs*NBRI], 1);
+      return blas::dot(NBRI, &eri3j_->data()[pq*NBRI], 1, &eri3j_->data()[rs*NBRI], 1);
     }
     IntsT& operator()(size_t L, size_t p, size_t q) {
-      return ERI3J[L + p*NBRI + q*NBNBRI];
+      return eri3j_->data()[L + p*NBRI + q*NBNBRI];
     }
     IntsT operator()(size_t L, size_t p, size_t q) const {
-      return ERI3J[L + p*NBRI + q*NBNBRI];
+      return eri3j_->data()[L + p*NBRI + q*NBNBRI];
     }
+    std::shared_ptr<ERI3JBase<IntsT>> eri3j() const { return eri3j_; }
 
     // Tensor direct access
-    IntsT* pointer() { return ERI3J; }
-    const IntsT* pointer() const { return ERI3J; }
+    IntsT* pointer() { return eri3j_->data(); }
+    const IntsT* pointer() const { return eri3j_->data(); }
+    MPI_Comm comm() const { return comm_; }
+    bool isDistributed() const { return distributed_; }
+    bool redistribute() const { return redistribute_; }
 
     // Raw ERI access
     void setSaveRawERI(bool save) { saveRawERI_ = save; }
-    void clearRawERI() { CQMemManager::get().free(rawERI3J_); rawERI2C_ = nullptr; }
-    IntsT* rawERI3J() { return rawERI3J_; }
-    const IntsT* rawERI3J() const { return rawERI3J_; }
+    void clearRawERI() { rawERI3J_ = nullptr; rawERI2C_ = nullptr; }
+    IntsT* rawERI3J() { return rawERI3J_->data(); }
+    const IntsT* rawERI3J() const { return rawERI3J_->data(); }
     std::shared_ptr<cqmatrix::Matrix<IntsT>> rawERI2C() const { return rawERI2C_; }
 
     // 2-index ERI
@@ -171,11 +183,9 @@ namespace ChronusQ {
 
     static void halfInverse2CenterERI(cqmatrix::Matrix<IntsT> &S); ///< forms S^{-1/2}, destroys S
 
-    void contract2CenterERI(); ///< forms S^{-1/2}(Q|ij)
+    void contract2CenterERI(bool useCompoundIndex = true); ///< forms S^{-1/2}(Q|ij)
 
-    virtual void clear() {
-      std::fill_n(ERI3J, this->nBasis()*NBNBRI, IntsT(0.));
-    }
+    virtual void clear() { eri3j_->clear(); }
 
     virtual void output(std::ostream &out, const std::string &s = "",
                         bool printFull = false) const {
@@ -216,7 +226,7 @@ namespace ChronusQ {
           malloc();
         }
 
-        MPIBCast(ERI3J,this->nBasis()*NBNBRI,root,comm);
+        MPIBCast(eri3j_->data(),this->nBasis()*NBNBRI,root,comm);
       }
 #endif
 
@@ -249,25 +259,13 @@ namespace ChronusQ {
         OutT* out, bool increment = false) const;
 
     void malloc() {
-      size_t NB3 = this->nBasis()*NBNBRI;
-      if (ERI3J) {
-        if (CQMemManager::get().getSize(ERI3J) == NB3)
-          return;
-        CQMemManager::get().free(ERI3J);
-      }
-      try { ERI3J = CQMemManager::get().template malloc<IntsT>(NB3); }
-      catch(...) {
-        std::cout << std::fixed;
-        std::cout << "Insufficient memory for the full RI-ERI tensor ("
-                  << (NB3/1e9) * sizeof(double) << " GB)" << std::endl;
-        std::cout << std::endl << CQMemManager::get() << std::endl;
-        CErr();
-      }
+      if (distributed_)
+        eri3j_ = std::make_shared<DistributedERI3J<IntsT>>(comm(),this->nBasis(), NBRI);
+      else
+        eri3j_ = std::make_shared<IncoreERI3J<IntsT>>(this->nBasis(), NBRI);
     }
 
-    virtual ~InCoreRITPI() {
-      if(ERI3J) CQMemManager::get().free(ERI3J);
-    }
+    virtual ~InCoreRITPI() {}
 
   }; // class InCoreRITPI
 
@@ -284,13 +282,13 @@ namespace ChronusQ {
 
     // Constructor
     InCoreAuxBasisRIERI() = delete;
-    InCoreAuxBasisRIERI(size_t nb):
-        InCoreRITPI<IntsT>(nb) {}
-    InCoreAuxBasisRIERI(size_t nb, size_t nbri):
-        InCoreRITPI<IntsT>(nb, nbri) {}
+    InCoreAuxBasisRIERI(size_t nb, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        InCoreRITPI<IntsT>(nb, comm, distributed, redistribute) {}
+    InCoreAuxBasisRIERI(size_t nb, size_t nbri, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        InCoreRITPI<IntsT>(nb, nbri, comm, distributed, redistribute) {}
     InCoreAuxBasisRIERI(size_t nb,
-        std::shared_ptr<BasisSet> auxBasisSet):
-        InCoreRITPI<IntsT>(nb, auxBasisSet->nBasis),
+        std::shared_ptr<BasisSet> auxBasisSet, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        InCoreRITPI<IntsT>(nb, auxBasisSet->nBasis, comm, distributed, redistribute),
         auxBasisSet_(auxBasisSet) {}
     InCoreAuxBasisRIERI( const InCoreAuxBasisRIERI& ) = default;
     template <typename IntsU>
@@ -362,6 +360,7 @@ namespace ChronusQ {
     std::vector<size_t> pivots_; // List of selected pivots
     std::vector<std::vector<libint2::Shell>> shellPrims_; // Mappings from primitives to CGTOs
     std::vector<IntsT*> coefBlocks_; // Mappings from primitives to CGTOs
+    bool updatePivots_ = true; // Update pivots
 
 
     // Libint
@@ -387,8 +386,8 @@ namespace ChronusQ {
     InCoreCholeskyRIERI(size_t nb, double tau,
         CHOLESKY_ALG alg = CHOLESKY_ALG::DYNAMIC_ERI, bool genContr = true,
         double sigma = 0.01, size_t maxQual = 1000, size_t minShrink = 10,
-        bool build4I = false):
-        InCoreRITPI<IntsT>(nb), alg_(alg), tau_(tau),
+        bool build4I = false, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
+        InCoreRITPI<IntsT>(nb, comm, distributed, redistribute), alg_(alg), tau_(tau),
         sigma_(sigma), maxQual_(maxQual), minShrinkCycle_(minShrink),
         generalContraction_(genContr), build4I_(build4I) {}
 
@@ -410,7 +409,10 @@ namespace ChronusQ {
     void setTau( double tau ) { tau_ = tau; }
     double tau() const { return tau_; }
     //std::vector<size_t> pivots() { return pivots_; }// List of selected pivots
+    void setPivots(const std::vector<size_t>& pivots) { pivots_ = pivots; }
     const std::vector<size_t>& pivots() const { return pivots_; }// List of selected pivots
+    void setUpdatePivots(bool updatePivots) { updatePivots_ = updatePivots; }
+    bool updatePivots() const { return updatePivots_; }
 
     // 4-index ERI direct access
     void setFourIndexERI(std::shared_ptr<InCore4indexTPI<IntsT>> eri4I) {
@@ -472,13 +474,19 @@ namespace ChronusQ {
 
     void computePivotRI(BasisSet &basisSet);
 
-    void computePivotRI3indexERILibint(BasisSet &basisSet);
+    void computePivotRI3indexERILibint(BasisSet &basisSet, bool useCompoundIndex = true);
+    void computePivotRI3indexERILibintMPI(BasisSet &basisSet, bool useCompoundIndex = true);
 
-    void computePivotRI3indexERILibcint(BasisSet &basisSet);
+    void computePivotRI3indexERILibcint(BasisSet &basisSet, bool useCompoundIndex = true);
+    void computePivotRI3indexERILibcintMPI(BasisSet &basisSet, bool useCompoundIndex = true);
 
     static void extractTwoCenterSubsetFrom3indexERI(
         const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
         const double* eri3J, size_t LD3J, double* S, size_t LDS,
+        bool upperTriOnly = true, bool useCompoundIndex = true);
+    static void extractTwoCenterSubsetFrom3indexERIMPI(
+        const std::vector<size_t> &pivots, size_t NBRI, size_t NB,
+        const DistributedERI3J<double>& eri3J, double* S, size_t LDS,
         bool upperTriOnly = true);
 
     static std::map<std::pair<size_t,size_t>, std::vector<size_t>>
@@ -511,8 +519,67 @@ namespace ChronusQ {
 
   }; // class InCoreCholeskyRIERI
 
+
+
   template <typename MatsT, typename IntsT>
-  class InCoreRITPIContraction : public InCore4indexTPIContraction<MatsT,IntsT> {
+  class RITPIContraction : public TPIContractions<MatsT,IntsT> {
+
+    template <typename MatsU, typename IntsU>
+    friend class RITPIContraction;
+
+  public:
+
+    // Constructors
+
+    RITPIContraction() = delete;
+    RITPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
+      TPIContractions<MatsT,IntsT>(tpi) {}
+
+    template <typename MatsU>
+    RITPIContraction(
+      const RITPIContraction<MatsU,IntsT> &other, int dummy = 0 ):
+      RITPIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+    template <typename MatsU>
+    RITPIContraction(
+      RITPIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
+      RITPIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+
+    RITPIContraction( const RITPIContraction &other ):
+      RITPIContraction(other, 0) {
+      this->contractSecond = other.contractSecond;
+    }
+    RITPIContraction( RITPIContraction &&other ):
+      RITPIContraction(std::move(other), 0) {
+      this->contractSecond = other.contractSecond;
+    }
+
+    // Computation interfaces
+    virtual void twoBodyContract(
+        MPI_Comm comm,
+        const bool,
+        std::vector<TwoBodyContraction<MatsT>>&,
+        EMPerturbation&) const;
+
+    virtual void JContract(
+        MPI_Comm,
+        TwoBodyContraction<MatsT>&) const = 0;
+
+    virtual void KContract(
+        MPI_Comm,
+        TwoBodyContraction<MatsT>&) const = 0;
+
+    virtual ~RITPIContraction() {}
+
+  }; // class RITPIContraction
+
+
+
+  template <typename MatsT, typename IntsT>
+  class InCoreRITPIContraction : public RITPIContraction<MatsT,IntsT> {
 
     template <typename MatsU, typename IntsU>
     friend class InCoreRITPIContraction;
@@ -523,7 +590,7 @@ namespace ChronusQ {
 
     InCoreRITPIContraction() = delete;
     InCoreRITPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
-      InCore4indexTPIContraction<MatsT,IntsT>(tpi) {}
+      RITPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>
     InCoreRITPIContraction(
@@ -553,6 +620,12 @@ namespace ChronusQ {
 
     virtual ~InCoreRITPIContraction() {}
 
-  }; // class TPInts
+  
+  private:
+
+    void KContract_real_impl(
+        MPI_Comm, const double *Xr, double *AXr, double *Ktemp) const;
+
+  }; // class InCoreRITPIContraction
 
 }; // namespace ChronusQ

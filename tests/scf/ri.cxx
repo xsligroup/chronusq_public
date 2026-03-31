@@ -45,7 +45,7 @@ TEST( RI_RHF, water_631Gd_cd ) {
 };
 
 // Water RHF/6-31G(d) traditional Cholesky test
-TEST( RI_RHF, water_631Gd_cd_traditional ) {
+TEST( RI_RHF_TRADITIONALCD, water_631Gd_cd_traditional ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/water_6-31Gd_cd_traditional",
              "water_6-31Gd_cd.bin.ref", 1e-6, 
@@ -90,7 +90,7 @@ TEST( RI_RHF, water_631Gd_cd_spanfactorreuse ) {
 };
 
 // H2S RHF/cc-pVDZ traditional Cholesky test
-TEST( RI_RHF, H2S_ccpVDZ_cd_traditional ) {
+TEST( RI_RHF_TRADITIONALCD, H2S_ccpVDZ_cd_traditional ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_traditional",
              "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
@@ -99,7 +99,7 @@ TEST( RI_RHF, H2S_ccpVDZ_cd_traditional ) {
 };
 
 // H2S RHF/cc-pVDZ traditional libcint Cholesky test
-TEST( RI_RHF, H2S_ccpVDZ_cd_traditional_libcint ) {
+TEST( RI_RHF_TRADITIONALCD, H2S_ccpVDZ_cd_traditional_libcint ) {
 
   CQSCFTEST( "scf/serial/ri_rhf/H2S_cc-pvdz_cd_traditional_libcint",
              "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
@@ -269,7 +269,7 @@ TEST( RI_RHF, PAR_water_631Gd_cd ) {
 };
 
 // Water RHF/6-31G(d) traditional Cholesky test
-TEST( RI_RHF, PAR_water_631Gd_cd_traditional ) {
+TEST( RI_RHF_TRADITIONALCD, PAR_water_631Gd_cd_traditional ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/water_6-31Gd_cd_traditional",
              "water_6-31Gd_cd.bin.ref", 1e-6, 
@@ -314,7 +314,7 @@ TEST( RI_RHF, PAR_water_631Gd_cd_spanfactorreuse ) {
 };
 
 // H2S RHF/cc-pVDZ traditional Cholesky test
-TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional ) {
+TEST( RI_RHF_TRADITIONALCD, PAR_H2S_ccpVDZ_cd_traditional ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_traditional",
              "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
@@ -323,7 +323,7 @@ TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional ) {
 };
 
 // H2S RHF/cc-pVDZ traditional libcint Cholesky test
-TEST( RI_RHF, PAR_H2S_ccpVDZ_cd_traditional_libcint ) {
+TEST( RI_RHF_TRADITIONALCD, PAR_H2S_ccpVDZ_cd_traditional_libcint ) {
 
   CQSCFTEST( "scf/parallel/ri_rhf/H2S_cc-pvdz_cd_traditional_libcint",
              "H2S_cc-pvdz_cd.bin.ref", 1e-6, 
@@ -505,7 +505,7 @@ TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 
 // EAUX + PAUX TEST, CONNECTOR:
 // do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux CONNECTOR for (ee|pp)
-TEST( RI_NEO_RHF, coh2_ccpvdz_pb4d_cde_cdp_connector ) {
+TEST( RI_NEO_RHF_CONNECTOR, coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 
   CQNEOSCFTEST( "scf/serial/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
              "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6, 
@@ -552,7 +552,7 @@ TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_4I_cdp_paux ) {
 
 // EAUX + PAUX TEST, CONNECTOR:
 // do CD for (ee|ee), do CD for (pp|pp), use elec + prot aux CONNECTOR for (ee|pp)
-TEST( RI_NEO_RHF, par_coh2_ccpvdz_pb4d_cde_cdp_connector ) {
+TEST( RI_NEO_RHF_CONNECTOR, par_coh2_ccpvdz_pb4d_cde_cdp_connector ) {
 
   CQNEOSCFTEST( "scf/parallel/ri_neo_rhf/coh2_ccpvdz_pb4d_cde_cdp_connector",
              "coh2_ccpvdz_pb4d_cde_cdp_connector.bin.ref", 1e-6, 

@@ -32,7 +32,7 @@
 #include <particleintegrals/multipoleints.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
 #include <particleintegrals/twopints/incoreasymmritpi.hpp>
-
+#include <particleintegrals/twopints/distributedritpi.hpp>
 namespace ChronusQ {
 
   enum TPI_TRANSFORMATION_ALG {
@@ -219,6 +219,7 @@ namespace ChronusQ {
 
     virtual void computeAOTwoE(BasisSet& basis, Molecule& mol,
       EMPerturbation& emPert) {
+      TPI->setSavFile(savFile);
       TPI->computeAOInts(basis, mol, emPert, ELECTRON_REPULSION,
                          options_);
     }
@@ -256,6 +257,15 @@ namespace ChronusQ {
 
   // A struct that stores integral options that are specific for RI/CD)
   struct CDRIIntsOptions {
+
+    static constexpr bool mpi_default =
+    #ifdef CQ_ENABLE_MPI
+        true;
+    #else
+        false;
+    #endif
+    ;
+
     CHOLESKY_ALG CDalg = CHOLESKY_ALG::DYNAMIC_ERI; ///< Cholesky algorithm
     double CDRI_thresh = 1e-4; ///< Cholesky RI threshold
     double CDRI_sigma = 1e-2; ///< Cholesky RI sigma for span factor algorithm
@@ -267,6 +277,11 @@ namespace ChronusQ {
     bool CDRI_reportError = false; /// < Whether to report the error of approximate (ee|pp) comparing with exact 4-index (ee|pp) 
     bool CDRI_combineBasisTruncate = false;
     double CDRI_combineBasisThresh = 0.0;
+    
+    bool CDRI_distributed = mpi_default;  ///< Whether to distribute the 3-index ERI across MPI processes
+    bool CDRI_redistribute = false; ///< Whether to redistribute the 3-index ERI across MPI processes
+    bool CDRI_asymmDistributed = mpi_default; ///< Whether to distribute the 3-index ERI across MPI processes for asymmetric integral
+    bool CDRI_asymmRedistribute = false; ///< Whether to redistribute the 3-index ERI across MPI processes for asymmetric integral
   };
 
 

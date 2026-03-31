@@ -488,6 +488,20 @@ void SingleSlater<MatsT, IntsT>::initializeSCF() {
   } else {
     this->moEigenvalues = {this->eps1};
   }
+
+  // Redistribution of ERI3J before SCF
+  if (auto tpi = std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->aoints_->TPI)) {
+    if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(tpi->eri3j())) {
+      //prettyPrintSmart(std::cout, "Partial ERI3J (rank " + std::to_string(MPIRank(comm)) + ")",
+      //                 eri3j->data(), eri3j->nRIBasis(), eri3j->localSize()*eri3j->nRIBasis(), eri3j->nRIBasis());
+      if (tpi->redistribute()) {
+        std::cout << "Redistributing ERI3J to be split over auxiliary basis functions" << std::endl;
+        eri3j->redistributeToSplitNBRI();
+        //prettyPrintSmart(std::cout, "Partial ERI3J (rank " + std::to_string(MPIRank(comm)) + ")",
+        //                 eri3j->data(), eri3j->localSize(), eri3j->nBasis()*eri3j->nBasis(), eri3j->nBasis());
+      }
+    }
+  }
 }
 
 template<typename MatsT, typename IntsT>

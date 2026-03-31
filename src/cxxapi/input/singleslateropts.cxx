@@ -60,7 +60,8 @@ namespace ChronusQ {
       "ATOMICX2C",
       "SNSOTYPE",
       "IGNOREVPP",
-      "DKSTYPE"
+      "DKSTYPE",
+      "ONECENTERK"
     };
 
     // Specified keywords
@@ -85,7 +86,8 @@ namespace ChronusQ {
     // Allowed keywords
     std::vector<std::string> allowedKeywords = {
       "REFERENCE",
-      "IGNOREPROTONTWOBODY"
+      "IGNOREPROTONTWOBODY",
+      "ONECENTERK"
     };
 
     // Specified keywords
@@ -1077,6 +1079,9 @@ namespace ChronusQ {
     // For NEO (and in particular post-NEO-HF methods)
     OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + ".IGNOREPROTONTWOBODY"));
 
+    // For RI J/K contraction with 3-index ERI
+    OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + ".ONECENTERK"));
+
   }
 
   /**
@@ -1533,7 +1538,11 @@ namespace ChronusQ {
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCoreRITPIContraction<double,double>>(tpi_typed);
+        if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(tpi_typed->eri3j())) {
+          p->TPI = std::make_shared<DistributedRITPIContraction<double,double>>(tpi_typed);
+        } else {
+          p->TPI = std::make_shared<InCoreRITPIContraction<double,double>>(tpi_typed);
+        }
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
@@ -1546,6 +1555,11 @@ namespace ChronusQ {
       }
       
       p->TPI->printContractionTiming = scfControls.printContractionTiming;
+
+      if (hamiltonianOptions.oneCenterK) {
+        p->TPI->setOneCenterK(true);
+        p->TPI->setMapCen2BfSt(basis.mapCen2BfSt);
+      }
     
     } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
 
@@ -1558,7 +1572,11 @@ namespace ChronusQ {
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
 
-        p->TPI = std::make_shared<InCoreRITPIContraction<dcomplex,double>>(tpi_typed);
+        if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(tpi_typed->eri3j())) {
+          p->TPI = std::make_shared<DistributedRITPIContraction<dcomplex,double>>(tpi_typed);
+        } else {
+          p->TPI = std::make_shared<InCoreRITPIContraction<dcomplex,double>>(tpi_typed);
+        }
 
       } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
@@ -1571,6 +1589,11 @@ namespace ChronusQ {
       }
       
       p->TPI->printContractionTiming = scfControls.printContractionTiming;
+
+      if (hamiltonianOptions.oneCenterK) {
+        p->TPI->setOneCenterK(true);
+        p->TPI->setMapCen2BfSt(basis.mapCen2BfSt);
+      }
     
     } else if (auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss)) {
 
