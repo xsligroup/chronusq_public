@@ -416,7 +416,7 @@ namespace ChronusQ {
       nERI = 16;
       buffAll = CQMemManager::get().malloc<double>(2*nERI*buffN4*nThreads);
       cacheAll = CQMemManager::get().malloc<double>(cache_size*nThreads);
-      std::cout << " cache_size = " << cache_size << std::endl;
+      //std::cout << " cache_size = " << cache_size << std::endl;
       
       SchwarzGauge = CQMemManager::get().malloc<double>(nShell*nShell);
       memset(SchwarzGauge,0,nShell*nShell*sizeof(double));

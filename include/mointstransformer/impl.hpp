@@ -328,7 +328,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
     MatsT* MOTPI, const std::string& moType) {
   
   auto off_sizes = parseMOType(moType);
-  directTransformTPI(pert, MOTPI, off_sizes);
+  directTransformTPIBatch(pert, MOTPI, off_sizes);
 
 }
 

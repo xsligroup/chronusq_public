@@ -60,7 +60,7 @@ class ShellBlockMO {
   void transform(const cqmatrix::Matrix<MatsT>& in, 
       const cqmatrix::Matrix<MatsT>& shell_mu_block_mo,
       const cqmatrix::Matrix<MatsT>& shell_nu_block_mo,
-      cqmatrix::Matrix<MatsT>& intermeidate,
+      cqmatrix::Matrix<MatsT>& intermediate,
       cqmatrix::Matrix<MatsT>& out, 
       const std::pair<size_t, size_t>& pOff_size,
       const std::pair<size_t, size_t>& qOff_size,
@@ -73,27 +73,52 @@ class ShellBlockMO {
     size_t nMu = shell_mu_block_mo.nRows();
     size_t nNu = shell_nu_block_mo.nRows();
 
-    // intermeidate(nu, p) = ConjTrans(in(mu, nu)) x C(mu, p)
+    // intermediate(nu, p) = ConjTrans(in(mu, nu)) x C(mu, p)
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
         nNu, np, nMu, MatsT(1.), in.pointer(), nMu, shell_mu_block_mo.pointer() + pOff * nMu, nMu, 
-        MatsT(0.), intermeidate.pointer(), nNu);
+        MatsT(0.), intermediate.pointer(), nNu);
     
     MatsT scale = increment ? MatsT(1.0) : MatsT(0.0);
-    // out(p, q) = ConjTrans(intermeidate(nu, p)) x C(nu, q)
+    // out(p, q) = ConjTrans(intermediate(nu, p)) x C(nu, q)
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
-        np, nq, nNu, MatsT(1.), intermeidate.pointer(), nNu, shell_nu_block_mo.pointer() + qOff * nNu, nNu, 
+        np, nq, nNu, MatsT(1.), intermediate.pointer(), nNu, shell_nu_block_mo.pointer() + qOff * nNu, nNu,
         scale, out.pointer(), np);
   }
 
   // major interfaces
   virtual void genSymmDenLLMS(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
-      cqmatrix::PauliSpinorMatrices<MatsT>& symmDenLLMS) const = 0;  
+      cqmatrix::PauliSpinorMatrices<MatsT>& symmDenLLMS) const = 0;
 
-  virtual void transformLL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
+  virtual void genSymmDenSS(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
+      cqmatrix::PauliSpinorMatrices<MatsT>& symmDenSS) const {};
+
+  virtual void genDenLSpmDenSL(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
+      cqmatrix::PauliSpinorMatrices<MatsT>& denLSpmDenSL) const {};
+
+  virtual void transformLL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli,
       size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat, 
       const std::pair<size_t, size_t>& pOff_size,
       const std::pair<size_t, size_t>& qOff_size, 
       bool increment = false) const = 0;
+
+  virtual void transformSS(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli,
+                   size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat,
+                   const std::pair<size_t, size_t>& pOff_size,
+                   const std::pair<size_t, size_t>& qOff_size,
+                   bool increment = false) const {};
+
+  virtual void transformSL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli,
+                           size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat,
+                           const std::pair<size_t, size_t>& pOff_size,
+                           const std::pair<size_t, size_t>& qOff_size,
+                           bool increment = false) const {};
+
+  virtual void transformLS(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli,
+                           size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat,
+                           const std::pair<size_t, size_t>& pOff_size,
+                           const std::pair<size_t, size_t>& qOff_size,
+                           bool increment = false) const {};
+
 }; // class ShellBlockMO
 
 template <typename MatsT>
@@ -109,7 +134,7 @@ class OneCShellBlockMO: public ShellBlockMO<MatsT> {
   OneCShellBlockMO(OneCShellBlockMO &&) = delete;
   OneCShellBlockMO(const cqmatrix::Matrix<MatsT>& mo,
       const std::vector<size_t>& shellSizes,
-      size_t maxTransfromSize) {
+      size_t maxTransformSize) {
     
     shell_block_mo_.reserve(shellSizes.size());
     const MatsT* mo_ptr = mo.pointer();
@@ -123,7 +148,7 @@ class OneCShellBlockMO: public ShellBlockMO<MatsT> {
       maxShellSize = std::max(maxShellSize, shSize);
     }
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(maxShellSize, maxTransfromSize);
+      interSCR_.emplace_back(maxShellSize, maxTransformSize);
       pauliSCR_.emplace_back(maxShellSize, false, false);
     }
   }
@@ -136,7 +161,7 @@ class OneCShellBlockMO: public ShellBlockMO<MatsT> {
     this->computeAODensityFromMO(p, q, shell_block_mo_[shell_nu], shell_block_mo_[shell_mu], pauliSCR.S());
     MatrixAXPY('T', MatsT(1.), pauliSCR.S(), symmDenLLMS.S()); 
   }
-  
+
   void transformLL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
       size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat, 
       const std::pair<size_t, size_t>& pOff_size,
@@ -162,7 +187,7 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
   TwoCShellBlockMO(TwoCShellBlockMO &&) = delete;
   TwoCShellBlockMO(const cqmatrix::Matrix<MatsT>& mo,
       const std::vector<size_t>& shellSizes, 
-      size_t maxTransfromSize) {
+      size_t maxTransformSize) {
     shell_block_mo_.reserve(shellSizes.size());
     const MatsT* mo_ptr = mo.pointer();
     size_t nAO = mo.nRows();
@@ -180,7 +205,7 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
       maxShellSize = std::max(maxShellSize, shSize1C);
     } 
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(maxShellSize * 2, maxTransfromSize);
+      interSCR_.emplace_back(maxShellSize * 2, maxTransformSize);
       spinorSCR_.emplace_back(maxShellSize * 2);  
       pauliSCR_.emplace_back(maxShellSize, false, false);
     }
@@ -206,7 +231,7 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
     
     MatrixAXPY('T', MatsT(1.), pauliSCR.S(), symmDenLLMS.S());
   }
-  
+
   void transformLL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
       size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat, 
       const std::pair<size_t, size_t>& pOff_size,
@@ -215,13 +240,13 @@ class TwoCShellBlockMO: public ShellBlockMO<MatsT> {
     
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
-    auto& intermeidate = interSCR_[thread_id];
+    auto& intermediate = interSCR_[thread_id];
     
     spinorSCR.resize(2 * pauli.nRows(), 2 * pauli.nColumns());
     pauli.spinGather(spinorSCR);
     
     this->transform(spinorSCR, shell_block_mo_[shell_mu], shell_block_mo_[shell_nu],
-        intermeidate, mat, pOff_size, qOff_size, increment);
+                    intermediate, mat, pOff_size, qOff_size, increment);
   }
 
 }; // class TwoCShellBlockMO
@@ -241,7 +266,7 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
   FourCShellBlockMO(FourCShellBlockMO &&) = delete;
   FourCShellBlockMO(const cqmatrix::Matrix<MatsT>& mo,
       const std::vector<size_t>& shellSizes, 
-      size_t maxTransfromSize) {
+      size_t maxTransformSize) {
     const MatsT* mo_ptr = mo.pointer();
     size_t nAO = mo.nRows();
     size_t nAO1C = nAO / 4;
@@ -263,7 +288,7 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     } 
     
     for (auto i = 0ul; i < GetNumThreads(); ++i) {
-      interSCR_.emplace_back(maxShellSize * 2, maxTransfromSize);
+      interSCR_.emplace_back(maxShellSize * 2, maxTransformSize);
       spinorSCR_.emplace_back(maxShellSize * 2);  
       pauliSCR_.emplace_back(maxShellSize, true, true);
     }
@@ -287,7 +312,10 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     spinorSCR.spinScatter(pauliSCR, false, false);
     
     MatrixAXPY('T', MatsT(1.), pauliSCR.S(), symmDenLLMS.S()); 
+    // MatrixAXPY('N', MatsT(1.), symmDenLLMS.S(), symmDenLLMS.S()); 
+
   } // genSymmDenLLMS
+
 
   void genSymmDenSS(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
       cqmatrix::PauliSpinorMatrices<MatsT>& symmDenSS) const {
@@ -319,21 +347,21 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
     auto& pauliSCR = pauliSCR_[thread_id];
-    
-    this->computeAODensityFromMO(p ,q, shell_block_large_mo_[shell_mu], shell_block_small_mo_[shell_nu], spinorSCR); 
+
+    this->computeAODensityFromMO(p, q, shell_block_small_mo_[shell_mu], shell_block_large_mo_[shell_nu], spinorSCR);
     size_t nNu = spinorSCR.nRows() / 2;
     size_t nMu = spinorSCR.nColumns() / 2;
     denLSpmDenSL.resize(nNu, nMu);
     spinorSCR.spinScatter(denLSpmDenSL, true, true);
-    
-    this->computeAODensityFromMO(p ,q, shell_block_small_mo_[shell_nu], shell_block_large_mo_[shell_mu], spinorSCR); 
+
+    this->computeAODensityFromMO(p, q, shell_block_large_mo_[shell_nu], shell_block_small_mo_[shell_mu], spinorSCR);
     pauliSCR.resize(nMu, nNu);
     spinorSCR.spinScatter(pauliSCR, true, true);
-    
-    MatrixAXPY('T', MatsT(-1.), pauliSCR.S(), denLSpmDenSL.S()); 
-    MatrixAXPY('T', MatsT(1.), pauliSCR.Z(), denLSpmDenSL.Z()); 
-    MatrixAXPY('T', MatsT(1.), pauliSCR.Y(), denLSpmDenSL.Y()); 
-    MatrixAXPY('T', MatsT(1.), pauliSCR.X(), denLSpmDenSL.X()); 
+
+    MatrixAXPY('T', MatsT(-1.), pauliSCR.S(), denLSpmDenSL.S());
+    MatrixAXPY('T', MatsT(1.), pauliSCR.Z(), denLSpmDenSL.Z());
+    MatrixAXPY('T', MatsT(1.), pauliSCR.Y(), denLSpmDenSL.Y());
+    MatrixAXPY('T', MatsT(1.), pauliSCR.X(), denLSpmDenSL.X());
   }
   
   void transformLL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
@@ -343,11 +371,21 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
       bool increment = false) const override {
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
-    auto& intermeidate = interSCR_[thread_id];
+    auto& intermediate = interSCR_[thread_id];
     spinorSCR.resize(2 * pauli.nRows(), 2 * pauli.nColumns());
     pauli.spinGather(spinorSCR);
+
+    // void transform(const cqmatrix::Matrix<MatsT>& in, 
+    // const cqmatrix::Matrix<MatsT>& shell_mu_block_mo,
+    // const cqmatrix::Matrix<MatsT>& shell_nu_block_mo,
+    // cqmatrix::Matrix<MatsT>& intermediate,
+    // cqmatrix::Matrix<MatsT>& out, 
+    // const std::pair<size_t, size_t>& pOff_size,
+    // const std::pair<size_t, size_t>& qOff_size,
+    // bool increment = false) const
+
     this->transform(spinorSCR, shell_block_large_mo_[shell_mu], shell_block_large_mo_[shell_nu],
-        intermeidate, mat, pOff_size, qOff_size, increment);
+                    intermediate, mat, pOff_size, qOff_size, increment);
   }
 
   void transformLS(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
@@ -357,11 +395,11 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
       bool increment = false) const {
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
-    auto& intermeidate = interSCR_[thread_id];
+    auto& intermediate = interSCR_[thread_id];
     spinorSCR.resize(2 * pauli.nRows(), 2 * pauli.nColumns());
     pauli.spinGather(spinorSCR);
     this->transform(spinorSCR, shell_block_large_mo_[shell_mu], shell_block_small_mo_[shell_nu],
-        intermeidate, mat, pOff_size, qOff_size, increment);
+                    intermediate, mat, pOff_size, qOff_size, increment);
   }
 
   void transformSL(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
@@ -371,11 +409,11 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
       bool increment = false) const {
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
-    auto& intermeidate = interSCR_[thread_id];
+    auto& intermediate = interSCR_[thread_id];
     spinorSCR.resize(2 * pauli.nRows(), 2 * pauli.nColumns());
     pauli.spinGather(spinorSCR);
     this->transform(spinorSCR, shell_block_small_mo_[shell_mu], shell_block_large_mo_[shell_nu],
-        intermeidate, mat, pOff_size, qOff_size, increment);
+                    intermediate, mat, pOff_size, qOff_size, increment);
   }
 
   void transformSS(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
@@ -385,11 +423,11 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
       bool increment = false) const {
     size_t thread_id = GetThreadID();
     auto& spinorSCR = spinorSCR_[thread_id];
-    auto& intermeidate = interSCR_[thread_id];
+    auto& intermediate = interSCR_[thread_id];
     spinorSCR.resize(2 * pauli.nRows(), 2 * pauli.nColumns());
     pauli.spinGather(spinorSCR);
     this->transform(spinorSCR, shell_block_small_mo_[shell_mu], shell_block_small_mo_[shell_nu],
-        intermeidate, mat, pOff_size, qOff_size, increment);
+                    intermediate, mat, pOff_size, qOff_size, increment);
   }
 }; // class FourCShellBlockMO
 

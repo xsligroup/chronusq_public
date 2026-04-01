@@ -1157,7 +1157,7 @@ namespace ChronusQ {
         else if( MO2dims[0] != NB or MO2dims[1] != NB ) {
 
           std::cout << "    * Incompatible " << prefix << "MO2:";
-          std::cout << "  Recieved (" << MO2dims[0] << "," << MO2dims[1] << ")"
+          std::cout << "  Received (" << MO2dims[0] << "," << MO2dims[1] << ")"
             << " :";
           std::cout << "  Expected (" << NB << "," << NB << ")";
           CErr("Wrong number of MO coefficients!",std::cout);

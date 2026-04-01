@@ -108,25 +108,22 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
   ProgramTimer::tick("MOINTSTRANSFORM OPI TRANS");
   if (MPIRank(this->comm) == 0) {
     mointsTF->transformHCore(pert, hCore_tu.pointer(), "tu", false, 'I');
-    // mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", cacheHalfTransTPI);
-    // ERI_tuvw.output(std::cout, "OLD MO TPI", true);
-    // ERI_tuvw.output(std::cout, "NEW MO TPI", true);
-    //CErr("STOP HERE");
   }
   size_t nCorrO2 = nCorrO * nCorrO;
-  size_t nCorrO4 = nCorrO2 * nCorrO2;
-
-  
 #ifdef CQ_ENABLE_MPI
   MPIBCast(hCore_tu.pointer(), nCorrO2, 0, this->comm);
 #endif
   ProgramTimer::tock("MOINTSTRANSFORM OPI TRANS");
 
-  // MPIBCast(ERI_tuvw.pointer(), nCorrO4, 0, this->comm);
-  
+
   ProgramTimer::tick("MOINTSTRANSFORM TPI TRANS");
+  // MO: This is for the TPI_direct_full which is prob the goal
   mointsTF->directTransformTPI(pert, ERI_tuvw.pointer(), "tuvw");
+  // MO: This uses the old TPI_SSFOCK same as MCSCF
+  // mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", false);
   ProgramTimer::tock("MOINTSTRANSFORM TPI TRANS");
+
+  // ERI_tuvw.output(std::cout, "TPI", true);
   
   // for diagonal elements 
   // can also form this using direct transformation

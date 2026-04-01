@@ -150,7 +150,7 @@ namespace ChronusQ {
       nBatch  = (ns - 1) / nsMax + 1;
     }
 
-    std::cout << "* Batch over last indice s: with maxNs =  " << nsMax << std::endl;
+    std::cout << "* Batch over last indices: with maxNs =  " << nsMax << std::endl;
 
     size_t npqr = np * nq * nr; 
 
@@ -367,20 +367,16 @@ namespace ChronusQ {
           
           if (not is1C) *pq1PDMs.back() = SCR.template spinScatter<MatsT>(is4C, is4C); 
         
-// DEBUG DENSITY***************************        
-//          cqmatrix::Matrix<MatsT> denSCR = pq1PDMs.back()->S();
-//          denSCR += denSCR.T();
-//          denSCR.output(std::cout, "p = " + std::to_string(p) + ", q = " + std::to_string(q), true);  
-// DEBUG DENSITY***************************    
         }
         
+        // First half transformation trhough batchGD in SingleSlater FokcBuilder
+        // Derivatives taken care of via FocklBuilder
         // do contraction to get half-transformed integrals
         if (is1C) ss_.fockBuilder->formRawGDInBatches(ss_, pert, false, 0., false, pq1PDMs, pqMOTPIs, dummy, dummy);
         else      ss_.fockBuilder->formRawGDInBatches(ss_, pert, false, 0., false, pq1PDMs, dummy, dummy, pqMOTPIs);
         
         // copy over to SCR
         for (auto i = 0ul; i < NJobToDo; i++) { 
-           
           if (not is1C) {
             SCR = pqMOTPIs[i]->template spinGather<MatsT>();
             MOTPIpq_ptr = SCR.pointer(); 
@@ -433,6 +429,7 @@ namespace ChronusQ {
     
     } else if (delta == KRONECKER_DELTA_RS or delta == KRONECKER_DELTA_PQ_RS) {
 
+      // Second transformation 
       for (auto r = 0ul; r < nr; r++) {
 
         auto rMO = ss_.mo[0].pointer() + (r + roff) * nAO;      

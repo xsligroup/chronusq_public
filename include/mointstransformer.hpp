@@ -168,8 +168,8 @@ public:
   void directTransformTPI(EMPerturbation & pert, MatsT* MOTPI,
     const std::string & moType = "pqrs");
   
-  void directTransformTPI(EMPerturbation & pert,
-    MatsT* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes);
+  void directTransformTPIBatch(EMPerturbation & pert,
+    MatsT* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const;
  
  // Helper function used during transformation 
   std::shared_ptr<OnePInts<MatsT>> formAOHCore(EMPerturbation &, 
