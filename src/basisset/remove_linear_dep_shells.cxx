@@ -24,6 +24,7 @@
 #include <basisset/remove_linear_dep_shells.hpp>
 #include <particleintegrals/onepints.hpp>
 #include <physcon.hpp>
+#include <optional>
 
 //#define DEBUG_BASIS_LIN_DEP
 
