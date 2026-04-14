@@ -1,0 +1,25 @@
+#  Molecule Specification
+[Molecule]
+charge =0
+mult = 4
+geom:
+ N       0      0       0
+
+#
+#  Job Specification
+#
+[QM]
+reference = 2CHF
+job = SCF
+
+[BASIS]
+basis = sto-3g 
+
+[SCF]
+guess=readmo
+alg=skip
+
+[MISC]
+mem = 200 MB 
+nsmp = 1 
+

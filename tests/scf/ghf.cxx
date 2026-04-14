@@ -42,6 +42,16 @@ TEST( GHF, B_swap_GHF_sto3G ) {
 
 };
 
+// N GHF/sto-3g with UHF guess (READMO)
+TEST( GHF, N_STO3G_GHF_UHFGuess_READMO ) {
+
+  CQSCFTEST( "scf/serial/ghf/N_STO-3G_GHF_READMO",
+    "N_STO-3G_GHF_UHFGuess_READMO.bin.ref",1e-8,
+    false, false, false, false, false, true, false,
+    "N_STO-3G_UHF.scr.bin" );
+
+};
+
 #ifdef _CQ_DO_PARTESTS
 
 

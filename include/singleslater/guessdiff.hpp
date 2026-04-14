@@ -607,7 +607,12 @@ namespace ChronusQ {
          // UHF->2c
          } else if( scrRefType == RefType::isURef ){
 
-           convert1CUto2CU(motmp,this->mo);
+          //More information is needed for open-shell systems
+          size_t nOccA,nOccB;
+          scrBin.readData("REF/NOCCA",&nOccA);
+          scrBin.readData("REF/NOCCB",&nOccB); 
+
+          convert1CUto2CU(motmp,this->mo,nOccA,nOccB);
 
          } else {
             CErr("Initial Guess MO Conversion for 2c Failed");
@@ -688,22 +693,71 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO,
+      std::vector<cqmatrix::Matrix<MatsT>>& outputMO, size_t nA, size_t nB) {
 
     size_t NB = outputMO[0].nRows();
     size_t scrMOSize = inputMO[0].nRows();
 
-    size_t smallMO=0; // UHF index
+    size_t numUnpaired = nA-nB;
+    size_t numPairedMOs = 2*nB;
+    size_t numOccMOs = numPairedMOs + numUnpaired;
+    size_t plusDisplacedBetas = numOccMOs + numUnpaired;
+    //std::cout << "NB, numUnpaired: " << NB << ", " << numUnpaired << std::endl;
 
     for( size_t iMO=0; iMO<NB; iMO++ ){
 
-      smallMO = iMO%2==0 ? iMO/2 : (iMO-1)/2;
+      size_t smallMO = 0; // Which UHF MO to copy
+      bool isAlpha = true; // Copy alpha or beta MO from UHF?
 
-      // alpha spinor is even and beta is odd
-      if( iMO%2 == 0 )
+      // Fills in 2c MOs as pairs: one for alpha and one for beta occupieds
+      if( iMO < numPairedMOs ){
+        //std::cout << "inPaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
+
+        smallMO = iMO/2; // Does floor function here for beta orbitals
+        isAlpha = (iMO % 2 == 0); // even alpha and odd beta
+
+      // Handles unpaired electrons (will not reach for closed shell)    
+      } else if( iMO < numOccMOs ){
+        //std::cout << "inUnpaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
+
+        // Assume each 2c MO is alpha for unpaireds
+        smallMO = nB + (iMO - numPairedMOs);
+        isAlpha = true;
+
+      // Handles those beta virtuals that pair to the unoccupied alphas
+      } else if( iMO < plusDisplacedBetas ){
+        //std::cout << "inUnpairedBetas: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
+
+        // Assume each 2c MO is alpha for unpaireds
+        smallMO = nB + (iMO - plusDisplacedBetas);
+        isAlpha = false;
+
+      // Handles virtuals
+      } else {
+        //std::cout << "inVirtuals: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
+
+        // alpha starts at nA and beta starts at nB
+        size_t shiftedVirt = iMO - plusDisplacedBetas;
+
+        if( shiftedVirt % 2 == 0 ){
+          // alpha virtual
+          isAlpha = true;
+          smallMO = nA + (shiftedVirt/2);
+        } else {
+          // beta virtual
+          isAlpha = false;
+          smallMO = nB + (shiftedVirt/2);
+        }
+
+      }
+      
+      // Alpha block is upper part of 2c spinor and beta block is lower
+      if( isAlpha )
         SetMat('N',scrMOSize,1,MatsT(1.),inputMO[0].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO,NB);
-      else if( iMO%2 != 0 )
+      else{
         SetMat('N',scrMOSize,1,MatsT(1.),inputMO[1].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO+NB/this->nC,NB);
+      }
 
     }
 

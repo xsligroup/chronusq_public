@@ -32,8 +32,6 @@ namespace ChronusQ {
     if( ss->savFile.exists() ){
 
       std::string prefix = "/REF/";
-      bool type;
-      type = ssOpt.refOptions.refType == RefType::isRRef;
 
       int ksHash = int(ssOpt.refOptions.isKSRef);
       ss->savFile.safeWriteData(prefix + "KSREF", &ksHash, {1});
@@ -42,6 +40,15 @@ namespace ChronusQ {
       ss->savFile.safeWriteData(prefix + "REFTYPE", &refT, {1});
 
       ss->savFile.safeWriteData(prefix + "NCOMP", &ssOpt.refOptions.nC, {1});
+
+      ss->savFile.safeWriteData(prefix + "NOCC", &ss->nO, {1});
+      ss->savFile.safeWriteData(prefix + "NVIRT", &ss->nV, {1});
+      if( ssOpt.refOptions.nC == 1 ){
+        ss->savFile.safeWriteData(prefix + "NOCCA", &ss->nOA, {1});
+        ss->savFile.safeWriteData(prefix + "NOCCB", &ss->nOB, {1});
+        ss->savFile.safeWriteData(prefix + "NVIRTA", &ss->nVA, {1});
+        ss->savFile.safeWriteData(prefix + "NVIRTB", &ss->nVB, {1});
+      }
 
       int iCSHash = int(ssOpt.refOptions.iCS);
       ss->savFile.safeWriteData(prefix + "ISCS", &iCSHash, {1});
