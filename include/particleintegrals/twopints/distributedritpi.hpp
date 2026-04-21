@@ -68,6 +68,15 @@ class DistributedRITPIContraction : public RITPIContraction<MatsT, IntsT> {
     void KContractSplitNBRI(MPI_Comm comm, TwoBodyContraction<MatsT>& C, const std::shared_ptr<DistributedERI3J<IntsT>>& eri3j) const;
     
     void KCoefContract(MPI_Comm, size_t nO, MatsT *X, MatsT *AX) const;
+    void KCoefContractSplitNBRI(MPI_Comm, size_t nO, MatsT *X, MatsT *AX, const std::shared_ptr<DistributedERI3J<IntsT>>& eri3j) const;
+
+    bool canUseKCoef() const {
+      InCoreRITPI<IntsT> &ritpi = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints());
+      auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(ritpi.eri3j());
+      if (eri3j && eri3j->distributionLayout() == DistributionLayout::SplitNB)
+        return false;
+      return true;
+    }
 
     virtual ~DistributedRITPIContraction() {}
 

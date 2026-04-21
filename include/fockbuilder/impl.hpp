@@ -152,37 +152,83 @@ namespace ChronusQ {
     if(ss.TPI->printContractionTiming)
         std::cout << "      " << std::string(ss.particle.charge>0 ? "Protonic" : "Electronic") << " Subsystem Symm-Contraction Timing: " << std::endl;
 
+    auto beginContract = tick();
+
+    auto distributed_ritpi = std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT, IntsT>>(ss.TPI);
     // Determine how many (if any) exchange terms to calculate
     if( std::abs(xHFX) > 1e-12 and not increment and ss.nC == 1 and
-        // (ss.scfControls.guess != SAD or (ss.orbitalModifier and std::dynamic_pointer_cast<OrbitalOptimizer<MatsT>>(ss.modifyOrbitals)->scfConv.nSCFIter != 0) ) and
-        std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI) and ss.denEqCoeff_) {
-      ROOT_ONLY(ss.comm);
-      // Use Coefficients to do K contraction
-      auto ritpi = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
+        (std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI) or
+         (distributed_ritpi && distributed_ritpi->canUseKCoef()))) {
 
-      cqmatrix::Matrix<MatsT> AAblock(NB);
-      
+      auto ritpi_incore = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
+      auto ritpi_dist   = std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT, IntsT>>(ss.TPI);
       auto riKCoeffBegin = tick();
-      ritpi->KCoefContract(ss.comm, ss.nOA, ss.mo[0].pointer(), AAblock.pointer());
-      if(ss.iCS) {
-        
-        for (auto i = 0ul; i < nBatch; i++) 
-          *exchangeMatrices[i] = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock);
-      
-      } else {
-        
-        cqmatrix::Matrix<MatsT> BBblock(NB);
-        if (ss.nOB > 0){
-          ritpi->KCoefContract(ss.comm, ss.nOB, ss.mo[1].pointer(), BBblock.pointer());
+      bool isRoot = (MPIRank(ss.comm) == 0);
+
+      const bool useCholeskyMOs = !ss.denEqCoeff_;
+      //const bool useCholeskyMOs = true;
+      decltype(ss.getCholeskyMOs()) choleskyMOs;
+      if (useCholeskyMOs && isRoot)
+      choleskyMOs = ss.getCholeskyMOs();
+
+      // Contract one spin block: handles MO selection, broadcast, dispatch
+      auto contractSpin = [&](int spin) -> cqmatrix::Matrix<MatsT> {
+      size_t nO = 0;
+      MatsT* mo = nullptr;
+      if (isRoot) {
+        if (useCholeskyMOs) {
+          nO = choleskyMOs[spin]->nColumns();
+          mo = choleskyMOs[spin]->pointer();
         } else {
-          BBblock.clear();
+          nO = (spin == 0) ? ss.nOA : ss.nOB;
+          mo = ss.mo[spin].pointer();
         }
-        
-        for (auto i = 0ul; i < nBatch; i++) 
-          *exchangeMatrices[i] = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
       }
-      if(ss.TPI->printContractionTiming)
-          std::cout << "        " << std::left << std::setw(38) << "K-Coeff-Contraction duration = " << tock(riKCoeffBegin) << " s" << std::endl;
+
+      cqmatrix::Matrix<MatsT> Kblock(NB);
+
+      if (ritpi_incore) {
+        if (isRoot && nO > 0)
+          ritpi_incore->KCoefContract(ss.comm, nO, mo, Kblock.pointer());
+        else
+          Kblock.clear();
+      } else {
+      #ifdef CQ_ENABLE_MPI
+        MPIBCast(&nO, 1, 0, ss.comm);
+      #endif
+        if (nO > 0) {
+          auto* mo_buf = CQMemManager::get().malloc<MatsT>(NB * nO);
+          if (isRoot) std::copy_n(mo, NB * nO, mo_buf);
+      #ifdef CQ_ENABLE_MPI
+          MPIBCast(mo_buf, NB * nO, 0, ss.comm);
+      #endif
+          ritpi_dist->KCoefContract(ss.comm, nO, mo_buf, Kblock.pointer());
+          CQMemManager::get().free(mo_buf);
+        } else {
+          Kblock.clear();
+        }
+      }
+      return Kblock;
+      };
+
+      auto AAblock = contractSpin(0);
+      auto BBblock = ss.iCS ? cqmatrix::Matrix<MatsT>(NB) : contractSpin(1);
+
+      // Only root assembles spin-block exchange matrices
+      if (isRoot) {
+      for (auto i = 0ul; i < nBatch; i++)
+        *exchangeMatrices[i] = ss.iCS
+          ? cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock)
+          : cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
+      }
+
+      if (ss.TPI->printContractionTiming) {
+        int wRank = 0, wSize = 1;
+#ifdef CQ_ENABLE_MPI
+        if (ritpi_dist) { MPI_Comm_rank(ss.comm, &wRank); MPI_Comm_size(ss.comm, &wSize); }
+#endif
+        ss.TPI->printTiming("K-Coeff-Contraction duration (s): ", tock(riKCoeffBegin), ss.comm, wRank, wSize);
+      }
 
     } else if(computeExchange) {
 
@@ -213,8 +259,6 @@ namespace ChronusQ {
       }
 
     }
-
-    auto beginContract = tick();
 
     ss.TPI->twoBodyContract(ss.comm, contract, pert);
 

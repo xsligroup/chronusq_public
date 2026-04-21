@@ -386,6 +386,9 @@ namespace ChronusQ {
     // the current Density and Coefficients represent the same wavefucntion
     void setDenEqCoeff(bool val);
 
+    // Obtain localized MOs using Cholesky decomposition on the density matrix
+    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getCholeskyMOs();
+
     // Project a AO density onto a MO basis
     cqmatrix::Matrix<MatsT> generateMODensity(const cqmatrix::Matrix<MatsT>&, const cqmatrix::Matrix<MatsT>&);
     // Print the occupation of orbitals based on MO density 

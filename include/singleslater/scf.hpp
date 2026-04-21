@@ -690,6 +690,137 @@ std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> SingleSlater<MatsT, IntsT>
   }
 };   // SingleSlater<MatsT,IntsT> :: getOnePDM
 
+// Cholesky factorization of the density matrix to obtain localized MOs. 
+// Reference: Aquilante, Pedersen, Koch, Sánchez de Merás, JCP 125, 174101 (2006)
+//#define CHOLESKY_MO_DEBUG
+template <typename MatsT, typename IntsT>
+std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>>
+SingleSlater<MatsT, IntsT>::getCholeskyMOs() {
+
+  auto* fb = this->fockBuilder.get();
+  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb))
+    fb = neofb->getNonNEOUpstream();
+  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
+ 
+
+  // Build spin-blocked densities
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> onePDMs;
+  std::vector<size_t> expectedNO;
+  // Expected occupied counts per block (for sanity check)
+  // RHF (iCS):  onePDMs = {P_alpha = P_total/2}, expected rank = nOA
+  // UHF/ROHF:   onePDMs = {P_alpha, P_beta},     expected rank = {nOA, nOB}
+  // 2c:         onePDMs = {P_spinor},            expected rank = nO
+  if (this->nC == 1 && this->iCS) {
+    onePDMs = { std::make_shared<cqmatrix::Matrix<MatsT>>(MatsT(0.5) * this->onePDM->S()) };
+    expectedNO = { this->nOA };
+  } else if (this->nC == 1) {
+    // UHF and ROHF both need alpha AND beta
+    onePDMs = { std::make_shared<cqmatrix::Matrix<MatsT>>( MatsT(0.5) * this->onePDM->S() + MatsT(0.5) * this->onePDM->Z()),
+                std::make_shared<cqmatrix::Matrix<MatsT>>( MatsT(0.5) * this->onePDM->S() - MatsT(0.5) * this->onePDM->Z()) };
+    expectedNO = { this->nOA, this->nOB };
+  } else {
+    onePDMs = { std::make_shared<cqmatrix::Matrix<MatsT>>( this->onePDM->template spinGather<MatsT>()) };
+    expectedNO = { this->nO };
+  }
+
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> choleskyMOs;
+  choleskyMOs.reserve(onePDMs.size());
+ 
+  for (size_t iBlk = 0; iBlk < onePDMs.size(); iBlk++) {
+ 
+    const size_t NB_blk = onePDMs[iBlk]->nRows();  // NB for 1c, 2*NB for 2c
+
+    size_t expNO = (iBlk < expectedNO.size()) ? expectedNO[iBlk] : 0;
+    if (expNO == 0) {
+#ifdef CHOLESKY_MO_DEBUG
+      std::cout << "  [ChoMO] Block " << iBlk
+                << ": expectedNO=0, skipping pstrf" << std::endl;
+#endif
+      choleskyMOs.push_back(
+          std::make_shared<cqmatrix::Matrix<MatsT>>(NB_blk, 0));
+      continue;
+    }
+ 
+    auto t_pstrf = tick();
+ 
+    cqmatrix::Matrix<MatsT> P_work(*onePDMs[iBlk]);
+    std::vector<int64_t> PIV(NB_blk);
+    int64_t RANK = 0;
+    int64_t INFO = lapack::pstrf(
+        lapack::Uplo::Lower, NB_blk,
+        P_work.pointer(), NB_blk,
+        PIV.data(), &RANK, -1.0); // -1.0: Use LAPACK default threshold
+
+    if (INFO < 0)
+      CErr("getCholeskyMOs(): lapack::pstrf failed for block "
+           + std::to_string(iBlk) + ". INFO = " + std::to_string(INFO));
+ 
+    const size_t NO = static_cast<size_t>(RANK);
+ 
+    if (NO == 0) {
+#ifdef CHOLESKY_MO_DEBUG
+      std::cout << "  [ChoMO] Block " << iBlk
+                << ": pstrf returned rank 0; pushing empty matrix"
+                << std::endl;
+#endif
+      choleskyMOs.push_back(
+          std::make_shared<cqmatrix::Matrix<MatsT>>(NB_blk, 0));
+      continue;
+    }
+ 
+    // Extract C from the pivoted lower-triangular factor
+    auto C = std::make_shared<cqmatrix::Matrix<MatsT>>(NB_blk, NO);
+    C->clear();
+ 
+    for (size_t j = 0; j < NO; j++)
+      for (size_t k = j; k < NB_blk; k++) {
+        size_t orig = static_cast<size_t>(PIV[k] - 1);
+        (*C)(orig, j) = P_work(k, j);
+      }
+ 
+    double dt_pstrf = tock(t_pstrf);
+ 
+    // Sanity checks
+#ifdef CHOLESKY_MO_DEBUG
+    {
+      size_t expNO = (iBlk < expectedNO.size()) ? expectedNO[iBlk] : 0;
+ 
+      // Check error ||P - C C^H||_inf
+      cqmatrix::Matrix<MatsT> P_recon(NB_blk);
+      blas::gemm(blas::Layout::ColMajor,
+          blas::Op::NoTrans, blas::Op::ConjTrans,
+          NB_blk, NB_blk, NO,
+          MatsT(1.0), C->pointer(), NB_blk,
+                      C->pointer(), NB_blk,
+          MatsT(0.0), P_recon.pointer(), NB_blk);
+ 
+      double errP = 0.0;
+      for (size_t k = 0; k < NB_blk * NB_blk; k++)
+        errP = std::max(errP, std::abs(P_recon.pointer()[k]
+                                     - onePDMs[iBlk]->pointer()[k]));
+ 
+      std::cout << "  [ChoMO] Block " << iBlk
+                << ": NB=" << NB_blk
+                << " NO(rank)=" << NO
+                << " expected=" << expNO
+                << std::endl;
+      std::cout << "  [ChoMO]   ||P - CC^H||_inf = "
+                << std::scientific << std::setprecision(2) << errP
+                << "   pstrf time=" << std::fixed << std::setprecision(3)
+                << dt_pstrf << "s" << std::endl;
+ 
+      if (NO != expNO)
+        std::cout << "  [ChoMO]   WARNING: rank " << NO
+                  << " != expected " << expNO << std::endl;
+    }
+#endif
+ 
+    choleskyMOs.push_back(C);
+  }
+ 
+  return choleskyMOs;
+};   // SingleSlater<MatsT,IntsT> :: getCholeskyMOs
+
 template<typename MatsT, typename IntsT>
 std::vector<cqmatrix::Matrix<MatsT>> SingleSlater<MatsT, IntsT>::getOnePDMOrtho() {
 

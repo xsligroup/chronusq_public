@@ -677,23 +677,326 @@ MPI_Comm_size(comm, &size);
    */
   template <typename MatsT, typename IntsT>
   void DistributedRITPIContraction<MatsT, IntsT>::KCoefContract(
-      MPI_Comm comm, size_t NO, MatsT *C, MatsT *AX) const {
+       MPI_Comm comm, size_t NO, MatsT *C, MatsT *AX) const {
 
-    CErr("DistributedRITPIContraction::KCoefContract not implemented");
+    InCoreRITPI<IntsT> &ritpi = *std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->ints_);
+    auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(ritpi.eri3j());
 
-  }; // DistributedRITPIContraction::KCoefContract
+    if (eri3j == nullptr)
+      CErr("DistributedRITPIContraction::KCoefContract expects a DistributedERI3J integral object");
+    if (eri3j->distributionLayout() == DistributionLayout::SplitNB)
+      CErr("KCoefContract not implemented for SplitNB layout");
+    else
+      return KCoefContractSplitNBRI(comm, NO, C, AX, eri3j);
 
+   }; // DistributedRITPIContraction::KCoefContract
+
+
+
+    /**
+   *  \brief Perform a Exchange-type (23,14) RI-ERI contraction with
+   *  orbital coefficients.
+   */
+  template <>
+  void DistributedRITPIContraction<double, double>::KCoefContractSplitNBRI(
+       MPI_Comm comm, size_t NO, double *C, double *AX, const std::shared_ptr<DistributedERI3J<double>>& eri3j) const {
+    auto contractStart = tick();
+    int rank, size;
+    #ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    size_t NB = eri3j->nBasis();
+    size_t localNBRI = eri3j->localSize();
+    size_t NONBRI_local = localNBRI*NO;
+
+    auto *T  = CQMemManager::get().malloc<double>(NONBRI_local*NB);
+    auto *AX_local = CQMemManager::get().malloc<double>(NB*NB);
+    std::fill_n(AX_local, NB*NB, double(0.));
+
+    if (this->oneCenterK())  std::cout << "One-center KCoefContractSplitNBRI" << std::endl;
+
+    // 1. T(i, J_local | ν) = C(λ, i)^T @ L(J_local, λ | ν)^T
+    //    One-center: restrict λ to atom(ν), i.e. T^J_{νi} = Σ_{λ∈atom(ν)} L^J_{νλ} C_{λi}
+    auto step1Start = tick();
+    size_t LAThreads = GetLAThreads();
+    SetLAThreads(1);
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      // Zero T — one-center only writes partial columns per ν
+      std::fill_n(T, NONBRI_local * NB, double(0.));
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        for (size_t q = bfStart; q < bfEnd; q++)
+          // C_A^T: (NO × nBf) at C + bfStart, lda=NB
+          // L_q_A: (localNBRI × nBf) at data + q*NB*localNBRI + bfStart*localNBRI
+          blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                     NO, localNBRI, nBf, double(1.),
+                     C + bfStart, NB,
+                     eri3j->data() + q * NB * localNBRI + bfStart * localNBRI, localNBRI,
+                     double(0.), T + q * NONBRI_local, NO);
+      }
+    } else {
+      #pragma omp parallel for
+      for (auto nu = 0ul; nu < NB; nu++)
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                   NO, localNBRI, NB, double(1.),
+                   C, NB, eri3j->data() + nu * localNBRI * NB, localNBRI,
+                   double(0.), T + nu * NONBRI_local, NO);
+    }
+    SetLAThreads(LAThreads);
+    if (this->printContractionTiming)
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Step 1 = " << tock(step1Start) << " s" << std::endl;
+
+    // 2: K_local(mu, nu) = T(iJ, mu)^T @ T(iJ, nu) 
+    //    One-center: K is block-diagonal, per-atom syrk of size nBf_A
+    auto step2Start = tick();
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        // T_A: (NONBRI_local × nBf) at T + bfStart * NONBRI_local
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI_local, double(1.),
+                   T + bfStart * NONBRI_local, NONBRI_local,
+                   double(0.), AX_local + bfStart * NB + bfStart, NB);
+        // Symmetrize within block
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = q + 1; p < nBf; p++)
+            AX_local[(bfStart + q) + (bfStart + p) * NB] =
+                AX_local[(bfStart + p) + (bfStart + q) * NB];
+      }
+    } else {
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI_local, double(1.), T, NONBRI_local,
+                 double(0.), AX_local, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = q + 1; p < NB; p++)
+          AX_local[q + p * NB] = AX_local[p + q * NB];
+    }
+    if (this->printContractionTiming)
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Step 2 = " << tock(step2Start) << " s" << std::endl;
+
+    // 3. Sum up K_local over all ranks
+    TIMED_COMM("KCoefContractSplitNBRI MPIReduce",
+      MPIReduce(AX_local, static_cast<int>(NB*NB), AX, 0, comm)
+    );
+    
+    CQMemManager::get().free(T, AX_local);
+    
+#ifdef _REPORT_COMM_TIMINGS
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Total = " << tock(contractStart) << " s" << std::endl;
+#endif
+    
+#else
+    CErr("DistributedRITPIContraction::KCoefContractSplitNBRI called without MPI support");
+#endif
+ 
+  }; // DistributedRITPIContraction<double, double>::KCoefContractSplitNBRI
+ 
+ 
+ 
+  template <>
+  void DistributedRITPIContraction<dcomplex, double>::KCoefContractSplitNBRI(
+      MPI_Comm comm, size_t NO, dcomplex *C, dcomplex *AX, const std::shared_ptr<DistributedERI3J<double>>& eri3j) const {
+    auto contractStart = tick();
+    int rank, size;
+#ifdef CQ_ENABLE_MPI
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    size_t NB = eri3j->nBasis();
+    size_t localNBRI = eri3j->localSize();
+    size_t NONBRI_local = localNBRI*NO;
+
+    auto *Cr  = CQMemManager::get().malloc<double>(NO*NB);
+    auto *Ci  = CQMemManager::get().malloc<double>(NO*NB);
+    #pragma omp parallel for
+    for(auto k = 0ul; k < NO*NB; k++) {
+      Cr[k] = std::real(C[k]);
+      Ci[k] = std::imag(C[k]);
+    }
+     
+    // Half-transformed buffers (real)
+    double *T_re = CQMemManager::get().malloc<double>(NONBRI_local * NB);
+    double *T_im = CQMemManager::get().malloc<double>(NONBRI_local * NB);
+
+    // 1. T_re(i, J_local | ν) = Re(C)(λ, i)^T @ L(J_local, λ | ν)^T
+    //    T_im(i, J_local | ν) = Im(C)(λ, i)^T @ L(J_local, λ | ν)^T
+    //    One-center: restrict λ to atom(ν)
+    auto step1Start = tick();
+    size_t LAThreads = GetLAThreads();
+    SetLAThreads(1);
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      std::fill_n(T_re, NONBRI_local * NB, double(0.));
+      std::fill_n(T_im, NONBRI_local * NB, double(0.));
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        for (size_t q = bfStart; q < bfEnd; q++) {
+          blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                     NO, localNBRI, nBf, double(1.),
+                     Cr + bfStart, NB,
+                     eri3j->data() + q * NB * localNBRI + bfStart * localNBRI, localNBRI,
+                     double(0.), T_re + q * NONBRI_local, NO);
+          blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                     NO, localNBRI, nBf, double(1.),
+                     Ci + bfStart, NB,
+                     eri3j->data() + q * NB * localNBRI + bfStart * localNBRI, localNBRI,
+                     double(0.), T_im + q * NONBRI_local, NO);
+        }
+      }
+    } else {
+      #pragma omp parallel for
+      for (size_t q = 0; q < NB; q++) {
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                   NO, localNBRI, NB, double(1.),
+                   Cr, NB, eri3j->data() + q * NB * localNBRI, localNBRI,
+                   double(0.), T_re + q * NONBRI_local, NO);
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                   NO, localNBRI, NB, double(1.),
+                   Ci, NB, eri3j->data() + q * NB * localNBRI, localNBRI,
+                   double(0.), T_im + q * NONBRI_local, NO);
+      }
+    }
+    SetLAThreads(LAThreads);
+    CQMemManager::get().free(Cr, Ci);
+    if (this->printContractionTiming)
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Step 1 = " << tock(step1Start) << " s" << std::endl;
+
+    double *K_temp = CQMemManager::get().malloc<double>(NB*NB);
+    dcomplex *AX_local = CQMemManager::get().malloc<dcomplex>(NB*NB);
+    std::fill_n(K_temp, NB*NB, double(0.));
+    std::fill_n(AX_local, NB*NB, dcomplex(0.));
+  
+    // 2a. Re(K) = T_re^T · T_re + T_im^T · T_im
+    auto step2Start = tick();
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+ 
+      // 2a. Per-atom: Re(K_A) = T_re_A^T · T_re_A + T_im_A^T · T_im_A
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        size_t off = bfStart * NONBRI_local;
+        size_t koff = bfStart * NB + bfStart;
+ 
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI_local, double(1.),
+                   T_re + off, NONBRI_local,
+                   double(0.), K_temp + koff, NB);
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI_local, double(1.),
+                   T_im + off, NONBRI_local,
+                   double(1.), K_temp + koff, NB);
+ 
+        // Symmetrize Re(K_A) into AX_local
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = 0; p <= q; p++) {
+            double val = K_temp[(bfStart + q) + (bfStart + p) * NB];
+            AX_local[(bfStart + p) + (bfStart + q) * NB] += val;
+            if (p != q)
+              AX_local[(bfStart + q) + (bfStart + p) * NB] += val;
+          }
+      }
+ 
+      // 2b. Per-atom: Im(K_A) = T_re_A^T · T_im_A - (T_re_A^T · T_im_A)^T
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        size_t off = bfStart * NONBRI_local;
+        size_t koff = bfStart * NB + bfStart;
+ 
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans,
+                   nBf, nBf, NONBRI_local, double(1.),
+                   T_re + off, NONBRI_local,
+                   T_im + off, NONBRI_local,
+                   double(0.), K_temp + koff, NB);
+ 
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = 0; p <= q; p++) {
+            double imval = K_temp[(bfStart + p) + (bfStart + q) * NB]
+                         - K_temp[(bfStart + q) + (bfStart + p) * NB];
+            AX_local[(bfStart + p) + (bfStart + q) * NB] += dcomplex(0., imval);
+            if (p != q)
+              AX_local[(bfStart + q) + (bfStart + p) * NB] += dcomplex(0., -imval);
+          }
+      }
+ 
+    } else {
+ 
+      // 2a. Re(K) = T_re^T · T_re + T_im^T · T_im
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI_local, double(1.),
+                 T_re, NONBRI_local,
+                 double(0.), K_temp, NB);
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI_local, double(1.),
+                 T_im, NONBRI_local,
+                 double(1.), K_temp, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = 0; p <= q; p++) {
+          double val = K_temp[q + p * NB];
+          AX_local[p + q * NB] += val;
+          if (p != q)
+            AX_local[q + p * NB] += val;
+        }
+ 
+      // 2b. Im(K) = T_re^T · T_im - (T_re^T · T_im)^T
+      blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans,
+                 NB, NB, NONBRI_local, double(1.),
+                 T_re, NONBRI_local, T_im, NONBRI_local,
+                 double(0.), K_temp, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = 0; p <= q; p++) {
+          double imval = K_temp[p + q * NB] - K_temp[q + p * NB];
+          AX_local[p + q * NB] += dcomplex(0., imval);
+          if (p != q)
+            AX_local[q + p * NB] += dcomplex(0., -imval);
+        }
+    }
+ 
+    CQMemManager::get().free(T_re, T_im, K_temp);
+    if (this->printContractionTiming)
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Step 2 = " << tock(step2Start) << " s" << std::endl;
+
+    // 3. Sum up K_local over all ranks
+    TIMED_COMM("KCoefContractSplitNBRI MPIReduce",
+      MPIReduce(AX_local, static_cast<int>(NB*NB), AX, 0, comm)
+    );
+  
+    CQMemManager::get().free(AX_local);
+  
+  #ifdef _REPORT_COMM_TIMINGS
+      std::cout << "Rank " << rank << " :: KCoefContractSplitNBRI Total = " << tock(contractStart) << " s" << std::endl;
+  #endif
+  
+  #else
+      CErr("DistributedRITPIContraction::KCoefContractSplitNBRI called without MPI support");
+  #endif
+  
+  }; // DistributedRITPIContraction<dcomplex, double>::KCoefContractSplitNBRI
 
 
   template <>
-  void DistributedRITPIContraction<dcomplex, double>::KCoefContract(
+  void DistributedRITPIContraction<dcomplex, dcomplex>::KCoefContract(
       MPI_Comm comm, size_t NO, dcomplex *C, dcomplex *AX) const {
-    ROOT_ONLY(comm);
-
-    CErr("DistributedRITPIContraction::KCoefContract not implemented");
-
-  }; // DistributedRITPIContraction::KCoefContract
-  
+    CErr("DistributedRITPIContraction<dcomplex, dcomplex>::KCoefContract not implemented");
+  }; // DistributedRITPIContraction<dcomplex, dcomplex>::KCoefContract
 
 
   template <typename MatsT, typename IntsT>

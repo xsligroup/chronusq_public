@@ -331,6 +331,8 @@ namespace ChronusQ {
   /**
    *  \brief Perform a Exchange-type (23,14) RI-ERI contraction with
    *  orbital coefficients.
+   *  K_μν = Σ_{J,i} T^J_μi · T^J_νi*
+   *  where T^J_μi = Σ_λ L^J_μλ · C_λi  (half-transformed integral)
    */
   template <typename MatsT, typename IntsT>
   void InCoreRITPIContraction<MatsT, IntsT>::KCoefContract(
@@ -344,30 +346,63 @@ namespace ChronusQ {
     size_t NONBRI= NO*NBRI;
 
     std::fill_n(AX, NB*NB, MatsT(0.));
+    MatsT *T = CQMemManager::get().malloc<MatsT>(NBNBRI*NO);
 
-    MatsT *Btemp1 = CQMemManager::get().malloc<MatsT>(NBNBRI*NO);
-    std::fill_n(Btemp1, NBNBRI*NO, MatsT(0.));
-    MatsT *Btemp2 = CQMemManager::get().malloc<MatsT>(NBNBRI*NO);
-    std::fill_n(Btemp2, NBNBRI*NO, MatsT(0.));
-
-    // 1. Bt1(i, L | nu) = C(lambda, i)^H @ B(L, lambda | nu)^T
+    // 1. T(i, J | nu) = C(lambda, i)^H @ L(J, lambda | nu)^T
+    //    One-center: restrict λ to atom(ν)
     size_t LAThreads = GetLAThreads();
     SetLAThreads(1);
-    #pragma omp parallel for
-    for(auto nu = 0ul; nu < NB; nu++)
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::Trans,NO,NBRI,NB,MatsT(1.),C,NB,
-           eri3j.pointer()+nu*NBNBRI,NBRI,
-           MatsT(0.),Btemp1+nu*NONBRI,NO);
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      std::fill_n(T, NONBRI * NB, MatsT(0.));
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        for (size_t nu = bfStart; nu < bfEnd; nu++)
+          blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::Trans,
+                     NO, NBRI, nBf, MatsT(1.),
+                     C + bfStart, NB,
+                     eri3j.pointer() + nu * NBNBRI + bfStart * NBRI, NBRI,
+                     MatsT(0.), T + nu * NONBRI, NO);
+      }
+    } else {
+      #pragma omp parallel for
+      for (auto nu = 0ul; nu < NB; nu++)
+        blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::Trans,
+                   NO, NBRI, NB, MatsT(1.), C, NB,
+                   eri3j.pointer() + nu * NBNBRI, NBRI,
+                   MatsT(0.), T + nu * NONBRI, NO);
+    }
     SetLAThreads(LAThreads);
 
-    // 2. Bt2(i, L mu) = C(sigma, i)^T @ B(L mu, sigma)^T
-    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::Trans,NO,NBNBRI,NB,MatsT(1.),C,NB,
-         reinterpret_cast<MatsT*>(eri3j.pointer()),NBNBRI,
-         MatsT(0.),Btemp2,NO);
-
-    // 3. K(mu, nu) = Bt2(i L, mu)^T @ Bt1(i L, nu)
-    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB,NB,NONBRI,MatsT(1.),Btemp2,NONBRI,Btemp1,NONBRI,
-         MatsT(0.),AX,NB);
+    // 2: K(mu, nu) = T(iJ, mu)^T @ T(iJ, nu) 
+    //    One-center: per-atom syrk
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI, MatsT(1.),
+                   T + bfStart * NONBRI, NONBRI,
+                   MatsT(0.), AX + bfStart * NB + bfStart, NB);
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = q + 1; p < nBf; p++)
+            AX[(bfStart + q) + (bfStart + p) * NB] =
+                AX[(bfStart + p) + (bfStart + q) * NB];
+      }
+    } else {
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI, MatsT(1.), T, NONBRI, MatsT(0.), AX, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = q + 1; p < NB; p++)
+          AX[q + p * NB] = AX[p + q * NB];
+    }
 
 #ifdef LEADING_NB2
     // Alternative code for when ERI3J is stored with leading dimension of NB2
@@ -383,7 +418,7 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::ConjTrans,NB,NB,NO,MatsT(1.0),Btemp1,NB,Btemp1,NB,MatsT(1.0),AX,NB);
     }
 #endif
-    CQMemManager::get().free(Btemp1, Btemp2);
+    CQMemManager::get().free(T);
 
   }; // InCoreRITPIContraction::KCoefContract
 
@@ -402,38 +437,153 @@ namespace ChronusQ {
 
     std::fill_n(AX, NB*NB, dcomplex(0.));
 
-    dcomplex *Btemp1 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
-    std::fill_n(Btemp1, NBNBRI*NO, dcomplex(0.));
-    dcomplex *Btemp2 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
-    std::fill_n(Btemp2, NBNBRI*NO, dcomplex(0.));
-    dcomplex *Btemp3 = CQMemManager::get().malloc<dcomplex>(NBNBRI*NO);
-    std::fill_n(Btemp3, NBNBRI*NO, dcomplex(0.));
+    // Separate real and imaginary parts of MO coefficients
+    double *Cr = CQMemManager::get().malloc<double>(NB*NO);
+    double *Ci = CQMemManager::get().malloc<double>(NB*NO);
+    #pragma omp parallel for
+    for(auto k = 0ul; k < NB*NO; k++) {
+      Cr[k] = std::real(C[k]);
+      Ci[k] = std::imag(C[k]);
+    }
 
+    // Half-transformed buffers (real)
+    double *T_re = CQMemManager::get().malloc<double>(NONBRI * NB);
+    double *T_im = CQMemManager::get().malloc<double>(NONBRI * NB);
+
+    // 1. T_re(i, J | ν) = Re(C)(λ, i)^T @ L(J, λ | ν)^T
+    //    T_im(i, J | ν) = Im(C)(λ, i)^T @ L(J, λ | ν)^T
+    //    One-center: restrict λ to atom(ν)
     size_t LAThreads = GetLAThreads();
     SetLAThreads(1);
-    #pragma omp parallel for
-    for(auto nu = 0ul; nu < NB; nu++) {
-    // 1.1. Bt3(L, i | nu) = B(L, lambda | nu) @ C(lambda, i)
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBRI,NO,NB,dcomplex(1.),
-           eri3j.pointer()+nu*NBNBRI,NBRI,C,NB,
-           dcomplex(0.),Btemp3+nu*NONBRI,NBRI);
-    // 1.2. Bt1(i, L | nu) = Bt3(L, i | nu)^H
-      SetMat('C',NBRI,NO,dcomplex(1.),Btemp3+nu*NONBRI,NBRI,
-             Btemp1+nu*NONBRI,NO);
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
+      std::fill_n(T_re, NONBRI * NB, double(0.));
+      std::fill_n(T_im, NONBRI * NB, double(0.));
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        for (size_t nu = bfStart; nu < bfEnd; nu++) {
+          blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                     NO, NBRI, nBf, double(1.),
+                     Cr + bfStart, NB,
+                     eri3j.pointer() + nu * NBNBRI + bfStart * NBRI, NBRI,
+                     double(0.), T_re + nu * NONBRI, NO);
+          blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                     NO, NBRI, nBf, double(1.),
+                     Ci + bfStart, NB,
+                     eri3j.pointer() + nu * NBNBRI + bfStart * NBRI, NBRI,
+                     double(0.), T_im + nu * NONBRI, NO);
+        }
+      }
+    } else {
+      #pragma omp parallel for
+      for (auto nu = 0ul; nu < NB; nu++) {
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                   NO, NBRI, NB, double(1.),
+                   Cr, NB, eri3j.pointer() + nu * NBNBRI, NBRI,
+                   double(0.), T_re + nu * NONBRI, NO);
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::Trans,
+                   NO, NBRI, NB, double(1.),
+                   Ci, NB, eri3j.pointer() + nu * NBNBRI, NBRI,
+                   double(0.), T_im + nu * NONBRI, NO);
+      }
     }
     SetLAThreads(LAThreads);
+    CQMemManager::get().free(Cr, Ci);
+    
+    double *K_temp = CQMemManager::get().malloc<double>(NB*NB);
 
-    // 2.1. Bt3(L mu, i) = B(L mu, sigma) @ C(sigma, i)
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBNBRI,NO,NB,dcomplex(1.),eri3j.pointer(),NBNBRI,C,NB,
-         dcomplex(0.),Btemp3,NBNBRI);
-    // 2.2. Bt2(i, L mu) = Bt3(L mu, i)^T
-    SetMat('T',NBNBRI,NO,dcomplex(1.),Btemp3,NBNBRI,Btemp2,NO);
+    if (this->oneCenterK()) {
+      auto mapCen2BfSt = this->mapCen2BfSt();
+      size_t nAtoms = mapCen2BfSt.size();
 
-    // 3. K(mu, nu) = Bt2(i L, mu)^T @ Bt1(i L, nu)
-    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB,NB,NONBRI,dcomplex(1.),Btemp2,NONBRI,Btemp1,NONBRI,
-         dcomplex(0.),AX,NB);
+      // 2a. Per-atom: Re(K_A) = T_re_A^T · T_re_A + T_im_A^T · T_im_A
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        size_t off = bfStart * NONBRI;
+        size_t koff = bfStart * NB + bfStart;
 
-    CQMemManager::get().free(Btemp1, Btemp2, Btemp3);
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI, double(1.),
+                   T_re + off, NONBRI,
+                   double(0.), K_temp + koff, NB);
+        blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                   nBf, NONBRI, double(1.),
+                   T_im + off, NONBRI,
+                   double(1.), K_temp + koff, NB);
+
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = 0; p <= q; p++) {
+            double val = K_temp[(bfStart + q) + (bfStart + p) * NB];
+            AX[(bfStart + p) + (bfStart + q) * NB] += val;
+            if (p != q)
+              AX[(bfStart + q) + (bfStart + p) * NB] += val;
+          }
+      }
+
+      // 2b. Per-atom: Im(K_A) = T_re_A^T · T_im_A - (T_re_A^T · T_im_A)^T
+      for (size_t iAtom = 0; iAtom < nAtoms; ++iAtom) {
+        size_t bfStart = mapCen2BfSt[iAtom];
+        size_t bfEnd = (iAtom + 1 < nAtoms) ? mapCen2BfSt[iAtom + 1] : NB;
+        size_t nBf = bfEnd - bfStart;
+        size_t off = bfStart * NONBRI;
+        size_t koff = bfStart * NB + bfStart;
+
+        blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans,
+                   nBf, nBf, NONBRI, double(1.),
+                   T_re + off, NONBRI,
+                   T_im + off, NONBRI,
+                   double(0.), K_temp + koff, NB);
+
+        for (size_t q = 0; q < nBf; q++)
+          for (size_t p = 0; p <= q; p++) {
+            double imval = K_temp[(bfStart + p) + (bfStart + q) * NB]
+                         - K_temp[(bfStart + q) + (bfStart + p) * NB];
+            AX[(bfStart + p) + (bfStart + q) * NB] += dcomplex(0., imval);
+            if (p != q)
+              AX[(bfStart + q) + (bfStart + p) * NB] += dcomplex(0., -imval);
+          }
+      }
+
+    } else {
+
+      // 2a. Re(K) = T_re^T · T_re + T_im^T · T_im
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI, double(1.),
+                 T_re, NONBRI,
+                 double(0.), K_temp, NB);
+      blas::syrk(blas::Layout::ColMajor, blas::Uplo::Lower, blas::Op::Trans,
+                 NB, NONBRI, double(1.),
+                 T_im, NONBRI,
+                 double(1.), K_temp, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = 0; p <= q; p++) {
+          double val = K_temp[q + p * NB];
+          AX[p + q * NB] += val;
+          if (p != q)
+            AX[q + p * NB] += val;
+        }
+
+      // 2b. Im(K) = T_re^T · T_im - (T_re^T · T_im)^T
+      blas::gemm(blas::Layout::ColMajor, blas::Op::Trans, blas::Op::NoTrans,
+                 NB, NB, NONBRI, double(1.),
+                 T_re, NONBRI, T_im, NONBRI,
+                 double(0.), K_temp, NB);
+      for (size_t q = 0; q < NB; q++)
+        for (size_t p = 0; p <= q; p++) {
+          double imval = K_temp[p + q * NB] - K_temp[q + p * NB];
+          AX[p + q * NB] += dcomplex(0., imval);
+          if (p != q)
+            AX[q + p * NB] += dcomplex(0., -imval);
+        }
+    }
+
+    CQMemManager::get().free(T_re, T_im, K_temp);
 
   }; // InCoreRITPIContraction<dcomplex, double>::KCoefContract
 
