@@ -209,7 +209,7 @@ namespace ChronusQ {
       catch(...) {
         std::cout << std::fixed;
         std::cout << "Insufficient memory for the full TPI tensor ("
-                  << (NB4/1e9) * sizeof(double) << " GB)" << std::endl;
+                  << (NB4/1e9) * sizeof(IntsT) << " GB)" << std::endl;
         std::cout << std::endl << CQMemManager::get() << std::endl;
         CErr();
       }

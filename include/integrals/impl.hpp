@@ -29,6 +29,7 @@
 #include <particleintegrals/onepints/relativisticints.hpp>
 #include <matrix.hpp>
 
+//#define DEBUG_GIAOGRAD
 namespace ChronusQ {
 
   /**
@@ -231,6 +232,20 @@ namespace ChronusQ {
     size_t NB = basis.nBasis;
     size_t NAt = mol.nAtoms;
 
+    const std::array<std::string,3> dipoleList =
+      { "X","Y","Z" };
+    const std::array<std::string,6> quadrupoleList =
+      { "XX","XY","XZ","YY","YZ","ZZ" };
+    const std::array<std::string,10> octupoleList =
+      { "XXX","XXY","XXZ","XYY","XYZ","XZZ","YYY",
+        "YYZ","YZZ","ZZZ" };
+    const std::array<std::string,9> quadrupoleListAsymm =
+      { "XX","XY","XZ","YX","YY","YZ","ZX","ZY","ZZ" };
+
+    bool electron = (options.particle.charge < 0.);
+
+    std::string prefix = electron ? "INTS/" : "PINTS/";
+
     auto computeOneE = [&](std::shared_ptr<GradInts<OnePInts,IntsT>>& p, OPERATOR o) {
       if (p == nullptr)
         p = std::make_shared<GradInts<OnePInts,IntsT>>(NB, NAt);
@@ -246,26 +261,71 @@ namespace ChronusQ {
       switch (op.first) {
         case OVERLAP:
           computeOneE(gradOverlap, op.first);
+#ifdef DEBUG_GIAOGRAD 
+          gradOverlap->output(std::cout, "gradOverlap", true); 
+#endif
           break;
 
         case KINETIC:
           computeOneE(gradKinetic, op.first);
+#ifdef DEBUG_GIAOGRAD 
+          gradKinetic->output(std::cout, "gradKinetic", true); 
+#endif
           break;
 
         case NUCLEAR_POTENTIAL:
           if ( options.OneEScalarRelativity )
             CErr("Relativistic gradients not yet implemented!");
           computeOneE(gradPotential, op.first);
+#ifdef DEBUG_GIAOGRAD 
+          gradPotential->output(std::cout, "gradPotential", true);
+#endif 
+          break;
+
+        case LEN_ELECTRIC_MULTIPOLE:
+          switch (op.second) {
+            case 2: {
+              if (gradLen2 == nullptr)
+                gradLen2 = std::make_shared<GradInts<VectorInts,IntsT>>(NB, NAt, 2, true);
+              else
+                gradLen2->clear(); 
+              gradLen2->computeAOInts(basis, mol, emPert, LEN_ELECTRIC_MULTIPOLE, options);
+#ifdef DEBUG_GIAOGRAD
+              gradLen2->output(std::cout, "gradLen2", true); 
+#endif 
+            }
+            break;
+            default:
+              CErr("Gradients of LEN_ELECTRIC_MULTIPOLE != 2 are not yet implemented");
+            break;
+          }
           break;
 
         case MAGNETIC_MULTIPOLE:
-        case LEN_ELECTRIC_MULTIPOLE:
+          switch (op.second) {
+            case 1: {
+              if (gradMagnetic == nullptr)
+                gradMagnetic = std::make_shared<GradInts<VectorInts,IntsT>>(NB, NAt, 1, false);
+              else
+                gradMagnetic->clear(); 
+              gradMagnetic->computeAOInts(basis, mol, emPert, MAGNETIC_MULTIPOLE, options);
+#ifdef DEBUG_GIAOGRAD
+              gradMagnetic->output(std::cout, "gradMagnetic", true); 
+#endif 
+            }
+            break;
+            default:
+              CErr("Gradients of MAGNETIC_MULTIPOLE != 1 are not yet implemented");
+            break;
+          }
+          break;
+
         case VEL_ELECTRIC_MULTIPOLE:
           CErr("Gradients of multipoles are not yet implemented");
           break;
 
         case ELECTRON_REPULSION:
-          if ( gradERI == nullptr )
+          if ( gradERI == nullptr ) 
             CErr("ERI gradients must be allocated outside of computeGradInts!");
 
           gradERI->computeAOInts(basis, mol, emPert, op.first, options);
@@ -294,8 +354,11 @@ namespace ChronusQ {
       std::vector<IntsT*> S0aPtrs(3*NAt, nullptr);
       for (auto i = 0; i < 3*NAt; i++) S0aPtrs[i] = (*S0a)[i]->pointer();
 
-      OnePInts<IntsT>::OnePDriverLibint(
-        libint2::Operator::overlap, mol, basis, S0aPtrs, options.particle, 1, 1
+      if (std::is_same_v<IntsT, std::complex<double>>) {
+        S0a->computeAOInts(basis, mol, emPert, TAUS0a, options);
+      } else
+        OnePInts<IntsT>::OnePDriverLibint(
+          libint2::Operator::overlap, mol, basis, S0aPtrs, options.particle, 1, 1
       );
       //for (size_t i = 0; i < S0aPtrs.size(); i++)
       //  prettyPrintSmart(std::cout,"ovlp0a " +  std::to_string(i), S0aPtrs[i],NB,NB,NB);

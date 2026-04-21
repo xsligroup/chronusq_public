@@ -1418,6 +1418,14 @@ namespace ChronusQ {
   };
 
   template<>
+  void GradInts<VectorInts, double>::computeAOInts(BasisSet&,
+    Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
+
+    CErr("Gradient integrals for VectorInts operators not yet implemented!");
+
+  };
+
+  template<>
   void GradInts<MultipoleInts, double>::computeAOInts(BasisSet&,
     Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
 
@@ -1437,6 +1445,11 @@ namespace ChronusQ {
   void GradInts<OnePInts, double>::computeAOInts(BasisSet&, BasisSet&,
     Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
     CErr("Two basis gradients not implemented for OnePInts");
+  };
+  template <>
+  void GradInts<VectorInts, double>::computeAOInts(BasisSet&, BasisSet&,
+    Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
+    CErr("Two basis gradients not implemented for VectorInts");
   };
   template <>
   void GradInts<MultipoleInts, double>::computeAOInts(BasisSet&, BasisSet&,

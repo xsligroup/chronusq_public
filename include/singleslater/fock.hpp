@@ -82,7 +82,7 @@ namespace ChronusQ {
 
     } else {
 
-      if(not iCS and nC == 1 and basisSet().basisType == COMPLEX_GIAO)
+      if(not iCS and nC == 1)// and basisSet().basisType == COMPLEX_GIAO)
         coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false);
       else if(nC == 2 or nC == 4)
         coreH = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true);
@@ -207,8 +207,18 @@ namespace ChronusQ {
        },
        opts
     );
-    std::vector<double> coreGrad = coreHBuilder->getGrad(pert, *this);
 
+    // GIAO or CGTO
+    if(pert_has_type(pert,Magnetic))
+      this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
+        {{LEN_ELECTRIC_MULTIPOLE,2},
+         {MAGNETIC_MULTIPOLE,1}
+         },
+         opts
+      );
+    
+    std::vector<double> coreGrad = coreHBuilder->getGrad(pert, *this);
+    //printGrad("Core H Gradient:", coreGrad);
 
     // 2e contribution
     this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
@@ -217,11 +227,13 @@ namespace ChronusQ {
     );
     std::vector<double> twoEGrad = fockBuilder->getGDGrad(*this, pert, xHFX);
 
+    //printGrad("G Gradient:", twoEGrad);
     
     // Pulay gradient contribution
     bool useW = true;
     std::vector<double> pulayGrad = fockBuilder->getPulayGrad(*this, equil, useW);
 
+    //printGrad("Pulay Gradient:", pulayGrad);
 
     // Add the nuclear gradient and assemble the total gradient
     std::vector<double> nucGrad;
@@ -245,10 +257,8 @@ namespace ChronusQ {
 #endif
 
     //printGrad("Nuclear Gradient:", nucGrad);
-    //printGrad("Core H Gradient:", coreGrad);
-    //printGrad("G Gradient:", twoEGrad);
-    //printGrad("Pulay Gradient:", pulayGrad);
     //printGrad("Total HF Gradient:", gradient);
+    //CErr("Normal Termination of TDDTest.");
 
     //this->onePDM->output(std::cout, "OnePDM in Gradient Contractions", true);
 

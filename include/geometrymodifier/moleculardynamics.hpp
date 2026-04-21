@@ -43,6 +43,9 @@ namespace ChronusQ {
     // Save data for all geometry steps, including all the mid-point Fock steps with a nuclear step
     bool saveAllGeometry = false;
 
+    // Print properties at each step
+    bool printProperty = false;
+
     // Molecular Dynamics Options
     double timeStepAU; // Nuclear timestep for molecular dynamics in a.u.
     double timeStepFS; // Nuclear timestep for molecular dynamics in fs
@@ -51,7 +54,7 @@ namespace ChronusQ {
     double pert_val_x = 1e-5;   ///< perturbation value
     double pert_val_y = 1e-5;   ///< perturbation value
     double pert_val_z = 1e-5;   ///< perturbation value
-    
+
     bool projectOrthoDen = false; // Project the orthonormal density to initial geometry
 
     MDOptions(double tmax, double deltat)
@@ -142,8 +145,8 @@ namespace ChronusQ {
         TDSCFOptions& tdSCFOptions, std::shared_ptr<SingleSlaterBase> ss,
         EMPerturbation& emPert, std::vector<std::shared_ptr<CubeGen>> cubes = {} ) override;
 
-
     void velocityVV(Molecule &molecule, std::vector<double>& vIn, std::vector<double>& vOut, std::vector<double> gradient, double timeStep);
+    void velocityVV_EXPK1(Molecule &molecule, std::vector<double>& vIn, std::vector<double>& vOut, std::vector<double> gradient, double timeStep, EMPerturbation& emPert);
 
     void geometryVV(Molecule &molecule, double timeStep);
     

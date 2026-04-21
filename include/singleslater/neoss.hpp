@@ -296,7 +296,7 @@ namespace ChronusQ {
       }
 
       std::vector<double> getGrad(EMPerturbation&, bool, bool, double xHFX = 1.) override;
-      void formEXCGradient();
+      void formEXCGradient(EMPerturbation&);
 
       virtual void checkIdempotency(std::string system=""){
         applyToEach([&](SubSSPtr& ss){ 
@@ -311,7 +311,7 @@ namespace ChronusQ {
       // Functions for OrbitalModifier
       virtual void runSCF(EMPerturbation&) override;
       virtual void buildOrbitalModifierOptions() override;
-      virtual void printProperties() override;
+      void printProperties() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM() override;
       virtual std::vector<cqmatrix::Matrix<MatsT>> getOnePDMOrtho() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock() override;

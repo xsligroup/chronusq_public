@@ -529,11 +529,21 @@ namespace ChronusQ {
 
       ss.formEWDM(equil);
       for( size_t iGrad = 0; iGrad < nGrad; iGrad++ ) {
-        double gradVal = std::real(blas::dot(NB*NB, ss.W->real_part().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
-        pulayGrad.push_back(2*gradVal);
+        double gradVal = std::real(blas::dot(NB*NB, ss.W->S().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
+        if (hasZ) {
+          gradVal += std::real(blas::dot(NB*NB, ss.W->Z().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
+        }
+        if (hasXY) {
+          gradVal += std::real(blas::dot(NB*NB, ss.W->Y().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
+          gradVal += std::real(blas::dot(NB*NB, ss.W->X().pointer(), 1, (*ss.aoints_->gradOverlap)[iGrad]->pointer(), 1));
+        }
+        pulayGrad.push_back(-gradVal);
       }
 
     } else {
+
+      if (hasXY)
+        CErr("Computing Pulay gradient with dV/dR not yet implemented for XY components!");
 
       // S^{-1/2}
       auto orthoForward = ss.orthoAB->forwardPointer();

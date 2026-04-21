@@ -24,6 +24,7 @@
 #pragma once
 //#define _DEBUGGIAO 
 //#define seperatemag
+//#define _DEBUG_EWDM
 
 #include <singleslater.hpp>
 #include <singleslater/neoss.hpp>
@@ -687,103 +688,163 @@ template <typename MatsT, typename IntsT>
 
     // ROOT_ONLY(comm);
     size_t NB = this->basisSet().nBasis;
-    if(this->onePDM->hasXY()) 
-      CErr("W matrix is not implemented for two component");
-    if(!W)
-      W = std::make_shared<cqmatrix::Matrix<MatsT>>(NB);
-    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(NB*NB);
-    std::fill_n(SCR, NB*NB, MatsT(0.));
 
-    //formFock(pert, false);
-    std::vector<cqmatrix::Matrix<MatsT>> onePDMAB = this->onePDM->template spinGatherToBlocks<MatsT>(false, not this->iCS);
-    std::vector<cqmatrix::Matrix<MatsT>> fockAB = this->fockMatrix->template spinGatherToBlocks<MatsT>(false, not this->iCS);
-
-    if(equil) {
-      // W = P * F * P
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),onePDMAB[0].pointer(),NB,
-          fockAB[0].pointer(),NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),SCR,NB,
-          onePDMAB[0].pointer(),NB,MatsT(0.),W->pointer(),NB);
-      if(onePDMAB.size() > 1) {
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),onePDMAB[1].pointer(),NB,
-            fockAB[1].pointer(),NB,MatsT(0.),SCR,NB);
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),SCR,NB,
-            onePDMAB[1].pointer(),NB,MatsT(1.),W->pointer(),NB);
-      }
+    if( W != nullptr ) {
+      W->clear();
     } else {
-      // FP = FA*PA + FB*PB
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),fockAB[0].pointer(),NB,
-          onePDMAB[0].pointer(),NB,MatsT(0.),W->pointer(),NB);
-      if(onePDMAB.size() > 1) {
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),fockAB[1].pointer(),NB,
-            onePDMAB[1].pointer(),NB,MatsT(1.),W->pointer(),NB);
-      }
-      
-      // Obtain eigenvectors & eigenvalues of the overlap matrix
-      cqmatrix::Matrix<MatsT> X = this->aoints_->overlap->matrix();
-      MatsT * eigS  = CQMemManager::get().malloc<MatsT>(NB);
-      int INFO = HermitianEigen('V', 'U', NB, X.pointer(), NB, eigS);
-      if( INFO != 0 ) CErr("HermitianEigen failed in FormW",std::cout);
-
-      // Transform FP into the eigenspace of the overlap matrix
-      blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),X.pointer(),NB,
-          W->pointer(),NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),SCR,NB,
-          X.pointer(),NB,MatsT(0.),W->pointer(),NB);
-      
-      // Normalize FP
-      for(int i = 0; i < NB; i++) eigS[i] = std::sqrt(eigS[i]);
-      for(int j = 0; j < NB; j++) {
-        for(int i = 0; i < NB; i++) {
-          (*W)(i,j) = -(*W)(i,j)/(eigS[i]*(eigS[i]+eigS[j]));
-        }
-      }
-
-      // Transform W back to the AO basis
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),X.pointer(),NB,
-          W->pointer(),NB,MatsT(0.),SCR,NB);
-      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::Trans,NB,NB,NB,MatsT(1.),SCR,NB,
-          X.pointer(),NB,MatsT(0.),W->pointer(),NB);
-      
-      // Symmetrize
-      for(int j = 0; j < NB; j++) {
-        for(int i = j; i < NB; i++) {
-          MatsT sum = (*W)(i,j) + (*W)(j,i);
-          (*W)(i,j) = sum;
-          (*W)(j,i) = sum;
-        }
-      }
-
-      // Form w strictly by definition for debugging
-      #if 0
-        ao2orthoFock();
-        diagOrthoFock();
-        ortho2aoMOs();
-      
-        // W = C * diag(ε) * C†
-        cqmatrix::Matrix<MatsT> scaledMOA = this->mo[0];
-        for(int i = 0; i < this->nOA; i++) {
-          blas::scal(NB, this->eps1[i], scaledMOA.pointer() + i * NB, 1);
-        }
-
-        // WA = C * diag(ε) * C†
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOA, MatsT(1.), scaledMOA.pointer(), NB,
-            this->mo[0].pointer(), NB, MatsT(0.), W->pointer(), NB);
-    
-        if(not this->iCS and this->nOB > 0) {
-          cqmatrix::Matrix<MatsT> scaledMOB = this->mo[1];
-          for(int i = 0; i < this->nOB; i++) {
-            blas::scal(NB, this->eps2[i], scaledMOB.pointer() + i * NB, 1);
-          }
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOB, MatsT(1.), scaledMOB.pointer(), NB,
-              this->mo[1].pointer(), NB, MatsT(1.), W->pointer(), NB);
-        }
-      #endif
+      if(not iCS and nC == 1 )//and basisSet().basisType == COMPLEX_GIAO)
+        W = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false);
+      else if(nC == 2 or nC == 4)
+        W = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true);
+      else
+        W = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, false, false);
     }
 
+    formEWDM_impl(equil, this->fockMatrix->S(), this->onePDM->S(), W->S());
+    if (this->onePDM->hasZ())
+      formEWDM_impl(equil, this->fockMatrix->Z(), this->onePDM->Z(), W->Z());
+    if (this->onePDM->hasXY()) {
+      formEWDM_impl(equil, this->fockMatrix->Y(), this->onePDM->Y(), W->Y());
+      formEWDM_impl(equil, this->fockMatrix->X(), this->onePDM->X(), W->X());
+    }
+
+    // Form W strictly by definition for debugging
+    // W = C * diag(ε) * C†
+#ifdef _DEBUG_EWDM
+    //ao2orthoFock();
+    //diagOrthoFock();
+    //ortho2aoMOs();
+
+    NB = NB * this->nC;
+
+    if (this->nC == 1) {
+
+      cqmatrix::Matrix<MatsT> WA(NB);
+      cqmatrix::Matrix<MatsT> scaledMOA = this->mo[0];
+      
+      // WA = C * diag(ε) * C†
+      for(int i = 0; i < this->nOA; i++) {
+        blas::scal(NB, this->eps1[i], scaledMOA.pointer() + i * NB, 1);
+      }
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOA, MatsT(1.), scaledMOA.pointer(), NB,
+          this->mo[0].pointer(), NB, MatsT(0.), WA.pointer(), NB);
+      
+      if (this->iCS) {
+
+        *W = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(WA);
+      } else {
+
+        cqmatrix::Matrix<MatsT> WB(NB);
+        cqmatrix::Matrix<MatsT> scaledMOB = this->mo[1];
+
+        // WB = C * diag(ε) * C†
+        for(int i = 0; i < this->nOB; i++) {
+          blas::scal(NB, this->eps2[i], scaledMOB.pointer() + i * NB, 1);
+        }
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOB, MatsT(1.), scaledMOB.pointer(), NB,
+            this->mo[1].pointer(), NB, MatsT(1.), WB.pointer(), NB);
+
+        *W = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(WA, WB);
+      }
+    } else {
+
+      if (this->nC == 2) {
+        cqmatrix::Matrix<MatsT> W_spinBlockForm(NB);
+        cqmatrix::Matrix<MatsT> scaledMO = this->mo[0];
+        
+        // W = C * diag(ε) * C†
+        for(int i = 0; i < this->nO; i++) {
+          blas::scal(NB, this->eps1[i], scaledMO.pointer() + i * NB, 1);
+        }
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nO, MatsT(1.), scaledMO.pointer(), NB,
+            scaledMO.pointer(), NB, MatsT(1.), W_spinBlockForm.pointer(), NB);
+
+        *W = W_spinBlockForm.template spinScatter<MatsT>();
+            
+      } else if (this->nC == 4) {
+        CErr("4C not implemented in SingleSlater<MatsT,IntsT>::formEWDM!");
+      }
+    }
+#endif
+
     //W->output(std::cout, "W matrix", true);
-    
 };
+
+template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::formEWDM_impl(bool equil, const cqmatrix::Matrix<MatsT>& F, 
+      const cqmatrix::Matrix<MatsT>& P, cqmatrix::Matrix<MatsT>& W) {
+
+    const size_t NB = this->basisSet().nBasis;
+    cqmatrix::Matrix<MatsT> SCR(NB, NB);
+
+    if (equil) {
+      // W = (1/2) * (P * F * P)
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),P.pointer(),NB,
+          F.pointer(),NB,MatsT(0.),SCR.pointer(),NB);
+      blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),SCR.pointer(),NB,
+          P.pointer(),NB,MatsT(0.0),W.pointer(),NB);
+      W *= 0.5;
+    } else {
+      // For general case, SW + WS = FP + PF
+      // RHS = FP + PF
+      blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+                 NB, NB, NB, MatsT(1), F.pointer(), NB, P.pointer(), NB,
+                 MatsT(0), W.pointer(), NB);
+      blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+                 NB, NB, NB, MatsT(1), P.pointer(), NB, F.pointer(), NB,
+                 MatsT(0), SCR.pointer(), NB);
+      W += SCR;
+    
+      // Sylvester equation solver
+      // Diagonalize S
+      cqmatrix::Matrix<MatsT> X = this->aoints_->overlap->matrix();
+      double* eigS = CQMemManager::get().malloc<double>(NB);
+      int INFO = HermitianEigen('V','U', NB, X.pointer(), NB, eigS);
+      if (INFO) CErr("HermitianEigen failed in formEWDM_impl", std::cout);
+    
+      // Transform into the eigenspace of the overlap matrix
+      blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
+        NB, NB, NB, MatsT(1), X.pointer(), NB, W.pointer(), NB,
+        MatsT(0), SCR.pointer(), NB);
+      blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+              NB, NB, NB, MatsT(1), SCR.pointer(), NB, X.pointer(), NB,
+              MatsT(0), W.pointer(), NB);
+    
+      // Normalize
+      double smax = 0.0; for (int i=0;i<NB;++i) smax = std::max(smax, eigS[i]);
+      const double eps = 1e-14 * std::max(1.0, smax);
+      for (int j=0; j<NB; ++j)
+        for (int i=0; i<NB; ++i) {
+          double denom = eigS[i] + eigS[j];
+          if (std::abs(denom) < eps) denom = (denom < 0 ? -eps : eps);
+          W(i,j) = W(i,j) / denom;
+        }
+    
+      // Transform back to AO basis
+      blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+                 NB, NB, NB, MatsT(1), X.pointer(), NB, W.pointer(), NB,
+                 MatsT(0), SCR.pointer(), NB);
+      blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans,
+                 NB, NB, NB, MatsT(1), SCR.pointer(), NB, X.pointer(), NB,
+                 MatsT(0), W.pointer(), NB);
+    
+      // Hermitize
+      for (int j = 0; j < NB; ++j) {
+        for (int i = 0; i <= j; ++i) {
+          if constexpr (std::is_same<MatsT,double>::value) {
+            const MatsT hij = (W(i,j) + W(j,i)) * 0.5;
+            W(i,j) = hij; W(j,i) = hij;
+          } else {
+            const MatsT hij = (W(i,j) + std::conj(W(j,i))) * 0.5;
+            W(i,j) = hij; W(j,i) = std::conj(hij);
+          }
+        }
+      }
+      CQMemManager::get().free(eigS);
+    }
+    
+    W *= 0.5;
+}; // SingleSlater<MatsT,IntsT>::formEWDM_impl
 
 }; // namespace ChronusQ
 

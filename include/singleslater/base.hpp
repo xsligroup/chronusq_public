@@ -160,6 +160,7 @@ namespace ChronusQ {
     virtual void printFockTimings(std::ostream&) = 0;
 
     // Post-processing functions
+    virtual void printProperties() = 0;
     virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) = 0;
 
 #ifdef TEST_MOINTSTRANSFORMER

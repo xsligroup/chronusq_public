@@ -46,6 +46,7 @@ namespace ChronusQ {
       "PERT_VALUE_Y",
       "PERT_VALUE_Z",
       "SAVEALLGEOMETRY",
+      "PRINTPROPERTY",
       "PROJECT_ORTHO_DEN",
     };
   }
@@ -135,7 +136,10 @@ namespace ChronusQ {
       OPTOPT( GRAD_ALG = input.getData<std::string>(section +".GRADALG"););
 
       bool cmplx_ints = dynamic_cast<Integrals<dcomplex>*>(ints);
-
+      if ( cmplx_ints && GRAD_ALG == "DIRECT") {
+        std::cout << "DIRECT is not available for GIAO gradients. Changing to INCORE" << std::endl;
+        GRAD_ALG = "INCORE";
+      }
 
       if( GRAD_ALG == "INCORE" ) {
 
@@ -238,6 +242,7 @@ namespace ChronusQ {
       OPTOPT( mdOpt.nElectronicSteps = input.getData<size_t>("DYNAMICS.NELECPNUC"); )
 
       OPTOPT( mdOpt.saveAllGeometry = input.getData<bool>("DYNAMICS.SAVEALLGEOMETRY");)
+      OPTOPT( mdOpt.printProperty = input.getData<bool>("DYNAMICS.PRINTPROPERTY");)
 
       // Parsing restart options
       std::string restart = "FALSE";

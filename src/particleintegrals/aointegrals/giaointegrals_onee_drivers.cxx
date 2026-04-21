@@ -49,12 +49,13 @@ namespace ChronusQ {
   template <>
   template <size_t NOPER, bool SYMM, typename F>
   void OnePInts<dcomplex>::OnePDriverLocal(
-      const F &obFunc, shell_set& shells, std::vector<dcomplex*> mats,
-      OPERATOR op, const HamiltonianOptions &options) {
+      const F &obFunc, const Molecule &mol, BasisSet &basis, std::vector<dcomplex*> mats,
+      OPERATOR op, const HamiltonianOptions &options, size_t deriv) {
 
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
 
+    shell_set& shells = basis.shells;
     // Determine the number of basis functions for the passed shell set
     size_t NB = std::accumulate(shells.begin(),shells.end(),0,
       [](size_t init, libint2::Shell &sh) -> size_t {
@@ -97,12 +98,14 @@ namespace ChronusQ {
     {
       int thread_id = GetThreadID();
 
-    size_t n1,n2;
+    size_t n1,n2,atom1,atom2;
     // Loop over unique shell pairs
     for(size_t s1(0), bf1_s(0), s12(0); s1 < shells.size(); bf1_s+=n1, s1++){ 
       n1 = shells[s1].size(); // Size of Shell 1
+      atom1 = basis.mapSh2Cen[s1]; // Index of atom for Shell 1
     for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++, s12++) {
       n2 = shells[s2].size(); // Size of Shell 2
+      atom2 = basis.mapSh2Cen[s2]; // Index of atom for Shell 2
 
       // Round Robbin work distribution
       #ifdef _OPENMP
@@ -114,19 +117,118 @@ namespace ChronusQ {
 
       auto buff = obFunc(pair_to_use, shells[s1],shells[s2]);
 
-      assert(buff.size() == NOPER);
+      // Number of matrice must match
+      if (NOPER>0)
+        assert(buff.size() == NOPER);
+      else if (NOPER==0) {
+        // If NOPER is 0, check by catagory
+        if (op == NUCLEAR_POTENTIAL)
+          assert(buff.size() == 6+3*mol.atomsC.size());
+        else
+          CErr("Use pre-defined NOPER!");
+      } else
+        CErr("Number of Components Undefined!");
 
       // Place integral blocks into their respective matricies
-      for(auto iMat = 0; iMat < buff.size(); iMat++){
+      auto add_shellset_to_mat = [&](size_t iOp, size_t iMat) {
+
+        // If the integrals were screened, do nothing (currently no screening implemented for GIAO)
+        //if(buff[iOp] == nullptr) return;
+
         Eigen::Map<
           const Eigen::Matrix<
             dcomplex,
             Eigen::Dynamic,Eigen::Dynamic,  
             Eigen::RowMajor>>
-          bufMat(&buff[iMat][0],n1,n2);
+          bufMat(&buff[iOp][0],n1,n2);
 
-        matMaps[iMat].block(bf1_s,bf2_s,n1,n2) = bufMat.template cast<dcomplex>();
-      }
+        matMaps[iMat].block(bf1_s,bf2_s,n1,n2) += bufMat.template cast<dcomplex>();
+      };
+
+      switch (deriv) {
+
+        case 0: {
+          for(auto iMat = 0; iMat < buff.size(); iMat++){
+            add_shellset_to_mat(iMat, iMat);
+          }
+        }
+        break; // case deriv == 0
+
+        case 1: {
+          size_t result_idx = 0;
+
+          // Map For gradients
+          // S and T: Ax, Ay, Az, Bx, By, Bz 
+            
+          // First the bra and ket
+          for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+            add_shellset_to_mat(result_idx, 3*atom1 + xyz);
+
+          for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+            add_shellset_to_mat(result_idx, 3*atom2 + xyz);
+
+          // Gradient of operator
+          // V: Ax, Ay, Az, Bx, By, Bz, Cx, Cy, Cz 
+          if (op == NUCLEAR_POTENTIAL) {
+            auto nAtoms = mol.atomsC.size();
+            for (auto iAt = 0; iAt < nAtoms; iAt++) {
+              for ( auto xyz = 0; xyz < 3; xyz++, result_idx++) {
+                add_shellset_to_mat(result_idx, 3*mol.atomsC[iAt]+ xyz);
+              }
+            }
+          }
+        }
+        break; // case deriv == 1
+
+        // S0a
+        case 10: {
+
+          assert(op == TAUS0a);
+          size_t result_idx = 0;
+
+          // Map For gradients
+          // S and T: Ax, Ay, Az 
+          for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+            add_shellset_to_mat(result_idx, 3*atom1 + xyz);
+        }
+        break; // case deriv == 10
+
+        // Len1
+        case 11: {
+          size_t result_idx = 0;
+
+          // X, Y, Z
+          for (auto icomp=0; icomp<3; icomp++) {
+            result_idx = 0;
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(3*result_idx+icomp, 3*(3*atom1 + xyz)+icomp);
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(3*result_idx+icomp, 3*(3*atom2 + xyz)+icomp);
+          }
+        }
+        break;
+
+        // Len2
+        case 12: {
+          size_t result_idx = 0;
+
+          // XX, XY, XZ, YY, YZ, ZZ
+          for (auto icomp=0; icomp<6; icomp++) {
+            result_idx = 0;
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(6*result_idx+icomp, 6*(3*atom1 + xyz)+icomp);
+            for (auto xyz = 0; xyz < 3; xyz++, result_idx++)
+              add_shellset_to_mat(6*result_idx+icomp, 6*(3*atom2 + xyz)+icomp);
+          }
+        }
+        break;
+        
+        default: {
+          CErr("Required Gradient NYI in GIAO!",std::cout);
+        }
+        break;
+
+      } // switch deriv
 
     } // Loop over s2 <= s1
     } // Loop over s1
@@ -189,14 +291,14 @@ namespace ChronusQ {
           std::bind(&ComplexGIAOIntEngine::computeGIAOOverlapS,
                     std::placeholders::_1, std::placeholders::_2,
                     std::placeholders::_3, &magAmp[0],options.particle.charge),
-          basis.shells, tmp, op, options);
+          mol, basis, tmp, op, options, 0);
       break;
     case KINETIC:
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           std::bind(&ComplexGIAOIntEngine::computeGIAOKineticT,
                     std::placeholders::_1, std::placeholders::_2,
                     std::placeholders::_3, &magAmp[0],options.particle.charge),
-          basis.shells, tmp, op, options);
+          mol, basis, tmp, op, options, 0);
       break;
     case NUCLEAR_POTENTIAL:
       options.finiteWidthNuc ?
@@ -205,13 +307,13 @@ namespace ChronusQ {
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
                 mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-            }, basis.shells, tmp, op, options) :
+            }, mol, basis, tmp, op, options, 0) :
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1,
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-            }, basis.shells, tmp, op, options);
+            }, mol, basis, tmp, op, options, 0);
       break;
     case ELECTRON_REPULSION:
       CErr("Electron repulsion integrals are not implemented in OnePInts,"
@@ -261,21 +363,21 @@ namespace ChronusQ {
             std::bind(&ComplexGIAOIntEngine::computeGIAOEDipoleE1_len,
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3, &magAmp[0],options.particle.charge),
-            basis.shells, pointers(), op, options);
+            mol, basis, pointers(), op, options, 0);
         break;
       case 2:
         OnePInts<dcomplex>::OnePDriverLocal<6,true>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOEQuadrupoleE2_len,
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3, &magAmp[0],options.particle.charge),
-            basis.shells, pointers(), op, options);
+            mol, basis, pointers(), op, options, 0);
         break;
       case 3:
         OnePInts<dcomplex>::OnePDriverLocal<10,true>(
             std::bind(&ComplexGIAOIntEngine::computeGIAOEOctupoleE3_len,
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3, &magAmp[0],options.particle.charge),
-            basis.shells, pointers(), op, options);
+            mol, basis, pointers(), op, options, 0);
         break;
       default:
         CErr("Requested operator is NYI in VectorInts.",std::cout);
@@ -284,7 +386,7 @@ namespace ChronusQ {
       break;
     case VEL_ELECTRIC_MULTIPOLE:
       CErr("Requested operator is NYI in VectorInts.",std::cout);
-      break;
+        break;
     case MAGNETIC_MULTIPOLE:
       switch (order()) {
       case 1:
@@ -292,7 +394,7 @@ namespace ChronusQ {
             std::bind(&ComplexGIAOIntEngine::computeGIAOAngularL,
                       std::placeholders::_1, std::placeholders::_2,
                       std::placeholders::_3, &magAmp[0],options.particle.charge),
-            basis.shells, pointers(), op, options);
+            mol, basis, pointers(), op, options, 0);
         break;
       default:
         CErr("Requested operator is NYI in VectorInts.",std::cout);
@@ -311,14 +413,14 @@ namespace ChronusQ {
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOrVr(
                 mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         else
           OnePInts<dcomplex>::OnePDriverLocal<6,true>(
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOrVr(
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -334,14 +436,14 @@ namespace ChronusQ {
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOpVrprVp(
                 mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         else
           OnePInts<dcomplex>::OnePDriverLocal<9,false>(
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOpVrprVp(
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -357,14 +459,14 @@ namespace ChronusQ {
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
                 mol.chargeDist, pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         else
           OnePInts<dcomplex>::OnePDriverLocal<9,true>(
             [&](libint2::ShellPair& pair, libint2::Shell& sh1,
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {  
               return ComplexGIAOIntEngine::computeGIAOpVrmrVp(
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge); 
-              }, basis.shells, pointers(), op, options);
+              }, mol, basis, pointers(), op, options, 0);
         break;
       default:
         CErr("Requested operator is not implemented in VectorInts.");
@@ -435,14 +537,14 @@ namespace ChronusQ {
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
                 mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-            }, basis.shells, _potential, op, options);
+            }, mol, basis, _potential, op, options, 0);
     else
       OnePInts<dcomplex>::OnePDriverLocal<1,true>(
           [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
             return ComplexGIAOIntEngine::computeGIAOPotentialV(
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-            }, basis.shells, _potential, op, options);
+            }, mol, basis, _potential, op, options, 0);
 
     // Point nuclei is used when chargeDist is empty
     const std::vector<libint2::Shell> &chargeDist = options.finiteWidthNuc ?
@@ -459,7 +561,7 @@ namespace ChronusQ {
                 libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
               return ComplexGIAOIntEngine::computeGIAOSL(chargeDist,
                   pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-              }, basis.shells, SOXYZPointers(), op, options);       
+              }, mol, basis, SOXYZPointers(), op, options, 0);       
     }
 
     std::vector<dcomplex*> _PVdP(1, scalar().pointer());
@@ -468,8 +570,171 @@ namespace ChronusQ {
               libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
             return ComplexGIAOIntEngine::computeGIAOpVdotp(chargeDist,
                 pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
-            }, basis.shells, _PVdP, op, options);
+            }, mol, basis, _PVdP, op, options, 0);
 
+  };
+
+  // --------------------- Gradient integrals
+  template<>
+  void GradInts<OnePInts,dcomplex>::computeAOInts(BasisSet& basis,
+    Molecule& mol, EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions& options)
+  {
+
+    if (options.basisType == REAL_GTO)
+      CErr("Real GTOs are not allowed in OnePInts<dcomplex>",std::cout);
+    if (options.basisType == COMPLEX_GTO)
+      CErr("Complex GTOs NYI in OnePInts<dcomplex>",std::cout);
+
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
+
+    std::vector<dcomplex*> gradPtrs(3*nAtoms_, nullptr);
+
+    for (auto i = 0; i < 3*nAtoms_; i++) {
+      gradPtrs[i] = components_[i]->pointer();
+    }
+
+    switch (op) {
+    case OVERLAP:
+      OnePInts<dcomplex>::OnePDriverLocal<6,true>(
+          std::bind(&ComplexGIAOIntEngine::computeGIAOOverlapGradS,
+                    std::placeholders::_1, std::placeholders::_2,
+                    std::placeholders::_3, &magAmp[0],options.particle.charge),
+          mol, basis, gradPtrs, op, options, 1);
+      break;
+    case KINETIC:
+      OnePInts<dcomplex>::OnePDriverLocal<6,true>(
+          std::bind(&ComplexGIAOIntEngine::computeGIAOKineticGradT,
+                    std::placeholders::_1, std::placeholders::_2,
+                    std::placeholders::_3, &magAmp[0],options.particle.charge),
+          mol, basis, gradPtrs, op, options, 1);
+      break;
+    case NUCLEAR_POTENTIAL:
+      //OnePInts<dcomplex>::OnePDriverLocal<9,true>(
+      //    [&](libint2::ShellPair& pair, libint2::Shell& sh1, 
+      //        libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> { 
+      //      return ComplexGIAOIntEngine::computeGIAOPotentialGradV(
+      //          mol.chargeDist,pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+      //      }, mol, basis, tmp, op, options, 0) :
+      if (options.finiteWidthNuc) {
+      std::cerr<<"no finite nuclei grdient yet"<<std::endl;
+      } else {
+        OnePInts<dcomplex>::OnePDriverLocal<0,true>(
+            [&](libint2::ShellPair& pair, libint2::Shell& sh1,
+                libint2::Shell& sh2) -> std::vector<std::vector<dcomplex>> {
+              return ComplexGIAOIntEngine::computeGIAOPotentialGradV(
+                  pair,sh1,sh2,&magAmp[0],mol.retainCNuc(),options.particle.charge);
+              }, mol, basis, gradPtrs, op, options, 1);
+      }
+      break;
+    case TAUS0a:
+      OnePInts<dcomplex>::OnePDriverLocal<3,true>(
+          std::bind(&ComplexGIAOIntEngine::computeGIAOOverlapGradS0a,
+                    std::placeholders::_1, std::placeholders::_2,
+                    std::placeholders::_3, &magAmp[0],options.particle.charge),
+          mol, basis, gradPtrs, op, options, 10);
+      break;
+    case ELECTRON_REPULSION:
+    case LEN_ELECTRIC_MULTIPOLE:
+    case MAGNETIC_MULTIPOLE:
+      CErr("Requested operator is not implemented... yet",std::cout);
+      break;
+    case VEL_ELECTRIC_MULTIPOLE:
+      CErr("Requested operator is not planned in GradInts-OnePInts.",std::cout);
+      break;
+    default:
+      CErr("Requested operator is not implemented in GradInts-OnePInts.",std::cout); 
+      break;
+    }
+  };
+
+  template<>
+  void GradInts<VectorInts, dcomplex>::computeAOInts(BasisSet& basis,
+    Molecule& mol, EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions& options) {
+
+    if (options.basisType == REAL_GTO)
+      CErr("Real GTOs are not allowed in VectorInts<dcomplex>",std::cout);
+    if (options.basisType == COMPLEX_GTO)
+      CErr("Complex GTOs NYI in VectorInts<dcomplex>",std::cout);
+
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
+
+    switch (op) {
+    case OVERLAP:
+    case KINETIC:
+    case NUCLEAR_POTENTIAL:
+    case ELECTRON_REPULSION:
+    case VEL_ELECTRIC_MULTIPOLE:
+      CErr("Requested operator is not implemented in GradInts-VectorInts.",std::cout); 
+    case MAGNETIC_MULTIPOLE:
+      switch (components_[0]->order()) {
+      case 1: {
+        // Gradient Placer [iGrad, Component]
+        std::vector<dcomplex*> gradPtrs(3*nAtoms_*3, nullptr);
+        for (auto i = 0; i < 3*nAtoms_; i++) {
+          for (auto j = 0; j < 3; j++) { 
+            gradPtrs[i*3+j] = components_[i]->pointers()[j];
+          }
+        }
+        OnePInts<dcomplex>::OnePDriverLocal<18,false>(
+            std::bind(&ComplexGIAOIntEngine::computeGIAOAngularGradL,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            mol, basis, gradPtrs, op, options, 11);
+        break;
+      }
+      default:
+        CErr("Requested operator is NYI in VectorInts.",std::cout);
+        break;
+      }
+      break;
+    case LEN_ELECTRIC_MULTIPOLE:
+      switch (components_[0]->order()) {
+      case 2: {
+        // Gradient Placer [iGrad, Component]
+        std::vector<dcomplex*> gradPtrs(3*nAtoms_*6, nullptr);
+        for (auto i = 0; i < 3*nAtoms_; i++) {
+          for (auto j = 0; j < 6; j++) { 
+            gradPtrs[i*6+j] = components_[i]->pointers()[j];
+          }
+        }
+        OnePInts<dcomplex>::OnePDriverLocal<36,true>(
+            std::bind(&ComplexGIAOIntEngine::computeGIAOEQuadrupoleGradE2_len,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3, &magAmp[0],options.particle.charge),
+            mol, basis, gradPtrs, op, options, 12);
+        break;
+      }
+      default:
+        CErr("Requested operator is NYI in VectorInts.",std::cout);
+        break;
+      }
+      break;
+    default:
+      CErr("Requested operator is not implemented in GradInts-VectorInts.",std::cout); 
+      break;
+    }
+
+  };
+
+  template<>
+  void GradInts<MultipoleInts, dcomplex>::computeAOInts(BasisSet& basis,
+    Molecule& mol, EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions& options) {
+    CErr("Gradients cannot be called directly through MultipoleInts. Use VectorInts instead.");
+  };
+  template <>
+  void GradInts<OnePInts, dcomplex>::computeAOInts(BasisSet&, BasisSet&,
+    Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
+    CErr("Two basis gradients not implemented for OnePInts");
+  };
+  template <>
+  void GradInts<VectorInts, dcomplex>::computeAOInts(BasisSet&, BasisSet&,
+    Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
+    CErr("Two basis gradients not implemented for VectorInts");
+  };
+  template <>
+  void GradInts<MultipoleInts, dcomplex>::computeAOInts(BasisSet&, BasisSet&,
+    Molecule&, EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
+    CErr("Two basis gradients not implemented for MultipoleInts");
   };
 
   template void Integrals<dcomplex>::computeAOOneP(
@@ -478,13 +743,12 @@ namespace ChronusQ {
       const HamiltonianOptions&);
 
 
-  template <>
-  void Integrals<dcomplex>::computeGradInts(
+  template void 
+  Integrals<dcomplex>::computeGradInts(
       Molecule&, BasisSet&, EMPerturbation&,
       const std::vector<std::pair<OPERATOR,size_t>>&,
-      const HamiltonianOptions&) {
-    CErr("Gradient integrals for GIAOs not yet implemented");
-  };
+      const HamiltonianOptions&);
+      //CErr("Requested operator is not implemented in MultipoleInts.");
 
 
 }; // namespace ChronusQ

@@ -33,6 +33,12 @@ TEST( EHRENFEST_DYNAMICS, hf_ehrenfest_rhf_mmut ) {
     "hf_ehrenfest_rhf_mmut.bin.ref");
 
 }
+TEST( EHRENFEST_DYNAMICS, h2_ehrenfest_ghf_mmut ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2_ehrenfest_ghf_mmut",
+    "h2_ehrenfest_ghf_mmut.bin.ref");
+
+}
 
 // NEO Water RHF/UHF Fixed Proton Basis
 TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rhf_uhf_mmut_fpb ) {
@@ -58,6 +64,12 @@ TEST( EHRENFEST_DYNAMICS, PAR_hf_ehrenfest_rhf_mmut ) {
 
   CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/hf_ehrenfest_rhf_mmut",
     "hf_ehrenfest_rhf_mmut.bin.ref" );
+
+}
+TEST( EHRENFEST_DYNAMICS, PAR_h2_ehrenfest_ghf_mmut ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest/h2_ehrenfest_ghf_mmut",
+    "h2_ehrenfest_ghf_mmut.bin.ref");
 
 }
 

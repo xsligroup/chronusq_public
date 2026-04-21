@@ -47,7 +47,8 @@ namespace ChronusQ {
     MAGNETIC_MULTIPOLE,
     MAGNETIC_4COMP_rVr,
     MAGNETIC_4COMP_PVrprVP,
-    MAGNETIC_4COMP_PVrmrVP
+    MAGNETIC_4COMP_PVrmrVP,
+    TAUS0a,
   };
 
   /**

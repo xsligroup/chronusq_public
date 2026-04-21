@@ -387,6 +387,12 @@ namespace ChronusQ {
 
     size_t IOff = NPts*NBE;
 
+//    for (size_t j = 0; j < NB; ++j) {
+//      for (size_t i = 0; i < NB; ++i) {
+//          DENMAT[i + j * NB] = std::conj(DENMAT[j + i * NB]); 
+//      }
+//  }    
+
     SubMatSet(NB,NB,NBE,NBE,DENMAT,NB,SCR1,NBE,subMatCut);           
 
     // Obtain Sum_nu P^T_mu_nu Phi_nu
@@ -398,12 +404,47 @@ namespace ChronusQ {
         dcomplex *SCR_cur = SCR2 + iPt*NBE;
         dcomplex *B_cur   = BasisScr + iPt*NBE;
 
-        dcomplex dentmp;  
+        dcomplex dentmp = dcomplex(0.);  
         for (size_t j = 0; j < NBE; j++) 
           dentmp += SCR_cur[j] * std::conj(B_cur[j]);
 
-        if (std::abs(dentmp.imag())> 1.0e-13 )
+        if (std::abs(dentmp.imag())> 1.0e-12 )
           std::cout<<"imaginary part of density is nonzero "<<std::imag(dentmp)<<std::endl;
+        //if (std::abs(dentmp.imag())> 1.0e-16 ) 
+        /*
+        if (std::abs(dentmp.imag())> 1.0e-13 ) {
+          std::cout<<"imaginary part of density is "<<std::imag(dentmp)<< " log10= " << std::log10(std::abs(std::imag(dentmp))) << std::endl;
+          double sum_sq = 0.0;
+          for (size_t j = 0; j < NB; ++j) {
+              for (size_t i = 0; i < NB; ++i) {
+                  // index = i + j * NB
+                  std::complex<double> P_ij = DENMAT[i + j * NB];
+                  std::complex<double> P_ji_conj = std::conj(DENMAT[j + i * NB]); 
+                  // P_ij - (P^\dagger)_ij
+                  std::complex<double> diff = P_ij - P_ji_conj;
+                  sum_sq += std::norm(diff); 
+              }
+          }
+          std::cout << "Hermiticity deviation: " << sum_sq << " " << std::log10(std::abs(sum_sq)) << std::endl;
+
+
+          for(size_t i=0; i<NBE*NBE; ++i) SCR1[i] = 1.0;
+         // for(size_t i=0; i<NBE; ++i) SCR1[i + i*NBE] = 1.0;
+          blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr,NBE,dcomplex(0.),SCR2,NBE);
+          Den[iPt] = 0.;
+          SCR_cur = SCR2 + iPt*NBE;
+          B_cur   = BasisScr + iPt*NBE;
+  
+          dentmp = dcomplex(0.);  
+          for (size_t j = 0; j < NBE; j++) 
+            dentmp += SCR_cur[j] * std::conj(B_cur[j]); 
+
+          std::cout<<"imaginary part of density2 is "<<std::imag(dentmp)<< " log10= " << std::log10(std::abs(std::imag(dentmp))) << std::endl;
+
+          CErr("TanGDD STOP");
+
+        }*/
+                   
 
         Den[iPt] = std::real(dentmp);
 

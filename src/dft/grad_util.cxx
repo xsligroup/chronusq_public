@@ -316,6 +316,312 @@ namespace ChronusQ {
       }
     }
   }; // evalDenGrad
+  // GIAO Specific
+  void evalDenGrad(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB,
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex* SCR1,
+    dcomplex *SCR2, std::vector<std::vector<dcomplex*>>SCR3, 
+    std::vector<std::vector<dcomplex*>>SCR4, std::vector<dcomplex*> SCR5,
+    std::vector<std::vector<dcomplex*>>GDENMAT, dcomplex *DENMAT, 
+    std::vector<double*>GDenX, std::vector<double*>GDenY, std::vector<double*>GDenZ,
+    std::vector<double*>GGDenxX, std::vector<double*>GGDenxY, std::vector<double*>GGDenxZ,
+    std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
+    std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
+    dcomplex *BasisScr, dcomplex *BasisGradScr, Molecule &mol, BasisSet &basisSet){
+
+    size_t nAtoms = mol.atoms.size();
+    size_t IOff = NPts*NBE; 
+
+    // effective orbitals for gradient
+    std::vector<std::vector<size_t>> effOrbsForAtom(nAtoms);
+    std::vector<size_t> totOrbsForAtom;
+
+    // loop over pairs in subMatCut
+    for (size_t pi = 0; pi < subMatCut.size(); pi++) {
+      for (size_t oi = subMatCut[pi].first; oi < subMatCut[pi].second; oi++) {
+        for (int i = nAtoms-1; i >=0; i--) {
+          // For NEO basis, skip classical atom centers
+          if (basisSet.nucBasis and !mol.atoms[i].quantum) continue;
+          if (oi >= basisSet.mapAllCen2BfSt[i]) {
+            effOrbsForAtom[i].emplace_back(oi);
+            break;
+          }
+        }
+        totOrbsForAtom.emplace_back(oi);
+      }
+    }
+
+    for (size_t ic = 0; ic < nAtoms; ic++) {
+      for (size_t i = 0; i < effOrbsForAtom[ic].size(); i++) {
+        auto it = std::find(totOrbsForAtom.begin(), totOrbsForAtom.end(), effOrbsForAtom[ic][i]);
+        size_t oi = std::distance(totOrbsForAtom.begin(), it);
+        effOrbsForAtom[ic][i] = oi;
+      }
+    }
+
+    // SCR1: effective part of the total density matrix (NBE * NBE)
+    SubMatSet(NB,NB,NBE,NBE,DENMAT,NB,SCR1,NBE,subMatCut);           
+
+    //// SCR3: effective part of the dP / dR (NAtom * 3 * NBE * NBE)
+    //for (size_t ic = 0; ic < nAtoms; ic++)
+    //  for(int xyz = 0; xyz < 3; xyz++)
+    //    SubMatSet(NB,NB,NBE,NBE,GDENMAT[ic][xyz],NB,SCR3[ic][xyz],NBE,subMatCut);
+
+    // Obtain Sum_nu P^T_mu_nu Phi_nu ( NBE * NPts ) -> SCR2
+    blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr,NBE,dcomplex(0.),SCR2,NBE);
+
+    //// Obtain Sum_nu dP_mu_nu/dR Phi_nu ( NAtom * 3 * NBE * NPts ) -> SCR4
+    //for (size_t ic = 0; ic < nAtoms; ic++) 
+    //  for(int xyz = 0; xyz < 3; xyz++)
+    //    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NBE,NPts,NBE,1.,SCR3[ic][xyz],NBE,BasisScr,NBE,0.,SCR4[ic][xyz],NBE);
+
+    // If only the density gradient is needed
+    if( typ != GRADIENT ) {
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        // loop over atom center
+        for(auto ic = 0; ic < nAtoms; ic++) {
+          size_t NBEAtom = effOrbsForAtom[ic].size();
+          GDenX[ic][iPt] = 0.;
+          GDenY[ic][iPt] = 0.;
+          GDenZ[ic][iPt] = 0.;
+          const size_t NBEiPt = iPt*NBE;
+          const dcomplex *SCR_cur   = SCR2 + NBEiPt;
+          //const double *SCR2_curX  = SCR4[ic][0] + NBEiPt;
+          //const double *SCR2_curY  = SCR4[ic][1] + NBEiPt;
+          //const double *SCR2_curZ  = SCR4[ic][2] + NBEiPt;
+          const dcomplex *B_cur    = BasisScr + NBEiPt;
+          const dcomplex *B_curX   = BasisGradScr + NBEiPt;
+          const dcomplex *B_curY   = B_curX + IOff;
+          const dcomplex *B_curZ   = B_curY + IOff;
+
+          dcomplex GDenXtmp=0.0;
+          dcomplex GDenYtmp=0.0;
+          dcomplex GDenZtmp=0.0;
+
+          //// If this is the atomic center, subtract ALL orbitals
+          //if ( ic == iAtm and this->scfControls.grid_resp ) {
+          ////if ( false ) {
+          //  for ( auto& atOrbs: effOrbsForAtom ) {
+          //    for ( auto& oi: atOrbs ) {
+          //      GDenX[ic][iPt] -= SCR_cur[oi] * B_curX[oi];
+          //      GDenY[ic][iPt] -= SCR_cur[oi] * B_curY[oi];
+          //      GDenZ[ic][iPt] -= SCR_cur[oi] * B_curZ[oi];
+          //    }
+          //  }
+          //}
+      
+          for(size_t j = 0; j < NBEAtom; j++) { 
+            size_t oi = effOrbsForAtom[ic][j];
+            GDenXtmp += SCR_cur[oi] * std::conj(B_curX[oi]);
+            GDenYtmp += SCR_cur[oi] * std::conj(B_curY[oi]);
+            GDenZtmp += SCR_cur[oi] * std::conj(B_curZ[oi]);
+          }
+
+          GDenXtmp = GDenXtmp + std::conj(GDenXtmp);
+          GDenYtmp = GDenYtmp + std::conj(GDenYtmp);    
+          GDenZtmp = GDenZtmp + std::conj(GDenZtmp); 
+
+          //// add contribution from density matrix gradient
+          //for(size_t j = 0; j < NBE; j++) {
+          //  GDenX[ic][iPt] += SCR2_curX[j] * B_cur[j]; 
+          //  GDenY[ic][iPt] += SCR2_curY[j] * B_cur[j]; 
+          //  GDenZ[ic][iPt] += SCR2_curZ[j] * B_cur[j]; 
+          //}
+
+          GDenX[ic][iPt] = std::real(GDenXtmp);
+          GDenY[ic][iPt] = std::real(GDenYtmp);
+          GDenZ[ic][iPt] = std::real(GDenZtmp);
+
+
+        }
+      }
+    } else { // gradient of density gradient is also needed
+
+      // Obtain Sum_nu P^T_mu_nu dPhi_nu/dr (3 * NBE * NPts)
+      for(int xyz = 0; xyz < 3; xyz++)
+        blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NBE,NPts,NBE,dcomplex(1.),SCR1,NBE,BasisScr+IOff+xyz*IOff,NBE,dcomplex(0.),SCR5[xyz],NBE);
+
+      for(auto iPt = 0; iPt < NPts; iPt++) {
+        for(auto ic = 0; ic < nAtoms; ic++) {
+          GDenX[ic][iPt] = 0.;
+          GDenY[ic][iPt] = 0.;
+          GDenZ[ic][iPt] = 0.;
+          GGDenxX[ic][iPt] = 0.;
+          GGDenxY[ic][iPt] = 0.;
+          GGDenxZ[ic][iPt] = 0.;
+          GGDenyX[ic][iPt] = 0.;
+          GGDenyY[ic][iPt] = 0.;
+          GGDenyZ[ic][iPt] = 0.;
+          GGDenzX[ic][iPt] = 0.;
+          GGDenzY[ic][iPt] = 0.;
+          GGDenzZ[ic][iPt] = 0.;
+          const size_t NBEiPt = iPt*NBE;
+          size_t NBEAtom = effOrbsForAtom[ic].size();
+          const dcomplex *SCR_cur  = SCR2 + NBEiPt;
+          //const double *SCR2_curX  = SCR4[ic][0] + NBEiPt;
+          //const double *SCR2_curY  = SCR4[ic][1] + NBEiPt;
+          //const double *SCR2_curZ  = SCR4[ic][2] + NBEiPt;
+          const dcomplex *B_cur    = BasisScr + NBEiPt;
+          const dcomplex *B_curx   = B_cur + IOff;
+          const dcomplex *B_cury   = B_curx + IOff;
+          const dcomplex *B_curz   = B_cury + IOff;
+          const dcomplex *B_curX   = BasisGradScr  + NBEiPt;
+          const dcomplex *B_curY   = B_curX + IOff;
+          const dcomplex *B_curZ   = B_curY + IOff;
+
+          // nuclear gradient of orbital gradient
+          const dcomplex *B_curxX = B_curZ + IOff;
+          const dcomplex *B_curxY = B_curxX + IOff;
+          const dcomplex *B_curxZ = B_curxY + IOff;
+          const dcomplex *B_curyX = B_curxZ + IOff;
+          const dcomplex *B_curyY = B_curyX + IOff;
+          const dcomplex *B_curyZ = B_curyY + IOff;
+          const dcomplex *B_curzX = B_curyZ + IOff;
+          const dcomplex *B_curzY = B_curzX + IOff;
+          const dcomplex *B_curzZ = B_curzY + IOff;
+          const dcomplex *SCR3_curx = SCR5[0] + NBEiPt;
+          const dcomplex *SCR3_cury = SCR5[1] + NBEiPt;
+          const dcomplex *SCR3_curz = SCR5[2] + NBEiPt;
+          
+          dcomplex GDenXtmp = 0.;
+          dcomplex GDenYtmp = 0.;
+          dcomplex GDenZtmp = 0.;
+          dcomplex GGDenxXtmp = 0.;
+          dcomplex GGDenxYtmp = 0.;
+          dcomplex GGDenxZtmp = 0.;
+          dcomplex GGDenyXtmp = 0.;
+          dcomplex GGDenyYtmp = 0.;
+          dcomplex GGDenyZtmp = 0.;
+          dcomplex GGDenzXtmp = 0.;
+          dcomplex GGDenzYtmp = 0.;
+          dcomplex GGDenzZtmp = 0.;
+
+          for(size_t j = 0; j < NBEAtom; j++) { 
+            size_t oi = effOrbsForAtom[ic][j];
+
+            GDenXtmp += SCR_cur[oi] * std::conj(B_curX[oi]);
+            GDenYtmp += SCR_cur[oi] * std::conj(B_curY[oi]);
+            GDenZtmp += SCR_cur[oi] * std::conj(B_curZ[oi]);
+            
+            GGDenxXtmp += SCR_cur[oi] * std::conj(B_curxX[oi]);
+            GGDenxXtmp += SCR3_curx[oi] * std::conj(B_curX[oi]);
+            
+            GGDenxYtmp += SCR_cur[oi] * std::conj(B_curxY[oi]);
+            GGDenxYtmp += SCR3_curx[oi] * std::conj(B_curY[oi]);
+            
+            GGDenxZtmp += SCR_cur[oi] * std::conj(B_curxZ[oi]);
+            GGDenxZtmp += SCR3_curx[oi] * std::conj(B_curZ[oi]);
+            
+            GGDenyXtmp += SCR_cur[oi] * std::conj(B_curyX[oi]);
+            GGDenyXtmp += SCR3_cury[oi] * std::conj(B_curX[oi]);
+            
+            GGDenyYtmp += SCR_cur[oi] * std::conj(B_curyY[oi]);
+            GGDenyYtmp += SCR3_cury[oi] * std::conj(B_curY[oi]);
+            
+            GGDenyZtmp += SCR_cur[oi] * std::conj(B_curyZ[oi]);
+            GGDenyZtmp += SCR3_cury[oi] * std::conj(B_curZ[oi]);
+            
+            GGDenzXtmp += SCR_cur[oi] * std::conj(B_curzX[oi]);
+            GGDenzXtmp += SCR3_curz[oi] * std::conj(B_curX[oi]);
+            
+            GGDenzYtmp += SCR_cur[oi] * std::conj(B_curzY[oi]);
+            GGDenzYtmp += SCR3_curz[oi] * std::conj(B_curY[oi]);
+            
+            GGDenzZtmp += SCR_cur[oi] * std::conj(B_curzZ[oi]);
+            GGDenzZtmp += SCR3_curz[oi] * std::conj(B_curZ[oi]);
+          }
+
+          //if ( ic == iAtm and this->scfControls.grid_resp ) {
+          ////if (false) {
+          //  for ( auto& atOrbs: effOrbsForAtom ) {
+          //    for ( auto& oi: atOrbs ) {
+          //      GDenX[ic][iPt] -= SCR_cur[oi] * B_curX[oi];
+          //      GDenY[ic][iPt] -= SCR_cur[oi] * B_curY[oi];
+          //      GDenZ[ic][iPt] -= SCR_cur[oi] * B_curZ[oi];
+
+          //      GGDenxX[ic][iPt] -= SCR_cur[oi] * B_curxX[oi];
+          //      GGDenxX[ic][iPt] -= SCR3_curx[oi] * B_curX[oi];
+
+          //      GGDenxY[ic][iPt] -= SCR_cur[oi] * B_curxY[oi];
+          //      GGDenxY[ic][iPt] -= SCR3_curx[oi] * B_curY[oi];
+
+          //      GGDenxZ[ic][iPt] -= SCR_cur[oi] * B_curxZ[oi];
+          //      GGDenxZ[ic][iPt] -= SCR3_curx[oi] * B_curZ[oi];
+
+          //      GGDenyX[ic][iPt] -= SCR_cur[oi] * B_curyX[oi];
+          //      GGDenyX[ic][iPt] -= SCR3_cury[oi] * B_curX[oi];
+
+          //      GGDenyY[ic][iPt] -= SCR_cur[oi] * B_curyY[oi];
+          //      GGDenyY[ic][iPt] -= SCR3_cury[oi] * B_curY[oi];
+
+          //      GGDenyZ[ic][iPt] -= SCR_cur[oi] * B_curyZ[oi];
+          //      GGDenyZ[ic][iPt] -= SCR3_cury[oi] * B_curZ[oi];
+
+          //      GGDenzX[ic][iPt] -= SCR_cur[oi] * B_curzX[oi];
+          //      GGDenzX[ic][iPt] -= SCR3_curz[oi] * B_curX[oi];
+
+          //      GGDenzY[ic][iPt] -= SCR_cur[oi] * B_curzY[oi];
+          //      GGDenzY[ic][iPt] -= SCR3_curz[oi] * B_curY[oi];
+
+          //      GGDenzZ[ic][iPt] -= SCR_cur[oi] * B_curzZ[oi];
+          //      GGDenzZ[ic][iPt] -= SCR3_curz[oi] * B_curZ[oi];
+
+          //    }
+          //  }
+          //}
+
+          //for(size_t j = 0; j < NBE; j++) { 
+
+          //  GGDenxX[ic][iPt] += SCR2_curX[j] * B_curx[j];
+          //  GGDenxY[ic][iPt] += SCR2_curY[j] * B_curx[j];
+          //  GGDenxZ[ic][iPt] += SCR2_curZ[j] * B_curx[j];
+
+          //  GGDenyX[ic][iPt] += SCR2_curX[j] * B_cury[j];
+          //  GGDenyY[ic][iPt] += SCR2_curY[j] * B_cury[j];
+          //  GGDenyZ[ic][iPt] += SCR2_curZ[j] * B_cury[j];
+
+          //  GGDenzX[ic][iPt] += SCR2_curX[j] * B_curz[j];
+          //  GGDenzY[ic][iPt] += SCR2_curY[j] * B_curz[j];
+          //  GGDenzZ[ic][iPt] += SCR2_curZ[j] * B_curz[j];
+
+          //}
+          // Since we are summing over mu and nu
+          // Del (mu nu) = 2 * Del(mu) nu 
+        	GDenXtmp = GDenXtmp + std::conj(GDenXtmp);    
+          GDenYtmp = GDenYtmp + std::conj(GDenYtmp);   
+          GDenZtmp = GDenZtmp + std::conj(GDenZtmp);  
+          GGDenxXtmp = GGDenxXtmp + std::conj(GGDenxXtmp);
+          GGDenxYtmp = GGDenxYtmp + std::conj(GGDenxYtmp);
+          GGDenxZtmp = GGDenxZtmp + std::conj(GGDenxZtmp);
+          GGDenyXtmp = GGDenyXtmp + std::conj(GGDenyXtmp);
+          GGDenyYtmp = GGDenyYtmp + std::conj(GGDenyYtmp);
+          GGDenyZtmp = GGDenyZtmp + std::conj(GGDenyZtmp);
+          GGDenzXtmp = GGDenzXtmp + std::conj(GGDenzXtmp);
+          GGDenzYtmp = GGDenzYtmp + std::conj(GGDenzYtmp);
+          GGDenzZtmp = GGDenzZtmp + std::conj(GGDenzZtmp);
+
+          GDenX[ic][iPt] = std::real(GDenXtmp);   
+          GDenY[ic][iPt] = std::real(GDenYtmp);  
+          GDenZ[ic][iPt] = std::real(GDenZtmp); 
+          GGDenxX[ic][iPt] = std::real(GGDenxXtmp);
+          GGDenxY[ic][iPt] = std::real(GGDenxYtmp);
+          GGDenxZ[ic][iPt] = std::real(GGDenxZtmp);
+          GGDenyX[ic][iPt] = std::real(GGDenyXtmp);
+          GGDenyY[ic][iPt] = std::real(GGDenyYtmp);
+          GGDenyZ[ic][iPt] = std::real(GGDenyZtmp);
+          GGDenzX[ic][iPt] = std::real(GGDenzXtmp);
+          GGDenzY[ic][iPt] = std::real(GGDenzYtmp);
+          GGDenzZ[ic][iPt] = std::real(GGDenzZtmp);
+
+          //// add contribution from density matrix gradient
+          //for(size_t j = 0; j < NBE; j++) {
+          //  GDenX[ic][iPt] += SCR2_curX[j] * B_cur[j]; 
+          //  GDenY[ic][iPt] += SCR2_curY[j] * B_cur[j]; 
+          //  GDenZ[ic][iPt] += SCR2_curZ[j] * B_cur[j]; 
+          //}
+        }
+      }
+    }
+  }; // evalDenGrad::GIAO
 
   /**
    *  \brief form the grad U variables given the grad V variables.

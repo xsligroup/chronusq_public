@@ -117,11 +117,12 @@ namespace ChronusQ {
     std::vector<std::pair<size_t,size_t>> &subMatCut, double *SCR1,
     double *SCR2, double *DENMAT, double *Den, double *GDenX, double *GDenY, double *GDenZ,
     double *BasisScr);
-  //SS: for non-hermitian density matrix contract with complex orbital
+  // GIAO
   void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
     std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
     dcomplex *SCR2, dcomplex *DENMAT, double *Den, double *GDenX, double *GDenY, double *GDenZ,
     dcomplex *BasisScr);
+  //SS: for non-hermitian density matrix contract with complex orbital
   void evalDen(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB, 
     std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex *SCR1,
     dcomplex *SCR2, dcomplex *DENMAT, dcomplex *Den, dcomplex *GDenX, dcomplex *GDenY, dcomplex *GDenZ,
@@ -246,6 +247,17 @@ namespace ChronusQ {
     std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
     std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
     double *BasisScr, double *BasisGradScr, Molecule &mol, BasisSet &basisSet);
+  // GIAO
+  void evalDenGrad(SHELL_EVAL_TYPE typ, size_t NPts,size_t NBE, size_t NB,
+    std::vector<std::pair<size_t,size_t>> &subMatCut, dcomplex* SCR1,
+    dcomplex *SCR2, std::vector<std::vector<dcomplex*>>SCR3, 
+    std::vector<std::vector<dcomplex*>>SCR4, std::vector<dcomplex*> SCR5,
+    std::vector<std::vector<dcomplex*>>GDENMAT, dcomplex *DENMAT,  
+    std::vector<double*>GDenX, std::vector<double*>GDenY, std::vector<double*>GDenZ,
+    std::vector<double*>GGDenxX, std::vector<double*>GGDenxY, std::vector<double*>GGDenxZ, 
+    std::vector<double*>GGDenyX, std::vector<double*>GGDenyY, std::vector<double*>GGDenyZ, 
+    std::vector<double*>GGDenzX, std::vector<double*>GGDenzY, std::vector<double*>GGDenzZ, 
+    dcomplex *BasisScr, dcomplex *BasisGradScr, Molecule &mol, BasisSet &basisSet);
 
   template <typename MatsT>
   void mkAuxVarGrad(

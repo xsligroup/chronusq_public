@@ -101,6 +101,9 @@ namespace ChronusQ {
    */
   void evalShellSetGrad(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &, double *, double *, size_t, 
     size_t, std::vector<size_t> &, size_t, double*, double*, size_t, bool );
+  // GIAO
+  void evalShellSetGrad(SHELL_EVAL_TYPE, std::vector<libint2::Shell> &, std::vector<bool> &, double *, double *, size_t, 
+    size_t, std::vector<size_t> &, size_t, dcomplex*, dcomplex*, size_t, bool, EMPerturbation&, double );
 
   /**
    *  \brief Level 3 Basis Set Gradient Evaluation Function
@@ -109,6 +112,8 @@ namespace ChronusQ {
    *  \brief to properly store the results can be used..
    */
   void evalShellSetGrad(SHELL_EVAL_TYPE,const libint2::Shell&,double,const std::array<double,3>&, double*, size_t);
+  // GIAO
+  void evalShellSetGrad(SHELL_EVAL_TYPE,const libint2::Shell&,double,const std::array<double,3>&, dcomplex*, size_t, double *, double *);
 
   /**
    *  \brief Basis Set transformation from Cartesian to Spherical
@@ -124,6 +129,7 @@ namespace ChronusQ {
    *  is already populated.
    */
   void CarToSpDGradEval(SHELL_EVAL_TYPE, size_t, double *, double *, size_t, size_t, bool);
+  void CarToSpDGradEval(SHELL_EVAL_TYPE, size_t, dcomplex *, dcomplex *, size_t, size_t, bool);
 
   void testEval(double *, std::vector<libint2::Shell> &, bool);
 

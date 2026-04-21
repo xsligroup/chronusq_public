@@ -77,7 +77,7 @@ namespace ChronusQ {
       }
     }
 
-
+    auto magAmp = emPert.getDipoleAmp(Magnetic);
 
     // =========================================================================================
     // Update gradient (if needed)
@@ -92,7 +92,10 @@ namespace ChronusQ {
         double dt = curState.currentStepSize; 
         std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
         //printCurrentVelocity(molecule);
-        velocityVV(molecule, velocity, velocity, gradient, dt);
+        if ((magAmp[0] != 0.) || (magAmp[1] != 0.) || (magAmp[2] != 0.))
+          velocityVV_EXPK1(molecule, velocity, velocity, gradient, dt, emPert);
+        else
+          velocityVV(molecule, velocity, velocity, gradient, dt);
         curState.ptime += dt/2;
         
         // Set geometry step to be half Δt_{N_q} step
@@ -101,7 +104,10 @@ namespace ChronusQ {
         // Update velocity to be half-step
         std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + half_fock_dt/2 << " au) ***"<< std::endl;
         //printCurrentVelocity(molecule);
-        velocityVV(molecule, velocity, velocity, gradient, half_fock_dt);
+        if ((magAmp[0] != 0.) || (magAmp[1] != 0.) || (magAmp[2] != 0.))
+          velocityVV_EXPK1(molecule, velocity, velocity, gradient, half_fock_dt, emPert);
+        else
+          velocityVV(molecule, velocity, velocity, gradient, half_fock_dt);
         curState.ptime += half_fock_dt/2;
 
         // Update geometry using velocity at half-step
@@ -115,8 +121,8 @@ namespace ChronusQ {
       }
 
       // Obtain new gradient 
-      gradient = gradientGetter();
       std::cout << "  *** Calculating Gradient at g( t = " << curState.time << " au) ***" << std::endl;
+      gradient = gradientGetter();
 
       // If we have midpoint fock steps, we calculate velocity at full Δt_N step
       // p(t+Δt_N) = p(t+0.5Δt_N) + 0.5 * g(t+Δt_N) / m * Δt_N
@@ -124,7 +130,10 @@ namespace ChronusQ {
         double dt = mdOptions.timeStepAU; 
         std::cout << "  *** Updating Velocity from p( t = " << curState.ptimeHalf << " au) to p( t = " << curState.ptimeHalf + dt/2 << " au) ***"<< std::endl;
         //printCurrentVelocity(molecule);
-        velocityVV(molecule, velocityHalfTN, velocity, gradient, dt);
+        if ((magAmp[0] != 0.) || (magAmp[1] != 0.) || (magAmp[2] != 0.))
+          velocityVV_EXPK1(molecule, velocityHalfTN, velocity, gradient, dt, emPert);
+        else
+          velocityVV(molecule, velocityHalfTN, velocity, gradient, dt);
         curState.ptime = curState.ptimeHalf + dt/2 ;
       }
 
@@ -151,7 +160,10 @@ namespace ChronusQ {
       double dt = curState.currentStepSize;
       std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
       //printCurrentVelocity(molecule);
-      velocityVV(molecule, velocity, velocity, gradient, dt);
+      if ((magAmp[0] != 0.) || (magAmp[1] != 0.) || (magAmp[2] != 0.))
+        velocityVV_EXPK1(molecule, velocity, velocity, gradient, dt, emPert);
+      else
+        velocityVV(molecule, velocity, velocity, gradient, dt);
       curState.ptime += dt/2;
     }
 
@@ -176,7 +188,13 @@ namespace ChronusQ {
     if(firstStep) previousTotalEnergy = currentTotalEnergy;
     
     // output important dynamic information
-    if(print and doGrad) printMDInfo(molecule, currentTotalEnergy);
+    if(print and doGrad) {
+      printMDInfo(molecule, currentTotalEnergy);
+      if (mdOptions.printProperty) {
+        ss->computeProperties(emPert);
+        ss->printProperties();
+      }
+    }
     previousTotalEnergy = currentTotalEnergy;
 
     // At this point we have full-step geom, time, g, v. Save these to bin file
@@ -203,9 +221,12 @@ namespace ChronusQ {
     // Update velocity to be half-step
     // p(t+0.5Δt) = p(t) + 0.5 * g(t) / m * Δt
     double dt = curState.currentStepSize;
-    std::cout << "  *** Updating Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
+    std::cout << "  *** Updating & saving Velocity from p( t = " << curState.ptime << " au) to p( t = " << curState.ptime + dt/2 << " au) ***"<< std::endl;
     //printCurrentVelocity(molecule);
-    velocityVV(molecule, velocity, velocity, gradient, dt);
+    if ((magAmp[0] != 0.) || (magAmp[1] != 0.) || (magAmp[2] != 0.))
+      velocityVV_EXPK1(molecule, velocity, velocity, gradient, dt, emPert);
+    else
+      velocityVV(molecule, velocity, velocity, gradient, dt);
     curState.ptime += dt/2;
 
     // Save velocity at half Δt_N step (special case for NMidpointFockSteps=2)

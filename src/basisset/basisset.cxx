@@ -744,8 +744,8 @@ namespace ChronusQ {
   void pop_cart_ang_list() {
     // generate angular momentum list, can only be called once. 
     int k,xx,yy,x,y,z;
-    // TangDD: expand cart_ang_list for Bottomup ERIs
-    for (  k = 0 ; k <= LIBINT2_MAX_AM + LIBINT2_MAX_AM ; k++ ){
+    // TangDD: expand cart_ang_list for Bottomup ERIs (ab 0|cd 0); add additional 2 for gradient.
+    for (  k = 0 ; k <= 2 * LIBINT2_MAX_AM + 2 ; k++ ){
       cart_ang_list.emplace_back();  //loop over possible angular momentum
       for (  xx=0 ; xx<k+1 ; xx++ ){ 
         x = k -xx ; 

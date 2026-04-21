@@ -359,6 +359,14 @@ namespace ChronusQ {
         HamiltonianOptions options;
         options.OneEScalarRelativity = false;
 
+        // TangDD hot fix
+        // We should not open a new option like this.
+        if (sys1Basis.basisType == COMPLEX_GIAO)
+          if (sys2Basis.basisType == COMPLEX_GIAO)
+            options.basisType = COMPLEX_GIAO;
+          else
+            CErr("Basis type for (ee|pp) must match!!!");
+
         if( sys1Left )
           gradInt12->computeAOInts(sys1Basis, sys2Basis, this->molecule(),
             pert, EP_ATTRACTION, options);
@@ -386,8 +394,11 @@ namespace ChronusQ {
           this->EPCGradientP[ic][XYZ] = 0.0;
         }
       } 
+      // TangDD Remove before merge
+      auto magAmp = pert.getDipoleAmp(Magnetic);
+      std::cout<<"magAmp in ks 0: "<<magAmp[0]<<" 1: "<<magAmp[1]<<" 2: "<<magAmp[2]<<std::endl;
       // Obtain the xc part of the gradient (ee_xc + epc)
-      formEXCGradient();
+      formEXCGradient(pert);
       for( auto iGrad = 0; iGrad < nGrad; iGrad++ ){
           gradient[iGrad] += this->EXCGradient[iGrad/3][iGrad%3];
           gradient[iGrad] += this->EPCGradientE[iGrad/3][iGrad%3];
@@ -422,7 +433,7 @@ namespace ChronusQ {
     }
 #endif
 
-    //printGrad("Total NEO Gradient:", gradient);
+    printGrad("Total NEO Gradient:", gradient);
 
     return gradient;
 

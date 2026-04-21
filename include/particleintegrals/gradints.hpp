@@ -71,6 +71,20 @@ namespace ChronusQ {
 
     };
 
+    // Vector constructor
+    GradInts(size_t nBasis, size_t nAtoms, size_t order, bool symm):
+        ParticleIntegrals(nBasis), nAtoms_(nAtoms) {
+
+      components_.reserve(3*nAtoms_);
+
+      for (size_t i = 0; i < 3*nAtoms_; i++) {
+        components_.emplace_back(
+          std::make_shared<IntClass<IntsT>>(nBasis, order, symm)
+        );
+      }
+
+    };
+
     // Two basis constructor
     GradInts(size_t nBasis, size_t snBasis, size_t nAtoms):
         ParticleIntegrals(nBasis), nAtoms_(nAtoms) {

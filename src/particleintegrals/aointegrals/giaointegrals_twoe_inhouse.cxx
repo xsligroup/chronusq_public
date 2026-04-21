@@ -24,6 +24,8 @@
 
 #include <particleintegrals/inhouseaointegral.hpp>
 
+//#define _DEBUGGIAOERIDERIV //SS & TangDD
+
 namespace ChronusQ {
 
   /**
@@ -1206,6 +1208,1473 @@ namespace ChronusQ {
     return SSSS0;
     
   } // twoeSSSS0
+
+
+  /**
+   *  \brief Compute the first order gradient of complex ERI of two shell pairs. Not for NEO Yet!
+   *
+   *
+   *  \param [in] pair1  bra shell pair data for shell1,shell2
+   *  \param [in] pair2  ket shell pair data for shell3,shell4
+   *  \param [in] shell1
+   *  \param [in] shell2
+   *  \param [in] shell3
+   *  \param [in] shell4
+   *
+   *  \return complex dERI vector of two shell pairs (ab|cd) [iC=4] [ixyz=3]
+   */
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::bottomupcomplexERI_deriv1(libint2::ShellPair &pair1 ,
+    libint2::ShellPair &pair2, libint2::Shell &shell1, libint2::Shell &shell2,
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption) {
+
+
+    // here calculate the phase factor in LONDON orbital
+    double ka[3],kb[3],kc[3],kd[3],k1[3],k2[3];
+    // here calculate the phase factor in LONDON orbital
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    kc[0] = - 0.5*( shell3.O[1]*H[2] - shell3.O[2]*H[1] );
+    kc[1] = - 0.5*( shell3.O[2]*H[0] - shell3.O[0]*H[2] );
+    kc[2] = - 0.5*( shell3.O[0]*H[1] - shell3.O[1]*H[0] );
+
+    kd[0] = 0.5*( shell4.O[1]*H[2] - shell4.O[2]*H[1] );
+    kd[1] = 0.5*( shell4.O[2]*H[0] - shell4.O[0]*H[2] );
+    kd[2] = 0.5*( shell4.O[0]*H[1] - shell4.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_workAB[3];
+    double H_workCD[3];
+    H_workAB[0] = H[0];
+    H_workAB[1] = H[1];
+    H_workAB[2] = H[2];
+    H_workCD[0] = H[0];
+    H_workCD[1] = H[1];
+    H_workCD[2] = H[2];
+    
+    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
+    if (NEOoption == 1) {
+      //std::cout << "Gradients for NEO-GIAO is experimantal!!" << std::endl;
+      //std::cout << "(pp|xx) detected.." << std::endl;
+      ka[0] = -1.0 * ka[0];
+      ka[1] = -1.0 * ka[1];
+      ka[2] = -1.0 * ka[2];
+      kb[0] = -1.0 * kb[0];
+      kb[1] = -1.0 * kb[1];
+      kb[2] = -1.0 * kb[2];
+      H_workAB[0] = -1.0 * H[0];
+      H_workAB[1] = -1.0 * H[1];
+      H_workAB[2] = -1.0 * H[2];
+    }
+    if (NEOoption > 0) {
+      //std::cout << "Gradients for NEO-GIAO is experimantal!!" << std::endl;
+      kc[0] = -1.0 * kc[0];
+      kc[1] = -1.0 * kc[1];
+      kc[2] = -1.0 * kc[2];
+      kd[0] = -1.0 * kd[0];
+      kd[1] = -1.0 * kd[1];
+      kd[2] = -1.0 * kd[2];
+      H_workCD[0] = -1.0 * H[0];
+      H_workCD[1] = -1.0 * H[1];
+      H_workCD[2] = -1.0 * H[2];
+    }
+
+    for ( int mu = 0 ; mu < 3 ; mu++ ) {
+      k1[mu] = ka[mu] + kb[mu];
+      k2[mu] = kc[mu] + kd[mu];
+    }
+
+    dcomplex onei;
+    onei.real(0.0);
+    onei.imag(1.0);
+    
+/*
+    TangDD Comment Start.
+
+    First order gradient of ERI works similar to ERI, but with one more layer of
+    horizontal recursion:
+      (d_Ax ab|cd) = 2\zeta_a(a+1_xb|cd) - a_x(a-1_xb|cd)                                 
+                  - i/2 B_y(a+1_zb|cd) + i/2 B_y(a+1_yb|cd) - i/2 (B_yAO_z B_zAO_y)(ab|cd)
+    
+    So the verical recursion will become 
+      (0 0 | 0 0) -> (a+b 0 | c+d 0) -> (a+b+1 0 | c+d 0)  ...for (a+1b|cd) and (ab+1|cd).
+                                     -> (a+b 0 | c+d+1 0)  ...for (ab|c+1d) and (ab|cd+1).
+    For coding convenience, we will increase both side but ignore (a+b+1 0 | c+d+1 0).
+
+*/
+
+// ERI setup
+    int LA, LB, LC, LD, Lbra, Lket, Ltot;
+    
+    LA = shell1.contr[0].l; 
+    LB = shell2.contr[0].l; 
+    LC = shell3.contr[0].l; 
+    LD = shell4.contr[0].l; 
+    
+    // Additional +1 for Gradient
+    Lbra = LA + LB + 1;
+    Lket = LC + LD + 1;
+    Ltot = Lbra + Lket;
+
+    double A[3], B[3], C[3], D[3], AB[3], CD[3];
+    
+    for (int ii = 0 ; ii < 3 ; ii++ ) { 
+      A[ii] = shell1.O[ii];
+      B[ii] = shell2.O[ii];
+      C[ii] = shell3.O[ii];
+      D[ii] = shell4.O[ii];
+      AB[ii] = A[ii] - B[ii];
+      CD[ii] = C[ii] - D[ii];
+    }  
+    
+    dcomplex *FT = new dcomplex[Ltot+1];   
+   
+/*
+        TangDD Comment Start.
+        Vbraketee -- scratch for horizontal recursion. (m=0)
+          1st dimension: current angular momentum pair (LAidx)*(LCidx)
+          2nd dimension: current angular momentum pair (LBidx)*(LDidx)
+          3rd dimension: cartesian momentum pair 
+                         cart_size(LAidx+1)*cart_size(LBidx+1)*cart_size(LCidx+1)*cart_size(LDidx+1).
+        And points to a dcomplex number.
+*/
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"current pair for gradient ["<<LA<<LB<<"|"<<LC<<LD<<"]"<<std::endl;
+#endif
+
+    // allocate memory for horizontal recursion
+    std::vector<std::vector<std::vector<dcomplex>>> Vbraketee;
+    std::vector<std::vector<std::vector<std::vector<dcomplex>>>> Vbraketee_Weighted;
+    int counter = 0; 
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"allocating Vbraketee/Vbraketee_Weighted"<<std::endl; 
+#endif
+
+    // We need LA-1 for gradient.
+    int LA_start = (LA > 0) ? LA-1 : 0;
+    int LC_start = (LC > 0) ? LC-1 : 0;
+    Vbraketee.resize((Lbra-LA_start+1)*(Lket-LC_start+1));
+    Vbraketee_Weighted.resize((Lbra-LA_start+1)*(Lket-LC_start+1));
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"First Dimension: LA("<<LA_start<<"-"<<Lbra<<") x LC("<<LC_start<<"-"<<Lket<<") = "<<(Lbra-LA_start+1)*(Lket-LC_start+1)<<std::endl;
+#endif
+
+    for ( int LAidx = LA_start ; LAidx <= Lbra ; LAidx++ ) {  
+
+      for ( int LCidx = LC_start ; LCidx <= Lket ; LCidx++ ) {
+        // should loop over C index here instead of B for ( int LBidx = 0 ; LBidx <= Lbra - LAidx ; LBidx++ ) {
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"Second Dimension: LA("<<LAidx<<")LC("<<LCidx<<") -> "<<(Lbra-LAidx+1)<<"B and "<<(Lket-LCidx+1)<<" D"<<std::endl;
+#endif
+
+        Vbraketee[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start].resize((Lbra-LAidx+1)*(Lket-LCidx+1));
+        Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start].resize((Lbra-LAidx+1)*(Lket-LCidx+1));
+        //   Vbraketee[(LAidx-LA)*(LBidx+1)+LBidx].resize((Lket-LC+1)*(LD+1));
+        for ( int LBidx = 0 ; LBidx <= Lbra-LAidx ; LBidx++ ) {
+          for ( int LDidx = 0 ; LDidx <= Lket-LCidx ; LDidx++ ) {
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"Third Dimension: ("<<LA<<LB<<"|"<<LC<<LD<<"]"<<
+"LA("<<cart_ang_list[LAidx].size()<<
+")LB("<<cart_ang_list[LBidx].size()<<
+")LC("<<cart_ang_list[LCidx].size()<<
+")LD("<<cart_ang_list[LDidx].size()<<")"<<std::endl;
+#endif
+
+            Vbraketee[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][LBidx*(Lket-LCidx+1)+LDidx].assign(
+              cart_ang_list[LAidx].size()*cart_ang_list[LBidx].size()
+             *cart_ang_list[LCidx].size()*cart_ang_list[LDidx].size(),0.0);
+            Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][LBidx*(Lket-LCidx+1)+LDidx].assign(
+              cart_ang_list[LAidx].size()*cart_ang_list[LBidx].size()
+             *cart_ang_list[LCidx].size()*cart_ang_list[LDidx].size(),std::vector<dcomplex>(4, 0.0));
+
+          } // for ( int LDidx = 0 ; LDidx <= LD ; LDidx++ )
+        } // for ( int LBidx = 0 ; LBidx <= Lbra-LAidx ; LBidx++ )
+      } // for ( int LCidx = LC-1 ; LCidx <= Lket ; LCidx++ )
+    } // for ( int LAidx = LA-1 ; LAidx <= Lbra ; LAidx++ )      
+
+/*
+        TangDD Comment Start.
+        Will start by pair/pair.
+        There's no need to worry for contraction parameter, they are processed in (ss).
+*/
+    for ( auto &pripair1 : pair1.primpairs ) {
+      double P[3];
+      for (int ii = 0 ; ii < 3 ; ii++ ) {
+        P[ii] = pripair1.P[ii]; 
+      }
+
+      // GIAO specific 
+      dcomplex Ptilde[3];
+      for ( int ii = 0 ; ii < 3 ; ii++ ) {
+        Ptilde[ii] = P[ii]+0.5*k1[ii]*pripair1.one_over_gamma*onei;
+      } 
+
+      double zeta = 1.0/pripair1.one_over_gamma; 
+
+      // here calculate primitive ss1 
+      double realpart1 = 0.0; 
+      for ( int mu = 0 ; mu < 3 ; mu++ ) { 
+        realpart1 -= pow( (ka[mu]+kb[mu]), 2 );
+      }
+      
+      realpart1 *= 0.25*pripair1.one_over_gamma;
+      
+      double imagpart1 = 0.0 ; 
+      for ( int mu = 0 ; mu < 3 ; mu++ ) {
+        imagpart1 += ka[mu]*(P[mu] - A[mu]) + kb[mu]*(P[mu]-B[mu]);
+      }
+
+      dcomplex z1 = realpart1 + imagpart1*onei; 
+
+      dcomplex ss1 = shell1.contr[0].coeff[pripair1.p1]* shell2.contr[0].coeff[pripair1.p2]
+        //* pow(sqrt(M_PI),3) * sqrt(pripair1.one_over_gamma)*pripair1.K ; 
+        * exp(z1) * pow(sqrt(M_PI),3) * sqrt(pripair1.one_over_gamma)*pripair1.K ; 
+      // calculation of primitive ss1 end 
+
+      for ( auto &pripair2 : pair2.primpairs ) {
+
+        double Q[3]; 
+        for (int ii = 0 ; ii < 3 ; ii++ ) {
+          Q[ii] = pripair2.P[ii]; 
+        }
+
+        dcomplex Qtilde[3];
+        for ( int ii = 0 ; ii < 3 ; ii++ ) {
+          Qtilde[ii] = Q[ii]+0.5*k2[ii]*pripair2.one_over_gamma*onei;
+        } 
+        
+        // here calculate primitive ss2 
+        double realpart2 = 0.0; 
+        for ( int mu = 0 ; mu < 3 ; mu++ ) { 
+          realpart2 -= pow( (kc[mu]+kd[mu]), 2 );
+        }
+        
+        realpart2 *= 0.25*pripair2.one_over_gamma;
+        
+        double imagpart2 = 0.0 ; 
+        for ( int mu = 0 ; mu < 3 ; mu++ ) {
+          imagpart2 += kc[mu]*(Q[mu] - C[mu]) + kd[mu]*(Q[mu]-D[mu]);
+        }
+       
+        dcomplex z2 = realpart2 + imagpart2*onei; 
+       
+        dcomplex ss2 = shell3.contr[0].coeff[pripair2.p1]* shell4.contr[0].coeff[pripair2.p2]
+          * exp(z2) * pow(sqrt(M_PI),3) * sqrt(pripair2.one_over_gamma)*pripair2.K ; 
+          //* pow(sqrt(M_PI),3) * sqrt(pripair2.one_over_gamma)*pripair2.K ; 
+        // calculation of primitive ss1 end 
+
+        double eta = 1.0/pripair2.one_over_gamma; 
+        double zetaG = zeta + eta;
+        double rho = zeta*eta/zetaG;
+
+        dcomplex T = 0.0;
+        //dcomplex sqrPQ = 0.0; 
+        for (int ii = 0 ; ii < 3 ; ii++) {
+          T += pow( P[ii]-Q[ii] +0.5*k1[ii]*pripair1.one_over_gamma*onei
+                    - 0.5*k2[ii]*pripair2.one_over_gamma*onei,2); 
+        }
+        T*= rho ; 
+        
+        //double ss2 = shell3.contr[0].coeff[pripair2.p1]* shell4.contr[0].coeff[pripair2.p2]
+        //  * pow(sqrt(M_PI),3) * sqrt(pripair2.one_over_gamma)*pripair2.K ; 
+        
+        computecompFmT(FT,T,Ltot,0);        
+
+        double W[3];
+        for (int ii = 0 ; ii < 3 ; ii++ )
+          W[ii] = (zeta*P[ii] + eta*Q[ii])/zetaG;         
+
+        dcomplex Wtilde[3];
+        for ( int ii = 0 ; ii < 3 ; ii++ ) { 
+          Wtilde[ii] = ( Ptilde[ii] / pripair1.one_over_gamma + 
+               Qtilde[ii] / pripair2.one_over_gamma )/zetaG;  
+        }
+
+        dcomplex pref = 2*sqrt(rho/M_PI)*ss1*ss2;
+
+/*
+        TangDD Comment Start.
+        Vtempbraket -- scratch for vertical recursion.
+          1st dimension: angular momentum pair (LA+LB+2)*(LC+LD+2)
+                         this means 0->LA+LB+1 and 0->LC+LD+1                                -- mind that (LA+LB+1,LC+LD+1) will be skipped!
+          2nd dimension: cartesian momentum pair cart_size(LA+LB+1)*cart_size(LC+LD+1)
+          3rd dimension: level of auxiliary integral, (m)
+
+        Vertical recursion starts!
+*/
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"allocating Vtempbraket for pair."<<std::endl;
+std::cout<<"First Dimension: LA(0-"<<Lbra<<") x LC(0-"<<Lket<<") = "<<(Lbra+1)*(Lket+1)<<std::endl;
+#endif
+
+        // now allocate the memory to store vertical recursion elements
+        std::vector<std::vector<std::vector<dcomplex>>> Vtempbraket((Lbra+1)*(Lket+1)); 
+        for ( int k = 0 ; k <= Lbra ; k++ ){ 
+          for ( int l = 0 ; l <= Lket; l++ ) {
+#ifdef _DEBUGGIAOERIDERIV
+            std::cout<<"Second Dimension: LA("<<k<<") x LC("<<l<<") = "<<cart_ang_list[k].size()*cart_ang_list[l].size()<<std::endl; 
+#endif
+            Vtempbraket[k*(Lket+1)+l].resize(cart_ang_list[k].size()*cart_ang_list[l].size());
+            for ( int cart_i = 0; cart_i < cart_ang_list[k].size() ; cart_i++ ) {
+              for ( int cart_j = 0 ; cart_j < cart_ang_list[l].size(); cart_j++ ) {
+#ifdef _DEBUGGIAOERIDERIV
+                std::cout<<"Third Dimension: LA("<<k<<")["<<cart_i<<"] x LC("<<l<<")["<<cart_j<<"] = "<<Ltot-k-l+1<<std::endl;
+#endif
+                Vtempbraket[k*(Lket+1)+l][cart_i*cart_ang_list[l].size()+cart_j].resize(Ltot-k-l+1, 0.0);
+              }
+            }  // for ( int cart_i = 0; cart_i < cart_ang_list[k].size()
+          } // for ( int l = 0 ; l <= Lket ; l++ ) 
+        } //for ( int k = 0 ; k <= Lbra ; k++ )
+
+        // copy the (ss|ss)^m integrals to the Vtempbraket 
+        for ( int ii = 0 ; ii < Ltot+1 ; ii++ ) {
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"Calculation (00|00)("<<ii<<")"<<std::endl; 
+#endif
+          Vtempbraket[0][0][ii] = FT[ii]*pref ; 
+//std::cout<<"Vtempbraket= "<<std::setprecision(12)<<Vtempbraket[0][0][ii]<<std::endl;
+        }  
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== vertical recursion ===="<<std::endl;
+#endif
+
+        // vertical recursion
+        for ( int k = 0 ; k <= Lbra ; k++ ){ 
+          int l = 0;
+          for ( int cart_i = 0; cart_i < cart_ang_list[k].size() ; cart_i++ ) {
+            int lA_xyz[3];
+            for ( int ii = 0 ; ii < 3 ; ii++ )
+              lA_xyz[ii] = cart_ang_list[k][cart_i][ii];
+            
+            int mbra = Ltot - k ; 
+            int iWork; 
+            if ( k > 0 ) {
+              if ( lA_xyz[0]>0 )  {
+                iWork = 0;
+              } else if ( lA_xyz[1]>0 ) {
+                iWork = 1;
+              } else if ( lA_xyz[2]>0 ) {
+                iWork = 2;
+              }
+              
+              // calculate the index of the element with angular momentum lower by 1 
+              int lAtemp[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ )
+                lAtemp[ii] = lA_xyz[ii];
+
+              lAtemp[iWork] = lA_xyz[iWork]-1;
+              
+              int indexlm1;
+              indexlm1 = indexmap(k-1,lAtemp[0],lAtemp[1],lAtemp[2]);
+              
+              for ( int m = 0 ; m<= mbra ; m++ ) {
+                dcomplex ERIscratch = 0.0;
+                ERIscratch = (Ptilde[iWork]-A[iWork])* Vtempbraket[(k-1)*(Lket+1)][indexlm1*cart_ang_list[l].size()][m]
+                  +(Wtilde[iWork]-Ptilde[iWork])*Vtempbraket[(k-1)*(Lket+1)][indexlm1*cart_ang_list[l].size()][m+1];
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<k<<"0|00)["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]("<<m<<") = PA("
+<<k-1<<"0|00)["<<lAtemp[0]<<lAtemp[1]<<lAtemp[2]<<"]("<<m<<") + WP("
+<<k-1<<"0|00)["<<lAtemp[0]<<lAtemp[1]<<lAtemp[2]<<"]("<<m+1<<") +"<<std::endl;
+#endif
+
+                if ( lA_xyz[iWork]>1 ) {
+                  lAtemp[iWork] = lA_xyz[iWork]-2;
+                  int indexlm2 = indexmap(k-2,lAtemp[0],lAtemp[1],lAtemp[2]);
+                  ERIscratch += 1/(2*zeta) * (lA_xyz[iWork]-1) * (
+                    Vtempbraket[(k-2)*(Lket+1)][indexlm2*cart_ang_list[l].size()][m]
+                    -rho/zeta *Vtempbraket[(k-2)*(Lket+1)][indexlm2*cart_ang_list[l].size()][m+1]);
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"... + factor*("<<k-2<<"0|00)["<<lAtemp[0]<<lAtemp[1]<<lAtemp[2]<<"]("<<m<<") - factor*("
+<<k-2<<"0|00)["<<lAtemp[0]<<lAtemp[1]<<lAtemp[2]<<"]("<<m+1<<") +"<<std::endl;
+#endif
+
+                } // if ( lA_xyz[iWork]>1 )
+
+                Vtempbraket[k*(Lket+1)][cart_i*cart_ang_list[l].size()][m] = ERIscratch;
+              } // for ( int m = 0 ; m<= mbra ; m++ )
+            } // if ( k > 0 )  
+            
+            for ( int l = 0 ; l <= Lket ; l++ ) {
+              // skip (LA+LB+1 0 | LC+LD+1 0)
+              for ( int cart_j = 0 ; cart_j < cart_ang_list[l].size() ; cart_j++ ) {
+                int lC_xyz[3];
+                for ( int ii = 0 ; ii < 3 ; ii++ ) { 
+                  lC_xyz[ii] = cart_ang_list[l][cart_j][ii];  
+                }  
+                int mbraket = Ltot-k-l;
+                if (l>0) { 
+                  if ( lC_xyz[0]>0 )  {
+                    iWork = 0;
+                  } else if ( lC_xyz[1]>0 ) {
+                    iWork = 1;
+                  } else if ( lC_xyz[2]>0 ) {
+                    iWork = 2;
+                  }
+                  // calculate the index of the element with angular momentum lower by 1 
+                  int lCtemp[3];
+                  for ( int ii = 0 ; ii < 3 ; ii++ )
+                    lCtemp[ii] = lC_xyz[ii];
+               
+                  lCtemp[iWork] = lC_xyz[iWork]-1;
+                  
+                  int indexlm1;
+                  indexlm1 = indexmap(l-1,lCtemp[0],lCtemp[1],lCtemp[2]);
+                 
+                  for ( int m = 0 ; m <= mbraket ; m++ ) {
+                    dcomplex ERIscratch = 0.0 ; 
+                    ERIscratch += (Qtilde[iWork]-C[iWork])*Vtempbraket[(k*(Lket+1)+l-1)][cart_i
+                      *cart_ang_list[l-1].size()+indexlm1][m] 
+                      +(Wtilde[iWork]-Qtilde[iWork])* Vtempbraket[(k*(Lket+1)+l-1)][cart_i*
+                      cart_ang_list[l-1].size()+indexlm1][m+1]; 
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<k<<"0|"<<l<<"0)["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]("<<m<<") = PA("
+<<k<<"0|"<<l-1<<"0)["<<lCtemp[0]<<lCtemp[1]<<lCtemp[2]<<"]("<<m<<") + WP("
+<<k<<"0|"<<l-1<<"0)["<<lCtemp[0]<<lCtemp[1]<<lCtemp[2]<<"]("<<m+1<<") +"<<std::endl;
+#endif
+
+                    if (lC_xyz[iWork]>1) {
+                      lCtemp[iWork] = lC_xyz[iWork]-2;
+                      int indexlm2 = indexmap(l-2,lCtemp[0],lCtemp[1],lCtemp[2]);
+                      
+                      ERIscratch += 1/(2*eta)*(lC_xyz[iWork]-1)*(Vtempbraket[k*(Lket+1)+l-2]
+                        [cart_i*cart_ang_list[l-2].size()+indexlm2][m]-rho/eta*Vtempbraket
+                        [k*(Lket+1)+l-2][cart_i*cart_ang_list[l-2].size()+indexlm2][m+1]);
+
+ #ifdef _DEBUGGIAOERIDERIV
+std::cout<<"... + factor*("<<k<<"0|"<<l-2<<"0)["<<lCtemp[0]<<lCtemp[1]<<lCtemp[2]<<"]("<<m<<") - factor*("
+<<k<<"0|"<<l-2<<"0)["<<lCtemp[0]<<lCtemp[1]<<lCtemp[2]<<"]("<<m+1<<")"<<std::endl;
+#endif
+
+                    } // if (lC_xyz[iWork]>1) 
+                    
+                    if ( lA_xyz[iWork] > 0 ) {
+                      int lAtemp[3];
+                      for ( int ii = 0 ; ii < 3 ; ii++ )
+                        lAtemp[ii] = lA_xyz[ii];
+                     
+                      lAtemp[iWork] = lA_xyz[iWork]-1;
+                      int indexlAm1 = indexmap(k-1,lAtemp[0],lAtemp[1],lAtemp[2]);
+                      ERIscratch += 1/(2*zetaG)*lA_xyz[iWork]*Vtempbraket[(k-1)*(Lket+1)+l-1]
+                        [indexlAm1*cart_ang_list[l-1].size()+indexlm1][m+1];
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"... + factor*("<<k-1<<"0|"<<l-1<<"0)["<<lCtemp[0]<<lCtemp[1]<<lCtemp[2]<<"]("<<m+1<<") +"<<std::endl;
+#endif
+
+                    } // if ( lA_xyz[iWork] > 0 ) 
+                    Vtempbraket[k*(Lket+1)+l][cart_i*cart_ang_list[l].size()+cart_j][m] = ERIscratch; 
+
+                  } // for ( int m = 0 ; m <= mbraket ; m++ )  
+                } // if (l>0)
+                                
+              } // for ( int cart_j = 0 ; cart_j < cart_ang_list[l].size()`
+            } // for ( int l = 0 ; l < Lket+1 ; l++ )   
+
+
+          } // for ( int cart_i 
+        } // for ( int k = 0 ; k <= Lbra ; k++ )
+        // should be some contractions 
+
+        // copy the elements from Vtempbraket to Vbraketee  
+           
+        for ( int LAidx = LA_start ; LAidx <= Lbra ; LAidx++ ) {
+          for ( int LCidx = LC_start ; LCidx <= Lket ; LCidx++ ) {
+            // loop over dimension 
+            for ( int cart_i = 0 ; cart_i < cart_ang_list[LAidx].size() ; cart_i++ ) {
+              for ( int cart_j = 0 ; cart_j < cart_ang_list[LCidx].size() ; cart_j++ ) {
+
+                Vbraketee[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1
+                  *cart_ang_list[LCidx].size()*1+cart_j*1] += 
+                  Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0];
+
+                Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1
+                  *cart_ang_list[LCidx].size()*1+cart_j*1][0] += shell1.alpha[pripair1.p1] *
+                  Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0];
+
+                Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1
+                  *cart_ang_list[LCidx].size()*1+cart_j*1][1] += shell2.alpha[pripair1.p2] * 
+                  Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0];
+
+                Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1
+                  *cart_ang_list[LCidx].size()*1+cart_j*1][2] += shell3.alpha[pripair2.p1] *
+                  Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0];
+
+                Vbraketee_Weighted[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1
+                  *cart_ang_list[LCidx].size()*1+cart_j*1][3] += shell4.alpha[pripair2.p2] *
+                  Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0];
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"Filling in Vbraketee/Vbraketee_Weighted ("<<LAidx<<"0|"<<LCidx<<"0)["<<cart_i<<","<<cart_j<<"]("<<0<<") as "
+<< Vtempbraket[LAidx*(Lket+1)+LCidx][cart_i*cart_ang_list[LCidx].size()+cart_j][0] 
+<<std::endl;
+#endif
+
+              } // for cart_j
+            } // for cart_i
+          } // for LCidx 
+        } // for LAidx        
+
+        
+
+      } // for ( auto &pripair2 : pair1.primpairs )
+    } // for ( auto &pripair1 : pair1.primpairs )  
+    delete[] FT;
+
+        for ( int LAidx = LA_start ; LAidx <= Lbra ; LAidx++ ) {
+          for ( int LCidx = LC_start ; LCidx <= Lket ; LCidx++ ) {
+            // loop over dimension 
+            for ( int cart_i = 0 ; cart_i < cart_ang_list[LAidx].size() ; cart_i++ ) {
+              for ( int cart_j = 0 ; cart_j < cart_ang_list[LCidx].size() ; cart_j++ ) {
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"Printing out Vbraketee ("<<LAidx<<"0|"<<LCidx<<"0)["<<cart_i<<","<<cart_j<<"]("<<0<<") as "
+<< Vbraketee[(LAidx-LA_start)*(Lket-LC_start+1)+LCidx-LC_start][0][cart_i*1*cart_ang_list[LCidx].size()*1+cart_j*1]
+<<std::endl;
+#endif
+
+              } // for cart_j
+            } // for cart_i
+          } // for LCidx 
+        } // for LAidx   
+
+/*
+        TangDD Comment Start.
+
+        Now vertical recursion finished. We only need to keep (m=0) part of Vtempbraket.
+
+        The horizontal recursion relationship is
+          (a+b 1| = (a+b+1 0|+ AB(a+b 0|
+          ...
+          (a+1 b| = (a+2 b-1| + AB(a+1 b-1|
+          (a b+1| = (a+1   b| + AB(a b|
+
+        Vbraketee: We need to keep at least 5 groups of integrals:
+                   (a+b 0|c+d 0);    -> (a b|c d)
+                   (a+b+1 0|c+d 0);  -> (a+1 b|c d) & (a b+1|c d)
+                   (a+b 0|c+d+1 0);  -> (a b|c+1 d) & (a b|c d+1)
+                   (a+b-1 0|c+d 0);  -> (a-1 b|c d) & (a b-1|c d)
+                   (a+b 0|c+d-1 0);  -> (a b|c-1 d) & (a b|c d-1)        
+*/
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== horizontal recursion ===="<<std::endl;
+#endif
+
+    int iWork;  
+    // horizontal recursion
+
+/*
+        Part 1. Vbraketee.
+
+        Vbraketee is for all (a+1 b|c d) integrals. 
+        So, there are 2 parts: (a+b+1 0|c+d 0) -> (a b+1|c d) and (a+b 0|c+d+1 0) -> (a b|c d+1). 
+
+        The horizontal recursion relationship is
+          (a+b 1| = (a+b+1 0|+ AB(a+b 0|
+          ...
+          (a+1 b| = (a+2 b-1| + AB(a+1 b-1|
+          (a b+1| = (a+1   b| + AB(a b|
+
+*/
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== part 1 Vbraketee ===="<<std::endl;  
+#endif
+
+    //if (LB >0) {
+      for ( int lB = 1 ; lB < LB+2 ; lB++ ) { // which implies that we skip lB=0
+        for ( int lA = LA_start ; lA < Lbra+1-lB ; lA++ ) {
+          for  ( int Aidx = 0 ; Aidx < cart_ang_list[lA].size(); Aidx++ ) {
+            
+            int lA_xyz[3];
+            for ( int ii = 0 ; ii < 3 ; ii++ ) { 
+              lA_xyz[ii] = cart_ang_list[lA][Aidx][ii];
+            }
+            
+            // here loop over elements in lB 
+            for ( int Bidx = 0 ; Bidx<cart_ang_list[lB].size();Bidx++ ) {
+            
+              int lB_xyz[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ ) { 
+                lB_xyz[ii] = cart_ang_list[lB][Bidx][ii];
+              }
+              
+              int iWork;
+              if  (lB_xyz[0]>0) {
+                iWork = 0;
+              } else if (lB_xyz[1]>0) {
+                iWork = 1;
+              } else if (lB_xyz[2]>0) {
+                iWork = 2 ; 
+              }
+              
+              int lBm1[3] ; 
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                lBm1[ii] = lB_xyz[ii];
+              } 
+              lBm1[iWork] = lB_xyz[iWork]-1;
+                 
+              int lAp1[3] ; 
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                lAp1[ii] = lA_xyz[ii];
+              } 
+              lAp1[iWork] = lA_xyz[iWork]+1;
+
+              int idxBtemp = indexmap(lB-1,lBm1[0],lBm1[1],lBm1[2]); 
+              int idxAp1temp = indexmap(lA+1,lAp1[0],lAp1[1],lAp1[2]);
+              
+              for ( int lC = LC_start ; lC<= Lket ; lC++ ) {
+                for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() ; Cidx++) {
+                  int lC_xyz[3];
+                  for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                    lC_xyz[ii] = cart_ang_list[lC][Cidx][ii];
+                  }
+
+                  Vbraketee[(lA-LA_start)*(Lket-LC_start+1)+lC-LC_start][lB*(Lket-lC+1)][Aidx*cart_ang_list[lB].size()
+                    *cart_ang_list[lC].size()*1+Bidx*cart_ang_list[lC].size()+Cidx*1]=
+                    Vbraketee[(lA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][(lB-1)*(Lket-lC+1)][idxAp1temp*cart_ang_list[lB-1].size() 
+                    *cart_ang_list[lC].size()*1 +idxBtemp *cart_ang_list[lC].size() *1 +Cidx]
+                    + AB[iWork]*Vbraketee[(lA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(lB-1)*(Lket-lC+1)][
+                    Aidx*cart_ang_list[lB-1].size()*cart_ang_list[lC].size()*1
+                    +idxBtemp*cart_ang_list[lC].size()*1+Cidx];
+
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                    Vbraketee_Weighted[(lA-LA_start)*(Lket-LC_start+1)+lC-LC_start][lB*(Lket-lC+1)][Aidx*cart_ang_list[lB].size()
+                      *cart_ang_list[lC].size()*1+Bidx*cart_ang_list[lC].size()+Cidx*1][ii]=
+                      Vbraketee_Weighted[(lA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][(lB-1)*(Lket-lC+1)][idxAp1temp*cart_ang_list[lB-1].size() 
+                      *cart_ang_list[lC].size()*1 +idxBtemp *cart_ang_list[lC].size() *1 +Cidx][ii]
+                      + AB[iWork]*Vbraketee_Weighted[(lA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(lB-1)*(Lket-lC+1)][
+                      Aidx*cart_ang_list[lB-1].size()*cart_ang_list[lC].size()*1
+                      +idxBtemp*cart_ang_list[lC].size()*1+Cidx][ii];
+                  }
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+lA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+lB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+"0) = ("<<
+lA+1<<"["<<lAp1[0]<<lAp1[1]<<lAp1[2]<<"]"<<
+lB-1<<"["<<lBm1[0]<<lBm1[1]<<lBm1[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+"0) + ("<<
+lA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+lB-1<<"["<<lBm1[0]<<lBm1[1]<<lBm1[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<"0) = "<<
+Vbraketee[(lA-LA_start)*(Lket-LC_start+1)+lC-LC_start][lB*(Lket-lC+1)][Aidx*cart_ang_list[lB].size()
+                    *cart_ang_list[lC].size()*1+Bidx*cart_ang_list[lC].size()+Cidx*1]
+<<std::endl;
+#endif
+
+                    // (ab|c0)= (a+1b-1|c0)+AB(ab-1|c0)  
+                } // for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() 
+              } // for ( int lC = LC ; lC<= Lket ; lC++ )
+                 
+            } //for ( int Bidx = 0 ; Bidx<cart_ang_list[lB].size();Bidx++ )  
+
+          } // for  ( int Aidx = 0 ; Aidx < cart_ang_list[lA].size(); Aidx++ )   
+        }  // for ( int lA = LA ; lA <= Lbra-lB ; lA++ ) 
+      } //  for ( int lB = 1 ; lB <= LB ; lB++ )
+
+    //} // if  (LB >0) 
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== part 2 Vbraketee ===="<<std::endl;  
+#endif
+
+    //if (LD > 0 ) {
+      for (int lD = 1 ; lD<LD+2 ; lD++ ) {
+        for ( int lC = LC_start ; lC< Lket+1 - lD ;lC++ ) { 
+          for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() ; Cidx++ ) {
+           
+            int lC_xyz[3];
+            for ( int ii = 0 ; ii < 3 ; ii++ ) {
+              lC_xyz[ii] = cart_ang_list[lC][Cidx][ii];
+            }
+ 
+            for ( int Didx = 0 ; Didx<cart_ang_list[lD].size() ; Didx++ ) { 
+
+              int lCp1[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+              //  lC_xyz[ii] = cart_ang_list[lC][Cidx][ii];
+                lCp1[ii] = lC_xyz[ii];
+              } 
+
+
+              int lD_xyz[3],lDm1[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                lD_xyz[ii] = cart_ang_list[lD][Didx][ii];
+                lDm1[ii] = lD_xyz[ii]; 
+              } 
+              if (lD_xyz[0]>0) {
+                iWork = 0 ; 
+              } else if (lD_xyz[1]>0) {
+                iWork = 1 ;
+              } else if (lD_xyz[2]>0) {
+                iWork = 2;
+              } 
+              
+              lDm1[iWork] = lD_xyz[iWork]-1; 
+              lCp1[iWork] = lC_xyz[iWork]+1;
+               
+              int idxCtemp = indexmap(lC+1,lCp1[0],lCp1[1],lCp1[2]);
+              int idxDtemp = indexmap(lD-1,lDm1[0],lDm1[1],lDm1[2]);
+              
+              for ( int Aidx = 0 ; Aidx < cart_ang_list[LA].size() ; Aidx++ ) {
+
+                int lA_xyz[3] ; 
+                for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                  lA_xyz[ii] =cart_ang_list[LA][Aidx][ii]; 
+                }
+                
+                for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ ) {
+                  int lB_xyz[3];
+                  for (int ii = 0 ; ii < 3 ; ii++) {
+                    lB_xyz[ii] = cart_ang_list[LB][Bidx][ii];
+                  }
+                  
+                  Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]  
+                  = Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp]
+                    +CD[iWork]*Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp];
+                 
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                  Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx][ii] 
+                  = Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp][ii]
+                    +CD[iWork]*Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp][ii];
+                  }
+                  
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC+1<<"["<<lCp1[0]<<lCp1[1]<<lCp1[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+"0) + ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+") = "<<
+Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]
+<<std::endl;
+#endif
+
+                  // (ab|cd) = (ab|c+1d-1)+(CD)(ab|cd-1)
+                } // for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ )
+              } // for ( int Aidx = 0 ; Aidx < cart_ang_list(LA) ; Aidx++ ) 
+              
+
+  
+            } // for ( int Didx = 0 ; Didx<cart_ang_list[lD].size() ; Dix++ )
+            //lAp1[iWork] = lA_xyz[iWork]+1;
+             
+          } // for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() ; Cidx++ )
+        } // for ( int lC = LC ; lC<= Lket - lD ;lC++ )
+      }// for (int lD = 1 ; lD<=LD ; lD++ ) 
+    //} // if (LD > 0 ) 
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== part 3 Vbraketee ===="<<std::endl;  
+#endif
+
+    //if (LD > 0 ) {
+      for (int lD = 1 ; lD<LD+1 ; lD++ ) {
+        for ( int lC = LC ; lC< Lket - lD ;lC++ ) { 
+          for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() ; Cidx++ ) {
+           
+            int lC_xyz[3];
+            for ( int ii = 0 ; ii < 3 ; ii++ ) {
+              lC_xyz[ii] = cart_ang_list[lC][Cidx][ii];
+            }
+ 
+            for ( int Didx = 0 ; Didx<cart_ang_list[lD].size() ; Didx++ ) { 
+
+              int lCp1[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+              //  lC_xyz[ii] = cart_ang_list[lC][Cidx][ii];
+                lCp1[ii] = lC_xyz[ii];
+              } 
+
+
+              int lD_xyz[3],lDm1[3];
+              for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                lD_xyz[ii] = cart_ang_list[lD][Didx][ii];
+                lDm1[ii] = lD_xyz[ii]; 
+              } 
+              if (lD_xyz[0]>0) {
+                iWork = 0 ; 
+              } else if (lD_xyz[1]>0) {
+                iWork = 1 ;
+              } else if (lD_xyz[2]>0) {
+                iWork = 2;
+              } 
+              
+              lDm1[iWork] = lD_xyz[iWork]-1; 
+              lCp1[iWork] = lC_xyz[iWork]+1;
+               
+              int idxCtemp = indexmap(lC+1,lCp1[0],lCp1[1],lCp1[2]);
+              int idxDtemp = indexmap(lD-1,lDm1[0],lDm1[1],lDm1[2]);
+
+              // We need to do 4 calculations.
+              
+              // (LA+1 LB|LC LD)
+              for ( int Aidx = 0 ; Aidx < cart_ang_list[LA+1].size() ; Aidx++ ) {
+
+                int lA_xyz[3] ; 
+                for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                  lA_xyz[ii] =cart_ang_list[LA+1][Aidx][ii]; 
+                }
+                
+                for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ ) {
+                  int lB_xyz[3];
+                  for (int ii = 0 ; ii < 3 ; ii++) {
+                    lB_xyz[ii] = cart_ang_list[LB][Bidx][ii];
+                  }
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA+1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = ("<<
+LA+1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC+1<<"["<<lCp1[0]<<lCp1[1]<<lCp1[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+"0) + ("<<
+LA+1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+")"<<std::endl;     
+#endif
+
+                  Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]  
+                  = Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp]
+                    +CD[iWork]*Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp];
+
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                  Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx][ii]  
+                  = Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp][ii]
+                    +CD[iWork]*Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp][ii];
+                  }
+
+                  // (ab|cd) = (ab|c+1d-1)+(CD)(ab|cd-1)
+                } // for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ )
+              } // for ( int Aidx = 0 ; Aidx < cart_ang_list(LA) ; Aidx++ ) 
+
+              // (LA LB+1|LC LD)
+              for ( int Aidx = 0 ; Aidx < cart_ang_list[LA].size() ; Aidx++ ) {
+
+                int lA_xyz[3] ; 
+                for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                  lA_xyz[ii] =cart_ang_list[LA][Aidx][ii]; 
+                }
+                
+                for ( int Bidx = 0 ; Bidx < cart_ang_list[LB+1].size() ; Bidx++ ) {
+                  int lB_xyz[3];
+                  for (int ii = 0 ; ii < 3 ; ii++) {
+                    lB_xyz[ii] = cart_ang_list[LB+1][Bidx][ii];
+                  }
+                  
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB+1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB+1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC+1<<"["<<lCp1[0]<<lCp1[1]<<lCp1[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+"0) + ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB+1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+")"<<std::endl;
+#endif
+                  
+                  Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB+1)*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB+1].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]  
+                  = Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][(LB+1)*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB+1].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp]
+                    +CD[iWork]*Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB+1)*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB+1].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp];
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB+1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = "<<
+Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB+1)*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB+1].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]<<std::endl;
+#endif
+
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                  Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB+1)*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB+1].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx][ii]  
+                  = Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][(LB+1)*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB+1].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp][ii]
+                    +CD[iWork]*Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB+1)*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB+1].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp][ii];
+                  }
+                  // (ab|cd) = (ab|c+1d-1)+(CD)(ab|cd-1)
+                } // for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ )
+              } // for ( int Aidx = 0 ; Aidx < cart_ang_list(LA) ; Aidx++ ) 
+
+              // (LA-1 LB|LC LD)
+              if (LA>0) {
+              for ( int Aidx = 0 ; Aidx < cart_ang_list[LA-1].size() ; Aidx++ ) {
+
+                int lA_xyz[3] ; 
+                for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                  lA_xyz[ii] =cart_ang_list[LA-1][Aidx][ii]; 
+                }
+                
+                for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ ) {
+                  int lB_xyz[3];
+                  for (int ii = 0 ; ii < 3 ; ii++) {
+                    lB_xyz[ii] = cart_ang_list[LB][Bidx][ii];
+                  }
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA-1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = ("<<
+LA-1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC+1<<"["<<lCp1[0]<<lCp1[1]<<lCp1[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+"0) + ("<<
+LA-1<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+")"<<std::endl;
+#endif
+
+                  Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]  
+                  = Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp]
+                    +CD[iWork]*Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp];
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB-1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = "<<
+Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]
+<<std::endl;
+#endif
+
+
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                  Vbraketee_Weighted[(LA-1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx][ii] 
+                  = Vbraketee_Weighted[(LA-1-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][LB*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp][ii]
+                    +CD[iWork]*Vbraketee_Weighted[(LA-1-LA_start)*(Lket-LC_start+1)+lC-LC_start][LB*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp][ii];
+                  }
+
+                  // (ab|cd) = (ab|c+1d-1)+(CD)(ab|cd-1)
+                } // for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ )
+              } // for ( int Aidx = 0 ; Aidx < cart_ang_list(LA) ; Aidx++ ) 
+              } // if (LA>0) 
+
+              // (LA LB-1|LC LD)
+              if (LB>0) { 
+              for ( int Aidx = 0 ; Aidx < cart_ang_list[LA].size() ; Aidx++ ) {
+
+                int lA_xyz[3] ; 
+                for ( int ii = 0 ; ii < 3 ; ii++ ) {
+                  lA_xyz[ii] =cart_ang_list[LA][Aidx][ii]; 
+                }
+                
+                for ( int Bidx = 0 ; Bidx < cart_ang_list[LB-1].size() ; Bidx++ ) {
+                  int lB_xyz[3];
+                  for (int ii = 0 ; ii < 3 ; ii++) {
+                    lB_xyz[ii] = cart_ang_list[LB-1][Bidx][ii];
+                  }
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB-1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD<<"["<<lD_xyz[0]<<lD_xyz[1]<<lD_xyz[2]<<"]"<<
+") = ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB-1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC+1<<"["<<lCp1[0]<<lCp1[1]<<lCp1[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+"0) + ("<<
+LA<<"["<<lA_xyz[0]<<lA_xyz[1]<<lA_xyz[2]<<"]"<<
+LB-1<<"["<<lB_xyz[0]<<lB_xyz[1]<<lB_xyz[2]<<"]"<<"|"<<
+lC<<"["<<lC_xyz[0]<<lC_xyz[1]<<lC_xyz[2]<<"]"<<
+lD-1<<"["<<lDm1[0]<<lDm1[1]<<lDm1[2]<<"]"<<
+")"<<std::endl;
+#endif
+                  
+                  Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB-1)*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB-1].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx]  
+                  = Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][(LB-1)*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB-1].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp]
+                    +CD[iWork]*Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB-1)*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB-1].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp];
+
+  
+                  for ( int ii = 0 ; ii < 4 ; ii++ ) {
+                  Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB-1)*(Lket-lC+1)+lD][Aidx *cart_ang_list[LB-1].size()
+                    *cart_ang_list[lC].size()*cart_ang_list[lD].size()+ Bidx *cart_ang_list[lC].size()
+                    *cart_ang_list[lD].size() + Cidx*cart_ang_list[lD].size() + Didx][ii] 
+                  = Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC+1-LC_start][(LB-1)*(Lket-(lC+1)+1)+lD-1][Aidx*cart_ang_list[LB-1].size()
+                    *cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()+Bidx*cart_ang_list[lC+1].size()*cart_ang_list[lD-1].size()
+                    +idxCtemp*cart_ang_list[lD-1].size()+idxDtemp][ii]
+                    +CD[iWork]*Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+lC-LC_start][(LB-1)*(Lket-lC+1)+lD-1][
+                    Aidx*cart_ang_list[LB-1].size()*cart_ang_list[lC].size()*cart_ang_list[lD-1].size()
+                    + Bidx*cart_ang_list[lC].size()*cart_ang_list[lD-1].size() +
+                    Cidx*cart_ang_list[lD-1].size()+idxDtemp][ii];
+                  }
+
+                  // (ab|cd) = (ab|c+1d-1)+(CD)(ab|cd-1)
+                } // for ( int Bidx = 0 ; Bidx < cart_ang_list[LB].size() ; Bidx++ )
+              } // for ( int Aidx = 0 ; Aidx < cart_ang_list(LA) ; Aidx++ )
+              } // if (LB>0)  
+
+  
+            } // for ( int Didx = 0 ; Didx<cart_ang_list[lD].size() ; Dix++ )
+            //lAp1[iWork] = lA_xyz[iWork]+1;
+             
+          } // for ( int Cidx = 0 ; Cidx < cart_ang_list[lC].size() ; Cidx++ )
+        } // for ( int lC = LC ; lC<= Lket - lD ;lC++ )
+      }// for (int lD = 1 ; lD<=LD ; lD++ ) 
+    //} // if (LD > 0 ) 
+
+    // here Vbraketee[0][LB*(LD+1)+LD] is the desired ints. 
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"==== Constructing Gradient Integrals ===="<<std::endl;  
+#endif
+
+/*
+        Now we have everything for a 12*ABCD gradient.
+
+*/
+    std::vector<std::vector<dcomplex>> dERI_cart(12);
+
+    int sizeLA = cart_ang_list[LA].size();
+    int sizeLB = cart_ang_list[LB].size();
+    int sizeLC = cart_ang_list[LC].size();
+    int sizeLD = cart_ang_list[LD].size();
+
+    for ( int ii = 0 ; ii < 12 ; ii++ )
+      dERI_cart[ii].assign(sizeLA * sizeLB * sizeLC * sizeLD, 0.0);
+
+    // Loop for all cartesian components
+    for(int Aidx = 0, ijkl = 0ul ; Aidx < sizeLA; Aidx++) 
+    for(int Bidx = 0 ; Bidx < sizeLB; Bidx++) 
+    for(int Cidx = 0 ; Cidx < sizeLC; Cidx++) 
+    for(int Didx = 0 ; Didx < sizeLD; Didx++, ++ijkl) {
+
+#ifdef _DEBUGGIAOERIDERIV
+std::cout<<"current cartesian = ("<<Aidx<<Bidx<<Cidx<<Didx<<")"<<std::endl; 
+#endif
+
+      // Prepare the base values  
+      int lA_xyz[3];
+      for ( int ii = 0 ; ii < 3 ; ii++ )
+        lA_xyz[ii] = cart_ang_list[LA][Aidx][ii];
+
+      int lB_xyz[3];
+      for ( int ii = 0 ; ii < 3 ; ii++ )
+        lB_xyz[ii] = cart_ang_list[LB][Bidx][ii];
+
+      int lC_xyz[3];
+      for ( int ii = 0 ; ii < 3 ; ii++ )
+        lC_xyz[ii] = cart_ang_list[LC][Cidx][ii];
+
+      int lD_xyz[3];
+      for ( int ii = 0 ; ii < 3 ; ii++ )
+        lD_xyz[ii] = cart_ang_list[LD][Didx][ii];
+
+      // Start
+      int current_idx = Aidx * sizeLB * sizeLC * sizeLD + 
+                        Bidx * sizeLC * sizeLD + 
+                        Cidx * sizeLD + 
+                        Didx;
+
+
+
+      // dERI/dA
+      int Aidx_px = indexmap(LA+1,lA_xyz[0]+1,lA_xyz[1],lA_xyz[2]) * sizeLB * sizeLC * sizeLD + 
+                      Bidx * sizeLC * sizeLD + 
+                      Cidx * sizeLD + 
+                      Didx;
+      int Aidx_py = indexmap(LA+1,lA_xyz[0],lA_xyz[1]+1,lA_xyz[2]) * sizeLB * sizeLC * sizeLD + 
+                      Bidx * sizeLC * sizeLD + 
+                      Cidx * sizeLD + 
+                      Didx;
+      int Aidx_pz = indexmap(LA+1,lA_xyz[0],lA_xyz[1],lA_xyz[2]+1) * sizeLB * sizeLC * sizeLD + 
+                      Bidx * sizeLC * sizeLD + 
+                      Cidx * sizeLD + 
+                      Didx;
+      int Aidx_mx = -1;
+      int Aidx_my = -1;
+      int Aidx_mz = -1;
+
+      if (lA_xyz[0]>0)
+        Aidx_mx = indexmap(LA-1,lA_xyz[0]-1,lA_xyz[1],lA_xyz[2]) * sizeLB * sizeLC * sizeLD + 
+                    Bidx * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+      if (lA_xyz[1]>0)
+        Aidx_my = indexmap(LA-1,lA_xyz[0],lA_xyz[1]-1,lA_xyz[2]) * sizeLB * sizeLC * sizeLD + 
+                    Bidx * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+      if (lA_xyz[2]>0)
+        Aidx_mz = indexmap(LA-1,lA_xyz[0],lA_xyz[1],lA_xyz[2]-1) * sizeLB * sizeLC * sizeLD + 
+                    Bidx * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+
+      // Ax
+      dERI_cart[0][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_px][0]
+                  - 0.5 * onei * H_workAB[1]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_pz]
+                  + 0.5 * onei * H_workAB[2]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_py]
+                  - 0.5 * onei * (H_workAB[1] * shell1.O[2] - H_workAB[2] * shell1.O[1]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Aidx_mx>=0)
+        dERI_cart[0][ijkl] -= 1.0*lA_xyz[0] * Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_mx]; 
+
+      // Ay
+      dERI_cart[1][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_py][0]
+                  - 0.5 * onei * H_workAB[2]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_px]
+                  + 0.5 * onei * H_workAB[0]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_pz]
+                  - 0.5 * onei * (H_workAB[2] * shell1.O[0] - H_workAB[0] * shell1.O[2]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Aidx_my>=0)
+        dERI_cart[1][ijkl] -= 1.0*lA_xyz[1] * Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_my]; 
+
+      // Az
+      dERI_cart[2][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_pz][0]
+                  - 0.5 * onei * H_workAB[0]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_py]
+                  + 0.5 * onei * H_workAB[1]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_px]
+                  - 0.5 * onei * (H_workAB[0] * shell1.O[1] - H_workAB[1] * shell1.O[0]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Aidx_mz>=0)
+        dERI_cart[2][ijkl] -= 1.0*lA_xyz[2] * Vbraketee[(LA-1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_mz]; 
+
+//std::cout<<"dERI_cart[AX]["<<ijkl<<"] = "<<
+//2.0 *                   Vbraketee_Weighted[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_px][0]<<
+//" - "<< - 0.5 * onei * H[1]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_pz] <<
+//" + "<< + 0.5 * onei * H[2]              * Vbraketee[(LA+1-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][Aidx_py] <<
+//" - "<< - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx] <<
+//" = "<<dERI_cart[0][ijkl]<<std::endl;
+
+      // dERI/dB
+      int Bidx_px = Aidx * cart_ang_list[LB+1].size() * sizeLC * sizeLD + 
+                    indexmap(LB+1,lB_xyz[0]+1,lB_xyz[1],lB_xyz[2])  * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+      int Bidx_py = Aidx * cart_ang_list[LB+1].size() * sizeLC * sizeLD + 
+                    indexmap(LB+1,lB_xyz[0],lB_xyz[1]+1,lB_xyz[2])  * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+      int Bidx_pz = Aidx * cart_ang_list[LB+1].size() * sizeLC * sizeLD + 
+                    indexmap(LB+1,lB_xyz[0],lB_xyz[1],lB_xyz[2]+1)  * sizeLC * sizeLD + 
+                    Cidx * sizeLD + 
+                    Didx;
+      int Bidx_mx = -1;
+      int Bidx_my = -1;
+      int Bidx_mz = -1;
+
+      if (lB_xyz[0]>0)
+        Bidx_mx = Aidx * cart_ang_list[LB-1].size() * sizeLC * sizeLD + 
+                  indexmap(LB-1,lB_xyz[0]-1,lB_xyz[1],lB_xyz[2])  * sizeLC * sizeLD + 
+                  Cidx * sizeLD + 
+                  Didx;
+      if (lB_xyz[1]>0)
+        Bidx_my = Aidx * cart_ang_list[LB-1].size() * sizeLC * sizeLD + 
+                  indexmap(LB-1,lB_xyz[0],lB_xyz[1]-1,lB_xyz[2])  * sizeLC * sizeLD + 
+                  Cidx * sizeLD + 
+                  Didx;
+      if (lB_xyz[2]>0)
+        Bidx_mz = Aidx * cart_ang_list[LB-1].size() * sizeLC * sizeLD + 
+                  indexmap(LB-1,lB_xyz[0],lB_xyz[1],lB_xyz[2]-1)  * sizeLC * sizeLD + 
+                  Cidx * sizeLD + 
+                  Didx;
+
+      // Bx
+      dERI_cart[3][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_px][1]
+                  - 0.5 * onei * H_workAB[2]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_py]
+                  + 0.5 * onei * H_workAB[1]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_pz]
+                  - 0.5 * onei * (H_workAB[2] * shell2.O[1] - H_workAB[1] * shell2.O[2]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Bidx_mx>=0)
+        dERI_cart[3][ijkl] -= 1.0*lB_xyz[0] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB-1)*(Lket-LC+1)+LD][Bidx_mx]; 
+
+      // By
+      dERI_cart[4][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_py][1]
+                  - 0.5 * onei * H_workAB[0]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_pz]
+                  + 0.5 * onei * H_workAB[2]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_px]
+                  - 0.5 * onei * (H_workAB[0] * shell2.O[2] - H_workAB[2] * shell2.O[0]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Bidx_my>=0)
+        dERI_cart[4][ijkl] -= 1.0*lB_xyz[1] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB-1)*(Lket-LC+1)+LD][Bidx_my]; 
+
+      // Bz
+      dERI_cart[5][ijkl] =
+                    2.0 *                   Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_pz][1]
+                  - 0.5 * onei * H_workAB[1]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_px]
+                  + 0.5 * onei * H_workAB[0]              * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB+1)*(Lket-LC+1)+LD][Bidx_py]
+                  - 0.5 * onei * (H_workAB[1] * shell2.O[0] - H_workAB[0] * shell2.O[1]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Bidx_mz>=0)
+        dERI_cart[5][ijkl] -= 1.0*lB_xyz[2] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][(LB-1)*(Lket-LC+1)+LD][Bidx_mz]; 
+
+
+
+      // dERI/dC
+      int Cidx_px = Aidx * sizeLB * cart_ang_list[LC+1].size() * sizeLD + 
+                    Bidx * cart_ang_list[LC+1].size() * sizeLD + 
+                    indexmap(LC+1,lC_xyz[0]+1,lC_xyz[1],lC_xyz[2]) * sizeLD + 
+                    Didx;
+      int Cidx_py = Aidx * sizeLB * cart_ang_list[LC+1].size() * sizeLD + 
+                    Bidx * cart_ang_list[LC+1].size() * sizeLD + 
+                    indexmap(LC+1,lC_xyz[0],lC_xyz[1]+1,lC_xyz[2]) * sizeLD + 
+                    Didx;
+      int Cidx_pz = Aidx * sizeLB * cart_ang_list[LC+1].size() * sizeLD + 
+                    Bidx * cart_ang_list[LC+1].size() * sizeLD + 
+                    indexmap(LC+1,lC_xyz[0],lC_xyz[1],lC_xyz[2]+1) * sizeLD + 
+                    Didx;
+      int Cidx_mx = -1;
+      int Cidx_my = -1;
+      int Cidx_mz = -1;
+
+      if (lC_xyz[0]>0)
+        Cidx_mx = Aidx * sizeLB * cart_ang_list[LC-1].size() * sizeLD + 
+                  Bidx * cart_ang_list[LC-1].size() * sizeLD + 
+                  indexmap(LC-1,lC_xyz[0]-1,lC_xyz[1],lC_xyz[2]) * sizeLD + 
+                  Didx;
+      if (lC_xyz[1]>0)
+        Cidx_my = Aidx * sizeLB * cart_ang_list[LC-1].size() * sizeLD + 
+                  Bidx * cart_ang_list[LC-1].size() * sizeLD + 
+                  indexmap(LC-1,lC_xyz[0],lC_xyz[1]-1,lC_xyz[2]) * sizeLD + 
+                  Didx;
+      if (lC_xyz[2]>0)
+        Cidx_mz = Aidx * sizeLB * cart_ang_list[LC-1].size() * sizeLD + 
+                  Bidx * cart_ang_list[LC-1].size() * sizeLD + 
+                  indexmap(LC-1,lC_xyz[0],lC_xyz[1],lC_xyz[2]-1) * sizeLD + 
+                  Didx;
+
+      // Cx
+      dERI_cart[6][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_px][2]
+                  - 0.5 * onei * H_workCD[1]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_pz]
+                  + 0.5 * onei * H_workCD[2]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_py]
+                  - 0.5 * onei * (H_workCD[1] * shell3.O[2] - H_workCD[2] * shell3.O[1]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Cidx_mx>=0)
+        dERI_cart[6][ijkl] -= 1.0*lC_xyz[0] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC-1)-LC_start][LB*(Lket-(LC-1)+1)+LD][Cidx_mx]; 
+
+      // Cy
+      dERI_cart[7][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_py][2]
+                  - 0.5 * onei * H_workCD[2]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_px]
+                  + 0.5 * onei * H_workCD[0]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_pz]
+                  - 0.5 * onei * (H_workCD[2] * shell3.O[0] - H_workCD[0] * shell3.O[2]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Cidx_my>=0)
+        dERI_cart[7][ijkl] -= 1.0*lC_xyz[1] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC-1)-LC_start][LB*(Lket-(LC-1)+1)+LD][Cidx_my]; 
+
+      // Cz
+      dERI_cart[8][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_pz][2]
+                  - 0.5 * onei * H_workCD[0]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_py]
+                  + 0.5 * onei * H_workCD[1]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC+1)-LC_start][LB*(Lket-(LC+1)+1)+LD][Cidx_px]
+                  - 0.5 * onei * (H_workCD[0] * shell3.O[1] - H_workCD[1] * shell3.O[0]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Cidx_mz>=0)
+        dERI_cart[8][ijkl] -= 1.0*lC_xyz[2] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+(LC-1)-LC_start][LB*(Lket-(LC-1)+1)+LD][Cidx_mz]; 
+
+
+      // dERI/dD
+      int Didx_px = Aidx * sizeLB * sizeLC * cart_ang_list[LD+1].size() + 
+                    Bidx * sizeLC * cart_ang_list[LD+1].size() + 
+                    Cidx * cart_ang_list[LD+1].size() + 
+                    indexmap(LD+1,lD_xyz[0]+1,lD_xyz[1],lD_xyz[2]);
+      int Didx_py = Aidx * sizeLB * sizeLC * cart_ang_list[LD+1].size() + 
+                    Bidx * sizeLC * cart_ang_list[LD+1].size() + 
+                    Cidx * cart_ang_list[LD+1].size() + 
+                    indexmap(LD+1,lD_xyz[0],lD_xyz[1]+1,lD_xyz[2]);;
+      int Didx_pz = Aidx * sizeLB * sizeLC * cart_ang_list[LD+1].size() + 
+                    Bidx * sizeLC * cart_ang_list[LD+1].size() + 
+                    Cidx * cart_ang_list[LD+1].size() + 
+                    indexmap(LD+1,lD_xyz[0],lD_xyz[1],lD_xyz[2]+1);;
+      int Didx_mx = -1;
+      int Didx_my = -1;
+      int Didx_mz = -1;
+
+      if (lD_xyz[0]>0)
+        Didx_mx = Aidx * sizeLB * sizeLC * cart_ang_list[LD-1].size() + 
+                  Bidx * sizeLC * cart_ang_list[LD-1].size() + 
+                  Cidx * cart_ang_list[LD-1].size() + 
+                  indexmap(LD-1,lD_xyz[0]-1,lD_xyz[1],lD_xyz[2]);;
+      if (lD_xyz[1]>0)
+        Didx_my = Aidx * sizeLB * sizeLC * cart_ang_list[LD-1].size() + 
+                  Bidx * sizeLC * cart_ang_list[LD-1].size() + 
+                  Cidx * cart_ang_list[LD-1].size() + 
+                  indexmap(LD-1,lD_xyz[0],lD_xyz[1]-1,lD_xyz[2]);;
+      if (lD_xyz[2]>0)
+        Didx_mz = Aidx * sizeLB * sizeLC * cart_ang_list[LD-1].size() + 
+                  Bidx * sizeLC * cart_ang_list[LD-1].size() + 
+                  Cidx * cart_ang_list[LD-1].size() + 
+                  indexmap(LD-1,lD_xyz[0],lD_xyz[1],lD_xyz[2]-1);;
+
+      // Dx
+      dERI_cart[9][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_px][3]
+                  - 0.5 * onei * H_workCD[2]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_py]
+                  + 0.5 * onei * H_workCD[1]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_pz]
+                  - 0.5 * onei * (H_workCD[2] * shell4.O[1] - H_workCD[1] * shell4.O[2]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Didx_mx>=0)
+        dERI_cart[9][ijkl] -= 1.0*lD_xyz[0] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD-1][Didx_mx]; 
+
+//std::cout<<"dERI_cart[DX]["<<ijkl<<"] = "<<
+//2.0 *                   Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_px][3]<<
+//" - "<< 0.5 * onei * H[2]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_py] <<
+//" + "<< 0.5 * onei * H[1]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_pz] <<
+//" - "<< 0.5 * onei * (H[2] * shell4.O[1] - H[1] * shell4.O[2]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx] <<
+//" = "<<dERI_cart[9][ijkl]<<" Didx_mx "<<Didx_mx<<std::endl;
+//if (Didx_mx>=0)
+//  std::cout<<" - "<<1.0*lD_xyz[0] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD-1][Didx_mx]<<std::endl;
+
+      // Dy
+      dERI_cart[10][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_py][3]
+                  - 0.5 * onei * H_workCD[0]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_pz]
+                  + 0.5 * onei * H_workCD[2]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_px]
+                  - 0.5 * onei * (H_workCD[0] * shell4.O[2] - H_workCD[2] * shell4.O[0]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Didx_my>=0)
+        dERI_cart[10][ijkl] -= 1.0*lD_xyz[1] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD-1][Didx_my]; 
+
+      // Dz
+      dERI_cart[11][ijkl] =
+                    2.0 *                    Vbraketee_Weighted[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_pz][3]
+                  - 0.5 * onei * H_workCD[1]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_px]
+                  + 0.5 * onei * H_workCD[0]               * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD+1][Didx_py]
+                  - 0.5 * onei * (H_workCD[1] * shell4.O[0] - H_workCD[0] * shell4.O[1]) * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD][current_idx];
+      if (Didx_mz>=0)
+        dERI_cart[11][ijkl] -= 1.0*lD_xyz[2] * Vbraketee[(LA-LA_start)*(Lket-LC_start+1)+LC-LC_start][LB*(Lket-LC+1)+LD-1][Didx_mz];  
+        
+    } // for(int Didx = 0 ; Didx < sizeLD; Didx++, ++ijkl)
+
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) and 
+         ( not shell3.contr[0].pure ) and ( not shell4.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+      return dERI_cart;
+    } 
+
+    std::vector<std::vector<dcomplex>> dERI_sph(12);
+
+    for ( int ii = 0 ; ii < 12 ; ii++ ) {
+      dERI_sph[ii].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)
+                   *(2*shell3.contr[0].l+1)*(2*shell4.contr[0].l+1)),0.0);
+      cart2sph_complex_2e_transform( shell1.contr[0].l,shell2.contr[0].l,
+      shell3.contr[0].l,shell4.contr[0].l,dERI_sph[ii],dERI_cart[ii] );
+    }
+
+    return dERI_sph; 
+
+
+  } //ComplexGIAOIntEngine::bottomupcomplexERI_deriv1
 
 }  // namespace ChronusQ 
 

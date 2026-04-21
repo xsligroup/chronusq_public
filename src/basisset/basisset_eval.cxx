@@ -797,7 +797,147 @@ namespace ChronusQ {
     //  std::cout << (fEval+IOff)[i] << std::endl;
 
   }; // evalShellSetGrad Level 2
+  void evalShellSetGrad(SHELL_EVAL_TYPE typ, std::vector<libint2::Shell> &shells, 
+    std::vector<bool> &evalShell, double* rSq, double *r, size_t npts, size_t nCenter, 
+    std::vector<size_t> &mapSh2Cen, size_t NBasisEff, dcomplex *fEval, dcomplex *SCR, size_t IOffSCR, bool forceCart,
+    EMPerturbation &pert, double scaleFactor=1.0) {
 
+    assert(shells.size() == evalShell.size());
+
+    //std::cout << "scaleFactor " << scaleFactor << std::endl;
+
+    size_t nShSize = shells.size();
+    size_t IOff =  npts*NBasisEff;
+    std::array<double,3> rVal;
+
+    for (auto ipts = 0ul; ipts < npts; ipts++){
+      size_t Ic = 0;
+    for (auto iSh = 0ul; iSh < nShSize; iSh++){
+      if(evalShell[iSh]) {
+        dcomplex * fStart    = fEval + Ic + ipts*NBasisEff;
+
+        rVal [0]= r[0 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+        rVal [1]= r[1 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+        rVal [2]= r[2 + mapSh2Cen[iSh]*3 + ipts*3*nCenter];
+
+        // calculate wave vector
+
+        double k[3];
+        double dk[12];
+
+        auto magAmp = pert.getDipoleAmp(Magnetic);
+        // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+        // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+        double H_work[3];
+        for ( int mu = 0 ; mu < 3 ; mu++ ) 
+          H_work[mu] = magAmp[mu] * scaleFactor; 
+
+        k[0] = 0.5 * ( shells[iSh].O[1]*H_work[2] - shells[iSh].O[2]*H_work[1] );
+        k[1] = 0.5 * ( shells[iSh].O[2]*H_work[0] - shells[iSh].O[0]*H_work[2] );
+        k[2] = 0.5 * ( shells[iSh].O[0]*H_work[1] - shells[iSh].O[1]*H_work[0] );
+
+        // Gradient of k
+        dk[0] =   0.; //Xx
+        dk[1] =   0.5 * H_work[2]; //Yx
+        dk[2] = - 0.5 * H_work[1]; //Zx
+        dk[3] = - 0.5 * H_work[2]; //Xy
+        dk[4] =   0.; //Yy
+        dk[5] =   0.5 * H_work[0]; //Zy
+        dk[6] =   0.5 * H_work[1]; //Xz
+        dk[7] = - 0.5 * H_work[0]; //Yz
+        dk[8] =   0.; //Zz
+
+        // Gradients of k\cdot r
+        dk[9]  = - k[0] - 0.5 * rVal[1] * H_work[2] + 0.5 * rVal[2] * H_work[1];
+        dk[10] = - k[1] - 0.5 * rVal[2] * H_work[0] + 0.5 * rVal[0] * H_work[2];
+        dk[11] = - k[2] - 0.5 * rVal[0] * H_work[1] + 0.5 * rVal[1] * H_work[0];
+
+// numerical gradient check 
+/*
+        // Bullet Proof
+        double shift[3];
+        double k_right[3];
+        double k_left[3];
+        double kr_right;
+        double kr_left;
+
+        shift[0] = 1e-8;
+        shift[1] = 0.;
+        shift[2] = 0.;
+
+        k_right[0] = 0.5 * ( (shells[iSh].O[1]+shift[1])*H_work[2] - (shells[iSh].O[2]+shift[2])*H_work[1] );
+        k_right[1] = 0.5 * ( (shells[iSh].O[2]+shift[2])*H_work[0] - (shells[iSh].O[0]+shift[0])*H_work[2] );
+        k_right[2] = 0.5 * ( (shells[iSh].O[0]+shift[0])*H_work[1] - (shells[iSh].O[1]+shift[1])*H_work[0] );
+
+        k_left[0]  = 0.5 * ( (shells[iSh].O[1]-shift[1])*H_work[2] - (shells[iSh].O[2]-shift[2])*H_work[1] );
+        k_left[1]  = 0.5 * ( (shells[iSh].O[2]-shift[2])*H_work[0] - (shells[iSh].O[0]-shift[0])*H_work[2] );
+        k_left[2]  = 0.5 * ( (shells[iSh].O[0]-shift[0])*H_work[1] - (shells[iSh].O[1]-shift[1])*H_work[0] );
+
+        kr_right = (rVal[0]-shift[0])*k_right[0] + (rVal[1]-shift[1])*k_right[1] + (rVal[2]-shift[2])*k_right[2];
+        kr_left  = (rVal[0]+shift[0])*k_left[0]  + (rVal[1]+shift[1])*k_left[1]  + (rVal[2]+shift[2])*k_left[2];
+        
+        dk[0] = 0.5 * (k_right[0] - k_left[0]) / shift[0];
+        dk[3] = 0.5 * (k_right[1] - k_left[1]) / shift[0];
+        dk[6] = 0.5 * (k_right[2] - k_left[2]) / shift[0];
+        dk[9] = 0.5 * (kr_right - kr_left) / shift[0];
+
+
+        shift[0] = 0.;
+        shift[1] = 1e-8;
+        shift[2] = 0.;
+
+        k_right[0] = 0.5 * ( (shells[iSh].O[1]+shift[1])*H_work[2] - (shells[iSh].O[2]+shift[2])*H_work[1] );
+        k_right[1] = 0.5 * ( (shells[iSh].O[2]+shift[2])*H_work[0] - (shells[iSh].O[0]+shift[0])*H_work[2] );
+        k_right[2] = 0.5 * ( (shells[iSh].O[0]+shift[0])*H_work[1] - (shells[iSh].O[1]+shift[1])*H_work[0] );
+
+        k_left[0]  = 0.5 * ( (shells[iSh].O[1]-shift[1])*H_work[2] - (shells[iSh].O[2]-shift[2])*H_work[1] );
+        k_left[1]  = 0.5 * ( (shells[iSh].O[2]-shift[2])*H_work[0] - (shells[iSh].O[0]-shift[0])*H_work[2] );
+        k_left[2]  = 0.5 * ( (shells[iSh].O[0]-shift[0])*H_work[1] - (shells[iSh].O[1]-shift[1])*H_work[0] );
+
+        kr_right = (rVal[0]-shift[0])*k_right[0] + (rVal[1]-shift[1])*k_right[1] + (rVal[2]-shift[2])*k_right[2];
+        kr_left  = (rVal[0]+shift[0])*k_left[0]  + (rVal[1]+shift[1])*k_left[1]  + (rVal[2]+shift[2])*k_left[2];
+        
+        dk[1] = 0.5 * (k_right[0] - k_left[0]) / shift[1];
+        dk[4] = 0.5 * (k_right[1] - k_left[1]) / shift[1];
+        dk[7] = 0.5 * (k_right[2] - k_left[2]) / shift[1];
+        dk[10] = 0.5 * (kr_right - kr_left) / shift[1];
+
+        shift[0] = 0.;
+        shift[1] = 0.;
+        shift[2] = 1e-8;
+
+        k_right[0] = 0.5 * ( (shells[iSh].O[1]+shift[1])*H_work[2] - (shells[iSh].O[2]+shift[2])*H_work[1] );
+        k_right[1] = 0.5 * ( (shells[iSh].O[2]+shift[2])*H_work[0] - (shells[iSh].O[0]+shift[0])*H_work[2] );
+        k_right[2] = 0.5 * ( (shells[iSh].O[0]+shift[0])*H_work[1] - (shells[iSh].O[1]+shift[1])*H_work[0] );
+
+        k_left[0]  = 0.5 * ( (shells[iSh].O[1]-shift[1])*H_work[2] - (shells[iSh].O[2]-shift[2])*H_work[1] );
+        k_left[1]  = 0.5 * ( (shells[iSh].O[2]-shift[2])*H_work[0] - (shells[iSh].O[0]-shift[0])*H_work[2] );
+        k_left[2]  = 0.5 * ( (shells[iSh].O[0]-shift[0])*H_work[1] - (shells[iSh].O[1]-shift[1])*H_work[0] );
+
+        kr_right = (rVal[0]-shift[0])*k_right[0] + (rVal[1]-shift[1])*k_right[1] + (rVal[2]-shift[2])*k_right[2];
+        kr_left  = (rVal[0]+shift[0])*k_left[0]  + (rVal[1]+shift[1])*k_left[1]  + (rVal[2]+shift[2])*k_left[2];
+        
+        dk[2] = 0.5 * (k_right[0] - k_left[0]) / shift[2];
+        dk[5] = 0.5 * (k_right[1] - k_left[1]) / shift[2];
+        dk[8] = 0.5 * (k_right[2] - k_left[2]) / shift[2];
+        dk[11] = 0.5 * (kr_right - kr_left) / shift[2];
+*/
+        evalShellSetGrad(typ,shells[iSh],rSq[mapSh2Cen[iSh] + ipts*nCenter],
+          rVal,SCR,IOffSCR,k,dk); 
+
+        CarToSpDGradEval(typ, shells[iSh].contr[0].l, SCR, fStart, IOff, IOffSCR, forceCart);
+
+        Ic += shells[iSh].size(); // Increment offset in basis
+      }
+
+    } // loop over shells
+    } // loop over points
+
+    //std::cout << "Basis Gradient in evalShellSetGrad" << std::endl;
+    //for (size_t i = 0; i < IOff; i++)
+    //  std::cout << (fEval+IOff)[i] << std::endl;
+
+  }; // evalShellSetGrad Level 2 GIAO
 
   /**
    *   \brief Level 3 Basis Set Nuclear Gradient Evaluation Function
@@ -1085,7 +1225,460 @@ namespace ChronusQ {
     } //loop over i, i[0,L] this to loop required to build the lx,ly,lz combination given L
 
   }; // evalShellSetGrad Level3
+  void evalShellSetGrad(SHELL_EVAL_TYPE typ, const libint2::Shell &shell,double rSq, const std::array<double,3> &xyz, 
+    dcomplex* SCR, size_t IOffSCR, double *k, double *dk) {
+    auto L         = shell.contr[0].l;
+    auto shSize    = ((L+1)*(L+2))/2; 
+    auto shSize_car   = ((L+1)*(L+2))/2; 
 
+    //std::cout << "x " << xyz[0] << std::endl;
+    //std::cout << "y " << xyz[1] << std::endl;
+    //std::cout << "z " << xyz[2] << std::endl;
+
+/* dk map
+* Gradients of k_w
+        dk[0] = 0.; //Xx
+        dk[1] =   scaleFactor * 0.5 * magAmp[2]; //Yx
+        dk[2] = - scaleFactor * 0.5 * magAmp[1]; //Zx
+        dk[3] = - scaleFactor * 0.5 * magAmp[2]; //Xy
+        dk[4] = 0.; //Yy
+        dk[5] =   scaleFactor * 0.5 * magAmp[0]; //Zy
+        dk[6] =   scaleFactor * 0.5 * magAmp[1]; //Xz
+        dk[7] = - scaleFactor * 0.5 * magAmp[0]; //Yz
+        dk[8] = 0.; //Zz
+* Gradients of k\cdot r
+        dk[9]  = - k[0] + scaleFactor * ( - 0.5 * rVal[1] * magAmp[2] + 0.5 * rVal[2] * magAmp[1]);
+        dk[10] = - k[1] + scaleFactor * ( - 0.5 * rVal[2] * magAmp[0] + 0.5 * rVal[0] * magAmp[2]);
+        dk[11] = - k[2] + scaleFactor * ( - 0.5 * rVal[0] * magAmp[1] + 0.5 * rVal[1] * magAmp[0]);
+*/
+
+    // pointer positions for nuclear gradients of density 
+    dcomplex * dX_car     = SCR ;
+    dcomplex * dY_car = dX_car  + IOffSCR;
+    dcomplex * dZ_car = dY_car  + IOffSCR;
+
+    // pointer positions for nuclear gradients of density gradient
+    dcomplex * dxX_car = dZ_car + IOffSCR;
+    dcomplex * dxY_car = dxX_car + IOffSCR;
+    dcomplex * dxZ_car = dxY_car + IOffSCR;
+    dcomplex * dyX_car = dxZ_car + IOffSCR;
+    dcomplex * dyY_car = dyX_car + IOffSCR;
+    dcomplex * dyZ_car = dyY_car + IOffSCR;
+    dcomplex * dzX_car = dyZ_car + IOffSCR;
+    dcomplex * dzY_car = dzX_car + IOffSCR;
+    dcomplex * dzZ_car = dzY_car + IOffSCR;
+
+    // contraction length
+    auto contDepth = shell.alpha.size(); 
+    dcomplex alpha(0.0);
+    dcomplex alpha_s(0.0);
+    dcomplex expFactor(0.0);
+    dcomplex expArg(0);
+    double tmpcoef,tmpalpha;
+    int lx,ly,lz, ixyz;
+    double tmpxyz;
+
+    // Generating the expArgument, expFactotr and the
+    // alpha (for derivatives later on) and store them
+    // in temp variables
+
+    // calculate the GIAO phase factor 
+    dcomplex phase=0.0;
+    dcomplex onei;
+    onei.real(0.0);
+    onei.imag(1.0);
+    double kdotr = 0.0;
+    for ( int ii = 0 ; ii < 3 ; ii++ ) kdotr += k[ii]*xyz[ii];
+    phase = std::exp(onei*kdotr);
+
+    // pre-calculate
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expArg = phase * std::exp(-tmpalpha*rSq);
+      expFactor += tmpcoef * expArg;
+      tmpcoef *= tmpalpha;
+      alpha += tmpcoef * expArg;
+      if (typ == GRADIENT) { 
+        // quantities for derivatives
+        alpha_s += tmpalpha * tmpcoef * expArg;
+      }
+    } 
+
+    alpha *= 2;
+    if (typ == GRADIENT) alpha_s *= 4;
+
+    // sign
+    double sign = -1;
+
+    // lambda function that computes x^lx * y^ly * z^lz
+    auto compute_power = [&](int x, int y, int z) -> double {
+      
+      // return zero if any power is less than zero 
+      if ( x < 0 or y < 0 or z < 0 ) return 0;
+
+      double result = 1.0;
+      for (size_t xi = 0; xi < x; xi++) result *= double(xyz[0]);
+      for (size_t yi = 0; yi < y; yi++) result *= double(xyz[1]);
+      for (size_t zi = 0; zi < z; zi++) result *= double(xyz[2]);
+
+      return result;
+
+    };
+
+/*
+    // debug code
+    auto compute_power_lshift = [&](int x, int y, int z, std::array<double, 3> diff) -> double {
+      
+      // return zero if any power is less than zero 
+      if ( x < 0 or y < 0 or z < 0 ) return 0;
+
+      double result = 1.0;
+      for (size_t xi = 0; xi < x; xi++) result *= double(xyz[0]+diff[0]);
+      for (size_t yi = 0; yi < y; yi++) result *= double(xyz[1]+diff[1]);
+      for (size_t zi = 0; zi < z; zi++) result *= double(xyz[2]+diff[2]);
+
+      return result;
+
+    };
+    auto compute_power_rshift = [&](int x, int y, int z, std::array<double, 3> diff) -> double {
+      
+      // return zero if any power is less than zero 
+      if ( x < 0 or y < 0 or z < 0 ) return 0;
+
+      double result = 1.0;
+      for (size_t xi = 0; xi < x; xi++) result *= double(xyz[0]-diff[0]);
+      for (size_t yi = 0; yi < y; yi++) result *= double(xyz[1]-diff[1]);
+      for (size_t zi = 0; zi < z; zi++) result *= double(xyz[2]-diff[2]);
+
+      return result;
+
+    };
+
+    // pre-calculate debug
+    double shift = 1e-8;
+    double k_left[3];
+    double k_right[3];
+
+    // LDA - X
+
+    // left shift
+    // k = 0.5 * RA x B. here we only shift R_x for a little bit. We assume B = 0.1 on Z.
+    k_left[0] = k[0];
+    k_left[1] = k[1] + 0.5*0.1*shift;
+    k_left[2] = k[2];
+
+    // r - R
+    double rSq_x_lshift = (xyz[0]+shift)*(xyz[0]+shift) + xyz[1]*xyz[1] + xyz[2]*xyz[2];
+
+    dcomplex expFactor_x_lshift(0.0);
+    dcomplex phase_x_lshift(0.0);
+
+    kdotr = k_left[0]*(xyz[0]+shift) + k_left[1]*xyz[1] + k_left[2]*xyz[2];
+    phase_x_lshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_x_lshift += tmpcoef * phase_x_lshift * std::exp(-tmpalpha*rSq_x_lshift);
+    } 
+
+
+    // right shift
+    k_right[0] = k[0];
+    k_right[1] = k[1] - 0.5*0.1*shift;
+    k_right[2] = k[2];
+
+    // r - R
+    double rSq_x_rshift = (xyz[0]-shift)*(xyz[0]-shift) + xyz[1]*xyz[1] + xyz[2]*xyz[2];
+
+    dcomplex expFactor_x_rshift(0.0);
+    dcomplex phase_x_rshift(0.0);
+
+    kdotr = k_right[0]*(xyz[0]-shift) + k_right[1]*xyz[1] + k_right[2]*xyz[2];
+    phase_x_rshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_x_rshift += tmpcoef * phase_x_rshift * std::exp(-tmpalpha*rSq_x_rshift);
+    } 
+
+    // LDA - Y
+
+    // left shift
+    // k = 0.5 * RA x B. here we only shift R_x for a little bit. We assume B = 0.1 on Z.
+    k_left[0] = k[0] - 0.5*0.1*shift;
+    k_left[1] = k[1];
+    k_left[2] = k[2];
+
+    // r - R
+    double rSq_y_lshift = xyz[0]*xyz[0] + (xyz[1]+shift)*(xyz[1]+shift) + xyz[2]*xyz[2];
+
+    dcomplex expFactor_y_lshift(0.0);
+    dcomplex phase_y_lshift(0.0);
+
+    kdotr = k_left[0]*xyz[0]+ k_left[1]*(xyz[1]+shift) + k_left[2]*xyz[2];
+    phase_y_lshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_y_lshift += tmpcoef * phase_y_lshift * std::exp(-tmpalpha*rSq_y_lshift);
+    } 
+
+
+    // right shift
+    k_right[0] = k[0] + 0.5*0.1*shift;
+    k_right[1] = k[1];
+    k_right[2] = k[2];
+
+    // r - R
+    double rSq_y_rshift = xyz[0]*xyz[0] + (xyz[1]-shift)*(xyz[1]-shift) + xyz[2]*xyz[2];
+
+    dcomplex expFactor_y_rshift(0.0);
+    dcomplex phase_y_rshift(0.0);
+
+    kdotr = k_right[0]*xyz[0]+ k_right[1]*(xyz[1]-shift) + k_right[2]*xyz[2];
+    phase_y_rshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_y_rshift += tmpcoef * phase_y_rshift * std::exp(-tmpalpha*rSq_y_rshift);
+    } 
+
+    // LDA - Z
+
+    // left shift
+    // k = 0.5 * RA x B. here we only shift R_x for a little bit. We assume B = 0.1 on Z.
+    k_left[0] = k[0];
+    k_left[1] = k[1];
+    k_left[2] = k[2];
+
+    // r - R
+    double rSq_z_lshift =  xyz[0]*xyz[0] + xyz[1]*xyz[1] + (xyz[2]+shift)*(xyz[2]+shift);
+
+    dcomplex expFactor_z_lshift(0.0);
+    dcomplex phase_z_lshift(0.0);
+
+    kdotr = k_left[0]*xyz[0] + k_left[1]*xyz[1] + k_left[2]*(xyz[2]+shift);
+    phase_z_lshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_z_lshift += tmpcoef * phase_z_lshift * std::exp(-tmpalpha*rSq_z_lshift);
+    } 
+
+
+    // right shift
+    k_right[0] = k[0];
+    k_right[1] = k[1];
+    k_right[2] = k[2];
+
+    // r - R
+    double rSq_z_rshift = xyz[0]*xyz[0] + xyz[1]*xyz[1] + (xyz[2]-shift)*(xyz[2]-shift);
+
+    dcomplex expFactor_z_rshift(0.0);
+    dcomplex phase_z_rshift(0.0);
+
+    kdotr = k_right[0]*xyz[0] + k_right[1]*xyz[1] + k_right[2]*(xyz[2]-shift);
+    phase_z_rshift = std::exp(onei*kdotr); 
+    for(auto kk = 0; kk < contDepth; kk++){
+      tmpcoef = shell.contr[0].coeff[kk];
+      tmpalpha = shell.alpha[kk];
+      expFactor_z_rshift += tmpcoef * phase_z_rshift * std::exp(-tmpalpha*rSq_z_rshift);
+    } 
+
+*/
+    for(auto i = 0u, I = 0u; i <= L; i++) {
+      lx = L - i;
+      for( auto j = 0u; j <= i; j++, I++) {
+        ly = i - j;
+        lz = L - lx - ly;
+
+        //std::cout << "lx " << lx << " ly " << ly << " lz " << lz << std::endl;
+        //std::cout << "expFactor  " << expFactor << std::endl;
+        //std::cout << "alpha " << alpha << std::endl;
+        //std::cout << "alpha_check " << alpha_check << std::endl;
+        //std::cout << "alpha_s " << alpha_s << std::endl;
+        //std::cout << "x " << xyz[0] << std::endl;
+        //std::cout << "y " << xyz[1] << std::endl;
+        //std::cout << "z " << xyz[2] << std::endl;
+
+        // TangDD OK Above
+
+        tmpxyz= 1.0;
+
+        // TangDD
+        // I cannot understand the logic of previous code. I'm writing a new one.
+
+        dX_car[I] = 0.;
+        dY_car[I] = 0.;
+        dZ_car[I] = 0.;
+
+        tmpxyz = compute_power(lx-1,ly-1,lz-1);
+        double f_car = compute_power(lx,ly,lz);
+
+        // First term: -\nabla_w (lx,ly,lz) * expFactor
+        dX_car[I] += sign * compute_power(lx-1,ly,lz) * expFactor * static_cast<dcomplex>( lx );
+        dY_car[I] += sign * compute_power(lx,ly-1,lz) * expFactor * static_cast<dcomplex>( ly );
+        dZ_car[I] += sign * compute_power(lx,ly,lz-1) * expFactor * static_cast<dcomplex>( lz );
+
+        // Second term: (lx,ly,lz) * alpha
+        dX_car[I] += f_car * xyz[0] * alpha;
+        dY_car[I] += f_car * xyz[1] * alpha;
+        dZ_car[I] += f_car * xyz[2] * alpha;
+
+        // third term: GIAO
+        // i * \nabla (k dot r) * \chi
+        dX_car[I] += onei * dk[9]  * f_car * expFactor;
+        dY_car[I] += onei * dk[10] * f_car * expFactor;
+        dZ_car[I] += onei * dk[11] * f_car * expFactor;
+
+        // numerical LDA gradient
+
+        //dX_car[I] = 0.5 * (compute_power_rshift(lx,ly,lz,{shift,0,0}) * expFactor_x_rshift - compute_power_lshift(lx,ly,lz,{shift,0,0}) * expFactor_x_lshift) / shift;
+        //dY_car[I] = 0.5 * (compute_power_rshift(lx,ly,lz,{0,shift,0}) * expFactor_y_rshift - compute_power_lshift(lx,ly,lz,{0,shift,0}) * expFactor_y_lshift) / shift;
+        //dZ_car[I] = 0.5 * (compute_power_rshift(lx,ly,lz,{0,0,shift}) * expFactor_z_rshift - compute_power_lshift(lx,ly,lz,{0,0,shift}) * expFactor_z_lshift) / shift;
+
+        // numerical gradient check
+        //dcomplex dX_car_check = 0.5 * (compute_power_rshift(lx,ly,lz,{shift,0,0}) * expFactor_x_rshift - compute_power_lshift(lx,ly,lz,{shift,0,0}) * expFactor_x_lshift) / shift;
+        //dcomplex dY_car_check = 0.5 * (compute_power_rshift(lx,ly,lz,{0,shift,0}) * expFactor_y_rshift - compute_power_lshift(lx,ly,lz,{0,shift,0}) * expFactor_y_lshift) / shift;
+        //dcomplex dZ_car_check = 0.5 * (compute_power_rshift(lx,ly,lz,{0,0,shift}) * expFactor_z_rshift - compute_power_lshift(lx,ly,lz,{0,0,shift}) * expFactor_z_lshift) / shift;
+        //std::cout << "diff dx " << dX_car[I] - dX_car_check<< std::endl;
+        //std::cout << "diff dy " << dY_car[I] - dY_car_check<< std::endl;
+        //std::cout << "diff dz " << dZ_car[I] - dZ_car_check<< std::endl;
+
+        if ( typ == GRADIENT ) {
+
+          // Calculate \nabla V \nabla w.
+          // diagonal terms
+          // We only do the most simple optimizations. dk index:[0*V+w]
+          int w;
+          int V;
+
+          std::array<int, 3> l_index;
+          std::array<int, 3> lmV_index;
+          std::array<int, 3> lpV_index;
+          std::array<int, 3> lmw_index;
+          std::array<int, 3> lpw_index;
+          std::array<int, 3> lmp_index;
+          std::array<int, 3> lmm_index;
+          std::array<int, 3> lpm_index;
+          std::array<int, 3> lpp_index;
+
+          dcomplex dwV_car[9];
+
+          for (size_t w = 0; w < 3; w++) {
+            for (size_t V = 0; V < 3; V++) {
+
+              l_index = {lx, ly, lz};
+              lmV_index = {lx, ly, lz};
+              lpV_index = {lx, ly, lz};
+              lmw_index = {lx, ly, lz};
+              lpw_index = {lx, ly, lz};
+              lmp_index = {lx, ly, lz};
+              lmm_index = {lx, ly, lz};
+              lpm_index = {lx, ly, lz};
+              lpp_index = {lx, ly, lz};
+
+              // Get lwV indexes
+              lmV_index[V] -= 1;
+              lpV_index[V] += 1;
+
+              lmw_index[w] -= 1;
+              lpw_index[w] += 1;
+
+              lpp_index[w] += 1;
+              lpm_index[w] += 1;
+              lmp_index[w] -= 1;
+              lmm_index[w] -= 1;
+
+              lpp_index[V] += 1;
+              lmp_index[V] += 1;
+              lpm_index[V] -= 1;
+              lmm_index[V] -= 1;
+
+              // start
+              dwV_car[3*w+V] = 0.;
+
+              dwV_car[3*w+V] += static_cast<dcomplex>(l_index[w]) \
+                              * xyz[V] * compute_power(lmw_index[0],lmw_index[1],lmw_index[2]) \
+                              * alpha;
+              
+              dwV_car[3*w+V] -= static_cast<dcomplex>(l_index[w] * lmw_index[V]) \
+                              * compute_power(lmm_index[0],lmm_index[1],lmm_index[2]) \
+                              * expFactor;
+              
+              dwV_car[3*w+V] += static_cast<dcomplex>(l_index[w]) \
+                              * compute_power(lmw_index[0],lmw_index[1],lmw_index[2]) \
+                              * onei * dk[9+V] \
+                              * expFactor;
+              
+              dwV_car[3*w+V] -= compute_power(lpp_index[0],lpp_index[1],lpp_index[2]) \
+                              * alpha_s;
+              
+              dwV_car[3*w+V] += static_cast<dcomplex>(lpw_index[V]) \
+                              * compute_power(lpm_index[0],lpm_index[1],lpm_index[2]) \
+                              * alpha;
+                              
+              dwV_car[3*w+V] -= compute_power(lpw_index[0],lpw_index[1],lpw_index[2]) \
+                              * onei * dk[9+V] \
+                              * alpha;
+              
+              dwV_car[3*w+V] += onei * dk[3*w+V] \
+                              * f_car \
+                              * expFactor;
+
+              dwV_car[3*w+V] += onei * k[w] \
+                              * compute_power(lpV_index[0],lpV_index[1],lpV_index[2]) \
+                              * alpha;
+              
+              dwV_car[3*w+V] -= onei * k[w] \
+                              * static_cast<dcomplex>(l_index[V]) \
+                              * compute_power(lmV_index[0],lmV_index[1],lmV_index[2]) \
+                              * expFactor;     
+                                               
+              dwV_car[3*w+V] += onei * k[w] \
+                              * f_car \
+                              * onei * dk[9+V] \
+                              * expFactor;
+
+            } // V
+          } // w
+
+          dxX_car[I] = dwV_car[0];
+          dxY_car[I] = dwV_car[1];
+          dxZ_car[I] = dwV_car[2];
+          dyX_car[I] = dwV_car[3];
+          dyY_car[I] = dwV_car[4];
+          dyZ_car[I] = dwV_car[5];
+          dzX_car[I] = dwV_car[6];
+          dzY_car[I] = dwV_car[7];
+          dzZ_car[I] = dwV_car[8];
+
+          //std::cout << "Analytical nuclear " << dzY_car[I] << std::endl;
+          //if (std::abs(dzY_car[I] - check_dx) > 1e-4) 
+          //  std::cerr << "Incorrect gradient" << std::endl;
+
+
+        }
+
+        //std::cout << "dX " << dX_car[I] << "  " << "dY " << dY_car[I] << "  " << "dZ " << dZ_car[I] << std::endl;
+    
+#if Basis_DEBUG_LEVEL >= 3
+          // Debug Printing
+          //std::cerr << I <<" "<< lx << " " 
+          //  << ly << " "<<lz <<"  f(pt) "<< f_car[I] <<" " <<std::endl;
+          std::cerr << I<<" "<< lx << " "  
+            << ly << " "<<lz <<" dX(pt) "<< dX_car[I] << std::endl;
+          std::cerr << I<<" "<< lx << " " 
+            << ly << " "<<lz <<" dY(pt) "<< dY_car[I] << std::endl;
+          std::cerr << I<<" "<< lx << " " 
+            << ly << " "<<lz <<" dZ(pt) "<< dZ_car[I] << std::endl;
+#endif
+
+      } //loop overj, j[0,i]
+    } //loop over i, i[0,L] this to loop required to build the lx,ly,lz combination given L
+
+  }; // evalShellSetGrad Level3 :: GIAO
 
   /**
    *   \brief Basis Set Cartesian to Sperical conversion over a single shell.
@@ -1251,5 +1844,148 @@ namespace ChronusQ {
 
     } //copy vs transform
   }; // CarToSpDEval
+  void CarToSpDGradEval(SHELL_EVAL_TYPE typ, size_t L, dcomplex *fCarEVal, dcomplex *FSpEVAl, size_t IOff, size_t IOffSCR, 
+    bool forceCart){
+
+    auto shSize_sp  = (2*L+1);
+    auto shSize_car   = ((L+1)*(L+2))/2; 
+
+    dcomplex * dX_sp = FSpEVAl;
+    dcomplex * dY_sp = dX_sp + IOff;
+    dcomplex * dZ_sp = dY_sp + IOff;
+    dcomplex * dxX_sp = dZ_sp + IOff;
+    dcomplex * dxY_sp = dxX_sp + IOff;
+    dcomplex * dxZ_sp = dxY_sp + IOff;
+    dcomplex * dyX_sp = dxZ_sp + IOff;
+    dcomplex * dyY_sp = dyX_sp + IOff;
+    dcomplex * dyZ_sp = dyY_sp + IOff;
+    dcomplex * dzX_sp = dyZ_sp + IOff;
+    dcomplex * dzY_sp = dzX_sp + IOff;
+    dcomplex * dzZ_sp = dzY_sp + IOff;
+
+    dcomplex * dX_car = fCarEVal;
+    dcomplex * dY_car = dX_car + IOffSCR;
+    dcomplex * dZ_car = dY_car + IOffSCR;
+    dcomplex * dxX_car = dZ_car + IOffSCR;
+    dcomplex * dxY_car = dxX_car + IOffSCR;
+    dcomplex * dxZ_car = dxY_car + IOffSCR;
+    dcomplex * dyX_car = dxZ_car + IOffSCR;
+    dcomplex * dyY_car = dyX_car + IOffSCR;
+    dcomplex * dyZ_car = dyY_car + IOffSCR;
+    dcomplex * dzX_car = dyZ_car + IOffSCR;
+    dcomplex * dzY_car = dzX_car + IOffSCR;
+    dcomplex * dzZ_car = dzY_car + IOffSCR;
+
+    dcomplex tmp, tmpx, tmpy, tmpz ;
+    dcomplex tmp_dX, tmp_dY, tmp_dZ;
+    dcomplex tmp_dxX, tmp_dxY, tmp_dxZ;
+    dcomplex tmp_dyX, tmp_dyY, tmp_dyZ;
+    dcomplex tmp_dzX, tmp_dzY, tmp_dzZ;
+    // No trasformation needed
+    //FIXME if (L < 2 or force cart) 
+    //bool forceCart = true ;
+    if (L < 2 or forceCart){
+
+      if (typ != GRADIENT) {
+        for( auto I = 0u ; I<shSize_car ; I++){ 
+          dX_sp[I] = dX_car[I];
+          dY_sp[I] = dY_car[I];
+          dZ_sp[I] = dZ_car[I];
+          } //loop over car/sp (equal in this case)
+
+      } else {
+        for( auto I = 0u ; I<shSize_car ; I++) {
+          dX_sp[I] = dX_car[I];
+          dY_sp[I] = dY_car[I];
+          dZ_sp[I] = dZ_car[I];
+          dxX_sp[I] = dxX_car[I];
+          dxY_sp[I] = dxY_car[I];
+          dxZ_sp[I] = dxZ_car[I];
+          dyX_sp[I] = dyX_car[I];
+          dyY_sp[I] = dyY_car[I];
+          dyZ_sp[I] = dyZ_car[I];
+          dzX_sp[I] = dzX_car[I];
+          dzY_sp[I] = dzY_car[I];
+          dzZ_sp[I] = dzZ_car[I];
+          } //loop over car/sp (equal in this case)
+
+      } //GGA or not
+
+    //We do transform here
+    } else {
+
+      if (typ != GRADIENT) {
+        for( auto I = 0u ; I<shSize_sp ;I++  ) {
+          tmp_dX = 0.0;
+          tmp_dY = 0.0;
+          tmp_dZ = 0.0;
+          for( auto p = 0u; p<shSize_car ; p++) { 
+            tmp_dX += car2sph_matrix[L][I*shSize_car+p] * dX_car[p];
+            tmp_dY += car2sph_matrix[L][I*shSize_car+p] * dY_car[p];
+            tmp_dZ += car2sph_matrix[L][I*shSize_car+p] * dZ_car[p];
+            } //loop over cart
+          dX_sp[I] = tmp_dX;
+          dY_sp[I] = tmp_dY;
+          dZ_sp[I] = tmp_dZ;
+        } //loop over sp
+
+      } else {
+        for( auto I = 0u ; I<shSize_sp ;I++  ) {
+          tmp_dX  = 0.0;
+          tmp_dY  = 0.0;
+          tmp_dZ  = 0.0;
+          tmp_dxX = 0.0;
+          tmp_dxY = 0.0;
+          tmp_dxZ = 0.0;
+          tmp_dyX = 0.0;
+          tmp_dyY = 0.0;
+          tmp_dyZ = 0.0;
+          tmp_dzX = 0.0;
+          tmp_dzY = 0.0;
+          tmp_dzZ = 0.0;
+          for( auto p = 0u; p<shSize_car ; p++) { 
+            tmp_dX  += car2sph_matrix[L][I*shSize_car+p] * dX_car[p];
+            tmp_dY  += car2sph_matrix[L][I*shSize_car+p] * dY_car[p];
+            tmp_dZ  += car2sph_matrix[L][I*shSize_car+p] * dZ_car[p];
+            tmp_dxX += car2sph_matrix[L][I*shSize_car+p] * dxX_car[p];
+            tmp_dxY += car2sph_matrix[L][I*shSize_car+p] * dxY_car[p];
+            tmp_dxZ += car2sph_matrix[L][I*shSize_car+p] * dxZ_car[p];
+            tmp_dyX += car2sph_matrix[L][I*shSize_car+p] * dyX_car[p];
+            tmp_dyY += car2sph_matrix[L][I*shSize_car+p] * dyY_car[p];
+            tmp_dyZ += car2sph_matrix[L][I*shSize_car+p] * dyZ_car[p];
+            tmp_dzX += car2sph_matrix[L][I*shSize_car+p] * dzX_car[p];
+            tmp_dzY += car2sph_matrix[L][I*shSize_car+p] * dzY_car[p];
+            tmp_dzZ += car2sph_matrix[L][I*shSize_car+p] * dzZ_car[p];
+            } //loop over cart
+          dX_sp[I] = tmp_dX;
+          dY_sp[I] = tmp_dY;
+          dZ_sp[I] = tmp_dZ;
+          dxX_sp[I] = tmp_dxX;
+          dxY_sp[I] = tmp_dxY;
+          dxZ_sp[I] = tmp_dxZ;
+          dyX_sp[I] = tmp_dyX;
+          dyY_sp[I] = tmp_dyY;
+          dyZ_sp[I] = tmp_dyZ;
+          dzX_sp[I] = tmp_dzX;
+          dzY_sp[I] = tmp_dzY;
+          dzZ_sp[I] = tmp_dzZ;
+
+#if Basis_DEBUG_LEVEL >= 3
+          // Debug Printing
+          std::cerr << I<<" " <<  
+            " dx(pt) "<< dX_sp[I] << std::endl;
+          std::cerr << I<<" " << 
+            " dy(pt) "<< dY_sp[I] << std::endl;
+          std::cerr << I<<" " <<  
+            " dz(pt) "<< dZ_sp[I] << std::endl;
+#endif
+
+        } //loop over sp
+
+      } //GGA or not
+
+    } //copy vs transform
+  }; // CarToSpDEval ::GIAO
+
 
 }; // namespace ChronusQ

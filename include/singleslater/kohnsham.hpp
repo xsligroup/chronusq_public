@@ -321,7 +321,12 @@ namespace ChronusQ {
         for(size_t XYZ = 0; XYZ < 3; XYZ++) 
           this->XCGradient[ic][XYZ] = 0.0;
 
-      formEXCGradient();
+
+      // TangDD Remove before merge
+      //auto magAmp = pert.getDipoleAmp(Magnetic);
+      //std::cout<<"magAmp in ks 0: "<<magAmp[0]<<" 1: "<<magAmp[1]<<" 2: "<<magAmp[2]<<std::endl;
+
+      formEXCGradient(pert);
 
       //std::cout << "Main XC Gradient:" << std::endl; 
       for(size_t ic = 0; ic < nAtoms; ic++) {
@@ -347,6 +352,7 @@ namespace ChronusQ {
     virtual void computeEnergy() {
       SingleSlater<MatsT,IntsT>::computeEnergy();
       // Add EXC in the total energy
+      //std::cout<<"XCEnergy in Hartree "<< XCEnergy <<std::endl;
       this->totalEnergy += XCEnergy;
     }; // computeEnergy
 
@@ -375,7 +381,7 @@ namespace ChronusQ {
     // VXC
     void formVXC(EMPerturbation&); 
 
-    void formEXCGradient();
+    void formEXCGradient(EMPerturbation&);
 
     // FXC Terms
     template <typename U>

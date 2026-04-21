@@ -26,6 +26,8 @@
 #include <chronusq_sys.hpp>
 #include <cubegen.hpp>
 
+//#define DEBUG_CUBE
+
 namespace ChronusQ {
 
     /**
@@ -40,6 +42,7 @@ namespace ChronusQ {
       size_t NB = basis_->nBasis;
 
       double * BASIS;
+      double test_value = 0;
 
       for(auto ix = 0l; ix < voxelGrid_[0]; ix++) {
         for(auto iy = 0l; iy < voxelGrid_[1]; iy++) {
@@ -55,7 +58,9 @@ namespace ChronusQ {
             BASIS, NB, oPDM_, NB,0., &SCR[0], 1);
 
             val = blas::dotu(NB,&SCR[0],1,&BASIS[0],1);
-
+#ifdef DEBUG_CUBE
+            test_value += particleCharge_*std::real(val)*voxelUnits_[0]*voxelUnits_[1]*voxelUnits_[2]; 
+#endif
             *cubeFile_ << std::right << std::setw(20) << std::setprecision(12)
             << std::scientific << std::uppercase << std::real(particleCharge_ *  val);
 
@@ -65,6 +70,9 @@ namespace ChronusQ {
           *cubeFile_ << "\n";
         }
       }
+#ifdef DEBUG_CUBE
+      *cubeFile_ << std::right << std::setw(20) << std::setprecision(12) << std::scientific << std::uppercase << test_value;
+#endif
     };
 
     template <>
@@ -77,7 +85,7 @@ namespace ChronusQ {
       dcomplex * GIAO_BASIS;
 
       // debug only
-      //double test_value = 0;
+      double test_value = 0;
 
     // GIAO
     if( basis_->basisType == COMPLEX_GIAO ) {
@@ -106,7 +114,9 @@ namespace ChronusQ {
             for (size_t nu = 0; nu < NB; nu++) 
               val += SCR[nu] * std::conj(GIAO_BASIS[nu]);
 
-            //test_value += particleCharge_*std::real(val)*voxelUnits_[0]*voxelUnits_[1]*voxelUnits_[2]; 
+#ifdef DEBUG_CUBE
+            test_value += particleCharge_*std::real(val)*voxelUnits_[0]*voxelUnits_[1]*voxelUnits_[2]; 
+#endif
 
             *cubeFile_ << std::right << std::setw(20) << std::setprecision(12)
             << std::scientific << std::uppercase << std::real(particleCharge_ *  std::real(val));
@@ -117,7 +127,9 @@ namespace ChronusQ {
           *cubeFile_ << "\n";
         }
       }
-      //*cubeFile_ << std::right << std::setw(20) << std::setprecision(12) << std::scientific << std::uppercase << test_value;
+#ifdef DEBUG_CUBE
+      *cubeFile_ << std::right << std::setw(20) << std::setprecision(12) << std::scientific << std::uppercase << test_value;
+#endif
 
     // Complex GTO
     } else {

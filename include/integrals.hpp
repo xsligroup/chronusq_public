@@ -177,6 +177,8 @@ namespace ChronusQ {
     std::shared_ptr<MultipoleInts<IntsT>> lenElectric = nullptr;
     std::shared_ptr<MultipoleInts<IntsT>> velElectric = nullptr;
     std::shared_ptr<MultipoleInts<IntsT>> magnetic = nullptr;
+    
+    std::shared_ptr<VectorInts<IntsT>> breitpauli_onee = nullptr;
 
     // 4-component dipole storage
     std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>> lenElectric4C = nullptr;
@@ -189,6 +191,10 @@ namespace ChronusQ {
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradKinetic = nullptr;
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradPotential = nullptr;
     std::shared_ptr<GradInts<OnePInts,IntsT>> S0a = nullptr;
+
+    // GIAO magnetic gradient
+    std::shared_ptr<GradInts<VectorInts,IntsT>> gradLen2 = nullptr;
+    std::shared_ptr<GradInts<VectorInts,IntsT>> gradMagnetic = nullptr;
 
     std::shared_ptr<GradInts<TwoPInts,IntsT>> gradERI = nullptr;
 

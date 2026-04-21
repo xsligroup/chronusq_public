@@ -1187,6 +1187,8 @@ namespace ChronusQ {
     // use hRRiPPVab to calculate 
 
 #endif
+      // TangDD's note: this is -V. For electron, nothing shall be changed.
+      // For proton, another -1*charge must be applied to fix the sign. No action is needed in HCore. This is done in driver.
       potential_shellpair.push_back(-V);
   
     } // for j
@@ -2257,7 +2259,38 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
       
     int iWork,lAp1[3],lBm1[3];
     dcomplex tmpVal = 0.0 ;
-     
+
+    if (not (LA == lA[0]+lA[1]+lA[2])) {
+      std::cout<<"Warning: LA "<<LA<<" "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<std::endl;
+      CErr("inhouse engine: l mismatch !!!",std::cout); 
+    }
+    if (not (LB == lB[0]+lB[1]+lB[2])) {
+      std::cout<<"Warning: LB "<<LB<<" "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+      CErr("inhouse engine: l mismatch !!!",std::cout); 
+    }
+
+    if (LA<0) {
+      std::cout<<"Warning: LA "<<LA<<std::endl;
+      CErr("inhouse engine: l<0!!!",std::cout);
+    }
+    if (LB<0) {
+      std::cout<<"Warning: LB "<<LB<<std::endl;
+      CErr("inhouse engine: l<0!!!",std::cout);
+    }
+
+    bool allPositive1 = std::all_of(lA, lA+3, [](int x) { return x >= 0; });
+    bool allPositive2 = std::all_of(lB, lB+3, [](int x) { return x >= 0; });
+    if (!allPositive1) {
+      std::cout<<"Warning: lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+      return tmpVal;
+      //CErr("inhouse engine: l<0!!!",std::cout);
+    }
+    if (!allPositive2) {
+      std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+      return tmpVal;
+      //CErr("inhouse engine: l<0!!!",std::cout);
+    }
+
 //    if ( LB > LA ) {     // if LB>LA, use horizontal recursion to make LA>=LB. 
    
     if((LA+LB) == 0) {
@@ -2354,6 +2387,16 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
   //notice: contraction coeffs are included in sspri.
     dcomplex tmpVal = 0.0;
 
+    bool allPositive1 = std::all_of(lA, lA+3, [](int x) { return x >= 0; });
+    if (!allPositive1) {
+      std::cout<<"Warning: lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<std::endl;
+      return tmpVal;
+      //CErr("inhouse engine: l<0!!!",std::cout);
+    }
+    if (LA<0) {
+      std::cout<<"Warning: LA "<<LA<<std::endl;
+      return tmpVal;
+    }
     if (LA == 0) {   //[s||s]
 
       tmpVal = sspri; 
@@ -2425,6 +2468,17 @@ ss_shellpair[pairindex], shell1.contr[0].l , lA , shell2.contr[0].l, lB, iAtom,m
   //notice: contraction coeffs are included in sspri.
     dcomplex tmpVal = 0.0;
 
+    //std::cout<<"LB "<<LB<<"lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+    bool allPositive2 = std::all_of(lB, lB+3, [](int x) { return x >= 0; });
+    if (!allPositive2) {
+      std::cout<<"Warning: lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+      return tmpVal;
+      //CErr("inhouse engine: l<0!!!",std::cout);
+    }
+    if (LB<0) {
+      std::cout<<"Warning: LB "<<LB<<std::endl;
+      return tmpVal;
+    }
     if (LB == 0) {   //[s||s]
 
       tmpVal = sspri; 
@@ -3324,7 +3378,7 @@ std::cout<<"T value "<<std::setprecision(12)<<(shell1.alpha[pripair.p1]+shell2.a
             // we don't have finite nuclei now
             auto ssV = 2.0*sqrt(rho/M_PI)*ssS;
  
-            tmpVal += static_cast<dcomplex>( atom.atomicNumber ) * ssV * tmpFmT[0];
+            tmpVal += static_cast<dcomplex>( atom.atomicNumber ) * ssV * tmpFmT[0];  // m=0
 
 //std::cout<<"tmpFmT "<<tmpFmT[0]<<std::endl;
 //  std::cerr<<"no finite nuclei"<<std::endl;
@@ -4460,6 +4514,2487 @@ std::cout<<"T value "<<std::setprecision(12)<<(shell1.alpha[pripair.p1]+shell2.a
   } // dcomplex ComplexGIAOIntEngine::comppVrmrVp
 
 
+
+  // TangDD Start
+  // here the complex recursion start for order 1 gradient
+  // curently I'm not focused on efficiency
+   
+  /**
+   *  \brief Computes a shell block of the electric overlap matrix.
+   *
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] H       Magnetic field
+   *  \param [in] charge  Particle charge 
+   *
+   *  \returns Shell block of the electric overlap matrix for (shell1 | shell2)
+   */ 
+
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOOverlapGradS(
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
+
+   
+    int nElement = cart_ang_list[shell1.contr[0].l].size() 
+                   * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    std::vector<std::vector<dcomplex>> dS_cartshell(6);
+
+    std::vector<dcomplex> dS(6,dcomplex(0.0,0.0));
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+/*
+    for ( int i = 0 ; i < 3 ; i++ ){
+      ka[i] = 
+      kb[i] = 
+    } 
+*/
+// std::cout<<"H "<<H[0]<<" "<<H[1]<<" "<<H[2]<<std::endl;
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+//std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
+//std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_work[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      H_work[mu] = - H[mu] * charge; 
+      
+    // TangDD: we really should not recompute this everytime...
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+//for ( auto sselement : ss_shellpair ){
+//  std::cout<<"SS in a shellpair "<<std::setprecision(12)<<sselement<<std::endl;
+//}
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+      dS = comphRRSab_deriv1( pair, shell1, shell2, K, H_work, ss_shellpair, shell1.contr[0].l , lA , shell2.contr[0].l, lB ); 
+
+// std::cout<<"S value"<<std::setprecision(12)<<S<<std::endl;
+
+    for ( int ixyz = 0 ; ixyz < dS_cartshell.size() ; ixyz++ ) 
+      dS_cartshell[ixyz].push_back(dS[ixyz]);
+    } // loop over Ax, Ay, Az, Bx, By, Bz 
+        
+
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return {dS_cartshell};
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dS_shellpair_sph(6);
+
+    auto kk = 0;
+    for ( auto cartmatrix : dS_cartshell ) {
+      dS_shellpair_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dS_shellpair_sph[kk], cartmatrix );
+      kk++;
+
+    } // for ( auto cartmatrix : dS_cartshell)  
+
+    return dS_shellpair_sph; 
+  
+
+  } // computeGIAOOverlapGradS  
+
+
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOOverlapGradS0a(
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
+
+   
+    int nElement = cart_ang_list[shell1.contr[0].l].size() 
+                   * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    std::vector<std::vector<dcomplex>> dS_cartshell(3);
+
+    std::vector<dcomplex> dS(6,dcomplex(0.0,0.0));
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+/*
+    for ( int i = 0 ; i < 3 ; i++ ){
+      ka[i] = 
+      kb[i] = 
+    } 
+*/
+// std::cout<<"H "<<H[0]<<" "<<H[1]<<" "<<H[2]<<std::endl;
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+//std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
+//std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_work[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      H_work[mu] = - H[mu] * charge; 
+      
+    // TangDD: we really should not recompute this everytime...
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+//for ( auto sselement : ss_shellpair ){
+//  std::cout<<"SS in a shellpair "<<std::setprecision(12)<<sselement<<std::endl;
+//}
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+      dS = comphRRSab_deriv1( pair, shell1, shell2, K, H_work, ss_shellpair, shell1.contr[0].l , lA , shell2.contr[0].l, lB ); 
+
+// std::cout<<"S value"<<std::setprecision(12)<<S<<std::endl;
+
+    for ( int ixyz = 0 ; ixyz < 3 ; ixyz++ ) 
+      dS_cartshell[ixyz].push_back(dS[ixyz+3]);
+    } // loop over Bx, By, Bz 
+        
+
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return {dS_cartshell};
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dS_shellpair_sph(3);
+
+    auto kk = 0;
+    for ( auto cartmatrix : dS_cartshell ) {
+      dS_shellpair_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dS_shellpair_sph[kk], cartmatrix );
+      kk++;
+
+    } // for ( auto cartmatrix : dS_cartshell)  
+
+    return dS_shellpair_sph; 
+  
+
+  } // computeGIAOOverlapGradS0a  
+  
+  /**
+   *  \brief Computes a shell block of the electric kinetic matrix.
+   *
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] H       Magnetic field
+   *  \param [in] charge  Particle charge 
+   *
+   *  \returns Shell block of the electric quadrupole matrix for (shell1 | shell2)
+   */ 
+   
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOKineticGradT(
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
+
+   
+    // int nElement = cart_ang_list[shell1.contr[0].l].size() 
+    //               * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    std::vector<std::vector<dcomplex>> dT_cartshell(6);
+
+    std::vector<dcomplex> dT(6,dcomplex(0.0,0.0));
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+//std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
+//std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+  // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+  // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+  double H_work[3];
+  for ( int mu = 0 ; mu < 3 ; mu++ ) 
+    H_work[mu] = - H[mu] * charge; 
+ 
+//std::cout<<"lA, lB    lA "<<shell1.contr[0].l<<"\t lB"<<shell2.contr[0].l<<"\t"<<std::endl;
+
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+    auto ssT_shellpair = computecompKineticss( pair, shell1, ka, shell2, kb, 
+      ss_shellpair );
+
+//std::cout<<"ssT finished"<<std::endl;
+//for ( auto sselement : ssT_shellpair ){
+//  std::cout<<"SS in a shellpair "<<std::setprecision(12)<<sselement<<std::endl;
+//}
+//std::cout<<"here we start T"<<std::endl;
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+      dT = compRRTab_deriv1( pair, shell1, shell2, ka, kb, H_work, ss_shellpair, ssT_shellpair, shell1.contr[0].l , lA , shell2.contr[0].l, lB ); 
+
+      for ( int ixyz = 0 ; ixyz < dT_cartshell.size() ; ixyz++ ) 
+        dT_cartshell[ixyz].push_back(dT[ixyz]);
+      // loop over Ax, Ay, Az, Bx, By, Bz 
+
+      } // loop over ij 
+        
+
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return {dT_cartshell};
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dT_shellpair_sph(6);
+
+    auto kk = 0;
+    for ( auto cartmatrix : dT_cartshell ) {
+      dT_shellpair_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dT_shellpair_sph[kk], cartmatrix );
+      kk++;
+
+    } // for ( auto cartmatrix : dS_cartshell)  
+
+    return dT_shellpair_sph; 
+  
+
+  } // computeGIAOKineticGradT 
+
+
+  /**
+   *  \brief Computes a shell block of the complex nuclear potential matrix.
+   *
+   *
+   *  \param [in] nucShell nuclear shell, give the exponents of gaussian function of nuclei
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *
+   *  \returns Shell block of the potential integral matrix for (shell1 | shell2)
+   */ 
+   
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOPotentialGradV(
+    const std::vector<libint2::Shell> &nucShell, libint2::ShellPair &pair, 
+    libint2::Shell &shell1 , libint2::Shell &shell2, double *H, const Molecule& molecule, double charge){
+  
+
+    // int nElement = cart_ang_list[shell1.contr[0].l].size() 
+    //               * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    auto nAtoms = molecule.atomsC.size();
+    std::vector<std::vector<dcomplex>> dV_cartshell((6+3*nAtoms));
+
+    std::vector<dcomplex> dVab(6,dcomplex(0.0,0.0));
+    std::vector<dcomplex> dVc(3,dcomplex(0.0,0.0));
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_work[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      H_work[mu] = - H[mu] * charge; 
+
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+      dVab = comphRRVab_deriv1ab( nucShell, pair, shell1, shell2, K, H_work, ss_shellpair, shell1.contr[0].l , lA , shell2.contr[0].l, lB, molecule );
+      dVc = comphRRVab_deriv1c( nucShell, pair, shell1, shell2, K, ss_shellpair, shell1.contr[0].l , lA , shell2.contr[0].l, lB, molecule ); 
+
+      // loop over Ax, Ay, Az, Bx, By, Bz, Cx, Cy, Cz
+      // negative sign is here; we need to think about moving this elsewhere! 
+      for ( int ixyz = 0 ; ixyz < 6 ; ixyz++ ) 
+        dV_cartshell[ixyz].push_back(-dVab[ixyz]);
+      for ( int ixyz = 0 ; ixyz < 3*nAtoms ; ixyz++ ) 
+        dV_cartshell[6+ixyz].push_back(-dVc[ixyz]);
+
+      } // loop over ij 
+        
+
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return {dV_cartshell};
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dV_cartshell_sph(6+3*nAtoms);
+
+    auto kk = 0;
+    for ( auto cartmatrix : dV_cartshell ) {
+      dV_cartshell_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dV_cartshell_sph[kk], cartmatrix );
+      kk++;
+
+    } // for ( auto cartmatrix : dV_cartshell)  
+
+    return dV_cartshell_sph; 
+  
+  } // computeGIAOPotentialGradV
+
+
+  /**
+   *  \brief Computes a shell block of the electric quadrupole (length gauge) matrix.
+   *
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] H       Magnetic field
+   *  \param [in] charge  Particle charge 
+   *
+   *  \returns Shell block of the electric quadrupole matrix for (shell1 | shell2)
+   */ 
+   
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOEQuadrupoleGradE2_len(
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
+
+   
+    // int nElement = cart_ang_list[shell1.contr[0].l].size() 
+    //               * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    std::vector<std::vector<dcomplex>> tmpdEQ2(36);
+
+    std::vector<dcomplex> dE2(6);
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+//std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
+//std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
+
+    double K[3];
+    int munu[2];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_work[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      H_work[mu] = - H[mu] * charge; 
+
+//std::cout<<"lA, lB    lA "<<shell1.contr[0].l<<"\t lB"<<shell2.contr[0].l<<"\t"<<std::endl;
+
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+//  std::cout<<"SS in a shellpair "<<std::setprecision(12)<<sselement<<std::endl;
+//}
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+
+
+      /* the ordering of electric quadrupole is 
+                 alpha     beta
+                  0          0
+                  0          1
+                  0          2
+                  1          1
+                  1          2
+                  2          2
+       */
+
+        // q loop over 6 components of quadrupole. 
+        // the ordering of angular momentum in L==2:
+        /*
+           *    x   y   z
+           *    2   0   0
+           *    1   1   0 
+           *    1   0   1
+           *    0   2   0
+           *    0   1   1
+           *    0   0   2
+        */
+        for ( int q = 0 ; q < cart_ang_list[2].size() ; q++ ) {
+          int totalL = 0;
+          for ( int qelement = 0 ; qelement < 3 ; qelement++ ){
+            if ( cart_ang_list[2][q][qelement] == 2 ) {
+              munu[0] = qelement;
+              munu[1] = qelement;
+              totalL += 2;
+            } else if ( cart_ang_list[2][q][qelement] == 1 ) {
+              munu[totalL] = qelement;
+              totalL++;
+            }  
+          } // for qelement
+
+          if ( totalL!= 2 ) std::cerr<<"quadrupole wrong!!"<<std::endl;
+          // d[a|\alpha\beta|b]/d[Ax,Ay,Az,Bx,By,Bz]
+          dE2 = compQuadrupoleE2_len_deriv1( pair, shell1, shell2, K, H_work, ss_shellpair, 
+                     shell1.contr[0].l, lA, shell2.contr[0].l, lB ,munu[0],munu[1]);
+
+          // q is XX,XY,XZ,YY,YZ,ZZ
+          // p is Ax,Ay,Az,Bx,By,Bz
+          for (auto p = 0 ; p<6 ; p++ ){
+            tmpdEQ2[6*p+q].push_back(dE2[p]);
+          }
+
+        } 
+        
+    } //for j
+
+
+      
+        
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return tmpdEQ2;
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dEQ_shellpair_sph(36);
+
+    auto kk = 0;
+
+    for ( auto cartmatrix : tmpdEQ2 ) {
+      dEQ_shellpair_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dEQ_shellpair_sph[kk], cartmatrix );
+
+      kk++;
+
+    } // for ( auto cartmatrix : tmpEQ2 )  
+  
+    return dEQ_shellpair_sph; 
+  
+  } // computeGIAOEQuadrupoleGradE2_len  
+
+
+  /**
+   *  \brief Computes a shell block of the magnetic matrix.
+   *
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] H       Magnetic field
+   *  \param [in] charge  Particle charge 
+   *
+   *  \returns Shell block of the electric quadrupole matrix for (shell1 | shell2)
+   */ 
+
+  std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::computeGIAOAngularGradL(
+    libint2::ShellPair &pair, libint2::Shell &shell1,libint2::Shell &shell2, double *H, double charge){ 
+
+   
+    // int nElement = cart_ang_list[shell1.contr[0].l].size() 
+    //               * cart_ang_list[shell2.contr[0].l].size();
+                    
+    // evaluate the number of integral in the shell pair with cartesian gaussian
+    // 6 * (X, Y, Z)
+    std::vector<std::vector<dcomplex>> dL_cartshell(18);
+
+    std::vector<dcomplex> dL_temp(6);
+    dcomplex dL[18];
+    int lA[3],lB[3];
+    
+    double ka[3],kb[3];
+    // here we define k as the direct phase factor without negative sign:
+    // w = G* exp[ik dot (r-R)] for both bra and ket
+    // ka (bra) = -1/2  A X H
+    // kb (ket) = 1/2 B X H
+
+    ka[0] = - 0.5*( shell1.O[1]*H[2] - shell1.O[2]*H[1] );
+    ka[1] = - 0.5*( shell1.O[2]*H[0] - shell1.O[0]*H[2] );
+    ka[2] = - 0.5*( shell1.O[0]*H[1] - shell1.O[1]*H[0] );
+
+    kb[0] = 0.5*( shell2.O[1]*H[2] - shell2.O[2]*H[1] );
+    kb[1] = 0.5*( shell2.O[2]*H[0] - shell2.O[0]*H[2] );
+    kb[2] = 0.5*( shell2.O[0]*H[1] - shell2.O[1]*H[0] );
+
+    // NEO: GIAO phase is dependent on particle charge
+    // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
+    ka[0] = -1.0 * charge * ka[0];
+    ka[1] = -1.0 * charge * ka[1];
+    ka[2] = -1.0 * charge * ka[2];
+    kb[0] = -1.0 * charge * kb[0];
+    kb[1] = -1.0 * charge * kb[1];
+    kb[2] = -1.0 * charge * kb[2];
+
+//std::cout<<"ka "<<ka[0]<<"  "<<ka[1]<<"  "<<ka[2]<<std::endl;
+//std::cout<<"kb "<<kb[0]<<"  "<<kb[1]<<"  "<<kb[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      K[mu] = ka[mu] + kb[mu] ; 
+
+    // NEO: Gradient. Since the charge change only adds a (-q) factor on exp(ikr),
+    // And only affects the d(ikr)/dA terms, we will add the factor directly on H to avoid FLOPs.
+    double H_work[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) 
+      H_work[mu] = - H[mu] * charge;     
+//std::cout<<"lA, lB    lA "<<shell1.contr[0].l<<"\t lB"<<shell2.contr[0].l<<"\t"<<std::endl;
+
+    auto ss_shellpair = computecompOverlapss( pair,shell1,ka,shell2,kb );
+
+//  std::cout<<"SS in a shellpair "<<std::setprecision(12)<<sselement<<std::endl;
+//}
+
+    for(int i = 0; i < cart_ang_list[shell1.contr[0].l].size() ; i++) 
+    for(int j = 0; j < cart_ang_list[shell2.contr[0].l].size() ; j++){
+      for(int k = 0; k < 3; k++){
+        lA[k] = cart_ang_list[shell1.contr[0].l][i][k];
+        lB[k] = cart_ang_list[shell2.contr[0].l][j][k];  
+      }
+
+      for ( int mu = 0 ; mu < 3 ; mu++ ) {
+        for (auto p = 0 ; p<6 ; p++ )
+          dL[3*p+mu] = 0.0;
+
+        auto pairindex = 0;
+        for ( auto pripair : pair.primpairs ){
+
+          dL_temp = compLabmu_deriv1( pripair, shell1, shell2, ka,kb,H_work,ss_shellpair[pairindex],
+            shell1.contr[0].l , lA , shell2.contr[0].l, lB,mu );
+          for (auto p = 0 ; p<6 ; p++ )
+            dL[3*p+mu] += dL_temp[p];
+
+          pairindex += 1;
+        } // for ( auto pripair : pair.primpairs )  
+
+        // mu is X, Y, Z
+        // p is Ax,Ay,Az,Bx,By,Bz
+        for (auto p = 0 ; p<6 ; p++ ){
+          dL_cartshell[3*p+mu].push_back(dL[3*p+mu]);
+        }
+      } // for ( int mu )
+      
+    } // loop over ij 
+        
+    if ( ( not shell1.contr[0].pure ) and ( not shell2.contr[0].pure ) ) {  
+      // if both sides are cartesian, return cartesian gaussian integrals
+
+      return {dL_cartshell};
+
+    }
+    
+    std::vector<std::vector<dcomplex>> dAngular_shellpair_sph(18);
+
+    auto kk = 0;
+
+    for ( auto cartmatrix : dL_cartshell ) {
+      dAngular_shellpair_sph[kk].assign(((2*shell1.contr[0].l+1)*(2*shell2.contr[0].l+1)),0.0);
+  
+      cart2sph_complex_transform(shell1.contr[0].l,shell2.contr[0].l,
+                       dAngular_shellpair_sph[kk], cartmatrix );
+
+      kk++;
+
+    } // for ( auto cartmatrix : dL_cartshell )  
+  
+    return dAngular_shellpair_sph; 
+  
+  } // computeGIAOAngularGradL  
+
+
+  //--------------------------------------------------------------------------------//
+  // overlap gradient horizontal recursion                                          //
+  // d(a|b)/dA_x = 2\zeta_a(a+1|b) - a_x(a-1_x|b)                                   // 
+  //              -i/2 B_y(a+1_z|b) + i/2 B_y(a+1_y|b) - i/2 (B_yAO_z B_zAO_y)(a|b) //
+  //--------------------------------------------------------------------------------//
+
+  /**
+   *  \brief Perform the horizontal recurrence relation for the contracted overlap integral, gradient
+   *
+   *  where a,b are the angular momentum, A,B are the nuclear coordinates.
+   * 
+   *  No normalization is needed as it's already done in ss_shellpair. 
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] LB      total Ket angular momentum
+   *  \param [in] lB      Ket angular momentum vector (lBx,lBy,lBz)
+   *
+   *  \returns a contracted overlap gradient integral
+   *
+   */
+
+   std::vector<dcomplex> ComplexGIAOIntEngine::comphRRSab_deriv1(libint2::ShellPair &pair, libint2::Shell &shell1,
+    libint2::Shell &shell2, double *K, double *H, std::vector<dcomplex> &ss_shellpair, 
+    int LA, int *lA ,int LB, int *lB) {
+      
+    int iWork,lAp1[3],lAm1[3],lBp1[3],lBm1[3];
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    dcomplex tmpVal2[7] = {dcomplex(0.0, 0.0)};
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    //std::cout<<"H "<<H[0]<<" "<<H[1]<<" "<<H[2]<<std::endl;
+    //std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+    //std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+    //std::cout<<"shell1.O "<<shell1.O[0]<<" "<<shell1.O[1]<<" "<<shell1.O[2]<<" shell2.O "<<shell2.O[0]<<" "<<shell2.O[1]<<" "<<shell2.O[2]<<std::endl;
+    
+    if((LA == 0) and (LB==0)) {
+
+      auto pripairindex = 0;
+      for( auto &pripair : pair.primpairs ) { 
+
+        // Debug
+        //std::cout<<"Alpha <bra| "<<shell1.alpha[pripair.p1]<<std::endl;
+        //std::cout<<"Alpha |ket> "<<shell2.alpha[pripair.p2]<<std::endl; 
+
+        // bra
+      
+        //[1x|0]
+        lAp1[0] = 1;
+        lAp1[1] = 0;
+        lAp1[2] = 0;
+        tmpVal2[0] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA+1, lAp1);
+        //[1y|0]
+        lAp1[0] = 0;
+        lAp1[1] = 1;
+        lAp1[2] = 0;
+        tmpVal2[1] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA+1, lAp1);
+        //[1z|0]
+        lAp1[0] = 0;
+        lAp1[1] = 0;
+        lAp1[2] = 1;
+        tmpVal2[2] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA+1, lAp1);
+
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * ss_shellpair[pripairindex];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1] 
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * ss_shellpair[pripairindex];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2] 
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * ss_shellpair[pripairindex];
+
+        // ket
+
+        //[0|1x]
+        lBp1[0] = 1;
+        lBp1[1] = 0;
+        lBp1[2] = 0;
+        tmpVal2[0] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB+1, lBp1);
+        //[0|1y]
+        lBp1[0] = 0;
+        lBp1[1] = 1;
+        lBp1[2] = 0;
+        tmpVal2[1] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB+1, lBp1);
+        //[0|1z]
+        lBp1[0] = 0;
+        lBp1[1] = 0;
+        lBp1[2] = 1;
+        tmpVal2[2] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB+1, lBp1);
+
+        //std::cout<<"tmpVal2-<s|p> "<<tmpVal2[0]<<" "<<tmpVal2[1]<<" "<<tmpVal2[2]<<std::endl;
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * ss_shellpair[pripairindex];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1] 
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * ss_shellpair[pripairindex];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * ss_shellpair[pripairindex];
+
+        pripairindex++;
+      }  // for pripair
+
+      //std::cout<<"tmpVal-012 "<<tmpVal[0]<<" "<<tmpVal[1]<<" "<<tmpVal[2]<<std::endl;
+      //std::cout<<"tmpVal-345 "<<tmpVal[3]<<" "<<tmpVal[4]<<" "<<tmpVal[5]<<std::endl;   
+      
+      return tmpVal;
+
+    }  else if( (LB == 0) and (LA>0)) {
+
+      auto pripairindex = 0;
+      for( auto &pripair : pair.primpairs ) { 
+
+        tmpVal2[6] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA, lA);
+
+        // bra
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[a+1_iWork|0]
+          lAp1[iWork] = lA[iWork]+1;
+          tmpVal2[iWork] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA+1, lAp1);
+          //[a-1_iWork|0] 
+          if (lA[iWork]>0) {
+            lAm1[iWork] = lA[iWork]-1;
+            tmpVal2[3+iWork] = compvRRSa0( pripair, shell1, K, ss_shellpair[pripairindex], LA-1, lAm1);
+          } else
+            tmpVal2[3+iWork] = 0.;
+        }
+      
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                  - 1.0*lA[0] * tmpVal2[3] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                  - 1.0*lA[1] * tmpVal2[4]  
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                  - 1.0*lA[2] * tmpVal2[5]   
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6];
+
+        // ket
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[a|b+1_iWork]
+          lBp1[iWork] = lB[iWork]+1;
+          tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA, lA, LB+1, lBp1);
+        }
+
+        //std::cout<<"tmpVal2-<p|s> "<<tmpVal2[0]<<" "<<tmpVal2[1]<<" "<<tmpVal2[2]<<std::endl;
+        //std::cout<<"tmpVal6-<p|s> "<<tmpVal2[6]<<std::endl;
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1] 
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+        pripairindex++;
+      }  // for pripair  
+
+      return tmpVal;
+
+
+    } else if ( (LB>0) and ( LA==0) ) {     // if LB>LA, use horizontal recursion to make LA>LB. 
+
+      auto pripairindex = 0;
+      for( auto &pripair : pair.primpairs ) { 
+
+        tmpVal2[6] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB, lB);
+
+        // bra
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[1_iWork|b]
+          lAp1[iWork] = lA[iWork]+1;
+          tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA+1, lAp1, LB, lB);
+        }      
+
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1] 
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2] 
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6];
+
+        // ket
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[0|b+1_iWork]
+          lBp1[iWork] = lB[iWork]+1;
+          tmpVal2[iWork] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB+1, lBp1);
+          //[0|b-1_iWork]
+          if (lB[iWork]>0) {
+            lBm1[iWork] = lB[iWork]-1;
+            tmpVal2[3+iWork] = compvRRS0b( pripair, shell2, K, ss_shellpair[pripairindex], LB-1, lBm1);
+          } else
+            tmpVal2[3+iWork] = 0.;
+        }
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+                  - 1.0*lB[0] * tmpVal2[3+0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+                  - 1.0*lB[1] * tmpVal2[3+1]  
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 1.0*lB[2] * tmpVal2[3+2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+        pripairindex++;
+      }  // for pripair  
+      
+      return tmpVal;
+
+    } // else if ( (LB>0) and ( LA==0) )
+
+    // here LA > 0 and LB > 0
+    // comphRRSab will directly generate contracted ss, no need to split.
+
+    auto pripairindex = 0;
+    for( auto &pripair : pair.primpairs ) { 
+  
+      tmpVal2[6] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA, lA, LB, lB); 
+  
+      // bra
+      for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+        //[a+1_iWork|b]
+        lAp1[iWork] = lA[iWork]+1;
+        tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA+1, lAp1, LB, lB);
+        //[a-1_iWork|b] 
+        if (lA[iWork]>0) {
+          lAm1[iWork] = lA[iWork]-1;
+          tmpVal2[3+iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA-1, lAm1, LB, lB); 
+        } else
+          tmpVal2[3+iWork] = 0.;
+      }    
+  
+      //x
+      tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                - 1.0*lA[0] * tmpVal2[3] 
+                - 0.5 * onei * H[1] * tmpVal2[2] 
+                + 0.5 * onei * H[2] * tmpVal2[1]
+                - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+      //y
+      tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                - 1.0*lA[1] * tmpVal2[4]  
+                - 0.5 * onei * H[2] * tmpVal2[0] 
+                + 0.5 * onei * H[0] * tmpVal2[2]
+                - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+      //z
+      tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                - 1.0*lA[2] * tmpVal2[5]   
+                - 0.5 * onei * H[0] * tmpVal2[1] 
+                + 0.5 * onei * H[1] * tmpVal2[0]
+                - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6]; 
+  
+      // ket
+      for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+        //[a|b+1_iWork]
+        lBp1[iWork] = lB[iWork]+1;
+        tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA, lA, LB+1, lBp1);
+        //[a|b-1_iWork]
+        if (lB[iWork]>0) {
+          lBm1[iWork] = lB[iWork]-1;
+          tmpVal2[3+iWork] = comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[pripairindex], LA, lA, LB-1, lBm1);
+        } else
+          tmpVal2[3+iWork] = 0.;
+      }  
+
+      //x
+      tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+                - 1.0*lB[0] * tmpVal2[3] 
+                - 0.5 * onei * H[2] * tmpVal2[1] 
+                + 0.5 * onei * H[1] * tmpVal2[2]
+                - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+      //y
+      tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+                - 1.0*lB[1] * tmpVal2[4]  
+                - 0.5 * onei * H[0] * tmpVal2[2] 
+                + 0.5 * onei * H[2] * tmpVal2[0]
+                - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+      //z
+      tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                - 1.0*lB[2] * tmpVal2[5] 
+                - 0.5 * onei * H[1] * tmpVal2[0] 
+                + 0.5 * onei * H[0] * tmpVal2[1]
+                - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+  
+      pripairindex++;
+    }  // for pripair  
+
+    return tmpVal;
+  
+  }  // comphRRSab_deriv1  
+
+// i version
+   std::vector<dcomplex> ComplexGIAOIntEngine::comphRRiPPSab_deriv1(libint2::ShellPair::PrimPairData &pripair, libint2::Shell &shell1,
+    libint2::Shell &shell2, double *K, double *H, dcomplex sspri, int LA, int *lA ,int LB, int *lB) {
+      
+    int iWork,lAp1[3],lAm1[3],lBp1[3],lBm1[3];
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    dcomplex tmpVal2[7] = {dcomplex(0.0, 0.0)};
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    //std::cout<<"H "<<H[0]<<" "<<H[1]<<" "<<H[2]<<std::endl;
+
+    if((LA == 0) and (LB==0)) {
+
+        // Debug
+        //std::cout<<"Alpha <bra| "<<shell1.alpha[pripair.p1]<<std::endl;
+        //std::cout<<"Alpha |ket> "<<shell2.alpha[pripair.p2]<<std::endl;  
+
+        // bra
+      
+        //[1x|0]
+        lAp1[0] = 1;
+        lAp1[1] = 0;
+        lAp1[2] = 0;
+        tmpVal2[0] = compvRRSa0( pripair, shell1, K, sspri, LA+1, lAp1);
+        //[1y|0]
+        lAp1[0] = 0;
+        lAp1[1] = 1;
+        lAp1[2] = 0;
+        tmpVal2[1] = compvRRSa0( pripair, shell1, K, sspri, LA+1, lAp1);
+        //[1z|0]
+        lAp1[0] = 0;
+        lAp1[1] = 0;
+        lAp1[2] = 1;
+        tmpVal2[2] = compvRRSa0( pripair, shell1, K, sspri, LA+1, lAp1);
+
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * sspri;
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1] 
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * sspri;
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2] 
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * sspri;
+
+        // ket
+
+        //[0|1x]
+        lBp1[0] = 1;
+        lBp1[1] = 0;
+        lBp1[2] = 0;
+        tmpVal2[0] = compvRRS0b( pripair, shell2, K, sspri, LB+1, lBp1);
+        //[0|1y]
+        lBp1[0] = 0;
+        lBp1[1] = 1;
+        lBp1[2] = 0;
+        tmpVal2[1] = compvRRS0b( pripair, shell2, K, sspri, LB+1, lBp1);
+        //[0|1z]
+        lBp1[0] = 0;
+        lBp1[1] = 0;
+        lBp1[2] = 1;
+        tmpVal2[2] = compvRRS0b( pripair, shell2, K, sspri, LB+1, lBp1);
+
+        //std::cout<<"tmpVal2-<s|p> "<<tmpVal2[0]<<" "<<tmpVal2[1]<<" "<<tmpVal2[2]<<std::endl;
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * sspri;
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1] 
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * sspri;
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * sspri;
+
+
+      //std::cout<<"tmpVal-012 "<<tmpVal[0]<<" "<<tmpVal[1]<<" "<<tmpVal[2]<<std::endl;
+      //std::cout<<"tmpVal-345 "<<tmpVal[3]<<" "<<tmpVal[4]<<" "<<tmpVal[5]<<std::endl;   
+      
+      return tmpVal;
+
+    }  else if( (LB == 0) and (LA>0)) {
+
+        tmpVal2[6] = compvRRSa0( pripair, shell1, K, sspri, LA, lA);
+
+        // bra
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[a+1_iWork|0]
+          lAp1[iWork] = lA[iWork]+1;
+          tmpVal2[iWork] = compvRRSa0( pripair, shell1, K, sspri, LA+1, lAp1);
+          //[a-1_iWork|0] 
+          if (lA[iWork]>0) {
+            lAm1[iWork] = lA[iWork]-1;
+            tmpVal2[3+iWork] = compvRRSa0( pripair, shell1, K, sspri, LA-1, lAm1);
+          } else
+            tmpVal2[3+iWork] = 0.;
+        }
+      
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                  - 1.0*lA[0] * tmpVal2[3] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                  - 1.0*lA[1] * tmpVal2[4]  
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                  - 1.0*lA[2] * tmpVal2[5]   
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6];
+
+        // ket
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[a|b+1_iWork]
+          lBp1[iWork] = lB[iWork]+1;
+          tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA, lA, LB+1, lBp1);
+        }
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1] 
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+
+      return tmpVal;
+
+
+    } else if ( (LB>0) and ( LA==0) ) {     // if LB>LA, use horizontal recursion to make LA>LB. 
+
+        tmpVal2[6] = compvRRS0b( pripair, shell2, K, sspri, LB, lB);
+
+        // bra
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[1_iWork|b]
+          lAp1[iWork] = lA[iWork]+1;
+          tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA+1, lAp1, LB, lB);
+        }      
+
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1] 
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2] 
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6];
+
+        // ket
+        for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+          //[0|b+1_iWork]
+          lBp1[iWork] = lB[iWork]+1;
+          tmpVal2[iWork] = compvRRS0b( pripair, shell2, K, sspri, LB+1, lBp1);
+          //[0|b-1_iWork]
+          if (lB[iWork]>0) {
+            lBm1[iWork] = lB[iWork]-1;
+            tmpVal2[3+iWork] = compvRRS0b( pripair, shell2, K, sspri, LB-1, lBm1);
+          } else
+            tmpVal2[3+iWork] = 0.;
+        }
+
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+                  - 1.0*lB[0] * tmpVal2[3+0] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+                  - 1.0*lB[1] * tmpVal2[3+1]  
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 1.0*lB[2] * tmpVal2[3+2] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+      return tmpVal;
+
+    } // else if ( (LB>0) and ( LA==0) )
+
+    // here LA > 0 and LB > 0
+    // comphRRSab will directly generate contracted ss, no need to split.
+  
+      tmpVal2[6] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA, lA, LB, lB); 
+  
+      // bra
+      for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+        //[a+1_iWork|b]
+        lAp1[iWork] = lA[iWork]+1;
+        tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA+1, lAp1, LB, lB);
+        //[a-1_iWork|b] 
+        if (lA[iWork]>0) {
+          lAm1[iWork] = lA[iWork]-1;
+          tmpVal2[3+iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA-1, lAm1, LB, lB); 
+        } else
+          tmpVal2[3+iWork] = 0.;
+      }    
+  
+      //x
+      tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                - 1.0*lA[0] * tmpVal2[3] 
+                - 0.5 * onei * H[1] * tmpVal2[2] 
+                + 0.5 * onei * H[2] * tmpVal2[1]
+                - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+      //y
+      tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                - 1.0*lA[1] * tmpVal2[4]  
+                - 0.5 * onei * H[2] * tmpVal2[0] 
+                + 0.5 * onei * H[0] * tmpVal2[2]
+                - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+      //z
+      tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                - 1.0*lA[2] * tmpVal2[5]   
+                - 0.5 * onei * H[0] * tmpVal2[1] 
+                + 0.5 * onei * H[1] * tmpVal2[0]
+                - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6]; 
+  
+      // ket
+      for ( iWork = 0 ; iWork < 3 ; iWork++ ) {
+          for ( auto k = 0 ; k < 3 ; k++ ) {
+            lAp1[k] = lA[k];
+            lAm1[k] = lA[k];
+            lBp1[k] = lB[k];
+            lBm1[k] = lB[k];
+          }
+        //[a|b+1_iWork]
+        lBp1[iWork] = lB[iWork]+1;
+        tmpVal2[iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA, lA, LB+1, lBp1);
+        //[a|b-1_iWork]
+        if (lB[iWork]>0) {
+          lBm1[iWork] = lB[iWork]-1;
+          tmpVal2[3+iWork] = comphRRiPPSab( pripair, shell1, shell2, K, sspri, LA, lA, LB-1, lBm1);
+        } else
+          tmpVal2[3+iWork] = 0.;
+      }  
+
+      //x
+      tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+                - 1.0*lB[0] * tmpVal2[3] 
+                - 0.5 * onei * H[2] * tmpVal2[1] 
+                + 0.5 * onei * H[1] * tmpVal2[2]
+                - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+      //y
+      tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+                - 1.0*lB[1] * tmpVal2[4]  
+                - 0.5 * onei * H[0] * tmpVal2[2] 
+                + 0.5 * onei * H[2] * tmpVal2[0]
+                - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+      //z
+      tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                - 1.0*lB[2] * tmpVal2[5] 
+                - 0.5 * onei * H[1] * tmpVal2[0] 
+                + 0.5 * onei * H[0] * tmpVal2[1]
+                - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+  
+
+    return tmpVal;
+  
+  }  // comphRRSab_deriv1  
+
+
+  //----------------------------------------------------------------------------------------//
+  // kinetic gradient horizontal recursion                                                  //
+  // d(a|T|b)/dA_x = 2\zeta_a(a+1|T|b) - a_x(a-1_x|T|b)                                     // 
+  //               -i/2 B_y(a+1_z|T|b) + i/2 B_y(a+1_y|T|b) - i/2 (B_yAO_z B_zAO_y)(a|T|b)  //
+  //----------------------------------------------------------------------------------------//
+  // Currently not using ssT_shellpair, we are not doing direct T recursion 
+  std::vector<dcomplex> ComplexGIAOIntEngine::compRRTab_deriv1(
+    libint2::ShellPair &pair, libint2::Shell &shell1, libint2::Shell &shell2, 
+    double *ka, double *kb, double *H, 
+    std::vector<dcomplex> &ss_shellpair, std::vector<dcomplex> &ssT_shellpair, 
+    int LA, int *lA ,int LB, int *lB) {
+ 
+    int iWork,iWork2,LAu,lAu[3],LBu,lBu[3],lBp1[3],lBp2[3],lBm1[3],lBm2[3];
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    dcomplex tmpVal2[13] = {dcomplex(0.0, 0.0)};
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    //std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) {
+      K[mu] = ka[mu]+kb[mu];
+    } // for mu
+
+    // This is general recursion for Kinetic integral.
+    // For d_A(a|T|b), you need (a+1|T|b) or (a|T|b+1).
+    // However... we'd better decompose it into overlap integral to avoid excessive comphRRiPPSab calls.
+
+    auto countershellpair = 0 ; 
+    for( auto &pripair : pair.primpairs ) {
+
+      for( int i=0 ; i<13 ; i++ ) {
+        tmpVal2[i] = dcomplex(0.0, 0.0); 
+      }  // for( int i=0 ; i<3 ; i++ ) 
+
+      // We first prepare pripair T integrals.
+      // kinetic integral is sum of 3 cartesian directions.
+      for ( iWork=0 ; iWork<3 ; iWork++ ) { 
+
+//---------------------- (a|T|b) for pair start
+
+        // reset all index
+        for( int i=0 ; i<3 ; i++ ) {
+          lBp1[i]=lB[i];     
+          lBp2[i]=lB[i];
+          lBm1[i]=lB[i];     
+          lBm2[i]=lB[i];     
+        }  // for( int i=0 ; i<3 ; i++ )
+        lBp1[iWork] = lB[iWork]+1; 
+        lBp2[iWork] = lB[iWork]+2;
+
+        tmpVal2[12] -= 2.0 * pow( shell2.alpha[pripair.p2], 2 ) 
+          * comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair],
+              LA, lA, LB+2, lBp2 );
+
+        tmpVal2[12] += shell2.alpha[pripair.p2] * kb[iWork] * 2*onei * comphRRiPPSab( pripair,
+          shell1, shell2, K, ss_shellpair[countershellpair], LA, lA, LB+1, lBp1 ); 
+
+
+        tmpVal2[12] += ( shell2.alpha[pripair.p2] * ( 2 * lB[iWork] + 1 )
+          + 0.5 * pow( kb[iWork],2 ) ) * comphRRiPPSab( pripair, shell1, shell2, K, 
+            ss_shellpair[countershellpair], LA, lA, LB, lB ); 
+
+        if ( lB[iWork] >0 ){
+          lBm1[iWork] = lB[iWork]-1;
+
+          tmpVal2[12] -= kb[iWork] * lB[iWork] * comphRRiPPSab( pripair, shell1, shell2, K,
+            ss_shellpair[countershellpair], LA, lA, LB-1, lBm1 ) * onei;
+        } // if ( lB[iWork] >0 )
+
+        if ( lB[iWork] >= 2 ) {
+          lBm2[iWork] = lB[iWork]-2;   
+          tmpVal2[12] -= 0.5 * lB[iWork]*(lB[iWork]-1) * comphRRiPPSab( pripair, shell1, 
+            shell2, K, ss_shellpair[countershellpair], LA, lA, LB-2, lBm2 );
+        } // if ( lB[iWork] >= 2 ) 
+
+//---------------------- (a|T|b) end
+
+//---------------------- (a+1|T|b) for pair start
+// iWork1 is nabla_xyz; iWork2 is a+1_xyz
+// iWork1 is for recursion; while iWork2 is for base value
+for ( iWork2=0 ; iWork2<3 ; iWork2++ ) { 
+
+        // reset all index
+        LAu = LA+1;
+        LBu = LB;
+        for( int i=0 ; i<3 ; i++ ) {
+          lAu[i]=lA[i];
+          lBu[i]=lB[i];
+        }
+        // set base value
+        lAu[iWork2] = lA[iWork2]+1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lBp1[i]=lBu[i];     
+          lBp2[i]=lBu[i];
+          lBm1[i]=lBu[i];     
+          lBm2[i]=lBu[i];     
+        }  // for( int i=0 ; i<3 ; i++ )
+
+        lBp1[iWork] = lBu[iWork]+1; 
+        lBp2[iWork] = lBu[iWork]+2;
+
+        tmpVal2[iWork2] -= 2.0 * pow( shell2.alpha[pripair.p2], 2 ) 
+          * comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair],
+              LAu, lAu, LBu+2, lBp2 );
+
+        tmpVal2[iWork2] += shell2.alpha[pripair.p2] * kb[iWork] * 2*onei * comphRRiPPSab( pripair,
+          shell1, shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu+1, lBp1 ); 
+
+
+        tmpVal2[iWork2] += ( shell2.alpha[pripair.p2] * ( 2 * lBu[iWork] + 1 )
+          + 0.5 * pow( kb[iWork],2 ) ) * comphRRiPPSab( pripair, shell1, shell2, K, 
+            ss_shellpair[countershellpair], LAu, lAu, LBu, lBu ); 
+
+        if ( lBu[iWork] >0 ){
+          lBm1[iWork] = lBu[iWork]-1;
+
+          tmpVal2[iWork2] -= kb[iWork] * lBu[iWork] * comphRRiPPSab( pripair, shell1, shell2, K,
+            ss_shellpair[countershellpair], LAu, lAu, LBu-1, lBm1 ) * onei;
+        } // if ( lB[iWork] >0 )
+
+        if ( lBu[iWork] >= 2 ) {
+          lBm2[iWork] = lBu[iWork]-2;   
+          tmpVal2[iWork2] -= 0.5 * lBu[iWork]*(lBu[iWork]-1) * comphRRiPPSab( pripair, shell1, 
+            shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu-2, lBm2 );
+        } // if ( lB[iWork] >= 2 ) 
+
+} // iWork2
+//---------------------- (a+1|T|b) end
+
+//---------------------- (a-1|T|b) for pair start
+// iWork1 is nabla_xyz; iWork2 is a+1_xyz
+// iWork1 is for recursion; while iWork2 is for base value
+for ( iWork2=0 ; iWork2<3 ; iWork2++ ) { 
+
+        // reset all index
+        LAu = LA-1;
+        LBu = LB;
+        for( int i=0 ; i<3 ; i++ ) {
+          lAu[i]=lA[i];
+          lBu[i]=lB[i]; 
+        }  // for( int i=0 ; i<3 ; i++ )
+        // set base value
+        lAu[iWork2] = lA[iWork2]-1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lBp1[i]=lBu[i];     
+          lBp2[i]=lBu[i];
+          lBm1[i]=lBu[i];     
+          lBm2[i]=lBu[i];     
+        }  // for( int i=0 ; i<3 ; i++ )
+
+        lBp1[iWork] = lBu[iWork]+1; 
+        lBp2[iWork] = lBu[iWork]+2;
+
+        if (LAu<0 || (not std::all_of(lAu, lAu+3, [](int x) { return x >= 0; }))) {
+          tmpVal2[3+iWork2] += 0.; 
+        } else {
+
+          tmpVal2[3+iWork2] -= 2.0 * pow( shell2.alpha[pripair.p2], 2 ) 
+            * comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair],
+                LAu, lAu, LBu+2, lBp2 );
+
+          tmpVal2[3+iWork2] += shell2.alpha[pripair.p2] * kb[iWork] * 2*onei * comphRRiPPSab( pripair,
+            shell1, shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu+1, lBp1 ); 
+
+
+          tmpVal2[3+iWork2] += ( shell2.alpha[pripair.p2] * ( 2 * lBu[iWork] + 1 )
+            + 0.5 * pow( kb[iWork],2 ) ) * comphRRiPPSab( pripair, shell1, shell2, K, 
+              ss_shellpair[countershellpair], LAu, lAu, LBu, lBu ); 
+
+          if ( lBu[iWork] >0 ){
+            lBm1[iWork] = lBu[iWork]-1;
+
+            tmpVal2[3+iWork2] -= kb[iWork] * lBu[iWork] * comphRRiPPSab( pripair, shell1, shell2, K,
+              ss_shellpair[countershellpair], LAu, lAu, LBu-1, lBm1 ) * onei;
+          } // if ( lB[iWork] >0 )
+
+          if ( lBu[iWork] >= 2 ) {
+            lBm2[iWork] = lBu[iWork]-2;   
+            tmpVal2[3+iWork2] -= 0.5 * lBu[iWork]*(lBu[iWork]-1) * comphRRiPPSab( pripair, shell1, 
+              shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu-2, lBm2 );
+          } // if ( lB[iWork] >= 2 ) 
+        } // if (lAu[iWork]<0)
+
+} // iWork2
+//---------------------- (a-1|T|b) end
+
+//---------------------- (a|T|b+1) for pair start
+// iWork1 is nabla_xyz; iWork2 is a+1_xyz
+// iWork1 is for recursion; while iWork2 is for base value
+for ( iWork2=0 ; iWork2<3 ; iWork2++ ) { 
+
+        // reset all index
+        LAu = LA;
+        LBu = LB+1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lAu[i]=lA[i];
+          lBu[i]=lB[i]; 
+        }  // for( int i=0 ; i<3 ; i++ )
+        // set base value
+        lBu[iWork2] = lB[iWork2]+1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lBp1[i]=lBu[i];     
+          lBp2[i]=lBu[i];
+          lBm1[i]=lBu[i];     
+          lBm2[i]=lBu[i];     
+        }  // for( int i=0 ; i<3 ; i++ )
+        lBp1[iWork] = lBu[iWork]+1; 
+        lBp2[iWork] = lBu[iWork]+2;
+
+        tmpVal2[6+iWork2] -= 2.0 * pow( shell2.alpha[pripair.p2], 2 ) 
+          * comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair],
+              LAu, lAu, LBu+2, lBp2 );
+
+        tmpVal2[6+iWork2] += shell2.alpha[pripair.p2] * kb[iWork] * 2*onei * comphRRiPPSab( pripair,
+          shell1, shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu+1, lBp1 ); 
+
+
+        tmpVal2[6+iWork2] += ( shell2.alpha[pripair.p2] * ( 2 * lBu[iWork] + 1 )
+          + 0.5 * pow( kb[iWork],2 ) ) * comphRRiPPSab( pripair, shell1, shell2, K, 
+            ss_shellpair[countershellpair], LAu, lAu, LBu, lBu ); 
+
+        if ( lBu[iWork] >0 ){
+          lBm1[iWork] = lBu[iWork]-1;
+
+          tmpVal2[6+iWork2] -= kb[iWork] * lBu[iWork] * comphRRiPPSab( pripair, shell1, shell2, K,
+            ss_shellpair[countershellpair], LAu, lAu, LBu-1, lBm1 ) * onei;
+        } // if ( lB[iWork] >0 )
+
+        if ( lBu[iWork] >= 2 ) {
+          lBm2[iWork] = lBu[iWork]-2;   
+          tmpVal2[6+iWork2] -= 0.5 * lBu[iWork]*(lBu[iWork]-1) * comphRRiPPSab( pripair, shell1, 
+            shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu-2, lBm2 );
+        } // if ( lB[iWork] >= 2 ) 
+
+} // iWork2
+//---------------------- (a|T|b+1) end
+
+//---------------------- (a|T|b-1) for pair start
+// iWork1 is nabla_xyz; iWork2 is a+1_xyz
+// iWork1 is for recursion; while iWork2 is for base value
+for ( iWork2=0 ; iWork2<3 ; iWork2++ ) { 
+
+        // reset all index
+        LAu = LA;
+        LBu = LB-1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lAu[i]=lA[i];
+          lBu[i]=lB[i]; 
+        }  // for( int i=0 ; i<3 ; i++ )
+        // set base value
+        lBu[iWork2] = lB[iWork2]-1;
+        for( int i=0 ; i<3 ; i++ ) {
+          lBp1[i]=lBu[i];     
+          lBp2[i]=lBu[i];
+          lBm1[i]=lBu[i];     
+          lBm2[i]=lBu[i];     
+        }  // for( int i=0 ; i<3 ; i++ )
+        lBp1[iWork] = lBu[iWork]+1; 
+        lBp2[iWork] = lBu[iWork]+2;
+
+        if (LBu<0 || (not std::all_of(lBu, lBu+3, [](int x) { return x >= 0; }))) {
+          tmpVal2[9+iWork2] += 0.; 
+        } else {
+
+          tmpVal2[9+iWork2] -= 2.0 * pow( shell2.alpha[pripair.p2], 2 ) 
+            * comphRRiPPSab( pripair, shell1, shell2, K, ss_shellpair[countershellpair],
+                LAu, lAu, LBu+2, lBp2 );
+
+          tmpVal2[9+iWork2] += shell2.alpha[pripair.p2] * kb[iWork] * 2*onei * comphRRiPPSab( pripair,
+            shell1, shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu+1, lBp1 ); 
+
+
+          tmpVal2[9+iWork2] += ( shell2.alpha[pripair.p2] * ( 2 * lBu[iWork] + 1 )
+            + 0.5 * pow( kb[iWork],2 ) ) * comphRRiPPSab( pripair, shell1, shell2, K, 
+              ss_shellpair[countershellpair], LAu, lAu, LBu, lBu ); 
+
+          if ( lBu[iWork] >0 ){
+            lBm1[iWork] = lBu[iWork]-1;
+
+            tmpVal2[9+iWork2] -= kb[iWork] * lBu[iWork] * comphRRiPPSab( pripair, shell1, shell2, K,
+              ss_shellpair[countershellpair], LAu, lAu, LBu-1, lBm1 ) * onei;
+          } // if ( lB[iWork] >0 )
+
+          if ( lBu[iWork] >= 2 ) {
+            lBm2[iWork] = lBu[iWork]-2;   
+            tmpVal2[9+iWork2] -= 0.5 * lBu[iWork]*(lBu[iWork]-1) * comphRRiPPSab( pripair, shell1, 
+              shell2, K, ss_shellpair[countershellpair], LAu, lAu, LBu-2, lBm2 );
+          } // if ( lB[iWork] >= 2 ) 
+        } // if (lAu[iWork]<0)
+ 
+ }// iWork2
+//---------------------- (a|T|b-1) end
+
+      } // for ( iWork = 0 ; iWork < 3 ; iWork++ ) 
+
+      // Construct gradient with precomputed (a|T|b), (a+1|T|b), (a-1|T|b)
+
+      // bra
+      //x
+      tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                - 1.0*lA[0] * tmpVal2[3] 
+                - 0.5 * onei * H[1] * tmpVal2[2] 
+                + 0.5 * onei * H[2] * tmpVal2[1]
+                - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[12];
+      //y
+      tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                - 1.0*lA[1] * tmpVal2[4]  
+                - 0.5 * onei * H[2] * tmpVal2[0] 
+                + 0.5 * onei * H[0] * tmpVal2[2]
+                - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[12];
+      //z
+      tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                - 1.0*lA[2] * tmpVal2[5]   
+                - 0.5 * onei * H[0] * tmpVal2[1] 
+                + 0.5 * onei * H[1] * tmpVal2[0]
+                - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[12]; 
+  
+      // ket
+      //x
+      tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[6+0]
+                - 1.0*lB[0] * tmpVal2[6+3] 
+                - 0.5 * onei * H[2] * tmpVal2[6+1] 
+                + 0.5 * onei * H[1] * tmpVal2[6+2]
+                - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[12];
+      //y
+      tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[6+1]
+                - 1.0*lB[1] * tmpVal2[6+4]  
+                - 0.5 * onei * H[0] * tmpVal2[6+2] 
+                + 0.5 * onei * H[2] * tmpVal2[6+0]
+                - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[12];
+      //z
+      tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[6+2] 
+                - 1.0*lB[2] * tmpVal2[6+5] 
+                - 0.5 * onei * H[1] * tmpVal2[6+0] 
+                + 0.5 * onei * H[0] * tmpVal2[6+1]
+                - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[12];
+
+  
+      countershellpair++;
+    }  // for pripair  
+
+    return tmpVal;
+
+  } // compRRTab_deriv1
+
+
+  //------------------------------------------------------------------------------------//
+  // complex potential integral horizontal recursion -- level 1          gradient       //
+  //  shell: same as overlap                                                            //
+  //  (d_Ax a|V|b) = 2\zeta_a(a+1|V|b) - a_x(a-1_x|V|b)                                 //
+  //           - i/2 B_y(a+1_z|V|b) + i/2 B_y(a+1_y|V|b) - i/2 (B_yAO_z B_zAO_y)(a|V|b) //
+  //------------------------------------------------------------------------------------//
+
+  /**
+   *  \brief Perform the horizontal recurrence relation for the contracted 
+   *  nuclear potential integral
+   *
+   *  where a,b are the angular momentum, A,B are the nuclear coordinates.
+   *
+   *  \param [in] nucShell nuclear shell, give the exponents of gaussian function of nuclei
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] LB      total Ket angular momentum
+   *  \param [in] lB      Ket angular momentum vector (lBx,lBy,lBz)
+   *
+<<   *  \returns a contracted nuclear potential integral
+   *
+   */
+   std::vector<dcomplex> ComplexGIAOIntEngine::comphRRVab_deriv1ab(const std::vector<libint2::Shell> &nucShell, 
+    libint2::ShellPair &pair, libint2::Shell &shell1,
+    libint2::Shell &shell2, double *K, double *H, std::vector<dcomplex> &ss_shellpair, 
+    int LA, int *lA, int LB, int *lB, const Molecule& molecule){
+
+    int iWork,iAtom;
+    int lAp1[3],lAm1[3],lBp1[3],lBm1[3];
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    dcomplex tmpVal2[7] = {dcomplex(0.0, 0.0)};
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+// Part 1    Shell Gradient
+//   (d_Ax a|V|b)       = 2\zeta_a(a+1|V|b) - a_x(a-1_x|V|b)
+//                      - i/2 B_y(a+1_z|V|b) + i/2 B_y(a+1_y|V|b) - i/2 (B_yAO_z B_zAO_y)(a|V|b)
+
+//std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+
+
+    // uncontracted 
+    auto pripairindex = 0;
+    for ( auto pripair : pair.primpairs ){
+
+    // Potential is sumation of all atoms.
+      iAtom = 0;
+      for ( auto atom : molecule.atoms ){
+  
+        // (a||b)
+        tmpVal2[6] = static_cast<dcomplex>( atom.atomicNumber ) * 
+        comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_shellpair[pripairindex],LA,lA,LB,lB,0,iAtom,molecule); // m=0 here, because this is horizental! 
+        
+        // (a+1||b) 
+        for (int iWork = 0; iWork < 3; iWork++) {
+          for (int i = 0; i < 3; i++)
+            lAp1[i] = lA[i]; 
+          lAp1[iWork] +=1; 
+          tmpVal2[iWork] = static_cast<dcomplex>( atom.atomicNumber ) * 
+          comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_shellpair[pripairindex],LA+1,lAp1,LB,lB,0,iAtom,molecule);
+        }
+    
+        // (a-1||b) 
+        for (int iWork = 0; iWork < 3; iWork++) {
+          for (int i = 0; i < 3; i++)
+            lAm1[i] = lA[i]; 
+          lAm1[iWork] -=1;
+          if (lAm1[iWork]<0) {
+            tmpVal2[3+iWork] = dcomplex(0.0, 0.0); 
+          } else
+            tmpVal2[3+iWork] = static_cast<dcomplex>( atom.atomicNumber ) * 
+            comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_shellpair[pripairindex],LA-1,lAm1,LB,lB,0,iAtom,molecule);
+        }        
+    
+        // bra
+        //x
+        tmpVal[0]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+                  - 1.0*lA[0] * tmpVal2[3] 
+                  - 0.5 * onei * H[1] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+        //y
+        tmpVal[1]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+                  - 1.0*lA[1] * tmpVal2[4]  
+                  - 0.5 * onei * H[2] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+        //z
+        tmpVal[2]+= 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+                  - 1.0*lA[2] * tmpVal2[5]   
+                  - 0.5 * onei * H[0] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6]; 
+    
+        // (a||b+1) 
+        for (int iWork = 0; iWork < 3; iWork++) {
+          for (int i = 0; i < 3; i++)
+            lBp1[i] = lB[i]; 
+          lBp1[iWork] +=1; 
+          tmpVal2[iWork] = static_cast<dcomplex>( atom.atomicNumber ) * 
+          comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_shellpair[pripairindex],LA,lA,LB+1,lBp1,0,iAtom,molecule);
+        }
+    
+        // (a||b-1) 
+        for (int iWork = 0; iWork < 3; iWork++) {
+          for (int i = 0; i < 3; i++)
+            lBm1[i] = lB[i]; 
+          lBm1[iWork] -=1;
+          if (lBm1[iWork]<0) {
+            tmpVal2[3+iWork] = dcomplex(0.0, 0.0); 
+          } else
+            tmpVal2[3+iWork] = static_cast<dcomplex>( atom.atomicNumber ) * 
+            comphRRiPPVab(nucShell,pripair,shell1,shell2,K,ss_shellpair[pripairindex],LA,lA,LB-1,lBm1,0,iAtom,molecule); 
+        }    
+    
+        // ket
+        //x
+        tmpVal[3]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+                  - 1.0*lB[0] * tmpVal2[3] 
+                  - 0.5 * onei * H[2] * tmpVal2[1] 
+                  + 0.5 * onei * H[1] * tmpVal2[2]
+                  - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+        //y
+        tmpVal[4]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+                  - 1.0*lB[1] * tmpVal2[4]  
+                  - 0.5 * onei * H[0] * tmpVal2[2] 
+                  + 0.5 * onei * H[2] * tmpVal2[0]
+                  - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+        //z
+        tmpVal[5]+= 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+                  - 1.0*lB[2] * tmpVal2[5] 
+                  - 0.5 * onei * H[1] * tmpVal2[0] 
+                  + 0.5 * onei * H[0] * tmpVal2[1]
+                  - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+        iAtom++;
+      } // for atoms
+
+      pripairindex +=1 ;
+    } //for ( auto pripair : pair.primpairs )
+
+    return tmpVal;
+  } // comphRRVab_deriv1ab
+
+
+  //------------------------------------------------------------------------------------//
+  // complex potential integral horizontal recursion -- level 1          gradient       //
+  //  operator:                                                                         //
+  //  (a|1_c|b) = (a+1|1_c|b-1) + (A-B)(a|1_c|b-1)        Surprise! They are the same!  //
+  //   LA  >=  LB                                                                       //
+  //   horizontal recursion doesn't increase (m). and it's only used once, so m=0 here. //
+  //------------------------------------------------------------------------------------//
+
+  /**
+   *  \brief Perform the horizontal recurrence relation for the contracted 
+   *  nuclear potential integral
+   *
+   *  (a|0_c|b) = (a+1|0_c|b-1) + (A-B)(a|0_c|b-1)
+   *
+   *  where a,b are the angular momentum, A,B are the nuclear coordinates.
+   *
+   *  \param [in] nucShell nuclear shell, give the exponents of gaussian function of nuclei
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] LB      total Ket angular momentum
+   *  \param [in] lB      Ket angular momentum vector (lBx,lBy,lBz)
+   *
+<<   *  \returns a contracted nuclear potential integral
+   *
+   */ 
+   std::vector<dcomplex> ComplexGIAOIntEngine::comphRRVab_deriv1c(const std::vector<libint2::Shell> &nucShell, 
+    libint2::ShellPair &pair, libint2::Shell &shell1,
+    libint2::Shell &shell2, double *K, std::vector<dcomplex> &ss_shellpair, 
+    int LA, int *lA, int LB, int *lB, const Molecule& molecule){
+
+    int iWork,iAtom;
+    auto nAtoms = molecule.atomsC.size();
+    std::vector<dcomplex> tmpVal((3*nAtoms),dcomplex(0.0,0.0));
+    std::vector<dcomplex> tmpVal2(3,dcomplex(0.0,0.0));
+    std::vector<dcomplex> tmpVal3((3*nAtoms),dcomplex(0.0,0.0));
+    dcomplex PCK[3];
+    double PC[3];
+    double rho;
+    dcomplex squarePCK = 0.0;
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+    bool useFiniteWidthNuclei = nucShell.size() > 0; // if nuclear shell is defined, use finite nuclei
+
+    if (useFiniteWidthNuclei)
+      std::cerr<<"no finite nuclei grdient yet"<<std::endl; 
+
+// Part 2    Operator Gradient
+// it's just like regular recursion -- but with increased order.
+// here order (m) is 0. We will first decrease B.
+
+// If B=0; 
+// (a+1_x|1_c|0)(m) = PA_x(a+1_x|1_c|0)(m) - PCK_x(a+1_x|1_c|0)(m+1)
+//                  + alpha/2_zeta{(a-1_x|1_c|0)(m) - (a-1_x|1_c|0)(m+1)}
+
+    // (LA|s) 
+    if(LB == 0) {
+
+      auto pripairindex = 0;
+      for( auto pripair : pair.primpairs ) {
+      iAtom = 0;
+      for( auto atom : molecule.atoms ) {
+  //      std::cerr<<atom.atomicNumber<<std::endl;
+  //      std::cerr<<"iAtom = "<<iAtom<<std::endl;
+
+
+        // Preparation Start
+        squarePCK = 0.0;     
+  
+        for( int m=0 ; m<3 ; m++ ) {
+          PC[m]  = pripair.P[m] - atom.coord[m];
+          PCK[m] = PC[m] + K[m]*0.5*pripair.one_over_gamma*onei;
+          squarePCK += PCK[m]*PCK[m];
+        }   
+        auto lTotal = LA + LB; 
+        // auto lTotal = shell1.contr[0].l + shell2.contr[0].l; 
+        dcomplex *tmpFmT = new dcomplex[lTotal+2];  // from 0 to m+1
+        if ( useFiniteWidthNuclei ) {
+
+          // here we don't have finite nuclei now
+          std::cerr<<"no finite nuclei grdient yet"<<std::endl; 
+          //rho = (1/pripair.one_over_gamma)* nucShell[iAtom].alpha[0]
+          //             /(1/pripair.one_over_gamma + nucShell[iAtom].alpha[0]);
+
+          //ComplexGIAOIntEngine::computecompFmT(tmpFmT,rho*squarePCK,lTotal+1,0); 
+
+          // or use double rho = nucShell[iAtom].alpha[0]/
+          // (1.0+nucShell[iAtom].alpha[0]*pripair.one_over_gamma)
+
+          // computeFmTTaylor(tmpFmT,rho*squarePCK,lTotal,0);
+        }
+        else if ( !useFiniteWidthNuclei ) {
+/*
+if (lTotal == 0) {
+std::cout<<"K value "<<std::setprecision(12)<<K[0]<<" "<<K[1]<<" "<<K[2]<<std::endl;
+std::cout<<"PCK "<<PCK[0]<<" "<<PCK[1]<<" "<<PCK[2]<<std::endl;
+std::cout<<"T value "<<std::setprecision(12)<<(shell1.alpha[pripair.p1]+shell2.alpha[pripair.p2])*squarePCK<<std::endl;
+} 
+*/
+          ComplexGIAOIntEngine::computecompFmT(tmpFmT,(shell1.alpha[pripair.p1]+shell2.alpha[pripair.p2])
+                     *squarePCK,lTotal+1,0);
+        }
+        // Preparation Ends
+
+        // (0|1_c|0)(0)
+        if (LA == 0) {
+
+// std::cout<<"boys function of ss type "<<std::setprecision(12)<<tmpFmT[0]<<std::endl;
+          // contraction coeff are already in ss overlap integral
+          auto ssS = ss_shellpair[pripairindex];
+
+          if ( !useFiniteWidthNuclei ) {
+            auto ssV = 2.0*sqrt(1.0/(pripair.one_over_gamma*M_PI))*ssS;
+
+            // m=1
+            for (size_t ixyz=0 ; ixyz<3 ; ixyz++) 
+              tmpVal[3*iAtom+ixyz]+= static_cast<dcomplex>( atom.atomicNumber ) * ssV * tmpFmT[1] * 
+                                     2.0 * (shell1.alpha[pripair.p1]+shell2.alpha[pripair.p2]) * PCK[ixyz];
+                            //* compvRRVa0(nucShell,pripair,shell1,K,tmpFmT,PC,0,LA,lA,iAtom);
+
+//std::cout<<"tmpFmT "<<tmpFmT[0]<<std::endl;
+  // std::cerr<<"actual"<<std::endl;
+          }
+          else if ( useFiniteWidthNuclei ) {
+  //          tmpVal += (static_cast<double>(mc->atomZ[iAtom]))*math.two*sqrt(rho/math.pi)*ijSP->ss[iPP]*tmpFmT[0];
+            // we don't have finite nuclei now
+            std::cerr<<"no finite nuclei grdient yet"<<std::endl; 
+            //auto ssV = 2.0*sqrt(rho/M_PI)*ssS;
+            //rhoovzeta = nucShell[iAtom].alpha[0] / ( nucShell[iAtom].alpha[0]+
+            //            1.0/pripair.one_over_gamma );
+
+            // fixed m=1
+            //for (ixyz=0 ; ixyz<3 ; ixyz++) 
+            //  tmpVal[ixyz] += static_cast<dcomplex>( atom.atomicNumber ) * rhoovzeta * ssV * tmpFmT[1] * 2.0 * rho * PCK[ixyz];
+
+//std::cout<<"tmpFmT "<<tmpFmT[0]<<std::endl;
+//  std::cerr<<"no finite nuclei"<<std::endl;
+          }
+        } // LA == 0
+        else {   // LA > 0, go into vertical recursion
+  /*
+          auto norm = shell1.contr[0].coeff[pripair.p1]* 
+                      shell2.contr[0].coeff[pripair.p2];
+          auto ssS = pow(sqrt(M_PI),3) * sqrt(pripair.one_over_gamma)*pripair.K ;
+  */
+          auto ssS = ss_shellpair[pripairindex];  
+
+          if ( !useFiniteWidthNuclei ) {
+            auto ssV = 2.0*sqrt(1.0/(pripair.one_over_gamma*M_PI))*ssS;
+            tmpVal2 = compvRRVa0_deriv1c(nucShell,pripair,shell1,shell2,K,tmpFmT,PC,0,LA,lA,iAtom);
+            for( int m=0 ; m<3 ; m++ ) 
+              tmpVal[3*iAtom+m]+= static_cast<dcomplex>( atom.atomicNumber ) * ssV * tmpVal2[m]; 
+  //std::cerr<<"actual"<<std::endl;
+  
+          } else if ( useFiniteWidthNuclei ) {
+  //          tmpVal += mc->atomZ[iAtom]*math.two*sqrt(rho/math.pi)*ijSP->ss[iPP]*ComplexGIAOIntEngine::vRRVa0(ijSP,tmpFmT,PC,0,LA,lA,iPP,iAtom);
+            // now we don't have finite nuclei
+            std::cerr<<"no finite nuclei grdient yet"<<std::endl; 
+            //auto ssV = 2.0*sqrt(rho/M_PI)*ssS;
+            //tmpVal += static_cast<dcomplex>( atom.atomicNumber ) * ssV * compvRRVa0(nucShell,pripair,shell1,K,
+            //                                           tmpFmT,PC,0,LA,lA,iAtom);
+
+
+//  std::cerr<<"no finite nuclei"<<std::endl;
+          } // else if ( useFiniteWidthNuclei )
+        } // else
+        delete[] tmpFmT;
+        iAtom++;
+      } // atom
+      pripairindex++;
+      }  // pripair
+
+    } // if LB  ==  0
+    else {   // LB>0
+      int lAp1[3],lBm1[3];
+      for( int m=0 ; m<3 ; m++ ) {
+        lAp1[m]=lA[m];
+        lBm1[m]=lB[m];
+      };
+      if (lB[0] > 0) iWork = 0;
+      else if (lB[1] > 0) iWork=1;
+      else if (lB[2] > 0) iWork=2;
+  
+      lAp1[iWork]++;
+      lBm1[iWork]--;
+      tmpVal = comphRRVab_deriv1c(nucShell,pair,shell1,shell2,K,ss_shellpair,LA+1,lAp1,LB-1,lBm1,molecule);
+      tmpVal3= comphRRVab_deriv1c(nucShell,pair,shell1,shell2,K,ss_shellpair,LA,lA,LB-1,lBm1,molecule);
+      for( int m=0 ; m<3*nAtoms ; m++ ) {
+        tmpVal[m]+=pair.AB[iWork]*tmpVal3[m];
+      };
+    }
+  
+    return tmpVal;
+
+  } // comphRRVab_deriv1c
+
+  //----------------------------------------------------------------------------//
+  // complex potential integral vertical recursion                              //
+  //  (a|0_c|0)^(m) = (P-A+i(ka+kb)/(2zeta))(a-1|0_c|0)^(m)                     //
+  //                + (i(ka+kb)/(2zeta)-(P-C))(a-1|0_c|0)^(m+1)                 //
+  //                + halfInvZeta*N_(a-1)*[(a-2|0_c|0)^(m)-(a-2|0_c|0)^(m+1)]   //
+  //  since LB == 0, we only decrease a                                         //
+  //----------------------------------------------------------------------------//
+
+  /**
+   *  \brief Perform the vertical recurrence relation for the uncontracted 
+   *    nuclear potential integral 
+   *
+   *   (a|0_c|0)^(m) = (P-A+i(ka+kb)/(2zeta))(a-1|0_c|0)^(m) 
+   *                 + (i(ka+kb)/(2zeta)-(P-C))(a-1|0_c|0)^(m+1) 
+   *                 + halfInvZeta*N_(a-1)*[(a-2|0_c|0)^(m)-(a-2|0_c|0)^(m+1)]
+   *
+   *  where a is angular momentum, Zeta=zeta_a+zeta_b, A is bra nuclear coordinate. 
+   *  P = (zeta_a*A+zeta_b*B)/Zeta
+   *
+   *  \param [in] nucShell nuclear shell, give the exponents of gaussian function of nuclei
+   *  \param [in] pripair Primitive Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] FmT     table of Boys function with different m
+   *  \param [in] PC      vector P-C
+   *  \param [in] m       the order of auxiliary function
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] iAtom   the index of the atom of the nuclei
+   *
+   *  \returns an uncontracted nuclear potential integral
+   *
+   */ 
+
+// TangDD: ssV is outside!
+   std::vector<dcomplex> ComplexGIAOIntEngine::compvRRVa0_deriv1c( const std::vector<libint2::Shell> &nucShell,
+    libint2::ShellPair::PrimPairData &pripair, libint2::Shell &shell1, libint2::Shell &shell2, double *K,
+    dcomplex *FmT, double *PC, int m, int LA, int *lA, int iAtom){
+  
+    std::vector<dcomplex> tmpVal(3,dcomplex(0.0,0.0));
+    dcomplex PAK;
+    dcomplex PCK;
+    dcomplex rhoovzeta;
+    bool useFiniteWidthNuclei = nucShell.size() > 0; // if nuclei shell is defined, use finite nuclei 
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    if(LA == 0) {
+      if ( useFiniteWidthNuclei ) {
+        // have finite nuclei 
+     
+        rhoovzeta =  nucShell[iAtom].alpha[0] / ( nucShell[iAtom].alpha[0]
+                     +(1/pripair.one_over_gamma) );
+
+        for( int ixyz=0 ; ixyz<3 ; ixyz++ ) {
+          PCK = PC[ixyz]+ K[ixyz]*0.5*pripair.one_over_gamma*onei;
+          tmpVal[ixyz] = pow(rhoovzeta,m)*FmT[m+1] * 2.0 * PCK; 
+        }
+
+        return tmpVal;
+     
+      } else if ( !useFiniteWidthNuclei ) {
+
+        for( int ixyz=0 ; ixyz<3 ; ixyz++ ) {
+          PCK = PC[ixyz]+ K[ixyz]*0.5*pripair.one_over_gamma*onei;
+          tmpVal[ixyz] = FmT[m+1] * 2.0 * (shell1.alpha[pripair.p1]+shell2.alpha[pripair.p2]) * PCK; 
+        }            
+        return tmpVal;  //Z*2*sqrt[zeta/pi]*[s|s]is given in hRRVab, in ssV.
+      }
+    } // if(LA == 0) 
+  
+    std::vector<dcomplex> tmpVal2(3,dcomplex(0.0,0.0));
+    std::vector<dcomplex> tmpVal3(3,dcomplex(0.0,0.0)); 
+    int lAm1[3]; //means lA minus 1_i
+    int iWork;
+    for( iWork = 0 ; iWork < 3 ; iWork++ ) lAm1[iWork]=lA[iWork];
+    if (lA[0] > 0) iWork = 0;
+    else if (lA[1] > 0) iWork=1;
+    else if (lA[2] > 0) iWork=2;
+    lAm1[iWork]--;
+ 
+    PAK = pripair.P[iWork]-shell1.O[iWork]+K[iWork]*0.5*pripair.one_over_gamma*onei;
+    tmpVal2 = compvRRVa0_deriv1c(nucShell,pripair,shell1,shell2,K,FmT,PC,m,LA-1,lAm1,iAtom);
+    // (P-A+i*K/(2zeta))*(a-1i|dV|0)(m) 
+    for( int ixyz=0 ; ixyz<3 ; ixyz++ )
+      tmpVal[ixyz] += PAK * tmpVal2[ixyz]; 
+
+    PCK = PC[iWork]+ K[iWork]*0.5*pripair.one_over_gamma*onei;
+    // -(P-C+i*K/(2zeta))*(a-1i|dV|0)(m+1)
+    tmpVal2 = compvRRVa0_deriv1c(nucShell,pripair,shell1,shell2,K,FmT,PC,m+1,LA-1,lAm1,iAtom);
+    for( int ixyz=0 ; ixyz<3 ; ixyz++ )
+      tmpVal[ixyz] -= PCK * tmpVal2[ixyz]; 
+
+    // additional term for gradient
+    tmpVal[iWork] += compvRRVa0(nucShell,pripair,shell1,K,FmT,PC,m+1,LA-1,lAm1,iAtom); 
+
+    if( lAm1[iWork] >=1 ){
+      lAm1[iWork]--;
+      tmpVal2 = compvRRVa0_deriv1c(nucShell,pripair,shell1,shell2,K,FmT,PC,m,LA-2,lAm1,iAtom);
+      tmpVal3 = compvRRVa0_deriv1c(nucShell,pripair,shell1,shell2,K,FmT,PC,m+1,LA-2,lAm1,iAtom);
+      for( int ixyz=0 ; ixyz<3 ; ixyz++ )
+        tmpVal[ixyz] += (lAm1[iWork]+1)*0.5*pripair.one_over_gamma * (tmpVal2[ixyz] - tmpVal3[ixyz]);
+    }
+
+    return tmpVal; 
+  } // ComplexGIAOIntEngine::compvRRVa0_deriv1c 
+
+  /**
+   *  \brief Decompose electric quadrupole integral into several contracted overlap integral gradient
+   *
+   *   [a|r_\alpha r_\beta|b]           
+   *    = [a+1_\beta||b+1_\alpha]   
+   *      +A_\alpha[a||b+1_\beta]+B_\beta[a+1_\alpha||b]
+   *      +A_\alpha B_\beta [a||b]                             
+   *
+   *  where a,b are the angular momentum, A,B are the nuclear coordinates.
+   *
+   *  \param [in] pair    Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] LB      total Ket angular momentum
+   *  \param [in] lB      Ket angular momentum vector (lBx,lBy,lBz)
+   *  \param [in] alpha   the component of nabla or r operator (x,y,z)
+   *  \param [in] beta    the component of nabla or r operator (x,y,z)
+   *
+   *  \returns the alpha beta component of a contracted electric quadrupole integral gradient
+   *
+   */ 
+  std::vector<dcomplex> ComplexGIAOIntEngine::compQuadrupoleE2_len_deriv1(
+    libint2::ShellPair &pair, libint2::Shell &shell1, libint2::Shell &shell2, 
+    double *K, double *H, 
+    std::vector<dcomplex> &ss_shellpair, 
+    int LA, int *lA, int LB, int *lB, int alpha, int beta ) {
+ 
+    int iWork,iWork2,lAp1[3],lBp1[3];
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    std::vector<dcomplex> tmpVal2(6,dcomplex(0.0,0.0));
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    //std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+    for ( auto k = 0 ; k < 3 ; k++ ) {
+      lAp1[k] = lA[k];
+      lBp1[k] = lB[k];
+    }
+    lAp1[alpha] = lA[alpha]+1;
+    lBp1[beta]  = lB[beta] +1;
+
+    // [a+1_\beta||b+1_\alpha]
+    tmpVal2 = comphRRSab_deriv1( pair, shell1, shell2, K, H, ss_shellpair, LA+1, lAp1, LB+1, lBp1);
+    for( int i=0 ; i<6 ; i++ ) {
+      tmpVal[i] += tmpVal2[i];
+    }  // for i
+
+    // A_\alpha[a||b+1_\beta]
+    tmpVal2 = comphRRSab_deriv1( pair, shell1, shell2, K, H, ss_shellpair, LA, lA, LB+1, lBp1);
+    for( int i=0 ; i<6 ; i++ ) {
+      tmpVal[i] += shell1.O[alpha] * tmpVal2[i];
+    }  // for i
+
+    // Special case: dA_alpha
+    tmpVal[alpha] += comphRRSab( pair, shell1, shell2, K, ss_shellpair, LA, lA, LB+1, lBp1); 
+
+    // B_\beta[a+1_\alpha||b]
+    tmpVal2 = comphRRSab_deriv1( pair, shell1, shell2, K, H, ss_shellpair, LA+1, lAp1, LB, lB);
+    for( int i=0 ; i<6 ; i++ ) {
+      tmpVal[i] += shell2.O[beta] * tmpVal2[i];
+    }  // for i
+
+    // Special case: dB_beta
+    tmpVal[3+beta] += comphRRSab( pair, shell1, shell2, K, ss_shellpair, LA+1, lAp1, LB, lB);
+
+    // A_\alpha B_\beta [a||b]
+    tmpVal2 = comphRRSab_deriv1( pair, shell1, shell2, K, H, ss_shellpair, LA, lA, LB, lB);
+    for( int i=0 ; i<6 ; i++ ) {
+      tmpVal[i] += shell1.O[alpha] * shell2.O[beta] * tmpVal2[i];
+    }  // for i
+
+    // Special case 1: dA_alpha
+    tmpVal[alpha]  += shell2.O[beta]  * comphRRSab( pair, shell1, shell2, K, ss_shellpair, LA, lA, LB, lB);
+    // Special case 2: dB_beta
+    tmpVal[3+beta] += shell1.O[alpha] * comphRRSab( pair, shell1, shell2, K, ss_shellpair, LA, lA, LB, lB);
+
+    return tmpVal;
+
+  } // compQuadrupoleE2_len_deriv1
+
+
+  /**
+   *  \brief Perform the vertical recurrence relation for the uncontracted 
+   *  angular momentum integral
+   *
+   *   if LB == 0,then [a|L|0]=(Pi-Ai)[a-1i|L|0]]+halfInvZeta*Ni(a-1i)[a-2i|L|0]      
+   *                    +zeta_b/zeta*{1i cross(B-C)}_mu*[a-1i|b]                      
+   *   if LB>0,then  [a|L|b]=(Pi-Bi)[a|L|b-1i]                                        
+   *                    +halfInvZeta*Ni(b-1i)[a|L|b-2i]+halfInvZeta*Ni(a)[a-1i|L|b-1i]
+   *                    -zeta_a/zeta*{1i cross(A-C)}_mu*[a|b-1i]                      
+   *                    -halfInvZeta*Sum_k=x,y,z N_k(a){1i cross 1k}_mu*[a-1k|b-1i]   
+   *
+   *  where a,b are the angular momentum, A,B are the nuclear coordinates.
+   *  halInvZeta = 1/2 * 1/Zeta
+   *
+   *  \param [in] pripair primitive Shell pair data for shell1, shell2
+   *  \param [in] shell1  Bra shell
+   *  \param [in] shell2  Ket shell
+   *  \param [in] OneixAC 1_i cross AC vector is a 3 by 3 tensor
+   *  \param [in] OneixBC 1_i cross BC vector is a 3 by 3 tensor
+   *  \param [in] LA      total Bra angular momentum
+   *  \param [in] lA      Bra angular momentum vector (lAx,lAy,lAz)
+   *  \param [in] LB      total Ket angular momentum
+   *  \param [in] lB      Ket angular momentum vector (lBx,lBy,lBz)
+   *  \param [in] mu      index of the angular momentum integral component being calculated
+   *
+   *  \returns the mu component of an uncontracted angular momentum integral
+   *
+   */ 
+
+   std::vector<dcomplex> ComplexGIAOIntEngine::compLabmu_deriv1( libint2::ShellPair::PrimPairData &pripair, 
+    libint2::Shell &shell1, libint2::Shell &shell2, double *ka, double *kb, double *H, 
+    dcomplex ss_primitive, int LA, int *lA, int LB, int *lB, int mu){
+
+    int lAp1[3],lAm1[3],lBp1[3],lBm1[3];
+    // 6 * [X, Y, Z]
+    std::vector<dcomplex> tmpVal(6,dcomplex(0.0,0.0));
+    dcomplex tmpVal2[7] = {dcomplex(0.0, 0.0)};
+    dcomplex onei;
+    onei.real(0);
+    onei.imag(1);
+
+    //std::cout<<"lA "<<lA[0]<<" "<<lA[1]<<" "<<lA[2]<<" lB "<<lB[0]<<" "<<lB[1]<<" "<<lB[2]<<std::endl;
+
+    double K[3];
+    for ( int mu = 0 ; mu < 3 ; mu++ ) {
+      K[mu] = ka[mu]+kb[mu];
+    } // for mu
+
+    // This is general recursion for L integral.
+
+    for( int i=0 ; i<7 ; i++ ) {
+      tmpVal2[i] = dcomplex(0.0, 0.0); 
+    }  // for( int i=0 ; i<3 ; i++ ) 
+
+    // We first prepare pripair T integrals.
+    // kinetic integral is sum of 3 cartesian directions.
+
+    // Construct gradient with precomputed (a|L|b), (a+1|L|b), (a-1|L|b)
+    
+    // (a|L_mu|b)
+    tmpVal2[6] = compLabmu(pripair, shell1, shell2, ka, kb, ss_primitive, LA, lA, LB, lB, mu);
+
+    // (a+1|L_mu|b) 
+    for (int iWork = 0; iWork < 3; iWork++) {
+      for (int i = 0; i < 3; i++)
+        lAp1[i] = lA[i]; 
+      lAp1[iWork] +=1; 
+      tmpVal2[iWork] = compLabmu(pripair, shell1, shell2, ka, kb, ss_primitive, LA+1, lAp1, LB, lB, mu);
+    }
+
+    // (a-1|L_mu|b) 
+    for (int iWork = 0; iWork < 3; iWork++) {
+      for (int i = 0; i < 3; i++)
+        lAm1[i] = lA[i]; 
+      lAm1[iWork] -=1;
+      if (lAm1[iWork]<0) {
+        tmpVal2[3+iWork] = dcomplex(0.0, 0.0); 
+      } else
+        tmpVal2[3+iWork] = compLabmu(pripair, shell1, shell2, ka, kb, ss_primitive, LA-1, lAm1, LB, lB, mu);
+    }        
+
+    // bra
+    //x
+    tmpVal[0] = 2.0 * shell1.alpha[pripair.p1] * tmpVal2[0]
+              - 1.0*lA[0] * tmpVal2[3] 
+              - 0.5 * onei * H[1] * tmpVal2[2] 
+              + 0.5 * onei * H[2] * tmpVal2[1]
+              - 0.5 * onei * (H[1] * shell1.O[2] - H[2] * shell1.O[1]) * tmpVal2[6];
+    //y
+    tmpVal[1] = 2.0 * shell1.alpha[pripair.p1] * tmpVal2[1]
+              - 1.0*lA[1] * tmpVal2[4]  
+              - 0.5 * onei * H[2] * tmpVal2[0] 
+              + 0.5 * onei * H[0] * tmpVal2[2]
+              - 0.5 * onei * (H[2] * shell1.O[0] - H[0] * shell1.O[2]) * tmpVal2[6];
+    //z
+    tmpVal[2] = 2.0 * shell1.alpha[pripair.p1] * tmpVal2[2]
+              - 1.0*lA[2] * tmpVal2[5]   
+              - 0.5 * onei * H[0] * tmpVal2[1] 
+              + 0.5 * onei * H[1] * tmpVal2[0]
+              - 0.5 * onei * (H[0] * shell1.O[1] - H[1] * shell1.O[0]) * tmpVal2[6]; 
+
+    // (a|L_mu|b+1) 
+    for (int iWork = 0; iWork < 3; iWork++) {
+      for (int i = 0; i < 3; i++)
+        lBp1[i] = lB[i]; 
+      lBp1[iWork] +=1; 
+      tmpVal2[iWork] = compLabmu(pripair, shell1, shell2, ka, kb, ss_primitive, LA, lA, LB+1, lBp1, mu);
+    }
+
+    // (a|L_mu|b-1) 
+    for (int iWork = 0; iWork < 3; iWork++) {
+      for (int i = 0; i < 3; i++)
+        lBm1[i] = lB[i]; 
+      lBm1[iWork] -=1;
+      if (lBm1[iWork]<0) {
+        tmpVal2[3+iWork] = dcomplex(0.0, 0.0); 
+      } else
+        tmpVal2[3+iWork] = compLabmu(pripair, shell1, shell2, ka, kb, ss_primitive, LA, lA, LB-1, lBm1, mu);
+    }    
+
+    // ket
+    //x
+    tmpVal[3] = 2.0 * shell2.alpha[pripair.p2] * tmpVal2[0]
+              - 1.0*lB[0] * tmpVal2[3] 
+              - 0.5 * onei * H[2] * tmpVal2[1] 
+              + 0.5 * onei * H[1] * tmpVal2[2]
+              - 0.5 * onei * (H[2] * shell2.O[1] - H[1] * shell2.O[2]) * tmpVal2[6];
+    //y
+    tmpVal[4] = 2.0 * shell2.alpha[pripair.p2] * tmpVal2[1]
+              - 1.0*lB[1] * tmpVal2[4]  
+              - 0.5 * onei * H[0] * tmpVal2[2] 
+              + 0.5 * onei * H[2] * tmpVal2[0]
+              - 0.5 * onei * (H[0] * shell2.O[2] - H[2] * shell2.O[0]) * tmpVal2[6];
+    //z
+    tmpVal[5] = 2.0 * shell2.alpha[pripair.p2] * tmpVal2[2] 
+              - 1.0*lB[2] * tmpVal2[5] 
+              - 0.5 * onei * H[1] * tmpVal2[0] 
+              + 0.5 * onei * H[0] * tmpVal2[1]
+              - 0.5 * onei * (H[1] * shell2.O[0] - H[0] * shell2.O[1]) * tmpVal2[6];
+
+    return tmpVal;
+  
+  } //dcomplex ComplexGIAOIntEngine::compLabmu_deriv1
 
 }; //namespace ChronusQ 
 

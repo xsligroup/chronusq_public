@@ -34,7 +34,12 @@ TEST( BOMD, h2o_bomd_rb3lyp ) {
 
 }
 
+TEST( BOMD, h2o_bomd_rb3lyp_giao ) {
 
+  CQDYNAMICSTEST( "dynamics/serial/bomd/h2o_bomd_rb3lyp_giao",
+    "h2o_bomd_rb3lyp_giao.bin.ref");
+
+}
 
 
 #ifdef _CQ_DO_PARTESTS
@@ -44,5 +49,13 @@ TEST( BOMD, PAR_h2o_bomd_rb3lyp ) {
     "h2o_bomd_rb3lyp.bin.ref" );
 
 }
+
+TEST( BOMD, PAR_h2o_bomd_rb3lyp_giao ) {
+
+  CQDYNAMICSTEST( "dynamics/parallel/bomd/h2o_bomd_rb3lyp_giao",
+    "h2o_bomd_rb3lyp_giao.bin.ref");
+
+}
+
 
 #endif

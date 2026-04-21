@@ -4075,10 +4075,10 @@ namespace ChronusQ {
       }
     );
 
-    size_t NB = basisSet.nBasis;
-    size_t MB = basisSet2.nBasis;
-    size_t NB2 = NB * MB;
-    size_t NB3 = NB2 * MB;
+    //size_t NB = basisSet.nBasis;
+    //size_t MB = basisSet2.nBasis;
+    //size_t NB2 = NB * NB;
+    //size_t NB3 = NB2 * MB;
     bool sameBasis = (&basisSet == &basisSet2);
 
 
@@ -4199,21 +4199,6 @@ namespace ChronusQ {
     computeAOInts(basisSet, basisSet, mol, pert, op, options);
   }
 
-  template<>
-  void GradInts<TwoPInts,dcomplex>::computeAOInts(BasisSet& basisSet,
-    Molecule& mol, EMPerturbation& pert, OPERATOR op,
-    const HamiltonianOptions &options)
-  {
-    CErr("Complex integral gradients not yet implemented!");
-  }
-
-  template<>
-  void GradInts<TwoPInts,dcomplex>::computeAOInts(BasisSet& basisSet,
-    BasisSet& basis2, Molecule& mol, EMPerturbation& pert, OPERATOR op,
-    const HamiltonianOptions &options)
-  {
-    CErr("Complex integral gradients not yet implemented!");
-  }
 
 
 }; // namespace ChronusQ

@@ -1,0 +1,70 @@
+# 
+#  Job Specification
+#  NEO-DFT Ehrenfest from optimized geometry
+#
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O   0.000000   -0.073354    0.000000
+ H   0.771088    0.600217    0.000000 Q
+ H  -0.771088    0.600217    0.000000 Q
+
+[QM]
+reference = complex RB3LYP
+job = Ehrenfest
+
+[PROTQM]
+reference = complex UEPC17
+
+[DFTINT]
+inhouse = true
+nrad = 99
+nang = 302
+nmacro = 9
+
+[SCF]
+NEO = TRUE
+GUESS = Classical
+PROT_GUESS = TIGHT
+PRINTMOS = 0
+EXTRAP = TRUE
+MAXITER = 5000
+DIISALG = CDIIS
+Accuracy = 1e-12
+field = Magnetic 0.0 0.0 1.
+
+[DYNAMICS]
+TMAX   = 10
+DELTAT = 2
+NNUCPGRAD = 10
+NELECPNUC = 10
+TPB = true
+
+[RT]
+INTALG = mmut
+RESTARTSTEP = magnus2
+PRINTLEVEL = 1
+
+[MISC]
+nsmp = 8
+mem = os
+
+[INTS]
+ALG = incore
+
+[PINTS]
+ALG = incore
+
+[EPINTS]
+ALG = incore
+
+[BASIS]
+basis = sto-3g
+basistype = GIAO
+
+[PBASIS]
+basis = prot-sp
+basistype = GIAO
+
+
