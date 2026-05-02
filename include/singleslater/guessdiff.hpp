@@ -27,6 +27,26 @@ namespace ChronusQ {
 
   extern std::unordered_map<int,std::string> refMap;
 
+  // Does double->double, double->dcomplex, dcomplex->double, and dcomplex->dcomplex
+  template<typename Out, typename In>
+  Out rough_cast(const In& x){
+    if constexpr (std::is_convertible_v<In, Out>) {
+        return static_cast<Out>(x);     // valid only when convertible
+    } else if constexpr (
+        std::is_same_v<Out,double> &&
+        std::is_same_v<In,std::complex<double>>
+    ) {
+        return x.real();                // complex->real
+    } else if constexpr (
+        std::is_same_v<Out,std::complex<double>> &&
+        std::is_arithmetic_v<In>
+    ) {
+        return Out(x,0.0);              // real->complex
+    } else {
+        static_assert(sizeof(Out)==0, "Unsupported type conversion in rough_cast");
+    }
+  }
+
   /*
    *  \brief Driver for basis set projection.
    *  Returns both the projected matrix and projection matrix (for re-use)
@@ -599,13 +619,13 @@ namespace ChronusQ {
         // 2c guesses
         if( binRefType == RefType::isTwoCRef ){
 
-         // RHF/ROHF->2c
-         if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+         // RHF->2c
+         if( scrRefType == RefType::isRRef ){
 
            convert1CRto2CU(motmp,this->mo);
 
-         // UHF->2c
-         } else if( scrRefType == RefType::isURef ){
+         // UHF/ROHF->2c
+         } else if( scrRefType == RefType::isURef  or scrRefType == RefType::isRORef ){
 
           //More information is needed for open-shell systems
           size_t nOccA,nOccB;
@@ -624,18 +644,14 @@ namespace ChronusQ {
           // 4c MOs stored as alpha-large, alpha-small, beta-large, beta-small
           // Negative MOs come before positive MOs
 
-          // RHF/ROHF->4c
-          if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
+          // RHF->4c
+          if( scrRefType == RefType::isRRef ){
 
-           std::cout << "    * WARNING: Small component and negative-energy solutions set to zero" << std::endl;
+           convert1CRto4CU(motmp,this->mo,scrBin);
 
-           convert1CRto4CU(motmp,this->mo);
+          }else if( scrRefType == RefType::isURef or scrRefType == RefType::isRORef ){ // UHF/ROHF->4c
 
-          }else if( scrRefType == RefType::isURef ){ // UHF->4c
-
-           std::cout << "    * WARNING: Small component and negative-energy solutions set to zero" << std::endl;
-
-           convert1CUto4CU(motmp,this->mo);
+           convert1CUto4CU(motmp,this->mo,scrBin);
 
           // 2c->4c
           }else if( scrRefType == RefType::isTwoCRef ){
@@ -671,7 +687,7 @@ namespace ChronusQ {
     size_t NB = outputMO[0].nRows();
     size_t scrMOSize = inputMO[0].nRows();
 
-    size_t smallMO=0; // RHF/ROHF index
+    size_t smallMO=0; // RHF index
 
     for( size_t iMO=0; iMO<NB; iMO++ ){
 
@@ -698,12 +714,13 @@ namespace ChronusQ {
 
     size_t NB = outputMO[0].nRows();
     size_t scrMOSize = inputMO[0].nRows();
+    size_t numC = 2; // Need to hardcode for function so can be used in tandem with other functions
 
     size_t numUnpaired = nA-nB;
     size_t numPairedMOs = 2*nB;
     size_t numOccMOs = numPairedMOs + numUnpaired;
     size_t plusDisplacedBetas = numOccMOs + numUnpaired;
-    //std::cout << "NB, numUnpaired: " << NB << ", " << numUnpaired << std::endl;
+//  std::cout << "NB, nC, scrMOSize, numUnpaired: " << NB << ", " << numC << ", " << scrMOSize << ", " << numUnpaired << std::endl;
 
     for( size_t iMO=0; iMO<NB; iMO++ ){
 
@@ -712,30 +729,29 @@ namespace ChronusQ {
 
       // Fills in 2c MOs as pairs: one for alpha and one for beta occupieds
       if( iMO < numPairedMOs ){
-        //std::cout << "inPaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
         smallMO = iMO/2; // Does floor function here for beta orbitals
+//      std::cout << "inPaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
         isAlpha = (iMO % 2 == 0); // even alpha and odd beta
 
       // Handles unpaired electrons (will not reach for closed shell)    
       } else if( iMO < numOccMOs ){
-        //std::cout << "inUnpaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
         // Assume each 2c MO is alpha for unpaireds
         smallMO = nB + (iMO - numPairedMOs);
+//      std::cout << "inUnpaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
         isAlpha = true;
 
       // Handles those beta virtuals that pair to the unoccupied alphas
       } else if( iMO < plusDisplacedBetas ){
-        //std::cout << "inUnpairedBetas: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
         // Assume each 2c MO is alpha for unpaireds
         smallMO = nB + (iMO - plusDisplacedBetas);
+//      std::cout << "inUnpairedBetas: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
         isAlpha = false;
 
       // Handles virtuals
       } else {
-        //std::cout << "inVirtuals: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
         // alpha starts at nA and beta starts at nB
         size_t shiftedVirt = iMO - plusDisplacedBetas;
@@ -749,6 +765,7 @@ namespace ChronusQ {
           isAlpha = false;
           smallMO = nB + (shiftedVirt/2);
         }
+//      std::cout << "inVirtuals: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
       }
       
@@ -756,7 +773,7 @@ namespace ChronusQ {
       if( isAlpha )
         SetMat('N',scrMOSize,1,MatsT(1.),inputMO[0].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO,NB);
       else{
-        SetMat('N',scrMOSize,1,MatsT(1.),inputMO[1].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO+NB/this->nC,NB);
+        SetMat('N',scrMOSize,1,MatsT(1.),inputMO[1].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO+NB/numC,NB);
       }
 
     }
@@ -764,37 +781,76 @@ namespace ChronusQ {
   } // SingleSlater<MatsT,IntsT>::convert1CUto2CU
 
   /**
+   *  \brief Converts 1-component unrestricted MOs to 2-component unrestricted with ScrMatsT
+   *
+   **/
+  template <typename MatsT, typename IntsT>
+  template <typename ScrMatsT>
+  void SingleSlater<MatsT,IntsT>::convert1CUto2CU_sameType(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO,
+      std::vector<cqmatrix::Matrix<ScrMatsT>>& outputMO, size_t nA, size_t nB) {
+
+    size_t NB = inputMO[0].nRows();
+    size_t twoCMOSize = NB*2;
+
+    std::vector<cqmatrix::Matrix<MatsT>> tmp2CMO;
+    tmp2CMO.emplace_back(twoCMOSize);
+    std::fill_n(tmp2CMO[0].pointer(), twoCMOSize*twoCMOSize, MatsT(0.0));
+
+
+//  prettyPrintSmart(std::cout, "phi_a start same_type", inputMO[0].pointer(),NB,NB,NB);
+//  prettyPrintSmart(std::cout, "phi_b start same_type", inputMO[1].pointer(),NB,NB,NB);
+
+    // Goes from 1CU(ScrMatsT)->2CU(MatsT)
+    convert1CUto2CU(inputMO,tmp2CMO,nA,nB);
+//  prettyPrintSmart(std::cout, "phi after 1CUto2CU", tmp2CMO[0].pointer(),twoCMOSize,twoCMOSize,twoCMOSize);
+
+    // Element copy to handle unusual type conversions    
+    for( size_t i=0; i<twoCMOSize*twoCMOSize; i++ ){
+      outputMO[0].pointer()[i] = rough_cast<ScrMatsT>(tmp2CMO[0].pointer()[i]);
+    }
+
+  } // SingleSlater<MatsT,IntsT>::convert1CUto2CU_sameType
+
+  /**
    *  \brief Converts 1-component restricted MOs to 4-component unrestricted
    *
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO, SafeFile& scrBin) {
 
-    size_t NB = outputMO[0].nRows();
-    size_t scrMOSize = inputMO[0].nRows();
+      size_t NB = inputMO[0].nRows();
+      size_t twoCMOSize = inputMO[0].nRows()*2;
 
-    size_t smallMO=0; // RHF/ROHF index
+//    prettyPrintSmart(std::cout, "phi before 1CUto2CU", inputMO[0].pointer(),NB,NB,NB);
 
-    // start from negative energy spinors for now
-    for( size_t iMO=0; iMO<NB; iMO++ ){
+      // Make a temporary copy for 1c transformed MO
+      std::vector<cqmatrix::Matrix<ScrMatsT>> tmp1CMO;
+      tmp1CMO.emplace_back(inputMO[0].nRows());
+      tmp1CMO.emplace_back(inputMO[0].nRows());
+      std::fill_n(tmp1CMO[0].pointer(), NB*NB, ScrMatsT(0.0));
+      std::fill_n(tmp1CMO[1].pointer(), NB*NB, ScrMatsT(0.0));
 
-      // negative spinors
-      if( iMO < NB/2 ){
-        //skip for now
-      } else {  // positive spinors
+      // Make a temporary copy for 2c transformed MO
+      std::vector<cqmatrix::Matrix<ScrMatsT>> tmp2CMO;
+      tmp2CMO.emplace_back(twoCMOSize);
+      std::fill_n(tmp2CMO[0].pointer(), twoCMOSize*twoCMOSize, ScrMatsT(0.0));
 
-        smallMO = iMO%2==0 ? (iMO-NB/2)/2 : (iMO-NB/2-1)/2;
+      // Converting from 1CR to 1CU
+      SetMat('N',NB,NB,ScrMatsT(1.),inputMO[0].pointer(),NB,tmp1CMO[0].pointer(),NB);
+      SetMat('N',NB,NB,ScrMatsT(1.),inputMO[0].pointer(),NB,tmp1CMO[1].pointer(),NB);
 
-        // alpha spinor is even and beta is odd
-        if( iMO%2 == 0 )
-          SetMat('N',scrMOSize,1,MatsT(1.),inputMO[0].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO,NB);
-        else if( iMO%2 != 0 )
-          SetMat('N',scrMOSize,1,MatsT(1.),inputMO[0].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO+NB/2,NB);
+      //More information is needed for open-shell systems
+      size_t nOccA,nOccB;
+      scrBin.readData("REF/NOCCA",&nOccA);
+      scrBin.readData("REF/NOCCB",&nOccB);
 
-      }
+      convert1CUto2CU_sameType(tmp1CMO,tmp2CMO,nOccA,nOccB);
+//    prettyPrintSmart(std::cout, "phi after 1CUto2CU-same", tmp2CMO[0].pointer(),twoCMOSize,twoCMOSize,twoCMOSize);
 
-    }
+      convert2CUto4CU(tmp2CMO,outputMO,scrBin);
+//    prettyPrintSmart(std::cout, "phi after 2CUto4CU", outputMO[0].pointer(),outputMO[0].nRows(),outputMO[0].nRows(),outputMO[0].nRows());
+
 
   } // SingleSlater<MatsT,IntsT>::convert1CRto4CU
 
@@ -804,32 +860,27 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO) {
+  void SingleSlater<MatsT,IntsT>::convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>& inputMO, std::vector<cqmatrix::Matrix<MatsT>>& outputMO, SafeFile& scrBin) {
 
-    size_t NB = outputMO[0].nRows();
-    size_t scrMOSize = inputMO[0].nRows();
+      size_t twoCMOSize = inputMO[0].nRows()*2;
 
-    size_t smallMO=0; // UHF index
+      // Make a temporary copy for 2c transformed MO
+      std::vector<cqmatrix::Matrix<ScrMatsT>> tmp2CMO;
+      tmp2CMO.emplace_back(twoCMOSize);
+      std::fill_n(tmp2CMO[0].pointer(), twoCMOSize*twoCMOSize, ScrMatsT(0.0));
 
-    // start from negative energy spinors for now
-    for( size_t iMO=0; iMO<NB; iMO++ ){
+//    prettyPrintSmart(std::cout, "phi at beginning of 1CUto4CU", inputMO[0].pointer(),inputMO[0].nRows(),inputMO[0].nRows(),inputMO[0].nRows());
+      
+      //More information is needed for open-shell systems
+      size_t nOccA,nOccB;
+      scrBin.readData("REF/NOCCA",&nOccA);
+      scrBin.readData("REF/NOCCB",&nOccB);
 
-      // negative spinors
-      if( iMO < NB/2 ){
-        //skip for now
-      } else {  // positive spinors
+      convert1CUto2CU_sameType(inputMO,tmp2CMO,nOccA,nOccB);
+//    prettyPrintSmart(std::cout, "phi after 1CUto2CU", tmpMO[0].pointer(),twoCMOSize,twoCMOSize,twoCMOSize);
 
-        smallMO = iMO%2==0 ? (iMO-NB/2)/2 : (iMO-NB/2-1)/2;
-
-        // alpha spinor is even and beta is odd
-        if( iMO%2 == 0 )
-          SetMat('N',scrMOSize,1,MatsT(1.),inputMO[0].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO,NB);
-        else if( iMO%2 != 0 )
-          SetMat('N',scrMOSize,1,MatsT(1.),inputMO[1].pointer()+scrMOSize*smallMO,scrMOSize,outputMO[0].pointer()+NB*iMO+NB/2,NB);
-
-      }
-
-    }
+      convert2CUto4CU(tmp2CMO,outputMO,scrBin);
+//    prettyPrintSmart(std::cout, "phi after 2CUto4CU", outputMO[0].pointer(),outputMO[0].nRows(),outputMO[0].nRows(),outputMO[0].nRows());
 
   } // SingleSlater<MatsT,IntsT>::convert1CUto4CU
 
@@ -858,8 +909,8 @@ namespace ChronusQ {
 
     if( Urow != Ucol ) CErr("Only implemented for uncontracted basis set");
 
-    MatsT *readUL = CQMemManager::get().malloc<MatsT>(Urow*Ucol);
-    MatsT *readUS = CQMemManager::get().malloc<MatsT>(Urow*Ucol);
+    ScrMatsT *readUL = CQMemManager::get().malloc<ScrMatsT>(Urow*Ucol);
+    ScrMatsT *readUS = CQMemManager::get().malloc<ScrMatsT>(Urow*Ucol);
 
     // Read in U matrices
     std::string prefix = "X2C/";
@@ -889,8 +940,9 @@ namespace ChronusQ {
 
       // Make a temporary copy for 2c transformed MO
       cqmatrix::Matrix<MatsT> tmpMO(scrMOSize);
+      std::fill_n(tmpMO.pointer(), scrMOSize*scrMOSize, MatsT(0.0));
 
-//    prettyPrintSmart(std::cout, "phi^2c in 2CUto4CU", tmpMO.pointer(),scrMOSize,scrMOSize,scrMOSize);
+//    prettyPrintSmart(std::cout, "phi^2c in 2CUto4CU", inputMO[0].pointer(),scrMOSize,scrMOSize,scrMOSize);
 
       // Large component: UL phi
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,scrMOSize,scrMOSize,scrMOSize,MatsT(1.),readUL,scrMOSize,

@@ -308,9 +308,11 @@ namespace ChronusQ {
     template <typename ScrMatsT>
     void convert1CUto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, size_t nA, size_t nB);
     template <typename ScrMatsT>
-    void convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
+    void convert1CUto2CU_sameType(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<ScrMatsT>>&, size_t nA, size_t nB);
     template <typename ScrMatsT>
-    void convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
+    void convert1CRto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, SafeFile &);
+    template <typename ScrMatsT>
+    void convert1CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, SafeFile &);
     template <typename ScrMatsT>
     void convert2CUto4CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&, SafeFile &);
 
