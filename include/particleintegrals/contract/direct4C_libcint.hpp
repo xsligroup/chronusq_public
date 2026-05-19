@@ -2371,7 +2371,7 @@ namespace ChronusQ {
                 ( DCSSMS[bf43].real()*MNKLdAcrossdB_ydCdotdD
                  -DCSSMX[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_x
                  -DCSSMY[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_y
-                 -DXSSMZ[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_z
+                 -DCSSMZ[bf43].imag()*MNKLdAcrossdB_ydCcrossdD_z
                 )*s34_deg;
   
             }
