@@ -194,9 +194,9 @@ namespace ChronusQ {
       for(auto i = 0ul; i < this->nC * this->nAlphaOrbital(); i++) {
   
         if( i == 0 )
-          out << "Occupied:\n";
+          out << "Occupied: (" << NO << ")\n";
         else if( i == NO )
-          out << "\n\nVirtual:\n";
+          out << "\n\nVirtual: (" << this->nC * this->nAlphaOrbital() - NO << ")\n";
   
         out << std::setw(13) << this->eps1[i];
   
@@ -207,9 +207,9 @@ namespace ChronusQ {
       for(auto i = this->nC * this->nAlphaOrbital()/2; i < this->nC * this->nAlphaOrbital(); i++) {
   
         if( i == this->nC * this->nAlphaOrbital()/2 )
-          out << "Occupied:\n";
+          out << "Occupied: (" << NO << ")\n";
         else if( i == NO )
-          out << "\n\nVirtual:\n";
+          out << "\n\nVirtual: (" << this->nC * this->nAlphaOrbital() - NO << ")\n";
   
         out << std::setw(13) << this->eps1[i];
   
@@ -221,7 +221,7 @@ namespace ChronusQ {
       for(auto i = 0ul; i < this->nC * this->nAlphaOrbital()/2; i++) {
   
         if( i == 0 )
-            out << "\n\nNegative Energy States:\n";
+            out << "\n\nNegative Energy States: (" << this->nC * this->nAlphaOrbital()/2<< ")\n";
 
         out << std::setw(13) << this->eps1[i];
   

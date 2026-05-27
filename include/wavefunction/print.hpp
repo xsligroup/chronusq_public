@@ -247,11 +247,17 @@ namespace ChronusQ {
    *
    */
   template <typename T, typename IntsT>
-  void analyzeMOPrint(std::ostream &out, size_t NB, size_t NOrb, IntsT* S, T* MO,
+  void analyzeMOPrint(std::ostream &out, size_t NB, size_t NOrb, size_T NO, IntsT* S, T* MO,
         size_t LDM, Molecule &mol, BasisSet &basis,
         bool groupAtm = false, T* MO2 = nullptr) {
 
     out << "\nMO components projected to basis functions of different angular momentum"; 
+
+    // size_t NB = this->nAlphaOrbital();
+    // size_t NOrb = NB * this->nC;
+      //  size_t NO = (this->nC == 1 ? this->nOA : this->nO);
+
+    size_t nC = NOrb/NB;
 
     constexpr size_t maxLPrint = 6 + 1;
     T* SCR  = CQMemManager::get().malloc<T>(NB*NOrb);
@@ -290,6 +296,20 @@ namespace ChronusQ {
 
 
     for(size_t p = 0; p < NOrb; p += list) {
+      
+      if( nC == 4)
+        if( p == 0)
+            out << "\n\nNegative Energy States:\n";
+        else if( p == 2*NB )
+            out << "Occupied:\n";
+        else if( p == 2*NB + NO )
+            out << "\n\nVirtual:\n";
+      else
+        if( p == 0 )
+            out << "Occupied:\n";
+        else if( p == NO )
+            out << "\n\nVirtual:\n";
+
       out << std::left << std::endl;
       int end = list;
       if( (p + list) >= NOrb ) end = NOrb - p;
@@ -375,6 +395,10 @@ namespace ChronusQ {
 
     size_t NB = this->nAlphaOrbital();
     size_t NOrb = NB * this->nC;
+
+    // Set number of occupied orbitals
+    size_t NO = (this->nC == 1 ? this->nOA : this->nO);
+    if ( this->nC == 4 ) NO = this->nO + this->nC * this->nAlphaOrbital()/2;
 
     bool MOcoeffs = printLevel % 2 == 1;
     bool analyzeMO = printLevel / 2 > 0;
@@ -490,17 +514,17 @@ namespace ChronusQ {
     out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha)";
 
     if( this->nC == 4 ) out << " for Large component";
-    analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(), this->mo[0].pointer(),
+    analyzeMOPrint(out, NB, NOrb, NO, aoints_->overlap->pointer(), this->mo[0].pointer(),
             NOrb, molecule(), basisSet(), groupAtm, MO2);
 
     if( not groupAB and (this->nC >= 2 or not this->iCS) ) {
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta)";
       if( this->nC == 4 ) out << " for Large component";
       if( this->nC == 1 )
-        analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, NO, aoints_->overlap->pointer(),
               this->mo[1].pointer(), NOrb, molecule(), basisSet(), groupAtm);
       else
-        analyzeMOPrint(out, NB, NOrb, aoints_->overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, NO, aoints_->overlap->pointer(),
               this->mo[0].pointer() + (this->nC/2)*NB, NOrb, molecule(), basisSet(),
               groupAtm);
 
@@ -511,11 +535,11 @@ namespace ChronusQ {
       SetMat('N',NB,NB,1./(2*SpeedOfLight*SpeedOfLight),this->aoints_->kinetic->pointer(),
                 NB,ssOverlap,NB);
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha) for Small component";
-      analyzeMOPrint(out, NB, NOrb, ssOverlap, this->mo[0].pointer() + NB,
+      analyzeMOPrint(out, NB, NOrb, NO, ssOverlap, this->mo[0].pointer() + NB,
             NOrb, molecule(), basisSet(), groupAtm, MO2);
       if( not groupAB ) {
         out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta) for Small component";
-        analyzeMOPrint(out, NB, NOrb, ssOverlap, this->mo[0].pointer() + 3*NB,
+        analyzeMOPrint(out, NB, NOrb, NO, ssOverlap, this->mo[0].pointer() + 3*NB,
                NOrb, molecule(), basisSet(), groupAtm);
       }
       CQMemManager::get().free(ssOverlap);
