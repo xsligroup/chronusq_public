@@ -29,6 +29,8 @@
 
 #define NEOCASCI_LOOP_INIT() \
   auto neowfn = dynamic_cast<NEOMCWaveFunction<MatsT,IntsT>*>(&mcwfn);\
+  auto ewfn = dynamic_cast<MCWaveFunction<MatsT,IntsT>*>(neowfn->ewfn_.get());\
+  auto pwfn = dynamic_cast<MCWaveFunction<MatsT,IntsT>*>(neowfn->pwfn_.get());\
   size_t nC = mcwfn.reference().nC; \
   size_t NDet = mcwfn.NDet; \
   std::shared_ptr<const ExcitationList> exList_a = \
@@ -78,6 +80,8 @@ namespace ChronusQ {
         MatsT * abSCR = CQMemManager::get().template malloc<MatsT>(nStr_a2*nStr_b2);
         std::fill_n(abSCR,nStr_a2*nStr_b2,MatsT(0.0));
 
+        CASCI<MatsT,IntsT>::buildFullH(*ewfn,abSCR);
+        
         // Temporary storage to avoid reaccessing integrals
         MatsT val;
 
@@ -93,163 +97,28 @@ namespace ChronusQ {
         double signij,signkl,signIJ,signKL;
         double small_number = std::numeric_limits<double>::epsilon();
 
-        size_t nStr_a_nThread = nStr_a * nThreads;
+        //size_t nStr_a_nThread = nStr_a * nThreads;
 
         MatsT * Col = nullptr, *SCR_ith = nullptr;
 
-#pragma omp parallel default(shared) private(Col,SCR_ith,La,k,l,Ka,signkl,i,j,Ja,signij)
-{
-        // Get this threads ID
-        auto myThread = GetThreadID();
-        // Offset the CIHCol by the thread amount
-        Col = tmpH + nStr_a * myThread;
-
-        // Each thread gets a column for an individual determinant
-        for(La = myThread; La < nStr_a; La+=nThreads, Col+=nStr_a_nThread)
+        // Fill in the first block of the full Hamiltonian
+        size_t lastDimOff = nStr_a2*nStr_b2*nStr_p;
+        Col = fullH;
+        for(size_t ab = 0; ab < nStr_ab; ab++)
         {
-            // Zero out my column in the SCR space
-            std::fill_n(Col, nStr_a, MatsT(0.0));
-            // Get the excitation list for my current det
-            const int * exList_La = exList_a->pointerAtDet(La);
-
-            // Loop over the non-zero excitations
-            // Incriment both the current Ekl counter and the excitation list pointer
-            for(auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_La+=4)
-            {
-                // Get the indices of the excitation connection
-                UNPACK_EXCITATIONLIST_4(exList_La,k,l,Ka,signkl);
-                // The connection between this det (indexed by La, already offset 
-                // by La*nThread in SCR_ith) is the one particle contribution
-                Col[Ka] += signkl * ehCore(k,l);
-
-                // Now that we have a singly excited determinant, generate the 
-                // doubly excited determinants off of this by looking at the
-                // singles from the Ka'th det
-                const int * exList_Ka = exList_a->pointerAtDet(Ka);
-                for(auto Eij = 0ul; Eij < nNZa; Eij++, exList_Ka+=4)
-                {
-                    // Grab the now doubly excited contribution
-                    UNPACK_EXCITATIONLIST_4(exList_Ka,i,j,Ja,signij);
-                    // Add the two electron parts
-                    Col[Ja] += 0.5 * signij * signkl * eRI(i,j,k,l);
-                }
-            }
+            std::copy(abSCR+ab*nStr_a*nStr_b,abSCR+(ab+1)*nStr_a*nStr_b,Col+ab*NDet);
         }
-}
-
-    // Sequentially add this block to the main matrix
-    Col = abSCR;
-    size_t lastDimOff = nStr_a2*nStr_b;
-    for(size_t b = 0; b < nStr_b; b++, Col+=lastDimOff)
-    {
-        std::copy_n(tmpH,nStr_a2,Col+b*nStr_a2);
-        IMatCopy('T',nStr_a,nStr_a*nStr_b,MatsT(1.0),Col,nStr_a,nStr_a*nStr_b);
-    }    
-    
-    // Build the Beta-Beta block
-    std::fill_n(tmpH,nStr_b2,MatsT(0.0));
-    size_t nStr_b_nThread = nStr_b * nThreads;
-
-#pragma omp parallel default(shared) private(Col,SCR_ith,Lb,k,l,Kb,signkl,i,j,Jb,signij)
-{
-        // Get this threads ID
-        auto myThread = GetThreadID();
-        // Offset the CIHCol by the thread amount
-        Col = tmpH + nStr_b * myThread;
-
-        // Each thread gets a column for an individual determinant
-        for(Lb = myThread; Lb < nStr_b; Lb+=nThreads, Col+=nStr_b_nThread)
+        // Duplicate this block per Proton Block
+        lastDimOff = nStr_a2*nStr_b2*nStr_p;
+        Col = fullH+lastDimOff;
+        for(size_t p = 1; p < nStr_p; p++, Col+=lastDimOff)
         {
-            // Zero out my column in the SCR space
-            std::fill_n(Col, nStr_b, MatsT(0.0));
-            // Get the excitation list for my current det
-            const int * exList_Lb = exList_b->pointerAtDet(Lb);
-
-            // Loop over the non-zero excitations
-            // Incriment both the current Ekl counter and the excitation list pointer
-            for(auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Lb+=4)
-            {
-                // Get the indices of the excitation connection
-                UNPACK_EXCITATIONLIST_4(exList_Lb,k,l,Kb,signkl);
-                // The connection between this det (indexed by La, already offset 
-                // by La*nThread in SCR_ith) is the one particle contribution
-                Col[Kb] += signkl * ehCore(k,l);
-                //std::cout << "(La,Ka)=(" << La << "," << Ka << ")+=" << signkl * ehCore(k,l)<< std::endl;
-
-                // Now that we have a singly excited determinant, generate the 
-                // doubly excited determinants off of this by looking at the
-                // singles from the Ka'th det
-                const int * exList_Kb = exList_b->pointerAtDet(Kb);
-                for(auto Eij = 0ul; Eij < nNZb; Eij++, exList_Kb+=4)
-                {
-                    // Grab the now doubly excited contribution
-                    UNPACK_EXCITATIONLIST_4(exList_Kb,i,j,Jb,signij);
-                    // Add the two electron parts
-                    Col[Jb] += 0.5 * signij * signkl * eRI(i,j,k,l);
-                    //std::cout << "(La,Ja)=(" << La << "," << Ja << ")+=" <<  0.5 * signij * signkl * eRI(i,j,k,l) << std::endl;
-                }
-            }
+            std::copy(fullH,fullH+nStr_a2*nStr_b2*nStr_p-nStr_a*nStr_b*(nStr_p-1),Col+p*nStr_a*nStr_b);
         }
-}
-
-    // Transpose the full Hamiltonian to make the primary index beta
-    IMatCopy('T',nStr_a,nStr_b*nStr_a*nStr_b,MatsT(1.0),abSCR,nStr_a,nStr_b*nStr_a*nStr_b);
-
-
-    // Update the full Hamiltonian by blockwise adding the just calculated beta piece
-    lastDimOff = nStr_b2*nStr_a;
-    Col = abSCR;
-    for(size_t a = 0; a < nStr_a; a++, Col+=lastDimOff)
-    {
-        IMatCopy('T',nStr_a*nStr_b,nStr_b,MatsT(1.),Col,nStr_a*nStr_b,nStr_b);
-        MatAdd('N','N',nStr_b,nStr_b,MatsT(1.),Col+a*nStr_b2,nStr_b,MatsT(1.),tmpH,nStr_b,Col+a*nStr_b2,nStr_b);
-        IMatCopy('T',nStr_b,nStr_a*nStr_b,MatsT(1.0),Col,nStr_b,nStr_a*nStr_b);
-    }
-    
-    // Calculate the Alpha-Beta part of the Hamiltonian, since this cannot interact with 
-    // off diaongal Protonic blocks (at this point I probably should have just used the
-    // original CASCI solver code)
-
-#pragma omp parallel for schedule(static) default(shared) private(Col,Lb,k,l,Kb,signkl,La,i,j,Ka,signij)
-    for(Lb = 0; Lb < nStr_b; Lb++)
-    {
-        Col = abSCR + nStr_a*nStr_b * (Lb*nStr_a);
-        const int * exList_Lb_head = exList_b->pointerAtDet(Lb);
         
-        for(La = 0; La < nStr_a; La++, Col+=nStr_a*nStr_b)
-        {
-            const int * exList_La_head = exList_a->pointerAtDet(La);
-            const int * exList_Lb = exList_Lb_head;
-            for(size_t Ekl = 0; Ekl < nNZb; Ekl++, exList_Lb+=4)
-            {
-                UNPACK_EXCITATIONLIST_4(exList_Lb,k,l,Kb,signkl);
-                const int * exList_La = exList_La_head;
-                for(size_t Eij = 0; Eij < nNZa; Eij++, exList_La+=4)
-                {
-                    UNPACK_EXCITATIONLIST_4(exList_La,i,j,Ka,signij);
-                    Col[Ka+Kb*nStr_a]+= signij * signkl * eRI(i,j,k,l);
-                }
-            }
-        }
-    }
-    // Fill in the first block of the full Hamiltonian
-    lastDimOff = nStr_a2*nStr_b2*nStr_p;
-    Col = fullH;
-    for(size_t ab = 0; ab < nStr_ab; ab++)
-    {
-        std::copy(abSCR+ab*nStr_a*nStr_b,abSCR+(ab+1)*nStr_a*nStr_b,Col+ab*NDet);
-    }
-    // Duplicate this block per Proton Block
-    lastDimOff = nStr_a2*nStr_b2*nStr_p;
-    Col = fullH+lastDimOff;
-    for(size_t p = 1; p < nStr_p; p++, Col+=lastDimOff)
-    {
-        std::copy(fullH,fullH+nStr_a2*nStr_b2*nStr_p-nStr_a*nStr_b*(nStr_p-1),Col+p*nStr_a*nStr_b);
-    }
-    
-    // Build the Proton-Proton block
-    std::fill_n(tmpH,nStr_p2,MatsT(0.0));
-    size_t nStr_p_nThread = nStr_p * nThreads;
+        // Build the Proton-Proton block
+        std::fill_n(tmpH,nStr_p2,MatsT(0.0));
+        size_t nStr_p_nThread = nStr_p * nThreads;
 
 
 #pragma omp parallel default(shared) private(Col,SCR_ith,Lp,k,l,Kp,signkl,i,j,Jp,signij)
