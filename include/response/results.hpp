@@ -128,12 +128,14 @@ namespace ChronusQ {
   struct ResObservables {
 
     double * oscStrength      = nullptr;
+    double * multipoleOscStrength = nullptr;
     double * rotatory_len_RM  = nullptr;
     double * rotatory_vel_PMQ = nullptr;
 
     inline void dealloc() {
 
       if(oscStrength)      CQMemManager::get().free(oscStrength);
+      if(multipoleOscStrength) CQMemManager::get().free(multipoleOscStrength);  
       if(rotatory_len_RM)  CQMemManager::get().free(rotatory_len_RM);
       if(rotatory_vel_PMQ) CQMemManager::get().free(rotatory_vel_PMQ);
 

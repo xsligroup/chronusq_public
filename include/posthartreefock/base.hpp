@@ -60,8 +60,10 @@ public:
 
   bool SpinAnalysis = false; // default is do not do Spin analysis
   bool PopulationAnalysis = false; // default is do not do Mulliken analysis
-  size_t NosS1 = 0; // number of initial states s1 for oscillator strength
-  double * osc_str = nullptr; // matrix to save oscillator strength
+  bool osc_str = false; //default is do not do any oscillator strength
+  size_t osc_str_order = 0; //default is to do oscillator strengths within dipole approximation
+  size_t NosS1 = 1; // number of initial states s1 for oscillator strength
+  std::vector<double> osc_str_array; // matrix to save oscillator strength
 
   bool saveOnePDMS = false;
   std::vector<size_t> saveOnePDM_states;

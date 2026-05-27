@@ -336,8 +336,7 @@ namespace ChronusQ {
         auto *VR = this->resResults.VR; 
 
         printResMO(out,this->resSettings.nRoots,this->resResults.W,
-            {{"f     = ",this->resObs.oscStrength}},VR,VR); 
-
+          {{"f     = ",this->resObs.oscStrength}},VR,VR);
       }
 
       template <typename U>

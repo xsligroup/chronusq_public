@@ -221,7 +221,7 @@ namespace ChronusQ {
         if( doAPB_AMB ) blockTransform(nRoots,nRoots,std::sqrt(0.5),VR,N,VL,N);
 
         printResMO(out,this->resSettings.nRoots,this->resResults.W,
-            {{"f     = ",this->resObs.oscStrength}},VL,VR); 
+          {{"f     = ",this->resObs.oscStrength}},VL,VR); 
 
         // Transform back to X+Y/X-Y from X/Y 
         if( doAPB_AMB ) blockTransform(nRoots,nRoots,std::sqrt(0.5),VR,N,VL,N);

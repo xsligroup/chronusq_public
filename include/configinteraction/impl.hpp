@@ -212,18 +212,31 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
   }   
 
   // oscillator strength
-  if (this->NosS1) {
+  if (this->osc_str) {
     
     ProgramTimer::tick("Property Eval");
     
-    this->osc_str = CQMemManager::get().malloc<double>(this->NosS1*this->NStates);
+    this->osc_str_array.reserve(this->NosS1*this->NStates);
     for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
-    for (size_t s2 = 0ul; s2 < this->NStates; s2++){
-      if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
-      else this->osc_str[s2+s1*this->NStates] = 
-              PostHartreeFock<MatsT,IntsT>::oscillator_strength(s2, s1);
+    for (size_t s2 = 0ul; s2 < this->NStates; s2++) {
+      if (s2 < this->NosS1) {
+        this->osc_str_array.push_back(0.);
+      }
+      else if (this->osc_str_order == 0) {
+        this->osc_str_array 
+          .push_back(PostHartreeFock<MatsT,IntsT>::oscillator_strength(s2, s1));
+      }
+      else if (this->osc_str_order == 2) {
+        this->osc_str_array 
+          .push_back(PostHartreeFock<MatsT,IntsT>::secondorder_oscillator_strength(s2, s1));
+      }
+      else { 
+        CErr("OSCISTRENGTH ORDER NYI! Please set OSCISTREN_ORDER to 0 or 1 ...");
+      }
     }
-    
+   
+    if (this->NStates > 1) PostHartreeFock<MatsT,IntsT>::OneRDMDiff();
+
     ProgramTimer::tock("Property Eval");
   }
 

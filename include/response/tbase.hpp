@@ -25,7 +25,6 @@
 
 
 #include <chronusq_sys.hpp>
-
 #include <response/base.hpp>
 
 #include <cerr.hpp>
@@ -119,6 +118,8 @@ namespace ChronusQ {
 
     template <typename U> void iterLinearTrans(size_t nVec, SolverVectors<U> &V, SolverVectors<U> &AV);
 
+    // Add virtual method to check basis set type
+    virtual bool isGIAOBasis() const { return false; }
 
   public:
 
@@ -449,12 +450,14 @@ namespace ChronusQ {
       ProgramTimer::timeOp("Property Eval", [&](){
         residueTMoments();
         residueObservables();
+        if (!isGIAOBasis())
+          residueMultipoleOscStrength();
       });
     }
 
     void residueTMoments();
     void residueObservables();
-
+    void residueMultipoleOscStrength();
 
     // FDR properties
     inline void fdrProperties() {
@@ -688,6 +691,11 @@ namespace ChronusQ {
 
 
     std::shared_ptr<Reference> ref() { return ref_; };
+
+    // Override isGIAOBasis to check actual basis set type
+    bool isGIAOBasis() const override {
+      return ref_->basisSet_.basisType == COMPLEX_GIAO;
+    }
 
   };
 

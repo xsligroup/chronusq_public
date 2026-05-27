@@ -85,8 +85,7 @@ namespace ChronusQ {
     size_t fourCompOffset = (reference().nC == 4) ? reference().nAlphaOrbital() * 2: 0;
     size_t nI = MOPartition.nFCore + MOPartition.nInact;
     size_t nCorrO = MOPartition.nCorrO;
-    double fc1C = 0.0;
-    
+    double fc1C = 0.0;  
     if (isTDM == false) {
       fc1C = (reference().nC == 1) ? 2.0 : 1.0;}
 
@@ -115,8 +114,55 @@ namespace ChronusQ {
 
   } //MCWaveFunction::rdm2pdm
 
+  /* brief: Transforms RDM from the AO basis to the MO basis.
+   * Formula: 1rdmMO = C^{\dagger} S 1rdmAO S C
+   * Arguments: AO - RDM
+   * Return: MO - RDM
+   */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::pdm2rdm(cqmatrix::Matrix<MatsT> &rdmAO) {
+  
+    // oneRDM(MO) = C^{\dagger} S oneRDM(AO) S C
+    size_t nAO = reference().nAlphaOrbital() * reference().nC;
 
+    //Obtain overlap: S
+    cqmatrix::Matrix<MatsT> S(nAO);
+    if(reference().nC == 1){
+      S = reference().aoints_->overlap->matrix();
+    } else if(reference().nC == 2){
+      std::fill_n(S.pointer(),nAO*nAO,MatsT(0.0));
+      SetMat('N',nAO/2,nAO/2,MatsT(1.),reference().aoints_->overlap->matrix().pointer(), nAO/2, S.pointer(),nAO);
+      SetMat('N',nAO/2,nAO/2,MatsT(1.),reference().aoints_->overlap->matrix().pointer(), nAO/2, S.pointer()+nAO*nAO/2+nAO/2,nAO);
+    } else {
+      CErr("Not extended for nC = 4, refer to singleslater/quantum.hpp");
+    }
 
+    //Create MO density matrix:
+    cqmatrix::Matrix<MatsT> tmpdm1(nAO);
+    cqmatrix::Matrix<MatsT> tmpdm2(nAO);
+    
+    // tmpdm1 = oneRDM(AO) S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), rdmAO.pointer(), nAO, S.pointer(), nAO,
+        MatsT(0.),tmpdm1.pointer(), nAO);
+    // tmpdm2 = S tmpdm1
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), S.pointer(), nAO, tmpdm1.pointer(), nAO,
+        MatsT(0.),tmpdm2.pointer(), nAO);
+    // tmpdm1 = C^T tmpdm2 = C^T S oneRDM(AO) S
+    blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), reference().mo[0].pointer(), nAO, tmpdm2.pointer(), nAO,
+        MatsT(0.),tmpdm1.pointer(), nAO);
+    // tmpdm2 = tmpdm1 C = C^T S oneRDM(SO) S C
+    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
+        nAO, nAO, nAO, MatsT(1.), tmpdm1.pointer(), nAO, reference().mo[0].pointer(), nAO,
+        MatsT(0.),tmpdm2.pointer(), nAO);
+
+    if (reference().nC == 1)  {
+      reference().onePDM->S() = tmpdm2;
+    } else {
+      *reference().onePDM = tmpdm2.template spinScatter<MatsT>();}
+  }
 }; // namespace ChronusQ
 
 

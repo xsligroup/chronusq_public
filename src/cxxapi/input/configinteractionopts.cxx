@@ -63,6 +63,8 @@ namespace ChronusQ {
       // "FVORBITAL",
       "POPULATION",
       "OSCISTREN",
+      "OSCISTREN_INITSTATES",
+      "OSCISTREN_ORDER",
       "GENIVO",
       "PRINTMOS",
       "PRINTRDMS",
@@ -148,7 +150,11 @@ namespace ChronusQ {
     } catch(...) {
       CErr("A specific job Type is needed for CI job");
     }
-    
+   
+    if((input.containsData("CI.DAS")) && !(ss->nC==2)){
+      CErr("DASCI not implemented for 1C/4C references");
+    }
+
     //trim spaces
     trim(jobType);
 

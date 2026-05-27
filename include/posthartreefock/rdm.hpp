@@ -54,7 +54,6 @@ namespace ChronusQ {
     size_t nCoreO = corrSpace.nFCore + corrSpace.nInact;
     size_t nCorrO = corrSpace.nCorrO;
     double fc1C = 0.0;
-
     if (isTDM == false) {
       fc1C = (ref_->nC == 1) ? 2.0 : 1.0;} 
 
@@ -69,21 +68,20 @@ namespace ChronusQ {
             tmpPDM.pointer() + (fourCompOffset+nCoreO)*(nAO+1), nAO);
 
     tmpPDM = tmpPDM.transform('C', ref_->mo[0].pointer(), nAO, nAO);
-
+    
     // for 1C, only scalar part is rewritten
     if (ref_->nC == 1) ref_->onePDM->S() = tmpPDM;
-    else {
-      *ref_->onePDM = tmpPDM.template spinScatter<MatsT>();
-    }
-
+    else *ref_->onePDM = tmpPDM.template spinScatter<MatsT>();
+    
     ref_->ao2orthoDen();
 
   } //PostHartreeFock::rdm2pdm
 
-  /* brief: Transforms 1-RDM from the AO basis to the MO basis.
+
+  /* brief: Transforms RDM from the AO basis to the MO basis.
    * Formula: 1rdmMO = C^{\dagger} S 1rdmAO S C
-   * Arguments: AO - RDM (Dimension-> nAO)
-   * Return: MO - RDM (Dimension-> nAO)
+   * Arguments: AO - RDM
+   * Return: MO - RDM
    */
   template <typename MatsT, typename IntsT>
   void PostHartreeFock<MatsT,IntsT>::pdm2rdm(cqmatrix::Matrix<MatsT> &rdmAO) {
@@ -91,6 +89,7 @@ namespace ChronusQ {
     // oneRDM(MO) = C^{\dagger} S oneRDM(AO) S C
     size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
     size_t nMO = corrSpace.nMO;
+    size_t nCorrO = corrSpace.nInact + corrSpace.nFCore;  
 
     //Obtain overlap: S
     cqmatrix::Matrix<MatsT> S(nAO);
@@ -131,9 +130,7 @@ namespace ChronusQ {
       *ref_->onePDM = tmpdm2.template spinScatter<MatsT>();
     }
 
-  tmpdm1.clear();
-  tmpdm2.clear();
-  } //PostHartreeFock: pdmrdm 
+  } //PostHartreeFock:: pdm2rdm
 
 }; // namespace ChronusQ
 

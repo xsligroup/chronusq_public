@@ -101,7 +101,7 @@ public:
   void computeOneRDM(size_t i) { computeTDM(i, i, oneRDM[i]);};    
   void computeOneRDM();
   void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
-  void pdm2rdm(cqmatrix::Matrix<MatsT> &);
+  void pdm2rdm(cqmatrix::Matrix<MatsT> &);  
 
   std::shared_ptr<SingleSlater<MatsT,IntsT>> reference() const { return ref_;}
   
@@ -122,6 +122,8 @@ public:
   void populationAnalysis(size_t);
   void populationAnalysis();
   double oscillator_strength(size_t, size_t s1 = 0);
+  double secondorder_oscillator_strength(size_t, size_t s1 = 0);
+  void OneRDMDiff(); 
   std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
   std::vector<cqmatrix::Matrix<MatsT>> spinOverlap();
   void spinAnalysis(size_t, std::vector<cqmatrix::Matrix<MatsT>>*);

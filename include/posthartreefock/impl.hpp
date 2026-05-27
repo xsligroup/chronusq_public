@@ -161,8 +161,11 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
     savFile.safeWriteData("POSTHF/ORB_INDEX", & (corrS.orbIndices[0]),{corrS.nMO});
 
     // Save oscillator strength
-    if(NosS1) {
-      savFile.safeWriteData("POSTHF/OSC_STR", osc_str, {NosS1, NS});      
+    if(osc_str) {
+      if(osc_str_order == 0){
+      savFile.safeWriteData("POSTHF/OSC_STR_ZERO_ORDER", osc_str_array.data(), {NosS1, NS});}      
+      else if(osc_str_order == 2){
+      savFile.safeWriteData("POSTHF/OSC_STR_SECOND_ORDER", osc_str_array.data(), {NosS1, NS});} 
     }
   }  
 

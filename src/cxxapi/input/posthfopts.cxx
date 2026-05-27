@@ -39,7 +39,15 @@ namespace ChronusQ {
     OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + ".PRINTSPIN"); )
 
     // Oscillator strength
-    OPTOPT( postHF->NosS1 = input.getData<size_t>(postHFSection + ".OSCISTREN"); )
+    OPTOPT( postHF->osc_str = input.getData<bool>(postHFSection + ".OSCISTREN"); )
+    if ( postHF->osc_str ){
+      OPTOPT( postHF->osc_str_order = input.getData<size_t>(postHFSection + ".OSCISTREN_ORDER"); )
+      OPTOPT( postHF->NosS1 = input.getData<size_t>(postHFSection + ".OSCISTREN_INITSTATES"); )
+    }
+    else{
+      if (input.containsData(postHFSection + ".OSCISTREN_ORDER") || 
+          input.containsData(postHFSection + ".OSCISTREN_INTISTATES")){
+        CErr("Cannot Set OSCISTREN_ORDER or OSCISTREN_INITSTATES Without Setting OSCISTREN == True/1");}} 
 
     // Printing Options
     // MOs

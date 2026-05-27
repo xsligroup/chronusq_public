@@ -177,9 +177,9 @@ namespace ChronusQ {
 
           // Magnetic Quadrupole
           if(op.second >= 2)
-            for(auto i = 0; i < 6; i++)
+            for(auto i = 0; i < 9; i++){
               savFile.safeWriteData(prefix + "MAG_QUADRUPOLE_" +
-                quadrupoleList[i], (*magnetic)[i+3]->pointer(), {NB,NB} );
+                quadrupoleListAsymm[i], (*magnetic)[quadrupoleListAsymm[i]]->pointer(), {NB,NB} );}
         }
         break;
 

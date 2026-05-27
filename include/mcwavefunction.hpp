@@ -146,7 +146,8 @@ namespace ChronusQ {
     virtual void computeOneRDM();
     virtual void computeTDMs(); // compute TDMs
     void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
-    
+    void pdm2rdm(cqmatrix::Matrix<MatsT> &);
+
     WaveFunctionBase & referenceWaveFunction() { return dynamic_cast<WaveFunctionBase&>(ref_); }
     size_t getnC() const { return dynamic_cast<WaveFunctionBase&>(ref_).nC; }
     BASIS_FUNCTION_TYPE getBasisType() const { return dynamic_cast<WaveFunctionBase&>(ref_).basisSet_.basisType; }
@@ -174,6 +175,7 @@ namespace ChronusQ {
     virtual void formNaturalOrbs(size_t);
     virtual void spinAnalysis(size_t);
     virtual void spinAnalysis();
+
     // For dealing with electric fields
     void precompute_NucEField(EMPerturbation &);
 

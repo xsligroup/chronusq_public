@@ -226,6 +226,125 @@ namespace ChronusQ {
       
   }
 
+  /* ResponseTBase: residueMultipoleOscStrength:
+   *
+   * Calculate multipole oscillator strength till second order
+   *
+   */
+  template <typename T>
+  void ResponseTBase<T>::residueMultipoleOscStrength() {
+
+    size_t nRoots = resSettings.nRoots;
+    double * W = resResults.W;
+
+    if( resResults.tVelElecDipole_ge ) {
+
+      resObs.multipoleOscStrength = 
+        CQMemManager::get().malloc<double>(nRoots);
+
+      for(auto iO = 0; iO < nRoots; iO++) {
+
+        T* tElecDipole = resResults.tVelElecDipole_ge + 3*iO;
+
+        double tElecDipoleX = std::abs(tElecDipole[0]);
+        double tElecDipoleY = std::abs(tElecDipole[1]);
+        double tElecDipoleZ = std::abs(tElecDipole[2]);
+
+
+        resObs.multipoleOscStrength[iO] = (2. / (3. * W[iO])) * 
+          ((tElecDipoleX * tElecDipoleX) + (tElecDipoleY * tElecDipoleY) + (tElecDipoleZ * tElecDipoleZ));
+
+      }
+    }
+    if( resResults.tMagDipole_ge ) {
+
+      for(auto iO = 0; iO < nRoots; iO++) {
+        
+        T* tMagDipole = resResults.tMagDipole_ge + 3*iO;
+
+        double tMagDipoleX = std::abs(tMagDipole[0]);
+        double tMagDipoleY = std::abs(tMagDipole[1]);
+        double tMagDipoleZ = std::abs(tMagDipole[2]);
+
+
+        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 6.) * (1. / (SpeedOfLight * SpeedOfLight)) 
+        * ((tMagDipoleX * tMagDipoleX) + (tMagDipoleY * tMagDipoleY) + (tMagDipoleZ * tMagDipoleZ));
+
+      }
+    }
+    if( resResults.tVelElecQuadrupole_ge ) {
+
+      /* Quadrupole structure:
+       * Symmetric tensor -->
+       * Components stored as:
+       * Q[0]:XX, Q[1]:XY, Q[2]:XZ, Q[3]:YY, Q[4]:YZ, Q[5]:ZZ
+       */
+
+      for(auto iO = 0; iO < nRoots; iO++) {
+        
+        T* tElecQuadpole = resResults.tVelElecQuadrupole_ge + 6*iO;
+
+        double tElecQuadpoleXX = std::abs(tElecQuadpole[0]);
+        double tElecQuadpoleXY = std::abs(tElecQuadpole[1]);
+        double tElecQuadpoleXZ = std::abs(tElecQuadpole[2]);
+        double tElecQuadpoleYY = std::abs(tElecQuadpole[3]);
+        double tElecQuadpoleYZ = std::abs(tElecQuadpole[4]);
+        double tElecQuadpoleZZ = std::abs(tElecQuadpole[5]);
+
+        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 20.) * (1. / (SpeedOfLight * SpeedOfLight)) 
+        * ((tElecQuadpoleXX * tElecQuadpoleXX) + (2 * tElecQuadpoleXY * tElecQuadpoleXY) + 
+         (2 * tElecQuadpoleXZ * tElecQuadpoleXZ) + (2 * tElecQuadpoleYZ * tElecQuadpoleYZ) +
+         (tElecQuadpoleYY * tElecQuadpoleYY) + (tElecQuadpoleZZ * tElecQuadpoleZZ) - 
+         ((1./3.) * (tElecQuadpoleXX + tElecQuadpoleYY + tElecQuadpoleZZ) *
+          (tElecQuadpoleXX + tElecQuadpoleYY + tElecQuadpoleZZ)));
+
+      }
+    }
+    if( resResults.tVelElecOctupole_ge ) {
+
+      /* Octupole structure:
+       * Symmetric tensor -->
+       * Components stored as:
+       * Q[0]:XXX, Q[1]:XXY, Q[2]:XXZ, Q[3]:XYY, Q[4]:XYZ, Q[5]:XZZ
+       * Q[6]:YYY, Q[7]:YYZ, Q[8]:YZZ, Q[9]:ZZZ
+       */
+
+      for(auto iO = 0; iO < nRoots; iO++) {
+        
+        T* tElecOctupole = resResults.tVelElecOctupole_ge + 10*iO;
+        T* tElecDipole = resResults.tVelElecDipole_ge + 3*iO;
+
+        double tElecDipoleX = std::abs(tElecDipole[0]);
+        double tElecDipoleY = std::abs(tElecDipole[1]);
+        double tElecDipoleZ = std::abs(tElecDipole[2]);
+       
+        double tElecOctupoleXXX = std::abs(tElecOctupole[0]);
+        double tElecOctupoleXXY = std::abs(tElecOctupole[1]);
+        double tElecOctupoleXXZ = std::abs(tElecOctupole[2]);
+        double tElecOctupoleXYY = std::abs(tElecOctupole[3]);
+        double tElecOctupoleXYZ = std::abs(tElecOctupole[4]);
+        double tElecOctupoleXZZ = std::abs(tElecOctupole[5]);
+        double tElecOctupoleYYY = std::abs(tElecOctupole[6]);
+        double tElecOctupoleYYZ = std::abs(tElecOctupole[7]);
+        double tElecOctupoleYZZ = std::abs(tElecOctupole[8]);
+        double tElecOctupoleZZZ = std::abs(tElecOctupole[9]);
+
+        resObs.multipoleOscStrength[iO] -= 2. * (W[iO] / 45.) * (1. / (SpeedOfLight * SpeedOfLight))
+        * (tElecDipoleX * tElecOctupoleXXX + tElecDipoleX * tElecOctupoleXYY + 
+         tElecDipoleX * tElecOctupoleXZZ + tElecDipoleY * tElecOctupoleYYY +
+         tElecDipoleY * tElecOctupoleXXY + tElecDipoleY * tElecOctupoleYZZ +
+         tElecDipoleZ * tElecOctupoleZZZ + tElecDipoleZ * tElecOctupoleYYZ +
+         tElecDipoleZ * tElecOctupoleXXZ);
+      }    
+   
+    }
+
+    if( savFile.exists() )
+      savFile.safeWriteData("/RESP/RESIDUE/MULTIPOLE_OSC_STRENGTH",resObs.multipoleOscStrength,
+        {nRoots});
+
+  } // ResponseTBase: Multipole Oscillator Strength
+
   template <typename T>
   void ResponseTBase<T>::residueObservables() {
 
@@ -257,10 +376,6 @@ namespace ChronusQ {
           {nRoots});
 
     }
-
-
-
-
 
 
     if( resResults.tLenElecDipole_ge and resResults.tMagDipole_ge ) {
