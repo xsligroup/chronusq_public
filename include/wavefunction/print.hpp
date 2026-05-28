@@ -297,8 +297,6 @@ namespace ChronusQ {
     std::vector<size_t> sectors;
     size_t NegStates, OccStates, VirtStates;
 
-    std::cout<<"NB NO "<<NB<<" "<<NO<<std::endl;
-
     if( nC == 4) {
       NegStates = 2*NB;
       OccStates = NO;
@@ -311,95 +309,96 @@ namespace ChronusQ {
     }
     size_t start = 0;
     for (const auto& sector : sectors) {
-    for(size_t p = start; p < sector; p += list) {
+      for(size_t p = start; p < sector; p += list) {
 
-      if( nC == 4){
-        if( p == 0)
-            out << "\nNegative Energy Population Analysis:\n";
-        else if( p == 2*NB )
-            out << "\nOccupied Population Analysis:\n";
-        else if( p == NO )
-            out << "\nVirtual Population Analysis:\n";
-      } else {
-        if( p == 0 )
-            out << "\nOccupied Population Analysis:\n";
-        else if( p == NO )
-            out << "\nVirtual Population Analysis:\n";
-      }
-      out << std::left << std::endl;
-      int end = list;
-      if( (p + list) >= sector ) end = sector - p;
-      std::vector<std::vector<T>> angWeight(end,
-                std::vector<T>(maxLPrint, T(0.0)));
-      out << std::left << std::setw(eValOff) << " ";
-      out << std::right;
-      for(size_t k = p; k < p + end; k++)
-        out << std::setw(printWidth) << k + 1;
-      out << std::endl;
-
-      size_t iAtm = 0;
-      std::string atmSymb = getAtmSymb(iAtm);
-
-      size_t nShell = basis.shells.size();
-      size_t maxL = 0;
-      for(size_t iShell = 0; iShell < nShell ; iShell++) {
-        size_t bfst = basis.mapSh2Bf[iShell];
-        size_t sz   = basis.shells[iShell].size();
-        size_t L    = basis.shells[iShell].contr[0].l;
-        if (L > maxL) maxL = L;
-        size_t curCen = basis.mapSh2Cen[iShell];
-        bool newAtm = false;
-        if( curCen != iAtm ) {
-          iAtm = curCen;
-          if( !groupAtm or (groupAtm and (atmSymb != getAtmSymb(iAtm))) ) {
-            newAtm = true;
-            atmSymb = getAtmSymb(iAtm);
-            for(size_t i = 0; i < end; i++)
-              std::fill(angWeight[i].begin(), angWeight[i].end(), 0.0);
-          }
+        if( nC == 4){
+          if( p == 0)
+              out << "\nNegative Energy Population Analysis:\n";
+          else if( p == 2*NB )
+              out << "\nOccupied Population Analysis:\n";
+          else if( p == NO )
+              out << "\nVirtual Population Analysis:\n";
+        } else {
+          if( p == 0 )
+              out << "\nOccupied Population Analysis:\n";
+          else if( p == NO )
+              out << "\nVirtual Population Analysis:\n";
         }
-        bool lastAtm  = iAtm == (mol.atoms.size() - 1);
-        bool firstAtm = iShell == 0;
-        bool nextAtmNew;
+        
+        out << std::left << std::endl;
+        int end = list;
+        if( (p + list) >= sector ) end = sector - p;
+        std::vector<std::vector<T>> angWeight(end,
+                  std::vector<T>(maxLPrint, T(0.0)));
+        out << std::left << std::setw(eValOff) << " ";
+        out << std::right;
+        for(size_t k = p; k < p + end; k++)
+          out << std::setw(printWidth) << k + 1;
+        out << std::endl;
 
-        for(size_t mu = bfst; mu < bfst + sz; mu++) {
-          for(auto q = p; q < p + end; q++) {
-            angWeight[q-p][L] += SmartConj(MO[mu + q*LDM]) * SCR[mu + q*NB];
-            if (MO2)
-              angWeight[q-p][L] += SmartConj(MO2[mu + q*LDM]) * SCR2[mu + q*NB];
+        size_t iAtm = 0;
+        std::string atmSymb = getAtmSymb(iAtm);
 
-          }
-          nextAtmNew = lastAtm ? false : (mu+1) >= basis.mapCen2BfSt[iAtm+1];
-          if (groupAtm and (atmSymb == getAtmSymb(iAtm+1))) nextAtmNew = false;
-        }
-
-        if( (newAtm or firstAtm) ) {
-            out << std::setw(6) << " ";
-            out << std::setw(3) << std::left << iAtm;
-            out << std::setw(7) << std::left << atmSymb;
-            out << std::endl;
-        }
-        if( nextAtmNew or (iShell + 1 == nShell) ) {
-          for (size_t i = 0; i <= maxL; i++) {
-            out << " " << std::left << std::setw(eValOff-1) << angLabel[i];
-            out << std::right;
-            for (auto q = p; q < p+end; q++) {
-
-              double VAL = std::real(angWeight[q-p][i]);
-              std::cout << std::fixed << std::right<< std::setprecision(4);
-              std::cout.fill(' ');
-
-              if(std::abs(VAL) >= 1e-4)    out << std::setw(printWidth) << VAL;
-              else if(std::isnan(std::abs(VAL))) out << std::setw(printWidth) << "NAN";
-              else if(std::isinf(std::abs(VAL))) out << std::setw(printWidth) << "INF";
-              else                               out << std::setw(printWidth) << "-";
+        size_t nShell = basis.shells.size();
+        size_t maxL = 0;
+        for(size_t iShell = 0; iShell < nShell ; iShell++) {
+          size_t bfst = basis.mapSh2Bf[iShell];
+          size_t sz   = basis.shells[iShell].size();
+          size_t L    = basis.shells[iShell].contr[0].l;
+          if (L > maxL) maxL = L;
+          size_t curCen = basis.mapSh2Cen[iShell];
+          bool newAtm = false;
+          if( curCen != iAtm ) {
+            iAtm = curCen;
+            if( !groupAtm or (groupAtm and (atmSymb != getAtmSymb(iAtm))) ) {
+              newAtm = true;
+              atmSymb = getAtmSymb(iAtm);
+              for(size_t i = 0; i < end; i++)
+                std::fill(angWeight[i].begin(), angWeight[i].end(), 0.0);
             }
-            out << std::endl;
+          }
+          bool lastAtm  = iAtm == (mol.atoms.size() - 1);
+          bool firstAtm = iShell == 0;
+          bool nextAtmNew;
+
+          for(size_t mu = bfst; mu < bfst + sz; mu++) {
+            for(auto q = p; q < p + end; q++) {
+              angWeight[q-p][L] += SmartConj(MO[mu + q*LDM]) * SCR[mu + q*NB];
+              if (MO2)
+                angWeight[q-p][L] += SmartConj(MO2[mu + q*LDM]) * SCR2[mu + q*NB];
+
+            }
+            nextAtmNew = lastAtm ? false : (mu+1) >= basis.mapCen2BfSt[iAtm+1];
+            if (groupAtm and (atmSymb == getAtmSymb(iAtm+1))) nextAtmNew = false;
+          }
+
+          if( (newAtm or firstAtm) ) {
+              out << std::setw(6) << " ";
+              out << std::setw(3) << std::left << iAtm;
+              out << std::setw(7) << std::left << atmSymb;
+              out << std::endl;
+          }
+          if( nextAtmNew or (iShell + 1 == nShell) ) {
+            for (size_t i = 0; i <= maxL; i++) {
+              out << " " << std::left << std::setw(eValOff-1) << angLabel[i];
+              out << std::right;
+              for (auto q = p; q < p+end; q++) {
+
+                double VAL = std::real(angWeight[q-p][i]);
+                std::cout << std::fixed << std::right<< std::setprecision(4);
+                std::cout.fill(' ');
+
+                if(std::abs(VAL) >= 1e-4)    out << std::setw(printWidth) << VAL;
+                else if(std::isnan(std::abs(VAL))) out << std::setw(printWidth) << "NAN";
+                else if(std::isinf(std::abs(VAL))) out << std::setw(printWidth) << "INF";
+                else                               out << std::setw(printWidth) << "-";
+              }
+              out << std::endl;
+            }
           }
         }
+        out << std::endl;
       }
-      out << std::endl;
-    }
     start = sector;
   }
 

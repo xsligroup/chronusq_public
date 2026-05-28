@@ -177,19 +177,6 @@ namespace ChronusQ {
     size_t NO = (this->nC == 1 ? this->nOA : this->nO);
     if ( this->nC == 4 ) NO = this->nO + this->nC * this->nAlphaOrbital()/2;
 
-    //for(auto i = 0ul; i < this->nC * this->nAlphaOrbital(); i++) {
-
-    //  if( i == 0 )
-    //    out << "Occupied:\n";
-    //  else if( i == NO )
-    //    out << "\n\nVirtual:\n";
-
-    //  out << std::setw(13) << this->eps1[i];
-
-    //  if( i < NO and (i + 1) % 5 == 0 )  out << "\n";
-    //  else if( i >= NO and ((i - NO) + 1) % 5 == 0 ) out << "\n";
-    //}
-
     if( nC != 4 ) {
       for(auto i = 0ul; i < this->nC * this->nAlphaOrbital(); i++) {
   
