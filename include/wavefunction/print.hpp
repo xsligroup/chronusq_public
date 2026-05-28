@@ -253,10 +253,6 @@ namespace ChronusQ {
 
     out << "\nMO components projected to basis functions of different angular momentum"; 
 
-    // size_t NB = this->nAlphaOrbital();
-    // size_t NOrb = NB * this->nC;
-      //  size_t NO = (this->nC == 1 ? this->nOA : this->nO);
-
     size_t nC = NOrb/NB;
 
     constexpr size_t maxLPrint = 6 + 1;
