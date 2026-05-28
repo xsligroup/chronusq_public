@@ -247,7 +247,7 @@ namespace ChronusQ {
    *
    */
   template <typename T, typename IntsT>
-  void analyzeMOPrint(std::ostream &out, size_t NB, size_t NOrb, size_T NO, IntsT* S, T* MO,
+  void analyzeMOPrint(std::ostream &out, size_t NB, size_t NOrb, size_t NO, IntsT* S, T* MO,
         size_t LDM, Molecule &mol, BasisSet &basis,
         bool groupAtm = false, T* MO2 = nullptr) {
 
@@ -293,26 +293,42 @@ namespace ChronusQ {
       return (it == atomicReference.end() ? "X" : it->first);
 
     };
+    
+    std::vector<size_t> sectors;
+    size_t NegStates, OccStates, VirtStates;
 
+    std::cout<<"NB NO "<<NB<<" "<<NO<<std::endl;
 
-    for(size_t p = 0; p < NOrb; p += list) {
-      
-      if( nC == 4)
+    if( nC == 4) {
+      NegStates = 2*NB;
+      OccStates = NO;
+      VirtStates = 4*NB;
+      sectors = {NegStates,OccStates,VirtStates};
+    } else {
+      OccStates = NO;
+      VirtStates = NB;
+      sectors = {OccStates,VirtStates};
+    }
+    size_t start = 0;
+    for (const auto& sector : sectors) {
+    for(size_t p = start; p < sector; p += list) {
+
+      if( nC == 4){
         if( p == 0)
-            out << "\n\nNegative Energy States:\n";
+            out << "\nNegative Energy Population Analysis:\n";
         else if( p == 2*NB )
-            out << "Occupied:\n";
-        else if( p == 2*NB + NO )
-            out << "\n\nVirtual:\n";
-      else
-        if( p == 0 )
-            out << "Occupied:\n";
+            out << "\nOccupied Population Analysis:\n";
         else if( p == NO )
-            out << "\n\nVirtual:\n";
-
+            out << "\nVirtual Population Analysis:\n";
+      } else {
+        if( p == 0 )
+            out << "\nOccupied Population Analysis:\n";
+        else if( p == NO )
+            out << "\nVirtual Population Analysis:\n";
+      }
       out << std::left << std::endl;
       int end = list;
-      if( (p + list) >= NOrb ) end = NOrb - p;
+      if( (p + list) >= sector ) end = sector - p;
       std::vector<std::vector<T>> angWeight(end,
                 std::vector<T>(maxLPrint, T(0.0)));
       out << std::left << std::setw(eValOff) << " ";
@@ -368,6 +384,7 @@ namespace ChronusQ {
             out << " " << std::left << std::setw(eValOff-1) << angLabel[i];
             out << std::right;
             for (auto q = p; q < p+end; q++) {
+
               double VAL = std::real(angWeight[q-p][i]);
               std::cout << std::fixed << std::right<< std::setprecision(4);
               std::cout.fill(' ');
@@ -383,6 +400,8 @@ namespace ChronusQ {
       }
       out << std::endl;
     }
+    start = sector;
+  }
 
     CQMemManager::get().free(SCR);
     out << bannerEnd << std::endl;
