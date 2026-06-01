@@ -40,6 +40,39 @@
 
 namespace ChronusQ {
 
+
+  // This struct is for each atom in population analysis
+  struct popAtom{
+
+    std::array<double,4> total; // length 4 because S, Z, Y, X
+    std::array<std::vector<double>,4> angMom; // s, p, d, ....
+
+    void init(size_t maxL) {
+        total.fill(0.0);
+        for (auto &v : angMom)
+            v.assign(maxL, 0.0);
+    }
+
+    void add(DENSITY_TYPE comp, double val) {
+        total[comp]   += val;
+    }
+
+    // Different prefacs are needed since Tot is sometimes Z-q
+    void addL(DENSITY_TYPE comp, size_t lVal, double prefacTot, double prefacL, double val) {
+        total[comp]   += prefacTot*val;
+        angMom[comp][lVal] += prefacL*val;
+    }
+
+    double get(DENSITY_TYPE comp) const {
+        return total[comp];
+    }
+
+    double getL(DENSITY_TYPE comp, size_t lVal) const {
+        return angMom[comp][lVal];
+    }
+
+  };
+
   // Declaration of CoreH and Fock builders.
   template <typename MatsT, typename IntsT>
   class CoreHBuilder;
@@ -125,8 +158,8 @@ namespace ChronusQ {
     std::shared_ptr<cqmatrix::Matrix<MatsT>> tauOrtho; ///< orthonormal tau matrix for traveling proton basis
 
     // Method specific propery storage
-    std::vector<double> mullikenCharges;
-    std::vector<double> lowdinCharges;
+    std::vector<popAtom> mullikenCharges;
+    std::vector<popAtom> lowdinCharges;
 
     // Whether the current Density and Coefficients represent the same wavefunction
     // If so, then RI-K contractions can be done using Coefficients for better performance

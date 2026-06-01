@@ -121,11 +121,16 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::printMiscProperties(std::ostream &out) {
 
-    out << "\nCharge Analysis:\n" << bannerTop << "\n\n";
+    out << "\nMulliken Charge Analysis:\n" << bannerTop << "\n\n";
 
-    out << std::setw(20) << std::left << "  Atom";
-    out << std::setw(20) << std::right << "Mulliken Charges";
-    out << std::setw(20) << std::right << "Lowdin Charges" << std::endl;
+    out << std::setw(15) << std::left << "  Atom";
+    out << std::setw(10) << std::right << "RHO";
+    if( this->onePDM->hasZ() ) out << std::setw(15) << std::right << "MZ";
+    if( this->onePDM->hasXY() ){
+      out << std::setw(15) << std::right << "MY";
+      out << std::setw(15) << std::right << "MX";
+    }
+    out << std::endl;
 
     out << std::right << bannerMid << std::endl;
 
@@ -133,6 +138,13 @@ namespace ChronusQ {
 
     // For protonic SS, charge analysis are done for only proton atoms 
     if (this->particle.charge > 0)  mol = mol.retainQNuc();
+
+    // For angular momentum printing
+    constexpr size_t maxLPrint = 6 + 1;
+    size_t maxL = this->basisSet().maxL;
+    std::array< std::string, maxLPrint > angLabel =
+      { "S", "P", "D", "F", "G", "H", "I" };
+    if( maxL + 1 > maxLPrint ) std::cout << "***** WARNING: Printing with L>I basis functions is NYI" << std::endl;
 
     for(auto iAtm = 0; iAtm < mol.nAtoms; iAtm++) {
 
@@ -144,15 +156,58 @@ namespace ChronusQ {
                  (st.second.massNumber == mol.atoms[iAtm].massNumber);}
          );
 
-      out << "  " << std::setw(18) << std::left <<
+      out << "  " << std::setw(7) << std::left <<
+        (it == atomicReference.end() ? "X" : it->first);
+      out << std::setw(5) << std::right << "TOT";
+
+      out << std::fixed << std::setprecision(5) << std::right;
+
+      out << std::setw(13) << std::right << mullikenCharges[iAtm].get(DENSITY_TYPE::SCALAR);
+      if( this->onePDM->hasZ() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].get(DENSITY_TYPE::MZ);
+      if( this->onePDM->hasXY() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].get(DENSITY_TYPE::MY);
+      if( this->onePDM->hasXY() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].get(DENSITY_TYPE::MX);
+      out << std::endl;
+
+      for( size_t iAng=0; iAng<maxL+1; iAng++ ){
+        if( iAng >= maxLPrint ) out << std::setw(14) << std::right << "X";
+        else                   out << std::setw(14) << std::right << angLabel[iAng];
+        out << std::setw(13) << std::right << mullikenCharges[iAtm].getL(DENSITY_TYPE::SCALAR,iAng);
+        if( this->onePDM->hasZ() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].getL(DENSITY_TYPE::MZ,iAng);
+        if( this->onePDM->hasXY() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].getL(DENSITY_TYPE::MY,iAng);
+        if( this->onePDM->hasXY() ) out << std::setw(15) << std::right << mullikenCharges[iAtm].getL(DENSITY_TYPE::MX,iAng);
+        out << std::endl;
+      }
+
+    }
+
+    out << std::endl << bannerEnd << std::endl;
+
+    out << "\nLowdin Charge Analysis:\n" << bannerTop << "\n\n";
+
+    out << std::setw(15) << std::left << "  Atom";
+    out << std::setw(5) << std::right << "RHO";
+    out << std::endl;
+
+    out << std::right << bannerMid << std::endl;
+
+    for(auto iAtm = 0; iAtm < mol.nAtoms; iAtm++) {
+
+      // Get symbol
+      std::map<std::string,Atom>::const_iterator it =
+      std::find_if(atomicReference.begin(),atomicReference.end(),
+        [&](const std::pair<std::string,Atom> &st){
+          return (st.second.atomicNumber == mol.atoms[iAtm].atomicNumber) and
+                 (st.second.massNumber == mol.atoms[iAtm].massNumber);}
+         );
+
+      out << "  " << std::setw(12) << std::left <<
         (it == atomicReference.end() ? "X" : it->first);
 
-      out << std::setprecision(5) << std::right;
+      out << std::fixed << std::setprecision(5) << std::right;
 
-      out << std::setw(20) << mullikenCharges[iAtm];
-      out << std::setw(20) << lowdinCharges[iAtm];
-
+      out << std::setw(8) << std::right << lowdinCharges[iAtm].get(DENSITY_TYPE::SCALAR);
       out << std::endl;
+
     }
 
     out << std::endl << bannerEnd << std::endl;

@@ -31,8 +31,9 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT>::populationAnalysis() {
 
     const size_t NB = this->basisSet().nBasis;
-    MatsT* SCR  = CQMemManager::get().malloc<MatsT>(NB*NB);
-    std::fill_n(SCR,NB*NB,MatsT(0.));
+    const size_t nDen = this->onePDM->nComponent();
+    MatsT* SCR  = CQMemManager::get().malloc<MatsT>(nDen*NB*NB);
+    std::fill_n(SCR,nDen*NB*NB,MatsT(0.));
 
     // Molecule object to use
     Molecule inputMol = this->molecule();
@@ -45,15 +46,69 @@ namespace ChronusQ {
     if (nC != 4) {
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->S().pointer(),NB,MatsT(0.),SCR,NB);
+
+      if( this->onePDM->hasZ() )
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->Z().pointer(),NB,MatsT(0.),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
+      if( this->onePDM->hasXY() ){
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->Y().pointer(),NB,MatsT(0.),SCR+DENSITY_TYPE::MY*NB*NB,NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->X().pointer(),NB,MatsT(0.),SCR+DENSITY_TYPE::MX*NB*NB,NB);
+      }
+
     }
     else {
+
+      // TODO: 4c values need verified.
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->S().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR,NB);
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
            this->onePDM->S().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR,NB);
+
+      if( this->onePDM->hasZ() ){
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
+           this->onePDM->Z().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->Z().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
+      }
+
+      if( this->onePDM->hasXY() ){
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
+           this->onePDM->Y().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MY*NB*NB,NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->Y().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MY*NB*NB,NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
+           this->onePDM->X().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MX*NB*NB,NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
+           this->onePDM->X().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MX*NB*NB,NB);
+      }
+
     }
 
+    // Building lookup for basis function angular momentum
+    std::vector<size_t> bfAngMom(NB);
+    size_t nShell = this->basisSet().shells.size();
+
+    for (size_t iShell = 0; iShell < nShell; iShell++) {
+
+      size_t bfSt = this->basisSet().mapSh2Bf[iShell];
+      size_t shellSize = this->basisSet().shells[iShell].size();
+      size_t L = this->basisSet().shells[iShell].contr[0].l;
+
+      for (size_t k = 0; k < shellSize; ++k) {
+        bfAngMom[bfSt + k] = L;
+      }
+
+    }
+
+    // Loop over atoms
     for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {
+
+      // Initializing everything needed for components and l
+      mullikenCharges.emplace_back();
+      auto &mullikenAtom = mullikenCharges.back();
+      mullikenAtom.init(this->basisSet().maxL+1);
 
       size_t iEnd;
       if( iAtm == inputMol.nAtoms-1 )
@@ -64,18 +119,34 @@ namespace ChronusQ {
       size_t iSt = this->basisSet().mapCen2BfSt[iAtm];
 
       if (this->particle.charge < 0)
-        mullikenCharges.emplace_back(inputMol.atoms[iAtm].nucCharge);
+        mullikenAtom.add(DENSITY_TYPE::SCALAR,inputMol.atoms[iAtm].nucCharge);
       else
-        mullikenCharges.emplace_back(std::real(0.));
-      for(auto i = iSt; i < iEnd; i++)
-        mullikenCharges.back() -= (-1.0 * this->particle.charge) * std::real(SCR[i*(NB+1)]);
-    } 
+        mullikenAtom.add(DENSITY_TYPE::SCALAR,std::real(0.));
+      for(auto i = iSt; i < iEnd; i++){
 
+        size_t bfL = bfAngMom[i];
+
+        // The scalar total density is scaled by -1 because output is Z-q
+        mullikenAtom.addL(DENSITY_TYPE::SCALAR,bfL,-1.0,1.0,(-1.0 * this->particle.charge) * std::real(SCR[i*(NB+1)]));
+        if( this->onePDM->hasZ() )
+          mullikenAtom.addL(DENSITY_TYPE::MZ,bfL,1.0,1.0,(-1.0 * this->particle.charge) * std::real(SCR[DENSITY_TYPE::MZ*NB*NB+i*(NB+1)]));
+        if( this->onePDM->hasXY() ){
+          mullikenAtom.addL(DENSITY_TYPE::MY,bfL,1.0,1.0,(-1.0 * this->particle.charge) * std::real(SCR[DENSITY_TYPE::MY*NB*NB+i*(NB+1)]));
+          mullikenAtom.addL(DENSITY_TYPE::MX,bfL,1.0,1.0,(-1.0 * this->particle.charge) * std::real(SCR[DENSITY_TYPE::MX*NB*NB+i*(NB+1)]));
+        }
+      }
+    } 
 
     // Lowdin population analysis
     lowdinCharges.clear();
 
     for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {
+
+      // Initializing everything needed for components and l
+      lowdinCharges.emplace_back();
+      auto &lowdinAtom = lowdinCharges.back();
+      // L decomposition NYI
+      lowdinAtom.init(0);
 
       size_t iEnd;
       if( iAtm == inputMol.nAtoms-1 ){
@@ -90,16 +161,14 @@ namespace ChronusQ {
       size_t iSt = this->basisSet().mapCen2BfSt[iAtm];
 
       if (this->particle.charge < 0)
-        lowdinCharges.emplace_back(inputMol.atoms[iAtm].nucCharge);
+        lowdinAtom.add(DENSITY_TYPE::SCALAR,inputMol.atoms[iAtm].nucCharge);
       else
-        lowdinCharges.emplace_back(std::real(0.));
+        lowdinAtom.add(DENSITY_TYPE::SCALAR,std::real(0.));
       for(auto i = iSt; i < iEnd; i++)
-        lowdinCharges.back() -= (-1.0 * this->particle.charge) * std::real(this->onePDMOrtho->S()(i,i));
+        lowdinAtom.add(DENSITY_TYPE::SCALAR,-1.0*(-1.0 * this->particle.charge) * std::real(this->onePDMOrtho->S()(i,i)));
     } 
 
-
     CQMemManager::get().free(SCR);
-
 
   };
 
