@@ -251,7 +251,14 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIFooter( ) {
   
   size_t nDet  = this->nDeterminants();
   size_t nS    = this->NStates;
-  size_t nPrintC = std::min(nDet, size_t(25));   
+  size_t minnDetPerNode = 25;
+  const auto ketSpace = detFactory->ketCategoricalSpace();
+  for (auto& catLen : ketSpace->distributedCategoryLengths()) {
+    if (minnDetPerNode > catLen) {
+      minnDetPerNode = catLen;
+    }
+  }
+  size_t nPrintC = std::min(nDet, size_t(minnDetPerNode));
   
   std::vector<size_t> kLargestCAddr; 
   std::vector<MatsT> kLargestC;
