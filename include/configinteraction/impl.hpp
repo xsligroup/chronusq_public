@@ -219,7 +219,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
     this->osc_str_array.reserve(this->NosS1*this->NStates);
     for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
     for (size_t s2 = 0ul; s2 < this->NStates; s2++) {
-      if (s2 < this->NosS1) {
+      if (s2 <= s1) {
         this->osc_str_array.push_back(0.);
       }
       else if (this->osc_str_order == 0) {
