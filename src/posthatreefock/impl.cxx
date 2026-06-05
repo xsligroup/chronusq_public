@@ -37,16 +37,14 @@ template PostHartreeFock<dcomplex,dcomplex>::PostHartreeFock(const PostHartreeFo
 template PostHartreeFock<dcomplex,double>::PostHartreeFock(PostHartreeFock<double,double> &&, int);
 
 template <>
-void MOIntsTransformer<double,double>::directTransformTPIBatch(EMPerturbation & pert,
-  double* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const {
-  CErr("Dirac-Coulomb + Real is an invalid option",std::cout);
-}
-
-template <>
 void MOIntsTransformer<dcomplex,dcomplex>::directTransformTPIBatch(EMPerturbation & pert,
   dcomplex* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const {
   CErr("Complex integral is is an invalid option",std::cout);
 }
+
+template
+void MOIntsTransformer<double,double>::directTransformTPIBatch(EMPerturbation & pert,
+  double* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const;
 
 template
 void MOIntsTransformer<dcomplex,double>::directTransformTPIBatch(EMPerturbation & pert,
