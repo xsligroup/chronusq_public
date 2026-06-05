@@ -241,7 +241,7 @@ namespace ChronusQ {
   // Parse the SCF options
   SCFControls CQSCFOptions(std::ostream&, CQInputFile&, EMPerturbation &);
 
-  void HandleOrbitalSwaps(std::ostream&, CQInputFile&, SingleSlaterBase&);
+  void HandleOrbitalSwaps(std::ostream&, CQInputFile&, SingleSlaterBase&, std::string);
 
   void CQSCF_VALID(std::ostream&, CQInputFile &);
 

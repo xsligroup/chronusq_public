@@ -136,6 +136,13 @@ namespace ChronusQ {
     GRAD_DESCENT
   };
 
+  enum class RDM_BUILDER_TYPE {
+    AUFBAU,
+    MOM,
+    NEOSTATEAVERAGE,
+    FINITETEMP
+  };
+
   /**
    *  \brief A struct to hold the information pertaining to
    *  the control of an SCF procedure.
@@ -192,6 +199,12 @@ namespace ChronusQ {
     bool rmLinearDep    = false; ///< Whether to remove linear dependencies
     bool rmAtomicLinDepOnly = false; ///< Whether to only remove atomic linear dependencies
     double linearDepTol = 1e-12; ///< Linear dependence threshold
+
+    // Specialty SCF settings
+    RDM_BUILDER_TYPE rdmBuilderType = RDM_BUILDER_TYPE::AUFBAU;
+    RDM_BUILDER_TYPE protrdmBuilderType = RDM_BUILDER_TYPE::AUFBAU;
+    size_t NEOStateAverageNStates = 1;
+    double finitetemp = 0.0;
 
     // Misc control
     size_t maxSCFIter = 128; ///< Maximum SCF iterations.

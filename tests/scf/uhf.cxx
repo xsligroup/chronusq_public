@@ -158,6 +158,15 @@ TEST( UHF, Water_ccpVDZ_UHF_UHFGuess_READMO_restart ) {
 
 };
 
+TEST( UHF, Water_ccpVDZ_UHF_HOMO2_LUMO2_MOM ) {
+
+  CQSCFTEST( "scf/serial/uhf/water_cc-pVDZ_UHF_HOMO2_LUMO2_MOM",
+    "water_cc-pVDZ_UHF_HOMO2_LUMO2_MOM.bin.ref",1e-6,
+    false, false, false, false, false, true, false, "water_cc-pVDZ_UHF.scr.bin");
+
+};
+
+
 #ifdef _CQ_DO_PARTESTS
 
 // SMP O2 6-31G(d) test

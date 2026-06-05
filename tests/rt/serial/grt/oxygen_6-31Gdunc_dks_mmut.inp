@@ -36,6 +36,7 @@ ssss = true
 
 [SCF]
 guess = CORE
+ACCURACY = 1E-10
 
 [BASIS]
 definebasis = on

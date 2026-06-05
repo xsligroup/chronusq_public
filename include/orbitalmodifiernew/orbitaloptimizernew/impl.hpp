@@ -56,7 +56,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
   doingDamp = scfControls.doDamp;
 
   // If guess is SAD or READDEN, then the first formDensity call can be skipped
-  bool skipFormingDensity = (scfControls.guess = SAD) or (scfControls.guess = READDEN);
+  bool skipFormingDensity = (scfControls.guess == SAD) or (scfControls.guess == READDEN);
 
   size_t macro_iter = 0;
   do{

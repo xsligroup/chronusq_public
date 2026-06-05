@@ -51,6 +51,7 @@ namespace ChronusQ {
       "NEO",
       "PROT_GUESS",
       "SWAPMO",
+      "PROT_SWAPMO",
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
@@ -65,7 +66,11 @@ namespace ChronusQ {
       "REMOVELINEARDEP",
       "REMOVEATOMICLINEARDEPONLY",
       "LINEARDEPTOL",
-      "PROT_LINEARDEPTOL"
+      "PROT_LINEARDEPTOL",
+      "DENMODIFIER",
+      "PROT_DENMODIFIER",
+      "NEOFINITET",
+      "NEOSTATEAVERAGESTATES"
     };
 
     // Specified keywords
@@ -128,11 +133,12 @@ namespace ChronusQ {
   };
 
   void HandleOrbitalSwaps(std::ostream &out, CQInputFile &input,
-    SingleSlaterBase &ss) {
+    SingleSlaterBase &ss, std::string prefix) {
 
     // MO swapping
     std::string swapMOStrings;
-    OPTOPT( swapMOStrings = input.getData<std::string>("SCF.SWAPMO"));
+    std::string key = "SCF." + prefix + "SWAPMO";
+    OPTOPT( swapMOStrings = input.getData<std::string>(key));
     if ( not swapMOStrings.empty() ) {
       std::cout << "  * Manually MO Swapping Detected: " << std::endl;
 
@@ -326,6 +332,55 @@ namespace ChronusQ {
     OPTOPT(
       scfControls.nrLevelShift = input.getData<double>("SCF.NRLEVELSHIFT");
     )
+
+    // For modified SCF Procedures
+    std::string rdmbuilderstr = "";
+    OPTOPT( rdmbuilderstr = input.getData<std::string>("SCF.DENMODIFIER"));
+    if(!rdmbuilderstr.compare("MOM"))
+    {
+      if(scfControls.guess != READMO) CErr("MOM requires a guess set of orbitals using READMO");
+      scfControls.rdmBuilderType = RDM_BUILDER_TYPE::MOM;
+    }
+    else if(!rdmbuilderstr.compare("AUFBAU") || rdmbuilderstr.empty())
+    {
+      scfControls.rdmBuilderType = RDM_BUILDER_TYPE::AUFBAU;
+    }
+    else
+    {
+      CErr("Unrecognized option for SCF.DENMODIFIER");
+    }
+
+    std::string protrdmbuilderstr = "";
+    OPTOPT( protrdmbuilderstr = input.getData<std::string>("SCF.PROT_DENMODIFIER"));
+    if(!protrdmbuilderstr.compare("NEOSTATEAVERAGE"))
+    {
+      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::NEOSTATEAVERAGE;
+      size_t NStates = 0;
+      OPTOPT(NStates = input.getData<size_t>("SCF.NEOSTATEAVERAGESTATES"));
+      if(!NStates)
+        CErr("Requesting a NEO-SCF-StateAveraged Calcualtion requires NEOSTATEAVERAGESTATES > 0!");
+      scfControls.NEOStateAverageNStates = NStates;
+      //OPTOPT(scfControls.NEOStateAverageNStates = input.getData<size_t>("SCF.NEOSTATEAVERAGESTATES"));
+    }
+    else if(!protrdmbuilderstr.compare("MOM"))
+    {
+      if(scfControls.prot_guess != READMO) CErr("Proton MOM requires a guess set of orbitals using READMO");
+      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::MOM;
+    }
+    else if(!protrdmbuilderstr.compare("NEOFINITETEMP"))
+    {
+      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::FINITETEMP;
+      OPTOPT(scfControls.finitetemp = input.getData<double>("SCF.NEOFINITET");)
+      CErr("NEO Finite Temp NYI!");
+    }
+    else if(!protrdmbuilderstr.compare("AUFBAU") || protrdmbuilderstr.empty())
+    {
+      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::AUFBAU;
+    }
+    else
+    {
+      CErr("Unrecognized option for SCF.PROT_DENMODIFIER");
+    }
 
 
     // Restart jobs

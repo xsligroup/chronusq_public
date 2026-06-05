@@ -52,6 +52,15 @@ TEST( GHF, N_STO3G_GHF_UHFGuess_READMO ) {
 
 };
 
+TEST( GHF, Water_ccpVDZ_GHF_HOMO2_LUMO2_MOM ) {
+
+  CQSCFTEST( "scf/serial/ghf/water_cc-pVDZ_GHF_HOMO2_LUMO2_MOM",
+    "water_cc-pVDZ_GHF_HOMO2_LUMO2_MOM.bin.ref",1e-6,
+    false, false, false, false, false, true, false, "water_cc-pVDZ_GHF.scr.bin");
+
+};
+
+
 #ifdef _CQ_DO_PARTESTS
 
 

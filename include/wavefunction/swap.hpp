@@ -37,6 +37,7 @@ namespace ChronusQ {
     auto MO = mo[spin].pointer();
     size_t LDMO = mo[spin].nRows();
     MatsT * SCR = CQMemManager::get().malloc<MatsT>(LDMO);
+    double * eps = spin==SpinType::isAlpha ? eps1 : eps2;
 
     if( spin==0 ) std::cout << "  * the following MOs are swapped" << std::endl;
     
@@ -53,6 +54,10 @@ namespace ChronusQ {
       std::copy_n(first_p,  LDMO, SCR);
       std::copy_n(second_p, LDMO, first_p);
       std::copy_n(SCR,      LDMO, second_p);
+
+      double temp = eps[pair.first-1];
+      eps[pair.first-1] = eps[pair.second-1];
+      eps[pair.second-1] = temp;
 
     }
     

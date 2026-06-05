@@ -26,6 +26,7 @@
 #include <chronusq_sys.hpp>
 #include <wavefunction.hpp>
 #include <singleslater/base.hpp>
+#include <singleslater/rdm.hpp>
 #include <particleintegrals/twopints.hpp>
 #include <matrix.hpp>
 #include <cubegen.hpp>
@@ -180,6 +181,9 @@ namespace ChronusQ {
     // Energy weighted density matrix W
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> W;
 
+    // For modified of SCF calculations, different ways to build the density matrix
+    std::shared_ptr<RDMBuilderBase<MatsT,IntsT>> RDMBuilder = nullptr;
+
     // Constructors
       
     /**
@@ -255,6 +259,7 @@ namespace ChronusQ {
 
     // Declarations from QuantumBase 
     // (see include/singleslater/quantum.hpp for docs)
+    void constructRDMBuilder();
     void formDensity() override;
 
     using QuantumBase::computeEnergy;

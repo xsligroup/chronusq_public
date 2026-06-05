@@ -22,8 +22,7 @@ basis = 6-31g
 basisType = GIAO  
 
 [SCF]
-ENETOL  = 1.0e-10
-DENTOL  = 1.0e-8
+ACCURACY = 1E-12
 Field = Magnetic 0.0 0.0 -0.001
 
 [MISC]

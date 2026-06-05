@@ -47,6 +47,7 @@ namespace ChronusQ {
   constexpr double TritMassPerE  = 5496.92153551;
   //constexpr double AUPerAMU      = 1822.888486217313;
   constexpr double AUPerAMU      = KgPerAMU/KgPerE;
+  constexpr double BoltzmannConst= 3.166811563e-6;
 
   // Things in odd unit systems / derived
   constexpr double SpeedOfLight_CM = 2.99792458e+10; 

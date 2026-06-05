@@ -282,7 +282,9 @@ namespace ChronusQ {
       if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) 
       {
         neoss->getSubSSBase("Electronic")->scfControls = ss->scfControls;
-        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Electronic")));
+        neoss->getSubSSBase("Protonic")->scfControls = ss->scfControls;
+        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Electronic")),"");
+        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Protonic")),"PROT_");
       }
 
       // Currently prot and elec share cube options.
@@ -295,7 +297,7 @@ namespace ChronusQ {
       ss->buildOrbitalModifierOptions();
 
       // MO swapping
-      HandleOrbitalSwaps(output, input, *ss);
+      HandleOrbitalSwaps(output, input, *ss, "");
 
       ParseOrbitalPropSubsection(output, input, ss);
       ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);

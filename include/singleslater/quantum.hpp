@@ -35,6 +35,36 @@
 
 namespace ChronusQ {
 
+
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::constructRDMBuilder()
+  {
+    if(this->RDMBuilder != nullptr) return;
+    RDM_BUILDER_TYPE rdmType;
+    if(this->particle.charge > 0) // Handle protons
+      rdmType = this->scfControls.protrdmBuilderType;      
+    else
+      rdmType = this->scfControls.rdmBuilderType;
+
+    auto* fb = this->fockBuilder.get();
+    if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
+      fb = neofb->getNonNEOUpstream();              // still a raw pointer
+    }
+    bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
+    if(rdmType == RDM_BUILDER_TYPE::MOM && iRO) CErr("MOM with ROHF NYI");
+
+    if(rdmType == RDM_BUILDER_TYPE::MOM)
+      this->RDMBuilder = std::make_shared<MOMRDMBuilder<MatsT,IntsT>>(*this);
+    else if(rdmType == RDM_BUILDER_TYPE::NEOSTATEAVERAGE)
+      this->RDMBuilder = std::make_shared<NEOStateAveragedRDMBuilder<MatsT,IntsT>>(this->scfControls.NEOStateAverageNStates);
+    else if(rdmType == RDM_BUILDER_TYPE::FINITETEMP)
+      CErr("NEO Finite Temp NYI!");
+    else
+      this->RDMBuilder = std::make_shared<AufbauRDMBuilder<MatsT,IntsT>>();
+
+  }
+
+
   /**
    *  \brief Forms the 1PDM using a set of orbitals 
    *
@@ -46,18 +76,26 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::formDensity() {
 
+    if(MPIRank(comm)==0)
+      this->constructRDMBuilder();
+
     size_t NB  = this->nAlphaOrbital() * nC;
     auto* fb = this->fockBuilder.get();
     if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
       fb = neofb->getNonNEOUpstream();              // still a raw pointer
     }
     bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
+    cqmatrix::Matrix<MatsT> temp(NB);
 
     // ROHF copy modified orbitals to redundant set
     if( iRO ){
       std::copy_n(this->mo[0].pointer(),NB*NB,this->mo[1].pointer());
       std::copy_n(this->eps1,NB,this->eps2);
     }
+
+    // Form the 1RDM on the root MPI process for similar reasons to below
+    if(MPIRank(comm)==0)
+      this->RDMBuilder->buildRDM(*this);
 
     // Form the 1PDM on the root MPI process as slave processes
     // do not posses the up-to-date MO coefficients
@@ -69,9 +107,11 @@ namespace ChronusQ {
 
         //this->mo[0].output(std::cout, "mo1", true);
 
-        // DA = CA * CA**H
-        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOA, MatsT(1.), this->mo[0].pointer(), NB,
-            this->mo[0].pointer(), NB, MatsT(0.), DA.pointer(), NB);
+        // DA = CA * RDM * CA**H
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDM->pointer(), NB,
+            this->mo[0].pointer(), NB, MatsT(0.), temp.pointer(), NB);
+        blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), this->mo[0].pointer(), NB,
+            temp.pointer(), NB, MatsT(0.), DA.pointer(), NB);
 
         if(iCS) {
 
@@ -81,10 +121,13 @@ namespace ChronusQ {
         } else {
 
           cqmatrix::Matrix<MatsT> DB(NB);
+          temp.clear();
 
-          // DB = CB * CB**H
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nOB, MatsT(1.), this->mo[1].pointer(), NB,
-              this->mo[1].pointer(), NB, MatsT(0.), DB.pointer(), NB);
+          // DB = CB * RDM * CB**H
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDMB->pointer(), NB,
+              this->mo[1].pointer(), NB, MatsT(0.), temp.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), this->mo[1].pointer(), NB,
+              temp.pointer(), NB, MatsT(0.), DB.pointer(), NB);
 
           // DS = DA + DB
           // DZ = DA - DB
@@ -97,11 +140,15 @@ namespace ChronusQ {
         cqmatrix::Matrix<MatsT> spinBlockForm(NB);
 
         if( nC == 2 ) {
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer(), NB,
-              this->mo[0].pointer(), NB, MatsT(0.), spinBlockForm.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDM->pointer(), NB,
+              this->mo[0].pointer(), NB, MatsT(0.), temp.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer(), NB,
+              temp.pointer(), NB, MatsT(0.), spinBlockForm.pointer(), NB);
         } else if( nC == 4 ) {
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer()+(2*(NB/nC))*NB, NB,
-              this->mo[0].pointer()+(2*(NB/nC))*NB, NB, MatsT(0.), spinBlockForm.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDM->pointer(), NB,
+              this->mo[0].pointer()+(2*(NB/nC))*NB, NB, MatsT(0.), temp.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), this->mo[0].pointer()+(2*(NB/nC))*NB, NB,
+              temp.pointer(), NB, MatsT(0.), spinBlockForm.pointer(), NB);
         }
 
         *this->onePDM = spinBlockForm.template spinScatter<MatsT>();

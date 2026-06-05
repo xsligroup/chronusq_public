@@ -87,7 +87,8 @@ namespace ChronusQ {
     std::vector<std::string> allowedKeywords = {
       "REFERENCE",
       "IGNOREPROTONTWOBODY",
-      "ONECENTERK"
+      "ONECENTERK",
+      "ERFOMEGA"
     };
 
     // Specified keywords
@@ -1078,6 +1079,7 @@ namespace ChronusQ {
 
     // For NEO (and in particular post-NEO-HF methods)
     OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + ".IGNOREPROTONTWOBODY"));
+    OPTOPT(hamiltonianOptions.erfOmega = input.getData<double>(section + ".ERFOMEGA"));
 
     // For RI J/K contraction with 3-index ERI
     OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + ".ONECENTERK"));
@@ -1837,6 +1839,8 @@ namespace ChronusQ {
    
     SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., mass}, "PROTQM");
 
+    essopt.hamiltonianOptions.erfOmega = pssopt.hamiltonianOptions.erfOmega;
+
     std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
     std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
 
@@ -1927,6 +1931,9 @@ namespace ChronusQ {
       CErr("NEO w/ mixed GTO/GIAO NYI, \nor Unreconized MatsT/IntsT combination in CQNEOSSOptions");
     }
 
+    // Need to copy this over 
+    epaoints->options_.erfOmega=pssopt.hamiltonianOptions.erfOmega;
+    
     return {neoss, essopt, pssopt};
 
   }
