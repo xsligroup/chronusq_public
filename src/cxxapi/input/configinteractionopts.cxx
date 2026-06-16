@@ -151,8 +151,8 @@ namespace ChronusQ {
       CErr("A specific job Type is needed for CI job");
     }
    
-    if((input.containsData("CI.DAS")) && !(ss->nC==2)){
-      CErr("DASCI not implemented for 1C/4C references");
+    if((input.containsData("CI.DAS")) && (ss->nC == 1)){
+      CErr("DASCI not implemented for 1C references");
     }
 
     //trim spaces
