@@ -80,7 +80,7 @@ namespace ChronusQ{
     std::vector<cqmatrix::Matrix<MatsT>> prev_mo;
     public:
     void buildRDM(SingleSlater<MatsT,IntsT>& ss);
-    MOMRDMBuilder<MatsT,IntsT>(SingleSlater<MatsT,IntsT>&ss)
+    MOMRDMBuilder(SingleSlater<MatsT,IntsT>&ss)
     {
       init = true;
       for(size_t i = 0; i < ss.mo.size(); i++)
