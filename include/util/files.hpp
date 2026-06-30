@@ -78,11 +78,11 @@ namespace cqmatrix {
       }
 
       template <typename T>
-      inline void createDataSet(const std::string &dataSet,
+      inline HighFive::DataSet createDataSet(const std::string &dataSet,
               const std::vector<size_t> &dims) {
         HighFive::File file(fName_, HighFive::File::OpenOrCreate);
         if (file.exist(dataSet)){
-          file.getDataSet(dataSet);
+          return file.getDataSet(dataSet);
         } else {
           // std::vector<size_t> max_dims;
           // std::vector<hsize_t> chunk_dims;
@@ -99,8 +99,44 @@ namespace cqmatrix {
           auto dataspace = HighFive::DataSpace(dims);
           HighFive::DataSet dataset =  file.createDataSet<T>(dataSet, dataspace);
           //HighFive::DataSet dataset =  file.createDataSet(dataSet, dataspace, HighFive::create_datatype<T>(), props);
+          return dataset;
         }
       };
+
+      /**
+       *
+       @brief Safely find or recreate a dataset with given name and dimensions.
+       *        If the dataset exists and has the correct dimensions, it is returned.
+       *        If it exists but has different dimensions, it is deleted and recreated.
+       *        If it does not exist, it is created.
+       *
+       * @tparam T The data type of the dataset.
+       * @param name The name of the dataset.
+       * @param dims The desired dimensions of the dataset.
+       * @return HighFive::DataSet The found or newly created dataset.
+       */
+      template <typename T>
+      HighFive::DataSet safeFindOrRecreate(
+          const std::string& name,
+          const std::vector<size_t>& dims
+      ) {
+        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+
+        // Dataset does not exist → create
+        if (!file.exist(name)) {
+          return createDataSet<T>(name, dims);
+        }
+
+        HighFive::DataSet dset = file.getDataSet(name);
+
+        if (dset.getDimensions() == dims) {
+          return dset;
+        }
+
+        // Recreate path
+        file.unlink(name);
+        return createDataSet<T>(name, dims);
+      }
 
       template <typename T>
       void readData(const std::string &dataSet, T* data) {
@@ -209,32 +245,8 @@ namespace cqmatrix {
             }
             std::cout << std::endl;
         #endif
-          HighFive::File file(fName_, HighFive::File::OpenOrCreate);
-          std::vector<size_t> start;
-          if (file.exist(dataSet)){
-            for (auto d : dims) {
-              start.push_back(0);
-            } 
-            HighFive::DataSet dataset = file.getDataSet(dataSet);
-            //dataset.resize(dim);
-            //dataset.select(start, dims).write(data);
-            dataset.write_raw(data);
-          } else {
-            //std::vector<size_t> max_dim = {std::numeric_limits<size_t>::max()};
-            //hsize_t DEFAULT_CHUNK = 64;
-            //std::vector<hsize_t> chunk_dim = {DEFAULT_CHUNK};
-            // todo 2d resizable datasets
-            for (auto d : dims) {
-              start.push_back(0);
-            } 
-            auto dataspace = HighFive::DataSpace(dims);
-            //HighFive::DataSetCreateProps props;
-            //props.add(HighFive::Chunking(chunk_dim));
-            //TODO Should we do any chunking/compression?
-            HighFive::DataSet dataset =  file.createDataSet<T>(dataSet, dataspace);
-           //dataset.resize(dim);
-            dataset.write_raw(data);
-          }
+          HighFive::DataSet dataset = safeFindOrRecreate<T>(dataSet, dims);
+          dataset.write_raw(data);
       };
 
       template <typename T>
