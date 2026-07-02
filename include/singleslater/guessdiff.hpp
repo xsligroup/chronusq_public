@@ -742,11 +742,11 @@ namespace ChronusQ {
 //      std::cout << "inUnpaired: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
         isAlpha = true;
 
-      // Handles those beta virtuals that pair to the unoccupied alphas
+      // Handles those beta virtuals that pair to the occupied alphas
       } else if( iMO < plusDisplacedBetas ){
 
         // Assume each 2c MO is alpha for unpaireds
-        smallMO = nB + (iMO - plusDisplacedBetas);
+        smallMO = nB + (iMO - numOccMOs);
 //      std::cout << "inUnpairedBetas: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
         isAlpha = false;
 
@@ -763,7 +763,7 @@ namespace ChronusQ {
         } else {
           // beta virtual
           isAlpha = false;
-          smallMO = nB + (shiftedVirt/2);
+          smallMO = nA + (shiftedVirt/2);
         }
 //      std::cout << "inVirtuals: iMO, smallMO = " << iMO << ", " << smallMO << std::endl;
 
