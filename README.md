@@ -13,7 +13,9 @@ time-dependent and post-SCF quantum mechanical methods.
 * [Documentation](../../wikis/home)
 * [Installation](#installation)
 
-
+ChronusQ 1.0 Release — Coming Summer 2026
+------------
+ChronusQ will officially transition out of beta with the release of version 1.0 in Summer 2026.
 
 Installation
 ------------
@@ -81,3 +83,6 @@ General Inquiries
 -----------------
 - Contact xsli at uw dot edu
 
+Acknowledgments
+-----------------
+The development of the ChronusQ software is supported by the Office of Advanced Cyberinfrastructure, U.S. National Science Foundation (Grants No. OAC-2103717 to XL, OAC-2401207 to SHS, OAC-2103705 to AED, and OAC-2103738 to EFV).
