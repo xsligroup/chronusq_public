@@ -24,13 +24,9 @@
 #pragma once
 #include <chronusq_sys.hpp>
 #include <particleintegrals/onepints.hpp>
+#include <matrix.hpp>
 
 namespace ChronusQ {
-
-  enum class REL_INTS_COMPS : size_t {
-    SCALAR = 0, SOZ = 1, SOY = 2, SOX = 3, O = 4
-  };
-
   /**
    *  \brief Templated class to handle the evaluation and storage of
    *  one electron integral matrices O, pOp, and three pOxp in
@@ -47,7 +43,7 @@ namespace ChronusQ {
     friend class OnePRelInts;
 
   protected:
-    std::vector<OnePInts<IntsT>> components_;
+    cqmatrix::PauliSpinorMatrices<IntsT> smallComponent_;
 
   public:
 
@@ -56,61 +52,43 @@ namespace ChronusQ {
     OnePRelInts( const OnePRelInts & ) = default;
     OnePRelInts( OnePRelInts && ) = default;
     OnePRelInts(size_t nb, bool SORelativistic):
-        OnePInts<IntsT>(nb) {
-      size_t nRel = SORelativistic ? 4 : 1;
-      components_.reserve(nRel);
-      for (size_t i = 0; i < nRel; i++)
-        components_.emplace_back(nb);
-    }
+        OnePInts<IntsT>(nb),
+        smallComponent_(nb, SORelativistic, SORelativistic) {}
 
     template <typename IntsU>
     OnePRelInts( const OnePRelInts<IntsU> &other, int = 0 ):
-        OnePInts<IntsT>(other, 0) {
-      if (std::is_same<IntsU, dcomplex>::value
-          and std::is_same<IntsT, double>::value)
-        CErr("Cannot create a Real OnePRelInts from a Complex one.");
-      components_.reserve(other.components_.size());
-      for (auto &p : other.components_)
-        components_.emplace_back(p);
-    }
+        OnePInts<IntsT>(other.nBasis()),
+        smallComponent_(other.smallComponent_) {}
 
-    bool hasSpinOrbit() const { return components_.size() == 4; }
+    OnePRelInts( const cqmatrix::PauliSpinorMatrices<IntsT> &other ):
+    OnePInts<IntsT>(other.nRows()),
+    smallComponent_(other) {}
 
-    OnePInts<IntsT>& operator[](REL_INTS_COMPS comp) {
-      if (comp == REL_INTS_COMPS::O)
-        return *this;
-      size_t i = static_cast<size_t>(comp);
-      if (i >= components_.size())
-        CErr("Requested component is NOT in this RelativisticInts object.");
-      return components_[i];
-    }
+    template <typename IntsU>
+    OnePRelInts( const cqmatrix::PauliSpinorMatrices<IntsU> &other, int = 0 ):
+        OnePInts<IntsT>(other.nRows()),
+        smallComponent_(other) {}
 
-    const OnePInts<IntsT>& operator[](REL_INTS_COMPS comp) const {
-      if (comp == REL_INTS_COMPS::O)
-        return *this;
-      size_t i = static_cast<size_t>(comp);
-      if (i >= components_.size())
-        CErr("Requested component is NOT in this RelativisticInts object.");
-      return components_[i];
-    }
+    OnePRelInts( cqmatrix::PauliSpinorMatrices<IntsT> &&other ):
+        OnePInts<IntsT>(other.nRows()),
+        smallComponent_(std::move(other)) {}
 
-    OnePInts<IntsT>& scalar() { return operator[](REL_INTS_COMPS::SCALAR); }
-    const OnePInts<IntsT>& scalar() const { return operator[](REL_INTS_COMPS::SCALAR); }
-    OnePInts<IntsT>& SOX() { return operator[](REL_INTS_COMPS::SOX); }
-    const OnePInts<IntsT>& SOX() const { return operator[](REL_INTS_COMPS::SOX); }
-    OnePInts<IntsT>& SOY() { return operator[](REL_INTS_COMPS::SOY); }
-    const OnePInts<IntsT>& SOY() const { return operator[](REL_INTS_COMPS::SOY); }
-    OnePInts<IntsT>& SOZ() { return operator[](REL_INTS_COMPS::SOZ); }
-    const OnePInts<IntsT>& SOZ() const { return operator[](REL_INTS_COMPS::SOZ); }
+    bool hasSpinOrbit() const { return smallComponent_.hasXY() and smallComponent_.hasZ(); }
 
-    std::vector<OnePInts<IntsT>>& SZYX() {
-      return components_;
-    }
-    const std::vector<OnePInts<IntsT>>& SZYX() const {
-      return components_;
-    }
+    cqmatrix::Matrix<IntsT>& scalar() { return smallComponent_.S(); }
+    const cqmatrix::Matrix<IntsT>& scalar() const { return smallComponent_.S(); }
+    cqmatrix::Matrix<IntsT>& SOX() { return smallComponent_.X(); }
+    const cqmatrix::Matrix<IntsT>& SOX() const { return smallComponent_.X(); }
+    cqmatrix::Matrix<IntsT>& SOY() { return smallComponent_.Y(); }
+    const cqmatrix::Matrix<IntsT>& SOY() const { return smallComponent_.Y(); }
+    cqmatrix::Matrix<IntsT>& SOZ() { return smallComponent_.Z(); }
+    const cqmatrix::Matrix<IntsT>& SOZ() const { return smallComponent_.Z(); }
+
+    cqmatrix::PauliSpinorMatrices<IntsT>& SZYX() { return smallComponent_; }
+    const cqmatrix::PauliSpinorMatrices<IntsT>& SZYX() const { return smallComponent_; }
+
     std::vector<IntsT*> SOXYZPointers() {
-      if (this->components_.size() <= 1)
+      if (!hasSpinOrbit())
         return std::vector<IntsT*>();
       return { SOX().pointer(), SOY().pointer(), SOZ().pointer() };
     }
@@ -127,8 +105,7 @@ namespace ChronusQ {
 
     virtual void clear() override {
       OnePInts<IntsT>::clear();
-      for (OnePInts<IntsT>& c : components_)
-        c.clear();
+      smallComponent_.clear();
     }
 
     virtual void output(std::ostream &out, const std::string &s = "",
@@ -139,16 +116,16 @@ namespace ChronusQ {
           oeiStr = "RelOPI";
         else
           oeiStr = "RelOPI[" + s + "]";
-        prettyPrintSmart(out, oeiStr+".O", this->pointer(),
+        prettyPrintSmart(out, oeiStr+".LL", this->pointer(),
             this->nBasis(), this->nBasis(), this->nBasis());
-        prettyPrintSmart(out, oeiStr+".Scalar", scalar().pointer(),
+        prettyPrintSmart(out, oeiStr+".SS.S", scalar().pointer(),
             this->nBasis(), this->nBasis(), this->nBasis());
         if(this->hasSpinOrbit()) {
-          prettyPrintSmart(out, oeiStr+".SOX", SOX().pointer(),
+          prettyPrintSmart(out, oeiStr+".SS.X", SOX().pointer(),
               this->nBasis(), this->nBasis(), this->nBasis());
-          prettyPrintSmart(out, oeiStr+".SOY", SOY().pointer(),
+          prettyPrintSmart(out, oeiStr+".SS.Y", SOY().pointer(),
               this->nBasis(), this->nBasis(), this->nBasis());
-          prettyPrintSmart(out, oeiStr+".SOZ", SOZ().pointer(),
+          prettyPrintSmart(out, oeiStr+".SS.Z", SOZ().pointer(),
               this->nBasis(), this->nBasis(), this->nBasis());
         }
       } else {
@@ -168,24 +145,7 @@ namespace ChronusQ {
 
     virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
       OnePInts<IntsT>::broadcast(comm, root);
-
-#ifdef CQ_ENABLE_MPI
-      if( MPISize(comm) > 1 ) {
-        size_t nRel = components_.size();
-        MPIBCast(nRel,root,comm);
-
-        if (components_.size() != nRel) {
-          components_.clear();
-          components_.reserve(nRel);
-          for (size_t i = 0; i < nRel; i++) {
-            components_.emplace_back(this->NB);
-          }
-        }
-
-        for (OnePInts<IntsT>& comp : components_)
-          comp.broadcast(comm, root);
-      }
-#endif
+      smallComponent_.broadcast();
     }
 
     template <typename TransT>
@@ -193,21 +153,16 @@ namespace ChronusQ {
     (std::is_same<IntsT, dcomplex>::value or
      std::is_same<TransT, dcomplex>::value),
     dcomplex, double>::type> transform(
-        char TRANS, const TransT* T, int NT, int LDT) const {
-      OnePRelInts<typename std::conditional<
-      (std::is_same<IntsT, dcomplex>::value or
-       std::is_same<TransT, dcomplex>::value),
-      dcomplex, double>::type> transInts(NT, hasSpinOrbit());
-      transInts[REL_INTS_COMPS::O] =
-          (*this)[REL_INTS_COMPS::O].transform(TRANS, T, NT, LDT);
-      transInts.scalar() = scalar().transform(TRANS, T, NT, LDT);
-      if (hasSpinOrbit()) {
-        transInts.SOX() = SOX().transform(TRANS, T, NT, LDT);
-        transInts.SOY() = SOY().transform(TRANS, T, NT, LDT);
-        transInts.SOZ() = SOZ().transform(TRANS, T, NT, LDT);
+      char TRANS, const TransT* T, int NT, int LDT) const {
+        OnePRelInts<typename std::conditional<
+        (std::is_same<IntsT, dcomplex>::value or
+        std::is_same<TransT, dcomplex>::value),
+        dcomplex, double>::type> transInts(NT, hasSpinOrbit());
+
+        transInts.matrix() = this->matrix().transform(TRANS, T, NT, LDT);
+        transInts.smallComponent_ = smallComponent_.transform(TRANS, T, NT, LDT);
+        return transInts;
       }
-      return transInts;
-    }
 
     virtual ~OnePRelInts() {}
 

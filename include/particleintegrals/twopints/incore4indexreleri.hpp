@@ -27,6 +27,10 @@
 
 namespace ChronusQ {
 
+  enum class REL_INTS_COMPS : size_t {
+    SCALAR = 0, SOZ = 1, SOY = 2, SOX = 3, O = 4
+  };
+
   // define a macro to handle ERI and 4C ERI subsetTransfrom Calls
   #define INCORE4CINDEXERI_SUBSETTRANSFROM(ERI, ERI4C, ...) \
     if (ERI4C) ERI4C->subsetTransform(__VA_ARGS__); \

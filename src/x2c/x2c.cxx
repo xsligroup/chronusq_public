@@ -38,8 +38,8 @@
 #include <cqlinalg/matfunc.hpp>
 #include <basisset/remove_linear_dep_shells.hpp>
 
-//#define DebugX2Cprint
-//#define DebugX2Cprint2 
+// #define DebugX2Cprint
+// #define DebugX2Cprint2 
 //#define oldimpl
 
 namespace ChronusQ {
@@ -456,10 +456,15 @@ namespace ChronusQ {
     for(auto i = 0; i < NPU; i++) SS[i] = 1./std::sqrt(2*SS[i]);
 
     // Transform PVP into "P^-1" basis
-    for (auto &oei : potential->SZYX())
       for(auto j = 0; j < NPU; j++)
-        for(auto i = 0; i < NPU; i++)
-          oei(i,j) *= SS[i] * SS[j];
+        for(auto i = 0; i < NPU; i++){
+          potential->scalar()(i,j) *= SS[i] * SS[j];
+          if (potential->hasSpinOrbit()) {
+          potential->SOX()(i,j) *= SS[i] * SS[j];
+          potential->SOY()(i,j) *= SS[i] * SS[j];
+          potential->SOZ()(i,j) *= SS[i] * SS[j];
+          }
+        }
 
     // Allocate 4C CORE Hamiltonian
 
@@ -1777,9 +1782,10 @@ namespace ChronusQ {
           ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);
 
 
-      cqmatrix::Matrix<dcomplex> fourCompDipoleX = (*(fourCompSS.aoints_->lenElectric4C))[0].template spinGather<dcomplex>();
-      cqmatrix::Matrix<dcomplex> fourCompDipoleY = (*(fourCompSS.aoints_->lenElectric4C))[1].template spinGather<dcomplex>();
-      cqmatrix::Matrix<dcomplex> fourCompDipoleZ = (*(fourCompSS.aoints_->lenElectric4C))[2].template spinGather<dcomplex>();
+      std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>> lenElectric4C = *(fourCompSS.aoints_->lenElectric->gather4CDipole());
+      cqmatrix::Matrix<dcomplex> fourCompDipoleX = lenElectric4C[0].template spinGather<dcomplex>();
+      cqmatrix::Matrix<dcomplex> fourCompDipoleY = lenElectric4C[1].template spinGather<dcomplex>();
+      cqmatrix::Matrix<dcomplex> fourCompDipoleZ = lenElectric4C[2].template spinGather<dcomplex>();
 
       *pchgDipole_[0] = fourCompDipoleX.transform('N', U, 2 * NB, 4 * NP).template spinScatter<dcomplex>(
           ssOptions_.hamiltonianOptions.OneESpinOrbit, ssOptions_.hamiltonianOptions.OneESpinOrbit);

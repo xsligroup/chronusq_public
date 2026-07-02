@@ -812,8 +812,7 @@ namespace ChronusQ {
 
     // scale it by charge
     matrix() *= -1.0 * options.particle.charge;
-    for (OnePInts<double> &opi : components_)
-      opi.matrix() *= -1.0 * options.particle.charge;
+    smallComponent_ *= -1.0 * options.particle.charge;
 
   }; // OnePRelInts::OnePRelDriverLibcint
 

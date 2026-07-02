@@ -107,10 +107,15 @@ namespace ChronusQ {
               NB, options.OneESpinOrbit);
         else
           potential = std::make_shared<OnePInts<IntsT>>(NB);
+
         potential->computeAOInts(basis, mol, emPert, NUCLEAR_POTENTIAL, options);
         if( savFile.exists() ) {
           std::string potentialTag = options.finiteWidthNuc ? "_FINITE_WIDTH" : "";
           savFile.safeWriteData(prefix + "POTENTIAL" + potentialTag,potential->pointer(),{NB,NB});
+          if (options.OneEScalarRelativity) {
+            auto relPotential = std::dynamic_pointer_cast<OnePRelInts<IntsT>>(potential);
+            savFile.safeWriteData(prefix + "REL_MOD_POTENTIAL", relPotential->SZYX());
+          }
         }
         break;
 
@@ -121,7 +126,7 @@ namespace ChronusQ {
         lenElectric->computeAOInts(basis, mol, emPert, LEN_ELECTRIC_MULTIPOLE, options);
 
         // If 4C, we gather all components of dipole integralsa (only handles dipole)
-        if(op.second == 1 and options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
+        // if(op.second == 1 and options.OneEScalarRelativity) lenElectric4C = lenElectric->gather4CDipole();
 
         if( savFile.exists() ) {
           // Length Gauge electric dipole
@@ -217,7 +222,6 @@ namespace ChronusQ {
         default:
           break;
       }
-
   }; // AOIntegrals<IntsT>::computeAOOneP
 
 

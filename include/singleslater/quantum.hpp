@@ -519,20 +519,23 @@ template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::compute4CDipole(EMPerturbation &pert) {
     ROOT_ONLY(comm);
 
+    std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>
+       lenElectric4C = *(this->aoints_->lenElectric->gather4CDipole());
+
     // Compute elecric contribution to the dipoles
     for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
       // Scalar
       double dipole_s = -this->template computeOBProperty<DENSITY_TYPE::SCALAR>(
-          (*(this->aoints_->lenElectric4C))[iXYZ].S().pointer());
+          lenElectric4C[iXYZ].S().pointer());
       // MZ
       double dipole_z = -this->template computeOBProperty<DENSITY_TYPE::MZ>(
-          (*(this->aoints_->lenElectric4C))[iXYZ].Z().pointer());
+          lenElectric4C[iXYZ].Z().pointer());
       // MY
       double dipole_y= -this->template computeOBProperty<DENSITY_TYPE::MY>(
-          (*(this->aoints_->lenElectric4C))[iXYZ].Y().pointer());
+          lenElectric4C[iXYZ].Y().pointer());
       // MX
       double dipole_x= -this->template computeOBProperty<DENSITY_TYPE::MX>(
-          (*(this->aoints_->lenElectric4C))[iXYZ].X().pointer());
+          lenElectric4C[iXYZ].X().pointer());
     
       this->elecDipole[iXYZ] = dipole_s + dipole_z + dipole_y + dipole_x;
     }

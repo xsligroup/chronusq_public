@@ -311,7 +311,6 @@ namespace ChronusQ {
       
       // Initialize the returned dipole matrix vector (x, y, z)
       auto lenElectric4C = std::make_shared<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>>();
-      lenElectric4C->reserve(3);
 
       size_t NB = this->nBasis();
       
@@ -320,30 +319,27 @@ namespace ChronusQ {
         if(auto onePRelInt = std::dynamic_pointer_cast<OnePRelInts<double>>((*this)[ixyz])){
           
           // Initialize the returned dipole matrix
-          lenElectric4C->emplace_back(2 * NB, true, true);
-          cqmatrix::PauliSpinorMatrices<dcomplex>& dipole_ixyz = (*lenElectric4C)[ixyz];
+          cqmatrix::PauliSpinorMatrices<dcomplex>& dipole_ixyz = 
+            lenElectric4C->emplace_back(2 * NB, true, true);
 
           dipole_ixyz.clear();
 
-          //Piece together the SS components in to 2NB by 2NB square matrix W
-          // W = 1/(4c^2)* [ W1  W2 ]
-          //               [ W3  W4 ]
-          cqmatrix::Matrix<dcomplex> W( 1./(4. * SpeedOfLight * SpeedOfLight) *
-              onePRelInt->template formW<dcomplex>() );
-
-          // Spin Scatter square matrix W (2NB*2NB) into paulispinor matrix W_spinor (NB*NB) 
-          cqmatrix::PauliSpinorMatrices<dcomplex> W_spinor(W.template spinScatter<dcomplex>());
+          // SS
+          cqmatrix::PauliSpinorMatrices<dcomplex> W_spinor = onePRelInt->SZYX();
+          W_spinor *= 1./(4. * SpeedOfLight * SpeedOfLight);
 
           // LL Scalar 
           SetMat('N',NB,NB,dcomplex(1.),onePRelInt->pointer(), NB,dipole_ixyz.S().pointer(),           2*NB);
           // SS Scalar 
           SetMat('N',NB,NB,dcomplex(1.),W_spinor.S().pointer(),NB,dipole_ixyz.S().pointer()+2*NB*NB+NB,2*NB);
-          // SS MZ
-          SetMat('N',NB,NB,dcomplex(1.),W_spinor.Z().pointer(),NB,dipole_ixyz.Z().pointer()+2*NB*NB+NB,2*NB);
-          // SS MY
-          SetMat('N',NB,NB,dcomplex(1.),W_spinor.Y().pointer(),NB,dipole_ixyz.Y().pointer()+2*NB*NB+NB,2*NB);
-          // SS MX
-          SetMat('N',NB,NB,dcomplex(1.),W_spinor.X().pointer(),NB,dipole_ixyz.X().pointer()+2*NB*NB+NB,2*NB);
+          if (onePRelInt->hasSpinOrbit()) {
+            // SS MZ
+            SetMat('N',NB,NB,dcomplex(1.),W_spinor.Z().pointer(),NB,dipole_ixyz.Z().pointer()+2*NB*NB+NB,2*NB);
+            // SS MY
+            SetMat('N',NB,NB,dcomplex(1.),W_spinor.Y().pointer(),NB,dipole_ixyz.Y().pointer()+2*NB*NB+NB,2*NB);
+            // SS MX
+            SetMat('N',NB,NB,dcomplex(1.),W_spinor.X().pointer(),NB,dipole_ixyz.X().pointer()+2*NB*NB+NB,2*NB);
+          }
 
         }else{
           CErr("OnePInts Stored in MultipoleInts Not Converted to OnePRelInts");

@@ -226,7 +226,7 @@ namespace ChronusQ {
              dcomplex(0.,1.),SOX().pointer(),NB,W3,2*NB);
       return W;
     } else
-      return scalar().matrix().template spatialToSpinBlock<MatsT>();
+      return scalar().template spatialToSpinBlock<MatsT>();
   }
 
   template <>
@@ -237,7 +237,7 @@ namespace ChronusQ {
       CErr("W matrix with spin-orbit cannot be real.");
       return dummy;
     } else {
-      return scalar().matrix().template spatialToSpinBlock<double>();
+      return scalar().template spatialToSpinBlock<double>();
     }
   }
  

@@ -181,7 +181,7 @@ namespace ChronusQ {
     std::shared_ptr<VectorInts<IntsT>> breitpauli_onee = nullptr;
 
     // 4-component dipole storage
-    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>> lenElectric4C = nullptr;
+    // std::shared_ptr<MultipoleInts<IntsT>> lenElectric4C = nullptr;
 
     // 2-particle storage
     std::shared_ptr<TwoPInts<IntsT>> TPI = nullptr;

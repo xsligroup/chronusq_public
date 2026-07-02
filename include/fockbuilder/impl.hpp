@@ -365,15 +365,15 @@ namespace ChronusQ {
 
       auto dipAmp = pert.getDipoleAmp(Electric);
 
-      for(auto i = 0;    i < 3;     i++)
-
-        if (ss.nC == 4){
-          ss.fockMatrix->S() -= 2.0 * dipAmp[i] * (*(ss.aoints_->lenElectric4C))[i].S();
-
-        } else {
-        ss.fockMatrix->S() -=
-          2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i]->matrix();
-        }
+      if (ss.nC == 4) {
+        std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>
+          lenElectric4C = *(ss.aoints_->lenElectric->gather4CDipole());
+        for (auto i = 0; i < 3; i++)
+          ss.fockMatrix->S() -= 2.0 * dipAmp[i] * lenElectric4C[i].S();
+      } else {
+        for (auto i = 0; i < 3; i++)
+          ss.fockMatrix->S() -= 2. * dipAmp[i] * (*ss.aoints_->lenElectric)[i]->matrix();
+      }
     }
 
 #if 0
