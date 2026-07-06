@@ -30,6 +30,9 @@ namespace ChronusQ {
       std::shared_ptr<GauXC::RuntimeEnvironment> grt;
       std::shared_ptr<GauXC::XCIntegrator<Eigen::MatrixXd>> integrator_pointer=nullptr;
 
+      // Get xHFX from GauXC functional definition or input.
+      double xHFX = 0.;
+
       // Default ctors
       GauXCUtils() = default;
       GauXCUtils( GauXCUtils && )      = default;
@@ -40,6 +43,7 @@ namespace ChronusQ {
       static ExchCXX::Functional get_epcfunctional(std::string fname);
       static GauXC::Molecule make_gmol(const Molecule& molecule);
       static GauXC::BasisSet<double> make_gbasis(const BasisSet& basis);
+      static ExchCXX::XCKernel get_xckernel(std::string kernel, ExchCXX::Spin xcSpin, ExchCXX::Backend xcBackend );
 
   };
 
@@ -71,6 +75,10 @@ namespace ChronusQ {
     static const std::map<std::string, GauXC::PruningScheme> prune_map;
     static const std::map<std::string, GauXC::XCWeightAlg> xcweight_map;
     static const std::map<std::string, GauXC::RadialQuad> radialquad_map;
+
+    // BYO Functional
+    ExchCXX::HybCoeffs hyb_coeffs = {0.0, 0.0, 0.0};
+    std::string kernels;
 
     // Build a GauXCUtils class given using the parse GAUXCOptions
     std::shared_ptr<GauXCUtils> buildGauXCUtils( const std::shared_ptr<const BasisSet>& basis, const std::shared_ptr<const BasisSet>& basis2,

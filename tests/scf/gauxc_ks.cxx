@@ -56,6 +56,14 @@ TEST( GAUXC_KS, Water_ccpVTZ_PBE0 ) {
       true, true, true, true, true, true, false, "no", true  );
 
 }
+
+// CUSTOM B3LYP / cc-pVTZ
+TEST( GAUXC_KS, Water_ccpVTZ_B3LYP_CUSTOM ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVTZ_B3LYP_CUSTOM", "water_cc-pVTZ_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
+
+}
 // -------------------END RKS TESTS-------------------
 
 
@@ -155,6 +163,14 @@ TEST( GAUXC_KS, PAR_Water_ccpVTZ_PBE0 ) {
 
   CQSCFTEST( "scf/parallel/gauxc_ks/water_cc-pVTZ_PBE0", "water_cc-pVTZ_PBE0.bin.ref", 1e-6, 
       true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// SMP CUSTOM B3LYP / cc-pVTZ
+TEST( GAUXC_KS, PAR_Water_ccpVTZ_B3LYP_CUSTOM ) {
+
+  CQSCFTEST( "scf/parallel/gauxc_ks/water_cc-pVTZ_B3LYP_CUSTOM", "water_cc-pVTZ_B3LYP.bin.ref", 1e-6, 
+      true, true, true, true, true, true, false, "no", true );
 
 }
 // -------------------END RKS TESTS-------------------

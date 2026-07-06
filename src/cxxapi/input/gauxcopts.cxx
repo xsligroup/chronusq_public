@@ -52,7 +52,9 @@ namespace ChronusQ {
         "XCWEIGHTALG",              // string: Becke, SSF, LKO
         "RADIALQUAD",               // string: MuraKnowles,MurrayHandyLaming,TreutlerAldrichs
         "XCBACKEND",                // string: libxc, builtin
-        "INTKERNEL"                 // string: default, shellbatched (gpu only), incore (gpu only), reference (cpu only)
+        "INTKERNEL",                 // string: default, shellbatched (gpu only), incore (gpu only), reference (cpu only)
+        "FUNCTIONAL",               // Build functional from list of allowed x and c kernels. 
+        "XHFX",                     // Global hybrid scaling factor
     };
 
     // Specified keywords
@@ -186,6 +188,11 @@ namespace ChronusQ {
     
     out << std::endl;
 
+    
+    // Parse CUSTOM Functional from kernel list and hybridization
+    OPTOPT( gauxcOpts.hyb_coeffs.alpha      = input.getData<double>("GAUXC.XHFX"); )
+    OPTOPT( gauxcOpts.kernels = input.getData<std::string>("GAUXC.FUNCTIONAL"); )
+
     // Print full GauXC settings 
     gauxcOpts.printGauXCSettings(out);
 
@@ -258,7 +265,29 @@ namespace ChronusQ {
       // Build GauXC Integrator
       GauXC::XCIntegratorFactory<Eigen::MatrixXd> integrator_factory(exec_space, "Replicated", intKernel, "Default", "Default");  
       // Setup XC functional and build integrator
-      GauXC::functional_type func( xcBackend, gauxcUtils->get_functional(funcName), xcSpin);
+      
+      GauXC::functional_type func;
+
+      if (!funcName.compare("CUSTOM")) {
+          std::vector<std::pair<double,ExchCXX::XCKernel>> kernel_list;
+          std::stringstream ss(kernels);
+          std::string kernel;
+          double scale;
+
+          while ( ss >> kernel >> scale){
+            kernel_list.push_back({scale, gauxcUtils->get_xckernel(kernel, xcSpin, xcBackend)});
+          }
+          func = GauXC::functional_type( kernel_list, hyb_coeffs);
+
+      } else {
+          func = GauXC::functional_type( xcBackend, gauxcUtils->get_functional(funcName), xcSpin);
+          hyb_coeffs = func.hyb_exx();
+      }
+      
+
+      gauxcUtils->xHFX = hyb_coeffs.alpha;
+
+
       if (doNEO){
         // EPC functionals only has builtin implementations, and always be polarized
         GauXC::functional_type epcfunc( ExchCXX::Backend::builtin, gauxcUtils->get_epcfunctional(prot_funcName), ExchCXX::Spin::Polarized );

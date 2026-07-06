@@ -167,7 +167,10 @@ namespace ChronusQ {
       "B3PW91",
       "PBE0",
       "BHANDHLYP",
-      "BHANDH"
+      "BHANDH",
+      "LDA",
+      //Gets definition of  Custom Functional from [GAUXC] section of input
+      "CUSTOM"
     };
 
     std::vector<std::string> EPCRefs {

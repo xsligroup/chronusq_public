@@ -47,6 +47,13 @@ ExchCXX::Functional GauXCUtils::get_functional(std::string fname) {
     return ExchCXX::Functional::SVWN5;
   } else if (!fname.compare("SVWN3")) {
     return ExchCXX::Functional::SVWN3;
+  } else if (!fname.compare("LDA")) {
+    return ExchCXX::Functional::LDA; 
+  } else if (!fname.compare("BHANDH")) {
+    return ExchCXX::Functional::BHANDH; 
+  } else if (!fname.compare("CUSTOM")) {
+    CErr("Custom Requires Functional Definition under GAUXC header.");
+  
   // MGGA functionals in GauXC temporarily not enabled for CQ
   // } else if (!fname.compare("SCAN")) {
   //   return ExchCXX::Functional::SCAN;
@@ -54,7 +61,7 @@ ExchCXX::Functional GauXCUtils::get_functional(std::string fname) {
   //   return ExchCXX::Functional::R2SCAN;
   // } else if (!fname.compare("R2SCANL")) {
   //   return ExchCXX::Functional::R2SCANL;
-  }else {
+  } else {
     CErr("Invalid Functional for Gauxc");
   }
 
@@ -74,6 +81,38 @@ ExchCXX::Functional GauXCUtils::get_epcfunctional(std::string fname) {
     return ExchCXX::Functional::EPC18_2;
   } else {
     CErr("Invalid EPCFunctional for Gauxc");
+  }
+
+}
+
+ExchCXX::XCKernel GauXCUtils::get_xckernel(std::string kernel, ExchCXX::Spin xcSpin, ExchCXX::Backend xcBackend) {
+
+  //std::transform(fname.begin(), fname.end(), fname.begin(),std::toupper);
+
+  if (!kernel.compare("PBE_X")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PBE_X, xcSpin);
+  } else if (!kernel.compare("PBE_C")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PBE_C, xcSpin);
+  } else if (!kernel.compare("B88")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::B88, xcSpin);
+  } else if (!kernel.compare("LYP")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::LYP, xcSpin);
+  } else if (!kernel.compare("SLATEREXCHANGE")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::SlaterExchange, xcSpin);
+  } else if (!kernel.compare("VWN3")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::VWN3, xcSpin);
+  } else if (!kernel.compare("VWN5")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::VWN5, xcSpin);
+  } else if (!kernel.compare("VWN")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::VWN, xcSpin);
+  } else if (!kernel.compare("REVPBE_X")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::revPBE_X, xcSpin);
+  } else if (!kernel.compare("OPTX_X")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::OPTX_X, xcSpin);
+  } else if (!kernel.compare("PW91_X")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PW91_X, xcSpin);
+  } else {
+    CErr("Invalid Kernel for Gauxc");
   }
 
 }

@@ -173,7 +173,12 @@ namespace ChronusQ {
      */  
     virtual void formFock(EMPerturbation &pert, bool increment = false, double HFX = 0.) {
 
-      double xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
+      double xHFX;
+      if (not this->intParam.useGauXC) {
+        xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
+      } else {
+        xHFX = this->gauxcUtils->xHFX;
+      }
 
       SingleSlater<MatsT,IntsT>::formFock(pert,increment,xHFX);
 
