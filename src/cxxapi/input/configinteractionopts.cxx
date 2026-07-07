@@ -34,10 +34,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQCI_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQCI_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "JOBTYPE",
       "NROOTS",
       "NACTORB",
@@ -84,16 +84,7 @@ namespace ChronusQ {
       "SAVEONEPDMS"
     };
 
-    // Specified keywords
-    std::vector<std::string> ciKeywords = input.getDataInSection("CI");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : ciKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword CI." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
   
   std::vector<double> HandleSAWeightsInputDAS(CQInputFile &input,
@@ -102,7 +93,7 @@ namespace ChronusQ {
     std::string sSAWeights;
     std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
 
-    OPTOPT( sSAWeights = input.getData<std::string>("CI.SAWEIGHTS"); )
+    OPTOPT( sSAWeights = input.getData<std::string>("CI/SAWEIGHTS"); )
     if (!sSAWeights.empty()) {
       std::cout << "  * Manual State Average Weights Detected: " << std::endl;
       //Parse SAWeights string
@@ -146,12 +137,12 @@ namespace ChronusQ {
     std::string jobType;
     
     try {
-      jobType = input.getData<std::string>("CI.JOBTYPE");
+      jobType = input.getData<std::string>("CI/JOBTYPE");
     } catch(...) {
       CErr("A specific job Type is needed for CI job");
     }
    
-    if((input.containsData("CI.DAS")) && (ss->nC == 1)){
+    if((input.containsData("CI/DAS")) && (ss->nC == 1)){
       CErr("DASCI not implemented for 1C references");
     }
 
@@ -184,7 +175,7 @@ namespace ChronusQ {
       std::find(SelectedJobs.begin(), SelectedJobs.end(), jobType) != SelectedJobs.end();
     
     if(not isCASJob and not isRASJob and not isDASJob and not isSelectedJob) 
-      CErr(jobType + " is not a valid CI.JOBTYPE",out);
+      CErr(jobType + " is not a valid CI/JOBTYPE",out);
 
     if(isSelectedJob)
       CErr(jobType + " NYI");
@@ -215,10 +206,10 @@ namespace ChronusQ {
     }
 
     // parse number of roots
-    size_t nR = 1; 
+    size_t nR = 1;
     std::string nRoots;
     std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>("CI.NROOTS");)
+    OPTOPT(nRoots = input.getData<std::string>("CI/NROOTS");)
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
@@ -229,14 +220,14 @@ namespace ChronusQ {
 	  size_t nActE;
 
 	  try {
-      sActO = input.getData<std::string>("CI.NACTORB");
+      sActO = input.getData<std::string>("CI/NACTORB");
     } catch(...) {
-      CErr("Must specify CI.NActO for # active orbitals");
+      CErr("Must specify CI/NActO for # active orbitals");
     }
     try {
-      nActE = input.getData<int>("CI.NACTELEC");
+      nActE = input.getData<int>("CI/NACTELEC");
     } catch(...) {
-      CErr("Must specify CI.NActE for # active electrons");
+      CErr("Must specify CI/NActE for # active electrons");
     }
 
     // XSLI: obsolete old code that defines the number of orbitals in ea active space
@@ -270,7 +261,7 @@ namespace ChronusQ {
      */  
     //size_t maxNActO = *std::max_element(nActOs.begin(), nActOs.end());
 
-    // OPTOPT( ci.FourCompNoPair = input.getData<bool>("CI.FOURCOMPNOPAIR"));
+    // OPTOPT( ci.FourCompNoPair = input.getData<bool>("CI/FOURCOMPNOPAIR"));
     
     // set up scheme
     // if      (isCASJob) ci->MOPartition.scheme = CAS;
@@ -278,18 +269,18 @@ namespace ChronusQ {
     
 
     // if(not isRASJob) {
-    //   if (nActOs.size() != 1) CErr("Wrong input of CI.NACTO for" + jobType);
+    //   if (nActOs.size() != 1) CErr("Wrong input of CI/NACTO for" + jobType);
     // } else if (isRASJob) {
-    //   if (nActOs.size() != 3) CErr("Wrong input of CI.NACTO for" + jobType);
+    //   if (nActOs.size() != 3) CErr("Wrong input of CI/NACTO for" + jobType);
     //   try {
-    //     ci->MOPartition.mxHole = input.getData<int>("CI.RAS1MAXHOLE");
+    //     ci->MOPartition.mxHole = input.getData<int>("CI/RAS1MAXHOLE");
     //   } catch(...) {
-    //     CErr("Must specify CI.RAS1MAXHOLE for a RAS job");
+    //     CErr("Must specify CI/RAS1MAXHOLE for a RAS job");
     //   }
     //   try {
-    //     ci->MOPartition.mxElec = input.getData<int>("CI.RAS3MAXELEC");
+    //     ci->MOPartition.mxElec = input.getData<int>("CI/RAS3MAXELEC");
     //   } catch(...) {
-    //     CErr("Must specify CI.RAS3MAXELEC for a RAS Job");
+    //     CErr("Must specify CI/RAS3MAXELEC for a RAS Job");
     //   }
     // }   
     
@@ -305,7 +296,7 @@ namespace ChronusQ {
 	
     ci->setupCorrelatedMOSpace(std::accumulate(nActOs.begin(), nActOs.end(), 0), nActE, 0, 0);
     size_t corrOOffset = ci->corrSpace.nNegMO + ci->corrSpace.nFCore + ci->corrSpace.nInact;
-    OPTOPT( ciSettings->maxInterSpaceEx = input.getData<int>("CI.MAXINTERSPACEEX"); )
+    OPTOPT( ciSettings->maxInterSpaceEx = input.getData<int>("CI/MAXINTERSPACEEX"); )
     ConstructActiveSpaces(out, input, nActOs, nActE, corrOOffset, ciSettings->maxInterSpaceEx,
                           ciSettings->activeSpaces, ciSettings->refOcc, "CI");
     //ReadReferenceOcc(out, input, ciSettings->refOcc, "CI");
@@ -314,12 +305,12 @@ namespace ChronusQ {
     // MO Selections or Swaps
     std::string casMOStrings, icMOStrings, svMOStrings;
     std::vector<std::string> rasMOStrings(3);
-    OPTOPT( casMOStrings    = input.getData<std::string>("CI.CASORBITAL"));
-    // OPTOPT( rasMOStrings[0] = input.getData<std::string>("CI.RAS1ORBITAL"));
-    // OPTOPT( rasMOStrings[1] = input.getData<std::string>("CI.RAS2ORBITAL"));
-    // OPTOPT( rasMOStrings[2] = input.getData<std::string>("CI.RAS3ORBITAL"));
-    OPTOPT( icMOStrings     = input.getData<std::string>("CI.INORBITAL"));
-    OPTOPT( svMOStrings     = input.getData<std::string>("CI.FVORBITAL"));
+    OPTOPT( casMOStrings    = input.getData<std::string>("CI/CASORBITAL"));
+    // OPTOPT( rasMOStrings[0] = input.getData<std::string>("CI/RAS1ORBITAL"));
+    // OPTOPT( rasMOStrings[1] = input.getData<std::string>("CI/RAS2ORBITAL"));
+    // OPTOPT( rasMOStrings[2] = input.getData<std::string>("CI/RAS3ORBITAL"));
+    OPTOPT( icMOStrings     = input.getData<std::string>("CI/INORBITAL"));
+    OPTOPT( svMOStrings     = input.getData<std::string>("CI/FVORBITAL"));
 
     #define SET_ORBITAL_INDEX(ORBINDEX, INPUTSTRING, C) \
       if (not ORBINDEX.empty()) { \
@@ -428,7 +419,7 @@ namespace ChronusQ {
     // Change default based on # determinants
     if( ci->NStates < 750 ) ciALG = "FULLMATRIX";
     else ciALG = "DAVIDSON";
-    OPTOPT( ciALG = input.getData<std::string>("CI.CIDIAGALG");)
+    OPTOPT( ciALG = input.getData<std::string>("CI/CIDIAGALG");)
     trim(ciALG);
 
     if( not ciALG.compare("FULLMATRIX") ) {
@@ -436,19 +427,19 @@ namespace ChronusQ {
     } else if( not ciALG.compare("DAVIDSON") ) {
       ciSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
       OPTOPT( ciSettings->maxCIIter = 
-                input.getData<size_t>("CI.MAXCIITER"); )
+                input.getData<size_t>("CI/MAXCIITER"); )
       OPTOPT( ciSettings->ciVectorConv = 
-                input.getData<double>("CI.CICONV"); )
+                input.getData<double>("CI/CICONV"); )
       OPTOPT( ciSettings->maxDavidsonSpace = 
-                input.getData<size_t>("CI.MAXDAVIDSONSPACE");)
+                input.getData<size_t>("CI/MAXDAVIDSONSPACE");)
       OPTOPT( ciSettings->nDavidsonGuess = 
-                input.getData<size_t>("CI.NDAVIDSONGUESS");)
+                input.getData<size_t>("CI/NDAVIDSONGUESS");)
       if (!EnergyRefs.empty()) ciSettings->energyRefs = EnergyRefs;
     } else if(not ciALG.empty())
-      CErr(ciALG + "is not a valid CI.CIDIAGALG",out);
+      CErr(ciALG + "is not a valid CI/CIDIAGALG",out);
     
     std::string ciSigma2eALG = "NAIVE";
-    OPTOPT( ciSigma2eALG = input.getData<std::string>("CI.CISIGMA2EALG");)
+    OPTOPT( ciSigma2eALG = input.getData<std::string>("CI/CISIGMA2EALG");)
     trim(ciSigma2eALG);
     ciSettings->ciSigma2eContAlg = ciSigma2eALG;
     
@@ -461,27 +452,27 @@ namespace ChronusQ {
         // default as true
         ciSettings->ORSettings.rotate_negative_positive = true;
         OPTOPT(ciSettings->ORSettings.rotate_negative_positive
-          = input.getData<bool>("CI.ROTATENEGORBS"); )
+          = input.getData<bool>("CI/ROTATENEGORBS"); )
       }
 
-      OPTOPT(ciSettings->doIVOs = input.getData<bool>("CI.GENIVO"); )
+      OPTOPT(ciSettings->doIVOs = input.getData<bool>("CI/GENIVO"); )
 
       bool StateAverage = (nR > 1);
-      OPTOPT( StateAverage = input.getData<bool>("CI.STATEAVERAGE");)
+      OPTOPT( StateAverage = input.getData<bool>("CI/STATEAVERAGE");)
       if(StateAverage) {
         std::vector<double> SAWeights = HandleSAWeightsInputDAS(input, nR);
         ci->turnOnStateAverage(SAWeights);
       }
       
       size_t maxSCFIter = 128; // default
-      OPTOPT( maxSCFIter = input.getData<size_t>("CI.MAXSCFITER"); )
+      OPTOPT( maxSCFIter = input.getData<size_t>("CI/MAXSCFITER"); )
       ciSettings->maxSCFIter = maxSCFIter;
        
       auto & ORSettings = ciSettings->ORSettings;
       
       std::string scfALG = "AQ2nd";
       
-      OPTOPT( scfALG = input.getData<std::string>("CI.SCFALG");)
+      OPTOPT( scfALG = input.getData<std::string>("CI/SCFALG");)
        
       if( not scfALG.compare("AQ2nd") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER;
@@ -491,17 +482,17 @@ namespace ChronusQ {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_2ND_ORDER;
         CErr("Second Order method is not implemented yet");
       } else {
-        CErr(scfALG + " is not a valid CI.SCFALG",out);
+        CErr(scfALG + " is not a valid CI/SCFALG",out);
       }
 
       OPTOPT( ciSettings->scfEnergyConv = 
-                input.getData<double>("CI.SCFENECONV"); )
+                input.getData<double>("CI/SCFENECONV"); )
       
       OPTOPT( ciSettings->scfGradientConv = 
-                input.getData<double>("CI.SCFGRADCONV"); )
+                input.getData<double>("CI/SCFGRADCONV"); )
       
       OPTOPT( ORSettings.hessianDiagScale = 
-              input.getData<double>("CI.HESSDIAGSCALE"); )
+              input.getData<double>("CI/HESSDIAGSCALE"); )
      
    } // SCF Options
 
@@ -526,10 +517,11 @@ namespace ChronusQ {
    }
 
    // Check if CubeGen subsection
-   if( input.containsSection("CI.CUBE") ){
-     std::cout << " Found [CI.CUBE] section" << std::endl;
-     CQCUBE_VALID(out,input,"CI.");
-     CQCUBEOptionalKeywords(out,input,ci->cubeOptsPostHF,"CI.");
+   if( input.containsSection("CI/CUBE") ){
+     std::cout << " Found [CI/CUBE] section" << std::endl;
+     std::set<std::string> invalidKeywords = CQCUBE_VALID(input.getSection("CI/CUBE"));
+     printInvalidKeys(invalidKeywords, "CI/CUBE");
+     CQCUBEOptionalKeywords(out,input,ci->cubeOptsPostHF,"CI/");
    }
    
    return ci;

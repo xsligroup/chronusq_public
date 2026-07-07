@@ -199,17 +199,17 @@ namespace ChronusQ {
     JobType jobType;
     
     try {
-      jobType = parseJob(input.getData<std::string>("QM.JOB"));
+      jobType = parseJob(input.getData<std::string>("QM/JOB"));
     } catch (...) {
-      CErr("Must Specify QM.JOB",output);
+      CErr("Must Specify QM/JOB",output);
     }
 
     // Break into sequence of individual jobs
     std::vector<CQJob> jobs;
     if( jobType != JobType::SCF
         and not ((jobType == JobType::CC or jobType == JobType::EOMCC)
-                  and ((input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF")) 
-                    or (input.containsData("CC.SKIPCC") and input.getData<bool>("CC.SKIPCC"))))) {
+                  and ((input.containsData("CC/SKIPSCF") and input.getData<bool>("CC/SKIPSCF")) 
+                    or (input.containsData("CC/SKIPCC") and input.getData<bool>("CC/SKIPCC"))))) {
       jobs.push_back(JobType::SCF);
     }
     // if RT MR propagation add MR calculation
@@ -224,7 +224,7 @@ namespace ChronusQ {
     bool doNEO = false;
     if ( input.containsSection("SCF") ) {
       try {
-        doNEO = input.getData<bool>("SCF.NEO");
+        doNEO = input.getData<bool>("SCF/NEO");
       } catch(...) { ; }
     }
 
@@ -399,7 +399,7 @@ namespace ChronusQ {
           //                     assume we can re-use the same integrals from SCF job
           std::cout << "Skipping integral calculations for RT job. Assuming it's pre-computed." << std::endl;
         } else if ((elecJob == JobType::CC or elecJob == JobType::EOMCC)
-                   and not (input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF"))) {
+                   and not (input.containsData("CC/SKIPSCF") and input.getData<bool>("CC/SKIPSCF"))) {
           std::cout << "Skipping integral calculations for CC. Assuming it's pre-computed." << std::endl;
         } else {
           aoints->computeAOTwoE(*basis, mol, emPert);
@@ -567,7 +567,7 @@ namespace ChronusQ {
 
 #ifdef CQ_HAS_TA
 
-          if (input.containsData("CC.SKIPSCF") and input.getData<bool>("CC.SKIPSCF")) {
+          if (input.containsData("CC/SKIPSCF") and input.getData<bool>("CC/SKIPSCF")) {
             // compute the necessary 1e ints
             std::vector<std::pair<OPERATOR,size_t>> ops{{LEN_ELECTRIC_MULTIPOLE,1}};
             aoints->computeAOOneP(mol, *basis, emPert, ops, ssOptions.hamiltonianOptions);

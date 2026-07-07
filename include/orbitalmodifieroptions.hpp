@@ -216,7 +216,7 @@ namespace ChronusQ {
     std::string refLongName_;
     std::string refShortName_;
 
-    void parseSection(const InputMap &dict);
+    void parseSection(const std::map<std::string,std::string> &dict);
 
   }; // SCFControls struct
 
@@ -299,7 +299,7 @@ namespace ChronusQ {
 
     bool saveOnePDM = false;   ///< Whether to save 1PDM in AO basis to bin file during RT propagation
 
-    void parseSection(const InputMap &dict);
+    void parseSection(const std::map<std::string,std::string> &dict);
   };
 
   //struct SCFOptions {
@@ -339,7 +339,7 @@ namespace ChronusQ {
     std::vector<std::vector<size_t>> alphaNuclearMOSwap;
     std::vector<std::vector<size_t>> betaNuclearMOSwap;
 
-    void parseSection(const InputMap &dict);
+    void parseSection(const std::map<std::string,std::string> &dict);
 
   }; // struct GuessOptions
 

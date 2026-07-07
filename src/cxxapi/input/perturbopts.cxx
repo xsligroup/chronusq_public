@@ -31,12 +31,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
    */
-  void CQPERTURB_VALID( std::ostream &out, CQInputFile &input ) {
-
-    if( not input.containsSection("PERTURB") ) return;
+  std::set<std::string> CQPERTURB_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "DOFULL",
       "DOITER",
       "ITERCONV",
@@ -52,39 +50,7 @@ namespace ChronusQ {
       "SOI"
     };
 
-    // Specified keywords
-    std::vector<std::string> perturbKeywords = input.getDataInSection("PERTURB");
-
-    // Make sure all of the basis keywords in allowed keywords
-    for( auto &keyword : perturbKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() )
-      CErr("Keyword PERTURB." + keyword + " is not recognized",std::cout);// Error
-    }
-
-    // Check for disallowed combinations (if any)
-    // No GIAO + PERTURB
-    if( input.containsData("BASIS.BASISTYPE") ) {
-
-      std::string btype =
-        input.getData<std::string>("BASIS.BASISTYPE");
-
-      if( not btype.compare("GIAO") )
-        CErr("GIAO + PERTURB not allowed");
-
-    }
-
-    // No TDDFT
-    if( input.containsData("QM.REFERENCE") ) {
-
-      std::string ref = input.getData<std::string>("QM.REFERENCE");
-
-      bool isKS  = not (ref.find("HF") != std::string::npos);
-
-      if( isKS )
-        CErr("PERTURB + KS not allowed");
-
-    }
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   } // CQPERTURB_VALID
 
   /**
@@ -109,7 +75,7 @@ namespace ChronusQ {
     // Parse state of interest
     std::string sSoI;
     std::vector<size_t> SoI;
-    OPTOPT( sSoI = input.getData<std::string>("PERTURB.SOI"); )
+    OPTOPT( sSoI = input.getData<std::string>("PERTURB/SOI"); )
     if (sSoI.empty()) {
       std::cout << "Getting MCSCF default state of interests." << std::endl;
       for (auto i = 0ul; i < ref->NStates; i++)
@@ -150,44 +116,44 @@ namespace ChronusQ {
     // Parse options
 
 
-    OPTOPT( PTopts->saFock = input.getData<bool>("PERTURB.STATEAVERAGE"); )
+    OPTOPT( PTopts->saFock = input.getData<bool>("PERTURB/STATEAVERAGE"); )
     if (SoI.size() == 1) PTopts->saFock = false;
 
-    OPTOPT( PTopts->extendMS = input.getData<bool>("PERTURB.EXTENDMS"); )
+    OPTOPT( PTopts->extendMS = input.getData<bool>("PERTURB/EXTENDMS"); )
     if( PTopts->extendMS ) PTopts->saFock = true;
     std::cout<<"extended multi-state: "<<PTopts->extendMS<<std::endl;
 
-    OPTOPT( PTopts->doFull = input.getData<bool>("PERTURB.DOFULL"); )
+    OPTOPT( PTopts->doFull = input.getData<bool>("PERTURB/DOFULL"); )
     std::cout<<"DOFULL? "<<PTopts->doFull<<std::endl;
 
-    OPTOPT( PTopts->doIter = input.getData<bool>("PERTURB.DOITER"); )
+    OPTOPT( PTopts->doIter = input.getData<bool>("PERTURB/DOITER"); )
     std::cout<<"DOITER? "<<PTopts->doIter<<std::endl;
 
     // TODO
-//    OPTOPT( PTopts->doGVV = input.getData<bool>("PERTURB.DOGVVPT"); )
+//    OPTOPT( PTopts->doGVV = input.getData<bool>("PERTURB/DOGVVPT"); )
 //    if (PTopts->doGVV) PTopts->saFock = false;
 //    std::cout<<"GVVPT type: "<<PTopts->doGVV<<std::endl;
 //    std::cout<<"stateaverage (saFock): "<<PTopts->saFock<<std::endl;
       
-    OPTOPT( PTopts->maxIter = input.getData<size_t>("PERTURB.MAXITER"); )
+    OPTOPT( PTopts->maxIter = input.getData<size_t>("PERTURB/MAXITER"); )
     std::cout<<"Max num of GMRES iterations: "<<PTopts->maxIter<<std::endl;
 
-    OPTOPT( PTopts->convCrit = input.getData<double>("PERTURB.ITERCONV"); )
+    OPTOPT( PTopts->convCrit = input.getData<double>("PERTURB/ITERCONV"); )
     std::cout<<"convergence criteria: "<<PTopts->convCrit<<std::endl;
 
-    OPTOPT( PTopts->levelShift = input.getData<double>("PERTURB.LEVELSHIFT"); )
+    OPTOPT( PTopts->levelShift = input.getData<double>("PERTURB/LEVELSHIFT"); )
     std::cout<<"level shift: "<<PTopts->levelShift<<std::endl;
 
-    OPTOPT( PTopts->imaginaryShift = input.getData<double>("PERTURB.IMAGINARYSHIFT"); )
+    OPTOPT( PTopts->imaginaryShift = input.getData<double>("PERTURB/IMAGINARYSHIFT"); )
     std::cout<<"imaginary shift: "<<PTopts->imaginaryShift<<std::endl;
 
-    OPTOPT( PTopts->frozenCore = input.getData<size_t>("PERTURB.FROZENCORE"); )
+    OPTOPT( PTopts->frozenCore = input.getData<size_t>("PERTURB/FROZENCORE"); )
     std::cout<<"frozen core: "<<PTopts->frozenCore<<std::endl;
 
-    OPTOPT( PTopts->frozenVirtual = input.getData<size_t>("PERTURB.FROZENVIRTUAL"); )
+    OPTOPT( PTopts->frozenVirtual = input.getData<size_t>("PERTURB/FROZENVIRTUAL"); )
     std::cout<<"frozen virtual: "<<PTopts->frozenVirtual<<std::endl;
 
-    OPTOPT( PTopts->selectVirtual = input.getData<std::string>("PERTURB.SELECTVIRTUAL"); )
+    OPTOPT( PTopts->selectVirtual = input.getData<std::string>("PERTURB/SELECTVIRTUAL"); )
     std::cout<<"select virtual: "<<PTopts->selectVirtual<<std::endl;
 
     // reset frozenvirtual based on selectvirtual input

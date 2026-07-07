@@ -49,10 +49,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQQM_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQQM_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "REFERENCE",
       "JOB",
       "X2CTYPE",
@@ -64,16 +64,7 @@ namespace ChronusQ {
       "ONECENTERK"
     };
 
-    // Specified keywords
-    std::vector<std::string> qmKeywords = input.getDataInSection("QM");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : qmKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword QM." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -81,26 +72,16 @@ namespace ChronusQ {
    *  Check valid keywords in the Proton QM section.
    *
   */
-  void CQPROTQM_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "REFERENCE",
       "IGNOREPROTONTWOBODY",
-      "ONECENTERK",
-      "ERFOMEGA"
+      "ONECENTERK"
     };
 
-    // Specified keywords
-    std::vector<std::string> qmKeywords = input.getDataInSection("PROTQM");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : qmKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword PROTQM." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
 
@@ -109,10 +90,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQDFTINT_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQDFTINT_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "EPS",
       "NANG",
       "NRAD",
@@ -121,16 +102,7 @@ namespace ChronusQ {
       "GAUXC"
     };
 
-    // Specified keywords
-    std::vector<std::string> dftintKeywords = input.getDataInSection("DFTINT");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : dftintKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword DFTINT." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -487,13 +459,13 @@ namespace ChronusQ {
 
     if( input.containsSection("DFTINT") ) {
 
-      OPTOPT( intParam.epsilon      = input.getData<double>("DFTINT.EPS")  );
-      OPTOPT( intParam.nAng         = input.getData<size_t>("DFTINT.NANG") );
-      OPTOPT( intParam.nRad         = input.getData<size_t>("DFTINT.NRAD") );
-      OPTOPT( intParam.nRadPerBatch = input.getData<size_t>("DFTINT.NMACRO") );
+      OPTOPT( intParam.epsilon      = input.getData<double>("DFTINT/EPS")  );
+      OPTOPT( intParam.nAng         = input.getData<size_t>("DFTINT/NANG") );
+      OPTOPT( intParam.nRad         = input.getData<size_t>("DFTINT/NRAD") );
+      OPTOPT( intParam.nRadPerBatch = input.getData<size_t>("DFTINT/NMACRO") );
       bool gauFlag1(false), gauFlag2(false);
-      OPTOPT( gauFlag1              = not input.getData<bool>("DFTINT.INHOUSE") );
-      OPTOPT( gauFlag2              = input.getData<bool>("DFTINT.GAUXC") ); 
+      OPTOPT( gauFlag1              = not input.getData<bool>("DFTINT/INHOUSE") );
+      OPTOPT( gauFlag2              = input.getData<bool>("DFTINT/GAUXC") ); 
       intParam.useGauXC = gauFlag1 or gauFlag2;
 
     }
@@ -551,7 +523,7 @@ namespace ChronusQ {
     // Parse X2C option
     // X2CType = off (default), spinfree, onee, twoe
     X = "DEFAULT";
-    OPTOPT( X = input.getData<std::string>(section + ".X2CTYPE")  );
+    OPTOPT( X = input.getData<std::string>(section + "/X2CTYPE")  );
     trim(X);
     if( not X.compare("SPINFREE") ) {
 
@@ -604,7 +576,7 @@ namespace ChronusQ {
 
     } else  {
 
-      CErr(X + " not a valid " + section + ".X2CTYPE",out);
+      CErr(X + " not a valid " + section + "/X2CTYPE",out);
 
     }
 
@@ -613,7 +585,7 @@ namespace ChronusQ {
     // Parse one-electron spin-orbie scaling option
     // SpinOrbitScaling  = noscaling, boettger (dafault), atomicmeanfield (amfi)
     X = "DEFAULT"; // Unspecified value
-    OPTOPT( X = input.getData<std::string>(section + ".SPINORBITSCALING")  );
+    OPTOPT( X = input.getData<std::string>(section + "/SPINORBITSCALING")  );
     trim(X);
     if( not X.compare("NOSCALING") ) {
 
@@ -653,13 +625,13 @@ namespace ChronusQ {
 
     } else {
 
-      CErr(X + " not a valid " + section + ".SPINORBITSCALING",out);
+      CErr(X + " not a valid " + section + "/SPINORBITSCALING",out);
 
     }
 
     // Parse screened nuclear spin–orbit approximation
     X = "BOETTGER"; // Unspecified value
-    OPTOPT( X = input.getData<std::string>(section + ".SNSOTYPE")  );
+    OPTOPT( X = input.getData<std::string>(section + "/SNSOTYPE")  );
     trim(X);
     if( not X.compare("BOETTGER") ) {
 
@@ -679,7 +651,7 @@ namespace ChronusQ {
 
     } else {
 
-      CErr(X + " not a valid " + section + ".SNSOTYPE",out);
+      CErr(X + " not a valid " + section + "/SNSOTYPE",out);
 
     }
 
@@ -689,7 +661,7 @@ namespace ChronusQ {
 
     // Parse Finite Width Nuclei
     std::string finiteCore = "DEFAULT";
-    OPTOPT( finiteCore = input.getData<std::string>("INTS.FINITENUCLEI"); )
+    OPTOPT( finiteCore = input.getData<std::string>("INTS/FINITENUCLEI"); )
     trim(finiteCore);
     if( not finiteCore.compare("TRUE") )
       hamiltonianOptions.finiteWidthNuc = true;
@@ -702,7 +674,7 @@ namespace ChronusQ {
 
 
     // Parse Integral library
-    OPTOPT( hamiltonianOptions.Libcint = input.getData<bool>("INTS.LIBCINT") )
+    OPTOPT( hamiltonianOptions.Libcint = input.getData<bool>("INTS/LIBCINT") )
 
     if (hamiltonianOptions.Libcint) {
       if (basis.forceCart)
@@ -714,14 +686,14 @@ namespace ChronusQ {
     }
 
 
-    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.BARECOULOMB") )
-    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS.LLLL") )
-    //OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS.SSSS") )
-    //OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS.DIRACCOULOMB") )
-    //OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS.GAUGE") )
-    //OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS.GAUNT") )
+    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS/BARECOULOMB") )
+    OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS/LLLL") )
+    //OPTOPT( hamiltonianOptions.DiracCoulombSSSS = input.getData<bool>("INTS/SSSS") )
+    //OPTOPT( hamiltonianOptions.DiracCoulomb = input.getData<bool>("INTS/DIRACCOULOMB") )
+    //OPTOPT( hamiltonianOptions.Gauge = input.getData<bool>("INTS/GAUGE") )
+    //OPTOPT( hamiltonianOptions.Gaunt = input.getData<bool>("INTS/GAUNT") )
     //try{
-    //  if ( input.getData<bool>("INTS.BREIT") ) {
+    //  if ( input.getData<bool>("INTS/BREIT") ) {
     //    hamiltonianOptions.DiracCoulomb = true;
     //    hamiltonianOptions.DiracCoulombSSSS = true;
     //    hamiltonianOptions.Gaunt = true;
@@ -739,9 +711,9 @@ namespace ChronusQ {
     try { 
       std::string DCOptions = "FALSE";
       try {
-        DCOptions = input.getData<std::string>("INTS.DIRACCOULOMB");
+        DCOptions = input.getData<std::string>("INTS/DIRACCOULOMB");
       } catch (...) {
-        DCOptions = input.getData<std::string>("INTS.DC");
+        DCOptions = input.getData<std::string>("INTS/DC");
       }
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
@@ -797,7 +769,7 @@ namespace ChronusQ {
     // SSSS
     try { 
       std::string SSSSOptions = "FALSE";
-      SSSSOptions = input.getData<std::string>("INTS.SSSS");
+      SSSSOptions = input.getData<std::string>("INTS/SSSS");
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
       auto const regexFALSE = std::regex("off|none|false",std::regex_constants::icase);
@@ -850,7 +822,7 @@ namespace ChronusQ {
     // Gaunt
     try { 
       std::string GauntOptions = "FALSE";
-      GauntOptions = input.getData<std::string>("INTS.GAUNT");
+      GauntOptions = input.getData<std::string>("INTS/GAUNT");
       hasGauntInput = true;
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
@@ -905,7 +877,7 @@ namespace ChronusQ {
     // Gauge
     try { 
       std::string GaugeOptions = "FALSE";
-      GaugeOptions = input.getData<std::string>("INTS.GAUGE");
+      GaugeOptions = input.getData<std::string>("INTS/GAUGE");
       hasGaugeInput = true;
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
       auto const regexALL = std::regex("all|exact",std::regex_constants::icase);
@@ -958,13 +930,13 @@ namespace ChronusQ {
     // Breit = 1/2 Gaunt + gauge
     try { 
       std::string BreitOptions = "FALSE";
-      BreitOptions = input.getData<std::string>("INTS.BREIT");
+      BreitOptions = input.getData<std::string>("INTS/BREIT");
 
       if (hasGauntInput) {
-        CErr("INT.BREIT and INT.GAUNT options may conflict. Please only set one of them.");
+        CErr("INT/BREIT and INT/GAUNT options may conflict. Please only set one of them.");
       }
       if (hasGaugeInput) {
-        CErr("INT.BREIT and INT.GAUGE options may conflict. Please only set one of them.");
+        CErr("INT/BREIT and INT/GAUGE options may conflict. Please only set one of them.");
       }
 
       auto const regexTRUE = std::regex("true|on",std::regex_constants::icase);
@@ -1081,8 +1053,7 @@ namespace ChronusQ {
     } //DKS
 
     // For NEO (and in particular post-NEO-HF methods)
-    OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + ".IGNOREPROTONTWOBODY"));
-    OPTOPT(hamiltonianOptions.erfOmega = input.getData<double>(section + ".ERFOMEGA"));
+    OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + "/IGNOREPROTONTWOBODY"));
 
     // For RI J/K contraction with 3-index ERI
     OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + ".ONECENTERK"));
@@ -1107,7 +1078,7 @@ namespace ChronusQ {
     // AtomicX2C  = ALH, ALU, DLH, DLU, OFF (default)
     bool atomic = false;
     std::string X = "OFF";
-    OPTOPT( X = input.getData<std::string>(section + ".ATOMICX2C")  );
+    OPTOPT( X = input.getData<std::string>(section + "/ATOMICX2C")  );
     trim(X);
     if( not X.compare("ALH") ) {
       atomic = true;
@@ -1124,7 +1095,7 @@ namespace ChronusQ {
     } else if( not X.compare("OFF") ){
       atomic = false;
     } else {
-      CErr(X + " not a valid " + section + ".ATOMICX2C",out);
+      CErr(X + " not a valid " + section + "/ATOMICX2C",out);
     }
 
     return atomic;
@@ -1151,16 +1122,16 @@ namespace ChronusQ {
       std::shared_ptr<IntegralsBase> aoints,
       Particle p, std::string section) {
 
-    out << "  *** Parsing " << section << ".REFERENCE options ***\n";
+    out << "  *** Parsing " << section << "/REFERENCE options ***\n";
 
     SingleSlaterOptions options;
 
     // Attempt to find reference
     std::string reference;
     try { 
-      reference = input.getData<std::string>(section + ".REFERENCE");
+      reference = input.getData<std::string>(section + "/REFERENCE");
     } catch(...) {
-      CErr(section + ".REFERENCE Keyword not found!",out);
+      CErr(section + "/REFERENCE Keyword not found!",out);
     }
 
     // Digest reference string
@@ -1842,8 +1813,6 @@ namespace ChronusQ {
    
     SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., mass}, "PROTQM");
 
-    essopt.hamiltonianOptions.erfOmega = pssopt.hamiltonianOptions.erfOmega;
-
     std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
     std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
 
@@ -1934,9 +1903,6 @@ namespace ChronusQ {
       CErr("NEO w/ mixed GTO/GIAO NYI, \nor Unreconized MatsT/IntsT combination in CQNEOSSOptions");
     }
 
-    // Need to copy this over 
-    epaoints->options_.erfOmega=pssopt.hamiltonianOptions.erfOmega;
-    
     return {neoss, essopt, pssopt};
 
   }

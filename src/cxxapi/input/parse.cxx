@@ -21,10 +21,8 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
-
-#include <unordered_set>
-
 #include <cxxapi/input.hpp>
+#include <cxxapi/options.hpp>
 #include <cerr.hpp>
 #include <regex>
 #include <stack>
@@ -127,8 +125,8 @@ namespace ChronusQ {
     std::vector<std::regex> caseSensRegexes;
 
     // Add case sensitive data keywords here
-    caseSensRegexes.emplace_back(".*BASIS\\.BASIS$");
-    caseSensRegexes.emplace_back("^FILES\\..*");
+    caseSensRegexes.emplace_back(".*BASIS/BASIS$");
+    caseSensRegexes.emplace_back("^FILES/.*");
 
     // Loop over all lines of the file
     for( auto line_iter = lines_begin; line_iter != lines_end; ++line_iter ) {
@@ -166,8 +164,6 @@ namespace ChronusQ {
         trim(value);
 
         strToUpper(dataHeader);
-        if (sectionHeader != "")
-          dataHeader = sectionHeader + "." + dataHeader;
 
         // Check if the data entry has continuation lines below
         while (line_iter + 1 != lines_end) {
@@ -185,17 +181,24 @@ namespace ChronusQ {
         }
 
         // Capitalize data if not case sensitive
-        if (not std::any_of(caseSensRegexes.begin(), caseSensRegexes.end(), [&dataHeader](const std::regex& regex) {
-              return std::regex_search(dataHeader, regex);
+        std::string dataPath;
+        if (sectionHeader == "")
+          dataPath = dataHeader;
+        else if (sectionHeader == "/")
+          dataPath = "/" + dataHeader;
+        else
+          dataPath = sectionHeader + "/" + dataHeader;
+        if (not std::any_of(caseSensRegexes.begin(), caseSensRegexes.end(), [&dataPath](const std::regex& regex) {
+              return std::regex_match(dataPath, regex);
             }) and not value.empty())
           strToUpper(value);
 
         // Create a dictionary entry for the data field in the current
         // section header
         if(not value.empty())
-          addData(dataHeader,value);
+          addData(sectionHeader, dataHeader, value);
         else
-          CErr("No data entry for " + dataHeader + " in input file.");
+          CErr("No data entry for " + dataPath + " in input file.");
 
       }
       
@@ -214,34 +217,34 @@ namespace ChronusQ {
 
 
   /** 
-   *  \brief Splits a query string on a period "."
+   *  \brief Splits a query string on the last slash "/" character
    * 
    *  This is a helpder function for the getData function which takes a 
    *  formatted string and splits it into a section and data field.
    *
-   *  i.e.  "QM.REFERENCE" -> { "QM", "REFERENCE" }
+   *  i.e.  "QM/REFERENCE" -> { "QM", "REFERENCE" }
    *
    *  \param [in] query Query string to be split
-   *  \return     std::pair containing the two fields separated by a "."
+   *  \return     std::pair containing the two fields separated by a "/"
    */
-  std::pair<std::string,std::string> CQInputFile::splitQuery(
-    const std::string &query) {
-  
-    std::vector<std::string> tokens;
-  
-    // Make sure that the query contains a period
-  //assert( query.find(".") != query.end() );
-  
-    split(tokens,query,".");
-    for(auto &X : tokens) {
-      trim(X);
-      std::transform(X.begin(),X.end(),X.begin(),
-        [](unsigned char c){ return std::toupper(c);} );
-    }
-  
-    return 
-      std::pair<std::string,std::string>(tokens[0],tokens[1]);
+  std::pair<std::string, std::string> CQInputFile::splitQuery(const std::string& query) {
+    size_t lastSlashPos = query.find_last_of('/');
 
+    // If no slash is found, return the whole string as the first part, and an empty second part
+    if (lastSlashPos == std::string::npos) {
+      return {"", query};
+    }
+
+    // If slash is in the beginning, the section header is "/"
+    if (lastSlashPos == 0) {
+      return {"/", query.substr(1)};
+    }
+
+    // Split the string into two parts: before and after the last slash
+    std::string beforeSlash = query.substr(0, lastSlashPos);
+    std::string afterSlash = query.substr(lastSlashPos + 1);
+
+    return {beforeSlash, afterSlash};
   }; // CQInputFile::splitQuery
 
   
@@ -282,10 +285,23 @@ namespace ChronusQ {
    * \param [in] key   Key of the data field
    * \param [in] value Value of the data field
    */
-  void CQInputFile::addData(const std::string &key, const std::string &value) {
-    if (containsData(key))
+  void CQInputFile::addData(const std::string &prefix, const std::string &key, const std::string &value) {
+    if (containsData(prefix + key))
       CErr("Key " + key + " already exists in the parsed input.", std::cout);
-    dict_[key] = value;
+    dict_[prefix][key] = value;
+  }
+  void CQInputFile::addData(const std::string &path, const std::string &value) {
+    auto [prefix, key] = splitQuery(path);
+    addData(prefix, key, value);
+  }
+  void CQInputFile::modifyData(const std::string &prefix, const std::string &key, const std::string &value) {
+    if (not containsData(prefix + key))
+      CErr("Key " + key + " does not exist in the parsed input.", std::cout);
+    dict_[prefix][key] = value;
+  }
+  void CQInputFile::modifyData(const std::string &path, const std::string &value) {
+    auto [prefix, key] = splitQuery(path);
+    addData(prefix, key, value);
   }
 
 
@@ -294,15 +310,13 @@ namespace ChronusQ {
    * \param [in] subsection Subsection to be merged
    * \param [in] prefix Prefix of the data field
    */
-  void CQInputFile::mergeSection(const InputMap &subsection,
-                                 const std::string &prefix) {
-    if (prefix == "")
-      for (auto &kv : subsection) {
-        addData(kv.first, kv.second);
-      }
+  void CQInputFile::mergeSection(const std::string &prefix,
+                                 const std::map<std::string,std::string> &section) {
+    if (dict_.find(prefix) == dict_.end())
+      dict_[prefix] = section;
     else
-      for (auto &kv : subsection) {
-        addData(prefix + "." + kv.first, kv.second);
+      for (const auto &[k, v] : section) {
+        addData(prefix, k, v);
       }
   }
 
@@ -315,68 +329,7 @@ namespace ChronusQ {
    *  \return      True if input file contains that heading
    */
   bool CQInputFile::containsSection(const std::string &str) const {
-    auto it = dict_.lower_bound(str);
-    if (it == dict_.end()) return false;
-
-    // Check if the query string is identical section heading, this case is a data entry instead of section
-    if (it->first == str) it++;
-    if (it == dict_.end()) return false;
-    // Check if the query string is a substring of the section heading
-    return it->first.find(str) == 0 and it->first.size() > str.size() and it->first[str.size()] == '.';
-  }
-
-
-  /**
-   *  Checks whether or not the parsed CQ input file contains
-   *  a query section.
-   *
-   *  \paral  [in] str Query string of a section heading
-   *  \return      True if input file contains that heading
-   */
-  bool CQInputFile::containsList(const std::string &str) const {
-    auto it = dict_.lower_bound(str);
-    if (it == dict_.end()) return false;
-    // Check if the query string is a substring of the section heading
-    while (it->first.find(str) == 0) {
-      if (it->first.size() > str.size() and it->first[str.size()] == '[')
-        return true;
-      it++;
-    }
-    return false;
-  }
-
-
-  /**
-   *  Checks the size of a query list.
-   *
-   *  \paral  [in] str Query string of a section heading
-   *  \return      Size of the query list.
-   */
-  size_t CQInputFile::getListSize(const std::string &str) const {
-    if (not containsList(str))
-      return 0;
-    size_t max_index = 0;
-    auto it = dict_.lower_bound(str);
-    // Check if the query string is a substring of the section heading
-    while (it->first.find(str) == 0) {
-      if (it->first.size() > str.size() and it->first[str.size()] == '[')
-        max_index = std::max(max_index, InputKeyCompare::extractNumber(it->first, str.size() + 1));
-      it++;
-    }
-    return max_index + 1;
-  }
-
-  /**
-   * \brief Add a data to the end of a list
-   * @param str  Query string of a section heading
-   * @param data Data to be added to the list
-   * @param dict InputMap to be appended
-   */
-  void CQInputFile::appendList(const std::string &str, const std::string &data) {
-    addData(str + "[" + std::to_string(getListSize(str)) + "]", data);
-  }
-  void CQInputFile::appendList(const std::string &str, const InputMap &dict) {
-    mergeSection(dict, str + "[" + std::to_string(getListSize(str)) + "]");
+    return dict_.find(str) != dict_.end();
   }
 
 
@@ -386,29 +339,14 @@ namespace ChronusQ {
    *  \param [in] section Section heading
    *  \return             Vector of data fields in section
    */
-  InputMap CQInputFile::getSection(const std::string &section) const {
+  const std::map<std::string,std::string>& CQInputFile::getSection(const std::string &prefix) const {
 
-    if (not containsSection(section))
-      CErr("Section " + section + " not found in input file!");
+    if (not containsSection(prefix))
+      CErr("Section " + prefix + " not found in input file!");
 
-    InputMap sectionData;
-
-    auto it = dict_.lower_bound(section);
-
-    // Check if the query string is identical section heading, this case is a data entry instead of section
-    if (it->first == section) it++;
-    while (it != dict_.end()) {
-      const std::string &key = it->first;
-      if (key.find(section) != 0 or key[section.size()] != '.') break;
-
-      if (key.size() > section.size())
-        sectionData.emplace(key.substr(section.size() + 1), it->second);
-
-      ++it;
-    }
-
-    return sectionData;
+    return dict_.at(prefix);
   }
+
 
   /**
    *  Checks whether or not the parsed CQ input file contains
@@ -417,38 +355,75 @@ namespace ChronusQ {
    *  \paral  [in] str Query string of a data field (includes section heading)
    *  \return      True if input file contains that data field
    */
-  bool CQInputFile::containsData(std::string str) const {
-    return dict_.find(str) != dict_.end();
+  bool CQInputFile::containsData(const std::string &prefix,
+                                 const std::string &key) const {
+    return containsSection(prefix) and dict_.at(prefix).find(key) != dict_.at(prefix).end();
+  }
+  bool CQInputFile::containsData(const std::string &path) const {
+    const auto [prefix, key] = splitQuery(path);
+    return containsData(prefix, key);
   }
 
 
-  std::vector<std::string> CQInputFile::getDataInSection( std::string section ) const  {
+  std::set<std::string> CQInputFile::getDataInSection(const std::string &prefix) const  {
 
-    std::set<std::string> datasets;
+    std::set<std::string> keys;
 
-    std::string::size_type lenSection = section.size();
-    auto it = dict_.lower_bound(section);
-    while (it != dict_.end()) {
-      const std::string &key = it->first;
-      if (key.find(section) != 0) break;
+    if (containsSection(prefix))
+      for (const auto &[key, value] : dict_.at(prefix))
+        keys.insert(key);
 
-      if (key.size() > lenSection) {
-        std::string::size_type nextDotPos = key.find('.', lenSection + 1);
-
-        if (nextDotPos == std::string::npos) {
-          datasets.emplace(key.substr(lenSection + 1));
-        } else {
-          datasets.emplace(key.substr(lenSection + 1, nextDotPos - lenSection - 1));
-        }
-      }
-      ++it;
-    }
-
-    return std::vector<std::string>(datasets.begin(), datasets.end());
+    return keys;
 
   }
-  
-  
+
+
+  template <typename T>
+  T CQStringTo(const std::string &s) {
+    std::istringstream iss(s);
+    T t;
+    iss >> t;
+    return t;
+  }
+
+  template <>
+  bool CQStringTo(const std::string &s) {
+    if (s == "TRUE" or s == "ON")
+      return true;
+    if (s == "FALSE" or s == "OFF")
+      return false;
+    CErr("Invalid Input For Boolean-Type Keyword!");
+    return false;
+  }
+
+  template <>
+  std::string CQStringTo(const std::string &s) {
+    return s;
+  }
+
+  template double CQStringTo(const std::string &s);
+  template int CQStringTo(const std::string &s);
+  template size_t CQStringTo(const std::string &s);
+
+  template <typename T>
+  T CQInputFile::getData(const std::string &prefix,
+                         const std::string &key) const {
+
+    if (not containsData(prefix, key))
+      throw data_not_found(prefix + "/" + key);
+
+    return CQStringTo<T>(dict_.at(prefix).at(key));
+
+  }; // CQInputFile::getData
+
+  template <typename T>
+  T CQInputFile::getData(const std::string &path) const {
+
+    const auto &[prefix, key] = splitQuery(path);
+
+    return getData<T>(prefix, key);
+
+  }; // CQInputFile::getData
   /**
    *  \brief Specialization of getData to return std::string of query 
    *  data field
@@ -456,16 +431,10 @@ namespace ChronusQ {
    *  \param [in] query Formatted query string to be parsed
    *  \return     Value of query data field as a std::string
    */
-  template<>
-  std::string CQInputFile::getData(std::string query) const {
-      auto kv = dict_.find(query);
-  
-      if(kv != dict_.end())
-        return kv->second;
-
-      else throw data_not_found(query);
-  
-  }; // CQInputFile::getData<std::string>
+  template
+  std::string CQInputFile::getData(const std::string &prefix,
+                                   const std::string &key) const;
+  template std::string CQInputFile::getData(const std::string &path) const;
   
   /**
    *  \brief Specialization of getData to return int of query 
@@ -474,13 +443,11 @@ namespace ChronusQ {
    *  \param [in] query Formatted query string to be parsed
    *  \return     Value of query data field as a int
    */
-  template<>
-  int CQInputFile::getData(std::string query) const {
-  
-    return std::stoi(getData<std::string>(query));
-  
-  }; // CQInputFile::getData<int>
-  
+  template
+  int CQInputFile::getData(const std::string &prefix,
+                           const std::string &key) const;
+  template int CQInputFile::getData(const std::string &path) const;
+
   /**
    *  \brief Specialization of getData to return bool of query 
    *  data field
@@ -488,22 +455,10 @@ namespace ChronusQ {
    *  \param [in] query Formatted query string to be parsed
    *  \return     Value of query data field as a bool
    */
-  template<>
-  bool CQInputFile::getData(std::string query) const {
-  
-    query = getData<std::string>(query);
-    if (not query.compare("TRUE") or not query.compare("ON")){
-      return true;
-    }
-      
-    if (not query.compare("FALSE") or not query.compare("OFF")){
-      return false;
-    }
-  
-    CErr("Invalid Input For Boolean-Type Keyword!");
-
-    return false;
-  }; // CQInputFile::getData<bool>
+  template
+  bool CQInputFile::getData(const std::string &prefix,
+                            const std::string &key) const;
+  template bool CQInputFile::getData(const std::string &path) const;
   
   /**
    *  \brief Specialization of getData to return size_t of query 
@@ -512,12 +467,10 @@ namespace ChronusQ {
    *  \param [in] query Formatted query string to be parsed
    *  \return     Value of query data field as a size_t
    */
-  template<>
-  size_t CQInputFile::getData(std::string query) const {
-  
-    return std::stoul(getData<std::string>(query));
-  
-  }; // CQInputFile::getData<size_t>
+  template
+  size_t CQInputFile::getData(const std::string &prefix,
+                              const std::string &key) const;
+  template size_t CQInputFile::getData(const std::string &path) const;
   
   /**
    *  \brief Specialization of getData to return double of query 
@@ -526,12 +479,10 @@ namespace ChronusQ {
    *  \param [in] query Formatted query string to be parsed
    *  \return     Value of query data field as a double
    */
-  template<>
-  double CQInputFile::getData(std::string query) const {
-  
-    return std::stod(getData<std::string>(query));
-  
-  }; // CQInputFile::getData<double>
+  template
+  double CQInputFile::getData(const std::string &prefix,
+                              const std::string &key) const;
+  template double CQInputFile::getData(const std::string &path) const;
 
 
   /**
@@ -579,27 +530,12 @@ namespace ChronusQ {
    *  \returns std::ostream object
    */
   std::ostream& operator<<(std::ostream& os, const CQInputFile& inputFile) {
-    std::vector<std::string> lastSegments;
 
-    for (const auto& [key, value] : inputFile.dict_) {
-      std::vector<std::string> currentSegments;
-      split(currentSegments, key, ".");
-
-      int commonCount = 0;
-      while (commonCount < currentSegments.size()
-              and commonCount < lastSegments.size()
-              and currentSegments[commonCount] == lastSegments[commonCount]) {
-        ++commonCount;
+    for (const auto& [prefix, section] : inputFile.dict_) {
+      os << "[" << prefix << "]" << std::endl;
+      for (const auto& [key, value] : section) {
+        os << "  " << key << " = " << value << std::endl;
       }
-
-      for (int i = commonCount; i < currentSegments.size() - 1; ++i) {
-        os << std::string(i * 4, ' ') << currentSegments[i] << ":" << std::endl;
-      }
-
-      os << std::string((currentSegments.size() - 1) * 4, ' ')
-          << currentSegments.back() << ": " << value << std::endl;
-
-      lastSegments = std::move(currentSegments);
     }
 
     return os;

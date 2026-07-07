@@ -103,6 +103,32 @@ public:
       nComp--;
     }
   }
+  PauliSpinorMatrices(std::shared_ptr<NDArray<MatsT>> scalar,
+                      std::shared_ptr<NDArray<MatsT>> z = nullptr,
+                      std::shared_ptr<NDArray<MatsT>> y = nullptr,
+                      std::shared_ptr<NDArray<MatsT>> x = nullptr) {
+    if (not scalar)
+      CErr("PauliSpinorMatrices: Scalar component cannot be null.");
+    size_t nComp = 1;
+    if (z) {
+      nComp = 2;
+      if (y) {
+        if (x) nComp = 4;
+        else CErr("PauliSpinorMatrices: Y component cannot be provided without X component.");
+      } else if (x) {
+        CErr("PauliSpinorMatrices: X component cannot be provided without Y component.");
+      }
+    } else if (y or x) {
+      CErr("PauliSpinorMatrices: Y or X component cannot be provided without Z component.");
+    }
+    components_.reserve(nComp);
+    components_.emplace_back(scalar);
+    if (z) components_.emplace_back(z);
+    if (y) {
+      components_.emplace_back(y);
+      components_.emplace_back(x);
+    }
+  }
   template <typename ScalarT, typename MatsU>
   PauliSpinorMatrices( const ScaledMatrix<ScalarT, MatsU>&,
                              bool addXY = false, bool addZ = false );
@@ -265,9 +291,9 @@ public:
     if (printFull) {
       std::string oeiStr;
       if (s == "")
-        oeiStr = "PauliSpinorOEI";
+        oeiStr = "PauliSpinorMatrix";
       else
-        oeiStr = "PauliSpinorOEI[" + s + "]";
+        oeiStr = "PauliSpinorMatrix[" + s + "]";
       prettyPrintSmart(out, oeiStr+".S", S().pointer(),
           this->nRows(), this->nColumns(), this->nRows());
       if(hasZ())
@@ -284,7 +310,7 @@ public:
       if (s == "")
         oeiStr = "Pauli spinor one-electron integrals";
       else
-        oeiStr = "PauliSpinorOEI[" + s + "]";
+        oeiStr = "PauliSpinorMatrix[" + s + "]";
       out << oeiStr;
       if(not hasZ())
         out << " without XYZ components";

@@ -92,12 +92,29 @@ namespace ChronusQ {
         }
       }
 
+      std::string getElemTypeStr() const {
+        if (std::is_same<MatsT, double>::value) return "double";
+        if (std::is_same<MatsT, dcomplex>::value) return "dcomplex";
+        if (std::is_same<MatsT, int>::value) return "int";
+        return typeid(MatsT).name();
+      }
+
     public:
       size_t nElements() const {
         return std::accumulate(dims_.begin(), dims_.end(), 1ul, std::multiplies<size_t>());
       }
 
       const std::vector<size_t>& dimensions() const { return dims_; }
+
+      std::string getTypeDimStr() const {
+        std::string dimsStr = "NDArray<" + getElemTypeStr() + ">(";
+        for (size_t i = 0; i < dims_.size(); ++i) {
+          dimsStr += std::to_string(dims_[i]);
+          if (i < dims_.size() - 1) dimsStr += ",";
+        }
+        dimsStr += ")";
+        return dimsStr;
+      }
 
       template <typename MatU>
       bool isSameDimension(const NDArray<MatU>& other) const {
@@ -241,19 +258,9 @@ namespace ChronusQ {
 
       void output(std::ostream &out, const std::string &s = "",
                   bool printFull = false) const {
-        std::string matStr;
-        if (s == "")
-          matStr = "NDArray";
-        else
-          matStr = "NDArray[" + s + "]";
-        matStr += " (";
-        for (size_t i = 0; i < dims_.size(); ++i) {
-          matStr += std::to_string(dims_[i]);
-          if (i < dims_.size() - 1) {
-            matStr += ",";
-          }
-        }
-        matStr += ")";
+        std::string matStr = getTypeDimStr();
+        if (s != "")
+          matStr += "[" + s + "]";
         matStr += (printFull ? ":" : "");
         out << matStr << std::endl;
         if (printFull)

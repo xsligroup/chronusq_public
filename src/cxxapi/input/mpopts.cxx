@@ -30,34 +30,15 @@ namespace ChronusQ {
    * Check valid MP2 keywords
    * 
    */
-  void CQMP2_VALID(std::ostream &out, CQInputFile & input)
+  std::set<std::string> CQMP2_VALID(const std::map<std::string, std::string>& inputSection)
   {
-    if( not input.containsSection("MP2")) return; 
-
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "NOS",
     };
 
-    // Specified keywords
-    std::vector<std::string> MP2Keywords = input.getDataInSection("MP2");
+    std::set<std::string> invalidKeys = CQInvalidKeywords(allowedKeywords, inputSection);
 
-    // Make sure all of the basis keywords in allowed keywords
-    for( auto &keyword : MP2Keywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() )
-      CErr("Keyword MP2." + keyword + " is not recognized",std::cout);// Error
-    }
-
-    // MP2 shouldn't be run on DFT references
-    if( input.containsData("QM.REFERENCE") ) {
-
-      std::string ref = input.getData<std::string>("QM.REFERENCE");
-
-      bool isKS  = not (ref.find("HF") != std::string::npos);
-
-      if( isKS )
-        CErr("MP2 + KS not allowed");
-    }
+    return invalidKeys;
   }; // CQMP2_VALID
 
 
@@ -81,7 +62,7 @@ namespace ChronusQ {
         mp = std::make_shared<NEOMP2<double,double>>(std::dynamic_pointer_cast<NEOSS<double,double>>(ss));
       }
 
-      OPTOPT(mp->makeMP2NOs=input.getData<bool>("MP2.NOS"));
+      OPTOPT(mp->makeMP2NOs=input.getData<bool>("MP2/NOS"));
 
       return mp;
     }; // CQMP2Options

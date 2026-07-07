@@ -23,7 +23,6 @@
  */
 #pragma once
 
-#include <cxxapi/options.hpp>
 #include <intermediates.hpp>
 
 namespace ChronusQ {

@@ -73,7 +73,8 @@ namespace ChronusQ {
     PT,
     MP2,
     BOMD,
-    EHRENFEST
+    EHRENFEST,
+    UNKNOWN
   };
 
 
@@ -112,8 +113,7 @@ namespace ChronusQ {
       job = JobType::MP2;
     }
     else {
-      jobStr = "Unrecognized job type \"" + jobStr + "\"!";
-      CErr(jobStr);
+      job = JobType::UNKNOWN;
     }
     return job;
   };
@@ -124,7 +124,7 @@ namespace ChronusQ {
   // Parse the options relating to the Molecule object
   Molecule CQMoleculeOptions(std::ostream &, CQInputFile &, std::string &);
 
-  void CQMOLECULE_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQMOLECULE_VALID(const std::map<std::string, std::string>& inputSection);
 
   void parseGeomInp(Molecule &, std::string &, std::ostream &, bool, bool);
 
@@ -147,7 +147,7 @@ namespace ChronusQ {
   std::shared_ptr<BasisSet> CQBasisSetOptions(std::ostream &, CQInputFile &,
     Molecule &, std::string);
 
-  void CQBASIS_VALID(std::ostream&, CQInputFile &, std::string);
+  std::set<std::string> CQBASIS_VALID(const std::map<std::string, std::string>& inputSection);
 
 
   // Parse the options relating to the SingleSlaterOptions
@@ -164,9 +164,9 @@ namespace ChronusQ {
       std::shared_ptr<IntegralsBase> epaoints,
       SCFControls scfControls);
 
-  void CQQM_VALID(std::ostream&, CQInputFile &);
-  void CQPROTQM_VALID(std::ostream&, CQInputFile &);
-  void CQDFTINT_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQQM_VALID(const std::map<std::string, std::string>& inputSection);
+  std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection);
+  std::set<std::string> CQDFTINT_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse RT options
   std::shared_ptr<TDEMFieldBase> parseRTField(std::string&, std::ostream& );
@@ -185,7 +185,7 @@ namespace ChronusQ {
     EMPerturbation &
   );
 
-  void CQRT_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQRT_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse Response options
   std::shared_ptr<ResponseBase> CQResponseOptions(
@@ -193,8 +193,8 @@ namespace ChronusQ {
     EMPerturbation &
   );
 
-  void CQRESPONSE_VALID(std::ostream&, CQInputFile &);
-  void CQMOR_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQRESPONSE_VALID(const std::map<std::string, std::string>& inputSection);
+  std::set<std::string> CQMOR_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse integral options
   std::shared_ptr<IntegralsBase> CQIntsOptions(std::ostream &, 
@@ -202,7 +202,7 @@ namespace ChronusQ {
     std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
     std::shared_ptr<BasisSet>, std::string int_sec = "INTS");
 
-  void CQINTS_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQINTS_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse the external field options
   inline void handleField(const std::string& fieldInputStr, EMPerturbation& parsedField, const EMPerturbation& otherField = EMPerturbation()) {
@@ -243,7 +243,7 @@ namespace ChronusQ {
 
   void HandleOrbitalSwaps(std::ostream&, CQInputFile&, SingleSlaterBase&, std::string);
 
-  void CQSCF_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQSCF_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse Davidson energy specific settings
   size_t HandleNRootsInput(std::string,
@@ -255,8 +255,8 @@ namespace ChronusQ {
   CoupledClusterSettings CQCCOptions(std::ostream &, CQInputFile &);
   EOMSettings CQEOMCCOptions(std::ostream &, CQInputFile &);
 #endif
-  void CQCC_VALID(std::ostream &, CQInputFile &);
-  void CQEOMCC_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQCC_VALID(const std::map<std::string, std::string>& inputSection);
+  std::set<std::string> CQEOMCC_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse geometry modifier options
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
@@ -273,7 +273,7 @@ namespace ChronusQ {
     std::shared_ptr<IntegralsBase> epints,
     EMPerturbation& emPert, TDSCFOptions& tdSCFOptions);
 
-  void CQDYNAMICS_VALID( std::ostream& out, CQInputFile& input );
+  std::set<std::string> CQDYNAMICS_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse MCSCF options
   struct MCSCFJobType;
@@ -286,7 +286,7 @@ namespace ChronusQ {
      CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, std::string &,
      std::shared_ptr<MCSCFJobType>&mcscfjob);
 
-  void CQMCSCF_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQMCSCF_VALID(const std::map<std::string, std::string>& inputSection);
   
   void HandlePostHFProperties(std::ostream &, CQInputFile &,
     std::shared_ptr<PostHartreeFockBase> & postHF,
@@ -323,7 +323,7 @@ namespace ChronusQ {
   GauXCOptions CQGauXCOptions(std::ostream&, CQInputFile &input, SingleSlaterOptions &ssOptions,
     SingleSlaterOptions &prot_ssOptions);                  
 
-  void CQCI_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQCI_VALID(const std::map<std::string, std::string>& inputSection);
   
   // Save reference info
   void saveRefs(SingleSlaterOptions &, std::shared_ptr<SingleSlaterBase> &);
@@ -336,13 +336,13 @@ namespace ChronusQ {
               std::shared_ptr<SingleSlaterBase> &);
 
 
-  void CQMP2_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQMP2_VALID(const std::map<std::string, std::string>& inputSection);
 
-  void CQPERTURB_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQPERTURB_VALID(const std::map<std::string, std::string>& inputSection);
 
   void CQMiscOptions(std::ostream &, CQInputFile &);
 
-  void CQMISC_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQMISC_VALID(const std::map<std::string, std::string>& inputSection);
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream&, CQInputFile&,
     std::shared_ptr<Molecule> mol, std::shared_ptr<BasisSet> &, EMPerturbation &, double );
@@ -356,41 +356,22 @@ namespace ChronusQ {
   void ParseOrbitalPropSubsection(std::ostream&, CQInputFile&,
     std::shared_ptr<SingleSlaterBase> ss);
 
-  void CQCUBE_VALID(std::ostream&, CQInputFile &, std::string);
+  std::set<std::string> CQCUBE_VALID(const std::map<std::string, std::string>& inputSection);
 
-  void CQORBPROP_VALID(std::ostream&, CQInputFile &, std::string);
+  std::set<std::string> CQORBPROP_VALID(const std::map<std::string, std::string>& inputSection);
 
-  void CQGAUXC_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQGAUXC_VALID(const std::map<std::string, std::string>& inputSection);
 
-  inline void CQINPUT_VALID(std::ostream &out, CQInputFile &input) {
+  void printInvalidKeys(const std::set<std::string> &invalidKeywords,
+                        const std::string &prefix);
 
-    CQMOLECULE_VALID(out,input);
-    CQBASIS_VALID(out,input,"BASIS");
-    CQBASIS_VALID(out,input,"DFBASIS");
-    CQINTS_VALID(out,input);
-    CQQM_VALID(out,input);
-    CQPROTQM_VALID(out,input);
-    CQDFTINT_VALID(out,input);
-    CQSCF_VALID(out,input);
-    CQRT_VALID(out,input);
-    CQRESPONSE_VALID(out,input);
-    CQMOR_VALID(out,input);
-    CQCUBE_VALID(out,input,"");
-    CQORBPROP_VALID(out,input,"");
-    CQMISC_VALID(out,input);
-    CQCC_VALID(out,input);
-    CQDYNAMICS_VALID(out,input);
-    CQMCSCF_VALID(out,input);
-    CQEOMCC_VALID(out,input);
-    CQPERTURB_VALID(out,input);
-    CQMP2_VALID(out,input);
-    CQCI_VALID(out,input);
-    CQGAUXC_VALID(out,input);
+  std::set<std::string> CQInvalidKeywords(
+      const std::set<std::string> &allowedKeywords,
+      const std::map<std::string, std::string>& inputSection);
 
-  }
+  void CQINPUT_VALID(std::ostream &out, CQInputFile &input);
 
   void copyIntermediates();
-
 
 };
 

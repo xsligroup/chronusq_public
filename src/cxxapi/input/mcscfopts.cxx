@@ -35,10 +35,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQMCSCF_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQMCSCF_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "JOBTYPE",
       "NROOTS",
       "NACTO",
@@ -81,16 +81,7 @@ namespace ChronusQ {
       "NDETPRINT",
     };
 
-    // Specified keywords
-    std::vector<std::string> mcscfKeywords = input.getDataInSection("MCSCF");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : mcscfKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword MCSCF." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -194,7 +185,7 @@ namespace ChronusQ {
     std::string sSAWeights;
     std::vector<double> SAWeights = std::vector<double>(nR, 1./nR);
 
-    OPTOPT( sSAWeights = input.getData<std::string>("MCSCF.SAWEIGHTS"); )
+    OPTOPT( sSAWeights = input.getData<std::string>("MCSCF/SAWEIGHTS"); )
     if (!sSAWeights.empty()) {
       std::cout << "  * Manual State Average Weights Detected: " << std::endl;
       //Parse SAWeights string
@@ -221,7 +212,7 @@ namespace ChronusQ {
 
     // Parse RDM printing
     std::string printRDMString;
-    OPTOPT( printRDMString = input.getData<std::string>("MCSCF.PRINTRDMS"));
+    OPTOPT( printRDMString = input.getData<std::string>("MCSCF/PRINTRDMS"));
     if ( not printRDMString.empty() ) {
       std::cout << "  * Printing RDM detected: " << std::endl;
 
@@ -247,7 +238,7 @@ namespace ChronusQ {
     std::shared_ptr<MCWaveFunctionBase> & mcwf)
   {
     std::string DetPrintString;
-    OPTOPT(DetPrintString = input.getData<std::string>("MCSCF.NDETPRINT"));
+    OPTOPT(DetPrintString = input.getData<std::string>("MCSCF/NDETPRINT"));
 
     // If not specified return
     if(DetPrintString.empty())
@@ -277,7 +268,7 @@ namespace ChronusQ {
 
     // MO swapping
     std::string swapMOStrings;
-    OPTOPT( swapMOStrings = input.getData<std::string>("MCSCF.SWAPMO"));
+    OPTOPT( swapMOStrings = input.getData<std::string>("MCSCF/SWAPMO"));
     if ( not swapMOStrings.empty() ) {
       std::cout << "  * Manually MO Swapping Detected: " << std::endl;
 
@@ -527,7 +518,7 @@ namespace ChronusQ {
     void parseMCSCFJobType(std::ostream&out,CQInputFile&input,std::string&prefix)
     {
       try {
-        jobType = input.getData<std::string>(prefix+"MCSCF.JOBTYPE");
+        jobType = input.getData<std::string>(prefix+"MCSCF/JOBTYPE");
       } catch(...) {
         CErr("A specific job Type is needed for MCSCF job");
       }
@@ -548,7 +539,7 @@ namespace ChronusQ {
       isDMRGJob = std::find(DMRGJobs.begin(),DMRGJobs.end(),jobType) != DMRGJobs.end();
 
       if(!isCASJob and !isRASJob and !isDMRGJob) 
-        CErr(jobType + " is not a valid MCSCF.JOBTYPE",out);
+        CErr(jobType + " is not a valid MCSCF/JOBTYPE",out);
       
         // erase scheme and get methods
       if(isDMRGJob) jobType.erase(0,4);
@@ -603,7 +594,7 @@ namespace ChronusQ {
     std::string nRoots;
     size_t nR;
     std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF.NROOTS");)
+    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF/NROOTS");)
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
@@ -620,7 +611,7 @@ namespace ChronusQ {
       std::string ciALG;
       if( mcscf->NDet<750 ) ciALG = "FULLMATRIX";
       else ciALG = "DAVIDSON";
-      OPTOPT( ciALG = input.getData<std::string>(prefix+"MCSCF.CIDIAGALG");)
+      OPTOPT( ciALG = input.getData<std::string>(prefix+"MCSCF/CIDIAGALG");)
       trim(ciALG);
 
       if( not ciALG.compare("FULLMATRIX") ) {
@@ -628,19 +619,19 @@ namespace ChronusQ {
       } else if( not ciALG.compare("DAVIDSON") ) {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
         OPTOPT( mcscfSettings->maxCIIter = 
-                  input.getData<size_t>(prefix+"MCSCF.MAXCIITER"); )
+                  input.getData<size_t>(prefix+"MCSCF/MAXCIITER"); )
         OPTOPT( mcscfSettings->ciVectorConv = 
-                  input.getData<double>(prefix+"MCSCF.CICONV"); )
+                  input.getData<double>(prefix+"MCSCF/CICONV"); )
         OPTOPT( mcscfSettings->maxDavidsonSpace = 
-                  input.getData<size_t>(prefix+"MCSCF.MAXDAVIDSONSPACE");)
+                  input.getData<size_t>(prefix+"MCSCF/MAXDAVIDSONSPACE");)
         OPTOPT( mcscfSettings->nDavidsonGuess = 
-                  input.getData<size_t>(prefix+"MCSCF.NDAVIDSONGUESS");)
+                  input.getData<size_t>(prefix+"MCSCF/NDAVIDSONGUESS");)
         if (!EnergyRefs.empty()) mcscfSettings->energyRefs = EnergyRefs;
       } else if( not ciALG.compare("SKIP") )
       {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::SKIP;
       } 
-      else CErr(ciALG + "is not a valid MCSCF.CIDIAGALG",out);
+      else CErr(ciALG + "is not a valid MCSCF/CIDIAGALG",out);
       
     } // CI Options
     
@@ -653,27 +644,27 @@ namespace ChronusQ {
         // default as true
         mcscfSettings->ORSettings.rotate_negative_positive = true;
         OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
-          = input.getData<bool>(prefix+"MCSCF.ROTATENEGORBS"); )
+          = input.getData<bool>(prefix+"MCSCF/ROTATENEGORBS"); )
       }
 
-      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>(prefix+"MCSCF.GENIVO"); )
+      OPTOPT(mcscfSettings->doIVOs = input.getData<bool>(prefix+"MCSCF/GENIVO"); )
 
       bool StateAverage = (nR > 1);
-      OPTOPT( StateAverage = input.getData<bool>(prefix+"MCSCF.STATEAVERAGE");)
+      OPTOPT( StateAverage = input.getData<bool>(prefix+"MCSCF/STATEAVERAGE");)
       if(StateAverage) {
         std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
         mcscf->turnOnStateAverage(SAWeights);
       }
       
       size_t maxSCFIter = 128; // default
-      OPTOPT( maxSCFIter = input.getData<size_t>(prefix+"MCSCF.MAXSCFITER"); )
+      OPTOPT( maxSCFIter = input.getData<size_t>(prefix+"MCSCF/MAXSCFITER"); )
       mcscfSettings->maxSCFIter = maxSCFIter;
        
       auto & ORSettings = mcscfSettings->ORSettings;
       
       std::string scfALG = "AQ2ND";
       
-      OPTOPT( scfALG = input.getData<std::string>(prefix+"MCSCF.SCFALG");)
+      OPTOPT( scfALG = input.getData<std::string>(prefix+"MCSCF/SCFALG");)
        
       if( not scfALG.compare("AQ2ND") ) {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_APPROX_QUASI_2ND_ORDER;
@@ -684,39 +675,39 @@ namespace ChronusQ {
         ORSettings.alg = OrbitalRotationAlgorithm::ORB_ROT_2ND_ORDER;
         CErr("Second Order method is not implemented yet");
       } else {
-        CErr(scfALG + " is not a valid MCSCF.SCFALG",out);
+        CErr(scfALG + " is not a valid MCSCF/SCFALG",out);
       }
 
       OPTOPT( mcscfSettings->scfEnergyConv = 
-                input.getData<double>(prefix+"MCSCF.SCFENECONV"); )
+                input.getData<double>(prefix+"MCSCF/SCFENECONV"); )
       
       OPTOPT( mcscfSettings->scfGradientConv = 
-                input.getData<double>(prefix+"MCSCF.SCFGRADCONV"); )
+                input.getData<double>(prefix+"MCSCF/SCFGRADCONV"); )
       
       OPTOPT( ORSettings.hessianDiagScale = 
-              input.getData<double>(prefix+"MCSCF.HESSDIAGSCALE"); )
+              input.getData<double>(prefix+"MCSCF/HESSDIAGSCALE"); )
      
    } // SCF Options
 
    // Natural orbitals
-   OPTOPT( mcscfSettings->NatOrbs = input.getData<int>(prefix+"MCSCF.NATORB"); )
-   OPTOPT( mcscfSettings->NatOrbRediag = input.getData<bool>(prefix+"MCSCF.NATORBREDIAG"); )
+   OPTOPT( mcscfSettings->NatOrbs = input.getData<int>(prefix+"MCSCF/NATORB"); )
+   OPTOPT( mcscfSettings->NatOrbRediag = input.getData<bool>(prefix+"MCSCF/NATORBREDIAG"); )
 
    // Mulliken charge analysis
-   OPTOPT( mcscfSettings->PopulationAnalysis = input.getData<bool>(prefix+"MCSCF.POPULATION"); )
+   OPTOPT( mcscfSettings->PopulationAnalysis = input.getData<bool>(prefix+"MCSCF/POPULATION"); )
 
    // Mulliken charge analysis
-   OPTOPT( mcscfSettings->SpinAnalysis = input.getData<bool>(prefix+"MCSCF.PRINTSPIN"); )
+   OPTOPT( mcscfSettings->SpinAnalysis = input.getData<bool>(prefix+"MCSCF/PRINTSPIN"); )
 
    // Oscillator strength
-   OPTOPT( mcscfSettings->NosS1 = input.getData<size_t>(prefix+"MCSCF.OSCISTREN"); )
+   OPTOPT( mcscfSettings->NosS1 = input.getData<size_t>(prefix+"MCSCF/OSCISTREN"); )
 
    // Multipole moments
-   OPTOPT( mcscfSettings->multipoleMoment = input.getData<bool>(prefix+"MCSCF.PRINTMULT"); )
+   OPTOPT( mcscfSettings->multipoleMoment = input.getData<bool>(prefix+"MCSCF/PRINTMULT"); )
 
    // MCSCF Field
    std::string fieldStr;
-   OPTOPT( fieldStr = input.getData<std::string>(prefix+"MCSCF.FIELD");)
+   OPTOPT( fieldStr = input.getData<std::string>(prefix+"MCSCF/FIELD");)
    EMPerturbation parsedField;
    handleField(fieldStr, parsedField, scfPert);
    mcscf->mcscfPert.addField(parsedField);
@@ -756,7 +747,7 @@ namespace ChronusQ {
     size_t nR = 1;
     std::string nRoots;
     std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF.NROOTS");)
+    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF/NROOTS");)
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
@@ -817,12 +808,12 @@ namespace ChronusQ {
     size_t nActP = 0;
 
     try {
-      sActO = input.getData<std::string>(prefix+"MCSCF.NACTO");
+      sActO = input.getData<std::string>(prefix+"MCSCF/NACTO");
     } catch(...) {
-      CErr("Must specify MCSCF.NActO for # active orbitals");
+      CErr("Must specify MCSCF/NActO for # active orbitals");
     }
-    OPTOPT(nActE = input.getData<int>(prefix+"MCSCF.NACTE"));
-    OPTOPT(nActP = input.getData<int>(prefix+"MCSCF.NACTP"));
+    OPTOPT(nActE = input.getData<int>(prefix+"MCSCF/NACTE"));
+    OPTOPT(nActP = input.getData<int>(prefix+"MCSCF/NACTP"));
     if(!nActE && !nActP)
       CErr("Must specify active number of particles in MCSCF with NACTE or NACTP");
    
@@ -832,18 +823,18 @@ namespace ChronusQ {
       nActO.push_back(std::stoul(nacto_i));
 
     if(not mcscfjob->isRASJob) {
-      if (nActO.size() != 1) CErr("Wrong input of MCSCF.NACTO for" + mcscfjob->jobType);
+      if (nActO.size() != 1) CErr("Wrong input of MCSCF/NACTO for" + mcscfjob->jobType);
     } else if (mcscfjob->isRASJob) {
-      if (nActO.size() != 3) CErr("Wrong input of MCSCF.NACTO for" + mcscfjob->jobType);
+      if (nActO.size() != 3) CErr("Wrong input of MCSCF/NACTO for" + mcscfjob->jobType);
       try {
-        mcwfn->MOPartition.mxHole = input.getData<int>(prefix+"MCSCF.RAS1MAXHOLE");
+        mcwfn->MOPartition.mxHole = input.getData<int>(prefix+"MCSCF/RAS1MAXHOLE");
       } catch(...) {
-        CErr("Must specify MCSCF.RAS1MAXHOLE for a RAS job");
+        CErr("Must specify MCSCF/RAS1MAXHOLE for a RAS job");
       }
       try {
-        mcwfn->MOPartition.mxElec = input.getData<int>(prefix+"MCSCF.RAS3MAXELEC");
+        mcwfn->MOPartition.mxElec = input.getData<int>(prefix+"MCSCF/RAS3MAXELEC");
       } catch(...) {
-        CErr("Must specify MCSCF.RAS3MAXELEC for a RAS Job");
+        CErr("Must specify MCSCF/RAS3MAXELEC for a RAS Job");
       }
     }   
 
@@ -852,12 +843,12 @@ namespace ChronusQ {
     // MO Selections or Swaps
     std::string casMOStrings, fcMOStrings, fvMOStrings;
     std::vector<std::string> rasMOStrings(3);
-    OPTOPT( casMOStrings    = input.getData<std::string>(prefix+"MCSCF.CASORBITAL"));
-    OPTOPT( rasMOStrings[0] = input.getData<std::string>(prefix+"MCSCF.RAS1ORBITAL"));
-    OPTOPT( rasMOStrings[1] = input.getData<std::string>(prefix+"MCSCF.RAS2ORBITAL"));
-    OPTOPT( rasMOStrings[2] = input.getData<std::string>(prefix+"MCSCF.RAS3ORBITAL"));
-    OPTOPT( fcMOStrings     = input.getData<std::string>(prefix+"MCSCF.INORBITAL"));
-    OPTOPT( fvMOStrings     = input.getData<std::string>(prefix+"MCSCF.FVORBITAL"));
+    OPTOPT( casMOStrings    = input.getData<std::string>(prefix+"MCSCF/CASORBITAL"));
+    OPTOPT( rasMOStrings[0] = input.getData<std::string>(prefix+"MCSCF/RAS1ORBITAL"));
+    OPTOPT( rasMOStrings[1] = input.getData<std::string>(prefix+"MCSCF/RAS2ORBITAL"));
+    OPTOPT( rasMOStrings[2] = input.getData<std::string>(prefix+"MCSCF/RAS3ORBITAL"));
+    OPTOPT( fcMOStrings     = input.getData<std::string>(prefix+"MCSCF/INORBITAL"));
+    OPTOPT( fvMOStrings     = input.getData<std::string>(prefix+"MCSCF/FVORBITAL"));
 
     bool selectMO = not fcMOStrings.empty() or not fvMOStrings.empty();
     
@@ -926,8 +917,8 @@ namespace ChronusQ {
 
     // Printing Options
     // MOs
-    if ( input.containsData("MCSCF.PRINTMOS") ) {
-      try { mcwfn->printMOCoeffs = input.getData<size_t>("MCSCF.PRINTMOS"); }
+    if ( input.containsData("MCSCF/PRINTMOS") ) {
+      try { mcwfn->printMOCoeffs = input.getData<size_t>("MCSCF/PRINTMOS"); }
       catch(...) {
         CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
       }
@@ -939,7 +930,7 @@ namespace ChronusQ {
 
 
     // ReadCI
-    OPTOPT( mcwfn->readCI = input.getData<bool>("MCSCF.READCI");)
+    OPTOPT( mcwfn->readCI = input.getData<bool>("MCSCF/READCI");)
 
    if( cube ){
      auto &cubeOptions = cube->getCubeOptions();
@@ -947,10 +938,11 @@ namespace ChronusQ {
    }
 
    // Check for CubeGen subsection
-   if( input.containsSection(prefix+"MCSCF.CUBE") ){
-     std::cout << " Found [MCSCF.CUBE] section" << std::endl;
-     CQCUBE_VALID(out,input,prefix+"MCSCF.");
-     CQCUBEOptionalKeywords(out,input,mcwfn->cubeOptsMC,prefix+"MCSCF.");
+   if( input.containsSection(prefix+"MCSCF/CUBE") ){
+     std::cout << " Found [MCSCF/CUBE] section" << std::endl;
+     std::set<std::string> invalidKeywords = CQCUBE_VALID(input.getSection("MCSCF/CUBE"));
+     printInvalidKeys(invalidKeywords, "MCSCF/CUBE");
+     CQCUBEOptionalKeywords(out,input,mcwfn->cubeOptsMC,prefix+"MCSCF/");
    }
  
     return mcwfn;

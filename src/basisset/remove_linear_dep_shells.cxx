@@ -34,16 +34,16 @@ namespace ChronusQ {
       const CQInputFile &input, BasisSet &basis, Molecule &mol, std::ostream &output) {
 
     bool rm_lin_dep = false;
-    if (input.containsData("SCF.REMOVELINEARDEP")) {
-      rm_lin_dep = input.getData<bool>("SCF.REMOVELINEARDEP");
+    if (input.containsData("SCF/REMOVELINEARDEP")) {
+      rm_lin_dep = input.getData<bool>("SCF/REMOVELINEARDEP");
     }
     if ( rm_lin_dep ) {
       // First figure out if this is 4-component calculation
       std::string reference;
       try {
-        reference = input.getData<std::string>("QM.REFERENCE");
+        reference = input.getData<std::string>("QM/REFERENCE");
       } catch(...) {
-        CErr("QM.REFERENCE Keyword not found!", output);
+        CErr("QM/REFERENCE Keyword not found!", output);
       }
       // Digest reference string
       // Trim Spaces
@@ -56,24 +56,24 @@ namespace ChronusQ {
       bool is4C = tokens.back() == "4CHF";
 
       bool libcint = false;
-      if (input.containsData("INTS.LIBCINT")) {
-        libcint = input.getData<bool>("INTS.LIBCINT");
+      if (input.containsData("INTS/LIBCINT")) {
+        libcint = input.getData<bool>("INTS/LIBCINT");
       }
 
       // Check for linear dependency threshold
       double linearDepTol = 1e-12;
-      if ( input.containsData("SCF.LINEARDEPTOL")) {
-        linearDepTol = input.getData<double>("SCF.LINEARDEPTOL");
+      if ( input.containsData("SCF/LINEARDEPTOL")) {
+        linearDepTol = input.getData<double>("SCF/LINEARDEPTOL");
       }
       // For NEO, it's possible to set different thresholds for electronic
       // and nuclear bases
-      if ( basis.nucBasis && input.containsData("SCF.PROT_LINEARDEPTOL")){
-        linearDepTol = input.getData<double>("SCF.PROT_LINEARDEPTOL");
+      if ( basis.nucBasis && input.containsData("SCF/PROT_LINEARDEPTOL")){
+        linearDepTol = input.getData<double>("SCF/PROT_LINEARDEPTOL");
       }
 
       bool atomicOnly = false;
-      if ( input.containsData("SCF.REMOVEATOMICLINEARDEPONLY")) {
-        atomicOnly = input.getData<bool>("SCF.REMOVEATOMICLINEARDEPONLY");
+      if ( input.containsData("SCF/REMOVEATOMICLINEARDEPONLY")) {
+        atomicOnly = input.getData<bool>("SCF/REMOVEATOMICLINEARDEPONLY");
       }
 
       // Check for linear dependencies

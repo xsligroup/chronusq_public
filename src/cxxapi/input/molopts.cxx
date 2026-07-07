@@ -24,8 +24,8 @@
 #include <physcon.hpp>
 #include <chronusq_sys.hpp>
 #include <cxxapi/options.hpp>
-#include <cxxapi/procedural.hpp>
 #include <cerr.hpp>
+#include <molecule.hpp>
 
 namespace ChronusQ {
 
@@ -34,26 +34,17 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQMOLECULE_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQMOLECULE_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "CHARGE",
       "MULT",
       "READGEOM",
       "GEOM"
     };
 
-    // Specified keywords
-    std::vector<std::string> moleculeKeywords = input.getDataInSection("MOLECULE");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : moleculeKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword MOLECULE." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -69,7 +60,7 @@ namespace ChronusQ {
     Molecule mol;
     
     // Obtain Charge
-    try { mol.charge = input.getData<int>("MOLECULE.CHARGE"); }
+    try { mol.charge = input.getData<int>("MOLECULE/CHARGE"); }
     catch (...) {
       mol.charge = 0;
       out << "  * Molecular Charge not set in input. Automatically set to neutral." << std::endl;
@@ -77,7 +68,7 @@ namespace ChronusQ {
 
     // Obtain Multiplicity
     bool autoMulti = false;
-    try { mol.multip = input.getData<size_t>("MOLECULE.MULT"); }
+    try { mol.multip = input.getData<size_t>("MOLECULE/MULT"); }
     catch (...) {
       //CErr("Unable to set Molecular Spin Multiplicity!", out);
       autoMulti = true;
@@ -86,7 +77,7 @@ namespace ChronusQ {
 
     // Parse Geometry Read Options
     std::string geomReadStr;
-    try { geomReadStr = input.getData<std::string>("MOLECULE.READGEOM"); }
+    try { geomReadStr = input.getData<std::string>("MOLECULE/READGEOM"); }
     catch (...) {
       geomReadStr="INPUTFILE";
     }
@@ -94,7 +85,7 @@ namespace ChronusQ {
     // Parse Geometry
     std::string geomStr;
     if( geomReadStr == "INPUTFILE" ){
-      try { geomStr = input.getData<std::string>("MOLECULE.GEOM"); }
+      try { geomStr = input.getData<std::string>("MOLECULE/GEOM"); }
       catch (...) {
         CErr("Unable to find Molecular Geometry in Input File!", out);
       }
@@ -104,7 +95,7 @@ namespace ChronusQ {
     bool doNEO = false;
     if ( input.containsSection("SCF") )
       try {
-        doNEO = input.getData<bool>("SCF.NEO");
+        doNEO = input.getData<bool>("SCF/NEO");
       } catch(...) { ; }
 
 
@@ -198,7 +189,7 @@ namespace ChronusQ {
     }
 
     if ( atoms.size() == 0 )
-      CErr("MOLECULE.GEOM must not be empty and must be indented");
+      CErr("MOLECULE/GEOM must not be empty and must be indented");
     // Set the Atoms vector in Molecule (calls Molecule::update())
     mol.setAtoms(std::move(atoms), autoMulti);
 

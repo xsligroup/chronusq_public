@@ -60,10 +60,12 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     savFile.safeWriteData(prefix + "1PDM", *this->onePDM);
 
     savFile.safeWriteData(prefix + "FOCK", *fockMatrix);
-    CQIntermediates::getInstance().addData(prefix + "FOCK", fockMatrix);
+    if (prefix == "SCF/")
+      CQIntermediates::getInstance().addData(prefix + "FOCK", fockMatrix);
 
     savFile.safeWriteData(prefix + "TWOEH", *twoeH);
-    CQIntermediates::getInstance().addData(prefix + "TWOEH", twoeH);
+    if (prefix == "SCF/")
+      CQIntermediates::getInstance().addData(prefix + "TWOEH", twoeH);
 
     savFile.safeWriteData(prefix + "1PDM_ORTHO", *onePDMOrtho);
 
@@ -77,10 +79,9 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     if (saveMO) {
       savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
 //      this->mo[0].output(std::cout, "mo1 write", true);
-      CQIntermediates::getInstance().addData(prefix + "MO1", std::make_shared<cqmatrix::Matrix<MatsT>>(this->mo[0]));
+      if (prefix == "SCF/")
+        CQIntermediates::getInstance().addData(prefix + "MO1", std::make_shared<cqmatrix::Matrix<MatsT>>(this->mo[0]));
       if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
-      savFile.safeWriteData(prefix + "EPS1",this->eps1,{NBC});
-      if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "EPS2", this->eps2, {NBC});
     }
 
     // Save Energies

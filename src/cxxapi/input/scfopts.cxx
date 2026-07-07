@@ -27,10 +27,10 @@
 namespace ChronusQ {
 
 
-  void CQSCF_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQSCF_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "ENETOL",
       "DENTOL",
       "FDCTOL",
@@ -51,7 +51,6 @@ namespace ChronusQ {
       "NEO",
       "PROT_GUESS",
       "SWAPMO",
-      "PROT_SWAPMO",
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
@@ -67,23 +66,10 @@ namespace ChronusQ {
       "REMOVEATOMICLINEARDEPONLY",
       "LINEARDEPTOL",
       "PROT_LINEARDEPTOL",
-      "DENMODIFIER",
-      "PROT_DENMODIFIER",
-      "NEOFINITET",
-      "NEOSTATEAVERAGESTATES"
+      "DENMODIFIER"
     };
 
-    // Specified keywords
-    std::vector<std::string> scfKeywords = input.getDataInSection("SCF");
-
-    // Make sure all of scfKeywords in allowedKeywords
-
-    for( auto &keyword : scfKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword SCF." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
 
@@ -94,11 +80,11 @@ namespace ChronusQ {
     bool restartMD = false;
     
     if ( input.containsSection("RT") )
-      OPTOPT( restartRT |= input.getData<bool>("RT.RESTART"); )
+      OPTOPT( restartRT |= input.getData<bool>("RT/RESTART"); )
     
     if ( input.containsSection("DYNAMICS") ){
       std::string restart = "FALSE";
-      OPTOPT( restart = input.getData<std::string>("DYNAMICS.RESTART");)
+      OPTOPT( restart = input.getData<std::string>("DYNAMICS/RESTART");)
       trim(restart);
       restartMD = (restart.compare("FALSE") != 0);
     }
@@ -114,9 +100,9 @@ namespace ChronusQ {
     if ( restartRT or restartMD ) {
       // Since scfControls currently is global, for BOMD restart we can't skip SCF
       // TODO: allow BOMD job to have its own scfControls  
-      if (restartMD and parseJob(input.getData<std::string>("QM.JOB"))==JobType::BOMD )
+      if (restartMD and parseJob(input.getData<std::string>("QM/JOB"))==JobType::BOMD )
         return;
-      out << "  *** RESTART requested -- SCF.GUESS set to READMO and SCF.ALG set to SKIP ***";
+      out << "  *** RESTART requested -- SCF/GUESS set to READMO and SCF/ALG set to SKIP ***";
       out << std::endl;
 
       scfControls.guess = READMO;
@@ -137,7 +123,7 @@ namespace ChronusQ {
 
     // MO swapping
     std::string swapMOStrings;
-    std::string key = "SCF." + prefix + "SWAPMO";
+    std::string key = "SCF/" + prefix + "SWAPMO";
     OPTOPT( swapMOStrings = input.getData<std::string>(key));
     if ( not swapMOStrings.empty() ) {
       std::cout << "  * Manually MO Swapping Detected: " << std::endl;
@@ -186,40 +172,40 @@ namespace ChronusQ {
     // Optionally parse guess
 
     OPTOPT( scfControls.rmsdPConvTol =
-      input.getData<double>("SCF.ACCURACY"); )
+      input.getData<double>("SCF/ACCURACY"); )
 
     scfControls.maxdPConvTol = scfControls.rmsdPConvTol*100;
     scfControls.eneConvTol = scfControls.rmsdPConvTol*100;
 
     // Energy convergence tolerance
     //OPTOPT( scfControls.eneConvTol =
-    //          input.getData<double>("SCF.ENETOL"); )
+    //          input.getData<double>("SCF/ENETOL"); )
 
     // Energy convergence tolerance
     //OPTOPT( scfControls.denConvTol =
-    //          input.getData<double>("SCF.DENTOL"); )
+    //          input.getData<double>("SCF/DENTOL"); )
 
     // Energy Gradient convergence tolerance
     //OPTOPT( scfControls.FDCConvTol =
-    //          input.getData<double>("SCF.FDCTOL"); )
+    //          input.getData<double>("SCF/FDCTOL"); )
 
     // Maximum SCF iterations
     OPTOPT( scfControls.maxSCFIter =
-              input.getData<size_t>("SCF.MAXITER"); )
+              input.getData<size_t>("SCF/MAXITER"); )
 
 
     // Incremental Fock Options
     OPTOPT(
-      scfControls.doIncFock = input.getData<bool>("SCF.INCFOCK");
+      scfControls.doIncFock = input.getData<bool>("SCF/INCFOCK");
     )
     OPTOPT(
-      scfControls.nIncFock = input.getData<size_t>("SCF.NINCFOCK");
+      scfControls.nIncFock = input.getData<size_t>("SCF/NINCFOCK");
     )
 
 
     // Guess
     std::string guessString = "SAD";
-    OPTOPT( guessString = input.getData<std::string>("SCF.GUESS"); )
+    OPTOPT( guessString = input.getData<std::string>("SCF/GUESS"); )
     trim(guessString);
     if( not guessString.compare("CORE") )
       scfControls.guess = CORE;
@@ -238,12 +224,12 @@ namespace ChronusQ {
     else if( not guessString.compare("CLASSICAL") )
       scfControls.guess = NEOConvergeClassical;
     else
-      CErr("Unrecognized entry for SCF.GUESS");
+      CErr("Unrecognized entry for SCF/GUESS");
     
 
     // Proton Guess For NEO Calculations
     std::string prot_guessString = "TIGHT";
-    OPTOPT( prot_guessString = input.getData<std::string>("SCF.PROT_GUESS"); )
+    OPTOPT( prot_guessString = input.getData<std::string>("SCF/PROT_GUESS"); )
     trim(prot_guessString);
     if( not prot_guessString.compare("CORE") )
       scfControls.prot_guess = CORE;
@@ -256,10 +242,10 @@ namespace ChronusQ {
     else if( not prot_guessString.compare("TIGHT") )
       scfControls.prot_guess = NEOTightProton;
     else
-      CErr("Unrecognized entry for SCF.PROT_GUESS");
+      CErr("Unrecognized entry for SCF/PROT_GUESS");
     
     std::string neoonlyoptstring;
-    OPTOPT( neoonlyoptstring = input.getData<std::string>("SCF.NEOOPTIMIZEONLY"); )
+    OPTOPT( neoonlyoptstring = input.getData<std::string>("SCF/NEOOPTIMIZEONLY"); )
     trim(neoonlyoptstring);
     if(!neoonlyoptstring.empty())
     {
@@ -268,17 +254,17 @@ namespace ChronusQ {
       else if ( ! neoonlyoptstring.compare("PROTONIC"))
         scfControls.NEOSubSystemOpt.push_back("Protonic");
       else
-        CErr("Unrecognized entry for SCF.NEOOPTIMIZEONLY");
+        CErr("Unrecognized entry for SCF/NEOOPTIMIZEONLY");
     }
 
-    OPTOPT(scfControls.NEOStepwiseOpt = input.getData<bool>("SCF.NEOSTEPWISEOPTIMIZE");)
+    OPTOPT(scfControls.NEOStepwiseOpt = input.getData<bool>("SCF/NEOSTEPWISEOPTIMIZE");)
     if(scfControls.NEOStepwiseOpt)
     {
       if(scfControls.NEOSubSystemOpt.size())
         CErr("Cannot set both NEOOPTIMIZEONLY and NEOSTEPWISEOPTIMIZE");
       std::cout << "NEO Stepwise optimization requested" << std::endl;
       std::string neooptfirststring;
-      OPTOPT( neooptfirststring = input.getData<std::string>("SCF.NEOOPTIMIZEFIRST"); )
+      OPTOPT( neooptfirststring = input.getData<std::string>("SCF/NEOOPTIMIZEFIRST"); )
       trim(neooptfirststring);
       if(!neooptfirststring.empty())
       {
@@ -287,7 +273,7 @@ namespace ChronusQ {
         else if ( ! neooptfirststring.compare("PROTONIC"))
           scfControls.NEOSubSystemOpt.push_back("Protonic");
         else
-          CErr("Unrecognized entry for SCF.NEOOPTIMIZEFIRST");
+          CErr("Unrecognized entry for SCF/NEOOPTIMIZEFIRST");
       }
       else
       {
@@ -298,7 +284,7 @@ namespace ChronusQ {
  
     // ALGORITHM
     std::string algString = "CONVENTIONAL";
-    OPTOPT( algString = input.getData<std::string>("SCF.ALG"); )
+    OPTOPT( algString = input.getData<std::string>("SCF/ALG"); )
     if( not algString.compare("CONVENTIONAL") )
       scfControls.scfAlg = _CONVENTIONAL_SCF;
     else if( not algString.compare("NR") )
@@ -307,12 +293,12 @@ namespace ChronusQ {
       scfControls.scfAlg = _CONVENTIONAL_SCF;
       scfControls.energyOnly = true;
     } else 
-      CErr("Unrecognized entry for SCF.ALG!");
+      CErr("Unrecognized entry for SCF/ALG!");
 
 
     // Newton-Raphson SCF Approximation
     std::string nrAlgString = "BFGS";
-    OPTOPT( nrAlgString = input.getData<std::string>("SCF.NRAPPROX"); )
+    OPTOPT( nrAlgString = input.getData<std::string>("SCF/NRAPPROX"); )
     if( not nrAlgString.compare("FULL") )
       scfControls.nrAlg = FULL_NR;
     else if( not nrAlgString.compare("BFGS") )
@@ -322,20 +308,20 @@ namespace ChronusQ {
     else if( not nrAlgString.compare("GRADDESCENT") )
       scfControls.nrAlg = GRAD_DESCENT;
     else 
-      CErr("Unrecognized entry for SCF.NRAPPROX");
+      CErr("Unrecognized entry for SCF/NRAPPROX");
 
 
     // Newton-Raphson SCF Initial trust region and level-shift
     OPTOPT(
-      scfControls.nrTrust = input.getData<double>("SCF.NRTRUST");
+      scfControls.nrTrust = input.getData<double>("SCF/NRTRUST");
     )
     OPTOPT(
-      scfControls.nrLevelShift = input.getData<double>("SCF.NRLEVELSHIFT");
+      scfControls.nrLevelShift = input.getData<double>("SCF/NRLEVELSHIFT");
     )
 
     // For modified SCF Procedures
     std::string rdmbuilderstr = "";
-    OPTOPT( rdmbuilderstr = input.getData<std::string>("SCF.DENMODIFIER"));
+    OPTOPT( rdmbuilderstr = input.getData<std::string>("SCF/DENMODIFIER"));
     if(!rdmbuilderstr.compare("MOM"))
     {
       if(scfControls.guess != READMO) CErr("MOM requires a guess set of orbitals using READMO");
@@ -347,20 +333,20 @@ namespace ChronusQ {
     }
     else
     {
-      CErr("Unrecognized option for SCF.DENMODIFIER");
+      CErr("Unrecognized option for SCF/DENMODIFIER");
     }
 
     std::string protrdmbuilderstr = "";
-    OPTOPT( protrdmbuilderstr = input.getData<std::string>("SCF.PROT_DENMODIFIER"));
+    OPTOPT( protrdmbuilderstr = input.getData<std::string>("SCF/PROT_DENMODIFIER"));
     if(!protrdmbuilderstr.compare("NEOSTATEAVERAGE"))
     {
       scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::NEOSTATEAVERAGE;
       size_t NStates = 0;
-      OPTOPT(NStates = input.getData<size_t>("SCF.NEOSTATEAVERAGESTATES"));
+      OPTOPT(NStates = input.getData<size_t>("SCF/NEOSTATEAVERAGESTATES"));
       if(!NStates)
         CErr("Requesting a NEO-SCF-StateAveraged Calcualtion requires NEOSTATEAVERAGESTATES > 0!");
       scfControls.NEOStateAverageNStates = NStates;
-      //OPTOPT(scfControls.NEOStateAverageNStates = input.getData<size_t>("SCF.NEOSTATEAVERAGESTATES"));
+      //OPTOPT(scfControls.NEOStateAverageNStates = input.getData<size_t>("SCF/NEOSTATEAVERAGESTATES"));
     }
     else if(!protrdmbuilderstr.compare("MOM"))
     {
@@ -370,7 +356,7 @@ namespace ChronusQ {
     else if(!protrdmbuilderstr.compare("NEOFINITETEMP"))
     {
       scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::FINITETEMP;
-      OPTOPT(scfControls.finitetemp = input.getData<double>("SCF.NEOFINITET");)
+      OPTOPT(scfControls.finitetemp = input.getData<double>("SCF/NEOFINITET");)
       CErr("NEO Finite Temp NYI!");
     }
     else if(!protrdmbuilderstr.compare("AUFBAU") || protrdmbuilderstr.empty())
@@ -379,7 +365,7 @@ namespace ChronusQ {
     }
     else
     {
-      CErr("Unrecognized option for SCF.PROT_DENMODIFIER");
+      CErr("Unrecognized option for SCF/PROT_DENMODIFIER");
     }
 
 
@@ -390,12 +376,12 @@ namespace ChronusQ {
     // Toggle extrapolation in its entireity
     OPTOPT(
       scfControls.doExtrap =
-        input.getData<bool>("SCF.EXTRAP");
+        input.getData<bool>("SCF/EXTRAP");
     )
 
     // Handle DIIS options
     std::string diisAlgString = "CDIIS"; 
-    OPTOPT( diisAlgString = input.getData<std::string>("SCF.DIISALG"); )
+    OPTOPT( diisAlgString = input.getData<std::string>("SCF/DIISALG"); )
     if( not diisAlgString.compare("CEDIIS"))
       scfControls.diisAlg = CEDIIS;
     else if( not diisAlgString.compare("CDIIS"))
@@ -403,46 +389,46 @@ namespace ChronusQ {
     else if( not diisAlgString.compare("EDIIS"))
       scfControls.diisAlg = EDIIS;
     else
-        CErr("Unrecognized entry for SCF.DIISALG!");
+        CErr("Unrecognized entry for SCF/DIISALG!");
 
 
     // Check if it specifically says DIIS=FALSE
     OPTOPT(
-      bool doDIIS = input.getData<bool>("SCF.DIIS");
+      bool doDIIS = input.getData<bool>("SCF/DIIS");
       if( not doDIIS ) 
         scfControls.diisAlg = NONE;
     );
 
     // Number of terms for keep for DIIS
-    OPTOPT( scfControls.nKeep = input.getData<size_t>("SCF.NKEEP"); )
+    OPTOPT( scfControls.nKeep = input.getData<size_t>("SCF/NKEEP"); )
     if( scfControls.nKeep < 1 )
       scfControls.nKeep = 1;
 
     // Point at which to switch from EDIIS to CDIIS
-    OPTOPT( scfControls.cediisSwitch = input.getData<double>("SCF.SWITCH"); )
+    OPTOPT( scfControls.cediisSwitch = input.getData<double>("SCF/SWITCH"); )
     if( scfControls.cediisSwitch <= 0. )
       CErr("CEDIIS Switch is less than or equal to zero");
 
     // Parse Damping options
     OPTOPT(
-      scfControls.doDamp = input.getData<bool>("SCF.DAMP");
+      scfControls.doDamp = input.getData<bool>("SCF/DAMP");
     );
 
     OPTOPT(
       scfControls.dampStartParam =
-        input.getData<double>("SCF.DAMPPARAM");
+        input.getData<double>("SCF/DAMPPARAM");
     );
 
     OPTOPT(
       scfControls.dampError =
-        input.getData<double>("SCF.DAMPERROR");
+        input.getData<double>("SCF/DAMPERROR");
     );
 
 
     // SCF Field
     std::string fieldStr;
     OPTOPT(
-      fieldStr = input.getData<std::string>("SCF.FIELD");
+      fieldStr = input.getData<std::string>("SCF/FIELD");
     )
     EMPerturbation parsedField;
     if (!fieldStr.empty())
@@ -450,8 +436,8 @@ namespace ChronusQ {
     pert.addField(parsedField);
 
     // Printing Options
-    if ( input.containsData("SCF.PRINTMOS") ) {
-      try { scfControls.printMOCoeffs = input.getData<size_t>("SCF.PRINTMOS"); }
+    if ( input.containsData("SCF/PRINTMOS") ) {
+      try { scfControls.printMOCoeffs = input.getData<size_t>("SCF/PRINTMOS"); }
       catch(...) {
         CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
       }
@@ -460,17 +446,17 @@ namespace ChronusQ {
 
 
     // Parse whether to print contraction timing during SCF
-    OPTOPT( scfControls.printContractionTiming = input.getData<bool>("SCF.PRINTCONTRACTIONTIMING"); )
+    OPTOPT( scfControls.printContractionTiming = input.getData<bool>("SCF/PRINTCONTRACTIONTIMING"); )
 
     // Linear dependency tolerance
-    if ( input.containsData("SCF.REMOVELINEARDEP")) {
-      scfControls.rmLinearDep = input.getData<bool>("SCF.REMOVELINEARDEP");
+    if ( input.containsData("SCF/REMOVELINEARDEP")) {
+      scfControls.rmLinearDep = input.getData<bool>("SCF/REMOVELINEARDEP");
     }
-    if ( input.containsData("SCF.REMOVEATOMICLINEARDEPONLY")) {
-      scfControls.rmAtomicLinDepOnly = input.getData<bool>("SCF.REMOVEATOMICLINEARDEPONLY");
+    if ( input.containsData("SCF/REMOVEATOMICLINEARDEPONLY")) {
+      scfControls.rmAtomicLinDepOnly = input.getData<bool>("SCF/REMOVEATOMICLINEARDEPONLY");
     }
-    if ( input.containsData("SCF.LINEARDEPTOL")) {
-      scfControls.linearDepTol = input.getData<double>("SCF.LINEARDEPTOL");
+    if ( input.containsData("SCF/LINEARDEPTOL")) {
+      scfControls.linearDepTol = input.getData<double>("SCF/LINEARDEPTOL");
     }
 
 
@@ -496,10 +482,10 @@ namespace ChronusQ {
 
   }; // CQSCFOptions
 
-  void CQORBPROP_VALID( std::ostream &out, CQInputFile &input, std::string section ) {
+  std::set<std::string> CQORBPROP_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "RDF",
       "INITIALRAD",
       "FINALRAD",
@@ -509,41 +495,31 @@ namespace ChronusQ {
       "NUMMOS"
     };
 
-    std::string subSection = section + "ORBPROP";
-
-    // Specified keywords
-    std::vector<std::string> orbPropKeywords = input.getDataInSection(subSection);
-
-    // Make sure all of orbPropKeywords in allowedKeywords
-
-    for( auto &keyword : orbPropKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() )
-        CErr("Keyword " + subSection + "." + keyword + " is not recognized",std::cout);// Error
-    }
+    return CQInvalidKeywords(allowedKeywords, inputSection);
 
   }
 
   void ParseOrbitalPropSubsection(std::ostream &out, CQInputFile &input,
     std::shared_ptr<SingleSlaterBase> ss) {
 
-    // check if [SCF.ORBPROP] section
-    if( not input.containsSection("SCF.ORBPROP") ) return;
+    // check if [SCF/ORBPROP] section
+    if( not input.containsSection("SCF/ORBPROP") ) return;
 
-    std::cout << " Found [SCF.ORBPROP] section" << std::endl;
+    std::cout << " Found [SCF/ORBPROP] section" << std::endl;
 
     ss->orbProp = true; //Do orbital properties if subsection present
 
-    CQORBPROP_VALID(out,input,"SCF.");
+    std::set<std::string> invalidKeywords = CQORBPROP_VALID(input.getSection("SCF/ORBPROP"));
+    printInvalidKeys(invalidKeywords, "SCF/ORBPROP");
 
     // Turn on RDF analysis
     OPTOPT(
-      ss->doRDFs = input.getData<bool>("SCF.ORBPROP.RDF");
+      ss->doRDFs = input.getData<bool>("SCF/ORBPROP/RDF");
     );
 
     // Turn on orbital energy analysis
     OPTOPT(
-      ss->doOrbEne = input.getData<bool>("SCF.ORBPROP.ORBEN");
+      ss->doOrbEne = input.getData<bool>("SCF/ORBPROP/ORBEN");
     );
 
     // Check variables related to RDF analysis
@@ -551,27 +527,27 @@ namespace ChronusQ {
 
       OPTOPT(
         ss->initialRad =
-          input.getData<double>("SCF.ORBPROP.INITIALRAD");
+          input.getData<double>("SCF/ORBPROP/INITIALRAD");
       );
 
       OPTOPT(
         ss->finalRad =
-          input.getData<double>("SCF.ORBPROP.FINALRAD");
+          input.getData<double>("SCF/ORBPROP/FINALRAD");
       );
 
       OPTOPT(
         ss->numRadPts =
-          input.getData<size_t>("SCF.ORBPROP.RADPTS");
+          input.getData<size_t>("SCF/ORBPROP/RADPTS");
       );
 
       OPTOPT(
         ss->numAngPts =
-          input.getData<size_t>("SCF.ORBPROP.ANGPTS");
+          input.getData<size_t>("SCF/ORBPROP/ANGPTS");
       );
 
       OPTOPT(
         ss->numMOs =
-          input.getData<size_t>("SCF.ORBPROP.NUMMOS");
+          input.getData<size_t>("SCF/ORBPROP/NUMMOS");
       );
 
       size_t N = ss->numAngPts;

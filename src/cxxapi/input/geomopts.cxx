@@ -33,8 +33,8 @@
 
 namespace ChronusQ {
 
-  void CQDYNAMICS_VALID( std::ostream& out, CQInputFile& input ) {
-    std::vector<std::string> allowedKeywords = {
+  std::set<std::string> CQDYNAMICS_VALID(const std::map<std::string, std::string>& inputSection) {
+    std::set<std::string> allowedKeywords = {
       "NNUCPGRAD",
       "NELECPNUC",
       "TMAX",
@@ -48,7 +48,10 @@ namespace ChronusQ {
       "SAVEALLGEOMETRY",
       "PRINTPROPERTY",
       "PROJECT_ORTHO_DEN",
+      "VELOCITY"
     };
+
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
@@ -133,7 +136,7 @@ namespace ChronusQ {
       std::string section) {
 
       std::string GRAD_ALG = "DIRECT";
-      OPTOPT( GRAD_ALG = input.getData<std::string>(section +".GRADALG"););
+      OPTOPT( GRAD_ALG = input.getData<std::string>(section +"/GRADALG"););
 
       bool cmplx_ints = dynamic_cast<Integrals<dcomplex>*>(ints);
       if ( cmplx_ints && GRAD_ALG == "DIRECT") {
@@ -224,29 +227,29 @@ namespace ChronusQ {
 
       double tMax, deltaT;
       try {
-        tMax = input.getData<double>("DYNAMICS.TMAX");
+        tMax = input.getData<double>("DYNAMICS/TMAX");
       } catch(...) {
-        CErr("Must specify DYNAMICS.TMAX for simulation length");
+        CErr("Must specify DYNAMICS/TMAX for simulation length");
       }
 
       try {
-        deltaT = input.getData<double>("DYNAMICS.DELTAT");
+        deltaT = input.getData<double>("DYNAMICS/DELTAT");
       } catch(...) {
-        CErr("Must specify DYNAMICS.DELTAT for integration time step");
+        CErr("Must specify DYNAMICS/DELTAT for integration time step");
       }
 
       // Create geometry updater
       MDOptions mdOpt(tMax, deltaT);
 
-      OPTOPT( mdOpt.nMidpointFockSteps = input.getData<size_t>("DYNAMICS.NNUCPGRAD"); )
-      OPTOPT( mdOpt.nElectronicSteps = input.getData<size_t>("DYNAMICS.NELECPNUC"); )
+      OPTOPT( mdOpt.nMidpointFockSteps = input.getData<size_t>("DYNAMICS/NNUCPGRAD"); )
+      OPTOPT( mdOpt.nElectronicSteps = input.getData<size_t>("DYNAMICS/NELECPNUC"); )
 
-      OPTOPT( mdOpt.saveAllGeometry = input.getData<bool>("DYNAMICS.SAVEALLGEOMETRY");)
-      OPTOPT( mdOpt.printProperty = input.getData<bool>("DYNAMICS.PRINTPROPERTY");)
+      OPTOPT( mdOpt.saveAllGeometry = input.getData<bool>("DYNAMICS/SAVEALLGEOMETRY");)
+      OPTOPT( mdOpt.printProperty = input.getData<bool>("DYNAMICS/PRINTPROPERTY");)
 
       // Parsing restart options
       std::string restart = "FALSE";
-      OPTOPT( restart = input.getData<std::string>("DYNAMICS.RESTART");)
+      OPTOPT( restart = input.getData<std::string>("DYNAMICS/RESTART");)
       trim(restart);
       if (not restart.compare("TRUE")) {
         mdOpt.restoreFromNuclearStep = -1;
@@ -276,7 +279,7 @@ namespace ChronusQ {
             CErr("Input must be a non-negative double or -1.");
           }
         } else {
-          CErr("Invalid input for DYNAMICS.RESTART");
+          CErr("Invalid input for DYNAMICS/RESTART");
         }
       }
 
@@ -292,7 +295,7 @@ namespace ChronusQ {
       // Default is 'fixed'
       if(mol.atomsQ.size() > 0) {
         bool useTPB = false;
-        OPTOPT( useTPB = input.getData<bool>("DYNAMICS.TPB");)
+        OPTOPT( useTPB = input.getData<bool>("DYNAMICS/TPB");)
         if (useTPB) {
           md->NEODynamicsOpts.tpb = true;
           md->NEODynamicsOpts.includeQProtKE = (job == JobType::BOMD) ? true : false ;
@@ -451,7 +454,7 @@ namespace ChronusQ {
       // Parse initial velocity
 
       std::string velocityStr;
-      OPTOPT( velocityStr = input.getData<std::string>("DYNAMICS.VELOCITY");)
+      OPTOPT( velocityStr = input.getData<std::string>("DYNAMICS/VELOCITY");)
       if ( not velocityStr.empty() ) {
         if (mdOpt.restoreFromNuclearStep != 0 )
           CErr("Restart with a newly specified velocity NYI!");
@@ -460,12 +463,12 @@ namespace ChronusQ {
 
 
       // Whether to perturb the first atom's geometry
-      OPTOPT( md->mdOptions.pertFirstAtom = input.getData<bool>("DYNAMICS.INIT_PERT");)
-      OPTOPT( md->mdOptions.pert_val_x = input.getData<double>("DYNAMICS.PERT_VALUE_X");)
-      OPTOPT( md->mdOptions.pert_val_y = input.getData<double>("DYNAMICS.PERT_VALUE_Y");)
-      OPTOPT( md->mdOptions.pert_val_z = input.getData<double>("DYNAMICS.PERT_VALUE_Z");)
+      OPTOPT( md->mdOptions.pertFirstAtom = input.getData<bool>("DYNAMICS/INIT_PERT");)
+      OPTOPT( md->mdOptions.pert_val_x = input.getData<double>("DYNAMICS/PERT_VALUE_X");)
+      OPTOPT( md->mdOptions.pert_val_y = input.getData<double>("DYNAMICS/PERT_VALUE_Y");)
+      OPTOPT( md->mdOptions.pert_val_z = input.getData<double>("DYNAMICS/PERT_VALUE_Z");)
       
-      OPTOPT( md->mdOptions.projectOrthoDen = input.getData<bool>("DYNAMICS.PROJECT_ORTHO_DEN");)
+      OPTOPT( md->mdOptions.projectOrthoDen = input.getData<bool>("DYNAMICS/PROJECT_ORTHO_DEN");)
       
 
       // Set up electronic jobs for each MD type
@@ -492,7 +495,7 @@ namespace ChronusQ {
       // Handle field specification
       try {
         // Get raw string from input
-        std::string fieldSpec = input.getData<std::string>("RT.FIELD");
+        std::string fieldSpec = input.getData<std::string>("RT/FIELD");
         std::istringstream fieldStream(fieldSpec);
         // Loop over field specification lines
         for(std::string fieldStr; std::getline(fieldStream, fieldStr); ) {

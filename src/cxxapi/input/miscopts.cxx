@@ -31,10 +31,10 @@
 
 namespace ChronusQ {
 
-  void CQMISC_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQMISC_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "MEM",
       "MEMBLK",
       "MEMTYPE",
@@ -44,16 +44,7 @@ namespace ChronusQ {
       "TIMERUNIT"
     };
 
-    // Specified keywords
-    std::vector<std::string> miscKeywords = input.getDataInSection("MISC");
-
-    // Make sure all of miscKeywords in allowedKeywords
-    for( auto &keyword : miscKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword MISC." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   void CQMiscOptions(std::ostream &out,
@@ -64,7 +55,7 @@ namespace ChronusQ {
 
     // Set max threads
     OPTOPT(
-      SetNumThreads(input.getData<size_t>("MISC.NSMP"));
+      SetNumThreads(input.getData<size_t>("MISC/NSMP"));
     )
 
     size_t nThreads = GetNumThreads();
@@ -72,10 +63,10 @@ namespace ChronusQ {
 
     // Get timer options
     TimerOpts topts;
-    OPTOPT( topts.doSummary = input.getData<bool>("MISC.TIMER"); )
-    OPTOPT( topts.dbgPrint = input.getData<size_t>("MISC.DEBUGTIMING"); )
+    OPTOPT( topts.doSummary = input.getData<bool>("MISC/TIMER"); )
+    OPTOPT( topts.dbgPrint = input.getData<size_t>("MISC/DEBUGTIMING"); )
     std::string unit = "";
-    OPTOPT( unit = input.getData<std::string>("MISC.TIMERUNIT"); )
+    OPTOPT( unit = input.getData<std::string>("MISC/TIMERUNIT"); )
     if (unit == "SECONDS" || unit == "SECOND" || unit == "S")
       topts.unit = SECONDS;
     else if ( unit == "MINUTES" || unit == "MINUTE" || unit == "MIN" ||
@@ -85,7 +76,7 @@ namespace ChronusQ {
               unit == "MILLI" || unit == "MS" )
       topts.unit = MILLISECONDS;
     else if ( unit != "" ) {
-      std::string err = "Unrecognized unit " + unit + " for MISC.TIMERUNIT";
+      std::string err = "Unrecognized unit " + unit + " for MISC/TIMERUNIT";
       CErr(err);
     }
 
@@ -93,7 +84,7 @@ namespace ChronusQ {
 
     // Determine if memory allocation was specified
     OPTOPT(
-      std::string memStr = input.getData<std::string>("MISC.MEM");
+      std::string memStr = input.getData<std::string>("MISC/MEM");
       trim(memStr);
 
       size_t posKB = memStr.find("KB");
@@ -127,7 +118,7 @@ namespace ChronusQ {
 
     std::string memTypeStr = "DEFAULT";
     OPTOPT(
-        memTypeStr = input.getData<std::string>("MISC.MEMTYPE");
+        memTypeStr = input.getData<std::string>("MISC/MEMTYPE");
         trim(memTypeStr);
     )
     CQMemBackendType memType = CQMemBackendType::PREALLOCATED;

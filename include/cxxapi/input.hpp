@@ -29,8 +29,8 @@ namespace ChronusQ {
 
   /**
    * \brief A class to compare two strings in lexicographic order with exceptions:
-   *        1. Dots are before any other characters
-   *        2. Numbers in brackets are compared before any other characters
+   *        1. Slash and Dot are before any other character
+   *        2. Numbers in brackets are compared before any other character
    *        3. Numbers in brackets are compared numerically
    */
   struct InputKeyCompare {
@@ -48,35 +48,29 @@ namespace ChronusQ {
     }
 
     bool operator()(const std::string& a, const std::string& b) const {
-      size_t i = 0, j = 0;
-      while (i < a.size() and j < b.size()) {
-        if (a[i] == '[' && b[j] == '[') {
+      size_t minSize = std::min(a.size(), b.size());
+      for (size_t i = 0; i < minSize; i++) {
+        if (a[i] == '[' && b[i] == '[') {
           size_t numA = extractNumber(a, i+1);
-          size_t numB = extractNumber(b, j+1);
+          size_t numB = extractNumber(b, i+1);
           if (numA != numB) return numA < numB;
-        } else if (a[i] == '[') {
-          if (b[j] == '.')
-            return false;
-          return true;
-        } else if (b[j] == '[') {
-          if (a[i] == '.')
-            return true;
-          return false;
         } else {
-          if (a[i] != b[j]) {
+          if (a[i] != b[i]) {
+            if (a[i] == '/') return true;
+            if (b[i] == '/') return false;
             if (a[i] == '.') return true;
-            if (b[j] == '.') return false;
-            return a[i] < b[j];
+            if (b[i] == '.') return false;
+            if (a[i] == '[') return true;
+            if (b[i] == '[') return false;
+            return a[i] < b[i];
           }
         }
-        ++i;
-        ++j;
       }
       return a.size() < b.size();
     }
   };
 
-  typedef std::map<std::string,std::string,InputKeyCompare> InputMap;
+  typedef std::map<std::string,std::map<std::string,std::string>,InputKeyCompare> InputMap;
 
 
   /**
@@ -106,21 +100,23 @@ namespace ChronusQ {
 
     /**
      * \brief Add an key-value pair to the input storage
-     * \param [in] key   Key of the data field
-     * \param [in] value Value of the data field
+     *  \param [in] prefix Prefix string for the section
+     *  \param [in] key    Key of the data
+     *  \param [in] path   Formatted query string to be parsed
      */
-    void addData(const std::string &key, const std::string &value);
+    void addData(const std::string &prefix, const std::string &key, const std::string &value);
+    void addData(const std::string &path, const std::string &value);
 
 
     /**
      * \brief Merge a subsection into the input storage
-     * \param [in] subsection Subsection to be merged
-     * \param [in] prefix Prefix of the data field
+     * \param [in] prefix  Prefix of the data field
+     * \param [in] section Section to be merged
      */
-    void mergeSection(const InputMap &subsection, const std::string &prefix = "");
+    void mergeSection(const std::string &prefix, const std::map<std::string,std::string> &section);
 
 
-    // Splits query string on "."
+    // Splits query string on last "/"
     // (See src/cxxapi/input/parse/cxxapi.cxx for documentation)
     static std::pair<std::string,std::string>
       splitQuery(const std::string&);
@@ -183,10 +179,14 @@ namespace ChronusQ {
      *  as a double precision number. Various specializations of this function
      *  exist for various datatypes
      *
-     *  \param [in] s Formatted query string to be parsed
-     *  \return       Value of query data field as specified datatype
-     */ 
-    template <typename T> T getData(std::string) const;
+     *  \param [in] prefix Prefix string for the section
+     *  \param [in] key    Key of the data
+     *  \param [in] path   Formatted query string to be parsed
+     *  \return            Value of query data field as specified datatype
+     */
+    template <typename T> T getData(const std::string &prefix,
+                                    const std::string &key) const;
+    template <typename T> T getData(const std::string &path) const;
   
   
   
@@ -198,33 +198,7 @@ namespace ChronusQ {
      *  \paral  [in] str Query string of a section heading
      *  \return      True if input file contains that heading
      */ 
-    bool containsSection(const std::string &str) const;
-
-    /**
-     *  Checks whether or not the parsed CQ input file contains
-     *  a query list.
-     *
-     *  \paral  [in] str Query string of a section heading
-     *  \return      True if input file contains that heading
-     */
-    bool containsList(const std::string &str) const;
-
-    /**
-     *  Checks the size of a query list.
-     *
-     *  \paral  [in] str Query string of a section heading
-     *  \return      Size of the query list.
-     */
-    size_t getListSize(const std::string &str) const;
-
-    /**
-     * \brief Add a data to the end of a list
-     * @param str  Query string of a section heading
-     * @param data Data to be added to the list
-     * @param dict InputMap to be appended
-     */
-    void appendList(const std::string &str, const std::string &data);
-    void appendList(const std::string &str, const InputMap &dict);
+    bool containsSection(const std::string &prefix) const;
   
     /**
      *  Checks whether or not the parsed CQ input file contains
@@ -232,30 +206,35 @@ namespace ChronusQ {
      *
      *  \paral  [in] str Query string of a data field (includes section heading)
      *  \return      True if input file contains that data field
-     */ 
-    bool containsData(std::string str) const;
+     */
+    bool containsData(const std::string &prefix,
+                      const std::string &key) const;
+    bool containsData(const std::string &path) const;
   
 
 
 
 
-    std::vector<std::string> getDataInSection( std::string section ) const;
+    std::set<std::string> getDataInSection(const std::string &prefix) const;
 
 
     /**
      *  \brief Returns a subsection of data fields from the input file
      *
-     *  \param [in] section Section heading
+     *  \param [in] prefix  Section heading
      *  \return             Vector of data fields in section
      */
-    InputMap getSection(const std::string &section) const;
+    const std::map<std::string,std::string>& getSection(const std::string &prefix) const;
+
 
     /**
-     *  \brief Returns a subsection of data fields from the input file
-     *
-     *  \param [in] section Section heading
-     *  \return             Vector of data fields in section
+     * \brief Add an key-value pair to the input storage
+     *  \param [in] prefix Prefix string for the section
+     *  \param [in] key    Key of the data
+     *  \param [in] path   Formatted query string to be parsed
      */
+    void modifyData(const std::string &prefix, const std::string &key, const std::string &value);
+    void modifyData(const std::string &path, const std::string &value);
 
   }; // CQInputFile class
 
@@ -333,7 +312,7 @@ namespace ChronusQ {
   }; // split
 
   /**
-   *  Reverse the order of tokens in a string separated by dots
+   *  Reverse the order of tokens in a string separated by slashs
    *
    *  \param [in]  str        std::string to reverse
    */
@@ -341,17 +320,20 @@ namespace ChronusQ {
 
     std::vector<std::string> tokens;
 
-    split(tokens,str,".");
+    split(tokens,str,"/");
 
     // Combine tokens in reverse order by dot
     std::string reversed = "";
     for( auto it = tokens.rbegin(); it != tokens.rend(); ++it ) {
       reversed += *it;
-      if( it != tokens.rend()-1 ) reversed += ".";
+      if( it != tokens.rend()-1 ) reversed += "/";
     }
 
     return reversed;
   }; // split
+
+  template <typename T>
+  T CQStringTo(const std::string &s);
 
 }; // namespace ChronusQ
 

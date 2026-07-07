@@ -24,7 +24,6 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
-#include <libint2/cxxapi.h>
 #include <cxxapi/boilerplate.hpp>
 
 #define __CERR_RUNTIMEERR__ // Throw a runtime error on CErr

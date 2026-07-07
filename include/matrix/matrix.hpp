@@ -124,6 +124,8 @@ public:
   size_t nRows() const { return dimensions()[0]; }
   size_t nColumns() const { return dimensions()[1]; }
 
+  std::shared_ptr<NDArray<MatsT>> getNDArray() const { return array_; }
+
   bool isSquareMatrix() const { return nRows() == nColumns(); }
 
   template <typename MatU>
@@ -216,9 +218,9 @@ public:
                       bool printFull = false) const {
     std::string matStr;
     if (s == "")
-      matStr = "Square Matrix";
+      matStr = "Matrix";
     else
-      matStr = "Square Matrix[" + s + "]";
+      matStr = "Matrix[" + s + "]";
     if (printFull)
       prettyPrintSmart(out, matStr, pointer(), nRows(), nColumns(), nRows());
     else {

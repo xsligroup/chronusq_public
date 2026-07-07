@@ -249,36 +249,36 @@ namespace ChronusQ {
       // read in SCF accuracy
       auto const freeCQInputSCFAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFAccuracy) ) {
-        addData("SCF.ACCURACY", scfMatch.str(1));
+        addData("SCF/ACCURACY", scfMatch.str(1));
         std::cout<<"xsli test read in accuracy = "<<std::stod(scfMatch.str(1))<<std::endl;
       }
 
       auto const freeCQInputEnergyOnly = std::regex("energyonly|skip", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputEnergyOnly) ) {
-        addData("SCF.ENERGYONLY", "SKIP");
+        addData("SCF/ENERGYONLY", "SKIP");
         std::cout<<"xsli test read in energyonly"<<std::endl;
       }
 
       auto const freeCQInputSCFMethod = std::regex("(diis)|(nodiis)|(cdiis)|(ediis)|(qc)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFMethod) ) {
-        if(!scfMatch.str(1).empty()) addData("SCF.DIISALG","CDIIS");// std::cout<<"xsli test read in SCF method = DIIS "<<std::stod(scfMatch.str(1))<<std::endl;
-        if(!scfMatch.str(2).empty()) addData("SCF.DIISALG","NONE"); // std::cout<<"xsli test read in SCF method = NoDIIS "<<std::stod(scfMatch.str(2))<<std::endl;
-        if(!scfMatch.str(3).empty()) addData("SCF.DIISALG","CDIIS"); // std::cout<<"xsli test read in SCF method = CDIIS "<<std::stod(scfMatch.str(3))<<std::endl;
-        if(!scfMatch.str(4).empty()) addData("SCF.DIISALG","EDIIS"); // std::cout<<"xsli test read in SCF method = EnDIIS "<<std::stod(scfMatch.str(4))<<std::endl;
-        if(!scfMatch.str(4).empty()) addData("SCF.ALG","NR"); // std::cout<<"xsli test read in SCF method = QC "<<std::stod(scfMatch.str(5))<<std::endl;
+        if(!scfMatch.str(1).empty()) addData("SCF/DIISALG","CDIIS");// std::cout<<"xsli test read in SCF method = DIIS "<<std::stod(scfMatch.str(1))<<std::endl;
+        if(!scfMatch.str(2).empty()) addData("SCF/DIISALG","NONE"); // std::cout<<"xsli test read in SCF method = NoDIIS "<<std::stod(scfMatch.str(2))<<std::endl;
+        if(!scfMatch.str(3).empty()) addData("SCF/DIISALG","CDIIS"); // std::cout<<"xsli test read in SCF method = CDIIS "<<std::stod(scfMatch.str(3))<<std::endl;
+        if(!scfMatch.str(4).empty()) addData("SCF/DIISALG","EDIIS"); // std::cout<<"xsli test read in SCF method = EnDIIS "<<std::stod(scfMatch.str(4))<<std::endl;
+        if(!scfMatch.str(4).empty()) addData("SCF/ALG","NR"); // std::cout<<"xsli test read in SCF method = QC "<<std::stod(scfMatch.str(5))<<std::endl;
       }
 
       // Check for SCF maxSteps
       auto const freeCQInputSCFSteps = std::regex("(MAXSTEP|MAXSTEPS|MAXITERATION|MAXITERATIONS|MAXCYCLE|MAXCYCLES)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFSteps) ) {
-        addData("SCF.MAXITER", scfMatch.str(2));
+        addData("SCF/MAXITER", scfMatch.str(2));
         std::cout<<"xsli test read in MAXITERATIONS = "<<std::stod(scfMatch.str(2))<<std::endl;
       }
     }
 
   };
 
-  void SCFControls::parseSection(const InputMap &dict) {
+  void SCFControls::parseSection(const std::map<std::string,std::string> &dict) {
     if (dict.count("ENERGYONLY")) {
       scfAlg = _CONVENTIONAL_SCF;
       energyOnly = true;
@@ -324,10 +324,10 @@ namespace ChronusQ {
 //          if(!Guessmatch.str(2).empty()) ssGuessOptions.electronicGuess = CoreGuess;
 //          if(!Guessmatch.str(3).empty()) ssGuessOptions.electronicGuess = ReadBin;
 //          if(!Guessmatch.str(4).empty()) ssGuessOptions.electronicGuess = ReadGaussFCHK;
-          if(!Guessmatch.str(1).empty()) addData("SCF.GUESS", "SAD");
-          if(!Guessmatch.str(2).empty()) addData("SCF.GUESS", "CORE");
-          if(!Guessmatch.str(3).empty()) addData("SCF.GUESS", "READMO");
-          if(!Guessmatch.str(4).empty()) addData("SCF.GUESS", "FCHKMO");
+          if(!Guessmatch.str(1).empty()) addData("SCF/GUESS", "SAD");
+          if(!Guessmatch.str(2).empty()) addData("SCF/GUESS", "CORE");
+          if(!Guessmatch.str(3).empty()) addData("SCF/GUESS", "READMO");
+          if(!Guessmatch.str(4).empty()) addData("SCF/GUESS", "FCHKMO");
         }
         GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessType, "");
 
@@ -353,14 +353,14 @@ namespace ChronusQ {
 
         for (size_t i = 0; i < ssGuessOptions.alphaElectronicMOSwap.size(); i++) {
           for (size_t j = 0; j < ssGuessOptions.alphaElectronicMOSwap[i].size(); j++) {
-            addData("SCF.GUESS.ALPHASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
+            addData("SCF/GUESS.ALPHASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
                     std::to_string(ssGuessOptions.alphaElectronicMOSwap[i][j]));
           }
         }
 
         for (size_t i = 0; i < ssGuessOptions.betaElectronicMOSwap.size(); i++) {
           for (size_t j = 0; j < ssGuessOptions.betaElectronicMOSwap[i].size(); j++) {
-            addData("SCF.GUESS.BETASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
+            addData("SCF/GUESS.BETASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
                     std::to_string(ssGuessOptions.betaElectronicMOSwap[i][j]));
           }
         }
@@ -386,11 +386,11 @@ namespace ChronusQ {
 //          if(!Guessmatch.str(3).empty()) ssGuessOptions.nuclearGuess = ReadBin;
 //          if(!Guessmatch.str(4).empty()) ssGuessOptions.nuclearGuess = ReadGaussFCHK;
 //          if(!Guessmatch.str(5).empty()) ssGuessOptions.nuclearGuess = ClassicalGuess;
-          if(!Guessmatch.str(1).empty()) addData("SCF.PROT_GUESS", "SAD");
-          if(!Guessmatch.str(2).empty()) addData("SCF.PROT_GUESS", "CORE");
-          if(!Guessmatch.str(3).empty()) addData("SCF.PROT_GUESS", "READMO");
-          if(!Guessmatch.str(4).empty()) addData("SCF.PROT_GUESS", "FCHKMO");
-          if(!Guessmatch.str(5).empty()) addData("SCF.PROT_GUESS", "CLASSICAL");
+          if(!Guessmatch.str(1).empty()) addData("SCF/PROT_GUESS", "SAD");
+          if(!Guessmatch.str(2).empty()) addData("SCF/PROT_GUESS", "CORE");
+          if(!Guessmatch.str(3).empty()) addData("SCF/PROT_GUESS", "READMO");
+          if(!Guessmatch.str(4).empty()) addData("SCF/PROT_GUESS", "FCHKMO");
+          if(!Guessmatch.str(5).empty()) addData("SCF/PROT_GUESS", "CLASSICAL");
         }
         GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputNEOGuessType, "");
 
@@ -417,7 +417,7 @@ namespace ChronusQ {
     }
   };
 
-  void SingleSlaterGuessOptions::parseSection(const InputMap &dict) {
+  void SingleSlaterGuessOptions::parseSection(const std::map<std::string,std::string> &dict) {
     if (dict.count("GUESS")) {
       if (dict.at("GUESS") == "CORE") electronicGuess = CoreGuess;
       else if (dict.at("GUESS") == "SAD") electronicGuess = SADGuess;
@@ -463,8 +463,8 @@ namespace ChronusQ {
           if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.deltaT/=(FSPerAUTime*1.e3);
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.deltaT/=FSPerAUTime;
           std::cout<<"xsli test read in timestep = "<<tdSCFControls.deltaT<<" au"<<std::endl;
-          addData("RT.DELTAT", doubleToString(tdSCFControls.deltaT));
-          addData("RT.UNITS", "AU");
+          addData("RT/DELTAT", doubleToString(tdSCFControls.deltaT));
+          addData("RT/UNITS", "AU");
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputStepsize, "");
         }
 
@@ -474,8 +474,8 @@ namespace ChronusQ {
           tdSCFControls.maxSteps = std::stoi(RTmatch.str(2));
           tdSCFControls.tMax = tdSCFControls.maxSteps*tdSCFControls.deltaT;
           std::cout<<"xsli test read in maxSteps = "<<tdSCFControls.maxSteps<<std::endl;
-          addData("RT.TMAX", doubleToString(tdSCFControls.tMax));
-          addData("RT.MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
+          addData("RT/TMAX", doubleToString(tdSCFControls.tMax));
+          addData("RT/MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputNSteps, "");
         }
 
@@ -487,8 +487,8 @@ namespace ChronusQ {
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.tMax/=FSPerAUTime;
           tdSCFControls.maxSteps = (tdSCFControls.tMax + tdSCFControls.deltaT / 4) / tdSCFControls.deltaT;
           std::cout<<"xsli test read in maxTime = "<<tdSCFControls.tMax<<std::endl;
-          addData("RT.TMAX", doubleToString(tdSCFControls.tMax));
-          addData("RT.MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
+          addData("RT/TMAX", doubleToString(tdSCFControls.tMax));
+          addData("RT/MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputMaxTime, "");
         }
 
@@ -503,7 +503,7 @@ namespace ChronusQ {
           else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) str = "FORWARDEULER";
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty() or !RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "MAGNUS2";
           //std::cout<<"xsli test read in restart algorithm = "<< std::to_string(tdSCFControls.restartAlgorithm) <<std::endl;
-          addData("RT.RESTARTSTEP", str);
+          addData("RT/RESTARTSTEP", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestartAlgorithm, "");
         }
 
@@ -520,7 +520,7 @@ namespace ChronusQ {
           else if (!RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "RK4"; // New check for RK4 or RUNGEKUTTAFOURTHORDER
           else if (!RTmatch.str(11).empty()) str = "BORT"; 
           //std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
-          addData("RT.INTALG", str);
+          addData("RT/INTALG", str);
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRTAlgorithm, "");
         }
 
@@ -529,7 +529,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputISave) ) {
           tdSCFControls.iSave = std::stoi(RTmatch.str(2));
           std::cout<<"xsli test read in iSave = "<<tdSCFControls.iSave<<std::endl;
-          addData("RT.SAVESTEP", std::to_string(tdSCFControls.iSave));
+          addData("RT/SAVESTEP", std::to_string(tdSCFControls.iSave));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputISave, "");
         }
 
@@ -547,7 +547,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIPrint) ) {
           tdSCFControls.iPrint = std::stoi(RTmatch.str(2));
           std::cout<<"xsli test read in iPrint = "<<tdSCFControls.iPrint<<std::endl;
-          addData("RT.PRINTSTEP", std::to_string(tdSCFControls.iPrint));
+          addData("RT/PRINTSTEP", std::to_string(tdSCFControls.iPrint));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputIPrint, "");
         }
 
@@ -556,7 +556,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIRestart) ) {
           tdSCFControls.iRestart = std::stoi(RTmatch.str(2));
           std::cout<<"xsli test read in iRestart = "<< std::to_string(tdSCFControls.iRestart) <<std::endl;
-          addData("RT.IRSTRT", std::to_string(tdSCFControls.iRestart));
+          addData("RT/IRSTRT", std::to_string(tdSCFControls.iRestart));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputIRestart, "");
         }
 
@@ -566,8 +566,8 @@ namespace ChronusQ {
           tdSCFControls.restoreFromStep = -1;
           if(!RTmatch.str(2).empty()) tdSCFControls.restoreFromStep = std::stoi(RTmatch.str(2));
           std::cout<<"xsli test read in do restart = "<<tdSCFControls.restoreFromStep<<std::endl;
-          addData("RT.RESTARTFROM", std::to_string(tdSCFControls.restoreFromStep));
-          addData("RT.RESTART", "TRUE");
+          addData("RT/RESTARTFROM", std::to_string(tdSCFControls.restoreFromStep));
+          addData("RT/RESTART", "TRUE");
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestart, "");
         }
 
@@ -575,7 +575,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtGaunt) ) {
           tdSCFControls.rtGaunt = std::stoi(RTmatch.str(2));
           std::cout<<"zxc test read in rtGaunt = "<<tdSCFControls.rtGaunt<<std::endl;
-          addData("RT.RTGAUNT", std::to_string(tdSCFControls.rtGaunt));
+          addData("RT/RTGAUNT", std::to_string(tdSCFControls.rtGaunt));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtGaunt, "");
         }
 
@@ -583,7 +583,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtGauge) ) {
           tdSCFControls.rtGauge = std::stoi(RTmatch.str(2));
           std::cout<<"zxc test read in rtGauge = "<<tdSCFControls.rtGauge<<std::endl;
-          addData("RT.RTGAUGE", std::to_string(tdSCFControls.rtGauge));
+          addData("RT/RTGAUGE", std::to_string(tdSCFControls.rtGauge));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtGauge, "");
         }
 
@@ -591,7 +591,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputrtBreit) ) {
           tdSCFControls.rtBreit = std::stoi(RTmatch.str(2));
           std::cout<<"zxc test read in rtBreit = "<<tdSCFControls.rtBreit<<std::endl;
-          addData("RT.RTBREIT", std::to_string(tdSCFControls.rtBreit));
+          addData("RT/RTBREIT", std::to_string(tdSCFControls.rtBreit));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputrtBreit, "");
         }
 
@@ -599,7 +599,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRtprintden) ) {
           tdSCFControls.Rtprintden = std::stoi(RTmatch.str(2));
           std::cout<<"zxc test read in Rtprintden = "<<tdSCFControls.Rtprintden<<std::endl;
-          addData("RT.RTPRINTDEN", std::to_string(tdSCFControls.Rtprintden));
+          addData("RT/RTPRINTDEN", std::to_string(tdSCFControls.Rtprintden));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRtprintden, "");
         }
 
@@ -623,7 +623,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputOrbitalPopFreq) ) {
           tdSCFControls.orbitalPopFreq = std::stoi(RTmatch.str(2));
           std::cout<<"test read in OrbitalPopFreq = "<<tdSCFControls.orbitalPopFreq<<std::endl;
-          addData("RT.ORBITALPOPFREQ", std::to_string(tdSCFControls.orbitalPopFreq));
+          addData("RT/ORBITALPOPFREQ", std::to_string(tdSCFControls.orbitalPopFreq));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputOrbitalPopFreq, "");
         }
 
@@ -638,7 +638,7 @@ namespace ChronusQ {
     };
   }
 
-  void TDSCFOptions::parseSection(const InputMap &dict) {
+  void TDSCFOptions::parseSection(const std::map<std::string,std::string> &dict) {
     if (dict.count("DELTAT")) deltaT = std::stod(dict.at("DELTAT"));
     if (dict.count("TMAX")) tMax = std::stod(dict.at("TMAX"));
     if (dict.count("MAXSTEPS")) maxSteps = std::stoi(dict.at("MAXSTEPS"));

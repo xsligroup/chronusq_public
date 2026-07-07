@@ -137,12 +137,12 @@ namespace ChronusQ {
 
     std::string prefix = this->particle.charge < 0 ? "INTS/" : "PINTS/";
 
-    if (save) CQIntermediates::getInstance().addData("INTS/CORE_HAMILTONIAN", coreH);
+    if (save) CQIntermediates::getInstance().addData(prefix + "CORE_HAMILTONIAN", coreH);
     // Save the Core Hamiltonian
     if( savFile.exists() && save) {
 
       try{
-        savFile.safeWriteData("INTS/CORE_HAMILTONIAN", *coreH);
+        savFile.safeWriteData(prefix + "CORE_HAMILTONIAN", *coreH);
       } catch(...) {
         CErr("Error saving core Hamiltonian. Please use -s. See Running ChronusQ section of wiki.");
       }

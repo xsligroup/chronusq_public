@@ -24,6 +24,7 @@
 #include <cxxapi/options.hpp>
 #include <util/mpi.hpp>
 #include <cerr.hpp>
+#include <basisset.hpp>
 
 namespace ChronusQ {
 
@@ -32,10 +33,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQBASIS_VALID( std::ostream &out, CQInputFile &input, std::string section) {
+  std::set<std::string> CQBASIS_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "FORCECART",
       "BASIS",
       "BASISTYPE",
@@ -43,16 +44,7 @@ namespace ChronusQ {
       "DEFINEBASIS"
     };
 
-    // Specified keywords
-    std::vector<std::string> basisKeywords = input.getDataInSection(section);
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : basisKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword " + section + "." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -69,11 +61,11 @@ namespace ChronusQ {
 
     // Determine if we're forcing cartesian functions
     bool forceCart(false);
-    OPTOPT( forceCart = input.getData<bool>(section+".FORCECART"); );
+    OPTOPT( forceCart = input.getData<bool>(section+"/FORCECART"); );
 
     // Determine if we're parsing the basis from a basis file or the input file
     bool inputBasis(false);
-    OPTOPT( inputBasis = input.getData<bool>(section+".DEFINEBASIS") )
+    OPTOPT( inputBasis = input.getData<bool>(section+"/DEFINEBASIS") )
 
     // Determine if we're parsing a protonic basis
     bool pBasis(false);
@@ -81,10 +73,10 @@ namespace ChronusQ {
 
     // Find the Basis Definition
     std::string basisName;
-    OPTOPT( basisName = input.getData<std::string>(section+".BASIS"); )
+    OPTOPT( basisName = input.getData<std::string>(section+"/BASIS"); )
     std::string basisDef;
     if ( inputBasis )
-      OPTOPT( basisDef = input.getData<std::string>(section+".BASISDEF"); )
+      OPTOPT( basisDef = input.getData<std::string>(section+"/BASISDEF"); )
 
     // Check for consistency
     if ( basisName.empty() and basisDef.empty() ) {
@@ -103,10 +95,10 @@ namespace ChronusQ {
 
     BASIS_FUNCTION_TYPE bType = REAL_GTO;
     try{
-      std::string bTypeString = input.getData<std::string>(section+".BASISTYPE");
+      std::string bTypeString = input.getData<std::string>(section+"/BASISTYPE");
       if(not bTypeString.compare("GIAO")) bType = COMPLEX_GIAO;
       else if(not bTypeString.compare("GTO")) bType = REAL_GTO;
-      else CErr(section+".BASISTYPE not valid.",out);
+      else CErr(section+"/BASISTYPE not valid.",out);
     } catch(...) {;}
 
     // Construct the BasisSet object

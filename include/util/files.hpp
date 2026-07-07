@@ -26,11 +26,14 @@
 #include <chronusq_sys.hpp>
 #include <cxxapi/input.hpp>
 #include <cerr.hpp>
+#include <matrix/ndarray.hpp>
 
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataType.hpp>
 #include <highfive/H5DataSpace.hpp>
 #include <highfive/H5File.hpp>
+
+#include <variant>
 
 namespace ChronusQ {
 
@@ -161,18 +164,36 @@ namespace cqmatrix {
         }
       };
 
-//      template <typename T>
-//      void readPauliSpinorMatrices(const std::string &dataSet) {
-//
-//        cqmatrix::PauliSpinorMatrices<T> data(jij);
-//        readData(dataSet + "_SCALAR", data.S().pointer());
-//        if (data.hasZ())
-//          readData(dataSet + "_MZ", data.Z().pointer());
-//        if (data.hasXY()) {
-//          readData(dataSet + "_MY", data.Y().pointer());
-//          readData(dataSet + "_MX", data.X().pointer());
-//        }
-//      };
+      std::variant< std::shared_ptr<cqmatrix::NDArray<double>>,
+                    std::shared_ptr<cqmatrix::NDArray<dcomplex>>,
+                    std::shared_ptr<cqmatrix::NDArray<int>> >
+      readNDArray(const std::string &dataSet) {
+        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        H5T_class_t type;
+        if (file.exist(dataSet)){
+          auto datasetObj = file.getDataSet(dataSet);
+          hid_t type_id = H5Dget_type(datasetObj.getId());
+          type = H5Tget_class(type_id);
+        } else {
+          CErr("HDF5 CQ IO Issue. Attempting to read from nonexistent dataset.");
+        }
+        std::vector<size_t> dims = getDims(dataSet);
+        if (type == H5T_FLOAT) {
+          auto data = std::make_shared<cqmatrix::NDArray<double>>(dims);
+          readData(dataSet, data->pointer());
+          return data;
+        } else if (type == H5T_COMPOUND) {
+          auto data = std::make_shared<cqmatrix::NDArray<dcomplex>>(dims);
+          readData(dataSet, data->pointer());
+          return data;
+        } else if (type == H5T_INTEGER) {
+          auto data = std::make_shared<cqmatrix::NDArray<int>>(dims);
+          readData(dataSet, data->pointer());
+          return data;
+        } else {
+          ChronusQ::CErr("Unsupported data type for NDArray");
+        }
+      };
 
       template <typename T>
       void partialReadData(const std::string &dataSet, T* data,

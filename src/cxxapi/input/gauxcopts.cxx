@@ -38,10 +38,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQGAUXC_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQGAUXC_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
         "GPU",                      // True or False
         "GPUMEMFRAC",               // Float between 0 and 1
         "BATCHSIZE",                // size_t
@@ -57,16 +57,7 @@ namespace ChronusQ {
         "XHFX",                     // Global hybrid scaling factor
     };
 
-    // Specified keywords
-    std::vector<std::string> intsKeywords = input.getDataInSection("GAUXC");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : intsKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword GAUXC." + keyword + " is not recognized",std::cout);// Error
-    }
-
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   } //CQGAUXC_VALID
 
   /**
@@ -82,25 +73,25 @@ namespace ChronusQ {
     out << bannerMid << std::endl;
     GauXCOptions gauxcOpts;
 
-    OPTOPT( gauxcOpts.useGPU     = input.getData<bool>("GAUXC.GPU"); )
-    OPTOPT( gauxcOpts.gpuMemFrac = input.getData<double>("GAUXC.GPUMEMFRAC"); )
+    OPTOPT( gauxcOpts.useGPU     = input.getData<bool>("GAUXC/GPU"); )
+    OPTOPT( gauxcOpts.gpuMemFrac = input.getData<double>("GAUXC/GPUMEMFRAC"); )
     // pin to [0,1]
     if (gauxcOpts.gpuMemFrac > 1.0)       gauxcOpts.gpuMemFrac = 1.0; 
     else if (gauxcOpts.gpuMemFrac < 0.0)  gauxcOpts.gpuMemFrac = 0.0; // TODO: test what happens at extremes
     
     // Parse basisset tolerance 
-    OPTOPT( gauxcOpts.basisTol      = input.getData<double>("GAUXC.BASISTOL"); )
-    OPTOPT( gauxcOpts.pbasisTol     = input.getData<double>("GAUXC.PBASISTOL"); )
+    OPTOPT( gauxcOpts.basisTol      = input.getData<double>("GAUXC/BASISTOL"); )
+    OPTOPT( gauxcOpts.pbasisTol     = input.getData<double>("GAUXC/PBASISTOL"); )
     
     // Parse batch size
-    OPTOPT( gauxcOpts.batchSize = input.getData<size_t>("GAUXC.BATCHSIZE"); )
+    OPTOPT( gauxcOpts.batchSize = input.getData<size_t>("GAUXC/BATCHSIZE"); )
     gauxcOpts.batchSize = gauxcOpts.batchSize > 1 ? gauxcOpts.batchSize : 1; // pin to [1,inf)
 
     // Initialize strings into which we will read users input
     std::string inputGrid, inputPruningScheme, inputXCWeightAlg, inputRadialQuad, inputIntKernel;
 
     // Parse atomic grid size, default to ultrafine
-    OPTOPT( inputGrid = input.getData<std::string>("GAUXC.GRID"); )
+    OPTOPT( inputGrid = input.getData<std::string>("GAUXC/GRID"); )
     if (GauXCOptions::mg_map.find(inputGrid) == GauXCOptions::mg_map.end()){
       // Try to convert from grid specified in DFTInts section to GauXC grid
       if (inputGrid.empty()){
@@ -120,7 +111,7 @@ namespace ChronusQ {
           gauxcOpts.custom_grid = true;
         }
       } else{
-        out << "  " << std::setw(39) << "Invalid GAUXC.GRID Keyword!"; 
+        out << "  " << std::setw(39) << "Invalid GAUXC/GRID Keyword!"; 
         out << "  Set to default (Ultrafine)" << std::endl;
         inputGrid = "ULTRAFINE"; 
       }
@@ -143,7 +134,7 @@ namespace ChronusQ {
     }
 
     // Parse pruning scheme, default to unpruned
-    OPTOPT( inputPruningScheme = input.getData<std::string>("GAUXC.PRUNINGSCHEME"); )
+    OPTOPT( inputPruningScheme = input.getData<std::string>("GAUXC/PRUNINGSCHEME"); )
     if (GauXCOptions::prune_map.find(inputPruningScheme) == GauXCOptions::prune_map.end()) {
       out << "  " << std::setw(39) << "PruningScheme not set or unrecognized;";
       out << "Set to default (Unpruned)" << std::endl;
@@ -151,7 +142,7 @@ namespace ChronusQ {
     gauxcOpts.pruningScheme = GauXCOptions::prune_map.at(inputPruningScheme);
 
     // Parse XC weight algorithm, default to SSF
-    OPTOPT( inputXCWeightAlg = input.getData<std::string>("GAUXC.XCWEIGHTALG"); )
+    OPTOPT( inputXCWeightAlg = input.getData<std::string>("GAUXC/XCWEIGHTALG"); )
     if (GauXCOptions::xcweight_map.find(inputXCWeightAlg) == GauXCOptions::xcweight_map.end()) {
       out << "  " << std::setw(39) << "XCWeightAlg not set or unrecognized;";
       out << "Set to default (SSF)" << std::endl;
@@ -159,7 +150,7 @@ namespace ChronusQ {
     gauxcOpts.xcWeightAlg = GauXCOptions::xcweight_map.at(inputXCWeightAlg);
 
     // Parse radial quadruture, default to MurrayHandyLaming
-    OPTOPT( inputRadialQuad = input.getData<std::string>("GAUXC.RADIALQUAD"); )
+    OPTOPT( inputRadialQuad = input.getData<std::string>("GAUXC/RADIALQUAD"); )
     if (GauXCOptions::radialquad_map.find(inputRadialQuad) == GauXCOptions::radialquad_map.end()) {
       out << "  " << std::setw(39) << "RadialQuad not set or unrecognized;";
       out << "Set to default (MurrayHandyLaming)" << std::endl;
@@ -167,7 +158,7 @@ namespace ChronusQ {
     gauxcOpts.radialQuad = GauXCOptions::radialquad_map.at(inputRadialQuad);
 
     // Parse integrator kernel. Input is sanitized on GauXC side
-    OPTOPT( inputIntKernel = input.getData<std::string>("GAUXC.INTKERNEL"); )
+    OPTOPT( inputIntKernel = input.getData<std::string>("GAUXC/INTKERNEL"); )
     if( !inputIntKernel.empty() )
       gauxcOpts.intKernel = inputIntKernel;
 
@@ -181,17 +172,17 @@ namespace ChronusQ {
     
     // Parse xc evalution backend for ExchCXX
     std::string inputXCBackend = "LIBXC";
-    OPTOPT( inputXCBackend = input.getData<std::string>("GAUXC.XCBACKEND"); )
+    OPTOPT( inputXCBackend = input.getData<std::string>("GAUXC/XCBACKEND"); )
     if (not inputXCBackend.compare("LIBXC")) gauxcOpts.xcBackend = ExchCXX::Backend::libxc;
     else if (not inputXCBackend.compare("BUILTIN")) gauxcOpts.xcBackend = ExchCXX::Backend::builtin;
-    else CErr(inputXCBackend + " not a valid GAUXC.XCBACKEND Keyword",out);
+    else CErr(inputXCBackend + " not a valid GAUXC/XCBACKEND Keyword",out);
     
     out << std::endl;
 
     
     // Parse CUSTOM Functional from kernel list and hybridization
-    OPTOPT( gauxcOpts.hyb_coeffs.alpha      = input.getData<double>("GAUXC.XHFX"); )
-    OPTOPT( gauxcOpts.kernels = input.getData<std::string>("GAUXC.FUNCTIONAL"); )
+    OPTOPT( gauxcOpts.hyb_coeffs.alpha      = input.getData<double>("GAUXC/XHFX"); )
+    OPTOPT( gauxcOpts.kernels = input.getData<std::string>("GAUXC/FUNCTIONAL"); )
 
     // Print full GauXC settings 
     gauxcOpts.printGauXCSettings(out);

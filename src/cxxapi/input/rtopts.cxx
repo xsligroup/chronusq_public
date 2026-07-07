@@ -32,10 +32,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQRT_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQRT_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "TYPE",          // Type of dynamics: BOMD (Default), Ehrenfest, RT
       "TMAX",          // The total time for the whole dynamics: 100 fs (Default)
       "MAXSTEPS",
@@ -76,16 +76,7 @@ namespace ChronusQ {
       "BORTACCURACY"
     };
 
-    // Specified keywords
-    std::vector<std::string> rtKeywords = input.getDataInSection("RT");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : rtKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword RT." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -137,7 +128,7 @@ namespace ChronusQ {
     std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> vecManager;
     if (mcwfn) {
       try {
-        auto intAlg = input.getData<std::string>("RT.INTALG");
+        auto intAlg = input.getData<std::string>("RT/INTALG");
 
         if ( not intAlg.compare("SSO") ) { 
           inputRTAlg = RealTimeAlgorithm::RTSymplecticSplitOperator;
@@ -207,15 +198,15 @@ namespace ChronusQ {
     rt->intScheme.nonhermitian_propagation = nonhermitian_prop;
     // Parse Options
     try {
-      rt->intScheme.tMax = input.getData<double>("RT.TMAX");
+      rt->intScheme.tMax = input.getData<double>("RT/TMAX");
     } catch(...) {
-      CErr("Must specify RT.TMAX for simulation length");
+      CErr("Must specify RT/TMAX for simulation length");
     }
 
     try {
-      rt->intScheme.deltaT = input.getData<double>("RT.DELTAT");
+      rt->intScheme.deltaT = input.getData<double>("RT/DELTAT");
     } catch(...) {
-      CErr("Must specify RT.DELTAT for integration time step");
+      CErr("Must specify RT/DELTAT for integration time step");
     }
 
     // Determine Integration Algorithm
@@ -225,53 +216,53 @@ namespace ChronusQ {
     rt->setSCFPerturbation( scfPert );
     // Inclusion of SCF perturbation
     OPTOPT(
-      rt->intScheme.includeSCFField = input.getData<bool>("RT.SCFFIELD");
+      rt->intScheme.includeSCFField = input.getData<bool>("RT/SCFFIELD");
     )
 
     // Save frequency
     OPTOPT(
-      rt->intScheme.iSave = input.getData<size_t>("RT.SAVESTEP")
+      rt->intScheme.iSave = input.getData<size_t>("RT/SAVESTEP")
     )
 
     // Save frequency
     OPTOPT(
-      rt->intScheme.iCube = input.getData<size_t>("RT.SAVECUBE")
+      rt->intScheme.iCube = input.getData<size_t>("RT/SAVECUBE")
     )
 
     // Whether we are restarting an RT calculation
     OPTOPT(
-      rt->restart = input.getData<bool>("RT.RESTART");
+      rt->restart = input.getData<bool>("RT/RESTART");
     )
 
     // Amount of printing in the RT calc
     OPTOPT(
-      rt->printLevel = input.getData<size_t>("RT.PRINTLEVEL");
+      rt->printLevel = input.getData<size_t>("RT/PRINTLEVEL");
     )
 
     OPTOPT(
-      rt->intScheme.StatePopFreq = input.getData<size_t>("RT.STATEPOPULATION");
+      rt->intScheme.StatePopFreq = input.getData<size_t>("RT/STATEPOPULATION");
     )
     OPTOPT(
-      rt->intScheme.StatePopFreq = input.getData<size_t>("STATEPOPULATIONNSTATES");
+      rt->intScheme.StatePopFreq = input.getData<size_t>("RT/STATEPOPULATIONNSTATES");
     )
 
     if (rt->intScheme.StatePopFreq == 0 && rt->intScheme.StatePopNStates != 0){
-      std::cout << "Warning!: RT.STATEPOPULATION is set to 0, but RT.STATEPOPULATIONNSTATES is nonzero. This will not calculate STATEPOPULATIONS." << std::endl;
+      std::cout << "Warning!: RT/STATEPOPULATION is set to 0, but RT/STATEPOPULATIONNSTATES is nonzero. This will not calculate STATEPOPULATIONS." << std::endl;
     }
     if (rt->intScheme.StatePopFreq != 0 && rt->intScheme.StatePopNStates == 0){
       rt->intScheme.StatePopNStates = mcwfn->NStates;
     }
 
     OPTOPT(
-      rt->intScheme.RealTimeCorrelationFunctionFreq = input.getData<size_t>("RT.REALTIMECORRELATIONFUNC");
+      rt->intScheme.RealTimeCorrelationFunctionFreq = input.getData<size_t>("RT/REALTIMECORRELATIONFUNC");
     )
 
     OPTOPT(
-      rt->intScheme.RealTimeCorrelationFunctionStart = input.getData<double>("RT.REALTIMECORRELATIONFUNCSTART");
+      rt->intScheme.RealTimeCorrelationFunctionStart = input.getData<double>("RT/REALTIMECORRELATIONFUNCSTART");
     )
 
     OPTOPT(
-      rt->intScheme.time_independent_ham = input.getData<bool>("RT.FIELDINDEPENDENTHAMILTONIAN");
+      rt->intScheme.time_independent_ham = input.getData<bool>("RT/FIELDINDEPENDENTHAMILTONIAN");
     )
 
     return rt;
@@ -451,7 +442,7 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
   void HandleRTInitState(std::ostream & out, CQInputFile & input, std::shared_ptr<RealTimeMultiSlaterVectorManagerBase> & vecManager)
   {
     std::string inittype;
-    OPTOPT(inittype = input.getData<std::string>("RT.INITTYPE"))
+    OPTOPT(inittype = input.getData<std::string>("RT/INITTYPE"))
     if(inittype.empty())
     {
       out << "** No detailed initial state detected, defaulting to propogating the lowest CIVec **" << std::endl;
@@ -463,8 +454,8 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
     {
       vecManager->initmethod = MSInitialState::LinearCombination;
       std::string weights,states;
-      OPTOPT(weights = input.getData<std::string>("RT.LCWEIGHTS"));
-      OPTOPT(states = input.getData<std::string>("RT.LCSTATES"));
+      OPTOPT(weights = input.getData<std::string>("RT/LCWEIGHTS"));
+      OPTOPT(states = input.getData<std::string>("RT/LCSTATES"));
       std::vector<std::string> weighttokens,statetokens;
       split(weighttokens,weights," ,;");
       split(statetokens,states," ,;");
@@ -502,8 +493,8 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
       std::cout << "You should use very cautiously and probably only" << std::endl
                 << "if you REALLY know what you're doing!" << std::endl;
       std::string coeffs,dets;
-      OPTOPT(coeffs = input.getData<std::string>("RT.COEFFS"));
-      OPTOPT(dets = input.getData<std::string>("RT.DETS"));
+      OPTOPT(coeffs = input.getData<std::string>("RT/COEFFS"));
+      OPTOPT(dets = input.getData<std::string>("RT/DETS"));
       std::vector<std::string> coefftokens,dettokens;
       split(coefftokens,coeffs," ,;");
       split(dettokens,dets," ,;");
@@ -525,7 +516,7 @@ std::shared_ptr<TDEMFieldBase> parseRTField(std::string& fieldStr, std::ostream&
     }
     else
     {
-      CErr("Unrecognized option for RT.initmethod: " + inittype);
+      CErr("Unrecognized option for RT/initmethod: " + inittype);
     }
     return;
   };

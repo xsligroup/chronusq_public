@@ -39,10 +39,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQINTS_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQINTS_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "ALG",          // Direct or Incore?
       "GRADALG",      // Direct or Incore for gradients?
       "TPITRANSALG",  // N5 or N6
@@ -79,26 +79,7 @@ namespace ChronusQ {
       "GAUGE",        // True or False
     };
 
-    // Specified keywords
-    std::vector<std::string> intsKeywords = input.getDataInSection("INTS");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : intsKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword INTS." + keyword + " is not recognized",std::cout);// Error
-    }
-
-    // Specified NEO keywords
-    intsKeywords = input.getDataInSection("PINTS");
-
-    // Make sure all of the basisKeywords in allowedKeywords
-    for( auto &keyword : intsKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if ( ipos == allowedKeywords.end() )
-        CErr("Keyword PINTS." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -119,7 +100,7 @@ namespace ChronusQ {
 
     // check the validity of the integral option section 
     if (not int_sec.compare("INTS") and not int_sec.compare("PINTS") and not int_sec.compare("EPINTS"))
-      CErr("Found invalue integral section");
+      CErr("Found invalid integral section");
 
     
     out << "  *** Parsing " << int_sec << ".REFERENCE options ***\n\n";
@@ -129,7 +110,7 @@ namespace ChronusQ {
 
     // Parse integral algorithm
     std::string ALG = "DIRECT";
-    OPTOPT( ALG = input.getData<std::string>(int_sec+".ALG"); )
+    OPTOPT( ALG = input.getData<std::string>(int_sec+"/ALG"); )
     trim(ALG);
     // Set integral algorithm
     if( not ALG.compare("DIRECT") )
@@ -142,14 +123,14 @@ namespace ChronusQ {
 
     std::string TPITRANSALG = "N6"; 
     // Parse TPI AO to MO transformation algorithm
-    OPTOPT( TPITRANSALG = input.getData<std::string>(int_sec+".TPITRANSALG"); )
+    OPTOPT( TPITRANSALG = input.getData<std::string>(int_sec+"/TPITRANSALG"); )
     trim(TPITRANSALG);
     // Set TPI AO to MO transformation algorithm
     options.basicintsoptions.TPITRANSALG = TPITRANSALG;
     
     
     // Parse Schwarz threshold
-    OPTOPT( options.basicintsoptions.threshSchwarz = input.getData<double>(int_sec+".SCHWARZ"); )
+    OPTOPT( options.basicintsoptions.threshSchwarz = input.getData<double>(int_sec+"/SCHWARZ"); )
 
 
     // Set RI to be False by Default
@@ -157,7 +138,7 @@ namespace ChronusQ {
     // For EPINTS, the default should be set to auto
     if(not int_sec.compare("EPINTS")) RI = "AUTO";
     // Parse RI option
-    OPTOPT( RI = input.getData<std::string>(int_sec+".RI");)
+    OPTOPT( RI = input.getData<std::string>(int_sec+"/RI");)
     trim(RI);
 
 
@@ -179,8 +160,8 @@ namespace ChronusQ {
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::CONNECTOR;
         } else if (not RI.compare("COMBINEAUXBASIS")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEAUXBASIS;
-          OPTOPT( options.cdriintsoptions.CDRI_combineBasisTruncate = input.getData<bool>(int_sec+".RICOMBINEBASISTRUNCATE");)
-          OPTOPT( options.cdriintsoptions.CDRI_combineBasisThresh = input.getData<double>(int_sec+".RICOMBINEBASISTHRESH");)
+          OPTOPT( options.cdriintsoptions.CDRI_combineBasisTruncate = input.getData<bool>(int_sec+"/RICOMBINEBASISTRUNCATE");)
+          OPTOPT( options.cdriintsoptions.CDRI_combineBasisThresh = input.getData<double>(int_sec+"/RICOMBINEBASISTHRESH");)
         } else if (not RI.compare("COMBINEMATRIX")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEMATRIX;
         } else {
@@ -188,7 +169,7 @@ namespace ChronusQ {
         }
 
         std::string reportError = "FALSE";
-        OPTOPT( reportError = input.getData<std::string>(int_sec+".RIREPORTERROR");)
+        OPTOPT( reportError = input.getData<std::string>(int_sec+"/RIREPORTERROR");)
         if(not reportError.compare("FALSE")){
           options.cdriintsoptions.CDRI_reportError = false;
         } else if(not reportError.compare("TRUE")) {
@@ -227,14 +208,14 @@ namespace ChronusQ {
     options.basicintsoptions.RI = RI;
 
     // Parse more RI options
-    OPTOPT( options.cdriintsoptions.CDRI_genContr = input.getData<bool>(int_sec+".RIGENCONTR"); )
-    OPTOPT( options.cdriintsoptions.CDRI_thresh = input.getData<double>(int_sec+".RITHRESHOLD"); )
-    OPTOPT( options.cdriintsoptions.CDRI_sigma = input.getData<double>(int_sec+".RISIGMA"); )
-    OPTOPT( options.cdriintsoptions.CDRI_max_qual = input.getData<size_t>(int_sec+".RIMAXQUAL"); )
-    OPTOPT( options.cdriintsoptions.CDRI_minShrinkCycle = input.getData<size_t>(int_sec+".RIMINSHRINK"); )
-    OPTOPT( options.cdriintsoptions.CDRI_build4I = input.getData<bool>(int_sec+".RIBUILD4INDEX"); )
-    OPTOPT( options.cdriintsoptions.CDRI_distributed = input.getData<bool>(int_sec+".RIDISTRIBUTE"); )
-    OPTOPT( options.cdriintsoptions.CDRI_redistribute = input.getData<bool>(int_sec+".RIREDISTRIBUTE"); )
+    OPTOPT( options.cdriintsoptions.CDRI_genContr = input.getData<bool>(int_sec+"/RIGENCONTR"); )
+    OPTOPT( options.cdriintsoptions.CDRI_thresh = input.getData<double>(int_sec+"/RITHRESHOLD"); )
+    OPTOPT( options.cdriintsoptions.CDRI_sigma = input.getData<double>(int_sec+"/RISIGMA"); )
+    OPTOPT( options.cdriintsoptions.CDRI_max_qual = input.getData<size_t>(int_sec+"/RIMAXQUAL"); )
+    OPTOPT( options.cdriintsoptions.CDRI_minShrinkCycle = input.getData<size_t>(int_sec+"/RIMINSHRINK"); )
+    OPTOPT( options.cdriintsoptions.CDRI_build4I = input.getData<bool>(int_sec+"/RIBUILD4INDEX"); )
+    OPTOPT( options.cdriintsoptions.CDRI_distributed = input.getData<bool>(int_sec+"/RIDISTRIBUTE"); )
+    OPTOPT( options.cdriintsoptions.CDRI_redistribute = input.getData<bool>(int_sec+"/RIREDISTRIBUTE"); )
     return options;
   }
 
@@ -582,11 +563,11 @@ namespace ChronusQ {
 
     // Parse integral algorithm
     std::string ALG = "DIRECT";
-    OPTOPT( ALG = input.getData<std::string>(int_sec+".ALG"); )
+    OPTOPT( ALG = input.getData<std::string>(int_sec+"/ALG"); )
     trim(ALG);
     
     std::string TPITRANSALG = "N6"; 
-    OPTOPT( TPITRANSALG = input.getData<std::string>(int_sec+".TPITRANSALG"); )
+    OPTOPT( TPITRANSALG = input.getData<std::string>(int_sec+"/TPITRANSALG"); )
     trim(TPITRANSALG);
 
     // Control Variables
@@ -606,13 +587,13 @@ namespace ChronusQ {
     else if( not ALG.compare("INCORE") )
       contrAlg = CONTRACTION_ALGORITHM::INCORE;
     else
-      CErr(ALG + " not a valid "+ int_sec + ".ALG",out);
+      CErr(ALG + " not a valid "+ int_sec + "/ALG",out);
 
     // Parse Schwarz threshold
-    OPTOPT( threshSchwarz = input.getData<double>(int_sec+".SCHWARZ"); )
+    OPTOPT( threshSchwarz = input.getData<double>(int_sec+"/SCHWARZ"); )
 
     // Parse RI option
-    OPTOPT( RI = input.getData<std::string>(int_sec+".RI");)
+    OPTOPT( RI = input.getData<std::string>(int_sec+"/RI");)
     trim(RI);
 
     if(RI.compare("FALSE")) {
@@ -622,7 +603,7 @@ namespace ChronusQ {
       }
       if(not RI.compare("AUXBASIS") ) {
         if (dfbasis->nBasis < 1)
-          CErr("Keyword "+ int_sec + ".RI requires a non-empty DFbasis->",std::cout);
+          CErr("Keyword "+ int_sec + "/RI requires a non-empty DFbasis->",std::cout);
       } else if (not RI.compare("TRADITIONAL")) {
         CDalg = CHOLESKY_ALG::TRADITIONAL;
       } else if (not RI.compare("DYNAMICALL")) {
@@ -634,16 +615,16 @@ namespace ChronusQ {
       } else if (not RI.compare("SPANFACTORREUSE")) {
         CDalg = CHOLESKY_ALG::SPAN_FACTOR_REUSE;
       } else {
-        CErr(RI + " not a valid "+ int_sec + ".RI",out);
+        CErr(RI + " not a valid "+ int_sec + "/RI",out);
       }
     }
 
-    OPTOPT( CDRI_genContr = input.getData<bool>(int_sec+".RIGENCONTR"); )
-    OPTOPT( CDRI_thresh = input.getData<double>(int_sec+".RITHRESHOLD"); )
-    OPTOPT( CDRI_sigma = input.getData<double>(int_sec+".RISIGMA"); )
-    OPTOPT( CDRI_max_qual = input.getData<size_t>(int_sec+".RIMAXQUAL"); )
-    OPTOPT( CDRI_minShrinkCycle = input.getData<size_t>(int_sec+".RIMINSHRINK"); )
-    OPTOPT( CDRI_build4I = input.getData<bool>(int_sec+".RIBUILD4INDEX"); )
+    OPTOPT( CDRI_genContr = input.getData<bool>(int_sec+"/RIGENCONTR"); )
+    OPTOPT( CDRI_thresh = input.getData<double>(int_sec+"/RITHRESHOLD"); )
+    OPTOPT( CDRI_sigma = input.getData<double>(int_sec+"/RISIGMA"); )
+    OPTOPT( CDRI_max_qual = input.getData<size_t>(int_sec+"/RIMAXQUAL"); )
+    OPTOPT( CDRI_minShrinkCycle = input.getData<size_t>(int_sec+"/RIMINSHRINK"); )
+    OPTOPT( CDRI_build4I = input.getData<bool>(int_sec+"/RIBUILD4INDEX"); )
 
     std::shared_ptr<IntegralsBase> aoi = nullptr;
 
@@ -713,7 +694,7 @@ namespace ChronusQ {
       else
         aoi->TPITransAlg = TPI_TRANSFORMATION_ALG::INCORE_N6;
     } else {
-      CErr(TPITRANSALG + " not a valid "+ int_sec + ".TPITRANSALG",out);
+      CErr(TPITRANSALG + " not a valid "+ int_sec + "/TPITRANSALG",out);
     }
 
     // Print

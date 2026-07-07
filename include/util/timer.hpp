@@ -82,6 +82,9 @@
 #include <vector>
 
 #include <omp.h>
+#ifdef CQ_ENABLE_MPI
+#include <mpi.h>
+#endif
 
 #include <util/singleton.hpp>
 

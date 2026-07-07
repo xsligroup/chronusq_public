@@ -33,33 +33,33 @@ namespace ChronusQ {
     std::string postHFSection) {
   
     // Mulliken charge analysis
-    OPTOPT( postHF->PopulationAnalysis = input.getData<bool>(postHFSection + ".POPULATION"); )
+    OPTOPT( postHF->PopulationAnalysis = input.getData<bool>(postHFSection + "/POPULATION"); )
  
     // Spin analysis
-    OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + ".PRINTSPIN"); )
+    OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + "/PRINTSPIN"); )
 
     // Oscillator strength
-    OPTOPT( postHF->osc_str = input.getData<bool>(postHFSection + ".OSCISTREN"); )
+    OPTOPT( postHF->osc_str = input.getData<bool>(postHFSection + "/OSCISTREN"); )
     if ( postHF->osc_str ){
-      OPTOPT( postHF->osc_str_order = input.getData<size_t>(postHFSection + ".OSCISTREN_ORDER"); )
-      OPTOPT( postHF->NosS1 = input.getData<size_t>(postHFSection + ".OSCISTREN_INITSTATES"); )
+      OPTOPT( postHF->osc_str_order = input.getData<size_t>(postHFSection + "/OSCISTREN_ORDER"); )
+      OPTOPT( postHF->NosS1 = input.getData<size_t>(postHFSection + "/OSCISTREN_INITSTATES"); )
     }
     else{
-      if (input.containsData(postHFSection + ".OSCISTREN_ORDER") || 
-          input.containsData(postHFSection + ".OSCISTREN_INTISTATES")){
+      if (input.containsData(postHFSection + "/OSCISTREN_ORDER") ||
+          input.containsData(postHFSection + "/OSCISTREN_INTISTATES")){
         CErr("Cannot Set OSCISTREN_ORDER or OSCISTREN_INITSTATES Without Setting OSCISTREN == True/1");}} 
 
     // Printing Options
     // MOs
-    if ( input.containsData(postHFSection + ".PRINTMOS") ) {
-      try { postHF->printMOCoeffs = input.getData<size_t>(postHFSection + ".PRINTMOS"); }
+    if ( input.containsData(postHFSection + "/PRINTMOS") ) {
+      try { postHF->printMOCoeffs = input.getData<size_t>(postHFSection + "/PRINTMOS"); }
       catch(...) {
         CErr("Invalid PRINTMOS input. Please use number 0 ~ 9.");
       }
     }
 
     // Print determinant occupations?
-    OPTOPT( postHF->printDetailedCICoeffs = input.getData<bool>(postHFSection + ".PRINTDETOCC"); )
+    OPTOPT( postHF->printDetailedCICoeffs = input.getData<bool>(postHFSection + "/PRINTDETOCC"); )
 
     if ( postHF->printMOCoeffs >= 10 ) CErr(postHFSection + " print level is not valid!");
   
@@ -71,7 +71,7 @@ namespace ChronusQ {
 
     // Parse RDM printing
     std::string printRDMString;
-    OPTOPT( printRDMString = input.getData<std::string>(postHFSection + ".PRINTRDMS"));
+    OPTOPT( printRDMString = input.getData<std::string>(postHFSection + "/PRINTRDMS"));
     if ( not printRDMString.empty() ) {
       std::cout << "  * Printing RDM detected: " << std::endl;
 
@@ -105,7 +105,7 @@ namespace ChronusQ {
 
     // MO swapping
     std::string swapMOStrings;
-    OPTOPT( swapMOStrings = input.getData<std::string>(postHFSection + ".SWAPMO"));
+    OPTOPT( swapMOStrings = input.getData<std::string>(postHFSection + "/SWAPMO"));
     if ( not swapMOStrings.empty() ) {
       std::cout << "  * Manually MO Swapping Detected: " << std::endl;
 
@@ -163,7 +163,7 @@ namespace ChronusQ {
 
     try {
       std::string DASPartition;
-      OPTOPT( DASPartition = input.getData<std::string>(postHFSection +".DAS"));
+      OPTOPT( DASPartition = input.getData<std::string>(postHFSection +"/DAS"));
       if (not DASPartition.empty()) {
         std::string iDASDefinition;
         std::istringstream inputDASStream(DASPartition);
@@ -386,7 +386,7 @@ namespace ChronusQ {
     //
     std::string occResStrings;
     std::vector<std::string> occResTokens;
-    OPTOPT( occResStrings = input.getData<std::string>(postHFSection + ".OCCRESTRICTIONS"));
+    OPTOPT( occResStrings = input.getData<std::string>(postHFSection + "/OCCRESTRICTIONS"));
     if (not occResStrings.empty()) {
       std::istringstream occResStream(occResStrings);
       int i = -1;
@@ -411,7 +411,7 @@ namespace ChronusQ {
     refOcc.clear();
     std::string refOccStrings;
     std::vector<std::string> refOccTokens;
-    OPTOPT( refOccStrings = input.getData<std::string>(postHFSection + ".REFERENCEOCC"));
+    OPTOPT( refOccStrings = input.getData<std::string>(postHFSection + "/REFERENCEOCC"));
     if (not refOccStrings.empty()) {
       std::istringstream refOccStream(refOccStrings);    
       for( std::string refOccStr; std::getline(refOccStream, refOccStr);) {
@@ -434,7 +434,7 @@ namespace ChronusQ {
 
     // Parse natural orbital option
     std::string savePDMsString;
-    OPTOPT( savePDMsString = input.getData<std::string>(postHFSection + ".SAVEONEPDMS"); )
+    OPTOPT( savePDMsString = input.getData<std::string>(postHFSection + "/SAVEONEPDMS"); )
     if ( not savePDMsString.empty() ) {
       std::cout << "  * Requesting to Save PDMs keyword detected: " << std::endl;
 

@@ -27,10 +27,10 @@
 
 namespace ChronusQ {
 
-  void CQCUBE_VALID( std::ostream &out, CQInputFile &input, std::string section ) {
+  std::set<std::string> CQCUBE_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "DEN",
       "ORB",
       "MOS",
@@ -43,19 +43,7 @@ namespace ChronusQ {
       "MAGANDPHASE"
     };
 
-    std::string subSection = section + "CUBE";
-
-    // Specified keywords
-    std::vector<std::string> cubeKeywords = input.getDataInSection(subSection);
-
-    // Make sure all of cubeKeywords in allowedKeywords
-
-    for( auto &keyword : cubeKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword " + subSection + "." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   std::shared_ptr<CubeGen> CQCUBEOptions(std::ostream &out, CQInputFile &input,
@@ -65,16 +53,16 @@ namespace ChronusQ {
     // CUBE section not required
     if( not input.containsSection("CUBE") ) 
     {
-      // Check in case [SUBSECTION.CUBE] is specified instead
-      if(input.containsSection("SCF.CUBE"))
+      // Check in case [SUBSECTION/CUBE] is specified instead
+      if(input.containsSection("SCF/CUBE"))
       {
-        std::cout << "[CUBE] settings detected in [SCF.CUBE]" << std::endl;
+        std::cout << "[CUBE] settings detected in [SCF/CUBE]" << std::endl;
         std::cout << "These settings are useed globally!" << std::endl;
         substring = "SCF.";
       }
-      else if(input.containsSection("MCSCF.CUBE"))
+      else if(input.containsSection("MCSCF/CUBE"))
       {
-        std::cout << "[CUBE] settings detected in [MCSCF.CUBE]" << std::endl;
+        std::cout << "[CUBE] settings detected in [MCSCF/CUBE]" << std::endl;
         std::cout << "These settings are useed globally!" << std::endl;
         substring = "MCSCF.";
       }
@@ -97,14 +85,14 @@ namespace ChronusQ {
     double pad = 0.0;
 
     // change resolution 
-    OPTOPT( resString = input.getData<std::string>(substring+"CUBE.RES") );
+    OPTOPT( resString = input.getData<std::string>(substring+"CUBE/RES") );
 
     // change padding. Used to avoid cube cutoffs
-    OPTOPT( pad = input.getData<double>(substring+"CUBE.PADDING") );
+    OPTOPT( pad = input.getData<double>(substring+"CUBE/PADDING") );
 
     // Create custom grid with points and stepsize 
-    OPTOPT( spts = input.getData<std::string>(substring+"CUBE.POINTS") );
-    OPTOPT( ssteps = input.getData<std::string>(substring+"CUBE.STEPS") );
+    OPTOPT( spts = input.getData<std::string>(substring+"CUBE/POINTS") );
+    OPTOPT( ssteps = input.getData<std::string>(substring+"CUBE/STEPS") );
 
     split(nptstokens, spts, " ,;");
     for (auto & npt: nptstokens)
@@ -177,7 +165,7 @@ namespace ChronusQ {
   {
 
     std::string OrbRequestString;
-    OPTOPT(OrbRequestString = input.getData<std::string>(subSection+"CUBE.MOS"));
+    OPTOPT(OrbRequestString = input.getData<std::string>(subSection+"CUBE/MOS"));
     // Default is all orbitals unless requested otherwise
     if(OrbRequestString.empty() || OrbRequestString=="ALL")
     {
@@ -215,7 +203,7 @@ namespace ChronusQ {
       }
       catch(...)
       {
-        CErr("Unrecognized token in " + subSection+"CUBE.MOS");
+        CErr("Unrecognized token in " + subSection+"CUBE/MOS");
       }
     }
   }
@@ -224,8 +212,8 @@ namespace ChronusQ {
   {
 
     std::string RootRequestString;
-    OPTOPT(RootRequestString = input.getData<std::string>(subSection+"CUBE.ROOTS"));
-    if(!RootRequestString.empty() && subSection=="SCF.")
+    OPTOPT(RootRequestString = input.getData<std::string>(subSection+"CUBE/ROOTS"));
+    if(!RootRequestString.empty() && subSection=="SCF/")
       CErr("Requesting multiple roots to generate cubes from an SCF calculation doesn't make sense!");
     // Default is all orbitals unless requested otherwise
     if(RootRequestString.empty() || RootRequestString=="GS")
@@ -275,7 +263,7 @@ namespace ChronusQ {
       }
       catch(...)
       {
-        CErr("Unrecognized token in " + subSection+"CUBE.ROOTS");
+        CErr("Unrecognized token in " + subSection+"CUBE/ROOTS");
       }
     }
   }
@@ -285,17 +273,17 @@ namespace ChronusQ {
 
 
     // collects naming scheme from user (optional)
-    OPTOPT( cubeOpts.cubeFileName = input.getData<std::string>(subSection+"CUBE.NAME") );
+    OPTOPT( cubeOpts.cubeFileName = input.getData<std::string>(subSection+"CUBE/NAME") );
 
     // generate cube file for density
-    OPTOPT( cubeOpts.denCube = input.getData<bool>(subSection+"CUBE.DEN") );
+    OPTOPT( cubeOpts.denCube = input.getData<bool>(subSection+"CUBE/DEN") );
     if(cubeOpts.denCube)
     {
       handle_root_requests(out,input,cubeOpts,subSection);
     }
 
     // generate cube file for density
-    OPTOPT( cubeOpts.orbCube = input.getData<bool>(subSection+"CUBE.ORB") );
+    OPTOPT( cubeOpts.orbCube = input.getData<bool>(subSection+"CUBE/ORB") );
     if(cubeOpts.orbCube)
     {
       handle_orbital_requests(out,input,cubeOpts,subSection);
@@ -305,7 +293,7 @@ namespace ChronusQ {
     handle_root_requests(out,input,cubeOpts,subSection);
 
     // If Magnitude & Phase Cubes are requested
-    OPTOPT( cubeOpts.MagnitudeAndPhase = input.getData<bool>(subSection+"CUBE.MAGANDPHASE") );
+    OPTOPT( cubeOpts.MagnitudeAndPhase = input.getData<bool>(subSection+"CUBE/MAGANDPHASE") );
 
   }; //CQCUBEOptionalKeywords
 
@@ -319,17 +307,18 @@ namespace ChronusQ {
 
     }
 
-    // Check if additional options are specified in [subsection.CUBE]
-    if( not input.containsSection(subsection+".CUBE") ) return;
+    // Check if additional options are specified in [subsection/CUBE]
+    if( not input.containsSection(subsection+"/CUBE") ) return;
 
-    // Handle the case where [subsection.CUBE] is provided, but [CUBE] is not
+    // Handle the case where [subsection/CUBE] is provided, but [CUBE] is not
     // In this case, cube is not initialized and cubes cannot be generated
-    if(input.containsSection(subsection+".CUBE") && !cube)
+    if(input.containsSection(subsection+"/CUBE") && !cube)
       CErr("Must specify Cube Settings in [CUBE] section!");
 
-    std::cout << " Found [" << subsection << ".CUBE] section" << std::endl;
-    CQCUBE_VALID(out,input,subsection+".");
-    CQCUBEOptionalKeywords(out,input,cubeopts,subsection+".");
+    std::cout << " Found [" << subsection << "/CUBE] section" << std::endl;
+    std::set<std::string> invalidKeywords = CQCUBE_VALID(input.getSection(subsection+"/CUBE"));
+    printInvalidKeys(invalidKeywords, subsection+"/CUBE");
+    CQCUBEOptionalKeywords(out,input,cubeopts,subsection+"/");
 
   }; // ParseCubeSubsection
 

@@ -32,13 +32,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQRESPONSE_VALID( std::ostream &out, CQInputFile &input ) {
-
-
-    if( not input.containsSection("RESPONSE") ) return;
+  std::set<std::string> CQRESPONSE_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "TYPE",
       "PROPAGATOR",
       "CONV",
@@ -66,19 +63,7 @@ namespace ChronusQ {
       "NEO",
     };
 
-    // Specified keywords
-    std::vector<std::string> responseKeywords = input.getDataInSection("RESPONSE");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : responseKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword RESPONSE." + keyword + " is not recognized",std::cout);// Error
-    }
-
-
-
-    // Check for disallowed combinations (if any)
+    std::set<std::string> invalidKeywords = CQInvalidKeywords(allowedKeywords, inputSection);
 
 /*
     // No GIAO + RESPONSE
@@ -101,10 +86,10 @@ namespace ChronusQ {
 
       // WARNING: relies on default to RESIDUE if
       // TYPE not specified
-      if( input.containsData("RESPONSE.TYPE") ) {
+      if( inputSection.count("TYPE") ) {
 
         std::string type = 
-          input.getData<std::string>("RESPONSE.TYPE");
+          input.getData<std::string>("RESPONSE/TYPE");
 
         isRes = not type.compare("RESIDUE");
 
@@ -112,13 +97,13 @@ namespace ChronusQ {
 
       bool isDist = false;
 
-      if( input.containsData("RESPONSE.FORMMATDIST") )
+      if( inputSection.count("FORMMATDIST") )
         isDist = isDist or 
-                   input.getData<bool>("RESPONSE.FORMMATDIST");
+                   CQStringTo<bool>(inputSection.at("FORMMATDIST"));
 
-      if( input.containsData("RESPONSE.DISTMATFROMROOT") )
+      if( inputSection.count("DISTMATFROMROOT") )
         isDist = isDist or 
-                   input.getData<bool>("RESPONSE.DISTMATFROMROOT");
+                   CQStringTo<bool>(inputSection.at("DISTMATFROMROOT"));
 
       if( isRes and isDist ) 
         CErr("FULL RESIDUE + MPI not allowed");
@@ -128,25 +113,24 @@ namespace ChronusQ {
 
 
     // No GPLHR + A+B/A-B/REDUCED
-    if( input.containsData("RESPONSE.DOAPBAMB") or
-        input.containsData("RESPONSE.DOREDUCED") ) {
+    if( inputSection.count("DOAPBAMB") or
+        inputSection.count("DOREDUCED") ) {
 
 
       bool doAPB = false;
       bool doRed = false;
 
-      OPTOPT( doAPB = input.getData<bool>("RESPONSE.DOAPBAMB"); )
-      OPTOPT( doRed = input.getData<bool>("RESPONSE.DOREDUCED"); )
+      OPTOPT( doAPB = CQStringTo<bool>(inputSection.at("DOAPBAMB")); )
+      OPTOPT( doRed = CQStringTo<bool>(inputSection.at("DOREDUCED")); )
 
 
       bool isRes = false;
 
       // WARNING: relies on default to RESIDUE if
       // TYPE not specified
-      if( input.containsData("RESPONSE.TYPE") ) {
+      if( inputSection.count("TYPE") ) {
 
-        std::string type = 
-          input.getData<std::string>("RESPONSE.TYPE");
+        std::string type = inputSection.at("TYPE");
 
         isRes = not type.compare("RESIDUE");
 
@@ -154,9 +138,9 @@ namespace ChronusQ {
 
 
       bool doFull = true; // WARNING: default doFULL
-      if( input.containsData("RESPONSE.DOFULL") ) {
+      if( inputSection.count("DOFULL") ) {
 
-        doFull = input.getData<bool>("RESPONSE.DOFULL");
+        doFull = CQStringTo<bool>(inputSection.at("DOFULL"));
 
       }
 
@@ -166,6 +150,7 @@ namespace ChronusQ {
 
     }
 
+    return invalidKeywords;
   }
 
   /**
@@ -173,10 +158,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
   */
-  void CQMOR_VALID( std::ostream &out, CQInputFile &input ) {
+  std::set<std::string> CQMOR_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "NMODEL",
       "REFINE",
       "NMODELMAX",
@@ -184,16 +169,7 @@ namespace ChronusQ {
       "ERRMETH",
     };
 
-    // Specified keywords
-    std::vector<std::string> morKeywords = input.getDataInSection("MOR");
-
-    // Make sure all of basisKeywords in allowedKeywords
-    for( auto &keyword : morKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() ) 
-        CErr("Keyword MOR." + keyword + " is not recognized",std::cout);// Error
-    }
-    // Check for disallowed combinations (if any)
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
   /**
@@ -236,19 +212,19 @@ namespace ChronusQ {
 
     std::string jt = "RESIDUE";
 
-    OPTOPT( jt = input.getData<std::string>("RESPONSE.TYPE"); );
+    OPTOPT( jt = input.getData<std::string>("RESPONSE/TYPE"); );
 
     if( not jt.compare("RESIDUE") )   jobTyp = RESIDUE;
     else if( not jt.compare("FDR") )  jobTyp = FDR;
     else if( not jt.compare("MOR") )  doMOR = true;
-    else CErr(jt + " NOT RECOGNIZED RESPONSE.TYPE");
+    else CErr(jt + " NOT RECOGNIZED RESPONSE/TYPE");
 
-		if ( input.containsData("RESPONSE.NEO") ) doNEO = input.getData<bool>("RESPONSE.NEO");
+		if ( input.containsData("RESPONSE/NEO") ) doNEO = input.getData<bool>("RESPONSE/NEO");
 
     // Determine propagator
     try {
 
-      std::string prop = input.getData<std::string>("RESPONSE.PROPAGATOR");
+      std::string prop = input.getData<std::string>("RESPONSE/PROPAGATOR");
 
 
       std::vector< std::string > availProp = 
@@ -261,7 +237,7 @@ namespace ChronusQ {
           [&](std::string &x){ return not x.compare(prop); });
 
       if( not goodProp )
-        CErr(prop + " is not a valid RESPONSE.PROPAGATOR",out);
+        CErr(prop + " is not a valid RESPONSE/PROPAGATOR",out);
 
       doPP = not prop.compare("PARTICLEPARTICLE");
 
@@ -378,60 +354,60 @@ namespace ChronusQ {
     // General settings
 
     OPTOPT( resp->genSettings.convCrit = 
-              input.getData<double>("RESPONSE.CONV") );
+              input.getData<double>("RESPONSE/CONV") );
     OPTOPT( resp->genSettings.maxIter = 
-              input.getData<double>("RESPONSE.MAXITER") );
+              input.getData<double>("RESPONSE/MAXITER") );
     OPTOPT( resp->genSettings.formFullMat = 
-              input.getData<bool>("RESPONSE.FULLMAT") );
+              input.getData<bool>("RESPONSE/FULLMAT") );
     OPTOPT( resp->genSettings.doFull = 
-              input.getData<bool>("RESPONSE.DOFULL") );
+              input.getData<bool>("RESPONSE/DOFULL") );
     OPTOPT( resp->genSettings.doTDA = 
-              input.getData<bool>("RESPONSE.TDA") );
+              input.getData<bool>("RESPONSE/TDA") );
 
 
 
 
     OPTOPT( resp->genSettings.distMatFromRoot = 
-              input.getData<bool>("RESPONSE.DISTMATFROMROOT") );
+              input.getData<bool>("RESPONSE/DISTMATFROMROOT") );
     OPTOPT( resp->genSettings.formMatDist = 
-              input.getData<bool>("RESPONSE.FORMMATDIST") );
+              input.getData<bool>("RESPONSE/FORMMATDIST") );
 
     // FDR settings
       
     OPTOPT( resp->fdrSettings.dampFactor = 
-              input.getData<double>("RESPONSE.DAMP") );
+              input.getData<double>("RESPONSE/DAMP") );
     OPTOPT( resp->fdrSettings.forceDamp = 
-              input.getData<bool>("RESPONSE.FORCEDAMP") );
+              input.getData<bool>("RESPONSE/FORCEDAMP") );
 
 
     // RESIDUE settings
 
     OPTOPT( resp->resSettings.nRoots =
-              input.getData<size_t>("RESPONSE.NROOTS") );
+              input.getData<size_t>("RESPONSE/NROOTS") );
     OPTOPT( resp->resSettings.deMin =
-              input.getData<double>("RESPONSE.DEMIN") );
+              input.getData<double>("RESPONSE/DEMIN") );
     OPTOPT( resp->resSettings.gplhr_m =
-              input.getData<size_t>("RESPONSE.GPLHR_M") );
+              input.getData<size_t>("RESPONSE/GPLHR_M") );
     OPTOPT( resp->resSettings.gplhr_sigma =
-              input.getData<double>("RESPONSE.GPLHR_SIGMA") );
+              input.getData<double>("RESPONSE/GPLHR_SIGMA") );
     OPTOPT( resp->resSettings.useGDiag =
-              input.getData<bool>("RESPONSE.USEGDIAG") );
+              input.getData<bool>("RESPONSE/USEGDIAG") );
 
 
 
     // Handling consistency when applicable
-    if( input.containsData("RESPONSE.DEMIN") and 
-        not input.containsData("RESPONSE.GPLHR_SIGMA") )
+    if( input.containsData("RESPONSE/DEMIN") and 
+        not input.containsData("RESPONSE/GPLHR_SIGMA") )
       resp->resSettings.gplhr_sigma = resp->resSettings.deMin;
 
-    if( input.containsData("RESPONSE.GPLHR_SIGMA") and 
-        not input.containsData("RESPONSE.DEMIN") )
+    if( input.containsData("RESPONSE/GPLHR_SIGMA") and 
+        not input.containsData("RESPONSE/DEMIN") )
       resp->resSettings.deMin = resp->resSettings.gplhr_sigma;
 
     // Forces full diag if the number of roots requested gives a
     // subspace greater than or equal to half of the full problem dimension.
-    if( input.containsData("RESPONSE.NROOTS") and 
-        input.containsData("RESPONSE.DOFULL") ) {
+    if( input.containsData("RESPONSE/NROOTS") and 
+        input.containsData("RESPONSE/DOFULL") ) {
       if( ((3 + resp->resSettings.gplhr_m) * resp->resSettings.nRoots) >= resp->getNSingleDim() / 2 ) {
 
         resp->genSettings.doFull = true;
@@ -461,10 +437,10 @@ namespace ChronusQ {
 
         SingleSlaterPolarBase *hf = factory;
       
-        OPTOPT( hf->doAPB_AMB = input.getData<bool>("RESPONSE.DOAPBAMB") );
-        OPTOPT( hf->doReduced = input.getData<bool>("RESPONSE.DOREDUCED") );
+        OPTOPT( hf->doAPB_AMB = input.getData<bool>("RESPONSE/DOAPBAMB") );
+        OPTOPT( hf->doReduced = input.getData<bool>("RESPONSE/DOREDUCED") );
         
-        OPTOPT( hf->doStab = input.getData<bool>("RESPONSE.DOSTAB") );
+        OPTOPT( hf->doStab = input.getData<bool>("RESPONSE/DOSTAB") );
 
       } catch(...){ }
 
@@ -476,7 +452,7 @@ namespace ChronusQ {
         SingleSlaterParticleParticleBase *hf = factoryPP;
         OPTOPT( 
 
-          std::string mat = input.getData<std::string>("RESPONSE.PPSPINMAT");
+          std::string mat = input.getData<std::string>("RESPONSE/PPSPINMAT");
           if( not mat.compare("AA") )
             hf->spinSepProp = PP_AA;
           else if( not mat.compare("AB") )
@@ -484,23 +460,23 @@ namespace ChronusQ {
           else if( not mat.compare("BB") )
             hf->spinSepProp = PP_BB;
           else
-            CErr("RESPONSE.PPSPINMAT not recognized");
+            CErr("RESPONSE/PPSPINMAT not recognized");
 
         );
 
         OPTOPT( 
 
-          std::string mat = input.getData<std::string>("RESPONSE.PPTDAMAT");
+          std::string mat = input.getData<std::string>("RESPONSE/PPTDAMAT");
           if( not mat.compare("A") )
             hf->tdaOp = PP_A;
           else if( not mat.compare("C") )
             hf->tdaOp = PP_C;
           else
-            CErr("RESPONSE.PPTDAMAT not recognized");
+            CErr("RESPONSE/PPTDAMAT not recognized");
 
         );
 
-        OPTOPT( hf->doStarRef = input.getData<bool>("RESPONSE.PPSTAR") );
+        OPTOPT( hf->doStarRef = input.getData<bool>("RESPONSE/PPSTAR") );
 
       } catch(...){ }
 
@@ -508,15 +484,15 @@ namespace ChronusQ {
     // MOR options
     if( doMOR ) {
 
-      OPTOPT( mor->morSettings.nModel = input.getData<size_t>("MOR.NMODEL") );
-      OPTOPT( mor->morSettings.doRefine = input.getData<bool>("MOR.REFINE") );
+      OPTOPT( mor->morSettings.nModel = input.getData<size_t>("MOR/NMODEL") );
+      OPTOPT( mor->morSettings.doRefine = input.getData<bool>("MOR/REFINE") );
       OPTOPT( mor->morSettings.nModelMax 
-          = input.getData<size_t>("MOR.NMODELMAX") );
+          = input.getData<size_t>("MOR/NMODELMAX") );
 
-      OPTOPT( mor->morSettings.getEig = input.getData<bool>("MOR.GETEIG") );
+      OPTOPT( mor->morSettings.getEig = input.getData<bool>("MOR/GETEIG") );
 
       OPTOPT( 
-        std::string errMeth = input.getData<std::string>("MOR.ERRMETH");
+        std::string errMeth = input.getData<std::string>("MOR/ERRMETH");
         mor->morSettings.doRelErr = not errMeth.compare("RELATIVE");
       );
     }
@@ -527,9 +503,9 @@ namespace ChronusQ {
       std::string aOpsStr, bOpsStr, bFreqStr;
       std::vector<std::string> aOps, bOps, bFreq;
 
-      OPTOPT( aOpsStr  = input.getData<std::string>("RESPONSE.AOPS")  );
-      OPTOPT( bOpsStr  = input.getData<std::string>("RESPONSE.BOPS")  );
-      OPTOPT( bFreqStr = input.getData<std::string>("RESPONSE.BFREQ") );
+      OPTOPT( aOpsStr  = input.getData<std::string>("RESPONSE/AOPS")  );
+      OPTOPT( bOpsStr  = input.getData<std::string>("RESPONSE/BOPS")  );
+      OPTOPT( bFreqStr = input.getData<std::string>("RESPONSE/BFREQ") );
 
       if(not aOpsStr.empty())  split(aOps ,aOpsStr ," ,;\t");
       if(not bOpsStr.empty())  split(bOps ,bOpsStr ," ,;\t");
