@@ -102,7 +102,7 @@ public:
         if (hamiltonianOptions.Gaunt or
             hamiltonianOptions.DiracCoulombSSSS or 
             hamiltonianOptions.Gauge) 
-        CErr("MOIntsTransformer for above Hamiltonian Options is NYI !");
+        CErr("INCORE N5 MOIntsTransformer for above Hamiltonian Options is NYI !");
       }
 
       if (alg == DIRECT_N5) {
