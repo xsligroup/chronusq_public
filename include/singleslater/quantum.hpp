@@ -80,6 +80,7 @@ namespace ChronusQ {
       this->constructRDMBuilder();
 
     size_t NB  = this->nAlphaOrbital() * nC;
+    size_t NB2 = NB * NB;
     auto* fb = this->fockBuilder.get();
     if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
       fb = neofb->getNonNEOUpstream();              // still a raw pointer
@@ -142,12 +143,12 @@ namespace ChronusQ {
         if( nC == 2 ) {
           blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDM->pointer(), NB,
               this->mo[0].pointer(), NB, MatsT(0.), temp.pointer(), NB);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, this->nO, MatsT(1.), this->mo[0].pointer(), NB,
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), this->mo[0].pointer(), NB,
               temp.pointer(), NB, MatsT(0.), spinBlockForm.pointer(), NB);
         } else if( nC == 4 ) {
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, MatsT(1.), this->oneRDM->pointer(), NB,
-              this->mo[0].pointer()+(2*(NB/nC))*NB, NB, MatsT(0.), temp.pointer(), NB);
-          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, MatsT(1.), this->mo[0].pointer()+(2*(NB/nC))*NB, NB,
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB/2, MatsT(1.), this->oneRDM->pointer(), NB,
+              this->mo[0].pointer()+NB2/2, NB, MatsT(0.), temp.pointer(), NB);
+          blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB/2, MatsT(1.), this->mo[0].pointer()+NB2/2, NB,
               temp.pointer(), NB, MatsT(0.), spinBlockForm.pointer(), NB);
         }
 
