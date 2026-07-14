@@ -129,6 +129,9 @@ namespace ChronusQ {
     // Dirac-Kohn-Sham (4C-DFT) Options
     DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS
 
+
+    std::string savFilePrefix = ""; // prefix for saving the integrals and SCF data in HDF5
+
   }; // struct HamiltonianOptions
 
   std::ostream& operator<<(std::ostream&, const HamiltonianOptions&);

@@ -478,24 +478,14 @@ namespace ChronusQ {
    **/
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScrMO(SafeFile& scrBin) {
-    getScrMO<ScrMatsT>(scrBin,nullptr);
-  }
-
-
-  template <typename MatsT, typename IntsT>
-  template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScrMO(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
+  void SingleSlater<MatsT,IntsT>::getScrMO(SafeFile& scrBin, 
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix ) {
 
     // dimension of mo1 and mo2
     auto NB = this->nC * this->nAlphaOrbital();
     auto NB2 = NB*NB;
 
     this->mo[0].clear();
-
-    std::string prefix = "/SCF/";
-    if (this->particle.charge == 1.0)
-        prefix = "/PROT_SCF/";
 
     auto MO1dims = scrBin.getDims( prefix + "MO1" );
     auto MO2dims = scrBin.getDims( prefix + "MO2" );
@@ -579,9 +569,9 @@ namespace ChronusQ {
        // Same size and same type
        if( scrRefType == binRefType ){
 
-         SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
-         if( binRefType == RefType::isRORef or binRefType == RefType::isURef )
-           SetMat('N',NB,NB,MatsT(1.),motmp[1].pointer(),NB,this->mo[1].pointer(),NB);
+        this->mo[0] = motmp[0];
+        if( binRefType == RefType::isRORef or binRefType == RefType::isURef )
+          this->mo[1] = motmp[1];
 
         // ROHF guesses
        }else if( binRefType == RefType::isRORef ){
@@ -589,29 +579,41 @@ namespace ChronusQ {
           // RHF->ROHF
          if( scrRefType == RefType::isRRef ){
 
-           SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
-           SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[1].pointer(),NB);
+          this->mo[0] = motmp[0];
+          this->mo[1] = motmp[0];
 
          } else {
            CErr("Same size guess conversion for ROHF failed.");
          }
 
        // UHF guesses
-       }else if( binRefType == RefType::isURef ){
+       } else if( binRefType == RefType::isURef ){
 
         // RHF/ROHF->UHF
         if( scrRefType == RefType::isRRef or scrRefType == RefType::isRORef ){
 
-          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[0].pointer(),NB);
-          SetMat('N',NB,NB,MatsT(1.),motmp[0].pointer(),NB,this->mo[1].pointer(),NB);
+          this->mo[0] = motmp[0];
+          this->mo[1] = motmp[0];
 
         } else {
           CErr("Same size guess conversion for UHF failed.");
         }
 
-       } else {
+       // 4C -> mmf X2C 
+      //  In theory this can trigger for a non mmf calc but this is very unlikely
+       } else if( binRefType == RefType::isTwoCRef ){
+
+        if( scrRefType == RefType::isFourCRef and
+           this->aoints_->options_.x2cType == X2C_TYPE::FOCK ){
+
+            this->mo[0] = motmp[0];
+            
+        } else {
+          CErr("Same size guess conversion failed, only valid for 4C to X2C mmf.");
+        } 
+      } else {
          CErr("This case for guesses from different calcs of same size NYI.");
-       }
+      }
 
       // Guess mo different size as calculation mo
       } else if( scrMOSize < NB ){
@@ -989,7 +991,8 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,double>::getScrMO<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
+  void SingleSlater<double,double>::getScrMO<dcomplex>(SafeFile& scrBin, 
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix ) {
 
     CErr("Cannot do complex guess MOs for real calculation.");
 
@@ -997,7 +1000,8 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,dcomplex>::getScrMO<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
+  void SingleSlater<double,dcomplex>::getScrMO<dcomplex>(SafeFile& scrBin, 
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix ) {
 
     CErr("Cannot do complex guess MOs for real calculation.");
 

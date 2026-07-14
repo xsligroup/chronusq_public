@@ -39,7 +39,7 @@ namespace ChronusQ {
  *  Saves a copy of the current AO 1PDM and orthonormal Fock
  */
 template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
+void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO, std::string prefix) {
 
   ROOT_ONLY(comm);
 
@@ -52,8 +52,8 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO) {
     size_t t_hash = std::is_same<MatsT, double>::value ? 1 : 2;
 
     // Save Field type
-    std::string prefix = "SCF/";
     if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+    else prefix += "SCF/";
 
     savFile.safeWriteData(prefix + "FIELD_TYPE", &t_hash, {1});
 

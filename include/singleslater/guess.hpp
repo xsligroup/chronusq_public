@@ -163,7 +163,8 @@ namespace ChronusQ {
    *  determininant SCF in various ways
    */
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::formGuess(EMPerturbation &pert, const SingleSlaterOptions &ssOptions) {
+  void SingleSlater<MatsT,IntsT>::formGuess(EMPerturbation &pert, 
+    const SingleSlaterOptions &ssOptions) {
 
     ProgramTimer::tick("Form Guess");
      
@@ -186,7 +187,7 @@ namespace ChronusQ {
       getNewOrbitals();
 
     } else if( scfControls.guess == RANDOM ) RandomGuess();
-      else if( scfControls.guess == READMO ) ReadGuessMO( ssOptions.scfControls.guessBasis );
+      else if( scfControls.guess == READMO ) ReadGuessMO( ssOptions.scfControls.guessBasis, ssOptions.hamiltonianOptions.savFilePrefix );
       else if( scfControls.guess == READDEN ) { if( this->particle.charge == 1.0 ) ReadGuess1PDM( ssOptions.scfControls.prot_guessBasis );
                                                 else                               ReadGuess1PDM( ssOptions.scfControls.guessBasis ); }
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
@@ -963,7 +964,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::ReadGuessMO( const std::shared_ptr<BasisSet> guessBasisSet ) {
+  void SingleSlater<MatsT,IntsT>::ReadGuessMO( const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix ) {
 
     //Check if MOs come from save file or scratch file
     if( MPIRank(comm) == 0 ) {
@@ -977,7 +978,7 @@ namespace ChronusQ {
         // The -z flag is not compatible with basis set projection. Use -s instead!
         if( guessBasisSet ) CErr("    * ERROR: -z is incompatible with basis set projection, use -s instead.");
 
-        readSameTypeMOBin();
+        readSameTypeMOBin(prefix);
 
       } else {
 
@@ -985,7 +986,7 @@ namespace ChronusQ {
           std::cout << "    * Reading in guess MOs (scratch file) from file "
             << scrBinFileName << std::endl;
 
-        readDiffTypeMOBin(scrBinFileName, guessBasisSet);
+        readDiffTypeMOBin(scrBinFileName, guessBasisSet, prefix);
 
         if( printLevel > 0 )
           std::cout << "    * Saving prepared MOs to file "
@@ -996,7 +997,7 @@ namespace ChronusQ {
 
           size_t NB  = this->nAlphaOrbital();
           size_t NBC = this->nC * NB;
-          std::string prefix = "SCF/";
+          prefix += "SCF/";
           if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
 
           savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
@@ -1065,7 +1066,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readSameTypeMOBin() {
+  void SingleSlater<MatsT,IntsT>::readSameTypeMOBin(std::string prefix) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -1075,9 +1076,8 @@ namespace ChronusQ {
 
       size_t savHash;
 
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-        prefix = "/PROT_SCF/";
+      if (this->particle.charge == 1.0) prefix += "/PROT_SCF/";
+      else prefix += "/SCF/";
 
       try{
         savFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -1184,7 +1184,8 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName, const std::shared_ptr<BasisSet> guessBasis ) {
+  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName, 
+    const std::shared_ptr<BasisSet> guessBasis, std::string prefix ) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -1197,9 +1198,9 @@ namespace ChronusQ {
 
       size_t savHash;
 
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-        prefix = "/PROT_SCF/";
+      
+      if (this->particle.charge == 1.0) prefix += "/PROT_SCF/";
+      else prefix += "/SCF/";
 
       try{
         binFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -1225,11 +1226,11 @@ namespace ChronusQ {
       // Determine storage of MOs on scr bin file
       if( s_is_double ){
 
-        getScrMO<double>(binFile,guessBasis);
+        getScrMO<double>(binFile,guessBasis, prefix);
 
       } else if( s_is_complex ){
 
-        getScrMO<dcomplex>(binFile,guessBasis);
+        getScrMO<dcomplex>(binFile,guessBasis, prefix);
 
       } else CErr("Could not determine type of scratch bin file");
 

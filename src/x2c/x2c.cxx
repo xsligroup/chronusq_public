@@ -1708,13 +1708,26 @@ namespace ChronusQ {
     size_t NB = basisSet_.nBasis;
     nPrimUse_ = NP;
 
+      // If read in calc was 4C read that data in
+      // prefix = "" is just SCF/
+      std::string prefix = "X2C/";
+      if (not scrBinFileName.empty()) {
+        bool scrBinExists;
+        SafeFile scrBin(scrBinFileName, scrBinExists);
+        int scrRefType;
+        scrBin.readData("REF/REFTYPE",&scrRefType);
+        if (scrRefType == RefType::isFourCRef) prefix ="";
+      }
+
     // Prepare four-component (4C) single slater options
     SingleSlaterOptions fourCoptions(ssOptions_);
     fourCoptions.hamiltonianOptions.x2cType = X2C_TYPE::OFF;
     fourCoptions.refOptions.refType = isFourCRef;
     fourCoptions.refOptions.isKSRef = false;
+    fourCoptions.refOptions.isX2CRef = false;
     fourCoptions.refOptions.nC = 4;
     fourCoptions.refOptions.iCS = false;
+    fourCoptions.hamiltonianOptions.savFilePrefix = prefix;
 
     std::shared_ptr<Integrals<IntsT>> fourCInts = std::make_shared<Integrals<IntsT>>(uncontractedInts_);
     if (incore) {
@@ -1751,13 +1764,20 @@ namespace ChronusQ {
 
       fourCompSS.aoints_->computeAOTwoE(uncontractedBasis_, molecule_, emPert);
 
+      // Prepare for 4C SCF and read if requested
+      fourCompSS.savFile = savFile;
+      fourCompSS.scrBinFileName = scrBinFileName;
+
+      // Needed for checking if 4C is read that it is only done for X2C mmf
+      fourCompSS.aoints_->options_.x2cType = X2C_TYPE::FOCK;
       // For Fock X2C, solve four-component SCF
       fourCompSS.formGuess(emPert, fourCoptions);
       fourCompSS.buildOrbitalModifierOptions();
       fourCompSS.runSCF(emPert);
+      fourCompSS.saveCurrentState(true, "X2C/");
     }
 
-    ROOT_ONLY(ss->comm);
+    ROOT_ONLY(comm);
 
     computeFockX2C_Umatrix(fourCompSS.mo[0]);
 
@@ -1976,6 +1996,13 @@ namespace ChronusQ {
           mol, basis, ssOptions);
     }
 
+    // Set the save file
+    x2c->savFile = ss->savFile;
+    // SRC file
+    x2c->scrBinFileName = ss->scrBinFileName;
+    // Set MPI comm
+    x2c->comm = ss->comm;
+
     SingleSlater<MatsT, IntsT> &ref = *std::dynamic_pointer_cast<SingleSlater<MatsT, IntsT>>(ss);
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH =
         std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(
@@ -2033,11 +2060,11 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
       // BCast fockMatrix to all MPI processes
-      if( MPISize(ss->comm) > 1 ) {
+      if( MPISize(x2c->comm) > 1 ) {
         std::cerr  << "  *** Scattering the X2C Fock ***\n";
         size_t NB = ref.fockMatrix->nRows();
         for(auto mat : ref.fockMatrix->SZYXPointers())
-          MPIBCast(mat,NB*NB,0,ss->comm);
+          MPIBCast(mat,NB*NB,0,x2c->comm);
       }
 #endif
 
@@ -2054,7 +2081,7 @@ namespace ChronusQ {
     if(not (ssOptions.hamiltonianOptions.AtomicX2C
             and ssOptions.hamiltonianOptions.AtomicX2CType.diagonalOnly == true))
       if (saveX2C)
-        x2c->saveX2C(ss);
+        x2c->saveX2C();
 
 //    CErr("Requested X2C type NYI.");
 
@@ -2109,13 +2136,13 @@ namespace ChronusQ {
    *  \brief Save the X2C transformation
    */
   template <typename MatsT, typename IntsT>
-  void X2C<MatsT, IntsT>::saveX2C(std::shared_ptr<SingleSlaterBase> ss) {
-    ROOT_ONLY(ss->comm);
+  void X2C<MatsT, IntsT>::saveX2C() {
+    ROOT_ONLY(comm);
 
     size_t NP = uncontractedBasis_.nPrimitive;
     size_t NB = basisSet_.nBasis;
 
-    if( ss->savFile.exists() ){
+    if( savFile.exists() ){
 
       if( UL == nullptr or US == nullptr ){
 
@@ -2129,18 +2156,18 @@ namespace ChronusQ {
       size_t Ucol = 2*NB;
 
       std::string prefix = "X2C/";
-      ss->savFile.safeWriteData(prefix + "UL", UL, {Urow, Ucol});
-      ss->savFile.safeWriteData(prefix + "US", US, {Urow, Ucol});
+      savFile.safeWriteData(prefix + "UL", UL, {Urow, Ucol});
+      savFile.safeWriteData(prefix + "US", US, {Urow, Ucol});
 
     } else CErr("Could not find savFile in saveX2C");
 
   }
 
-  template void X2C<dcomplex,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
+  template void X2C<dcomplex,double>::saveX2C();
 
-  template void X2C<dcomplex,dcomplex>::saveX2C(std::shared_ptr<SingleSlaterBase>);
+  template void X2C<dcomplex,dcomplex>::saveX2C();
 
-  template void X2C<double,double>::saveX2C(std::shared_ptr<SingleSlaterBase>);
+  template void X2C<double,double>::saveX2C();
 
 }; // namespace ChronusQ
 

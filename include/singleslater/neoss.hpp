@@ -223,7 +223,7 @@ namespace ChronusQ {
         return order_;
       }
 
-      void saveCurrentState(bool saveMO = true) override {
+      void saveCurrentState(bool saveMO = true, std::string prefix = "") override {
         // Pass-through to each subsystems 
         applyToEach([saveMO](SubSSPtr& ss){ ss->saveCurrentState(saveMO); });
         ROOT_ONLY(this->comm);
@@ -234,19 +234,19 @@ namespace ChronusQ {
           size_t t_hash = std::is_same<MatsT, double>::value ? 1 : 2;
 
           // Save Field type
-          std::string prefix = "NEO/";
+          std::string prefixNEO = "NEO/";
 
           // Save Energies
-          this->savFile.safeWriteData(prefix + "ELEC_ENERGY", &(subsystems["Electronic"]->totalEnergy), {1});
-          this->savFile.safeWriteData(prefix + "PROT_ENERGY", &(subsystems["Protonic"]->totalEnergy), {1});
-          this->savFile.safeWriteData(prefix + "NUC_REP_ENERGY", &this->molecule().nucRepEnergy, {1});
-          this->savFile.safeWriteData(prefix + "TOTAL_ENERGY", &this->totalEnergy, {1});
+          this->savFile.safeWriteData(prefixNEO + "ELEC_ENERGY", &(subsystems["Electronic"]->totalEnergy), {1});
+          this->savFile.safeWriteData(prefixNEO + "PROT_ENERGY", &(subsystems["Protonic"]->totalEnergy), {1});
+          this->savFile.safeWriteData(prefixNEO + "NUC_REP_ENERGY", &this->molecule().nucRepEnergy, {1});
+          this->savFile.safeWriteData(prefixNEO + "TOTAL_ENERGY", &this->totalEnergy, {1});
 
           // Save Multipoles
-          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_DIPOLE", &this->elecDipole[0], {3});
-          this->savFile.safeWriteData(prefix + "LEN_PROTONIC_DIPOLE", &this->protDipole[0], {3});
-          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_QUADRUPOLE", &this->elecQuadrupole[0][0], {3, 3});
-          this->savFile.safeWriteData(prefix + "LEN_ELECTRIC_OCTUPOLE", &this->elecOctupole[0][0][0], {3, 3, 3});
+          this->savFile.safeWriteData(prefixNEO + "LEN_ELECTRIC_DIPOLE", &this->elecDipole[0], {3});
+          this->savFile.safeWriteData(prefixNEO + "LEN_PROTONIC_DIPOLE", &this->protDipole[0], {3});
+          this->savFile.safeWriteData(prefixNEO + "LEN_ELECTRIC_QUADRUPOLE", &this->elecQuadrupole[0][0], {3, 3});
+          this->savFile.safeWriteData(prefixNEO + "LEN_ELECTRIC_OCTUPOLE", &this->elecOctupole[0][0][0], {3, 3, 3});
 
         } else {
           CErr("savFile does not exist!");
@@ -256,7 +256,7 @@ namespace ChronusQ {
 
       void initializeSCF() override;
 
-      void formGuess(EMPerturbation &pert, const SingleSlaterOptions& ssopt) {
+      void formGuess(EMPerturbation &pert, const SingleSlaterOptions& ssopt) override {
         // Avoid forming a new guess if we're doing a stepwise optimization
         if(std::abs(this->lastE)==0.0)
           applyToEach([&](SubSSPtr& ss){ ss->formGuess(pert, ssopt); });

@@ -317,7 +317,7 @@ namespace ChronusQ {
     void SCFGuess(SingleSlaterOptions);
     void TightGuess();
     void RandomGuess();
-    void ReadGuessMO( const std::shared_ptr<BasisSet> guessBasis );
+    void ReadGuessMO( const std::shared_ptr<BasisSet> guessBasis, std::string );
     void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis );
     void FchkGuessMO();
     void NEOTightProtonGuess();
@@ -335,12 +335,10 @@ namespace ChronusQ {
     
 
     // ReadGuessMO functions
-    void readSameTypeMOBin();
-    void readDiffTypeMOBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet );
+    void readSameTypeMOBin(std::string prefix = "");
+    void readDiffTypeMOBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix = "" );
     template <typename ScrMatsT>
-    void getScrMO(SafeFile &, const std::shared_ptr<BasisSet> );
-    template <typename ScrMatsT>
-    void getScrMO(SafeFile &);
+    void getScrMO(SafeFile &, const std::shared_ptr<BasisSet>, std::string prefix );
     template <typename ScrMatsT>
     void convert1CRto2CU(std::vector<cqmatrix::Matrix<ScrMatsT>>&, std::vector<cqmatrix::Matrix<MatsT>>&);
     template <typename ScrMatsT>
@@ -395,7 +393,7 @@ namespace ChronusQ {
     // Misc procedural
     void diagOrthoFock();
     void diagAOFock();
-    virtual void saveCurrentState(bool saveMO = true) override;
+    virtual void saveCurrentState(bool saveMO = true, std::string prefix = "") override;
 
     // Stability and reopt
     virtual std::pair<double,MatsT*> getStab() = 0;

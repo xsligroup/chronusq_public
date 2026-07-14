@@ -70,6 +70,14 @@ namespace ChronusQ {
 
   public:
 
+    // Save file
+    SafeFile savFile;
+    // SRC file
+    std::string scrBinFileName;
+    // MPI comm
+    MPI_Comm comm;
+    
+
     // Operator storage
     std::shared_ptr<cqmatrix::Matrix<IntsT>> mapPrim2Cont = nullptr; ///< Mapping of primitives to contracted basis
     std::shared_ptr<cqmatrix::Matrix<MatsT>> W  = nullptr; ///< W = (\sigma p) V (\sigma p)
@@ -144,7 +152,7 @@ namespace ChronusQ {
         std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
     virtual void computeOneEX2C_corr(EMPerturbation&,
         std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
-    virtual void saveX2C(std::shared_ptr<SingleSlaterBase>);
+    virtual void saveX2C();
     void SNSOScale(std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>, SNSO_TYPE);
     void RowDepDCB_SNSO(std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>);
 
