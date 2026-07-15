@@ -310,7 +310,7 @@ namespace ChronusQ {
 
   }; 
 
- /*
+  /*
   * brief: Compute Oscillator Strength in the MO basis
   * Arguments: Ground state s1, target state s2
   * Prints out Osc strength
@@ -410,7 +410,7 @@ namespace ChronusQ {
   } // PostHartreeFock::oscillator_strength
 
 
-/*
+  /*
   *        Adding multipolar contributions: Magnetic dipole
   *        and electric quad, octupole moments to oscillator strengths.
   *        (This is in AO Basis: not tested)
@@ -625,10 +625,91 @@ namespace ChronusQ {
     return f;
   } //PostHartreeFock:Full 2nd-Order Osc Strength
 
-/*
- * Adding Difference RDM analysis 
- *
- */
+
+  /*
+   *  Precompute 4C AO Dipole Integral when required:
+   *
+  */
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::compute4CAODipole() {
+  
+    if (!AODipole4C_)
+      AODipole4C_ = ref_->aoints_->lenElectric->gather4CDipole();
+
+  }
+
+  /*
+  * brief: Compute Oscillator Strength in the MO basis
+  * Arguments: Ground state s1, target state s2
+  * Prints out Osc strength
+  *  
+  * Formula: 2/3 * (E2 - E1) (sum_pq <psi_0|(e . r)_pq|psi_f>)^2 
+  *    
+  */ 
+  template <typename MatsT, typename IntsT>
+  double PostHartreeFock<MatsT,IntsT>::oscillator_strength4C(size_t s2, size_t s1) {
+
+    if constexpr (std::is_same_v<MatsT, double>) {
+      CErr("Incorrect function!! Should be 4-Component CI Calculation");
+    }
+
+    size_t nAO = ref_->nAlphaOrbital() * ref_->nC;;
+    size_t nCorrO = corrSpace.nCorrO;
+    
+    // compute transition density matrix for specific state
+    auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    auto tmpTDM2 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    auto tmpAOTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
+    auto tmpAOTDM2 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
+
+    computeTDM(s1, s2, tmpTDM1);
+    rdm2pdm(*tmpTDM1, 1., true);
+    ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM1);
+    computeTDM(s2, s1, tmpTDM2);
+    rdm2pdm(*tmpTDM2, 1., true);
+    ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM2);
+
+    double f = 0.;
+
+    if (MPIRank(this->comm) == 0){
+
+      const std::array<std::string,3> dipoleList =
+        { "X","Y","Z" };
+      this->compute4CAODipole();
+
+      // fED2 ---> Elec Dipole: Calculate sum(<0|D_ab|n>^2) in AO basis:
+      std::complex<double> eD(0., 0.);
+      for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+        
+        cqmatrix::Matrix<MatsT> AOdipole = (*AODipole4C_)[iXYZ]
+                                          .template spinGather<MatsT>();
+
+        eD += (blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AOdipole.pointer(),1)) *
+              (blas::dotu(nAO*nAO, tmpAOTDM2->pointer(),1,AOdipole.pointer(),1));
+      }
+
+      // oscillator strength f = 2/3 (E2 - E1) eD.
+      f = (2./ 3.) * (StateEnergy[s2] - StateEnergy[s1]) * std::abs(eD);
+
+      // output
+      std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
+                << " to state: " << std::setw(3) << std::right << s1+1 << ":";
+      std::cout << std::setw(15) << std::right << "E(Eh) = "
+                << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);
+      std::cout << std::setw(15) << std::right << "  f(0) = "
+                << std::setprecision(12) << std::fixed << f << std::endl;
+    }
+
+    MPIBCast(f, 0, this->comm);
+    
+    return f;
+
+  } // PostHartreeFock::4Coscillator_strength
+                       
+  /*
+   * Adding Difference RDM analysis 
+   *
+   */
   template <typename MatsT, typename IntsT>
   void PostHartreeFock<MatsT,IntsT>::OneRDMDiff() {
 

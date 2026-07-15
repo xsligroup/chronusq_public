@@ -99,8 +99,12 @@ namespace ChronusQ {
       std::fill_n(S.pointer(),nAO*nAO,MatsT(0.0));
       SetMat('N',nAO/2,nAO/2,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/2, S.pointer(),nAO);
       SetMat('N',nAO/2,nAO/2,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/2, S.pointer()+nAO*nAO/2+nAO/2,nAO);
-    } else {
-      CErr("Not extended for nC = 4, refer to singleslater/quantum.hpp");
+    } else if(ref_->nC == 4){
+      std::fill_n(S.pointer(),nAO*nAO,MatsT(0.));
+      SetMat('N',nAO/4,nAO/4,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/4, S.pointer(),nAO);
+      SetMat('N',nAO/4,nAO/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),ref_->aoints_->kinetic->matrix().pointer(), nAO/4, S.pointer()+nAO*nAO/4+nAO/4,nAO);
+      SetMat('N',nAO/4,nAO/4,MatsT(1.),ref_->aoints_->overlap->matrix().pointer(), nAO/4, S.pointer()+nAO*nAO/2+nAO/2,nAO);
+      SetMat('N',nAO/4,nAO/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),ref_->aoints_->kinetic->matrix().pointer(), nAO/4, S.pointer()+nAO*nAO*3/4+nAO*3/4,nAO);
     }
 
     //Create MO density matrix:

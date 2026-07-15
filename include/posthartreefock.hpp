@@ -46,6 +46,9 @@ public:
   
   std::shared_ptr<SingleSlater<MatsT, IntsT>> ref_;
   
+  // 4CAO Dipole Integral:
+  std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>> AODipole4C_ = nullptr;
+
   // Integrals here are computed and stored in correalted space by default
   // Only one set of integrals, means not working for UHF reference
   std::shared_ptr<MOIntsTransformer<MatsT, IntsT>> mointsTF; 
@@ -121,7 +124,9 @@ public:
   // Properties
   void populationAnalysis(size_t);
   void populationAnalysis();
+  void compute4CAODipole();
   double oscillator_strength(size_t, size_t s1 = 0);
+  double oscillator_strength4C(size_t, size_t s1 = 0);
   double secondorder_oscillator_strength(size_t, size_t s1 = 0);
   void OneRDMDiff(); 
   std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
