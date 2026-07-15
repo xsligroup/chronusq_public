@@ -651,6 +651,7 @@ namespace ChronusQ {
 
     if constexpr (std::is_same_v<MatsT, double>) {
       CErr("Incorrect function!! Should be 4-Component CI Calculation");
+      return 0.;
     }
 
     size_t nAO = ref_->nAlphaOrbital() * ref_->nC;;
