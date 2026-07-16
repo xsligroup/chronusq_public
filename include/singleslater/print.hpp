@@ -25,6 +25,7 @@
 
 #include <singleslater.hpp>
 #include <util/matout.hpp>
+#include <fockbuilder/rofock.hpp>
 
 
 namespace ChronusQ {
@@ -121,7 +122,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::printMiscProperties(std::ostream &out) {
 
-    out << "\nMulliken Charge Analysis:\n" << bannerTop << "\n\n";
+    out << std::endl << "Mulliken Charge Analysis:" << std::endl << bannerTop << std::endl;
 
     out << std::setw(15) << std::left << "  Atom";
     out << std::setw(10) << std::right << "RHO";
@@ -182,7 +183,7 @@ namespace ChronusQ {
 
     out << std::endl << bannerEnd << std::endl;
 
-    out << "\nLowdin Charge Analysis:\n" << bannerTop << "\n\n";
+    out << std::endl << "Lowdin Charge Analysis:" << std::endl << bannerTop << std::endl;
 
     out << std::setw(15) << std::left << "  Atom";
     out << std::setw(5) << std::right << "RHO";
@@ -221,76 +222,83 @@ namespace ChronusQ {
    */
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::printEPS(std::ostream &out) {
+    const bool iRO = std::dynamic_pointer_cast<ROFock<MatsT, IntsT>>(fockBuilder) != nullptr; //ROHF calculation
+    const bool iU = this->nC == 1 and not this->iCS and not iRO; // one-component unrestricted calculation such as UHF, UKS, etc.
+
+    auto printSection = [&out](const std::string& label, size_t count, size_t leadingNewlines = 0) {
+      for(size_t i = 0; i < leadingNewlines; i++) out << std::endl;
+      out << label << ": (" << count << ")" << std::endl;
+    };
+
+    auto printOrbitalRange = [&out](size_t start, size_t end) {
+      out << "(" << std::setw(3) << start;
+      if (start == end)
+        out << "    )";
+      else
+        out << " -" << std::setw(3) << end << ")";
+    };
+
+    auto printEnergyLines = [&out, &printOrbitalRange](size_t begin, size_t end, double* eps) {
+      for(size_t i = begin; i < end; i++) {
+        const size_t local = i - begin;
+        if(local % 5 == 0)
+          printOrbitalRange(i + 1, std::min(i + 5, end));
+
+        out << std::setw(13) << eps[i];
+
+        if((local + 1) % 5 == 0 or i + 1 == end)
+          out << std::endl;
+      }
+    };
 
     // List MO eigenenergies
 
     out << std::scientific << std::setprecision(4);
-    out << "Orbital Eigenenergies " << (this->nC == 1 ? "(Alpha) " : "" )
-        << "/ Eh\n" << bannerTop << "\n";
+    out << "Orbital Eigenenergies " << (iU ? "(Alpha) " : "" )
+        << "/ Eh" << std::endl << bannerTop << std::endl;
 
-    // Set number of occupied orbitals
-    size_t NO = (this->nC == 1 ? this->nOA : this->nO);
-    if ( this->nC == 4 ) NO = this->nO + this->nC * this->nAlphaOrbital()/2;
+    if(this->nC == 1 and not iU) { // closed shell case
+      printSection("Doubly Occupied", this->nOB);
+      printEnergyLines(0, this->nOB, this->eps1);
 
-    if( nC != 4 ) {
-      for(auto i = 0ul; i < this->nC * this->nAlphaOrbital(); i++) {
-  
-        if( i == 0 )
-          out << "Occupied: (" << NO << ")\n";
-        else if( i == NO )
-          out << "\n\nVirtual: (" << this->nC * this->nAlphaOrbital() - NO << ")\n";
-  
-        out << std::setw(13) << this->eps1[i];
-  
-        if( i < NO and (i + 1) % 5 == 0 )  out << "\n";
-        else if( i >= NO and ((i - NO) + 1) % 5 == 0 ) out << "\n";
+      if(this->nOA > this->nOB) { // ROHF
+        printSection("Singly Occupied", this->nOA - this->nOB, 1);
+        printEnergyLines(this->nOB, this->nOA, this->eps1);
       }
+
+      printSection("Virtual", this->nVA, 1);
+      printEnergyLines(this->nOA, this->nAlphaOrbital(), this->eps1);
+
     } else {
-      for(auto i = this->nC * this->nAlphaOrbital()/2; i < this->nC * this->nAlphaOrbital(); i++) {
-  
-        if( i == this->nC * this->nAlphaOrbital()/2 )
-          out << "Occupied: (" << NO - this->nC * this->nAlphaOrbital()/2 << ")\n";
-        else if( i == NO )
-          out << "\n\nVirtual: (" << this->nC * this->nAlphaOrbital() - NO << ")\n";
-  
-        out << std::setw(13) << this->eps1[i];
-  
-        if( i < NO and (i + 1 - this->nC * this->nAlphaOrbital()/2) % 5 == 0 )  out << "\n";
-        else if( i >= NO and ((i - NO) + 1) % 5 == 0 ) out << "\n";
-      }
+      const size_t nTotal = this->nC * this->nAlphaOrbital();
+      const size_t nNegative = this->nC == 4 ? nTotal / 2 : 0;
+      const size_t NO = iU? this->nOA : this->nO;
+      const size_t NV = iU? this->nVA : this->nV;
 
-      // Negative Energy States
-      for(auto i = 0ul; i < this->nC * this->nAlphaOrbital()/2; i++) {
-  
-        if( i == 0 )
-            out << "\n\nNegative Energy States: (" << this->nC * this->nAlphaOrbital()/2<< ")\n";
+      printSection("Occupied", NO);
+      printEnergyLines(nNegative,  nNegative + NO, this->eps1);
 
-        out << std::setw(13) << this->eps1[i];
-  
-        if( i < NO and (i + 1) % 5 == 0 )  out << "\n";
-        else if( i >= NO and ((i - NO) + 1) % 5 == 0 ) out << "\n";
+      printSection("Virtual", NV, 1);
+      printEnergyLines(nNegative + NO, nTotal, this->eps1);
+
+      if (this->nC == 4) {
+        printSection("Negative Energy States", nNegative, 1);
+        printEnergyLines(0, nNegative, this->eps1);
       }
     }
-     
-    out << "\n" << bannerEnd << "\n";
 
-    if( this->nC == 1 and not this->iCS ) {
-      out << "\n\nOrbital Eigenenergies (Beta) / Eh\n" << bannerTop << "\n";
+    out << bannerEnd << std::endl;
 
-      for(auto i = 0ul; i < this->nBetaOrbital(); i++) {
+    if (iU) {
+      out << std::endl << std::endl << "Orbital Eigenenergies (Beta) / Eh"<< std::endl << bannerTop << std::endl;
 
-        if( i == 0 )
-          out << "Occupied:\n";
-        if( i == this->nOB )
-          out << "\n\nVirtual:\n";
+      printSection("Occupied", this->nOB);
+      printEnergyLines(0, this->nOB, this->eps2);
 
-        out << std::setw(13) << this->eps2[i];
+      printSection("Virtual", this->nVB, 1);
+      printEnergyLines(this->nOB, this->nBetaOrbital(), this->eps2);
 
-        if( i < this->nOB and (i + 1) % 5 == 0 )  out << "\n";
-        else if( i >= this->nOB and ((i - this->nOB) + 1) % 5 == 0 ) out << "\n";
-      }
-
-      out << "\n" << bannerEnd << "\n";
+      out << bannerEnd << std::endl;
     }
 
   } // SingleSlater::printEPS
@@ -302,7 +310,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::printMOInfo(std::ostream &out, size_t printMOLevel) {
 
-    out << "\n\n" << "SCF Results:\n" << BannerTop << "\n\n";
+    out << std::endl << "SCF Results:" << std::endl << BannerTop << std::endl;
 
     // print MO eigenvalues
     this->printEPS(out);
@@ -318,10 +326,10 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT, IntsT>::printFockTimings(std::ostream &out) {
 
-    out << "    Fock Timings:\n";
+    out << "    Fock Timings:" << std::endl;
     out << "      Wall time G[D] = " << std::setw(8)
         << std::setprecision(5)  << std::scientific
-        << GDDur << " s\n\n";
+        << GDDur << " s" << std::endl;
 
 
   }; // SingleSlater<T>::printFockTimings
