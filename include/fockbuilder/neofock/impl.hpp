@@ -106,6 +106,7 @@ namespace ChronusQ {
     // Assume that the order of the TPI is the same between the regular and
     //   gradient integrals
     contract->contractSecond = contraction->contractSecond;
+    contract->traceDensity = ss.onePDM;
 
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;
@@ -1689,6 +1690,7 @@ namespace ChronusQ {
     if(not this->intParam.useGauXC){
       // InHouse NEO-DFT:
       formVXC(ss, empert);
+      ROOT_ONLY(ss.comm);
       *ss.fockMatrix += *VXC;
       //KohnSham<MatsT,IntsT>* ks = dynamic_cast<KohnSham<MatsT,IntsT>*>(&ss);
       //if(ss.particle.charge < 0) std::cout << "TOTAL Electronic EXC: " << ks->XCEnergy << std::endl;

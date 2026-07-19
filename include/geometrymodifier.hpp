@@ -41,7 +41,7 @@ namespace ChronusQ {
     double   electronicPotentialEnergy; ///< electronic potential energy
 
     // Default constructor
-    GeometryModifier() = default;
+    GeometryModifier(MPI_Comm c = MPI_COMM_WORLD) : mpiComm(c) {}
 
     // Different type
     GeometryModifier(const GeometryModifier &);
@@ -53,6 +53,10 @@ namespace ChronusQ {
     virtual bool hasNext() = 0;
     virtual void update(bool, Molecule&, bool, TDSCFOptions&, std::shared_ptr<SingleSlaterBase>, 
         EMPerturbation&, std::vector<std::shared_ptr<CubeGen>> cubes={}) = 0;
+
+  
+  protected:
+    MPI_Comm mpiComm;         ///< MPI Communication
 
   };
 

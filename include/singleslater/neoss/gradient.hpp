@@ -1002,12 +1002,26 @@ namespace ChronusQ {
             this->EPCGradientP[ic][0] += 4*M_PI*integrateEPCEnergyGradXP[it][ic];
             this->EPCGradientP[ic][1] += 4*M_PI*integrateEPCEnergyGradYP[it][ic];
             this->EPCGradientP[ic][2] += 4*M_PI*integrateEPCEnergyGradZP[it][ic];
-            this->EPCGradient[ic][0]  += this->EPCGradientE[ic][0] + this->EPCGradientP[ic][0];
-            this->EPCGradient[ic][1]  += this->EPCGradientE[ic][1] + this->EPCGradientP[ic][1];
-            this->EPCGradient[ic][2]  += this->EPCGradientE[ic][2] + this->EPCGradientP[ic][2];
           }
         }
         
+// Combine MPI results
+#ifdef CQ_ENABLE_MPI
+
+      EXCEnergy = MPIAllReduce(EXCEnergy,intComm);
+      EPCEnergy = MPIAllReduce(EPCEnergy,intComm);
+
+      for(size_t ic = 0; ic < nAtoms; ic++) {
+        MPIAllReduce(EXCGradient[ic].data(),3,EXCGradient[ic].data(),intComm);
+        MPIAllReduce(EPCGradientE[ic].data(),3,EPCGradientE[ic].data(),intComm);
+        MPIAllReduce(EPCGradientP[ic].data(),3,EPCGradientP[ic].data(),intComm);
+      }
+
+#endif
+
+        for(size_t ic = 0; ic < nAtoms; ic++)
+          for(size_t iXYZ = 0; iXYZ < 3; iXYZ++)
+            this->EPCGradient[ic][iXYZ] = this->EPCGradientE[ic][iXYZ] + this->EPCGradientP[ic][iXYZ];
         /***
         std::cout << "EXCEnergy gradient" << std::endl;
 
@@ -1034,30 +1048,6 @@ namespace ChronusQ {
 
 
 
-// Combine MPI results
-#ifdef CQ_ENABLE_MPI
-
-      EXCEnergy = MPIReduce(EXCEnergy,0,intComm);
-      EPCEnergy = MPIReduce(EPCEnergy,0,intComm);
-
-      for(size_t it = 0; it < nthreads; it++) {
-        for(size_t ic = 0; ic < nAtoms; ic++) {
-          EXCGradient[ic][0] = MPIReduce(EXCGradient[ic][0],0,intComm);
-          EXCGradient[ic][1] = MPIReduce(EXCGradient[ic][1],0,intComm);
-          EXCGradient[ic][2] = MPIReduce(EXCGradient[ic][2],0,intComm);
-          EPCGradient[ic][0] = MPIReduce(EPCGradient[ic][0],0,intComm);
-          EPCGradient[ic][1] = MPIReduce(EPCGradient[ic][1],0,intComm);
-          EPCGradient[ic][2] = MPIReduce(EPCGradient[ic][2],0,intComm);
-          EPCGradientE[ic][0] = MPIReduce(EPCGradientE[ic][0],0,intComm);
-          EPCGradientE[ic][1] = MPIReduce(EPCGradientE[ic][1],0,intComm);
-          EPCGradientE[ic][2] = MPIReduce(EPCGradientE[ic][2],0,intComm);
-          EPCGradientP[ic][0] = MPIReduce(EPCGradientP[ic][0],0,intComm);
-          EPCGradientP[ic][1] = MPIReduce(EPCGradientP[ic][1],0,intComm);
-          EPCGradientP[ic][2] = MPIReduce(EPCGradientP[ic][2],0,intComm);
-        }
-      }
-
-#endif
 
 
       // Freeing the memory
@@ -2133,12 +2123,26 @@ namespace ChronusQ {
             this->EPCGradientP[ic][0] += 4*M_PI*integrateEPCEnergyGradXP[it][ic];
             this->EPCGradientP[ic][1] += 4*M_PI*integrateEPCEnergyGradYP[it][ic];
             this->EPCGradientP[ic][2] += 4*M_PI*integrateEPCEnergyGradZP[it][ic];
-            this->EPCGradient[ic][0]  += this->EPCGradientE[ic][0] + this->EPCGradientP[ic][0];
-            this->EPCGradient[ic][1]  += this->EPCGradientE[ic][1] + this->EPCGradientP[ic][1];
-            this->EPCGradient[ic][2]  += this->EPCGradientE[ic][2] + this->EPCGradientP[ic][2];
           }
         }
         
+// Combine MPI results
+#ifdef CQ_ENABLE_MPI
+
+      EXCEnergy = MPIAllReduce(EXCEnergy,intComm);
+      EPCEnergy = MPIAllReduce(EPCEnergy,intComm);
+
+      for(size_t ic = 0; ic < nAtoms; ic++) {
+        MPIAllReduce(EXCGradient[ic].data(),3,EXCGradient[ic].data(),intComm);
+        MPIAllReduce(EPCGradientE[ic].data(),3,EPCGradientE[ic].data(),intComm);
+        MPIAllReduce(EPCGradientP[ic].data(),3,EPCGradientP[ic].data(),intComm);
+      }
+
+#endif
+
+        for(size_t ic = 0; ic < nAtoms; ic++)
+          for(size_t iXYZ = 0; iXYZ < 3; iXYZ++)
+            this->EPCGradient[ic][iXYZ] = this->EPCGradientE[ic][iXYZ] + this->EPCGradientP[ic][iXYZ];
         /***
         std::cout << "EXCEnergy gradient" << std::endl;
 
@@ -2165,30 +2169,6 @@ namespace ChronusQ {
 
 
 
-// Combine MPI results
-#ifdef CQ_ENABLE_MPI
-
-      EXCEnergy = MPIReduce(EXCEnergy,0,intComm);
-      EPCEnergy = MPIReduce(EPCEnergy,0,intComm);
-
-      for(size_t it = 0; it < nthreads; it++) {
-        for(size_t ic = 0; ic < nAtoms; ic++) {
-          EXCGradient[ic][0] = MPIReduce(EXCGradient[ic][0],0,intComm);
-          EXCGradient[ic][1] = MPIReduce(EXCGradient[ic][1],0,intComm);
-          EXCGradient[ic][2] = MPIReduce(EXCGradient[ic][2],0,intComm);
-          EPCGradient[ic][0] = MPIReduce(EPCGradient[ic][0],0,intComm);
-          EPCGradient[ic][1] = MPIReduce(EPCGradient[ic][1],0,intComm);
-          EPCGradient[ic][2] = MPIReduce(EPCGradient[ic][2],0,intComm);
-          EPCGradientE[ic][0] = MPIReduce(EPCGradientE[ic][0],0,intComm);
-          EPCGradientE[ic][1] = MPIReduce(EPCGradientE[ic][1],0,intComm);
-          EPCGradientE[ic][2] = MPIReduce(EPCGradientE[ic][2],0,intComm);
-          EPCGradientP[ic][0] = MPIReduce(EPCGradientP[ic][0],0,intComm);
-          EPCGradientP[ic][1] = MPIReduce(EPCGradientP[ic][1],0,intComm);
-          EPCGradientP[ic][2] = MPIReduce(EPCGradientP[ic][2],0,intComm);
-        }
-      }
-
-#endif
 
 
       // Freeing the memory

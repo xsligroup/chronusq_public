@@ -34,6 +34,15 @@ namespace ChronusQ {
   
     // loop over atoms
     for( Atom& atom : molecule.atoms ) {
+      // If onlyMoveH, set all other atoms' velocity to 0
+      if(mdOptions.onlyMoveH && atom.atomicNumber != 1) {
+        std::fill_n(acceleration.data() + i, 3, 0.0);
+        std::fill_n(vOut.data() + i, 3, 0.0);
+        atom.velocity.fill(0.0);
+        i += 3;
+        continue;
+      }
+
       //compute acceleration = -g/m
       acceleration[i  ] = -gradient[i  ]/(AUPerAMU*atom.atomicMass);
       acceleration[i+1] = -gradient[i+1]/(AUPerAMU*atom.atomicMass);
@@ -76,7 +85,17 @@ namespace ChronusQ {
     // std::cout << "  *** Calculating Velocity-Dependent Forces ***" << std::endl;
     for( Atom& atom : molecule.atoms ) {
 
-      if (atom.quantum && !NEODynamicsOpts.tpb) continue;
+      if (atom.quantum && !NEODynamicsOpts.tpb) {
+        i += 3;
+        continue;
+      }
+      if(mdOptions.onlyMoveH && atom.atomicNumber != 1) {
+        std::fill_n(acceleration.data() + i, 3, 0.0);
+        std::fill_n(vOut.data() + i, 3, 0.0);
+        atom.velocity.fill(0.0);
+        i += 3;
+        continue;
+      }
 
       // build w matrix
       w_matrix[0] =  0.0;
@@ -195,6 +214,7 @@ std::cout << timeStep << std::endl;
       i+=3;
   
       if (atom.quantum && !NEODynamicsOpts.tpb) continue;
+      if (mdOptions.onlyMoveH && atom.atomicNumber != 1) continue;
       //advance the geometry to the next time 
       //r(t+1) = r(t) + dT∙v(t+1/2)
       atom.coord[0] += timeStep*velocity[i  ]; // x
@@ -206,3 +226,4 @@ std::cout << timeStep << std::endl;
   }
 
 } 
+

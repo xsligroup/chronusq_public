@@ -644,27 +644,26 @@ namespace ChronusQ {
         }
       }
 
+// Combine MPI results
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(intComm) > 1 ) {
+        MPIAllReduce(&XCEnergy, 1, &XCEnergy, intComm);
+
+        for(size_t ic = 0; ic < nAtoms; ic++) {
+          double tmp[3] = {XCGradient[ic][0], XCGradient[ic][1], XCGradient[ic][2]};
+          MPIAllReduce(tmp, 3, tmp, intComm);
+          XCGradient[ic][0] = tmp[0];
+          XCGradient[ic][1] = tmp[1];
+          XCGradient[ic][2] = tmp[2];
+        }
+      }
+#endif
+
       std::cout << "XCEnergy gradient" << std::endl;
       for(size_t ic = 0; ic < nAtoms; ic++) {
         std::cout << this->XCGradient[ic][0] << "  " << this->XCGradient[ic][1] << "  " << this->XCGradient[ic][2] << std::endl;
       }
 
-
-
-// Combine MPI results
-#ifdef CQ_ENABLE_MPI
-
-      XCEnergy = MPIReduce(XCEnergy,0,intComm);
-
-      for(size_t it = 0; it < nthreads; it++) {
-        for(size_t ic = 0; ic < nAtoms; ic++) {
-          XCGradient[ic][0] = MPIReduce(XCGradient[ic][0],0,intComm);
-          XCGradient[ic][1] = MPIReduce(XCGradient[ic][1],0,intComm);
-          XCGradient[ic][2] = MPIReduce(XCGradient[ic][2],0,intComm);
-        }
-      }
-
-#endif
 
 #if VXC_DEBUG_LEVEL >= 1
       // TIMING
@@ -1383,27 +1382,25 @@ namespace ChronusQ {
         }
       }
 
+// Combine MPI results
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(intComm) > 1 ) {
+        MPIAllReduce(&XCEnergy, 1, &XCEnergy, intComm);
+
+        for(size_t ic = 0; ic < nAtoms; ic++) {
+          double tmp[3] = {XCGradient[ic][0], XCGradient[ic][1], XCGradient[ic][2]};
+          MPIAllReduce(tmp, 3, tmp, intComm);
+          XCGradient[ic][0] = tmp[0];
+          XCGradient[ic][1] = tmp[1];
+          XCGradient[ic][2] = tmp[2];
+        }
+      }
+#endif
+
       std::cout << "XCEnergy gradient" << std::endl;
       for(size_t ic = 0; ic < nAtoms; ic++) {
         std::cout << this->XCGradient[ic][0] << "  " << this->XCGradient[ic][1] << "  " << this->XCGradient[ic][2] << std::endl;
       }
-
-
-
-// Combine MPI results
-#ifdef CQ_ENABLE_MPI
-
-      XCEnergy = MPIReduce(XCEnergy,0,intComm);
-
-      for(size_t it = 0; it < nthreads; it++) {
-        for(size_t ic = 0; ic < nAtoms; ic++) {
-          XCGradient[ic][0] = MPIReduce(XCGradient[ic][0],0,intComm);
-          XCGradient[ic][1] = MPIReduce(XCGradient[ic][1],0,intComm);
-          XCGradient[ic][2] = MPIReduce(XCGradient[ic][2],0,intComm);
-        }
-      }
-
-#endif
 
 #if VXC_DEBUG_LEVEL >= 1
       // TIMING

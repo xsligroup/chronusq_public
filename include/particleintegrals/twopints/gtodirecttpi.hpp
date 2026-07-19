@@ -39,6 +39,8 @@ namespace ChronusQ {
     double threshSchwarz_ = 1e-12; ///< Schwarz screening threshold
     double* schwarz_ = nullptr;   ///< Schwarz bounds for the TPIs
     double* schwarz2_ = nullptr;  ///< second Schwarz bounds for the TPIs
+    double* schwarzGrad_ = nullptr; ///< Schwarz bounds for the gradient integrals
+    double* schwarzGrad2_ = nullptr; ///< second Schwarz bounds for the gradient integrals
     Molecule &molecule_;
 
   public:
@@ -86,6 +88,8 @@ namespace ChronusQ {
     double threshSchwarz() const { return threshSchwarz_; }
     double*& schwarz()  { return schwarz_; }
     double*& schwarz2() { return schwarz2_; }
+    double*& schwarzGrad() { return schwarzGrad_; }
+    double*& schwarzGrad2() { return schwarzGrad2_; }
 
     // Single element interfaces
     virtual IntsT operator()(size_t p, size_t q, size_t r, size_t s) const override {
@@ -99,14 +103,15 @@ namespace ChronusQ {
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) override {}
+        OPERATOR, const HamiltonianOptions&) override { computeSchwarz(); }
 
     virtual void computeAOInts(BasisSet&, BasisSet&, Molecule&, EMPerturbation&,
-        OPERATOR, const HamiltonianOptions&) override {}
+        OPERATOR, const HamiltonianOptions&) override { computeSchwarz(); }
 
     virtual void clear() override {}
 
     void computeSchwarz();
+    void computeSchwarzGrad();
 
     virtual void output(std::ostream &out, const std::string &s = "",
                         bool printFull = false) const override {
@@ -136,6 +141,8 @@ namespace ChronusQ {
     virtual ~DirectTPI() {
       if(schwarz_)  CQMemManager::get().free(schwarz_);
       if(schwarz2_) CQMemManager::get().free(schwarz2_);
+      if(schwarzGrad_) CQMemManager::get().free(schwarzGrad_);
+      if(schwarzGrad2_) CQMemManager::get().free(schwarzGrad2_);
     }
 
   }; // class DirectTPI

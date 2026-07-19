@@ -48,6 +48,7 @@ namespace ChronusQ {
       "SAVEALLGEOMETRY",
       "PRINTPROPERTY",
       "PROJECT_ORTHO_DEN",
+      "ONLYMOVEH",
       "VELOCITY"
     };
 
@@ -112,14 +113,14 @@ namespace ChronusQ {
     ss1->basisSet().nBasis, mol.atoms.size(), gints \
   );
 
-#define ADD_GRAD_DIRECT(T) \
+#define ADD_GRAD_DIRECT(T, THRESH) \
   std::vector<std::shared_ptr<DirectTPI<T>>> gints;\
   for ( auto i = 0; i < mol.atoms.size() * 3; i++ ) {\
     auto newg = ss2 ? \
       std::make_shared<DirectTPI<T>>( \
-        ss1->basisSet(), ss2->basisSet(), mol, 1e-12) :  \
+        ss1->basisSet(), ss2->basisSet(), mol, THRESH) :  \
       std::make_shared<DirectTPI<T>>( \
-        ss1->basisSet(), ss1->basisSet(), mol, 1e-12); \
+        ss1->basisSet(), ss1->basisSet(), mol, THRESH); \
     gints.push_back(newg); \
   } \
     \
@@ -137,10 +138,17 @@ namespace ChronusQ {
 
       std::string GRAD_ALG = "DIRECT";
       OPTOPT( GRAD_ALG = input.getData<std::string>(section +"/GRADALG"););
+      double GRAD_SCHWARZ = 1e-12;
+      OPTOPT( GRAD_SCHWARZ = input.getData<double>(section +"/GRADSCHWARZ"););
 
       bool cmplx_ints = dynamic_cast<Integrals<dcomplex>*>(ints);
       if ( cmplx_ints && GRAD_ALG == "DIRECT") {
         std::cout << "DIRECT is not available for GIAO gradients. Changing to INCORE" << std::endl;
+#ifdef CQ_ENABLE_MPI
+        if( MPISize(ss1->comm) > 1 ) {
+          CErr("DIRECT GIAO gradients are not available for MPI",std::cout);
+        }
+#endif
         GRAD_ALG = "INCORE";
       }
 
@@ -155,10 +163,10 @@ namespace ChronusQ {
       }
       else {
         if( cmplx_ints ) {
-          ADD_GRAD_DIRECT(dcomplex);
+          ADD_GRAD_DIRECT(dcomplex, GRAD_SCHWARZ);
         }
         else {
-          ADD_GRAD_DIRECT(double);
+          ADD_GRAD_DIRECT(double, GRAD_SCHWARZ);
         }
       }
 
@@ -246,6 +254,7 @@ namespace ChronusQ {
 
       OPTOPT( mdOpt.saveAllGeometry = input.getData<bool>("DYNAMICS/SAVEALLGEOMETRY");)
       OPTOPT( mdOpt.printProperty = input.getData<bool>("DYNAMICS/PRINTPROPERTY");)
+      OPTOPT( mdOpt.onlyMoveH = input.getData<bool>("DYNAMICS/ONLYMOVEH");)
 
       // Parsing restart options
       std::string restart = "FALSE";
@@ -289,7 +298,7 @@ namespace ChronusQ {
       if( job == JobType::BOMD )
         mdOpt.nMidpointFockSteps = 0;
 
-      auto md = std::make_shared<MolecularDynamics>(mdOpt, mol, rstFile);
+      auto md = std::make_shared<MolecularDynamics>(mdOpt, mol, rstFile, MPI_COMM_WORLD);
       
       // If doNEO, Choose how to move quantum proton basis function centers during dynamics simulations
       // Default is 'fixed'
@@ -302,6 +311,7 @@ namespace ChronusQ {
         } else {
           std::cout << "Quantum Proton will be fixed during dynamics" << std::endl;
         }
+        if (md->mdOptions.onlyMoveH) CErr("Only Move Hydrogen is not supported for NEO calculations");
       }
 
       mol.geometryModifier = md;
@@ -319,6 +329,7 @@ namespace ChronusQ {
         std::cout << "Traveling Proton Basis:  " << (md->NEODynamicsOpts.tpb? "True" : "False") << std::endl;
         std::cout << "QProt KE Included:       " << (md->NEODynamicsOpts.includeQProtKE? "True" : "False") << std::endl;
       }
+      std::cout << "Only Move Hydrogen:     " << (md->mdOptions.onlyMoveH? "True" : "False") << std::endl;
       std::cout<< "================================================================================" << std::endl;
       std::cout << std::endl;
 
@@ -374,11 +385,31 @@ namespace ChronusQ {
             // Update basis, integrals, and hamiltonian
             md->updateBasisIntsHamiltonian();
 
-            // Transform ortho density with new metric for property and gradient evaluation
+            // Transform ortho density with new metric for property and gradient evaluation (on root process)
             if( auto ss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(ss) )           ss_t->ortho2aoDen();
             else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,double>>(ss) )    ss_t->ortho2aoDen();
             else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,dcomplex>>(ss) )  ss_t->ortho2aoDen();
             else CErr("Unsuccessful Cast!");
+            
+#ifdef CQ_ENABLE_MPI
+            // Broadcast the 1PDM to all MPI processes
+            if( MPISize(MPI_COMM_WORLD) > 1 ) {
+              auto bcastNEOOnePDM = [](auto neoss_typed) {
+                auto neoMap   = neoss_typed->getSubsystemMap();
+                auto neoOrder = neoss_typed->getOrder();
+                for(auto& label : neoOrder) {
+                    auto& subss = neoMap[label];
+                    size_t NB = subss->nAlphaOrbital();
+                    for(auto* mat : subss->onePDM->SZYXPointers())
+                        MPIBCast(mat, NB*NB, 0, subss->comm);
+                }
+            };
+            if( auto ss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(ss) )           bcastNEOOnePDM(ss_t);
+            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,double>>(ss) )    bcastNEOOnePDM(ss_t);
+            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,dcomplex>>(ss) )  bcastNEOOnePDM(ss_t);
+            }
+#endif
+
 
             // Recompute fock matrix and get updated energy
             ss->formFock(emPert,false);
@@ -421,11 +452,26 @@ namespace ChronusQ {
             // Update basis, integrals, and hamiltonian
             md->updateBasisIntsHamiltonian();
 
-            // Transform ortho density with new metric for property and gradient evaluation
+            // Transform ortho density with new metric for property and gradient evaluation (on root process)
             if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )           ss_t->ortho2aoDen();
             else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )    ss_t->ortho2aoDen();
             else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )  ss_t->ortho2aoDen();
             else CErr("Unsuccessful Cast!");
+
+#ifdef CQ_ENABLE_MPI
+            // Broadcast the 1PDM to all MPI processes
+            if( MPISize(MPI_COMM_WORLD) > 1 ) {
+              auto bcastPDM = [](auto ss_typed) {
+                size_t NB = ss_typed->nAlphaOrbital();
+                for(auto *mat : ss_typed->onePDM->SZYXPointers())
+                  MPIBCast(mat, NB*NB, 0, ss_typed->comm);
+              };
+              if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )           bcastPDM(ss_t);
+              else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )    bcastPDM(ss_t);
+              else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )  bcastPDM(ss_t);
+            }
+#endif
+
 
             // Recompute fock matrix and get updated energy
             ss->formFock(emPert,false);
@@ -490,7 +536,7 @@ namespace ChronusQ {
     }
     else if( job == JobType::RT ) {
       // Single point job
-      mol.geometryModifier = std::make_shared<SinglePoint>();
+      mol.geometryModifier = std::make_shared<SinglePoint>(MPI_COMM_WORLD);
       elecJob = JobType::RT;
       // Handle field specification
       try {

@@ -34,6 +34,17 @@ namespace ChronusQ {
       createMDDataSets(molecule, ss);
     }
 
+    // If onlyMoveH, set all other atoms' velocity to 0
+    if(mdOptions.onlyMoveH) {
+      for(size_t iAtm = 0; iAtm < molecule.atoms.size(); iAtm++) {
+        if(molecule.atoms[iAtm].atomicNumber == 1) continue;
+        std::fill_n(velocity.begin() + 3*iAtm, 3, 0.0);
+        std::fill_n(velocityHalfTN.begin() + 3*iAtm, 3, 0.0);
+        std::fill_n(acceleration.begin() + 3*iAtm, 3, 0.0);
+        molecule.atoms[iAtm].velocity.fill(0.0);
+      }
+    }
+
   }
 
 
@@ -55,6 +66,10 @@ namespace ChronusQ {
       initializeMD(molecule, ss);
       if(mdOptions.pertFirstAtom) pertFirstAtom();
       if(mdOptions.projectOrthoDen or mdOptions.pertFirstAtom) electronicPotentialEnergy = finalMidpointFock();
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(this->mpiComm) > 1 )
+        MPIBCast(&electronicPotentialEnergy, 1, 0, this->mpiComm);
+#endif
     } else {
       curState.iStep++;
     }
@@ -116,6 +131,10 @@ namespace ChronusQ {
         curState.time += half_fock_dt;
         molecule.update();
         electronicPotentialEnergy = finalMidpointFock();
+#ifdef CQ_ENABLE_MPI
+        if( MPISize(this->mpiComm) > 1 )
+          MPIBCast(&electronicPotentialEnergy, 1, 0, this->mpiComm);
+#endif
         std::cout << "  *** Updating Geometry from x( t = " << totalTimeCur << " au) to x( t = " << curState.time << " au) ***"<< std::endl;
         
       }
@@ -123,7 +142,10 @@ namespace ChronusQ {
       // Obtain new gradient 
       std::cout << "  *** Calculating Gradient at g( t = " << curState.time << " au) ***" << std::endl;
       gradient = gradientGetter();
-
+#ifdef CQ_ENABLE_MPI
+      if( MPISize(this->mpiComm) > 1 )
+        MPIBCast(gradient.data(), gradient.size(), 0, this->mpiComm);
+#endif
       // If we have midpoint fock steps, we calculate velocity at full Δt_N step
       // p(t+Δt_N) = p(t+0.5Δt_N) + 0.5 * g(t+Δt_N) / m * Δt_N
       if ( isEhrenfest && !firstStep ) {
@@ -181,6 +203,13 @@ namespace ChronusQ {
     // =========================================================================================
     // compute kinetic energy
     computeKineticEnergy(molecule);
+
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(this->mpiComm) > 1 ) {
+      MPIBCast(&nuclearKineticEnergy, 1, 0, this->mpiComm);
+    }
+#endif
+
 
     // Compute total energies
     currentTotalEnergy = electronicPotentialEnergy + nuclearKineticEnergy;
@@ -281,6 +310,7 @@ namespace ChronusQ {
       i += 3;
 
       if(atom.quantum && !NEODynamicsOpts.includeQProtKE) continue;
+      if(mdOptions.onlyMoveH && atom.atomicNumber != 1) continue;
 
       nuclearKineticEnergy += 0.5*velocity[i  ]*velocity[i  ]*atom.atomicMass*AUPerAMU;
       nuclearKineticEnergy += 0.5*velocity[i+1]*velocity[i+1]*atom.atomicMass*AUPerAMU;
@@ -300,3 +330,4 @@ namespace ChronusQ {
   }
 
 }
+

@@ -4088,8 +4088,11 @@ namespace ChronusQ {
     const HamiltonianOptions &options)
   {
 
-    if (std::dynamic_pointer_cast<DirectTPI<double>>(components_[0]))
+    if (auto directTPI = std::dynamic_pointer_cast<DirectTPI<double>>(components_[0])) {
+      directTPI->computeSchwarz();
+      directTPI->computeSchwarzGrad();
       return;
+    }
 
     if (std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(components_[0]) or
         std::dynamic_pointer_cast<InCoreAuxBasisRIERI<double>>(components_[0]))

@@ -56,6 +56,7 @@ namespace ChronusQ {
     double pert_val_z = 1e-5;   ///< perturbation value
 
     bool projectOrthoDen = false; // Project the orthonormal density to initial geometry
+    bool onlyMoveH = false; // Only move the hydrogen atoms
 
     MDOptions(double tmax, double deltat)
     {
@@ -112,7 +113,8 @@ namespace ChronusQ {
 
     // Constructors
     MolecularDynamics() = delete;
-    MolecularDynamics(MDOptions mdOptions, Molecule& molecule, SafeFile& rstFile):
+    MolecularDynamics(MDOptions mdOptions, Molecule& molecule, SafeFile& rstFile, MPI_Comm mpiComm):
+      GeometryModifier(mpiComm),
       mdOptions(mdOptions),
       gradient(3*molecule.nAtoms, 0.),
       velocity(3*molecule.nAtoms, 0.),

@@ -363,6 +363,10 @@ namespace ChronusQ {
     convert(const std::shared_ptr<GradContractions<MatsT,IntsT>>&);
 
     bool contractSecond = false;
+    // Bra-side (basisSet_) density that AX is traced against. Required for
+    // cross-basis (NEO) screening; leave empty for same-basis callers.
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> traceDensity = nullptr;
+
 
   }; // class GradientContractions
 

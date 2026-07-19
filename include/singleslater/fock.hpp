@@ -200,25 +200,31 @@ namespace ChronusQ {
 
 
     // Core H contribution
-    this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
-      {{OVERLAP, 1},
-       {KINETIC, 1},
-       {NUCLEAR_POTENTIAL, 1}
-       },
-       opts
-    );
-
-    // GIAO or CGTO
-    if(pert_has_type(pert,Magnetic))
+    std::vector<double> coreGrad(nGrad, 0.);
+    if( MPIRank(comm) == 0 ) {
       this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
-        {{LEN_ELECTRIC_MULTIPOLE,2},
-         {MAGNETIC_MULTIPOLE,1}
-         },
-         opts
+        {{OVERLAP, 1},
+        {KINETIC, 1},
+        {NUCLEAR_POTENTIAL, 1}
+        },
+        opts
+      );
+
+      // GIAO or CGTO
+      if(pert_has_type(pert,Magnetic))
+        this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
+          {{LEN_ELECTRIC_MULTIPOLE,2},
+          {MAGNETIC_MULTIPOLE,1}
+          },
+          opts
       );
     
-    std::vector<double> coreGrad = coreHBuilder->getGrad(pert, *this);
-    //printGrad("Core H Gradient:", coreGrad);
+      coreGrad = coreHBuilder->getGrad(pert, *this);
+    }
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(comm) > 1 )
+      MPIBCast(coreGrad.data(), nGrad, 0, comm);
+#endif
 
     // 2e contribution
     this->aoints_->computeGradInts(this->molecule_, basisSet_, pert,
@@ -227,13 +233,18 @@ namespace ChronusQ {
     );
     std::vector<double> twoEGrad = fockBuilder->getGDGrad(*this, pert, xHFX);
 
-    //printGrad("G Gradient:", twoEGrad);
     
     // Pulay gradient contribution
     bool useW = true;
-    std::vector<double> pulayGrad = fockBuilder->getPulayGrad(*this, equil, useW);
+    std::vector<double> pulayGrad(nGrad, 0.);
+    if( MPIRank(comm) == 0 ) {
+      pulayGrad = fockBuilder->getPulayGrad(*this, equil, useW);
+    }
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(comm) > 1 )
+      MPIBCast(pulayGrad.data(), nGrad, 0, comm);
+#endif
 
-    //printGrad("Pulay Gradient:", pulayGrad);
 
     // Add the nuclear gradient and assemble the total gradient
     std::vector<double> nucGrad;
@@ -256,9 +267,15 @@ namespace ChronusQ {
   }
 #endif
 
-    //printGrad("Nuclear Gradient:", nucGrad);
-    //printGrad("Total HF Gradient:", gradient);
-    //CErr("Normal Termination of TDDTest.");
+    //this->onePDM->output(std::cout, "OnePDM in Gradient Contractions", true);
+
+    if( MPIRank(comm) == 0 ) {
+      printGrad("Nuclear Gradient:", nucGrad);
+      printGrad("Core H Gradient:", coreGrad);
+      printGrad("G Gradient:", twoEGrad);
+      printGrad("Pulay Gradient:", pulayGrad);
+      printGrad("Total HF Gradient:", gradient);
+    }
 
     //this->onePDM->output(std::cout, "OnePDM in Gradient Contractions", true);
 

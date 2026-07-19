@@ -47,6 +47,7 @@ namespace ChronusQ {
       "GRADALG",      // Direct or Incore for gradients?
       "TPITRANSALG",  // N5 or N6
       "SCHWARZ",      // double
+      "GRADSCHWARZ",  // double
 
       // RI Options
       "RI",           // String, determines which algorithm to use for RI/CD

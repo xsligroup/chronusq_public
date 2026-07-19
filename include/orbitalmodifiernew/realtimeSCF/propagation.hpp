@@ -44,8 +44,6 @@ namespace ChronusQ {
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::computeTau() {
 
-  ROOT_ONLY(this->mpiComm);
-  
   // Handle type conversion
   if (typeid(this->singleSlaterSystem) != typeid(NEOSS<MatsT,IntsT>)) 
     CErr("Tau term is only implemented for NEO protons");

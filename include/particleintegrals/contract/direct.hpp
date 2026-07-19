@@ -23,6 +23,10 @@
  */
 #pragma once
 
+#include <chrono>
+#include <array>
+#include <numeric>
+#include <iomanip>
 
 #include <integrals.hpp>
 #include <particleintegrals/inhouseaointegral.hpp>
@@ -67,6 +71,8 @@
 #define GetRealPtr(X,I,J,N) reinterpret_cast<double*>(X + I + J*N)
 
 #define bottomupGIAO //SS
+
+//#define _PROFILE_DIRECT_GRAD
 
 namespace ChronusQ {
 
@@ -2204,6 +2210,25 @@ namespace ChronusQ {
     }
   }
 
+#ifdef _PROFILE_DIRECT_GRAD
+  namespace {
+    struct DirectGradProfile {
+      // Counters
+      size_t nQuartetsVisited  = 0;
+      size_t nQuartetsSkipped  = 0;   // wired in for screening; 0 in this version
+      size_t nDerivBufsNonNull = 0;   // # of non-null buffers (out of 12 per quartet) summed
+      size_t nDerivIntegrals   = 0;   // sum of n1*n2*n3*n4 over non-null buffers
+      size_t nJOps             = 0;   // FMA count for Coulomb contractions
+      size_t nKOps             = 0;   // FMA count for Exchange contractions
+      // Timers (seconds)
+      double tCompute2         = 0.0; // engine.compute2 only
+      double tScale            = 0.0; // scale-and-copy of derivative buffer
+      double tContraction      = 0.0; // J + K kernels
+      char _pad[56];                  // pad 9*8=72 to 128 (2 cache lines, no false sharing)
+    };
+    static_assert(sizeof(DirectGradProfile) == 128, "DirectGradProfile size should be 128 bytes for cache alignment");
+  }
+#endif
 
   template <typename MatsT, typename IntsT>
   void DirectGradContraction<MatsT,IntsT>::directScaffoldGrad(
@@ -2211,11 +2236,37 @@ namespace ChronusQ {
       const bool screen,
       std::vector<std::vector<TwoBodyContraction<MatsT>>>& cList) const {
 
-    // This method has no screening right now
-    // Screening should be done according to 10.1002/jcc.540120903
+    // -----------------------------------------------------------------
+    // SCREENING DESIGN NOTE (Horn, Weiss, Haeser, Ehrig, Ahlrichs,
+    // J. Comput. Chem. 12 (1991) 1058, DOI 10.1002/jcc.540120903)
     //
-    // TODO: MPI is also likely broken for this
+    // Quartet skip test (Horn eq. 21a):
+    //   |E^i_{νμχλ}| <= (Q_NM R_KL + Q_KL R_NM) D_{NM,KL}
+    //   D_{NM,KL}   =  4 D_NM D_KL + D_NK D_ML + D_NL D_MK   (Horn eq. 14)
     //
+    // This is the chart-1 (energy-gradient) density weight, not the
+    // chart-2 gradient-Fock weight D~ of eq. 15. That is deliberate: this
+    // routine builds gradient Fock matrices F^I, but every caller only
+    // traces them against the same density used in the contraction, so
+    // screening the traced (energy-gradient) contribution is both tighter
+    // and sufficient. Cross-basis (NEO ep) callers must supply that trace
+    // density via GradContractions::traceDensity.
+    //
+    // Rigor of the integral bound (Horn eqs. 8-11): for every libint
+    // derivative buffer the element-wise bound holds,
+    //     |buf_vec[0..5][ijkl]|  <= R_NM * Q_KL   (derivs on shells 1,2)
+    //     |buf_vec[6..11][ijkl]| <= Q_NM * R_KL   (derivs on shells 3,4)
+    // where R is the FD-based derivative Schwarz bound assembled in
+    // DirectTPI::computeSchwarzGrad (rigorous up to O(h^2) FD truncation,
+    // ~1e-4 relative at h = 1e-4). Both Q and R are geometry dependent and
+    // are refreshed each gradient evaluation by
+    // GradInts<TwoPInts,double>::computeAOInts.
+    //
+    // The bound is additionally multiplied by n1*n2*n3*n4 and the quartet
+    // degeneracy so it bounds the *summed* block contribution to a single
+    // gradient component; the caller-side 0.25 energy prefactor is not
+    // included, making the test conservative by ~4x.
+    // -----------------------------------------------------------------
 
     DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
@@ -2227,6 +2278,14 @@ namespace ChronusQ {
     size_t mpiSize   = MPISize(comm);
 
     SetLAThreads(1); // Turn off parallelism in LA functions
+
+#ifdef _PROFILE_DIRECT_GRAD
+    using _prof_clock = std::chrono::steady_clock;
+    auto _prof_t_start         = _prof_clock::now();
+    auto _prof_t_setup_end     = _prof_t_start;
+    auto _prof_t_parallel_end  = _prof_t_start;
+    std::vector<DirectGradProfile> _prof(nThreads);
+#endif
 
     const size_t nBasis   = basisSet_.nBasis;
     const size_t snBasis  = basisSet2_.nBasis;
@@ -2240,6 +2299,119 @@ namespace ChronusQ {
       for (auto& x: gradComp)
         NonHermitian |= not x.HER;
 
+    const bool sameBasisSet12 = (&basisSet_ == &basisSet2_);
+
+#ifdef _PROFILE_DIRECT_GRAD
+    // Precompute J/K op factors per non-null gradient buffer
+    // (so per-quartet ops = nNonNull * n1*n2*n3*n4 * factor)
+    size_t _prof_jFactor = 0, _prof_kFactor = 0;
+    for (auto& _m : cList[0]) {
+      if (_m.HER) {
+        if      (_m.contType == COULOMB)  _prof_jFactor += sameBasisSet12 ? 2 : 1;
+        else if (_m.contType == EXCHANGE) _prof_kFactor += 4;
+      }
+    }
+#endif
+
+    // ----------------- Screening setup -----------------
+    double *Q1 = nullptr, *Q2 = nullptr;
+    double *R1 = nullptr, *R2 = nullptr;
+
+    // Ket-side (basisSet2_) block norms, from the contraction density X.
+    // For same-basis this also serves as the bra-side (D_NM) array.
+    double *ShBlkNorms_raw = nullptr;
+    double *ShBlkNorms     = nullptr;
+    std::vector<double*> ShBlkNorms_Mat;
+
+    // Bra-side (basisSet_) block norms, from the TRACE density the caller
+    // dots AX against. Same-basis: aliases ShBlkNorms. Cross-basis (NEO):
+    // a distinct single-matrix array (nMat == 1), REQUIRED for a correct
+    // energy-gradient bound.
+    double *ShBlkNorms1_raw = nullptr;
+    double *ShBlkNorms1     = nullptr;
+
+    double maxShBlkNorm = 0.0;
+
+    if (screen) {
+      // Make sure both Schwarz arrays are computed
+      if (tpi.schwarz()     == nullptr) tpi.computeSchwarz();
+      if (tpi.schwarzGrad() == nullptr) tpi.computeSchwarzGrad();
+
+      Q1 = this->contractSecond ? tpi.schwarz2()     : tpi.schwarz();
+      Q2 = this->contractSecond ? tpi.schwarz()      : tpi.schwarz2();
+      R1 = this->contractSecond ? tpi.schwarzGrad2() : tpi.schwarzGrad();
+      R2 = this->contractSecond ? tpi.schwarzGrad()  : tpi.schwarzGrad2();
+      if (sameBasisSet12) { Q2 = Q1; R2 = R1; }
+
+      // Shell-block ∞-norms for each density matrix in the contraction.
+      // Densities are shared across iGrad (only AX differs), so cList[0]
+      // gives all the densities we need.
+      const size_t nSlots = nMat + (nMat == 1 ? 0 : 1);
+      const size_t off    = (nMat == 1) ? 0 : 1;
+
+      // ---- ket-side (basisSet2_, snShell x snShell) from X ----
+      ShBlkNorms_raw = CQMemManager::get().malloc<double>(nSlots * snShell * snShell);
+      ShBlkNorms = ShBlkNorms_raw;
+      ShBlkNorms_Mat.assign(nMat, nullptr);
+      for (size_t iMat = 0; iMat < nMat; iMat++) {
+        ShBlkNorms_Mat[iMat] = ShBlkNorms_raw + (iMat + off) * snShell * snShell;
+        ShellBlockNorm(basisSet2_.shells, cList[0][iMat].X, snBasis, ShBlkNorms_Mat[iMat]);
+        for (size_t j = 0; j < snShell * snShell; j++)
+          ShBlkNorms_Mat[iMat][j] = std::abs(ShBlkNorms_Mat[iMat][j]);
+      }
+
+      // Max over matrices into the front-slot ShBlkNorms (skip when nMat==1
+      // since ShBlkNorms then aliases ShBlkNorms_Mat[0]).
+      if (nMat != 1) {
+        std::memset(ShBlkNorms, 0, snShell * snShell * sizeof(double));
+        #pragma omp parallel for
+        for (size_t i = 0; i < snShell * snShell; i++)
+        for (size_t iMat = 0; iMat < nMat; iMat++)
+          ShBlkNorms[i] = std::max(ShBlkNorms[i], ShBlkNorms_Mat[iMat][i]);
+      }
+
+      // ---- bra-side (basisSet_, nShell x nShell) ----
+      if (sameBasisSet12) {
+        ShBlkNorms1 = ShBlkNorms;          // X is also the traced density
+      } else {
+        if (this->traceDensity == nullptr)
+          CErr("Cross-basis (NEO) gradient screening needs traceDensity "
+              "(the density AX is traced against, over basisSet_).", std::cout);
+        if (nMat != 1)
+          CErr("Cross-basis gradient screening assumes a single Coulomb "
+              "contraction (nMat == 1).", std::cout);
+
+        ShBlkNorms1_raw = CQMemManager::get().malloc<double>(nShell * nShell);
+        ShBlkNorms1 = ShBlkNorms1_raw;
+        ShellBlockNorm(basisSet_.shells, this->traceDensity->S().pointer(),
+                      nBasis, ShBlkNorms1);
+        for (size_t j = 0; j < nShell * nShell; j++)
+          ShBlkNorms1[j] = std::abs(ShBlkNorms1[j]);
+      }
+
+      maxShBlkNorm = *std::max_element(ShBlkNorms, ShBlkNorms + snShell * snShell);
+      if (!sameBasisSet12)
+        maxShBlkNorm = std::max(maxShBlkNorm,
+            *std::max_element(ShBlkNorms1, ShBlkNorms1 + nShell * nShell));
+    }
+
+    // Global ket-side maxima for the pair-level early-out (Horn chart 1,
+    // eqs. 16-19). Each is an upper bound of the corresponding per-quartet
+    // quantity, so a pair skipped here would have had every one of its
+    // quartets skipped by the quartet-level test -- results are identical.
+    double maxQ2 = 0.0, maxR2 = 0.0, maxD2 = 0.0, maxN34 = 0.0;
+    if (screen) {
+      maxQ2 = *std::max_element(Q2, Q2 + snShell * snShell);
+      maxR2 = *std::max_element(R2, R2 + snShell * snShell);
+      maxD2 = *std::max_element(ShBlkNorms, ShBlkNorms + snShell * snShell);
+      maxN34 = static_cast<double>(
+        std::max_element(basisSet2_.shells.begin(), basisSet2_.shells.end(),
+          [](libint2::Shell &sh1, libint2::Shell &sh2) {
+            return sh1.size() < sh2.size();
+          })->size());
+    }
+    // ----------------- End screening setup -----------------
+
     std::vector<libint2::Engine> engines(nThreads);
 
     // Construct engine for master thread
@@ -2247,53 +2419,27 @@ namespace ChronusQ {
       std::max(basisSet_.maxPrim, basisSet2_.maxPrim), 
       std::max(basisSet_.maxL, basisSet2_.maxL),1);
 
-    // Allocate scratch for raw integral batches
-    size_t maxShellSize = 
-      std::max_element(basisSet_.shells.begin(),basisSet_.shells.end(),
-        [](libint2::Shell &sh1, libint2::Shell &sh2) {
-          return sh1.size() < sh2.size();
-        })->size();
-
-    size_t maxShellSize2 = 
-      std::max_element(basisSet2_.shells.begin(),basisSet2_.shells.end(),
-        [](libint2::Shell &sh1, libint2::Shell &sh2) {
-          return sh1.size() < sh2.size();
-        })->size();
-
-    // lenIntBuffer is allocated to be able to store ERI's of the shell with
-    // the highest angular momentum
-    size_t lenIntBuffer = 
-      maxShellSize * maxShellSize * maxShellSize2 * maxShellSize2; 
-
-    lenIntBuffer *= sizeof(MatsT) / sizeof(double);
-
-    size_t nBuffer = 2;
-
-    // 12 derivatives per integral (3 xyz * 4 shells) 
+    // 12 derivatives per integral (3 xyz * 4 shells)
     size_t nGrad = 12;
-
-    
-    double * intBuffer = 
-      CQMemManager::get().malloc<double>(nGrad*nBuffer*lenIntBuffer*nThreads);
-   
-    double *intBuffer2 = intBuffer + nGrad*nThreads*lenIntBuffer;
 
     // Allocate thread local storage to store integral contractions
     // Threads, Gradients, Matrices, Basis, Basis
     std::vector<std::vector<std::vector<MatsT*>>> AXthreads;
     MatsT *AXRaw = nullptr;
     if(nThreads != 1) {
-      AXRaw = CQMemManager::get().malloc<MatsT>(nTotGrad*nThreads*nMat*nBasis*nBasis);    
-      memset(AXRaw,0,nTotGrad*nThreads*nMat*nBasis*nBasis*sizeof(MatsT));
+      AXRaw = CQMemManager::get().malloc<MatsT>(nTotGrad*nThreads*nMat*nBasis*nBasis);
+      const size_t totalSize = nTotGrad*nThreads*nMat*nBasis*nBasis;
+      #pragma omp parallel for schedule(static)
+      for (size_t k = 0; k < totalSize; k++) {
+        AXRaw[k] = MatsT(0);
+      }
     }
 
     if(nThreads == 1) {
       AXthreads.emplace_back();
       for(auto& gradComp: cList) {
         AXthreads.back().emplace_back();
-        for(auto& mat: gradComp) {
-          AXthreads.back().back().push_back(mat.AX);
-        }
+        for(auto& mat: gradComp) AXthreads.back().back().push_back(mat.AX);
       }
     } else {
       for(auto iThread = 0; iThread < nThreads; iThread++) {
@@ -2320,6 +2466,9 @@ namespace ChronusQ {
     // Keeping track of number of integrals skipped
     std::vector<size_t> nSkip(nThreads,0);
 
+#ifdef _PROFILE_DIRECT_GRAD
+    _prof_t_setup_end = _prof_clock::now();
+#endif
 
     //
     // Parallel region - start work
@@ -2336,10 +2485,6 @@ namespace ChronusQ {
     const auto& buf_vec = engine.results();
     
     auto &AX_loc = AXthreads[thread_id];
-
-
-    double * intBuffer_loc  = intBuffer  + thread_id*nGrad*lenIntBuffer;
-    double * intBuffer2_loc = intBuffer2 + thread_id*nGrad*lenIntBuffer;
 
     size_t n1,n2;
     size_t shell_atoms[4];
@@ -2360,8 +2505,14 @@ namespace ChronusQ {
       const auto * sigPair12 = sigPair12_it->get();
       sigPair12_it++;
 
-      // Round-Robin work distribution (deterministic hash, no per‑thread counter)
-      if( ((s1 * nShell + s2) % nThreads) != thread_id ) continue;
+      // Deterministic work distribution over (MPI rank, thread): map each
+      // (s1,s2) pair to one of mpiSize*nThreads global workers. globalId maps
+      // 1:1 to (rank, thread), so every pair is processed exactly once. For
+      // mpiSize == 1 this is identical to the old (s1*nShell+s2) % nThreads.
+      const size_t s12id    = s1 * nShell + s2;
+      const size_t globalId = s12id % (mpiSize * nThreads);
+      if ( globalId / nThreads != mpiRank ||
+           globalId % nThreads != thread_id ) continue;
 
 #ifdef _FULL_DIRECT
       // Deneneracy factor for s1,s2 pair
@@ -2370,6 +2521,29 @@ namespace ChronusQ {
 
 // The upper bound of s3 is s1 for the 8-fold symmetry and
 // nShell for 4-fold.
+
+      // (s1,s2) screening quantities — hoisted out of s3,s4 loops
+      double Q12 = 0.0, R12 = 0.0, D12 = 0.0;
+      if (screen) {
+        Q12 = Q1[s1 + s2*nShell];
+        R12 = R1[s1 + s2*nShell];
+        D12 = ShBlkNorms1[s1 + s2*nShell];   // D_NM (bra-side density)
+
+        // Pair-level early-out (Horn chart 1): upper-bound the quartet test
+        // over all possible (s3,s4). Density weight: same-basis
+        // D_{NM,KL} <= 4 D12 maxD + 2 maxD^2, cross-basis D12 * maxD.
+        // Block factor: n1*n2*maxN34^2 and degeneracies s12d*s34d*s1234d
+        // <= s12d*4.
+        const double s12d = (s1 == s2) ? 1.0 : 2.0;
+        const double maxDWeight = sameBasisSet12
+            ? 4.0 * D12 * maxD2 + 2.0 * maxD2 * maxD2
+            : D12 * maxD2;
+        const double maxBlockFac =
+            static_cast<double>(n1 * n2) * maxN34 * maxN34 * s12d * 4.0;
+        if ((R12 * maxQ2 + Q12 * maxR2) * maxDWeight * maxBlockFac < tpi.threshSchwarz())
+          continue;
+      }
+
 #ifdef _USE_EIGHT_FOLD
   #define S3_MAX s1
 #elif defined(_USE_FOUR_FOLD)
@@ -2386,6 +2560,13 @@ namespace ChronusQ {
         n3 = basisSet2_.shells[s3].size(); // Size of Shell 3
         shell_atoms[2] = basisSet2_.mapSh2Cen[s3]; // Atomic center of shell 3
 
+        // (s1,s2,s3) screening — hoist D[N,K] and D[M,K] out of s4 loop.
+        // (Only needed when sameBasisSet12; otherwise K-channel terms are absent.)
+        double D_NK = 0.0, D_MK = 0.0;
+        if (screen && sameBasisSet12) {
+          D_NK = ShBlkNorms[s1 + s3*nShell];
+          D_MK = ShBlkNorms[s2 + s3*nShell];
+        }
 
 // The upper bound of s4 is either s2 or s3 based on s1 and s3 for
 // the 8-fold symmetry and s3 for the 4-fold symmetry
@@ -2411,6 +2592,46 @@ namespace ChronusQ {
 
         n4 = basisSet2_.shells[s4].size(); // Size of Shell 4
         shell_atoms[3] = basisSet2_.mapSh2Cen[s4]; // Atomic center of shell 4
+ 
+        // ----------- Quartet-level screening test (Horn eq. 21a) -----------
+        if (screen) {
+          // Shell-block density norm for shells (K,L)
+          const double D_KL = ShBlkNorms[s3 + s4*snShell];   // ket-side (basisSet2_)
+
+          double D_NM_KL = 0.0;
+          if (sameBasisSet12) {
+            // Same-basis: full gradient density weight, eq. 14
+            //   D = 4 D_NM D_KL + D_NK D_ML + D_NL D_MK
+            const double D_NL = ShBlkNorms[s1 + s4*nShell];
+            const double D_ML = ShBlkNorms[s2 + s4*snShell];
+            D_NM_KL = 4.0 * D12 * D_KL + D_NK * D_ML + D_NL * D_MK;
+          } else {
+            // Cross-basis (NEO): distinguishable particles -> Coulomb only,
+            // no exchange, no factor of 4. Energy-gradient weight is
+            //   D = D_NM(bra) * D_KL(ket)
+            D_NM_KL = D12 * D_KL;
+          }
+
+          const double Q34 = Q2[s3 + s4*snShell];
+          const double R34 = R2[s3 + s4*snShell];
+
+          // n1n2n3n4 * degeneracy (mirrors contraction weight, incl.
+          // s12_34_deg = 2 for cross-basis)
+          const double s12d = (s1 == s2) ? 1.0 : 2.0;
+          const double s34d = (s3 == s4) ? 1.0 : 2.0;
+          double s1234d = 2.0;
+          if (sameBasisSet12)
+            s1234d = (s1 == s3) ? ((s2 == s4) ? 1.0 : 2.0) : 2.0;
+          const double blockFac =
+              static_cast<double>(n1*n2*n3*n4) * s12d * s34d * s1234d;
+
+          if ((R12 * Q34 + Q12 * R34) * D_NM_KL * blockFac < tpi.threshSchwarz()) {
+        #ifdef _PROFILE_DIRECT_GRAD
+            _prof[thread_id].nQuartetsSkipped++;
+        #endif
+            continue;
+          }
+        }
 
 #ifdef _FULL_DIRECT
 
@@ -2422,9 +2643,14 @@ namespace ChronusQ {
         if (&basisSet_ == &basisSet2_)
           s12_34_deg = (s1 == s3) ? (s2 == s4 ? 1.0 : 2.0) : 2.0;
 
-        // Total degeneracy factor
-        double s1234_deg = s12_deg * s34_deg * s12_34_deg;
+        // Total degeneracy factor and contraction weight
+        double s1234_deg     = s12_deg * s34_deg * s12_34_deg;
+        const double w       = 0.5 * s1234_deg;     // J prefactor
+        const double w_half  = 0.5 * w;             // K prefactor (was 0.5 * w*I)
+#endif
 
+#ifdef _PROFILE_DIRECT_GRAD
+        auto _prof_t0 = _prof_clock::now();
 #endif
 
         engine.compute2<
@@ -2434,17 +2660,29 @@ namespace ChronusQ {
           basisSet2_.shells[s3],
           basisSet2_.shells[s4]);
 
-        // Scale the buffer by the degeneracy factor and store
-        // in infBuffer
-        for(size_t d = 0; d < buf_vec.size(); d++) {
-          if (buf_vec[d] == nullptr) continue;
-          std::transform(
-            buf_vec[d],
-            buf_vec[d] + n1*n2*n3*n4,
-            intBuffer_loc+d*lenIntBuffer,
-            std::bind(std::multiplies<double>(),0.5*s1234_deg,std::placeholders::_1)
-          );
+        // libint internal screening: buf_vec[0] == nullptr signals the whole
+        // derivative set was screened. libint leaves buf_vec[1..11] pointing at
+        // a PREVIOUS quartet (stale). 
+        // Thus here we should skip the entire thing
+        if (buf_vec[0] == nullptr) {
+#ifdef _PROFILE_DIRECT_GRAD
+          _prof[thread_id].nQuartetsSkipped++;
+#endif
+          continue;
         }
+
+#ifdef _PROFILE_DIRECT_GRAD
+        auto _prof_t1 = _prof_clock::now();
+        auto _prof_t2 = _prof_clock::now();
+        size_t _prof_nNonNull = 0;
+        for (size_t d = 0; d < buf_vec.size(); d++)
+          if (buf_vec[d] != nullptr) _prof_nNonNull++;
+        _prof[thread_id].tCompute2         += std::chrono::duration<double>(_prof_t1 - _prof_t0).count();
+        _prof[thread_id].tScale            += std::chrono::duration<double>(_prof_t2 - _prof_t1).count();
+        _prof[thread_id].nQuartetsVisited  += 1;
+        _prof[thread_id].nDerivBufsNonNull += _prof_nNonNull;
+        _prof[thread_id].nDerivIntegrals   += _prof_nNonNull * n1*n2*n3*n4;
+#endif
 
         size_t b1,b2,b3,b4;
         double *Xp1, *Xp2;
@@ -2469,8 +2707,6 @@ namespace ChronusQ {
         // Thread local storage for this contraction
         auto& AX_Grad_loc = AX_loc[shell_atoms[iSh]*3 + xyz];
 
-        // Portion of the integral buffer for this gradient
-        double* intBuffer_Grad_loc = intBuffer_loc + iGrad*lenIntBuffer;
 
         // loop over matrices in contraction
         for(auto iMat = 0; iMat < nMat; iMat++) {
@@ -2484,17 +2720,17 @@ namespace ChronusQ {
             for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++) {
               // Cache i,j variables
               b1 = bf1 + nBasis*bf2;
-              X1 = *reinterpret_cast<double*>(gradList[iMat].X  + b1);
+              X1 = w * (*reinterpret_cast<double*>(gradList[iMat].X  + b1));
               Xp1 = reinterpret_cast<double*>(AX_Grad_loc[iMat] + b1);
             for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++)
             for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++) {
 
-              // J(1,2) += I * X(4,3)
-              *Xp1 += *GetRealPtr(gradList[iMat].X,bf4,bf3,snBasis) * intBuffer_Grad_loc[ijkl];
+              // J(1,2) += w * I * X(4,3)
+              *Xp1 += w * (*GetRealPtr(gradList[iMat].X,bf4,bf3,snBasis)) * buff[ijkl];
 
-              // J(4,3) += I * X(1,2)
+              // J(4,3) += w * I * X(1,2)   (w already baked into X1)
               if (&basisSet_ == &basisSet2_)
-                *GetRealPtr(AX_Grad_loc[iMat],bf4,bf3,nBasis) +=  X1 * intBuffer_Grad_loc[ijkl];
+                *GetRealPtr(AX_Grad_loc[iMat],bf4,bf3,nBasis) += X1 * buff[ijkl];
 
               // J(2,1) and J(3,4) are handled on symmetrization after
               // contraction
@@ -2513,24 +2749,22 @@ namespace ChronusQ {
                 b1 = bf1 + bf3*nBasis;
                 b2 = bf2 + bf3*nBasis;
 
-                T1 = 0.5 * SmartConj(gradList[iMat].X[b1]);
-                T2 = 0.5 * SmartConj(gradList[iMat].X[b2]);
+                T1 = w_half * SmartConj(gradList[iMat].X[b1]);
+                T2 = w_half * SmartConj(gradList[iMat].X[b2]);
 
               for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++) { 
 
-                // Indicies are swapped here to loop over contiguous memory
-                  
-                // K(1,3) += 0.5 * I * X(2,4) = 0.5 * I * CONJ(X(4,2)) (**HER**)
-                AX_Grad_loc[iMat][b1]           += 0.5 * SmartConj(gradList[iMat].X[bf4+nBasis*bf2]) * intBuffer_Grad_loc[ijkl];
+                // K(1,3) += w_half * I * X(2,4)  =  w_half * I * CONJ(X(4,2))
+                AX_Grad_loc[iMat][b1]               += w_half * SmartConj(gradList[iMat].X[bf4+nBasis*bf2]) * buff[ijkl];
 
-                // K(4,2) += 0.5 * I * X(3,1) = 0.5 * I * CONJ(X(1,3)) (**HER**)
-                AX_Grad_loc[iMat][bf4 + bf2*nBasis] += T1 * intBuffer_Grad_loc[ijkl];
+                // K(4,2) += w_half * I * X(3,1)  =  w_half * I * CONJ(X(1,3))   (w_half in T1)
+                AX_Grad_loc[iMat][bf4 + bf2*nBasis] += T1 * buff[ijkl];
 
-                // K(4,1) += 0.5 * I * X(3,2) = 0.5 * I * CONJ(X(2,3)) (**HER**)
-                AX_Grad_loc[iMat][bf4 + bf1*nBasis] += T2 * intBuffer_Grad_loc[ijkl];
+                // K(4,1) += w_half * I * X(3,2)  =  w_half * I * CONJ(X(2,3))   (w_half in T2)
+                AX_Grad_loc[iMat][bf4 + bf1*nBasis] += T2 * buff[ijkl];
 
-                // K(2,3) += 0.5 * I * X(1,4) = 0.5 * I * CONJ(X(4,1)) (**HER**)
-                AX_Grad_loc[iMat][b2]           += 0.5 * SmartConj(gradList[iMat].X[bf4+nBasis*bf1]) * intBuffer_Grad_loc[ijkl];
+                // K(2,3) += w_half * I * X(1,4)  =  w_half * I * CONJ(X(4,1))
+                AX_Grad_loc[iMat][b2]               += w_half * SmartConj(gradList[iMat].X[bf4+nBasis*bf1]) * buff[ijkl];
 
               } // l loop
               } // ijk
@@ -2547,6 +2781,13 @@ namespace ChronusQ {
 
         } // Gradient components
 
+#ifdef _PROFILE_DIRECT_GRAD
+        auto _prof_t3 = _prof_clock::now();
+        _prof[thread_id].tContraction += std::chrono::duration<double>(_prof_t3 - _prof_t2).count();
+        _prof[thread_id].nJOps        += _prof_nNonNull * n1*n2*n3*n4 * _prof_jFactor;
+        _prof[thread_id].nKOps        += _prof_nNonNull * n1*n2*n3*n4 * _prof_kFactor;
+#endif
+
       } // s4
       } // s3
 
@@ -2555,38 +2796,143 @@ namespace ChronusQ {
     
     } // omp parallel
 
-    MatsT* SCR = CQMemManager::get().malloc<MatsT>(nBasis * nBasis);
-    for( auto iGrad = 0; iGrad < nTotGrad; iGrad++ )
-    for( auto iMat = 0; iMat < nMat;  iMat++ ) 
-    for( auto iTh  = 0; iTh < nThreads; iTh++) {
+#ifdef _PROFILE_DIRECT_GRAD
+    _prof_t_parallel_end = _prof_clock::now();
+#endif
 
-      if( cList[iGrad][iMat].HER ) {
+    // Post-parallel reduction + symmetrization
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(size_t iGrad = 0ul; iGrad < nTotGrad; iGrad++)
+    for(size_t iMat  = 0ul; iMat  < nMat;     iMat++ ) {
 
-        MatAdd('N','C',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][iGrad][iMat],
-          nBasis,MatsT(0.5),AXthreads[iTh][iGrad][iMat],nBasis,SCR,nBasis);
+      MatsT* __restrict__ out = cList[iGrad][iMat].AX;
 
-        if( nThreads != 1 )
-          MatAdd('N','N',nBasis,nBasis,MatsT(1.),SCR,nBasis,MatsT(1.), cList[iGrad][iMat].AX,nBasis,cList[iGrad][iMat].AX,nBasis);
-        else
-          SetMat('N',nBasis,nBasis,MatsT(1.),SCR,nBasis,cList[iGrad][iMat].AX,nBasis);
-
-      } else {
-
-        if( nThreads != 1 )
-          MatAdd('N','N',nBasis,nBasis,MatsT(0.5),AXthreads[iTh][iGrad][iMat],nBasis,
-            MatsT(1.), cList[iGrad][iMat].AX,nBasis,cList[iGrad][iMat].AX,nBasis);
-        else 
-          blas::scal(nBasis*nBasis,MatsT(0.5),cList[iGrad][iMat].AX,1);
-
+      // Sum thread-local contributions into 'out'
+      if (nThreads > 1) {
+        for (size_t iThread = 0; iThread < nThreads; iThread++) {
+          const MatsT* __restrict__ src = AXthreads[iThread][iGrad][iMat];
+          for (size_t k = 0; k < nBasis*nBasis; k++) out[k] += src[k];
+        }
       }
 
-    };
-    CQMemManager::get().free(SCR);
+      // Finalize
+      if (cList[iGrad][iMat].HER) {
+        // In-place hermitize: out := 0.5 * (out + out^H)
+        for (size_t j = 0; j < nBasis; j++) {
+          // Diagonal: zero out imaginary part for complex
+          MatsT d = out[j + nBasis*j];
+          out[j + nBasis*j] = MatsT(0.5) * (d + SmartConj(d));
+          // Off-diagonal pair (i,j) and (j,i) updated together
+          for (size_t i = j+1; i < nBasis; i++) {
+            MatsT a = out[i + nBasis*j];   // (i,j)
+            MatsT b = out[j + nBasis*i];   // (j,i)
+            out[i + nBasis*j] = MatsT(0.5) * (a + SmartConj(b));
+            out[j + nBasis*i] = MatsT(0.5) * (b + SmartConj(a));
+          }
+        }
+      } else {
+        // In-place scale by 0.5
+        for (size_t k = 0; k < nBasis*nBasis; k++) out[k] *= MatsT(0.5);
+      }
+    }
 
-    CQMemManager::get().free(intBuffer);
-    if(AXRaw != nullptr) CQMemManager::get().free(AXRaw);
+    if (AXRaw          != nullptr) CQMemManager::get().free(AXRaw);
+    if (ShBlkNorms_raw != nullptr) CQMemManager::get().free(ShBlkNorms_raw);
+    if (ShBlkNorms1_raw != nullptr) CQMemManager::get().free(ShBlkNorms1_raw);
+
+#ifdef CQ_ENABLE_MPI
+    // Combine gradient-Fock contributions across MPI ranks onto root.
+    // The hermitization above is linear, so summing the locally-hermitized
+    // partials equals hermitizing the global sum.
+    if (mpiSize > 1) {
+      MatsT* mpiScr = nullptr;
+      if (mpiRank == 0) mpiScr = CQMemManager::get().malloc<MatsT>(nBasis*nBasis);
+      for (size_t iGrad = 0; iGrad < nTotGrad; iGrad++)
+      for (size_t iMat  = 0; iMat  < nMat;     iMat++) {
+        MPIReduce(cList[iGrad][iMat].AX, nBasis*nBasis, mpiScr, 0, comm);
+        if (mpiRank == 0) std::copy_n(mpiScr, nBasis*nBasis, cList[iGrad][iMat].AX);
+      }
+      if (mpiRank == 0) CQMemManager::get().free(mpiScr);
+    }
+#endif
+    
     // Turn threads for LA back on
     SetLAThreads(LAThreads);
+
+#ifdef _PROFILE_DIRECT_GRAD
+    auto _prof_t_end = _prof_clock::now();
+
+    if (mpiRank == 0) {
+      DirectGradProfile total;
+      double tMaxC2 = 0.0, tMinC2 =  std::numeric_limits<double>::infinity();
+      double tMaxSc = 0.0, tMinSc =  std::numeric_limits<double>::infinity();
+      double tMaxCt = 0.0, tMinCt =  std::numeric_limits<double>::infinity();
+      for (auto& p : _prof) {
+        total.nQuartetsVisited  += p.nQuartetsVisited;
+        total.nQuartetsSkipped  += p.nQuartetsSkipped;
+        total.nDerivBufsNonNull += p.nDerivBufsNonNull;
+        total.nDerivIntegrals   += p.nDerivIntegrals;
+        total.nJOps             += p.nJOps;
+        total.nKOps             += p.nKOps;
+        total.tCompute2         += p.tCompute2;
+        total.tScale            += p.tScale;
+        total.tContraction      += p.tContraction;
+        tMaxC2 = std::max(tMaxC2, p.tCompute2);    tMinC2 = std::min(tMinC2, p.tCompute2);
+        tMaxSc = std::max(tMaxSc, p.tScale);       tMinSc = std::min(tMinSc, p.tScale);
+        tMaxCt = std::max(tMaxCt, p.tContraction); tMinCt = std::min(tMinCt, p.tContraction);
+      }
+
+      using sec = std::chrono::duration<double>;
+      double tTotal     = sec(_prof_t_end          - _prof_t_start).count();
+      double tSetup     = sec(_prof_t_setup_end    - _prof_t_start).count();
+      double tParallel  = sec(_prof_t_parallel_end - _prof_t_setup_end).count();
+      double tReduction = sec(_prof_t_end          - _prof_t_parallel_end).count();
+
+      auto pct = [&](double t){ return tTotal > 0.0 ? 100.0*t/tTotal : 0.0; };
+      auto rat = [](double a, double b){ return b > 1e-12 ? a/b : 0.0; };
+      auto gflops = [](size_t ops, double t){
+        return t > 1e-12 ? (2.0 * static_cast<double>(ops) / t) * 1e-9 : 0.0;
+      };
+
+      std::cout << "\n========================= directScaffoldGrad profile =========================\n";
+      std::cout << std::fixed << std::setprecision(4);
+      std::cout << "  Threads: " << nThreads
+                << "    MPI ranks: " << mpiSize << " (rank " << mpiRank << ")"
+                << "    screen: " << (screen ? "ON" : "OFF");
+      std::cout << "\n";
+      if (screen)
+        std::cout << "    threshSchwarz: " << std::scientific
+                  << std::setprecision(2) << tpi.threshSchwarz()
+                  << std::fixed << std::setprecision(4);
+      std::cout << "\n";
+      std::cout << "\n  --- wall time breakdown -----------------------------------------------------\n";
+      std::cout << "    total:                " << std::setw(12) << tTotal     << " s\n";
+      std::cout << "    setup:                " << std::setw(12) << tSetup     << " s ("
+                << std::setw(7) << pct(tSetup)     << "%)\n";
+      std::cout << "    parallel region:      " << std::setw(12) << tParallel  << " s ("
+                << std::setw(7) << pct(tParallel)  << "%)\n";
+      std::cout << "    reduction/symmetrize: " << std::setw(12) << tReduction << " s ("
+                << std::setw(7) << pct(tReduction) << "%)\n";
+
+      std::cout << "\n  --- counters (aggregated over threads) --------------------------------------\n";
+      std::cout << "    quartets visited:        " << std::setw(18) << total.nQuartetsVisited  << "\n";
+      std::cout << "    quartets skipped:        " << std::setw(18) << total.nQuartetsSkipped;
+      if (total.nQuartetsVisited + total.nQuartetsSkipped > 0)
+        std::cout << "  (skip rate: "
+                  << 100.0*total.nQuartetsSkipped/(total.nQuartetsVisited+total.nQuartetsSkipped)
+                  << "%)";
+      std::cout << "\n";
+      std::cout << "    deriv bufs computed:     " << std::setw(18) << total.nDerivBufsNonNull
+                << "  (out of " << 12*total.nQuartetsVisited
+                << ", " << (total.nQuartetsVisited > 0 ?
+                            100.0*total.nDerivBufsNonNull/(12.0*total.nQuartetsVisited) : 0.0)
+                << "%)\n";
+      std::cout << "    deriv integrals (ERIs):  " << std::setw(18) << total.nDerivIntegrals   << "\n";
+      std::cout << "    J ops (FMAs):            " << std::setw(18) << total.nJOps             << "\n";
+      std::cout << "    K ops (FMAs):            " << std::setw(18) << total.nKOps             << "\n";
+      std::cout << "==============================================================================\n\n";
+    }
+#endif
 
   }
 

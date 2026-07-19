@@ -64,6 +64,9 @@ template <typename MatsT, typename IntsT>
       tau = std::make_shared<cqmatrix::Matrix<MatsT>>(NB);
     std::fill_n(tau->pointer(), NB*NB, MatsT(0.));
 
+    // Compute tau matrix on root process
+    if( MPIRank(comm) == 0 ) {
+
     size_t numQProt  = this->molecule_.atomsQ.size();
     size_t NBPerProt = NB/numQProt;
     for (size_t iProt = 0; iProt < numQProt; iProt++) {
@@ -89,6 +92,14 @@ template <typename MatsT, typename IntsT>
     
 #ifdef __DEBUGTPB__
     prettyPrintSmart(std::cout,"Tau Matrix", tau->pointer(),NB,NB,NB);
+#endif
+    }
+
+#ifdef CQ_ENABLE_MPI
+  // Broadcast the tau matrix to all MPI processes
+  if( MPISize(comm) > 1 ) {
+    MPIBCast(tau->pointer(),NB*NB,0,comm);
+  }
 #endif
   }
 
@@ -188,9 +199,13 @@ template <typename MatsT, typename IntsT>
   template <typename M, enable_if_dcomplex<M>>
   cqmatrix::PauliSpinorMatrices<MatsT> SingleSlater<MatsT, IntsT>::getTimeDerDen(bool includeTau) {
 
-    if(includeTau and !tau)           CErr("Tau should be initialized and computed");
-      
     size_t NB = basisSet().nBasis;
+
+    if (MPIRank(comm) != 0)    
+      return cqmatrix::PauliSpinorMatrices<MatsT>(NB, onePDMOrtho->hasXY(), onePDMOrtho->hasZ());
+
+    if(includeTau and !tau)  
+      CErr("Tau should be initialized and computed");
       
     // Transfroma from spinor form (S/Z) to spin-block form (alpha/beta)
     std::vector<cqmatrix::Matrix<dcomplex>> onePDMOrthoAB     = onePDMOrtho->template spinGatherToBlocks<dcomplex>(false);
@@ -261,25 +276,29 @@ template <typename MatsT, typename IntsT>
   template <typename M, enable_if_dcomplex<M>>
   void SingleSlater<MatsT,IntsT>::RK4Propagation(bool includeTau, double dt, bool increment, EMPerturbation& pert_tp5, EMPerturbation& pert_t1){
 
+
     size_t NB  = basisSet().nBasis;
     cqmatrix::PauliSpinorMatrices<MatsT> onePDMOrthoSave = *onePDMOrtho;
 
-    if(includeTau){
-      if(!tau) CErr("Tau should be initialized and computed");
-      // Convert tau matrix from ao basis to orthonormal basis 
-      if(!tauOrtho) tauOrtho = std::make_shared<cqmatrix::Matrix<MatsT>>(NB);
-      *(tauOrtho) = orthoSpinor->nonortho2ortho(*tau);
-    }
+    // Compute orthonormal tau matrix on root process
+    if(MPIRank(comm) == 0) {
+      if(includeTau){
+        if(!tau) CErr("Tau should be initialized and computed");
+        // Convert tau matrix from ao basis to orthonormal basis 
+        if(!tauOrtho) tauOrtho = std::make_shared<cqmatrix::Matrix<MatsT>>(NB);
+          *(tauOrtho) = orthoSpinor->nonortho2ortho(*tau);
+      }
 #ifdef __DEBUGTPB__
     tauOrtho->output(std::cout,"Ortho Tau Matrix",true);
     onePDMOrtho->output(std::cout, "initial P(t)", true);
 #endif
+    }
 
     // =========================================================================================
     // Compute K1:
     // =========================================================================================
   
-    // Compute k1 = dP(t)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
+    // Compute k1 = dP(t)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z) on root process
     cqmatrix::PauliSpinorMatrices<MatsT> k1 = getTimeDerDen(includeTau);
 #ifdef __DEBUGTPB__
     k1.output(std::cout, "k1", true);
@@ -293,8 +312,15 @@ template <typename MatsT, typename IntsT>
 
     // Compute P^(k1) = P(t) + 0.5 * Δt * k1
     *onePDMOrtho += k1 * MatsT(0.5*dt);
-    // Obtain new fock matrix at P^(k1)
     ortho2aoDen();
+    // Broadcast the density to all MPI processes
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(comm) > 1 ) {
+      for(MatsT *mat : this->onePDM->SZYXPointers())
+        MPIBCast(mat,NB*NB,0,comm);
+    }
+#endif
+    // Obtain new fock matrix at P^(k1)
     formFock(pert_tp5, increment);
     ao2orthoFock();
     // Compute k2 = dP^(k1)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
@@ -316,6 +342,13 @@ template <typename MatsT, typename IntsT>
     *onePDMOrtho += k2 * MatsT(0.5*dt);
     // Obtain new fock matrix at P^(k2)
     ortho2aoDen();
+    // Broadcast the density to all MPI processes
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(comm) > 1 ) {
+      for(MatsT *mat : this->onePDM->SZYXPointers())
+        MPIBCast(mat,NB*NB,0,comm);
+    }
+#endif
     formFock(pert_tp5, increment);
     ao2orthoFock();
     // Compute k3 = dP^(k2)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
@@ -337,6 +370,12 @@ template <typename MatsT, typename IntsT>
     *onePDMOrtho += k3 * MatsT(dt);
     // Obtain new fock matrix at P^(k3)
     ortho2aoDen();
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(comm) > 1 ) {
+      for(MatsT *mat : this->onePDM->SZYXPointers())
+        MPIBCast(mat,NB*NB,0,comm);
+    }
+#endif
     formFock(pert_t1, increment);
     ao2orthoFock();
     // Compute k4 = dP^(k3)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
@@ -383,6 +422,8 @@ template <typename MatsT, typename IntsT>
 template <typename M, enable_if_dcomplex<M>>
 void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt, bool doMagnus2, EMPerturbation& pert_t1) {
   
+  ROOT_ONLY(comm);
+
   size_t NB  = basisSet().nBasis;
 
   // Gather orthonormal density from S/Z to A/B blocks

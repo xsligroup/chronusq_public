@@ -63,7 +63,13 @@ namespace ChronusQ {
       if (std::is_same<IntsT,dcomplex>::value)
         CErr("GIAO gradients NYI!");
 
-      directScaffoldGrad(comm, screen, cList);
+      // Hackily turns off screeing if threshSchwarz_ is 0.0
+      DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
+      if (tpi.threshSchwarz() == 0.0) {
+        directScaffoldGrad(comm, false, cList);
+      } else {
+        directScaffoldGrad(comm, screen, cList);
+      }
     };
 
     void directScaffoldGrad(

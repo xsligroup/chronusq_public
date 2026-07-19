@@ -28,6 +28,8 @@ namespace ChronusQ {
 
   void MolecularDynamics::createMDDataSets(Molecule& mol, std::shared_ptr<SingleSlaterBase> ss){
 
+    ROOT_ONLY(this->mpiComm);
+
     size_t maxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
 
     savFile.createGroup("MD");
@@ -62,44 +64,46 @@ namespace ChronusQ {
 
   void MolecularDynamics::saveState(Molecule& mol, std::shared_ptr<SingleSlaterBase> ss){
 
-    std::cout << "  *** MD Saving step #"<< curState.iStep <<"( t = "<< curState.time <<" au) to binary file ***" << std::endl;
-    size_t maxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
-    savFile.safeWriteData("MD/MAXSAVEPOINTS", &(maxPoints), {1});
-    savFile.safeWriteData("MD/LASTSAVEPOINT", &(curState.lastSavePoint),  {1});
-    
-    // If this is a gradient step, update "LASTGRADIENTSAVEPOINT" to allow full gradient-step restarting
-    if (mdOptions.nMidpointFockSteps == 0 || curState.iStep % mdOptions.nMidpointFockSteps == 0 )
-      curState.lastGradientSavePoint = curState.lastSavePoint;
-    savFile.safeWriteData("MD/LASTGRADIENTSAVEPOINT", &(curState.lastGradientSavePoint),  {1});
-    
-    savFile.partialWriteData("MD/STEP", &curState.iStep,            {curState.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("MD/TIME", &curState.time,             {curState.lastSavePoint},{1},{0},{1});
+    if( MPIRank(this->mpiComm) == 0 ) {
+      std::cout << "  *** MD Saving step #"<< curState.iStep <<"( t = "<< curState.time <<" au) to binary file ***" << std::endl;
+      size_t maxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
+      savFile.safeWriteData("MD/MAXSAVEPOINTS", &(maxPoints), {1});
+      savFile.safeWriteData("MD/LASTSAVEPOINT", &(curState.lastSavePoint),  {1});
+      
+      // If this is a gradient step, update "LASTGRADIENTSAVEPOINT" to allow full gradient-step restarting
+      if (mdOptions.nMidpointFockSteps == 0 || curState.iStep % mdOptions.nMidpointFockSteps == 0 )
+        curState.lastGradientSavePoint = curState.lastSavePoint;
+      savFile.safeWriteData("MD/LASTGRADIENTSAVEPOINT", &(curState.lastGradientSavePoint),  {1});
+      
+      savFile.partialWriteData("MD/STEP", &curState.iStep,            {curState.lastSavePoint},{1},{0},{1});
+      savFile.partialWriteData("MD/TIME", &curState.time,             {curState.lastSavePoint},{1},{0},{1});
 
-    savFile.safeWriteData("MD/ETOT0",    &totalEnergy0,              {1});
-    savFile.safeWriteData("MD/ETOTPREV", &previousTotalEnergy,       {1});
-    savFile.partialWriteData("MD/ETOT",  &currentTotalEnergy,        {curState.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("MD/EKIN",  &nuclearKineticEnergy,      {curState.lastSavePoint},{1},{0},{1});
-    savFile.partialWriteData("MD/EPOT",  &electronicPotentialEnergy, {curState.lastSavePoint},{1},{0},{1});
+      savFile.safeWriteData("MD/ETOT0",    &totalEnergy0,              {1});
+      savFile.safeWriteData("MD/ETOTPREV", &previousTotalEnergy,       {1});
+      savFile.partialWriteData("MD/ETOT",  &currentTotalEnergy,        {curState.lastSavePoint},{1},{0},{1});
+      savFile.partialWriteData("MD/EKIN",  &nuclearKineticEnergy,      {curState.lastSavePoint},{1},{0},{1});
+      savFile.partialWriteData("MD/EPOT",  &electronicPotentialEnergy, {curState.lastSavePoint},{1},{0},{1});
 
-    size_t len3D    = mol.nAtoms*3;
-    size_t offset3D = curState.lastSavePoint*len3D;
-    std::vector<double> totalCoordinates = mol.getTotalCoordinates();
-    savFile.partialWriteData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
+      size_t len3D    = mol.nAtoms*3;
+      size_t offset3D = curState.lastSavePoint*len3D;
+      std::vector<double> totalCoordinates = mol.getTotalCoordinates();
+      savFile.partialWriteData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
 
-    std::vector<double> forces(gradient.size());
-    std::transform(gradient.begin(), gradient.end(), forces.begin(), [](double coord) { return -coord; });
-    savFile.partialWriteData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
+      std::vector<double> forces(gradient.size());
+      std::transform(gradient.begin(), gradient.end(), forces.begin(), [](double coord) { return -coord; });
+      savFile.partialWriteData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
 
-    savFile.partialWriteData("MD/VELOCITY_FULLSTEP", &velocity[0], {offset3D},{len3D},{0},{len3D});
+      savFile.partialWriteData("MD/VELOCITY_FULLSTEP", &velocity[0], {offset3D},{len3D},{0},{len3D});
 
-    if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
-      writeOnePDM<double,double>(ss_t);
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )
-      writeOnePDM<dcomplex,double>(ss_t);
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )
-      writeOnePDM<dcomplex,dcomplex>(ss_t);
-    else
-      CErr("Unsuccessful Cast in MolecularDynamics::saveState!");
+      if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
+        writeOnePDM<double,double>(ss_t);
+      else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )
+        writeOnePDM<dcomplex,double>(ss_t);
+      else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )
+        writeOnePDM<dcomplex,dcomplex>(ss_t);
+      else
+        CErr("Unsuccessful Cast in MolecularDynamics::saveState!");
+    }
 
     curState.lastSavePoint++;
     
@@ -107,58 +111,103 @@ namespace ChronusQ {
 
   void MolecularDynamics::restoreState(Molecule& mol, std::shared_ptr<SingleSlaterBase> ss) {
    
+    if( MPIRank(this->mpiComm) == 0 ) {
+      size_t maxSavePoints, lastSavePoint;
+      savFile.readData("MD/MAXSAVEPOINTS", &maxSavePoints);
+      size_t expectedMaxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
+      if ( maxSavePoints != expectedMaxPoints ) CErr("Mismatched requested and saved propagation length!");
+      
+      // Restart from full gradient steps
+      savFile.readData("MD/LASTGRADIENTSAVEPOINT", &lastSavePoint);
 
-    size_t maxSavePoints, lastSavePoint;
-    savFile.readData("MD/MAXSAVEPOINTS", &maxSavePoints);
-    size_t expectedMaxPoints = (mdOptions.saveAllGeometry) ? mdOptions.nNuclearSteps*mdOptions.nMidpointFockSteps : mdOptions.nNuclearSteps;
-    if ( maxSavePoints != expectedMaxPoints ) CErr("Mismatched requested and saved propagation length!");
-    
-    // Restart from full gradient steps
-    savFile.readData("MD/LASTGRADIENTSAVEPOINT", &lastSavePoint);
+      if (mdOptions.restoreFromNuclearStep < 0) {
+        curState.lastSavePoint = lastSavePoint;
+      } else {
+        curState.lastSavePoint = mdOptions.restoreFromNuclearStep;
+        if(mdOptions.restoreFromNuclearStep > lastSavePoint) CErr("Cannot restart from a not-yet calculated time-step!");
+      } 
 
-    if (mdOptions.restoreFromNuclearStep < 0) {
-      curState.lastSavePoint = lastSavePoint;
-    } else {
-      curState.lastSavePoint = mdOptions.restoreFromNuclearStep;
-      if(mdOptions.restoreFromNuclearStep > lastSavePoint) CErr("Cannot restart from a not-yet calculated time-step!");
-    } 
+      curState.lastGradientSavePoint = curState.lastSavePoint;
+      
 
-    curState.lastGradientSavePoint = curState.lastSavePoint;
-    
+      savFile.partialReadData("MD/STEP", &curState.iStep, {curState.lastSavePoint}, {1}, {0}, {1});
+      savFile.partialReadData("MD/TIME", &curState.time,  {curState.lastSavePoint}, {1}, {0}, {1});
+      curState.ptime = curState.time;
 
-    savFile.partialReadData("MD/STEP", &curState.iStep, {curState.lastSavePoint}, {1}, {0}, {1});
-    savFile.partialReadData("MD/TIME", &curState.time,  {curState.lastSavePoint}, {1}, {0}, {1});
-    curState.ptime = curState.time;
+      std::cout << "  *** MD Reading step #"<< curState.iStep <<"( t = "<< curState.time <<" au) to binary file ***" << std::endl;
 
-    std::cout << "  *** MD Reading step #"<< curState.iStep <<"( t = "<< curState.time <<" au) to binary file ***" << std::endl;
+      savFile.readData("MD/ETOT0",       &totalEnergy0);
+      savFile.readData("MD/ETOTPREV",    &previousTotalEnergy);
+      savFile.partialReadData("MD/ETOT", &currentTotalEnergy,        {curState.lastSavePoint},{1},{0},{1});
+      savFile.partialReadData("MD/EKIN", &nuclearKineticEnergy,      {curState.lastSavePoint},{1},{0},{1});
+      savFile.partialReadData("MD/EPOT", &electronicPotentialEnergy, {curState.lastSavePoint},{1},{0},{1});
 
-    savFile.readData("MD/ETOT0",       &totalEnergy0);
-    savFile.readData("MD/ETOTPREV",    &previousTotalEnergy);
-    savFile.partialReadData("MD/ETOT", &currentTotalEnergy,        {curState.lastSavePoint},{1},{0},{1});
-    savFile.partialReadData("MD/EKIN", &nuclearKineticEnergy,      {curState.lastSavePoint},{1},{0},{1});
-    savFile.partialReadData("MD/EPOT", &electronicPotentialEnergy, {curState.lastSavePoint},{1},{0},{1});
+      size_t len3D    = mol.nAtoms*3;
+      size_t offset3D = curState.lastSavePoint*len3D;
+      std::vector<double> totalCoordinates(len3D);
+      savFile.partialReadData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
+      mol.setCoordinates(totalCoordinates);
 
-    size_t len3D    = mol.nAtoms*3;
-    size_t offset3D = curState.lastSavePoint*len3D;
-    std::vector<double> totalCoordinates(len3D);
-    savFile.partialReadData("MD/TRAJECTORY", &totalCoordinates[0], {offset3D},{len3D},{0},{len3D});
-    mol.setCoordinates(totalCoordinates);
+      std::vector<double> forces(gradient.size());
+      savFile.partialReadData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
+      std::transform(forces.begin(), forces.end(), gradient.begin(), [](double coord) { return -coord; });
 
-    std::vector<double> forces(gradient.size());
-    savFile.partialReadData("MD/FORCES", &forces[0], {offset3D},{len3D},{0},{len3D});
-    std::transform(forces.begin(), forces.begin(), gradient.end(), [](double coord) { return -coord; });
+      savFile.partialReadData("MD/VELOCITY_FULLSTEP", &velocity[0],  {offset3D},{len3D},{0},{len3D});
+    }
 
-    savFile.partialReadData("MD/VELOCITY_FULLSTEP", &velocity[0],  {offset3D},{len3D},{0},{len3D});
+#ifdef CQ_ENABLE_MPI
+    if( MPISize(this->mpiComm) > 1 ) {
+      size_t nCoord = mol.nAtoms * 3;
 
-    // Restore time dependent density
-    if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )
-      readOnePDM<double,double>(ss_t);
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )
-      readOnePDM<dcomplex,double>(ss_t);
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )
-      readOnePDM<dcomplex,dcomplex>(ss_t);
-    else
-      CErr("Unsuccessful Cast in MolecularDynamics::restoreState!");
+      // Ensure vectors are properly sized on all ranks before broadcast
+      std::vector<double> totalCoordinates(nCoord, 0.);
+      if( MPIRank(this->mpiComm) == 0 )
+        totalCoordinates = mol.getTotalCoordinates();
+      gradient.resize(nCoord, 0.);
+      velocity.resize(nCoord, 0.);
+
+      MPIBCast(&(curState.lastSavePoint),        1,      0, this->mpiComm);
+      MPIBCast(&(curState.lastGradientSavePoint),1,      0, this->mpiComm);
+      MPIBCast(&(curState.iStep),                1,      0, this->mpiComm);
+      MPIBCast(&(curState.time),                 1,      0, this->mpiComm);
+      MPIBCast(&(curState.ptime),                1,      0, this->mpiComm);
+      MPIBCast(&(totalEnergy0),                  1,      0, this->mpiComm);
+      MPIBCast(&(previousTotalEnergy),           1,      0, this->mpiComm);
+      MPIBCast(&(currentTotalEnergy),            1,      0, this->mpiComm);
+      MPIBCast(&(nuclearKineticEnergy),          1,      0, this->mpiComm);
+      MPIBCast(&(electronicPotentialEnergy),     1,      0, this->mpiComm);
+      MPIBCast(totalCoordinates.data(),          nCoord, 0, this->mpiComm);
+      MPIBCast(gradient.data(),                  nCoord, 0, this->mpiComm);
+      MPIBCast(velocity.data(),                  nCoord, 0, this->mpiComm);
+      if( MPIRank(this->mpiComm) != 0 ) mol.setCoordinates(totalCoordinates);
+    }
+    #endif
+
+    // Restore 1PDM: rank 0 reads from file, then setOnePDMAO (MPI collective) broadcasts to all ranks.
+    auto restorePDM = [&](auto ss_typed) {
+      // All ranks: get properly-sized temporary matrices
+      auto onePDMs = ss_typed->getOnePDM();
+
+      // Rank 0 only: overwrite temporaries with data from file
+      if( MPIRank(this->mpiComm) == 0 ) {
+        for( size_t i = 0; i < onePDMs.size(); i++ ) {
+          size_t nBasis = onePDMs[i]->nRows();
+          savFile.partialReadData("MD/1PDM"+std::to_string(i), onePDMs[i]->pointer(),
+              {curState.lastSavePoint*nBasis*nBasis},{nBasis * nBasis}, {0}, {nBasis * nBasis});
+        }
+      }
+
+      using MatrixType = typename std::decay<decltype(*onePDMs[0])>::type;
+      std::vector<MatrixType> tempOnePDMs;
+      tempOnePDMs.reserve(onePDMs.size());
+      for( size_t i = 0; i < onePDMs.size(); i++ )
+        tempOnePDMs.push_back(*onePDMs[i]);
+      ss_typed->setOnePDMAO(tempOnePDMs.data());
+    };
+    if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )           restorePDM(ss_t);
+    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )    restorePDM(ss_t);
+    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )  restorePDM(ss_t);
+    else CErr("Unsuccessful Cast in MolecularDynamics::restoreState!");
 
     mol.update();
     updateBasisIntsHamiltonian();
@@ -304,3 +353,4 @@ void MolecularDynamics::parseVelocityFromInput( Molecule &mol, std::string &velo
   template void MolecularDynamics::readOnePDM<dcomplex, double>(const std::shared_ptr<SingleSlater<dcomplex, double>>);
   template void MolecularDynamics::readOnePDM<dcomplex, dcomplex>(const std::shared_ptr<SingleSlater<dcomplex, dcomplex>>);
 }
+
