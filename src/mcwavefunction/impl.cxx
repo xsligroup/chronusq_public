@@ -43,6 +43,10 @@ namespace ChronusQ {
   template class CIBuilder<dcomplex,double>;
   template class CIBuilder<dcomplex,dcomplex>;
 
+  template class CASHelper<double,double>;
+  template class CASHelper<dcomplex,double>;
+  template class CASHelper<dcomplex,dcomplex>;
+
   template class CASCI<double,double>;
   template class CASCI<dcomplex,double>;
   template class CASCI<dcomplex,dcomplex>;

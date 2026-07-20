@@ -27,6 +27,7 @@
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <detstringmanager.hpp>
 #include <cibuilder/casci.hpp>
+#include <cibuilder/casci/helper.hpp>
 #include <cqlinalg/blas1.hpp>
 #include <cqlinalg/blas3.hpp>
 #include <cqlinalg/blasutil.hpp>
@@ -61,74 +62,30 @@ namespace ChronusQ {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
     
-    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
-
-    // Allocate SCR
-    size_t nSCR = std::max(nStr_a, nStr_b);
-    size_t nThreads = GetNumThreads();
-    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(nSCR * nThreads);
-     
     // empty CI Hamiltonian
     std::fill_n(fullH, nStr_a*nStr_a, MatsT(0.));
+    
+    MatsT *CIHCol = nullptr;
+    
     // Alpha Part for 1C or the whole build for 2C and 4C
-    // NOTE: ex_list_ are row-majored c++ objects 
-    
-    int i, j, k, l, La, Lb, Ka, Kb, Ja, Jb;
-    double signij, signkl;
-    double small_number = std::numeric_limits<double>::epsilon();
-    
-    size_t nStr_a_nThread = nStr_a * nThreads;
-    
-    MatsT *CIHCol = nullptr, *SCR_ith = nullptr;
-    
-    // alpha part
-    
-    // fullH as (Ka, La), CIHCol as a column
-#pragma omp parallel default(shared) private(CIHCol, SCR_ith, La, k, l, Ka, signkl, i, j, Ja, signij)  
-    { 
-      auto iThread = GetThreadID();
-      CIHCol  = fullH + nStr_a * iThread;
-      SCR_ith = SCR   + nSCR * iThread;
-      for (La = iThread; La < nStr_a; La+=nThreads, CIHCol+=nStr_a_nThread) {
-        
-        std::fill_n(SCR_ith, nStr_a, MatsT(0.));
-        const int * exList_La = exList_a->pointerAtDet(La);
-        for (auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_La+=4) {
-          
-          UNPACK_EXCITATIONLIST_4(exList_La, k, l, Ka, signkl);
-	      SCR_ith[Ka] += signkl * hCoreP(k, l);
-         
-          const int * exList_Ka = exList_a->pointerAtDet(Ka);
-	      for (auto Eij = 0ul; Eij < nNZa; Eij++, exList_Ka+=4) {
-             
-            UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
-	        SCR_ith[Ja] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	      }
-        }
-        
-        // passive screening and updating CHCol
-        for (Ka = 0 ; Ka < nStr_a; Ka++) {
-          if (std::abs(SCR_ith[Ka]) > small_number) CIHCol[Ka] = SCR_ith[Ka];
-        }
-      
-      }  // La
-    } 
-    
+    CASHelper<MatsT,IntsT>::buildFullHOneParticle(mcwfn,fullH,exList_a,"hCoreP_Correlated_Space","ERI_Correlated_Space");
+
     if (nC != 1) {
        
 #ifdef _DEBUG_CIBUILDER_CASCI_IMPL
     prettyPrintSmart(std::cout,"HH full CASCI Hamiltonian",fullH, NDet, NDet, NDet);
 #endif
-       CQMemManager::get().free(SCR);
        return;
     } 
-    
+
+    // Allocate SCR
+    size_t nSCR = std::max(nStr_a, nStr_b);
+    MatsT * tmpH  = CQMemManager::get().malloc<MatsT>(nSCR*nSCR);
+     
     // 1C Continued: Expand Alpha Part 
     //    (Ka, La) -> (Ka, Kb, La, Kb) 
     size_t nStr_a2 = nStr_a * nStr_a;
     size_t nStr_b2 = nStr_b * nStr_b;
-    MatsT * tmpH  = CQMemManager::get().malloc<MatsT>(nSCR*nSCR);
     std::copy_n(fullH, nStr_a2, tmpH);
     std::fill_n(fullH, NDet*NDet, MatsT(0.));
     
@@ -139,44 +96,15 @@ namespace ChronusQ {
     // then transpose back to (Ka, Kb, La, Kb) in each last Kb
     size_t lastDimOff = nStr_a2*nStr_b;
     CIHCol = fullH;
-    for (Kb = 0; Kb < nStr_b; Kb++, CIHCol+=lastDimOff) {
+    for (size_t Kb = 0; Kb < nStr_b; Kb++, CIHCol+=lastDimOff) {
       std::copy_n(tmpH, nStr_a2, CIHCol+Kb*nStr_a2); 
       IMatCopy('T', nStr_a, NDet, MatsT(1.), CIHCol, nStr_a, NDet);  
     }
 
-    
     // 1C Continued: build Beta part as (Kb, Lb)
     std::fill_n(tmpH, nStr_b2, MatsT(0.));
-    size_t nStr_b_nThread = nStr_b * nThreads;
-#pragma omp parallel default(shared) private(CIHCol, SCR_ith, Lb, k, l, Kb, signkl, i, j, Jb, signij)  
-    {
-      auto iThread = GetThreadID();
-      CIHCol  = tmpH + nStr_b * iThread;
-      SCR_ith = SCR + nSCR * iThread;
-      for (Lb = iThread; Lb < nStr_b; Lb+=nThreads, CIHCol+=nStr_b_nThread) {
-        
-        std::fill_n(SCR_ith, nStr_b, MatsT(0.));
-        const int * exList_Lb = exList_b->pointerAtDet(Lb);
-        for (auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Lb+=4) {
-          
-          UNPACK_EXCITATIONLIST_4(exList_Lb, k, l, Kb, signkl);
-          SCR_ith[Kb] += signkl * hCoreP(k, l);
-         
-          const int * exList_Kb = exList_b->pointerAtDet(Kb);
-	      for (auto Eij = 0ul; Eij < nNZb; Eij++, exList_Kb+=4) {
-               
-            UNPACK_EXCITATIONLIST_4(exList_Kb, i, j, Jb, signij);
-	        SCR_ith[Jb] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	  
-          }
-        }
-       
-        // passive screening and updating CHCol
-        for (Kb = 0 ; Kb < nStr_b; Kb++) {
-          if (std::abs(SCR_ith[Kb]) > small_number) CIHCol[Kb] = SCR_ith[Kb];
-        }
-      }  // Lb
-    }
+    CASHelper<MatsT,IntsT>::buildFullHOneParticle(mcwfn,tmpH,exList_b,"hCoreP_Correlated_Space","ERI_Correlated_Space");
+
     // 1C Continued: Expand Beta Part 
     //    (Kb, Lb) -> (Ka, Kb, Ka, Lb) 
     
@@ -191,7 +119,7 @@ namespace ChronusQ {
     // then transpose back to (Kb, Ka, Lb, Ka) in each last Ka
     lastDimOff = nStr_b2*nStr_a;
     CIHCol = fullH;
-    for (Ka = 0; Ka < nStr_a; Ka++, CIHCol+=lastDimOff) {
+    for (size_t Ka = 0; Ka < nStr_a; Ka++, CIHCol+=lastDimOff) {
       IMatCopy('T', NDet, nStr_b, MatsT(1.), CIHCol, NDet, nStr_b);  
       MatAdd('N', 'N', nStr_b, nStr_b, MatsT(1.), CIHCol+Ka*nStr_b2, nStr_b,
         MatsT(1.), tmpH, nStr_b, CIHCol+Ka*nStr_b2, nStr_b); 
@@ -201,35 +129,12 @@ namespace ChronusQ {
     // transpose fullH: ((Kb, La, Lb, Ka) -> (Ka, Kb, La, Lb) 
     IMatCopy('T', nStr_b*NDet, nStr_a, MatsT(1.), fullH, nStr_b*NDet, nStr_a);  
 
-    CQMemManager::get().free(SCR, tmpH);
-    
-    // 1C Continued: Alpha-Beta and Beta-Aphla Part 
-#pragma omp parallel for schedule(static) default(shared) \
-  private(CIHCol, Lb, k, l, Kb, signkl, La, i, j, Ka, signij)  
-    for(Lb = 0; Lb < nStr_b; Lb++) {
-      
-      CIHCol = fullH + NDet*(Lb*nStr_a); // La = 0 
-      const int * exList_Lb_head = exList_b->pointerAtDet(Lb);
-      
-      for(La = 0; La < nStr_a; La++, CIHCol+=NDet) {
-         
-        const int * exList_La_head = exList_a->pointerAtDet(La);
-        
-        const int * exList_Lb = exList_Lb_head;
-        for(auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Lb+=4) {
-	
-          UNPACK_EXCITATIONLIST_4(exList_Lb, k, l, Kb, signkl);
-	    
-          const int * exList_La = exList_La_head;
-          for (auto Eij = 0ul; Eij < nNZa; Eij++, exList_La+=4) {
-            
-            UNPACK_EXCITATIONLIST_4(exList_La, i, j, Ka, signij);
-            CIHCol[Ka + Kb*nStr_a] += signij * signkl * moERI(i, j, k, l); 
-          }
-        }
-      }
-    }
-    
+    // Free the memory we used to build the beta part of the matrix
+    CQMemManager::get().free(tmpH);
+
+    // Build the alpha-beta block in place
+    CASHelper<MatsT,IntsT>::buildFullHTwoParticle(mcwfn,fullH,exList_a,exList_b,"ERI_Correlated_Space");
+   
 #ifdef _DEBUG_CIENGINE_CASCI_IMPL
     prettyPrintSmart(std::cout,"HH full CASCI Hamiltonian", fullH, NDet, NDet, NDet);
 #endif
@@ -244,43 +149,11 @@ namespace ChronusQ {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
     
-    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>("ERI_Correlated_Space"));
-
-	// Allocate SCR
-    MatsT SCR;
-
     // empty CI Diagonal Hamiltonian
     std::fill_n(diagH, nStr_a, MatsT(0.));
     // Alpha Part for 1C or the whole build for 2C and 4C
-    
-    int i, j, k, l, La, Lb, Ka, Kb, Ja, Jb;
-    double signij, signkl;
-    double small_number = std::numeric_limits<double>::epsilon();
-    
-#pragma omp parallel for schedule(static) default(shared) private(SCR, La, k, l, Ka, signkl, i, j, Ja, signij)  
-    for (La = 0; La < nStr_a; La++) {
-      
-      const int * exList_La = exList_a->pointerAtDet(La);
-      SCR = MatsT(0.); 
-      for (auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_La+=4) {
-        
-        UNPACK_EXCITATIONLIST_4(exList_La, k, l, Ka, signkl);
-	    if(Ka == La) SCR += signkl * hCoreP(k, l);
-
-        const int * exList_Ka = exList_a->pointerAtDet(Ka);
-	    for (auto Eij = 0ul; Eij < nNZa; Eij++, exList_Ka+=4) {
-            
-          UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
-	      if(Ja == La) SCR += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	    }
-       }
-      
-      // update diagH
-      diagH[La] = SCR;
-    
-    }  // La
-    
+    CASHelper<MatsT,IntsT>::buildDiagHOneParticle(mcwfn,diagH,exList_a,"hCoreP_Correlated_Space","ERI_Correlated_Space");
+  
     if (nC != 1) { 
 #ifdef _DEBUG_CIENGINE_CASCI_IMPL
       prettyPrintSmart(std::cout,"HH full CASCI Hamiltonian",diagH, NDet, 1, NDet);
@@ -290,78 +163,30 @@ namespace ChronusQ {
     // 1C Continued: Expand Alpha Part 
     //    (Ka) -> (Ka, Kb)
     MatsT * dH = diagH + nStr_a;
-    for (Kb = 1; Kb < nStr_b; Kb++, dH+=nStr_a) std::copy_n(diagH, nStr_a, dH);
+    for (size_t Kb = 1; Kb < nStr_b; Kb++, dH+=nStr_a) std::copy_n(diagH, nStr_a, dH);
      
-    MatsT * tmpdH  = CQMemManager::get().malloc<MatsT>(nStr_b);
-
     // 1C Continued: build Beta part
+    MatsT * tmpdH  = CQMemManager::get().malloc<MatsT>(nStr_b);
     std::fill_n(tmpdH, nStr_b, MatsT(0.));
-#pragma omp parallel for schedule(static) default(shared) private(SCR, Lb, k, l, Kb, signkl, i, j, Jb, signij)  
-    for (Lb = 0; Lb < nStr_b; Lb++) {
-      
-      SCR = MatsT(0.); 
-      const int * exList_Lb = exList_b->pointerAtDet(Lb);
-      for (auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Lb+=4) {
-        
-        UNPACK_EXCITATIONLIST_4(exList_Lb, k, l, Kb, signkl);
-	    if(Kb == Lb) SCR += signkl * hCoreP(k, l);
-       
-        const int * exList_Kb = exList_b->pointerAtDet(Kb);
-	    for (auto Eij = 0ul; Eij < nNZb; Eij++, exList_Kb+=4) {
-            
-          UNPACK_EXCITATIONLIST_4(exList_Kb, i, j, Jb, signij);
-	      if(Jb == Lb) SCR += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	    }
-      }
-     
-      // update diagH
-      tmpdH[Lb] = SCR;
-    
-    }  // Lb
-    
+    CASHelper<MatsT,IntsT>::buildDiagHOneParticle(mcwfn,tmpdH,exList_b,"hCoreP_Correlated_Space","ERI_Correlated_Space");
+
     // 1C Continued: Expand Beta Part 
     // transpose diagH: (Ka, Kb) -> (Kb, Ka) 
-    IMatCopy('T', nStr_a, nStr_b, MatsT(1.), diagH, nStr_a, nStr_b);  
+    CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_a,nStr_b,diagH);
     
     // Expand
     dH = diagH;
-    for (Ka = 0; Ka < nStr_a; Ka++)  
-    for (Kb = 0; Kb < nStr_b; Kb++, dH++)
+    for (size_t Ka = 0; Ka < nStr_a; Ka++)  
+    for (size_t Kb = 0; Kb < nStr_b; Kb++, dH++)
       *dH += tmpdH[Kb];
     
     // transpose diagH: (Kb, Ka) -> (Ka, Kb) 
-    IMatCopy('T', nStr_b, nStr_a, MatsT(1.), diagH, nStr_b, nStr_a);  
+    CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_b,nStr_a,diagH);
     
     CQMemManager::get().free(tmpdH);
     
-    // 1C Continued: Alpha-Beta and Beta-Aphla Part 
-    size_t nActEa = mcwfn.MOPartition.nCorrEA;
-    size_t nActEb = mcwfn.MOPartition.nCorrEB;
-#pragma omp parallel for schedule(static) default(shared) \
-  private(dH, Lb, k, l, Kb, signkl, La, i, j, Ka, signij)  
-    for(Lb = 0; Lb < nStr_b; Lb++) {
-      
-      dH = diagH + Lb*nStr_a;
-      const int * exList_Lb_head = exList_b->pointerAtDet(Lb);
-
-      for(La = 0; La < nStr_a;  La++, dH++) {
-        
-        const int * exList_La_head = exList_a->pointerAtDet(La);
-      
-        auto exList_Lb = exList_Lb_head; 
-        for(auto Ekl = 0ul; Ekl < nActEa; Ekl++, exList_Lb+=4) {
-	
-          UNPACK_EXCITATIONLIST_4(exList_Lb, k, l, Kb, signkl);
-          const int * exList_La = exList_La_head; 
-        
-	      for (auto Eij = 0ul; Eij < nActEb; Eij++, exList_La+=4) {
-            
-            UNPACK_EXCITATIONLIST_4(exList_La, i, j, Ka, signij);
-            *dH += signij * signkl * moERI(i, j, k, l); 
-          }
-        }
-      }
-    }
+    CASHelper<MatsT,IntsT>::buildDiagHTwoParticle(mcwfn,diagH,mcwfn.MOPartition.nCorrEA,mcwfn.MOPartition.nCorrEB,exList_a,exList_b,"ERI_Correlated_Space");    
+    
   }; // CASCI::buildDiagH
   
   /*
@@ -373,192 +198,39 @@ namespace ChronusQ {
     size_t nVec, MatsT * C, MatsT * Sigma) {
     
     CASCI_LOOP_INIT(); // check top for variable definitions
-    
-    auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts,MatsT>("hCoreP_Correlated_Space"));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space"));
 
 #ifdef DEBUG_CI_SIGMA
     prettyPrintSmart(std::cout,"HH CASCI Sigma Build -- C", C, NDet, nVec, NDet);
 #endif
     
-    // Allocate SCR
-    size_t nSCR = std::max(nStr_a, nStr_b);
-    size_t nThreads = GetNumThreads();
-    MatsT * SCR  = CQMemManager::get().malloc<MatsT>(nSCR * nThreads);
-
     // empty Sigma
     std::fill_n(Sigma, NDet*nVec, MatsT(0.));
-    // Alpha Part for 1C or the whole build for 2C and 4C
     // NOTE: exList_ are row-majored c++ objects 
-    
-    int i, j, k, l, La, Lb, Ka, Kb, Ja, Jb;
-    double signij, signkl;
-    double small_number = std::numeric_limits<double>::epsilon();
-    
-    MatsT *HC, *Ci, *SCR_ith;
-    
-    // SCR_ith is a row of H instead of a column now
-#pragma omp parallel default(shared) private(HC, Ci, SCR_ith, La, k, l, Ka, signkl, \
-  i, j, Ja, signij, Kb)
-    {
-      auto iThread = GetThreadID();
-      SCR_ith = SCR + nSCR * iThread;
-      for (Ka = iThread; Ka < nStr_a; Ka+=nThreads) {
-      
-        std::fill_n(SCR_ith, nStr_a, MatsT(0.));
-        const int * exList_Ka = exList_a->pointerAtDet(Ka);
-        for (auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_Ka+=4) {
-        
-          UNPACK_EXCITATIONLIST_4(exList_Ka, l, k, La, signkl);
-	      SCR_ith[La] += signkl * hCoreP(k, l);
-       
-          const int * exList_La = exList_a->pointerAtDet(La);
-	      for (auto Eij = 0ul; Eij < nNZa; Eij++, exList_La+=4) {
-            
-            UNPACK_EXCITATIONLIST_4(exList_La, j, i, Ja, signij);
-	        SCR_ith[Ja] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	      }
-        }
-        
-        // passive screening 
-        std::vector<int> SCR_nonZero_ith;
-        for (La = 0 ; La < nStr_a;  La++) {
-          if (std::abs(SCR_ith[La]) > small_number) 
-	        SCR_nonZero_ith.push_back(La);
-        }
-        
-        // update Sigma
-        HC = Sigma;
-        Ci = C;
-        if(nC != 1) {  // for more than 1C
-          for (auto iVec = 0ul; iVec < nVec; iVec++, HC+=NDet, Ci+=NDet) 
-          for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
-	        La = SCR_nonZero_ith[iSCR]; 
-	        HC[Ka] += SCR_ith[La] * Ci[La]; 
-          }	
-        } else { // 1C
-          for (auto iVec = 0ul; iVec < nVec; iVec++) 
-          for (Kb = 0; Kb < nStr_b; Kb++, HC+=nStr_a, Ci+=nStr_a)
-	      for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
-	        La = SCR_nonZero_ith[iSCR]; 
-	        HC[Ka] += SCR_ith[La] * Ci[La]; 
-          }	
-        } 
-      }  // La
-    }
+    // Alpha Part
+    CASHelper<MatsT,IntsT>::buildSigmaOneParticle(mcwfn,C,Sigma,nVec,nStr_b,exList_a,"hCoreP_Correlated_Space","ERI_Correlated_Space");
 
     if (nC != 1) {
        
 #ifdef DEBUG_CI_SIGMA
     prettyPrintSmart(std::cout,"HH CASCI Sigma Build -- Sigma", Sigma, NDet, nVec, NDet);
 #endif
-       CQMemManager::get().free(SCR);
        return;
     } 
     
     // 1C Continued: Build Beta part
-    
     // transpose sigma and C to make update continuous in inner loop
     // (a, b) -> (b, a) 
-    HC = Sigma;
-    Ci = C;
-    for (auto iVec = 0ul; iVec < nVec; iVec++, HC+=NDet, Ci+=NDet) {
-      IMatCopy('T', nStr_a, nStr_b, MatsT(1.), HC, nStr_a, nStr_b);  
-      IMatCopy('T', nStr_a, nStr_b, MatsT(1.), Ci, nStr_a, nStr_b);  
-    }
-
-#pragma omp parallel default(shared) private(HC, Ci, SCR_ith, Lb, k, l, Kb, signkl, \
-  i, j, Jb, signij, Ka)
-    {
-      auto iThread = GetThreadID();
-      SCR_ith = SCR + nSCR * iThread;
-      for (Kb = iThread; Kb < nStr_b; Kb+=nThreads) {
-        
-        std::fill_n(SCR_ith, nStr_b, MatsT(0.));
-        const int * exList_Kb = exList_b->pointerAtDet(Kb);
-        for (auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Kb+=4) {
-          
-          UNPACK_EXCITATIONLIST_4(exList_Kb, l, k, Lb, signkl);
-	      SCR_ith[Lb] += signkl * hCoreP(k,l);
-         
-          const int * exList_Lb = exList_b->pointerAtDet(Lb);
-	      for (auto Eij = 0ul; Eij < nNZb; Eij++, exList_Lb+=4) {
-              
-            UNPACK_EXCITATIONLIST_4(exList_Lb, j, i, Jb, signij);
-	        SCR_ith[Jb] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	      }
-        }
-       
-        // passive screening 
-        std::vector<int> SCR_nonZero_ith;
-        for (Lb = 0 ; Lb < nStr_b;  Lb++) {
-          if (std::abs(SCR_ith[Lb]) > small_number) 
-	        SCR_nonZero_ith.push_back(Lb);
-        }
-        
-        // update Sigma
-        HC = Sigma;
-        Ci = C;
-        for (auto iVec = 0ul; iVec < nVec; iVec++) 
-        for (Ka = 0; Ka < nStr_a; Ka++, HC+=nStr_b, Ci+=nStr_b)
-        for (auto iSCR = 0ul; iSCR < SCR_nonZero_ith.size(); iSCR++) {
-          Lb = SCR_nonZero_ith[iSCR]; 
-          HC[Kb] += SCR_ith[Lb] * Ci[Lb]; 
-        }	
-      }  // Lb
-    }
+    CASHelper<MatsT,IntsT>::transposeVectors(nVec,nStr_a,nStr_b,Sigma,C); 
+   
+    // Beta part
+    CASHelper<MatsT,IntsT>::buildSigmaOneParticle(mcwfn,C,Sigma,nVec,nStr_a,exList_b,"hCoreP_Correlated_Space","ERI_Correlated_Space");
 
     // transpose sigma and C back
-    HC = Sigma;
-    Ci = C;
     // (b, a) -> (a, b)
-    for (auto iVec = 0ul; iVec < nVec; iVec++, HC+=NDet, Ci+=NDet) { 
-      IMatCopy('T', nStr_b, nStr_a, MatsT(1.), HC, nStr_b, nStr_a);  
-      IMatCopy('T', nStr_b, nStr_a, MatsT(1.), Ci, nStr_b, nStr_a);  
-    }
+    CASHelper<MatsT,IntsT>::transposeVectors(nVec,nStr_b,nStr_a,Sigma,C); 
 
-    CQMemManager::get().free(SCR);
-
-    // 1C Continued: Alpha-Beta and Beta-Aphla Part 
-    // TODO: try to vectorized the loop
-#pragma omp parallel default(shared) private(HC, Ci, SCR_ith, Lb, k, l, Kb, signkl, \
-  i, j, La, signij, Ka)
-    {  
-      MatsT tmpH;
-      int KAddr, LAddr;
-      auto iThread = GetThreadID();
-      for(Kb = iThread; Kb < nStr_b; Kb+=nThreads) { 
-        
-        const int * exList_Kb_head = exList_b->pointerAtDet(Kb);
-       
-        for(Ka = 0, KAddr = Kb * nStr_a; Ka < nStr_a; Ka++, KAddr++) {
-          
-          const int * exList_Ka_head = exList_a->pointerAtDet(Ka);
-          
-          auto exList_Kb = exList_Kb_head;
-          for(auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Kb+=4) {
-         
-            UNPACK_EXCITATIONLIST_4(exList_Kb, l, k, Lb, signkl);
-            
-            auto exList_Ka = exList_Ka_head;
-	        for (auto Eij = 0ul; Eij < nNZa; Eij++, exList_Ka+=4) {
-
-              UNPACK_EXCITATIONLIST_4(exList_Ka, j, i, La, signij);
-
-              tmpH  = signij * signkl * moERI(i, j, k, l);
-	  
-              if (std::abs(tmpH) > small_number) {
-                HC    = Sigma;
-                Ci    = C;
-                LAddr = La + Lb*nStr_a;
-                for (auto iVec = 0ul; iVec < nVec; iVec++, HC+=NDet, Ci+=NDet) 
-                  HC[KAddr] += tmpH*Ci[LAddr]; 
-              }
-            }
-          }
-        }  
-      }
-    }
+    // Alpha-Beta part
+    CASHelper<MatsT,IntsT>::buildSigmaTwoParticle(mcwfn,C,Sigma,nVec,1,exList_a,exList_b,"ERI_Correlated_Space");
 
 #ifdef DEBUG_CI_SIGMA
     prettyPrintSmart(std::cout,"HH Sigma Hamiltonian -- Sigma", Sigma, NDet, nVec, NDet);
@@ -760,8 +432,8 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void CASCI<MatsT,IntsT>::computeOneRDM(MCWaveFunction<MatsT, IntsT> & mcwfn, MatsT * C, 
     cqmatrix::Matrix<MatsT> & oneRDM) {
-  
-    computeTDM(mcwfn, C, C, oneRDM);
+
+    computeTDM(mcwfn,C,C,oneRDM);
   
   } // CASCI::computeOneRDM 
 
@@ -867,61 +539,21 @@ namespace ChronusQ {
 
     CASCI_LOOP_INIT(); // check top for variable definitions
 
-    size_t nThreads = GetNumThreads();
-    std::vector<cqmatrix::Matrix<MatsT>> SCR;
-    for (auto i = 0ul; i < nThreads; i++)
-      SCR.emplace_back(TDM.nRows());
-
-    // alpha part 
-    int k, l, La, Lb, Ka, Kb;
-    double signkl;
-#pragma omp parallel default(shared) private(La, Lb, k, l, Ka, signkl)
-    {
-      auto iThread = GetThreadID();
-      auto & tmpRDM = SCR[iThread];
-      tmpRDM.clear();
-      for (La = iThread; La < nStr_a; La+=nThreads) {
-
-        const int * exList_La = exList_a->pointerAtDet(La);
-
-        for (auto Ekl = 0ul; Ekl < nNZa; Ekl++, exList_La+=4) {
-
-          UNPACK_EXCITATIONLIST_4(exList_La, k, l, Ka, signkl);
-
-          auto tmp = MatsT(0.);
-          for (Lb = 0; Lb < nStr_b; Lb++)
-            tmp += SmartConj(Cm[Ka + Lb*nStr_a]) * Cn[La + Lb*nStr_a];
-
-          tmpRDM(k, l) += tmp * signkl;
-        }
-      }
-    }
-
-    if (nC == 1) {
-    // beta part
-#pragma omp parallel default(shared) private(La, Lb, k, l, Kb, signkl)
-      {
-        auto iThread = GetThreadID();
-        auto & tmpRDM = SCR[iThread];
-        for (Lb = iThread; Lb < nStr_b; Lb+=nThreads) {
-
-          const int * exList_Lb = exList_b->pointerAtDet(Lb);
-          for (auto Ekl = 0ul; Ekl < nNZb; Ekl++, exList_Lb+=4) {
-
-            UNPACK_EXCITATIONLIST_4(exList_Lb, k, l, Kb, signkl);
-
-            auto tmp = MatsT(0.);
-            for (La = 0; La < nStr_a; La++)
-              tmp += SmartConj(Cm[La + Kb*nStr_a]) * Cn[La + Lb*nStr_a];
-
-            tmpRDM(k, l) += tmp * signkl;
-          }
-        }
-      }
-    }
-
     TDM.clear();
-    for (auto i = 0ul; i < nThreads; i++) TDM += SCR[i];
+
+    CASHelper<MatsT,IntsT>::computeTDM(mcwfn,Cm,Cn,nStr_b,exList_a,TDM);
+
+    if(nC != 1) return;
+
+    // Need to avoid transposing the same vector twice since Cm == Cn for RDM calculation
+    if(Cm != Cn) CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_a,nStr_b,Cm,Cn);
+    else CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_a,nStr_b,Cm);
+
+    CASHelper<MatsT,IntsT>::computeTDM(mcwfn,Cm,Cn,nStr_a,exList_b,TDM);
+
+    // Need to avoid transposing the same vector twice since Cm == Cn for RDM calculation
+    if(Cm != Cn) CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_b,nStr_a,Cm,Cn);
+    else CASHelper<MatsT,IntsT>::transposeVectors(1,nStr_b,nStr_a,Cm);
 
     return;
 
