@@ -520,7 +520,6 @@ namespace ChronusQ {
           //if(firstStep) ss->formGuess(guessSSOptions);
           //ss->runSCF(emPert);
 
-#if 1 // new SCF
           std::shared_ptr<OrbitalModifierNewBase> conventionalSCF = nullptr;
           bool found = false;
           #define CONSTRUCT_NEWSCF(_ssT,_MatsT,_IntsT)             \
@@ -556,7 +555,6 @@ namespace ChronusQ {
             conventionalSCF->run(emPert);
             if(cube) ss->runCube(cubes);
           }
-#endif // new SCF
         }
 
         if ( elecJob == JobType::MP2 ) {
@@ -583,7 +581,6 @@ namespace ChronusQ {
           rt->intScheme.rtcubes = cubes;
           rt->run(firstStep, emPert);
           } else {
-#if 1 // new TDSCF
           std::cout<<"xsli test new RT"<<std::endl;
 
           std::shared_ptr<OrbitalModifierNewBase> realtimeSCF = nullptr;
@@ -618,7 +615,6 @@ namespace ChronusQ {
             realtimeSCF->initialize(0);
             realtimeSCF->run(emPert);
           }
-#endif // new TDSCF
         }
         }
 
