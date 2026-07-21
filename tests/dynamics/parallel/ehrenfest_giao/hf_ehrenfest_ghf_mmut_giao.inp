@@ -1,9 +1,9 @@
 [Molecule]
 charge = 0
-mult = 3
+mult = 1
 geom:
  H   0.60  0.0  0.0
- H  -0.60  0.0  0.0
+ F  -0.60  0.0  0.0
 
 #
 #  Job Specification
@@ -13,14 +13,14 @@ reference = complex GHF
 job = Ehrenfest
 
 [SCF]
-#GUESS = CLASSICAL
+#GUESS = READMO
 #PROT_GUESS = TIGHT
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 5000
 DIISALG = CDIIS
 accuracy = 1e-12
-field = Magnetic 0.0 0.0 1.
+field = Magnetic 0.0 0.0 0.05
 
 [DYNAMICS]
 TMAX   = 20.

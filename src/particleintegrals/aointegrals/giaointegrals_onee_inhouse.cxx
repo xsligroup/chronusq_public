@@ -35,7 +35,7 @@ namespace ChronusQ {
     dcomplex *FmT, dcomplex T, int maxM, int minM ){
  
     double critT = 33.0;
-    dcomplex expT, factor, term, sum, twoT, Tn;
+    dcomplex expT, factor, term, sum, twoT, Tn; // Do we really need Tn here?
     std::vector<dcomplex> tempFmT;
     tempFmT.resize(maxM+1);
 
@@ -45,9 +45,9 @@ namespace ChronusQ {
     } else if ( std::abs(T) > critT ) {
       tempFmT[0] = 0.5 * sqrt( M_PI/T );
       twoT = 2.0*T;
-      Tn = 1.0;
+      //Tn = 1.0;
       for ( int mm = 1; mm <= maxM ; mm++ ) {
-        Tn *= twoT;
+        //Tn *= twoT;
         tempFmT[mm] = ( static_cast<dcomplex>(2*mm-1) )/twoT * tempFmT[mm-1] ;
       }  
     } else {

@@ -1261,6 +1261,7 @@ namespace ChronusQ {
     H_workCD[2] = H[2];
     
     if (braCharge > 0.0) {
+      CErr("Gradients for NEO-GIAO currently not available.");
       ka[0] = -1.0 * ka[0];
       ka[1] = -1.0 * ka[1];
       ka[2] = -1.0 * ka[2];

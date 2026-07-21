@@ -33,30 +33,12 @@ TEST( EHRENFEST_DYNAMICS_GIAO, hf_ehrenfest_rhf_mmut_giao ) {
     "hf_ehrenfest_rhf_mmut_giao.bin.ref");
 
 }
-TEST( EHRENFEST_DYNAMICS_GIAO, h2_ehrenfest_ghf_mmut_giao ) {
+TEST( EHRENFEST_DYNAMICS_GIAO, hf_ehrenfest_ghf_mmut_giao ) {
 
-  CQDYNAMICSTEST( "dynamics/serial/ehrenfest_giao/h2_ehrenfest_ghf_mmut_giao",
-    "h2_ehrenfest_ghf_mmut_giao.bin.ref");
-
-}
-
-// NEO Water RHF/UHF Fixed Proton Basis
-TEST( EHRENFEST_DYNAMICS_GIAO, h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao ) {
-
-  CQDYNAMICSTEST( "dynamics/serial/ehrenfest_giao/h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao",
-    "h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao.bin.ref");
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest_giao/hf_ehrenfest_ghf_mmut_giao",
+    "hf_ehrenfest_ghf_mmut_giao.bin.ref");
 
 }
-
-// NEO Water RB3LYP/UEPC17 Traveling Proton Basis
-TEST( EHRENFEST_DYNAMICS_GIAO, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao ) {
-
-  CQDYNAMICSTEST( "dynamics/serial/ehrenfest_giao/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao",
-    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao.bin.ref");
-
-}
-
-
 
 #ifdef _CQ_DO_PARTESTS
 TEST( EHRENFEST_DYNAMICS_GIAO, PAR_hf_ehrenfest_rhf_mmut_giao ) {
@@ -65,25 +47,11 @@ TEST( EHRENFEST_DYNAMICS_GIAO, PAR_hf_ehrenfest_rhf_mmut_giao ) {
     "hf_ehrenfest_rhf_mmut_giao.bin.ref" );
 
 }
-TEST( EHRENFEST_DYNAMICS_GIAO, PAR_h2_ehrenfest_ghf_mmut_giao ) {
+TEST( EHRENFEST_DYNAMICS_GIAO, PAR_hf_ehrenfest_ghf_mmut_giao ) {
 
-  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest_giao/h2_ehrenfest_ghf_mmut_giao",
-    "h2_ehrenfest_ghf_mmut_giao.bin.ref");
-
-}
-
-TEST( EHRENFEST_DYNAMICS_GIAO, PAR_h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao ) {
-
-  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest_giao/h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao",
-    "h2o_neoehrenfest_rhf_uhf_mmut_fpb_giao.bin.ref" );
+  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest_giao/hf_ehrenfest_ghf_mmut_giao",
+    "hf_ehrenfest_ghf_mmut_giao.bin.ref");
 
 }
 
-
-TEST( EHRENFEST_DYNAMICS_GIAO, PAR_h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao ) {
-
-  CQDYNAMICSTEST( "dynamics/parallel/ehrenfest_giao/h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao",
-    "h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb_giao.bin.ref" );
-
-}
 #endif

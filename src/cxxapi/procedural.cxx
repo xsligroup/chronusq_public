@@ -625,7 +625,7 @@ namespace ChronusQ {
 
         if( elecJob == JobType::RESP ) {
 
-
+          std::cout << "Warning: Response Theory is experimental. Use at your own risk!" << std::endl;
           if( ss->scfControls.scfAlg == _SKIP_SCF and ss->scfControls.guess == READDEN )
             CErr("READDEN + SKIP + RESPONSE disabled. Use READMO instead.");
 
