@@ -31,8 +31,31 @@
  *
  */
 #include <orbitalmodifiernew.hpp>
+#include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
+
+  inline bool isUnitaryRTAlgorithm(RealTimeAlgorithm algorithm) {
+    return algorithm == RealTimeAlgorithm::RTForwardEuler or
+           algorithm == RealTimeAlgorithm::RTModifiedMidpoint or
+           algorithm == RealTimeAlgorithm::RTExplicitMagnus2;
+  }
+
+  inline std::string realTimeAlgorithmName(RealTimeAlgorithm algorithm) {
+    if(algorithm == RealTimeAlgorithm::RTModifiedMidpoint)
+      return "Modified Midpoint Unitary Transformation (MMUT)";
+    if(algorithm == RealTimeAlgorithm::RTExplicitMagnus2)
+      return "Explicit 2nd Order Magnus";
+    if(algorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour)
+      return "Runge-Kutta 4th Order";
+    if(algorithm == RealTimeAlgorithm::RTSymplecticSplitOperator)
+      return "Symplectic Split Operator";
+    if(algorithm == RealTimeAlgorithm::ElectronicBornOppenheimer)
+      return "Electronic Born Oppenheimer";
+    if(algorithm == RealTimeAlgorithm::RTForwardEuler)
+      return "Forward Euler";
+    return "Uninitialized";
+  }
 
 
   /**
@@ -81,6 +104,9 @@ class RealTimeSCF : public OrbitalModifierNew<singleSlaterT, MatsT, IntsT> {
   std::vector<cqmatrix::Matrix<MatsT>> previousFockSquareOrtho;
   std::vector<cqmatrix::Matrix<MatsT>> unitarySquareOrtho;
 
+  std::vector<RealTimeAlgorithm> getDensityIntegrationAlgorithms();
+  double getPropagationTimeStep(RealTimeAlgorithm, bool, bool) const;
+
 public:
 
   // Constructors
@@ -119,7 +145,7 @@ public:
   void formFock(bool,double);
   void formPropagatorForAll(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});
   void propagateDenForAll();
-  void unitaryProgatationForAll(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
+  void unitaryProgatationForAll(std::vector<cqmatrix::Matrix<MatsT>>&, RealTimeAlgorithm, bool, bool);
   void doPropagation(std::vector<cqmatrix::Matrix<MatsT>>&, bool, bool);
   void electronicBornOppenheimer();
   void computeTau();

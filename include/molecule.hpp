@@ -158,6 +158,18 @@ namespace ChronusQ {
     }
 
     /**
+     *  \brief Constructs a new Molecule by retaining only the specified atoms
+     *
+     */
+    Molecule retainAtoms(const std::vector<size_t>& keep) {
+      std::vector<Atom> new_atoms;
+      for (size_t idx : keep)
+        new_atoms.emplace_back(atoms[idx]);
+      Molecule new_mole(0, std::move(new_atoms));
+      return new_mole;
+    }
+
+    /**
      *  \brief Constructs a new Molecule by retaining only the classical nuclei for inhouse GIAO NEO V integrals
      *  
      *  Please mind that this molecule has no physical meaning! Do not use it elsewhere!
@@ -264,6 +276,27 @@ namespace ChronusQ {
         CErr("The size of the coordinates vector must be 3 times the number of atoms.");
       for (size_t i = 0; i < atoms.size(); ++i) 
         std::copy(coordinates.begin() + i * 3, coordinates.begin() + (i * 3 + 3), atoms[i].coord.begin());
+    }
+
+    std::vector<std::string> getQuantumSystemLabels() const {
+      std::vector<std::string> labels;
+      for( const auto& atom : atoms ) {
+        if( not atom.quantum )
+          continue;
+        if( atom.quantumLabel.empty() ) //TODOAL: It cant be empty??
+          continue;
+        if( std::find(labels.begin(), labels.end(), atom.quantumLabel) == labels.end() )
+          labels.push_back(atom.quantumLabel);
+      }
+      return labels;
+    }
+
+    size_t getNumQuantumParticles(const std::string& label) const {
+      size_t count = 0;
+      for( const auto& atom : atoms )
+        if( atom.quantum and atom.quantumLabel == label )
+          ++count;
+      return count;
     }
 
 

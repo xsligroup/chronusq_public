@@ -58,7 +58,6 @@ namespace ChronusQ {
     std::ifstream  basisFile_; ///< File object for basis file
   
     bool forceCart_;  ///< Whether or not to force cartesian basis functions
-    bool nucBasis_;   ///< Whether or not this basis is solely for nuclear
   
     // Functions to digest the basis set file
     // See src/basisset/reference.cxx for documentation
@@ -91,8 +90,8 @@ namespace ChronusQ {
      *  \param [in] forceCart Whether or not to force cartesian GTOs
      */ 
     ReferenceBasisSet(const std::string &path, const std::string &def,
-      bool doDef, bool forceCart = false, bool doPrint = true, bool nucBasis = false) :
-      basisPath_(path), basisDef_(def), forceCart_(forceCart), nucBasis_(nucBasis) {
+      bool doDef, bool forceCart = false, bool doPrint = true) :
+      basisPath_(path), basisDef_(def), forceCart_(forceCart) {
   
       if ( not doDef ) {
         findBasisFile(doPrint);
@@ -108,7 +107,7 @@ namespace ChronusQ {
     // Generates a shell list given a Molecule object. 
     // See src/basisset/reference.cxx for documentation
     std::pair<std::vector<libint2::Shell>,std::vector<std::vector<double>>> 
-      generateShellSet(const Molecule&);
+      generateShellSet(const Molecule&, const std::vector<size_t>& atomIndices);
   
   }; // ReferenceBasisSet class
 

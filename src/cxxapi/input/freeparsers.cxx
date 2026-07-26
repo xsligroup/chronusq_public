@@ -23,10 +23,43 @@
  */
 #include <cxxapi/input.hpp>
 #include <cerr.hpp>
+#include <algorithm>
+#include <cctype>
 #include <regex>
 #include <orbitalmodifieroptions.hpp>
 
 namespace ChronusQ {
+
+  namespace {
+
+    std::string canonicalRealTimeAlgorithm(std::string value) {
+      std::transform(value.begin(), value.end(), value.begin(),
+        [](unsigned char c) { return std::toupper(c); });
+
+      if(value == "MMUT" or value == "MODIFIEDMIDPOINT") return "MMUT";
+      if(value == "FORWARDEULER" or value == "EULER") return "FORWARDEULER";
+      if(value == "EXPLICITMAGNUS2" or value == "EXPLICITMAGNUSTWO" or
+         value == "MAGNUS2" or value == "MAGNUSTWO") return "MAGNUS2";
+      if(value == "RK4" or value == "RUNGEKUTTAFOURTHORDER") return "RK4";
+      if(value == "SSO") return "SSO";
+      if(value == "BORT") return "BORT";
+
+      CErr("Unrecognized RT integration algorithm: " + value);
+      return "";
+    }
+
+    RealTimeAlgorithm parseRealTimeAlgorithm(const std::string& value) {
+      const auto algorithm = canonicalRealTimeAlgorithm(value);
+      if(algorithm == "MMUT") return RealTimeAlgorithm::RTModifiedMidpoint;
+      if(algorithm == "FORWARDEULER") return RealTimeAlgorithm::RTForwardEuler;
+      if(algorithm == "MAGNUS2") return RealTimeAlgorithm::RTExplicitMagnus2;
+      if(algorithm == "RK4") return RealTimeAlgorithm::RTRungeKuttaOrderFour;
+      if(algorithm == "SSO") return RealTimeAlgorithm::RTSymplecticSplitOperator;
+      if(algorithm == "BORT") return RealTimeAlgorithm::ElectronicBornOppenheimer;
+      return RealTimeAlgorithm::Uninitialized;
+    }
+
+  }
 
   std::string doubleToString(double value) {
     std::ostringstream out;
@@ -507,20 +540,24 @@ namespace ChronusQ {
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestartAlgorithm, "");
         }
 
+        // Check for subsystem algorithms before the global algorithm.
+        auto const freeCQInputSubsystemAlgorithm = std::regex(
+          "([A-Z][A-Z0-9_]*)_INTALG\\s*=\\s*(MMUT|MODIFIEDMIDPOINT|FORWARDEULER|EULER|EXPLICITMAGNUS2|EXPLICITMAGNUSTWO|MAGNUS2|MAGNUSTWO|RK4|RUNGEKUTTAFOURTHORDER|BORT)\\s*([,;:]|$)",
+          std::regex_constants::icase);
+        while(std::regex_search(RTInputOptions, RTmatch, freeCQInputSubsystemAlgorithm)) {
+          std::string label = RTmatch.str(1);
+          std::transform(label.begin(), label.end(), label.begin(),
+            [](unsigned char c) { return std::toupper(c); });
+          if(label == "PROT") label = "QP";
+          addData("RT/" + label + "_INTALG",
+            canonicalRealTimeAlgorithm(RTmatch.str(2)));
+          RTInputOptions = RTmatch.prefix().str() + RTmatch.suffix().str();
+        }
+
         // Check for RT algorithm, this has to be checked after restart algorithm to avoid conflict
-        auto const freeCQInputRTAlgorithm = std::regex("(MMUT)|(MODIFIEDMIDPOINT)|(FORWARDEULER)|(EULER)|(EXPLICITMAGNUS2)|(EXPLICITMAGNUSTWO)|(MAGNUS2)|(MAGNUSTWO)|(RK4)|(RUNGEKUTTAFOURTHORDER)|(BORT)\\s*([,;:]|$)", std::regex_constants::icase);
+        auto const freeCQInputRTAlgorithm = std::regex("(MMUT|MODIFIEDMIDPOINT|FORWARDEULER|EULER|EXPLICITMAGNUS2|EXPLICITMAGNUSTWO|MAGNUS2|MAGNUSTWO|RK4|RUNGEKUTTAFOURTHORDER|BORT)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRTAlgorithm) ) {
-//          if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) tdSCFControls.integrationAlgorithm = RTModifiedMidpoint;
-//          else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) tdSCFControls.integrationAlgorithm = RTForwardEuler;
-//          else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty() or !RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.integrationAlgorithm = RTExplicitMagnus2;
-          std::string str;
-          if (!RTmatch.str(1).empty() or !RTmatch.str(2).empty()) str = "MMUT";
-          else if (!RTmatch.str(3).empty() or !RTmatch.str(4).empty()) str = "FORWARDEULER";
-          else if (!RTmatch.str(5).empty() or !RTmatch.str(6).empty() or !RTmatch.str(7).empty() or !RTmatch.str(8).empty()) str = "MAGNUS2";
-          else if (!RTmatch.str(9).empty() or !RTmatch.str(10).empty()) str = "RK4"; // New check for RK4 or RUNGEKUTTAFOURTHORDER
-          else if (!RTmatch.str(11).empty()) str = "BORT"; 
-          //std::cout<<"xsli test read in RT algorithm = "<<tdSCFControls.integrationAlgorithm<<std::endl;
-          addData("RT/INTALG", str);
+          addData("RT/INTALG", canonicalRealTimeAlgorithm(RTmatch.str(1)));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRTAlgorithm, "");
         }
 
@@ -649,34 +686,17 @@ namespace ChronusQ {
     if (dict.count("SAVECUBE")) iCube = std::stoi(dict.at("SAVECUBE"));
     if (dict.count("PRINTSTEP")) iPrint = std::stoi(dict.at("PRINTSTEP"));
     if (dict.count("RESTARTFROM")) restoreFromStep = std::stoi(dict.at("RESTARTFROM"));
-    if (dict.count("INTALG")) {
-      if (dict.at("INTALG") == "MMUT") integrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
-      else if (dict.at("INTALG") == "FORWARDEULER") integrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
-      else if (dict.at("INTALG") == "MAGNUS2") integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
-      else if (dict.at("INTALG") == "RK4") integrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
-      else if (dict.at("INTALG") == "BORT") integrationAlgorithm = RealTimeAlgorithm::ElectronicBornOppenheimer;
-    }
-    if (dict.count("PROT_INTALG")) {
-      if (dict.at("PROT_INTALG") == "MMUT") protIntegrationAlgorithm = RealTimeAlgorithm::RTModifiedMidpoint;
-      else if (dict.at("PROT_INTALG") == "FORWARDEULER") protIntegrationAlgorithm = RealTimeAlgorithm::RTForwardEuler;
-      else if (dict.at("PROT_INTALG") == "MAGNUS2") protIntegrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
-      else if (dict.at("PROT_INTALG") == "RK4") protIntegrationAlgorithm = RealTimeAlgorithm::RTRungeKuttaOrderFour;
+    if (dict.count("INTALG")) integrationAlgorithm = parseRealTimeAlgorithm(dict.at("INTALG"));
+    const std::string suffix = "_INTALG";
+    for(const auto& [key, value] : dict) {
+      if(key.size() <= suffix.size() or key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0)
+        continue;
+      auto label = key.substr(0, key.size() - suffix.size());
+      if(label == "PROT") label = "QP"; // Support Legacy NEO-RT input
+      subsystemIntegrationAlgorithms[label] = parseRealTimeAlgorithm(value);
     }
     if (dict.count("BORTPRINTLEVEL")) BORTPrintLevel = std::stoi(dict.at("BORTPRINTLEVEL"));
     if (dict.count("BORTACCURACY")) BORTAccuracy = std::stod(dict.at("BORTACCURACY"));
-    // If the user didn't provide a specific protonic integration algorithm, use the same as electronic
-    if (protIntegrationAlgorithm == RealTimeAlgorithm::Uninitialized) protIntegrationAlgorithm = integrationAlgorithm;
-    // Currently we don't allow mixing of MMUT and RK4
-    if( protIntegrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour and integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint){
-      std::cout << "Warining: INTALG=MMUT and PROT_INTALG=RK4. This creates a mismatch in delta T " << std::endl;
-      std::cout << "Forcing electronic subsystem to use magnus2 propagation: INTALG=MAGNUS2 " << std::endl;
-      integrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
-    }
-    if( integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour and protIntegrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint){
-      std::cout << "Warining: INTALG=RK4 and PROT_INTALG=MMUT. This creates a mismatch in delta T " << std::endl;
-      std::cout << "Forcing protonic subsystem to use magnus2 propagation: PROT_INTALG=MAGNUS2 " << std::endl;
-      protIntegrationAlgorithm = RealTimeAlgorithm::RTExplicitMagnus2;
-    }
     if (dict.count("RESTARTSTEP")) {
       if (dict.at("RESTARTSTEP") == "MMUT") restartAlgorithm = RestartAlgorithm::ModifiedMidpoint;
       else if (dict.at("RESTARTSTEP") == "FORWARDEULER") restartAlgorithm = RestartAlgorithm::ForwardEuler;

@@ -42,10 +42,10 @@ namespace ChronusQ {
   // Explicit template instantiation for RT functions that require dcomplex matrix types
   template void SingleSlater<dcomplex, double>::addTauToFock<dcomplex>();
   template void SingleSlater<dcomplex, dcomplex>::addTauToFock<dcomplex>();
-  template void SingleSlater<dcomplex, double>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&);
-  template void SingleSlater<dcomplex, dcomplex>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&);
-  template void SingleSlater<dcomplex, double>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&);
-  template void SingleSlater<dcomplex, dcomplex>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&);
+  template void SingleSlater<dcomplex, double>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&, const RTFockFormation&);
+  template void SingleSlater<dcomplex, dcomplex>::RK4Propagation<dcomplex>(bool, double, bool, EMPerturbation&, EMPerturbation&, const RTFockFormation&);
+  template void SingleSlater<dcomplex, double>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&, const RTFockFormation&);
+  template void SingleSlater<dcomplex, dcomplex>::unitaryPropagation<dcomplex>(bool, double, bool, EMPerturbation&, const RTFockFormation&);
   template cqmatrix::PauliSpinorMatrices<dcomplex> SingleSlater<dcomplex, double>::getTimeDerDen<dcomplex>(bool);
   template cqmatrix::PauliSpinorMatrices<dcomplex> SingleSlater<dcomplex, dcomplex>::getTimeDerDen<dcomplex>(bool);
 

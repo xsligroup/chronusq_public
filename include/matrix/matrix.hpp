@@ -137,6 +137,10 @@ public:
     array_->resize({nRow, nCol});
   }
 
+  void swap(Matrix& other) noexcept {
+    array_.swap(other.array_);
+  }
+
   Matrix& operator*=( MatsT );
   ScaledMatrix<double, MatsT> operator-() const {
     return ScaledMatrix<double, MatsT>(-1.0, *this);

@@ -39,6 +39,7 @@ namespace ChronusQ {
     double atomicMass;   ///< Atomic Mass (in a.m.u. NOT a.u.)
     double slaterRadius; ///< Slater radius (in Bohr)
     bool   quantum;      ///< Whether this atom is treated quantum mechanically
+    std::string quantumLabel;    ///< Quantum particle label
 
     std::array<double,3> coord; ///< X,Y,Z coordinates
 
@@ -56,13 +57,14 @@ namespace ChronusQ {
      *  \param [in] RAD  Slater radium (Bohr)
      *  \param [in] XYZ  Cartesian atomic coordinates (X,Y,Z)
      *  \param [in] Q    Whether the atom is treated quantum or not
+     *  \param [in] QLabel   Quantum particle label
      */
     Atom(const size_t AN = 0, const double NC = 0., const size_t MN = 0,
       const double MASS = 0., const double RAD = 0.,
-      std::array<double,3> XYZ = {0.,0.,0.}, bool Q = false) :
+      std::array<double,3> XYZ = {0.,0.,0.}, bool Q = false, std::string QLabel = "") :
       atomicNumber(AN), nucCharge(NC), massNumber(MN), atomicMass(MASS),
       slaterRadius(RAD), coord(std::move(XYZ)), 
-      quantum(Q) { };
+      quantum(Q), quantumLabel(QLabel) { };
 
     /**
      *  X,Y,Z constructor
@@ -78,8 +80,8 @@ namespace ChronusQ {
      *  \param [in] Q    Whether the atom is treated quantum or not
      */
     Atom(const size_t AN, const double NC, const size_t MN,
-      const double MASS, const double RAD, double X, double Y, double Z, bool Q = false) :
-      Atom(AN,NC,MN,MASS,RAD,{X,Y,Z},Q){ };
+      const double MASS, const double RAD, double X, double Y, double Z, bool Q = false, std::string QLabel = "") :
+      Atom(AN,NC,MN,MASS,RAD,{X,Y,Z},Q,QLabel){ };
 
     /**
      *  Symbol + coordinate array constructor

@@ -69,8 +69,7 @@ namespace ChronusQ {
     for (size_t pi = 0; pi < subMatCut.size(); pi++) {
       for (size_t oi = subMatCut[pi].first; oi < subMatCut[pi].second; oi++) {
         for (int i = nAtoms-1; i >=0; i--) {
-          // For NEO basis, skip classical atom centers
-          if (basisSet.nucBasis and !mol.atoms[i].quantum) continue;
+          // Centers without basis functions store a value of nBasis will be skipped
           if (oi >= basisSet.mapAllCen2BfSt[i]) {
             effOrbsForAtom[i].emplace_back(oi);
             break;
@@ -339,8 +338,7 @@ namespace ChronusQ {
     for (size_t pi = 0; pi < subMatCut.size(); pi++) {
       for (size_t oi = subMatCut[pi].first; oi < subMatCut[pi].second; oi++) {
         for (int i = nAtoms-1; i >=0; i--) {
-          // For NEO basis, skip classical atom centers
-          if (basisSet.nucBasis and !mol.atoms[i].quantum) continue;
+          // Centers without basis functions store a value of nBasis will be skipped
           if (oi >= basisSet.mapAllCen2BfSt[i]) {
             effOrbsForAtom[i].emplace_back(oi);
             break;

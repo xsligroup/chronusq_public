@@ -171,21 +171,25 @@ namespace ChronusQ {
       const GTODirectTPIContraction<MatsU,IntsT> &other, int dummy = 0 ):
       GTODirectTPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     template <typename MatsU>
     GTODirectTPIContraction(
       GTODirectTPIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
       GTODirectTPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     GTODirectTPIContraction( const GTODirectTPIContraction &other ):
       GTODirectTPIContraction(other, 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     GTODirectTPIContraction( GTODirectTPIContraction &&other ):
       GTODirectTPIContraction(std::move(other), 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     /**

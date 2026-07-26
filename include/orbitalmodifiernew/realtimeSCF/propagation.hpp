@@ -37,6 +37,7 @@
 #include <util/matout.hpp>
 #include <util/timer.hpp>
 #include <unsupported/Eigen/MatrixFunctions>
+#include <algorithm>
 
 
 namespace ChronusQ {
@@ -44,14 +45,13 @@ namespace ChronusQ {
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::computeTau() {
 
-  // Handle type conversion
-  if (typeid(this->singleSlaterSystem) != typeid(NEOSS<MatsT,IntsT>)) 
-    CErr("Tau term is only implemented for NEO protons");
-  NEOSS<MatsT,IntsT>& neoss = dynamic_cast<NEOSS<MatsT,IntsT>&>(this->singleSlaterSystem);
-
-  // call function only for protonic subsystem
-  SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Protonic")))));
-  pss.computeTau();
+  // NOTE: per-subsystem computeTau (rt.hpp) computes on root and broadcasts tau
+  //   to all ranks, so it must be invoked on every rank (no ROOT_ONLY here).
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    for(const auto& label : this->singleSlaterSystem.getOrder())
+      if(label != "E") this->singleSlaterSystem.getSubSS(label)->computeTau();
+  } else
+    CErr("Tau term is only implemented for non-electronic quantum subsystems");
 
 }
 
@@ -60,15 +60,12 @@ template <template <typename, typename> class singleSlaterT, typename MatsT, typ
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::addTauToFock() {
 
   ROOT_ONLY(this->mpiComm);
-  
-  // Handle type conversion
-  if (typeid(this->singleSlaterSystem) != typeid(NEOSS<MatsT,IntsT>)) 
-    CErr("Tau term is only implemented for NEO protons");
-  NEOSS<MatsT,IntsT>& neoss = dynamic_cast<NEOSS<MatsT,IntsT>&>(this->singleSlaterSystem);
-  
-  // call function only for protonic subsystem
-  SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Protonic")))));
-  pss.addTauToFock();
+
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    for(const auto& label : this->singleSlaterSystem.getOrder())
+      if(label != "E") this->singleSlaterSystem.getSubSS(label)->addTauToFock();
+  } else
+    CErr("Tau term is only implemented for non-electronic quantum subsystems");
 
 }
 
@@ -126,7 +123,8 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::propagateDenForAll() {
 
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::unitaryProgatationForAll(std::vector<cqmatrix::Matrix<MatsT>>& onePDMSquareOrthoSave, bool startMMUTStep, bool finalMMUTStep) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::unitaryProgatationForAll(
+  std::vector<cqmatrix::Matrix<MatsT>>& onePDMSquareOrthoSave, RealTimeAlgorithm algorithm, bool startMMUTStep, bool finalMMUTStep) {
 
   if(tdSCFOptions.includeTau) addTauToFock();
 
@@ -140,8 +138,8 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::unitaryProgatationForAll(std::vecto
   // Perform Explicit Magnus 2 when
   //   - Start or Finish MMUT and the restart algorithm is set to be Magnus2
   //   - The integration algorithm for each step is set to be Magnus2
-  if( (tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint and (finalMMUTStep or startMMUTStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2) 
-      or tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2) {
+  if( (algorithm == RealTimeAlgorithm::RTModifiedMidpoint and (finalMMUTStep or startMMUTStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2)
+      or algorithm == RealTimeAlgorithm::RTExplicitMagnus2) {
     if(MPIRank(this->mpiComm) == 0){
       for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
         this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
@@ -166,7 +164,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::unitaryProgatationForAll(std::vecto
 
   /**
    *  Performs density propagation using the specified algorithm(s).
-   *  For NEO calculations, electronic/protonic subsystem can be propagated using different algorithms
+   *  MultiParticleSS subsystems can use different propagation algorithms.
    *
    *  \param [in] onePDMSquareOrthoSave copy of current orthonormal density that will be used in Magnus2 propagation 
    *  \param [in] startMMUTStep         whether this is the first MMUT step, in which case we do Magnus2 propagation
@@ -182,7 +180,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation(std::vector<cqmatrix:
   EMPerturbation pert_t1 = tdEMPerturbation.getPert(integrationProgress.currentTime);
 
   // Propagtion for non-NEO calculations:
-  if (typeid(this->singleSlaterSystem) != typeid(NEOSS<MatsT,IntsT>)) {
+  if constexpr (not std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
 
     // RK4 Propagation
     if ( tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour ){
@@ -193,57 +191,67 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation(std::vector<cqmatrix:
     else if (tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::ElectronicBornOppenheimer){
       CErr("Electronic Born-Oppenheimer calcualtion only valid in a NEO context!");
     }
-    else {  
-    // Unitary Propagation (MMUT or Magnus2)
-      unitaryProgatationForAll(onePDMSquareOrthoSave, startMMUTStep, finalMMUTStep);    
+    else if (isUnitaryRTAlgorithm(tdSCFOptions.integrationAlgorithm)) {
+    // Unitary Propagation (ForwardEuler, MMUT or Magnus2)
+      unitaryProgatationForAll(onePDMSquareOrthoSave, tdSCFOptions.integrationAlgorithm, startMMUTStep, finalMMUTStep);
+    }
+    else {
+      CErr("Using an improper RT propagation algorithm");
     }
 
   } 
   else {
   // Propagation for NEO calculations:
- 
-    // Unitary Propagation For All Density (when neither of subsystems uses RK4 )
-    if ( tdSCFOptions.integrationAlgorithm == tdSCFOptions.protIntegrationAlgorithm 
-        and (tdSCFOptions.integrationAlgorithm != RealTimeAlgorithm::RTRungeKuttaOrderFour) ){
-      //std::cout << "NEO unitaryProgatationForAll" << std::endl;
-      unitaryProgatationForAll(onePDMSquareOrthoSave, startMMUTStep, finalMMUTStep);    
-    } 
-    else
-    {
-      
-      // Separate Propagation For Each Density 
-      // Transfer densities we want to propagate from RealTimeSCF object to each SingleSlater object
-      NEOSS<MatsT,IntsT>& neoss = dynamic_cast<NEOSS<MatsT,IntsT>&>(this->singleSlaterSystem);
-      SingleSlater<MatsT, IntsT>& ess = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Electronic")))));
-      SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Protonic")))));
-      neoss.setOnePDMOrtho(previousOnePDMSquareOrtho.data());
-      
-      // Propagate protonic subsystem density
-      if(tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTForwardEuler or tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2){
-        bool doMagnus2 = (tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2);
-        pss.unitaryPropagation(tdSCFOptions.includeTau, integrationProgress.currentDeltaT, doMagnus2, pert_t1);
-      } else {
-        pss.RK4Propagation(tdSCFOptions.includeTau, integrationProgress.currentDeltaT, false, pert_tp5, pert_t1);
-      }
+    auto& multiSS = this->singleSlaterSystem;
+    auto labels = multiSS.getOrder();
+    if(labels.empty()) CErr("No quantum subsystems available for RT propagation");
 
-      // Propagate electronic subsystem density
-      //pss.ortho2aoDen();
-      //pss.computeNaturalOrbitals();
-      //pss.formDensity();
-  
-      if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTForwardEuler or tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2){
-        bool doMagnus2 = (tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2);
-        ess.unitaryPropagation(false, integrationProgress.currentDeltaT, doMagnus2, pert_t1);
-      } else if (tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour) {
-        ess.RK4Propagation(false, integrationProgress.currentDeltaT, false, pert_tp5, pert_t1);
-      } else if (tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::ElectronicBornOppenheimer) {
-        electronicBornOppenheimer();
-      } else {
-        CErr("Using an improper RT Propagation algorthim for NEO Electronic subsystem");
-      }
-      // Put updated pssOnePDMOrtho and essOnePDMOrtho back into previousOnePDMSquareOrtho
-      previousOnePDMSquareOrtho = neoss.getOnePDMOrtho();
+    RealTimeAlgorithm firstAlgorithm = tdSCFOptions.subsystemIntegrationAlgorithms.at(labels.front());
+    bool sameUnitaryAlgorithm = isUnitaryRTAlgorithm(firstAlgorithm) and
+      std::all_of(labels.begin(), labels.end(), [&](const std::string& label) {
+        return tdSCFOptions.subsystemIntegrationAlgorithms.at(label) == firstAlgorithm;
+      });
+
+    if(sameUnitaryAlgorithm) {
+      unitaryProgatationForAll(onePDMSquareOrthoSave, firstAlgorithm, startMMUTStep, finalMMUTStep);
+      return;
     }
+
+    // Mixed algorithms propagate each subsystem separately. 
+    // Place electronic density to last such that BORT can converge with other densities at (t+dt) instead of (t)
+    std::stable_partition(labels.begin(), labels.end(), [&](const std::string& label) {
+      return tdSCFOptions.subsystemIntegrationAlgorithms.at(label) != RealTimeAlgorithm::ElectronicBornOppenheimer;
+    });
+
+    multiSS.setOnePDMOrtho(previousOnePDMSquareOrtho.data());
+
+    for(const auto& label : labels) {
+      auto ss = multiSS.getSubSS(label);
+      RealTimeAlgorithm algorithm = tdSCFOptions.subsystemIntegrationAlgorithms.at(label);
+      double deltaT = getPropagationTimeStep(algorithm, startMMUTStep, finalMMUTStep);
+      bool includeTau = tdSCFOptions.includeTau and label != "E";
+
+      RTFockFormation formTargetFock = [&multiSS, label](EMPerturbation& pert, bool increment) {
+        multiSS.formFockForTargets(pert, {label}, increment);
+      };
+
+      if(algorithm == RealTimeAlgorithm::RTForwardEuler)
+        ss->unitaryPropagation(includeTau, deltaT, false, pert_t1, formTargetFock);
+      else if(algorithm == RealTimeAlgorithm::RTExplicitMagnus2)
+        ss->unitaryPropagation(includeTau, deltaT, true, pert_t1, formTargetFock);
+      else if(algorithm == RealTimeAlgorithm::RTModifiedMidpoint) {
+        bool doMagnus2 = (startMMUTStep or finalMMUTStep) and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2;
+        ss->unitaryPropagation(includeTau, deltaT, doMagnus2, pert_t1, formTargetFock);
+      } else if(algorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour)
+        ss->RK4Propagation(includeTau, deltaT, false, pert_tp5, pert_t1, formTargetFock);
+      else if(algorithm == RealTimeAlgorithm::ElectronicBornOppenheimer) {
+        if(label != "E") CErr("Electronic Born-Oppenheimer propagation is only valid for subsystem E");
+        electronicBornOppenheimer();
+      } else
+        CErr("Using an improper RT propagation algorithm for subsystem " + label);
+    }
+
+    previousOnePDMSquareOrtho = multiSS.getOnePDMOrtho();
   }
 } // RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation
 
@@ -253,63 +261,48 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::doPropagation(std::vector<cqmatrix:
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::electronicBornOppenheimer()
 {
+  if constexpr (not std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    CErr("Electronic Born-Oppenheimer propagation requires MultiParticleSS");
+  } else {
+    auto& multiSS = this->singleSlaterSystem;
+    SCFControls originalControls = multiSS.scfControls;
 
+    // Tell the MultiParticleSS object to only optimize the electronic wavefunction
+    multiSS.scfControls.NEOSubSystemOpt = {"E"};
+    multiSS.scfControls.NEOStepwiseOpt = false;
 
-      // Separate Propagation For Each Density 
-      // Transfer densities we want to propagate from RealTimeSCF object to each SingleSlater object
-      NEOSS<MatsT,IntsT>& neoss = dynamic_cast<NEOSS<MatsT,IntsT>&>(this->singleSlaterSystem);
-      SingleSlater<MatsT, IntsT>& ess = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Electronic")))));
-      SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(neoss.getSubSSBase(std::string("Protonic")))));
+    // For restart jobs, energyOnly is set to True to avoid doing an unnecessary SCF calculation at the start
+    // We need to overwrite that here to make sure the SCF runs
+    multiSS.scfControls.scfAlg = _CONVENTIONAL_SCF;
+    multiSS.scfControls.energyOnly = false;
 
-      // Tell the NEOSS object to only optimize the electronic wavefunction
-      std::vector<std::string> originalSubSystemOpt = neoss.scfControls.NEOSubSystemOpt;
-      neoss.scfControls.NEOSubSystemOpt.clear();
-      neoss.scfControls.NEOSubSystemOpt.push_back("Electronic");
-      // For restart jobs, energyOnly is set to True to avoid doing an unnecessary SCF calculation at the start
-      // We need to overwrite that here to make sure the SCF runs
-      neoss.scfControls.scfAlg = _CONVENTIONAL_SCF;
-      neoss.scfControls.energyOnly = false;
+    // Overwrite the convergence thresholds
+    multiSS.scfControls.rmsdPConvTol = tdSCFOptions.BORTAccuracy;
+    multiSS.scfControls.maxdPConvTol = tdSCFOptions.BORTAccuracy*100;
+    multiSS.scfControls.eneConvTol   = tdSCFOptions.BORTAccuracy*100;
 
-      // Overwrite the convergence thresholds
-      neoss.scfControls.rmsdPConvTol = tdSCFOptions.BORTAccuracy;
-      neoss.scfControls.maxdPConvTol = tdSCFOptions.BORTAccuracy*100;
-      neoss.scfControls.eneConvTol   = tdSCFOptions.BORTAccuracy*100;
+    // Set printing for the BORT SCF calculation
+    multiSS.scfControls.printLevel = tdSCFOptions.BORTPrintLevel;
 
-      // Turn off printing in the SCF section (default behavior)
-      size_t prevprintlevel = neoss.scfControls.printLevel;
-      neoss.scfControls.printLevel = tdSCFOptions.BORTPrintLevel;
+    ConventionalSCFNew<MultiParticleSS,MatsT,IntsT> conventionalSCF(multiSS.scfControls, multiSS, this->mpiComm);
 
-      std::shared_ptr<OrbitalModifierNewBase> conventionalSCF = nullptr;
-      bool found = false;
-      #define CONSTRUCT_NEWSCF(_ssT,_MatsT,_IntsT)             \
-                if( not found ) try {                          \
-            conventionalSCF = \
-            std::make_shared<ConventionalSCFNew<_ssT,_MatsT,_IntsT>>(  \
-              neoss.scfControls, dynamic_cast< _ssT<_MatsT,_IntsT>& >(neoss)    \
-              ,MPI_COMM_WORLD) ;                                       \
-            found = true;                                \
-          } catch(...) { };
+    // Call SCF
+    multiSS.initializeSCF();
 
-          CONSTRUCT_NEWSCF( NEOSS, dcomplex, double );
-          CONSTRUCT_NEWSCF( NEOSS, dcomplex, dcomplex );
+    // Use the current field
+    EMPerturbation emPert = tdEMPerturbation.getPert(integrationProgress.currentTime);
+    if(tdSCFOptions.includeSCFField)
+      for(auto& field : staticEMPerturbation.fields) emPert.addField(field);
+    conventionalSCF.run(emPert);
 
-      if(!found)
-        CErr("Error in creating an SCF Object in BORT Propagation!");
+    // Reset the SCF controls
+    multiSS.scfControls = originalControls;
 
-      //Call SCF 
-      neoss.initializeSCF();
-      // Use the current field
-      EMPerturbation emPert = tdEMPerturbation.getPert(integrationProgress.currentTime); 
-      conventionalSCF->run(emPert);
-      // Reset the SCF controls
-      neoss.scfControls.NEOSubSystemOpt.clear();
-      neoss.scfControls.NEOSubSystemOpt = originalSubSystemOpt;
-      neoss.scfControls.printLevel = prevprintlevel;
-
-      // Print the converged SCF energy 
-      std::cout << "    Electronic Born-Oppenheimer Converged SCF Energy: " << std::fixed << std::setprecision(10) << std::right << this->singleSlaterSystem.getTotalEnergy() << std::endl;
-
-  return;
+    // Print the converged SCF energy
+    std::cout << "    Electronic Born-Oppenheimer Converged SCF Energy: "
+              << std::fixed << std::setprecision(10) << std::right
+              << multiSS.getTotalEnergy() << std::endl;
+  }
 }
 
 

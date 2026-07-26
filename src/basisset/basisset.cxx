@@ -47,17 +47,18 @@ namespace ChronusQ {
    *                        or a known keyword which maps to a basis
    *                        file
    *  \param [in] mol       Molecule for which to construct the BasisSet
+   *  \param [in] atomIndices Molecule atom indices carrying the basis;
+   *                          an empty list places it on every atom
    */
   BasisSet::BasisSet(std::string _basisName, std::string _basisDef,
     bool doDef, const Molecule &mol, BASIS_FUNCTION_TYPE _basisType, bool
-    _forceCart, bool doPrint, bool _nucBasis) {
+    _forceCart, bool doPrint, const std::vector<size_t>& atomIndices) {
 
     basisType = _basisType;
     forceCart = _forceCart;
     basisName = _basisName;
     basisDef  = _basisDef;
     inputDef  = doDef;
-    nucBasis  = _nucBasis;
 
 
     std::string uppercase(basisName);
@@ -72,11 +73,18 @@ namespace ChronusQ {
     }
 
     // Generate the reference basis set of that keyword
-    ReferenceBasisSet ref(basisName, basisDef, inputDef, _forceCart, doPrint, _nucBasis);
+    ReferenceBasisSet ref(basisName, basisDef, inputDef, _forceCart, doPrint);
+
+    // An empty center list places the ordinary electronic basis on every atom.
+    std::vector<size_t> basisAtomIndices = atomIndices;
+    if(basisAtomIndices.empty()) {
+      for(size_t iAtm = 0; iAtm < mol.atoms.size(); ++iAtm)
+        basisAtomIndices.push_back(iAtm);
+    }
 
     // Update appropriate shell set and coefficients for the Molecule
     // object
-    std::tie(shells,unNormCont) = std::move(ref.generateShellSet(mol));
+    std::tie(shells,unNormCont) = std::move(ref.generateShellSet(mol, basisAtomIndices));
 
     // Obtain a copy of the basis centers
     std::for_each(mol.atoms.begin(),mol.atoms.end(),
@@ -164,13 +172,15 @@ namespace ChronusQ {
       auto it = std::find_if(mapSh2Cen.begin(),mapSh2Cen.end(),
                   [&](size_t x){ return x == iAtm; });
 
-      if (nucBasis and it == mapSh2Cen.end())
-        mapAllCen2BfSt.emplace_back(0);
-      else {
-        size_t firstShell = std::distance(mapSh2Cen.begin(),it);
-        mapCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
-        mapAllCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
+      // For centers without basis functions, we put nBasis as a sentinel.
+      if (it == mapSh2Cen.end()) {
+        mapAllCen2BfSt.emplace_back(nBasis);
+        continue;
       }
+
+      size_t firstShell = std::distance(mapSh2Cen.begin(),it);
+      mapCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
+      mapAllCen2BfSt.emplace_back(mapSh2Bf[firstShell]);
 
     }
 

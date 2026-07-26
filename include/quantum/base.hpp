@@ -116,7 +116,7 @@ namespace ChronusQ {
      *  \param [in] _iCS  Whether or not system is closed shell
      *                    (only used when _nC == 1)
      */ 
-    QuantumBase(MPI_Comm c, size_t _nC, bool _iCS, Particle p): 
+    QuantumBase(MPI_Comm c, size_t _nC, bool _iCS, Particle p, std::optional<size_t> = std::nullopt): 
       nC(_nC), iCS(_iCS), particle(p), comm(c),
       elecDipole({0.,0.,0.}),
       elecQuadrupole{{{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}}},

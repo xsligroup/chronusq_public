@@ -46,7 +46,8 @@ namespace ChronusQ {
         "GPUMEMFRAC",               // Float between 0 and 1
         "BATCHSIZE",                // size_t
         "BASISTOL",                 // double
-        "PBASISTOL",                // double
+        "OTHERBASISTOL",            // double
+        "PBASISTOL",                // double, legacy alias for OTHERBASISTOL
         "GRID",                     // string: fine, ultrafine, superfine, GM3, GM5
         "PRUNINGSCHEME",            // string: unpruned, robust, treutler
         "XCWEIGHTALG",              // string: Becke, SSF, LKO
@@ -66,7 +67,7 @@ namespace ChronusQ {
    *
    */
   GauXCOptions CQGauXCOptions(std::ostream&out , CQInputFile &input, SingleSlaterOptions &ssOptions,
-    SingleSlaterOptions &prot_ssOptions) {
+    const std::vector<QuantumSubsystem>* quantumSubsystems) {
     
     out << "\nGauXC Settings:\n" << BannerTop << "\n\n" ;
     out << "  Parsing Input Options:" << std::endl;
@@ -81,7 +82,8 @@ namespace ChronusQ {
     
     // Parse basisset tolerance 
     OPTOPT( gauxcOpts.basisTol      = input.getData<double>("GAUXC/BASISTOL"); )
-    OPTOPT( gauxcOpts.pbasisTol     = input.getData<double>("GAUXC/PBASISTOL"); )
+    OPTOPT( gauxcOpts.otherBasisTol = input.getData<double>("GAUXC/PBASISTOL"); )
+    OPTOPT( gauxcOpts.otherBasisTol = input.getData<double>("GAUXC/OTHERBASISTOL"); )
     
     // Parse batch size
     OPTOPT( gauxcOpts.batchSize = input.getData<size_t>("GAUXC/BATCHSIZE"); )
@@ -165,7 +167,6 @@ namespace ChronusQ {
 
     // Get XC functional info parsed in ssOptions
     gauxcOpts.funcName        =  ssOptions.refOptions.funcName;
-    gauxcOpts.prot_funcName   =  prot_ssOptions.refOptions.funcName; 
     // Parse spin for ExchCXX
     gauxcOpts.xcSpin = ExchCXX::Spin::Unpolarized;
     if (ssOptions.refOptions.refType != isRRef) gauxcOpts.xcSpin = ExchCXX::Spin::Polarized; // UKS, GKS, 2C/X2C KS
@@ -185,7 +186,7 @@ namespace ChronusQ {
     OPTOPT( gauxcOpts.kernels = input.getData<std::string>("GAUXC/FUNCTIONAL"); )
 
     // Print full GauXC settings 
-    gauxcOpts.printGauXCSettings(out);
+    gauxcOpts.printGauXCSettings(out, quantumSubsystems);
 
     out << std::endl << BannerEnd << std::endl;
 
@@ -197,19 +198,15 @@ namespace ChronusQ {
    * Construct GauXCUtils object from parsed options
    *
    */
-  std::shared_ptr<GauXCUtils> GauXCOptions::buildGauXCUtils( const std::shared_ptr<const BasisSet>& basis, const std::shared_ptr<const BasisSet>& pbasis,
+  std::shared_ptr<GauXCUtils> GauXCOptions::buildGauXCUtils( const std::shared_ptr<const BasisSet>& basis,
     const Molecule& mol, MPI_Comm comm )
     {
       
       std::shared_ptr<GauXCUtils> gauxcUtils = std::make_shared<GauXCUtils>();
-      
-      // Decide whether to do NEO  
-      bool doNEO = pbasis ? true : false; 
 
       // Generate molecule and basis 
       gauxcUtils->gmol   = gauxcUtils->make_gmol(mol);
       gauxcUtils->gbasis = gauxcUtils->make_gbasis(*basis);
-      if(doNEO) gauxcUtils->gpbasis = gauxcUtils->make_gbasis(*pbasis);
 
       // Generate GauXC Runtime and select execution space / Kernel
       GauXC::ExecutionSpace exec_space = useGPU ? GauXC::ExecutionSpace::Device : GauXC::ExecutionSpace::Host;
@@ -236,13 +233,11 @@ namespace ChronusQ {
 
       // Screen shells 
       for( auto& sh : gauxcUtils->gbasis  ){ sh.set_shell_tolerance( basisTol ); }
-      if(doNEO) for( auto& sh : gauxcUtils->gpbasis ){ sh.set_shell_tolerance( pbasisTol ); }
 
       // Setup Load Balancer
       GauXC::LoadBalancerFactory lb_factory(exec_space, "Default");
-      std::shared_ptr<GauXC::LoadBalancer> lb;
-      lb = doNEO ? lb_factory.get_shared_instance(*(gauxcUtils->grt), gauxcUtils->gmol, mg, gauxcUtils->gbasis, gauxcUtils->gpbasis)
-          : lb_factory.get_shared_instance(*(gauxcUtils->grt), gauxcUtils->gmol, mg, gauxcUtils->gbasis);
+      auto lb = lb_factory.get_shared_instance(*(gauxcUtils->grt), gauxcUtils->gmol, mg, gauxcUtils->gbasis);
+      gauxcUtils->load_balancer = lb;
       auto& tasks = lb->get_tasks(); // Pregenerate tasks
       gauxcUtils->lb_tasks = &tasks; 
 
@@ -256,7 +251,6 @@ namespace ChronusQ {
       // Build GauXC Integrator
       GauXC::XCIntegratorFactory<Eigen::MatrixXd> integrator_factory(exec_space, "Replicated", intKernel, "Default", "Default");  
       // Setup XC functional and build integrator
-      
       GauXC::functional_type func;
 
       if (!funcName.compare("CUSTOM")) {
@@ -278,23 +272,150 @@ namespace ChronusQ {
 
       gauxcUtils->xHFX = hyb_coeffs.alpha;
 
-
-      if (doNEO){
-        // EPC functionals only has builtin implementations, and always be polarized
-        GauXC::functional_type epcfunc( ExchCXX::Backend::builtin, gauxcUtils->get_epcfunctional(prot_funcName), ExchCXX::Spin::Polarized );
-        gauxcUtils->integrator_pointer = integrator_factory.get_shared_instance(func, epcfunc, lb);
-      } else {
-        gauxcUtils->integrator_pointer = integrator_factory.get_shared_instance(func, lb);
-      }
+      gauxcUtils->integrator_pointer = integrator_factory.get_shared_instance(func, lb);
       
       return gauxcUtils;
 
     } // End GauXCUtils Builder
 
-  void GauXCOptions::printGauXCSettings(std::ostream &out){
+  std::shared_ptr<GauXCUtils> GauXCOptions::buildGauXCUtils(
+    const std::vector<QuantumSubsystem>& quantumSubsystems,
+    const Molecule& mol, MPI_Comm comm )
+    {
+
+      std::vector<std::shared_ptr<const BasisSet>> bases;
+      bases.reserve(quantumSubsystems.size());
+
+      GauXC::MultiParticleFunctionalSpec functional_spec;
+      functional_spec.intra_functionals.resize(quantumSubsystems.size());
+
+      auto make_intra_functional = [&](const std::string& name, ExchCXX::Spin spin) {
+        if(!name.compare("CUSTOM")) {
+          std::vector<std::pair<double,ExchCXX::XCKernel>> kernel_list;
+          std::stringstream ss(kernels);
+          std::string kernel;
+          double scale;
+
+          while(ss >> kernel >> scale)
+            kernel_list.push_back({scale, GauXCUtils::get_xckernel(kernel, spin, xcBackend)});
+
+          return std::make_shared<GauXC::functional_type>(kernel_list, hyb_coeffs);
+        } else {
+          auto func = std::make_shared<GauXC::functional_type>(
+            xcBackend, GauXCUtils::get_functional(name), spin);
+          hyb_coeffs = func->hyb_exx();
+          return func;
+        }
+      };
+
+      // Procedural builds the electronic subsystem first. Its KS functional is
+      // the intra-particle term; EPC refs on later subsystems become inter terms.
+      for(size_t i = 0; i < quantumSubsystems.size(); ++i) {
+        const auto& sys = quantumSubsystems[i];
+        const auto& ref = sys.ssOptions.refOptions;
+        bases.push_back(sys.basis);
+
+        if(i == 0 and ref.isKSRef and not ref.isEPCRef) {
+          ExchCXX::Spin spin = ref.refType != isRRef ?
+            ExchCXX::Spin::Polarized : ExchCXX::Spin::Unpolarized;
+          functional_spec.intra_functionals[i].push_back(make_intra_functional(ref.funcName, spin));
+        }
+
+        if(ref.isEPCRef) {
+          GauXC::MultiParticlePairFunctional pair_spec;
+          pair_spec.electron = 0;
+          pair_spec.particle = i;
+          pair_spec.functionals.push_back(std::make_shared<GauXC::functional_type>(
+            ExchCXX::Backend::builtin, GauXCUtils::get_epcfunctional(ref.funcName),
+            ExchCXX::Spin::Polarized));
+          functional_spec.inter_functionals.push_back(std::move(pair_spec));
+        }
+      }
+
+      if(bases.empty()) CErr("Cannot build MultiParticle GauXCUtils without basis sets");
+
+      std::shared_ptr<GauXCUtils> gauxcUtils = std::make_shared<GauXCUtils>();
+      gauxcUtils->multiparticle_functional_spec = functional_spec;
+      gauxcUtils->xHFX = hyb_coeffs.alpha;
+
+      gauxcUtils->gmol = gauxcUtils->make_gmol(mol);
+      gauxcUtils->gbases.reserve(bases.size());
+      for(const auto& basis : bases) {
+        if(!basis) CErr("Cannot build MultiParticle GauXCUtils with null basis");
+        gauxcUtils->gbases.emplace_back(gauxcUtils->make_gbasis(*basis));
+      }
+      if(!gauxcUtils->gbases.empty())
+        gauxcUtils->gbasis = gauxcUtils->gbases.front();
+
+      GauXC::ExecutionSpace exec_space = useGPU ? GauXC::ExecutionSpace::Device : GauXC::ExecutionSpace::Host;
+      #ifdef CQ_ENABLE_CUDA
+        #ifdef CQ_ENABLE_MPI
+        gauxcUtils->grt = useGPU ? std::make_shared<GauXC::DeviceRuntimeEnvironment>(comm, gpuMemFrac) : std::make_shared<GauXC::RuntimeEnvironment>(comm);
+        #else
+        gauxcUtils->grt = useGPU ? std::make_shared<GauXC::DeviceRuntimeEnvironment>(gpuMemFrac) : std::make_shared<GauXC::RuntimeEnvironment>();
+        #endif
+      #else
+        if(useGPU) CErr("useGPU enabled but CQ not compiled with CUDA! Set CQ_ENABLE_CUDA=ON");
+        #ifdef CQ_ENABLE_MPI
+        gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>(comm);
+        #else
+        gauxcUtils->grt = std::make_shared<GauXC::RuntimeEnvironment>();
+        #endif
+      #endif
+
+      GauXC::MolGrid mg = custom_grid ? GauXC::MolGridFactory::create_default_molgrid(
+            gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, nrad, nang) :
+            GauXC::MolGridFactory::create_default_molgrid(
+            gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, grid);
+
+      for(size_t i = 0; i < gauxcUtils->gbases.size(); ++i) {
+        const double tol = i == 0 ? basisTol : otherBasisTol;
+        for(auto& sh : gauxcUtils->gbases[i]) sh.set_shell_tolerance(tol);
+      }
+
+      GauXC::LoadBalancerFactory lb_factory(exec_space, "Default");
+      auto lb = lb_factory.get_shared_instance(*(gauxcUtils->grt), gauxcUtils->gmol, mg, gauxcUtils->gbases);
+      gauxcUtils->load_balancer = lb;
+      auto& tasks = lb->get_tasks();
+      gauxcUtils->lb_tasks = &tasks;
+
+      GauXC::MolecularWeightsSettings mw_settings;
+      mw_settings.weight_alg = xcWeightAlg;
+      GauXC::MolecularWeightsFactory mw_factory( exec_space, "Default", mw_settings );
+      auto mw = mw_factory.get_instance();
+      mw.modify_weights(*lb);
+
+      // GauXC needs a representative functional to construct the integrator.
+      // The full intra/inter-particle spec is passed at each XC evaluation.
+      std::shared_ptr<GauXC::functional_type> seed_func;
+      for(const auto& funcs : functional_spec.intra_functionals) {
+        if(!funcs.empty()) {
+          seed_func = funcs.front();
+          break;
+        }
+      }
+      if(!seed_func) {
+        for(const auto& pair : functional_spec.inter_functionals) {
+          if(!pair.functionals.empty()) {
+            seed_func = pair.functionals.front();
+            break;
+          }
+        }
+      }
+      if(!seed_func) CErr("Cannot build MultiParticle GauXC integrator without functionals");
+
+      GauXC::XCIntegratorFactory<Eigen::MatrixXd> integrator_factory(exec_space, "Replicated", intKernel, "Default", "Default");
+      gauxcUtils->integrator_pointer = integrator_factory.get_shared_instance(seed_func, lb);
+
+      return gauxcUtils;
+
+    } // End MultiParticle GauXCUtils Builder
+
+  void GauXCOptions::printGauXCSettings(std::ostream &out,
+    const std::vector<QuantumSubsystem>* quantumSubsystems){
 
     size_t width = 28;
-    bool doNEO = !prot_funcName.empty();
+    bool doMultiParticle = quantumSubsystems and not quantumSubsystems->empty();
 
     out << "  Full GauXC Settings:" << std::endl;
     out << bannerMid << std::endl;
@@ -307,9 +428,31 @@ namespace ChronusQ {
     
     out << "  " << std::setw(width) << "Batch Size:";
     out << batchSize << std::endl;
-    
-    out << "  " << std::setw(width) << "XC Functional:";
-    out << funcName << std::endl;
+
+    if(doMultiParticle) {
+      auto labelOf = [](const QuantumSubsystem& sys) -> const std::string& {
+        return sys.label.empty() ? sys.inputLabel : sys.label;
+      };
+      const std::string electronLabel = labelOf(quantumSubsystems->front());
+
+      for(size_t i = 0; i < quantumSubsystems->size(); ++i) {
+        const auto& sys = quantumSubsystems->at(i);
+        const auto& ref = sys.ssOptions.refOptions;
+
+        if(i == 0 and ref.isKSRef and not ref.isEPCRef) {
+          out << "  " << std::setw(width) << "Intra Functional:";
+          out << labelOf(sys) << " = " << ref.funcName << std::endl;
+        }
+
+        if(ref.isEPCRef) {
+          out << "  " << std::setw(width) << "Inter Functional:";
+          out << electronLabel << "-" << labelOf(sys) << " = " << ref.funcName << std::endl;
+        }
+      }
+    } else {
+      out << "  " << std::setw(width) << "XC Functional:";
+      out << funcName << std::endl;
+    }
     
     out << "  " << std::setw(width) << "XC Spin:";
     out << (xcSpin==ExchCXX::Spin::Unpolarized ? "Unpolarized" : "Polarized")  << std::endl;
@@ -323,12 +466,9 @@ namespace ChronusQ {
     out << "  " << std::setw(width) << "Basis Tolerance:";
     out << basisTol << std::endl;
 
-    if(doNEO){
-      out << "  " << std::setw(width) << "EPC Functional:";
-      out << prot_funcName << std::endl;
-
-      out << "  " << std::setw(width) << "Proton Basis Tolerance:";
-      out << pbasisTol << std::endl;
+    if(doMultiParticle) {
+      out << "  " << std::setw(width) << "Other Basis Tolerance:";
+      out << otherBasisTol << std::endl;
     }
 
     out << "  " << std::setw(width) << "Grid:";

@@ -37,9 +37,12 @@ namespace ChronusQ {
 
     // Molecule object to use
     Molecule inputMol = this->molecule();
-
-    // For protonic SS, charge analysis are done for only proton atoms 
-    if (this->particle.charge > 0)  inputMol = inputMol.retainQNuc();
+    if (this->particle.charge > 0) {
+      if(!this->ownedAtomIndices.empty())
+        inputMol = inputMol.retainAtoms(this->ownedAtomIndices);   // atoms carrying this subsystem's basis
+      else
+        inputMol = inputMol.retainQNuc();                          // legacy fallback: all quantum nuclei
+    }
 
     // Mulliken population analysis
     mullikenCharges.clear();
@@ -103,7 +106,8 @@ namespace ChronusQ {
     }
 
     // Loop over atoms
-    for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {
+    size_t nCenters = this->basisSet().mapCen2BfSt.size();
+    for(auto iAtm = 0; iAtm < nCenters; iAtm++) {
 
       // Initializing everything needed for components and l
       mullikenCharges.emplace_back();
@@ -140,7 +144,7 @@ namespace ChronusQ {
     // Lowdin population analysis
     lowdinCharges.clear();
 
-    for(auto iAtm = 0; iAtm < inputMol.nAtoms; iAtm++) {
+    for(auto iAtm = 0; iAtm < nCenters; iAtm++) {
 
       // Initializing everything needed for components and l
       lowdinCharges.emplace_back();

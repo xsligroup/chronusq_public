@@ -24,6 +24,9 @@
 
 #include "scf.hpp"
 
+// Test regenerated after NEO Refactor. Benchmarked against Gaussian:
+//h2o_sto3g_protsp_b3lyp_epc17_99590.log: SCF Done:  E(RB3LYP+NEO-LENC) =  -75.2314904855     A.U. after   14 cycles
+//h2o_sto3g_protsp_b3lyp_epc19_99590.log: SCF Done:  E(RB3LYP+NEO-LYPENC) =  -75.2370104938     A.U. after   14 cycles
 
 //NEO-DFT with minimal basis set, using epc17 functional
 TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc17) {
@@ -65,13 +68,12 @@ TEST( NEO_RKS, par_water_stepwise_epc17) {
 
 
 // FIXME: for epc19, parallel jobs doesn't pass. Need to debug epc19
-//
-// //NEO-DFT with minimal basis set, using epc19 functional, parallel job
-// TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc19) {
-// 
-//   CQNEOSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
-//  
-// }
+//NEO-DFT with minimal basis set, using epc19 functional, parallel job
+TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc19) {
+
+  CQNEOSCFTEST( "scf/parallel/neo_rks/par_water_sto-3g_prot-sp_rb3lyp_uepc19", "water_sto-3g_prot-sp_rb3lyp_uepc19.bin.ref" );
+ 
+}
 
 #endif
 

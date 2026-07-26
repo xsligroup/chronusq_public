@@ -84,6 +84,7 @@ namespace ChronusQ {
     bool finiteWidthNuc = false; // Use finite nuclei in integral evaluations
     bool Libcint = false; // Use Libcint library instead of Libint
     Particle particle; // Particle type
+    Particle particle2 = {-1.0, 1.0}; // Particle type for the second particle, for asymmetric integrals
 
     // One-Component Options
     bool PerturbativeScalarRelativity = false; // Add perturbative scalar relativity
@@ -129,8 +130,8 @@ namespace ChronusQ {
     // Dirac-Kohn-Sham (4C-DFT) Options
     DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS
 
-
     std::string savFilePrefix = ""; // prefix for saving the integrals and SCF data in HDF5
+    std::optional<size_t> nParticleOverride = std::nullopt; // number of particles to override in this quantum subsystem
 
   }; // struct HamiltonianOptions
 

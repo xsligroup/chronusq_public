@@ -29,6 +29,7 @@
 #include <basisset.hpp>
 #include <cubegenoptions.hpp>
 #include <d3utils.hpp>
+#include <map>
 
 namespace ChronusQ {
 
@@ -263,7 +264,7 @@ namespace ChronusQ {
   struct TDSCFOptions {
 
     RealTimeAlgorithm     integrationAlgorithm     = RealTimeAlgorithm::RTModifiedMidpoint; ///< Integration Algorithm
-    RealTimeAlgorithm     protIntegrationAlgorithm = RealTimeAlgorithm::Uninitialized;      ///< Protonic Integration Algorithm
+    std::map<std::string, RealTimeAlgorithm>         subsystemIntegrationAlgorithms;        ///< Per-subsystem Integration Algorithms for MultiparticleSS
     RestartAlgorithm      restartAlgorithm         = RestartAlgorithm::ExplicitMagnus2;     ///< Restart Step
     PropagatorAlgorithm   propagatorAlgorithm      = PropagatorAlgorithm::Diagonalization;  ///< exp(-iF) Algorithm
 

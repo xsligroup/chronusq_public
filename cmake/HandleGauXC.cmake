@@ -48,9 +48,9 @@ endif()
 
 FetchContent_Declare(
   gauxc
-  # Using Aodong's merge_neo branch (master + NEO CPU)
+  # GauXC master + general multiparticle host DFT
   GIT_REPOSITORY https://github.com/aodongliu/GauXC.git
-  GIT_TAG e144e5c73f09f559da1bacab55b3ae8b480adbbb
+  GIT_TAG 5e8484399d82168b4f23ab69e7ac822390e91efd
 )
 
 #CMAKE_ARGS "-DGAUXC_ENABLE_MPI=${CQ_ENABLE_MPI} -DGAUXC_ENABLE_CUDA=${CQ_ENABLE_CUDA}"

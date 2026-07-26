@@ -300,12 +300,12 @@ namespace ChronusQ {
     
     // Build either an symmetric IntegralBase object ( either (ee|ee) or a (pp|pp) )
     std::shared_ptr<IntegralsBase> buildSymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
-        std::shared_ptr<BasisSet> dfbasis, std::string s) const;
+        std::shared_ptr<BasisSet> dfbasis, const std::string &label) const;
 
     // Build either an asymmetric IntegralBase object ( (ee|pp) )
     std::shared_ptr<IntegralsBase> buildAsymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
         std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, 
-        std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi) const;
+        std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi, const std::string &labelA, const std::string &labelB) const;
     
     // Build all (ee|ee), (pp|pp), (ee|pp) objects (if needed), and return them in a tuple
     static std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> buildAllIntegrals(
@@ -317,6 +317,6 @@ namespace ChronusQ {
   // Declear function to parse the user-specific integral options
   IntegralOptions getIntegralOptions(std::ostream &, CQInputFile &, 
       std::shared_ptr<BasisSet>,  std::shared_ptr<BasisSet>, 
-      std::shared_ptr<BasisSet>, std::string);
+      std::shared_ptr<BasisSet>, std::string, bool isAsymmetric = false);
 
 }; // namespace ChronusQ

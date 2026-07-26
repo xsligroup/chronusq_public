@@ -137,8 +137,12 @@ namespace ChronusQ {
 
     Molecule mol = this->molecule();
 
-    // For protonic SS, charge analysis are done for only proton atoms 
-    if (this->particle.charge > 0)  mol = mol.retainQNuc();
+    if (this->particle.charge > 0) {
+      if(!this->ownedAtomIndices.empty())
+        mol = mol.retainAtoms(this->ownedAtomIndices);   // atoms carrying this subsystem's basis
+      else
+        mol = mol.retainQNuc();                          // legacy fallback: all quantum nuclei
+    }
 
     // For angular momentum printing
     constexpr size_t maxLPrint = 6 + 1;
@@ -147,7 +151,7 @@ namespace ChronusQ {
       { "S", "P", "D", "F", "G", "H", "I" };
     if( maxL + 1 > maxLPrint ) std::cout << "***** WARNING: Printing with L>I basis functions is NYI" << std::endl;
 
-    for(auto iAtm = 0; iAtm < mol.nAtoms; iAtm++) {
+    for(auto iAtm = 0; iAtm < mullikenCharges.size(); iAtm++) {
 
       // Get symbol
       std::map<std::string,Atom>::const_iterator it = 
@@ -191,7 +195,7 @@ namespace ChronusQ {
 
     out << std::right << bannerMid << std::endl;
 
-    for(auto iAtm = 0; iAtm < mol.nAtoms; iAtm++) {
+    for(auto iAtm = 0; iAtm < lowdinCharges.size(); iAtm++) {
 
       // Get symbol
       std::map<std::string,Atom>::const_iterator it =

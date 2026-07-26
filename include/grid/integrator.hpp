@@ -494,6 +494,13 @@ namespace ChronusQ {
     size_t           GradNDer;     ///< Number of required gradients
     size_t           GradNDer2;    ///< Number of required gradients for second basis
 
+    // Generalization for N-basis in MultiParticleSS DFT driver
+    std::vector<BasisSet*>        basisSetsN_;   ///< N basis sets 
+    std::vector<SHELL_EVAL_TYPE>  typsN_;        ///< Per-basis eval requirements
+    std::vector<size_t>           NDersN_;       ///< Per-basis # derivatives
+    std::vector<size_t>           GradNDersN_;   ///< Per-basis # nuclear derivatives
+    bool                          IntN = false;  ///< Whether to use N-basis path
+
   public:
 
     // Defaulted / Deleted ctors
@@ -532,6 +539,28 @@ namespace ChronusQ {
       Int2nd(true),
       GradNDer((typ_ == GRADIENT) ? 12:3),
       GradNDer2((typ2_ == GRADIENT) ? 12:3) { };
+
+    /**
+     *  \brief BeckeIntegrator constructor (N basis sets)
+     *
+     *  Constructs a BeckeIntegrator that evaluates an arbitrary number of
+     *  basis sets on the same molecular grid in a single pass. Used by
+     *  the unified multi-particle DFT driver (integrateN). 
+     */
+    BeckeIntegrator(MPI_Comm c, Molecule &mol,
+      std::vector<BasisSet*> bases, std::vector<SHELL_EVAL_TYPE> typs,
+      _QTyp1 g, size_t NAng, size_t NRadPerMacroBatch, double epsScreen) :
+      comm(c),molecule_(mol),basisSet_(*bases.at(0)),typ_(typs.at(0)),
+      basisSet2_(*bases.at(0)),epsScreen_(epsScreen),doGrad(false),
+      SphereIntegrator<_QTyp1>(g,NAng,{0.,0.,0.},1.,NRadPerMacroBatch),
+      NDer((typs.at(0) == GRADIENT) ? 4:1),
+      GradNDer((typs.at(0) == GRADIENT) ? 12:3),
+      basisSetsN_(bases),typsN_(typs),IntN(true) {
+        for(auto t : typs) {
+          NDersN_.emplace_back((t == GRADIENT) ? 4:1);
+          GradNDersN_.emplace_back((t == GRADIENT) ? 12:3);
+        }
+      };
 
     /**
      *  Functions for the multicenter numerical integration from
@@ -1239,6 +1268,283 @@ namespace ChronusQ {
 #endif
 
     };// integrate
+
+  /**
+   *  \brief N-basis molecular integration.
+   *
+   *  Generalization of integrate<T> to an arbitrary number of basis sets
+   *  (basisSetsN_), evaluated on the same Becke molecular grid in a single
+   *  traversal. The callback receives one entry per basis set in each of the
+   *  NBE / BasisEval / batchEvalShells / batchSubMat vectors (same interface
+   *  the two-basis path already uses).
+   *
+   */
+  template <typename T, class F, typename... Args>
+    void integrateN(T &res, const F &func, Args... args) {
+
+      size_t nthreads = GetNumThreads();
+      size_t mpiRank  = MPIRank(comm);
+      size_t mpiSize  = MPISize(comm);
+
+      assert( mpiSize <= molecule_.nAtoms );
+
+      const size_t nB = basisSetsN_.size();
+
+      size_t maxBatchSize      = this->nRadPerMacroBatch * this->q2.nPts;
+      size_t maxBatchSizeAtoms = maxBatchSize * molecule_.nAtoms;
+
+      std::vector<double*> BasisEval(nB);
+      std::vector<double*> SCR_Car(nB);
+      std::vector<double*> SCRGrad_Car(nB,nullptr);
+      std::vector<size_t>  shSizeCar(nB);
+      std::vector<size_t>  fullDim(nB);
+      std::vector<std::vector<size_t>> allShells(nB);
+      std::vector<std::vector<std::pair<size_t,size_t>>> allSubMat(nB);
+
+      for(size_t b = 0; b < nB; b++) {
+        BasisSet &bs = *basisSetsN_[b];
+        const size_t nEvalDer = NDersN_[b] + (doGrad ? GradNDersN_[b] : 0);
+        BasisEval[b] = CQMemManager::get().malloc<double>(
+          nthreads * nEvalDer * maxBatchSize * bs.nBasis);
+
+        int LMax = 0;
+        for(auto iSh = 0; iSh < bs.nShell; iSh++)
+          LMax = std::max(bs.shells[iSh].contr[0].l, LMax);
+        shSizeCar[b] = ((LMax+1)*(LMax+2))/2;
+        SCR_Car[b] = CQMemManager::get().malloc<double>(
+          nthreads * NDersN_[b] * shSizeCar[b]);
+        if(doGrad)
+          SCRGrad_Car[b] = CQMemManager::get().malloc<double>(
+            nthreads * GradNDersN_[b] * shSizeCar[b]);
+
+        fullDim[b] = bs.nBasis;
+        for(auto iSh = 0; iSh < bs.nShell; iSh++) allShells[b].emplace_back(iSh);
+        allSubMat[b].emplace_back(0, bs.nBasis);
+      }
+
+      double * cenRSq = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenR   = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenXYZ = CQMemManager::get().malloc<double>(nthreads * 3*maxBatchSizeAtoms);
+
+      double epsilon =
+        std::max((epsScreen_/maxBatchSizeAtoms),std::numeric_limits<double>::epsilon());
+
+      // Per-batch integrand: evaluate every basis, apply Becke partition
+      //   weights, then hand all bases to the callback.
+      auto g = [&](T &r, std::vector<cart_t> &batch, std::vector<double> &weights,
+        const std::pair<double,double> &rBounds, Args... as) -> void {
+
+        size_t thread_id = GetThreadID();
+
+        double * cenRSq_loc = cenRSq + thread_id * maxBatchSizeAtoms;
+        double * cenR_loc   = cenR   + thread_id * maxBatchSizeAtoms;
+        double * cenXYZ_loc = cenXYZ + thread_id * 3*maxBatchSizeAtoms;
+
+        calcCenDist(batch,cenRSq_loc,cenR_loc,cenXYZ_loc);
+
+        std::vector<size_t>  NBE_vec(nB);
+        std::vector<double*> BasisEval_loc_vec(nB);
+
+        for(size_t b = 0; b < nB; b++) {
+          BasisSet &bs = *basisSetsN_[b];
+          const size_t nEvalDer = NDersN_[b] + (doGrad ? GradNDersN_[b] : 0);
+          double * BasisEval_loc =
+            BasisEval[b] + thread_id * nEvalDer * maxBatchSize * bs.nBasis;
+          double * SCR_Car_loc = SCR_Car[b] + thread_id * NDersN_[b] * shSizeCar[b];
+          double * BasisGradEval_loc = doGrad ?
+            BasisEval_loc + NDersN_[b] * batch.size() * bs.nBasis : nullptr;
+          double * SCRGrad_Car_loc = doGrad ?
+            SCRGrad_Car[b] + thread_id * GradNDersN_[b] * shSizeCar[b] : nullptr;
+
+          std::vector<bool> evalShell(bs.nShell, true);
+
+          evalShellSet(typsN_[b],bs.shells,evalShell,cenRSq_loc,cenXYZ_loc,
+            batch.size(),molecule_.nAtoms,bs.mapSh2Cen,fullDim[b],BasisEval_loc,
+            SCR_Car_loc,shSizeCar[b],bs.forceCart);
+
+          if(doGrad)
+            evalShellSetGrad(typsN_[b],bs.shells,evalShell,cenRSq_loc,cenXYZ_loc,
+              batch.size(),molecule_.nAtoms,bs.mapSh2Cen,fullDim[b],BasisGradEval_loc,
+              SCRGrad_Car_loc,shSizeCar[b],bs.forceCart);
+
+          NBE_vec[b] = fullDim[b];
+          BasisEval_loc_vec[b] = BasisEval_loc;
+        }
+
+        // Modify weights according to the Becke partition scheme; screen batch
+        auto maxWeight = evalPartitionWeights(iAtm,cenR_loc,weights);
+        if (std::abs(maxWeight) < epsilon) return;
+
+        std::vector<std::vector<size_t>> batchEvalShells_vec = allShells;
+        std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec = allSubMat;
+
+        func(r,batch,weights,NBE_vec,BasisEval_loc_vec,
+             batchEvalShells_vec,batchSubMat_vec,as...);
+
+      }; // g
+
+      // Integrate over atomic centers via the spherical integrators
+      for(iAtm = 0; iAtm < molecule_.nAtoms; iAtm++) {
+
+        if( iAtm % mpiSize != mpiRank ) continue;
+
+        this->Center = {molecule_.atoms[iAtm].coord[0],
+                        molecule_.atoms[iAtm].coord[1],
+                        molecule_.atoms[iAtm].coord[2]};
+
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
+
+      } // loop over atoms
+      res *= 4.* M_PI;
+
+      for(size_t b = 0; b < nB; b++)
+        if(doGrad)
+          CQMemManager::get().free(BasisEval[b],SCR_Car[b],SCRGrad_Car[b]);
+        else
+          CQMemManager::get().free(BasisEval[b],SCR_Car[b]);
+      CQMemManager::get().free(cenRSq,cenXYZ,cenR);
+
+    };// integrateN
+
+  /**
+   *  \brief GIAO integration over an arbitrary number of basis sets.
+   *
+   *  Same callback interface as integrateN, but evaluates complex GIAO basis
+   *  functions using the external magnetic perturbation and one phase scale
+   *  per basis set.
+   *
+   */
+  template <typename T, class F, typename... Args>
+    void integrateN(T &res, const F &func, EMPerturbation &pert,
+      const std::vector<double> &phaseScales, Args... args) {
+
+      size_t nthreads = GetNumThreads();
+      size_t mpiRank  = MPIRank(comm);
+      size_t mpiSize  = MPISize(comm);
+
+      assert( mpiSize <= molecule_.nAtoms );
+
+      const size_t nB = basisSetsN_.size();
+      assert( phaseScales.size() == nB );
+
+      size_t maxBatchSize      = this->nRadPerMacroBatch * this->q2.nPts;
+      size_t maxBatchSizeAtoms = maxBatchSize * molecule_.nAtoms;
+
+      std::vector<dcomplex*> BasisEval(nB);
+      std::vector<dcomplex*> SCR_Car(nB);
+      std::vector<dcomplex*> SCRGrad_Car(nB,nullptr);
+      std::vector<size_t>    shSizeCar(nB);
+      std::vector<size_t>    fullDim(nB);
+      std::vector<std::vector<size_t>> allShells(nB);
+      std::vector<std::vector<std::pair<size_t,size_t>>> allSubMat(nB);
+
+      for(size_t b = 0; b < nB; b++) {
+        BasisSet &bs = *basisSetsN_[b];
+        const size_t nEvalDer = NDersN_[b] + (doGrad ? GradNDersN_[b] : 0);
+        BasisEval[b] = CQMemManager::get().malloc<dcomplex>(
+          nthreads * nEvalDer * maxBatchSize * bs.nBasis);
+
+        int LMax = 0;
+        for(auto iSh = 0; iSh < bs.nShell; iSh++)
+          LMax = std::max(bs.shells[iSh].contr[0].l, LMax);
+        shSizeCar[b] = ((LMax+1)*(LMax+2))/2;
+        SCR_Car[b] = CQMemManager::get().malloc<dcomplex>(
+          nthreads * NDersN_[b] * shSizeCar[b]);
+        if(doGrad)
+          SCRGrad_Car[b] = CQMemManager::get().malloc<dcomplex>(
+            nthreads * GradNDersN_[b] * shSizeCar[b]);
+
+        fullDim[b] = bs.nBasis;
+        for(auto iSh = 0; iSh < bs.nShell; iSh++) allShells[b].emplace_back(iSh);
+        allSubMat[b].emplace_back(0, bs.nBasis);
+      }
+
+      double * cenRSq = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenR   = CQMemManager::get().malloc<double>(nthreads * maxBatchSizeAtoms);
+      double * cenXYZ = CQMemManager::get().malloc<double>(nthreads * 3*maxBatchSizeAtoms);
+
+      double epsilon =
+        std::max((epsScreen_/maxBatchSizeAtoms),std::numeric_limits<double>::epsilon());
+
+      // Per-batch integrand: evaluate every GIAO basis, apply Becke partition
+      //   weights, then hand all bases to the callback.
+      auto g = [&](T &r, std::vector<cart_t> &batch, std::vector<double> &weights,
+        const std::pair<double,double> &rBounds, Args... as) -> void {
+
+        size_t thread_id = GetThreadID();
+
+        double * cenRSq_loc = cenRSq + thread_id * maxBatchSizeAtoms;
+        double * cenR_loc   = cenR   + thread_id * maxBatchSizeAtoms;
+        double * cenXYZ_loc = cenXYZ + thread_id * 3*maxBatchSizeAtoms;
+
+        calcCenDist(batch,cenRSq_loc,cenR_loc,cenXYZ_loc);
+
+        std::vector<size_t>    NBE_vec(nB);
+        std::vector<dcomplex*> BasisEval_loc_vec(nB);
+
+        for(size_t b = 0; b < nB; b++) {
+          BasisSet &bs = *basisSetsN_[b];
+          const size_t nEvalDer = NDersN_[b] + (doGrad ? GradNDersN_[b] : 0);
+          dcomplex * BasisEval_loc =
+            BasisEval[b] + thread_id * nEvalDer * maxBatchSize * bs.nBasis;
+          dcomplex * SCR_Car_loc = SCR_Car[b] + thread_id * NDersN_[b] * shSizeCar[b];
+          dcomplex * BasisGradEval_loc = doGrad ?
+            BasisEval_loc + NDersN_[b] * batch.size() * bs.nBasis : nullptr;
+          dcomplex * SCRGrad_Car_loc = doGrad ?
+            SCRGrad_Car[b] + thread_id * GradNDersN_[b] * shSizeCar[b] : nullptr;
+
+          std::vector<bool> evalShell(bs.nShell, true);
+
+          evalShellSet(typsN_[b],bs.shells,evalShell,cenRSq_loc,cenXYZ_loc,
+            batch.size(),molecule_.nAtoms,bs.mapSh2Cen,fullDim[b],BasisEval_loc,
+            SCR_Car_loc,shSizeCar[b],bs.forceCart,pert,phaseScales[b]);
+
+          if(doGrad)
+            evalShellSetGrad(typsN_[b],bs.shells,evalShell,cenRSq_loc,cenXYZ_loc,
+              batch.size(),molecule_.nAtoms,bs.mapSh2Cen,fullDim[b],BasisGradEval_loc,
+              SCRGrad_Car_loc,shSizeCar[b],bs.forceCart,pert,phaseScales[b]);
+
+          NBE_vec[b] = fullDim[b];
+          BasisEval_loc_vec[b] = BasisEval_loc;
+        }
+
+        // Modify weights according to the Becke partition scheme; screen batch
+        auto maxWeight = evalPartitionWeights(iAtm,cenR_loc,weights);
+        if (std::abs(maxWeight) < epsilon) return;
+
+        std::vector<std::vector<size_t>> batchEvalShells_vec = allShells;
+        std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec = allSubMat;
+
+        func(r,batch,weights,NBE_vec,BasisEval_loc_vec,
+             batchEvalShells_vec,batchSubMat_vec,as...);
+
+      }; // g
+
+      // Integrate over atomic centers via the spherical integrators
+      for(iAtm = 0; iAtm < molecule_.nAtoms; iAtm++) {
+
+        if( iAtm % mpiSize != mpiRank ) continue;
+
+        this->Center = {molecule_.atoms[iAtm].coord[0],
+                        molecule_.atoms[iAtm].coord[1],
+                        molecule_.atoms[iAtm].coord[2]};
+
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
+
+      } // loop over atoms
+      res *= 4.* M_PI;
+
+      for(size_t b = 0; b < nB; b++)
+        if(doGrad)
+          CQMemManager::get().free(BasisEval[b],SCR_Car[b],SCRGrad_Car[b]);
+        else
+          CQMemManager::get().free(BasisEval[b],SCR_Car[b]);
+      CQMemManager::get().free(cenRSq,cenXYZ,cenR);
+
+    };// integrateN GIAO
+
   /**
    *  \brief Integration function according the Becke scheme with GIAO 
    *

@@ -179,7 +179,7 @@ namespace ChronusQ {
     // GIAO
     // J(μν) = ((μν|κλ).H * D(λκ)).H = ((νμ|λκ) * D(λκ)).H = J(νμ).H = J(μν) 
     if( std::is_same<IntsT,dcomplex>::value ){
-      if(NB2==sNB2){
+      if(not this->isCross){
         blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,NB2,1,sNB2,IntsT(1.),tpi4I.pointer(),NB2,X,sNB2,IntsT(0.),AX,NB2);
       }else{
         if (not this->contractSecond)
@@ -456,6 +456,7 @@ namespace ChronusQ {
       auto casted = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(this->grad_[i]);
       InCore4indexTPIContraction<MatsT,IntsT> contraction(casted);
       contraction.contractSecond = this->contractSecond;
+      contraction.isCross = this->isCross;
       contraction.twoBodyContract(comm, screen, list[i], pert);
     }
 

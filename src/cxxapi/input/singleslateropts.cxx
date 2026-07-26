@@ -41,6 +41,7 @@
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
 
 #include <singleslater/neoss.hpp>
+#include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
 
@@ -78,9 +79,25 @@ namespace ChronusQ {
     std::set<std::string> allowedKeywords = {
       "REFERENCE",
       "IGNOREPROTONTWOBODY",
-      "ONECENTERK"
+      "ONECENTERK",
+      "ERFOMEGA",
+      "DISTINGUISHABLE"
     };
 
+    return CQInvalidKeywords(allowedKeywords, inputSection);
+  }
+
+  std::set<std::string> CQQUANTUMSUBSYSTEMQM_VALID(const std::map<std::string, std::string>& inputSection) {
+  
+    std::set<std::string> allowedKeywords = {
+      "REFERENCE",
+      "ONECENTERK",
+      "DISTINGUISHABLE",
+      "PARTICLECHARGE",
+      "PARTICLEMASS",
+      "IGNOREPROTONTWOBODY"
+    };
+  
     return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
@@ -1191,10 +1208,11 @@ namespace ChronusQ {
     // Error checking here to have access to the particle set
     if(mol.nTotalP > 1 && options.hamiltonianOptions.ignoreProtonTwoBody)
     {
-      CErr("Requested turning of Proton Two Body Interaction with >1 Quantum Proton is illegal!");
+      //CErr("Requested turning of Proton Two Body Interaction with >1 Quantum Proton is illegal!");
     }
 
     options.hamiltonianOptions.particle = p;
+    options.hamiltonianOptions.particle2 = p;
 
     out << options.hamiltonianOptions << std::endl;
 
@@ -1242,6 +1260,7 @@ namespace ChronusQ {
     // Override core hamiltoninan type for X2C
 
     Particle p = hamiltonianOptions.particle;
+    std::optional<size_t> nParticleOverride = hamiltonianOptions.nParticleOverride;
 
     if( p.charge < 0 && refOptions.isEPCRef )
       CErr("EPC functionals only valid on proton references!");
@@ -1250,10 +1269,10 @@ namespace ChronusQ {
       CErr("Proton Kohn Sham references require EPC functionals");
 
   #define KS_LIST(T) \
-    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
+    refOptions.funcName,funcList,MPI_COMM_WORLD,intParam,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p,nParticleOverride
 
   #define HF_LIST(T) \
-    MPI_COMM_WORLD,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p
+    MPI_COMM_WORLD,mol,basis,std::dynamic_pointer_cast<Integrals<T>>(aoints),refOptions.nC,refOptions.iCS,p,nParticleOverride
 
     // Construct the SS object
     std::shared_ptr<SingleSlaterBase> ss;
@@ -1905,6 +1924,121 @@ namespace ChronusQ {
 
     return {neoss, essopt, pssopt};
 
+  }
+
+  std::shared_ptr<SingleSlaterBase> CQMultiParticleSSOptions(
+    std::ostream& out,
+    CQInputFile& input,
+    Molecule& mol,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    SCFControls scfControls) {
+  
+    if(quantumSubsystems.empty())              CErr("Cannot construct MultiParticleSS without quantum subsystems.");
+    if(quantumSubsystems.front().label != "E") CErr("Electronic subsystem must be the first subsystem.");
+  
+    std::vector<std::shared_ptr<SingleSlaterBase>> subSS;
+    subSS.reserve(quantumSubsystems.size());
+  
+    for(auto& sys : quantumSubsystems) {
+      if(!sys.basis)     CErr("Missing basis for quantum subsystem " + sys.label);
+      if(!sys.integrals) CErr("Missing integrals for quantum subsystem " + sys.label);
+  
+      sys.ssOptions = getSingleSlaterOptions(out, input, mol, *sys.basis, sys.integrals, sys.particle, sys.qmSection);
+      if(sys.particle.charge >= 0) {
+        sys.ssOptions.hamiltonianOptions.savFilePrefix = "MULTISS/" + sys.label + "/";
+        if(sys.ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)  CErr("X2C for other particles not implemented yet");
+      }
+      if(sys.nQuantumParticles > 0) sys.ssOptions.hamiltonianOptions.nParticleOverride = sys.nQuantumParticles;
+      subSS.push_back(sys.ssOptions.buildSingleSlater(out,  mol, *sys.basis, sys.integrals));
+    }
+  
+    if(std::dynamic_pointer_cast<SingleSlater<double,double>>(subSS.front())) {
+      return buildMultiParticleSS<double,double>(out, mol, quantumSubsystems, quantumPairInteractions, subSS, scfControls);
+    }
+    else if(std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(subSS.front())) {
+      return buildMultiParticleSS<dcomplex,double>(out, mol, quantumSubsystems, quantumPairInteractions, subSS, scfControls);
+    }
+    else if(std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(subSS.front())) {
+      return buildMultiParticleSS<dcomplex,dcomplex>(out, mol, quantumSubsystems, quantumPairInteractions, subSS, scfControls);
+    }
+    else {
+      CErr("Unsupported MatsT/IntsT combination in CQMultiParticleSSOptions");
+    }
+    return nullptr;
+  }
+
+
+  template <typename MatsT, typename IntsT>
+  std::shared_ptr<SingleSlaterBase> buildMultiParticleSS(
+    std::ostream& out,
+    Molecule& mol,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    const std::vector<std::shared_ptr<SingleSlaterBase>>& subSS,
+    SCFControls scfControls) {
+  
+    if(quantumSubsystems.size() != subSS.size()) CErr("Quantum subsystem descriptor/object count mismatch.");
+  
+    const auto& firstSys = quantumSubsystems.front();
+    auto firstInts = std::dynamic_pointer_cast<Integrals<IntsT>>(firstSys.integrals);
+  
+    auto multiSS = std::make_shared<MultiParticleSS<MatsT,IntsT>>(MPI_COMM_WORLD, mol, *firstSys.basis, firstInts, 1, false, firstSys.particle);
+    multiSS->scfControls = scfControls;
+  
+    for(size_t i = 0; i < quantumSubsystems.size(); ++i) {
+      const auto& sys = quantumSubsystems[i];
+      auto ss = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(subSS[i]);
+      if(!ss) CErr("All quantum subsystems must use the same MatsT/IntsT combination. Mismatch for " + sys.label);
+      if(scfControls.printContractionTiming && ss->TPI) ss->TPI->printContractionTiming = true;
+      if(!sys.atomIndices.empty()) ss->ownedAtomIndices = sys.atomIndices; 
+      
+      multiSS->addSubsystem(sys.label, ss);
+    }
+  
+    for(const auto& interaction : quantumPairInteractions) {
+      auto pairInts = std::dynamic_pointer_cast<Integrals<IntsT>>(interaction.integrals);
+      if(!pairInts) CErr("Invalid pair integral scalar type for " + interaction.labelA + "-" + interaction.labelB);
+      if(!pairInts->TPI) CErr("Missing two-particle integrals for " + interaction.labelA + "-" + interaction.labelB);
+      
+      multiSS->addInteraction(interaction.labelA, interaction.labelB, pairInts->TPI, false);
+    }
+
+    // Set up cross-particle correlation 
+    // (Ideally this should be general for any pair of subsystems, but currently only supports EPC)
+    bool haveEPC = false;
+    for(size_t i = 0; i < quantumSubsystems.size(); ++i) {
+      const auto& sys = quantumSubsystems[i];
+      if(!sys.ssOptions.refOptions.isEPCRef) continue;
+
+      auto ks = std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(subSS[i]);
+      if(!ks) CErr("EPC reference subsystem is not a KohnSham object: " + sys.label);
+
+      multiSS->setInterFunctionals("E", sys.label, ks->functionals);
+      // MultiParticleSS owns inter-XC; locally this subsystem remains HF with
+      //   full exchange instead of inheriting the electronic GauXC xHFX.
+      ks->functionals.clear();
+      ks->doVXC_ = false;
+      haveEPC = true;
+      // This is hacky but makes sure non-electron particles does not use electron xHFX
+      // in KohnSham::formFock
+      // TODO: This needs to be fixed but probably Alternatives either breaks GauXC CUSTOM functionals 
+      // or require adding per-subsystem exchange state/API. 
+      ks->intParam.useGauXC = false; 
+    }
+
+    // With EPC present, the electron's intra-XC is formed by the unified driver instead its own formVXC
+    if( haveEPC )
+      if( auto eks = std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(subSS.front()) )
+        eks->doVXC_ = false;
+
+    // Use the electronic ("E") subsystem's numerical grid for the shared EPC pass
+    multiSS->setIntParam(quantumSubsystems.front().ssOptions.intParam);
+
+    multiSS->setSubSetup();
+    multiSS->printSetup(out);
+  
+    return std::dynamic_pointer_cast<SingleSlaterBase>(multiSS);
   }
 
 

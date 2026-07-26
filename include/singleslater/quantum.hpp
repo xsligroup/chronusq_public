@@ -28,6 +28,7 @@
 
 #include <singleslater.hpp>
 #include <singleslater/neoss.hpp>
+#include <singleslater/multiparticless.hpp>
 #include <cqlinalg/blasext.hpp>
 #include <cqlinalg/blasutil.hpp>
 #include <cqlinalg/blas3.hpp>

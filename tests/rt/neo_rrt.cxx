@@ -34,6 +34,14 @@ TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_mmut_delta_y ) {
 
 }
 
+// Water sto3g/prot-sp Delta Spike (along Y), electronic MMUT and protonic RK4
+TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_mmut_rk4_delta_y ) {
+
+  CQRTTEST( "rt/serial/neo_rrt/water_sto3g_protsp_rhf_mmut_rk4_delta_y",
+    "water_sto3g_protsp_rhf_mmut_rk4_delta_y.bin.ref" );
+
+}
+
 // Water sto3g/prot-sp Delta Spike (along Y), restarting with forwardEuler algotithm
 TEST( NEO_RHF_RT, water_sto3g_protsp_rhf_forwardeuler_delta_y ) {
 
@@ -64,6 +72,14 @@ TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_mmut_delta_y ) {
 
   CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_mmut_delta_y",
     "water_sto3g_protsp_rhf_mmut_delta_y.bin.ref" );
+
+}
+
+// Water sto3g/prot-sp Delta Spike (along Y), electronic MMUT and protonic RK4
+TEST( NEO_RHF_RT, PAR_water_sto3g_protsp_rhf_mmut_rk4_delta_y ) {
+
+  CQRTTEST( "rt/parallel/neo_rrt/water_sto3g_protsp_rhf_mmut_rk4_delta_y",
+    "water_sto3g_protsp_rhf_mmut_rk4_delta_y.bin.ref" );
 
 }
 

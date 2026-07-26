@@ -75,8 +75,40 @@ namespace ChronusQ {
       "BORTPRINTLEVEL",
       "BORTACCURACY"
     };
+    // Quantum subsystem integration algorithms use <LABEL>_INTALG.
+    const std::string suffix = "_INTALG";
+    for(const auto& item : inputSection) {
+      const auto& key = item.first;
+      if(key.size() > suffix.size() and key.compare(key.size() - suffix.size(), suffix.size(), suffix) == 0)
+        allowedKeywords.insert(key);
+    }
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
+  }
+
+  void CQRTExpandSubsystemAlgorithms(
+    TDSCFOptions& options, const std::vector<QuantumSubsystem>& quantumSubsystems) {
+
+    auto requested = options.subsystemIntegrationAlgorithms;
+    std::set<std::string> matched;
+    options.subsystemIntegrationAlgorithms.clear();
+
+    for(const auto& sys : quantumSubsystems) {
+      auto iter = requested.find(sys.label);
+      if(iter == requested.end()) iter = requested.find(sys.inputLabel);
+      RealTimeAlgorithm algorithm = options.integrationAlgorithm;
+      if(iter != requested.end()) {
+        algorithm = iter->second;
+        matched.insert(iter->first);
+      }
+      if(sys.label != "E" and algorithm == RealTimeAlgorithm::ElectronicBornOppenheimer)
+        CErr("Electronic Born-Oppenheimer propagation is only valid for subsystem E");
+      options.subsystemIntegrationAlgorithms[sys.label] = algorithm;
+    }
+
+    for(const auto& item : requested)
+      if(not matched.count(item.first))
+        CErr("RT integration algorithm specified for unknown quantum subsystem " + item.first);
   }
 
   /**

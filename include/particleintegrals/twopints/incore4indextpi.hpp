@@ -263,21 +263,25 @@ namespace ChronusQ {
       const InCore4indexTPIContraction<MatsU,IntsT> &other, int dummy = 0 ):
       InCore4indexTPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     template <typename MatsU>
     InCore4indexTPIContraction(
       InCore4indexTPIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
       InCore4indexTPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     InCore4indexTPIContraction( const InCore4indexTPIContraction &other ):
       InCore4indexTPIContraction(other, 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     InCore4indexTPIContraction( InCore4indexTPIContraction &&other ):
       InCore4indexTPIContraction(std::move(other), 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     // Computation interfaces

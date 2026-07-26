@@ -26,6 +26,7 @@
 #include <singleslater.hpp>
 #include <singleslater/base.hpp>
 #include <singleslater/neoss.hpp>
+#include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
 

@@ -215,7 +215,7 @@ static void CQSCFTEST( std::string in, std::string ref,
 }
 
 
-static void CQNEOSCFTEST( std::string in, std::string ref,
+static void CQNEOSCFTESTLEGACY( std::string in, std::string ref,
   double tol        = 1e-6,
   bool checkOctLen  = true,
   bool checkQuadLen = true,
@@ -319,6 +319,110 @@ static void CQNEOSCFTEST( std::string in, std::string ref,
 
 #endif
 
+}
+
+
+static void CQNEOSCFTEST( std::string in, std::string ref,
+  double tol        = 1e-6,
+  bool checkOctLen  = true,
+  bool checkQuadLen = true,
+  bool checkDipLen  = true,
+  bool checkEne     = true,
+  bool readBin      = false,
+  std::string scr  = "no",
+  bool looserPropretyThreshold = false,
+  bool checkSubSSEne = true,
+  std::vector<std::string> subSSLabels = {"E", "QP"} ) {
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if( !readBin and scr=="no" ) CQNORMALSCF(in,ref);
+  else if( readBin ) CQBINSCF(in,ref);
+  else CQSCRSCF(in,ref,scr);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(MPIRank(MPI_COMM_WORLD) != 0) return;
+
+#ifndef _CQ_GENERATE_TESTS
+
+  SafeFile refFile(SCF_TEST_REF + ref,true);
+  SafeFile resFile(TEST_OUT + in + ".bin",true);
+
+  double xDummyE, yDummyE, xDummyT, yDummyT;
+  std::array<double,3> xDummy3, yDummy3;
+  std::array<std::array<double,3>,3> xDummy33, yDummy33;
+  std::array<std::array<std::array<double,3>,3>,3> xDummy333, yDummy333;
+
+  /* Check Energy */
+  if( checkEne ) {
+
+    std::cout << " * PERFORMING NEO-SCF ENERGY CHECK " << std::endl;
+
+    
+    if(checkSubSSEne){
+      for(const auto& label : subSSLabels) {
+        std::cout << "     * CHECKING " << label << " SUBSYSTEM ENERGY" << std::endl;
+        refFile.readData("MULTISS/" + label + "/ENERGY", &xDummyE);
+        resFile.readData("MULTISS/" + label + "/ENERGY", &yDummyE);
+        EXPECT_NEAR( xDummyE, yDummyE, tol )
+            << "MULTISS " << label << " SUBSYSTEM ENERGY TEST FAILED ";
+      }
+    }
+    
+    std::cout << "     * CHECKING TOTAL NEO ENERGY" << std::endl;
+    refFile.readData("MULTISS/TOTAL_ENERGY",&xDummyT);
+    resFile.readData("MULTISS/TOTAL_ENERGY",&yDummyT);
+    EXPECT_NEAR( xDummyT, yDummyT, tol ) << "NEO TOTAL-ENERGY TEST FAILED ";
+
+  }
+
+  double property_tol = looserPropretyThreshold ? tol*100.0 : tol ;
+  /* Check Multipoles */
+
+  if( checkDipLen ) {
+
+    std::cout << " * PERFORMING NEO-SCF DIPOLE (LEN) CHECK " << std::endl;
+
+    refFile.readData("MULTISS/LEN_ELECTRIC_DIPOLE",&xDummy3[0]);
+    resFile.readData("MULTISS/LEN_ELECTRIC_DIPOLE",&yDummy3[0]);
+    for(auto i = 0; i < 3; i++)
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol) <<
+        "DIPOLE TEST FAILED IXYZ = " << i;
+
+  }
+
+
+  if( checkQuadLen ) {
+
+    std::cout << " * PERFORMING NEO-SCF QUADRUPOLE (LEN) CHECK " << std::endl;
+
+    refFile.readData("MULTISS/LEN_ELECTRIC_QUADRUPOLE",&xDummy33[0][0]);
+    resFile.readData("MULTISS/LEN_ELECTRIC_QUADRUPOLE",&yDummy33[0][0]);
+    for(auto i = 0; i < 3; i++)
+    for(auto j = 0; j < 3; j++)
+      EXPECT_NEAR(yDummy33[i][j], xDummy33[i][j],  property_tol) <<
+        "QUADRUPOLE TEST FAILED IXYZ = " << i
+                           << " JXYZ = " << j;
+
+  }
+
+  if( checkOctLen ) {
+
+    std::cout << " * PERFORMING NEO-SCF OCTUPOLE (LEN) CHECK " << std::endl;
+
+    refFile.readData("MULTISS/LEN_ELECTRIC_OCTUPOLE",&xDummy333[0][0][0]);
+    resFile.readData("MULTISS/LEN_ELECTRIC_OCTUPOLE",&yDummy333[0][0][0]);
+    for(auto i = 0; i < 3; i++)
+    for(auto j = 0; j < 3; j++)
+    for(auto k = 0; k < 3; k++)
+      EXPECT_NEAR(yDummy333[i][j][k],  xDummy333[i][j][k],  property_tol) <<
+        "OCTUPOLE TEST FAILED IXYZ = " << i
+                                       << " JXYZ = " << j
+                                       << " KXYZ = " << k;
+
+  }
+
+#endif
 }
 
 

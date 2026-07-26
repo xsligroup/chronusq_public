@@ -43,7 +43,12 @@ namespace ChronusQ {
     mol.update();
 
     basis = CQBasisSetOptions(std::cout,input_,mol,"BASIS");
-    prot_basis = CQBasisSetOptions(std::cout,input_,mol,"PBASIS");
+    std::vector<size_t> protBasisAtomIndices;
+    for(size_t iAtm = 0; iAtm < mol.atoms.size(); ++iAtm)
+      if((mol.atoms[iAtm].atomicNumber == 1 and mol.atoms[iAtm].quantum) or
+         mol.atoms[iAtm].atomicNumber == 0)
+        protBasisAtomIndices.push_back(iAtm);
+    prot_basis = CQBasisSetOptions(std::cout,input_,mol,"PBASIS",protBasisAtomIndices);
 
     aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EPINTS");
     auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis,aoints);

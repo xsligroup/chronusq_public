@@ -629,13 +629,13 @@ namespace ChronusQ {
       Molecule& mol, EMPerturbation& emPert, OPERATOR, const HamiltonianOptions& options) {
 
     if (build4I_ and not eri4I_) {
-      std::cout << "     * Building full 4-index ERI for (ee|pp) per user's request" << std::endl;
+      std::cout << "     * Building full 4-index ERI for (" << label1_ << " " << label1_ << "|" << label2_ << " " << label2_ << ") per user's request" << std::endl;
 
       auto top4I = tick();
       eri4I_ = std::make_shared<InCore4indexTPI<double>>(basisSet.nBasis,basisSet2.nBasis);
       eri4I_->computeAOInts(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
       auto dur4I = tock(top4I);
-      std::cout << "       4-Index (ee|pp) evaluation duration   = " << dur4I << " s " << std::endl << std::endl;
+      std::cout << "       4-Index (" << label1_ << " " << label1_ << "|" << label2_ << " " << label2_ << ") evaluation duration   = " << dur4I << " s " << std::endl << std::endl;
     }
 
   } // InCoreAsymmRITPI<double>::prebuilt4Index
@@ -650,12 +650,17 @@ namespace ChronusQ {
   void InCoreAsymmRITPI<double>::computeAOInts(BasisSet &basisSet, BasisSet &basisSet2,
       Molecule& mol, EMPerturbation& emPert, OPERATOR, const HamiltonianOptions& options) {
     
+    // Generic label for the two interacting subsystems' self-integrals and the cross integral.
+    const std::string self1  = "(" + label1_ + " " + label1_ + "|" + label1_ + " " + label1_ + ")";
+    const std::string self2  = "(" + label2_ + " " + label2_ + "|" + label2_ + " " + label2_ + ")";
+    const std::string cross  = "(" + label1_ + " " + label1_ + "|" + label2_ + " " + label2_ + ")";
+    
     int rank = 0, size = 1;
 #ifdef CQ_ENABLE_MPI
     MPI_Comm_rank(this->comm(), &rank);
     MPI_Comm_size(this->comm(), &size);
 #endif
-    std::cout << "\nCalculating (ee|pp) Integrals Using Asymmetric Cholesky Decomposition: \n" << std::endl;
+    std::cout << "\nCalculating (" << cross << ") Integrals Using Asymmetric Cholesky Decomposition: \n" << std::endl;
 
     prebuilt4Index(basisSet, basisSet2, mol, emPert, EP_ATTRACTION, options);
 
@@ -679,7 +684,7 @@ namespace ChronusQ {
           if(cd_aux1->pivots().empty()) {
 
             if (aux1_ref_) {
-              std::cout << "Using existing pivots from (ee|ee) aux basis" << std::endl;
+              std::cout << "Using existing pivots from (" << self1 << ") aux basis" << std::endl;
               cd_aux1->setPivots(aux1_ref_->pivots());
               cd_aux1->setUpdatePivots(false);
             }
@@ -691,7 +696,7 @@ namespace ChronusQ {
           if(cd_aux2->pivots().empty()) {
 
             if (aux2_ref_) {
-              std::cout << "Using existing pivots from (pp|pp) aux basis" << std::endl;
+              std::cout << "Using existing pivots from (" << self2 << ") aux basis" << std::endl;
               cd_aux2->setPivots(aux2_ref_->pivots());
               cd_aux2->setUpdatePivots(false);
             }
@@ -701,7 +706,7 @@ namespace ChronusQ {
             cd_aux2->computeAOInts(basisSet2, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
 
-          std::cout<< "     * Using elec and prot aux basis" << std::endl;
+          std::cout<< "     * Using " << label1_ << " and " << label2_ << " aux basis" << std::endl;
           auto topCDEP = tick();
 
           /*************************************************************
@@ -716,10 +721,10 @@ namespace ChronusQ {
             if (!M2J_) malloc();
             // Compute raw two-index TPI (\beta \vert \Theta) 
             if (eri4I_) {
-              std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
+              std::cout<< "     * Computing PartialTPI for (" << cross << ") with prebuilt 4-index (" << cross << ")\n" << std::endl;
               computeTwoCholeskyRawSubTPIPrebuilt4Index();
             } else {
-              std::cout<< "     * Computing PartialTPI for (ee|pp) on the fly\n" << std::endl;
+              std::cout<< "     * Computing PartialTPI for (" << cross << ") on the fly\n" << std::endl;
               computeTwoCholeskyRawSubTPILibint(basisSet, basisSet2);
             }
             // Compute full A_{\alpha \Gamma} = (K^{-1})_{\alpha \beta}  (\beta \vert \Theta)  K^{-1})__{\Theta \Gamma}
@@ -952,8 +957,8 @@ namespace ChronusQ {
 
             CQMemManager::get().free(ijK);
 
-            aux1_->clearRawERI();
-            aux2_->clearRawERI();
+            //aux1_->clearRawERI();
+            //aux2_->clearRawERI();
 
             // Swap out aux1_ and aux2_ to be the combineNBRI 3-index tensors
             aux1_ = combineAux1;
@@ -1002,14 +1007,14 @@ namespace ChronusQ {
           size_t NBRI1 = cd_aux1->nRIBasis();
 
           // === Compute 3-index ERI ===
-          std::cout<< "     * Using elec aux basis" << std::endl;
+          std::cout<< "     * Using " << label1_ << " aux basis" << std::endl;
           // Compute raw three-index TPI ( R S \vert \beta)
           if (eri4I_){
             CErr("Prebuilt 4-index ERI is not supported for Asymm CD ElecAux algorithm",std::cout);
-            std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
+            std::cout<< "     * Computing PartialTPI for (" << cross << ") with prebuilt 4-index (" << cross << ")\n" << std::endl;
             computeOneCholeskyRawSubTPIPrebuilt4Index();
           } else {
-            std::cout<< "     * Computing PartialTPI for (ee|pp) on the fly\n" << std::endl;
+            std::cout<< "     * Computing PartialTPI for (" << cross << ") on the fly\n" << std::endl;
             if (this->isDistributed())
               computeOneCholeskyRawSubTPILibintMPI(basisSet, basisSet2, useCompoundIndex);
             else
@@ -1073,14 +1078,14 @@ namespace ChronusQ {
           size_t NBRI2 = cd_aux2->nRIBasis();
 
           // === Compute 3-index ERI ===
-          std::cout<< "     * Using prot aux basis" << std::endl;
+          std::cout<< "     * Using " << label2_ << " aux basis" << std::endl;
           // Compute raw three-index TPI ( p q \vert \Gamma)
           if(eri4I_){
             CErr("Prebuilt 4-index ERI is not supported for Asymm CD ProtAux algorithm",std::cout);
-            std::cout<< "     * Computing PartialTPI for (ee|pp) with prebuilt 4-index (ee|pp)\n" << std::endl;
+            std::cout<< "     * Computing PartialTPI for (" << cross << ") with prebuilt 4-index (" << cross << ")\n" << std::endl;
             computeOneCholeskyRawSubTPIPrebuilt4Index();
           }else{
-            std::cout<< "     * Computing PartialTPI for (ee|pp) on the fly\n" << std::endl;
+            std::cout<< "     * Computing PartialTPI for (" << cross << ") on the fly\n" << std::endl;
             if (this->isDistributed())
               computeOneCholeskyRawSubTPILibintMPI(basisSet2, basisSet, useCompoundIndex);
             else

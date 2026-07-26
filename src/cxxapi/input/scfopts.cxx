@@ -65,7 +65,6 @@ namespace ChronusQ {
       "REMOVELINEARDEP",
       "REMOVEATOMICLINEARDEPONLY",
       "LINEARDEPTOL",
-      "PROT_LINEARDEPTOL",
       "DENMODIFIER"
     };
 
@@ -250,9 +249,9 @@ namespace ChronusQ {
     if(!neoonlyoptstring.empty())
     {
       if ( ! neoonlyoptstring.compare("ELECTRONIC"))
-        scfControls.NEOSubSystemOpt.push_back("Electronic");
-      else if ( ! neoonlyoptstring.compare("PROTONIC"))
-        scfControls.NEOSubSystemOpt.push_back("Protonic");
+        scfControls.NEOSubSystemOpt.push_back("E");   // "Electronic" subsystem is now handled as "E" in the MultiParticleSS
+      else if ( ! neoonlyoptstring.compare("PROTONIC") or ! neoonlyoptstring.compare("QP"))
+        scfControls.NEOSubSystemOpt.push_back("QP");  // "Protonic" subsystem is now handled as "QP" in the MultiParticleSS
       else
         CErr("Unrecognized entry for SCF/NEOOPTIMIZEONLY");
     }
@@ -269,15 +268,15 @@ namespace ChronusQ {
       if(!neooptfirststring.empty())
       {
         if ( ! neooptfirststring.compare("ELECTRONIC"))
-          scfControls.NEOSubSystemOpt.push_back("Electronic");
-        else if ( ! neooptfirststring.compare("PROTONIC"))
-          scfControls.NEOSubSystemOpt.push_back("Protonic");
+          scfControls.NEOSubSystemOpt.push_back("E");
+        else if ( ! neooptfirststring.compare("PROTONIC") or ! neooptfirststring.compare("QP"))
+          scfControls.NEOSubSystemOpt.push_back("QP");
         else
           CErr("Unrecognized entry for SCF/NEOOPTIMIZEFIRST");
       }
       else
       {
-        scfControls.NEOSubSystemOpt.push_back("Protonic");
+        scfControls.NEOSubSystemOpt.push_back("QP");
       }
       std::cout << "NEO Stepwise optimization will begin with the " << scfControls.NEOSubSystemOpt[0] << " subsystem" << std::endl;
     }

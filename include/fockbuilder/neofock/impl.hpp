@@ -1696,6 +1696,12 @@ namespace ChronusQ {
       //if(ss.particle.charge < 0) std::cout << "TOTAL Electronic EXC: " << ks->XCEnergy << std::endl;
       //if(ss.particle.charge > 0) std::cout << "TOTAL Protonic   EXC: " << ks->XCEnergy << std::endl;
     }else{
+      // Deprecated GauXC NEO-DFT path. The old hard-coded electron/proton
+      // implementation depends on GauXC::neo_eval_exc_vxc from the matching
+      // old CQ code plus aodongliu/GauXC merge_neo. Current GauXC NEO-DFT is
+      // routed through MultiParticleSS::formXC.
+      CErr("GauXC NEO-DFT through NEOKohnShamBuilder is deprecated; use MultiParticleSS::formXC.");
+#if 0
       // GauXC NEO-DFT:
       // EPC will be done only in Electronic formVXC() call to avoid evaluating rho_e and rho_p twice
       if(ss.particle.charge > 0){
@@ -1754,6 +1760,7 @@ namespace ChronusQ {
         //std::cout << "TOTAL Electronic EXC: " << elec_EXC << std::endl;
 
       } // End Electronic GauXC
+#endif
     } // End GauXC DFT
 
 

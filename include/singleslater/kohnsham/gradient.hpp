@@ -45,17 +45,69 @@
 //#define USE_ONEPDMGRAD
 
 namespace ChronusQ {
+
+    template <typename MatsT, typename IntsT>
+    void KohnSham<MatsT,IntsT>::formEXCGradient(EMPerturbation &pert) {
+      if( this->intParam.useGauXC )
+        formEXCGradientGauXC(pert);
+      else
+        formEXCGradientInHouse(pert);
+    }
   
+
   /**
-   *  \brief assemble the nuclear gradient of EXC for all density componet over batch
-   *  of points. 
-   *
-   *
-   *  This function is integrated by the BeckeIntegrator
-   *  object.
-   */  
+   *  \brief EXC nuclear gradient via GauXC.
+   */
   template <typename MatsT, typename IntsT>
-  void KohnSham<MatsT,IntsT>::formEXCGradient(EMPerturbation &pert) {
+  void KohnSham<MatsT,IntsT>::formEXCGradientGauXC(EMPerturbation &) {
+
+    if constexpr (std::is_same_v<IntsT,dcomplex>) {
+      CErr("Complex (GIAO) GauXC EXC gradient NYI");
+    } else {
+
+      if(!this->gauxcUtils)
+        CErr("GauXC EXC gradient requested without GauXCUtils");
+      if(!this->gauxcUtils->integrator_pointer)
+        CErr("GauXC EXC gradient requested without GauXC integrator");
+      if(this->onePDM->hasXY())
+        CErr("GauXC EXC gradient for 2C/4C (GKS/X2C) is NYI");
+
+      ProgramTimer::tick("Form EXC Gradient");
+
+      const size_t nAtoms = this->molecule().nAtoms;
+      const size_t NB = this->basisSet().nBasis;
+
+      Eigen::MatrixXd Ps = Eigen::Map<Eigen::Matrix<double,-1,-1>>(
+        this->onePDM->real_part().S().pointer(), NB, NB);
+
+      std::vector<double> gxGradient;
+      if( this->onePDM->hasZ() ) {
+        Eigen::MatrixXd Pz = Eigen::Map<Eigen::Matrix<double,-1,-1>>(
+          this->onePDM->real_part().Z().pointer(), NB, NB);
+        gxGradient = this->gauxcUtils->integrator_pointer->eval_exc_grad(Ps, Pz);
+      } else {
+        Ps /= 2.0; // GauXC RKS convention
+        gxGradient = this->gauxcUtils->integrator_pointer->eval_exc_grad(Ps);
+      }
+
+      if(gxGradient.size() != 3*nAtoms)
+        CErr("GauXC returned inconsistent EXC gradient dimensions");
+
+      for(size_t iAt = 0; iAt < nAtoms; ++iAt)
+        for(size_t iXYZ = 0; iXYZ < 3; ++iXYZ)
+          this->XCGradient[iAt][iXYZ] = gxGradient[3*iAt + iXYZ];
+
+      ProgramTimer::tock("Form EXC Gradient");
+
+    }
+  }
+
+
+  /**
+   *  \brief EXC nuclear gradient via Inhouse engine.
+   */
+  template <typename MatsT, typename IntsT>
+  void KohnSham<MatsT,IntsT>::formEXCGradientInHouse(EMPerturbation &pert) {
 #if VXC_DEBUG_LEVEL >= 1
     // TIMING 
     auto topMem = std::chrono::high_resolution_clock::now();
@@ -794,7 +846,9 @@ namespace ChronusQ {
 
     MPI_Barrier(this->comm); // Syncronize the MPI processes
 
-  }; // KohnSham::formEXCGradient
+    ProgramTimer::tock("Form EXC Gradient");
+
+  }; // KohnSham::formEXCGradientInHouse
 
 
   // TangDD: FormVXC for GIAO
@@ -807,7 +861,7 @@ namespace ChronusQ {
    *  object.
    */  
   template <>
-  void KohnSham<dcomplex,dcomplex>::formEXCGradient(EMPerturbation &pert) {
+  void KohnSham<dcomplex,dcomplex>::formEXCGradientInHouse(EMPerturbation &pert) {
 #if VXC_DEBUG_LEVEL >= 1
     // TIMING 
     auto topMem = std::chrono::high_resolution_clock::now();
@@ -1531,7 +1585,9 @@ namespace ChronusQ {
 
     MPI_Barrier(this->comm); // Syncronize the MPI processes
 
-  }; // KohnSham::formEXCGradient::GIAO
+    ProgramTimer::tock("Form EXC Gradient");
+
+  }; // KohnSham::formEXCGradientInHouse::GIAO
 
 
 }; // namespace ChronusQ

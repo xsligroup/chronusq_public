@@ -35,6 +35,7 @@
 #include <fockbuilder/rofock/impl.hpp>
 #include <quantum/properties.hpp>
 #include <fockbuilder/neofock.hpp>
+#include <fockbuilder/interparticlefock.hpp>
 #include <fockbuilder/fourcompfock/impl.hpp>
 #include <fockbuilder/fourcompfock/batchgd.hpp>
 #include <fockbuilder/matrixfock.hpp>
@@ -339,7 +340,8 @@ namespace ChronusQ {
     // Form G[D]
     // See: https://doi.org/10.1016/j.cplett.2005.01.115
     // regarding the option to NOT include the proton two body term
-    if(ss.particle.charge == 1.0 && this->hamiltonianOptions_.ignoreProtonTwoBody)
+    // TODOAL: Fix the logic here for hard-coded ss.particle.charge != -1.0
+    if(ss.particle.charge != -1.0 && (this->hamiltonianOptions_.ignoreProtonTwoBody || ss.nO == 1))
     {
       ss.twoeH->clear();
     }

@@ -190,20 +190,24 @@ namespace ChronusQ {
     TPIContractions( const TPIContractions<MatsU,IntsT> &other, int dummy = 0 ):
       TPIContractions(other.ints_) {
       contractSecond = other.contractSecond;
+      isCross = other.isCross;
     }
     template <typename MatsU>
     TPIContractions( TPIContractions<MatsU,IntsT> &&other, int dummy = 0 ):
       TPIContractions(other.ints_) {
       contractSecond = other.contractSecond;
+      isCross = other.isCross;
     }
 
     TPIContractions( const TPIContractions &other ):
       TPIContractions(other, 0) {
       contractSecond = other.contractSecond;
+      isCross = other.isCross;
     }
     TPIContractions( TPIContractions &&other ):
       TPIContractions(std::move(other), 0) {
       contractSecond = other.contractSecond;
+      isCross = other.isCross;
     }
 
     std::shared_ptr<TwoPInts<IntsT>> ints() const { return ints_; }
@@ -278,7 +282,8 @@ namespace ChronusQ {
 
     // Whether the contraction is done in the first or second basis
     bool contractSecond = false;
-    
+    // Whether the interaction integral is a cross inter-particle integral
+    bool isCross = false;
     // Whether to time contractions when building Fock matrices and print to output
     bool printContractionTiming = false;
 

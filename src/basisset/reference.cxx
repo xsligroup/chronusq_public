@@ -296,57 +296,31 @@ namespace ChronusQ {
   /**
    *  \brief Generates the proper shell set for a given molecule
    *
-   *  \param [in] mol Molecule object for which to generate the shell set
-   *  \return         Shell set and coefficients for the given molecule
+   *  \param [in] mol         Molecule object for which to generate the shell set
+   *  \param [in] atomIndices Atom indices on which to place the basis functions
+   *  \return                 Shell set and coefficients for the given molecule
    */
   std::pair<std::vector<libint2::Shell>,std::vector<std::vector<double>>>
-    ReferenceBasisSet::generateShellSet(const Molecule& mol) {
+    ReferenceBasisSet::generateShellSet(const Molecule& mol, const std::vector<size_t>& atomIndices) {
 
     std::vector<libint2::Shell> shells;
     std::vector<std::vector<double>> cont;
 
-    // loop over atoms in the molecule
-    if (not this->nucBasis_) {
-      for(auto &atom : mol.atoms){
+    for(const auto iAtm : atomIndices) {
+      if(iAtm >= mol.atoms.size())
+        CErr("Basis atom index " + std::to_string(iAtm) + " is out of range");
 
-        if( refShells.find(atom.atomicNumber) == refShells.end() )
-          CErr("Cannot find Z=" + std::to_string(atom.atomicNumber) + " in Basis Definition");
+      const auto& atom = mol.atoms[iAtm];
+      if(refShells.find(atom.atomicNumber) == refShells.end())
+        CErr("Cannot find Z=" + std::to_string(atom.atomicNumber) + " in Basis Definition");
 
-        auto &newSh  = refShells[atom.atomicNumber];
+      auto& newSh = refShells[atom.atomicNumber];
+      auto shFront = shells.insert(shells.end(),newSh.shells.begin(),newSh.shells.end());
 
-        std::vector<libint2::Shell>::iterator shFront =
-          shells.insert(shells.end(),newSh.shells.begin(),
-            newSh.shells.end());
+      cont.insert(cont.end(),newSh.unNormCont.begin(),newSh.unNormCont.end());
 
-        cont.insert(cont.end(),newSh.unNormCont.begin(),
-          newSh.unNormCont.end());
-
-
-        std::for_each(shFront,shells.end(),
-          [&](libint2::Shell &sh) { sh.move(atom.coord); }
-        );
-
-      }
-    } else { // nuclear basis
-      for (auto &atom : mol.atoms) {
-
-        // put nuclear basis on quantum atoms or ghost atoms
-        if ( (atom.atomicNumber == 1 and atom.quantum) or atom.atomicNumber == 0 ) {
-
-          auto &newSh = refShells[atom.atomicNumber];
-
-          std::vector<libint2::Shell>::iterator shFront =
-            shells.insert(shells.end(),newSh.shells.begin(),
-              newSh.shells.end());
-
-          cont.insert(cont.end(),newSh.unNormCont.begin(),
-            newSh.unNormCont.end());
-
-          std::for_each(shFront,shells.end(),
-            [&](libint2::Shell &sh) { sh.move(atom.coord); }
-          );
-        }
-      }
+      std::for_each(shFront,shells.end(),
+        [&](libint2::Shell& sh) { sh.move(atom.coord); });
     }
 
     return { shells, cont };

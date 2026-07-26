@@ -66,7 +66,7 @@ namespace ChronusQ {
 
     bool doVXC_ = true; ///< If this object is responsible for forming VXC
     bool isGGA_; ///< Whether or not the XC kernel is within the GGA
-    double XCEnergy; ///< Exchange-correlation energy
+    double XCEnergy = 0.; ///< Exchange-correlation energy (intra-particle only)
     std::vector<std::vector<double> > XCGradient; ///< Exchange-correlation energy gradient
 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<IntsT>> VXC; ///< VXC terms
@@ -182,8 +182,8 @@ namespace ChronusQ {
 
       SingleSlater<MatsT,IntsT>::formFock(pert,increment,xHFX);
 
-      ProgramTimer::tick("Form VXC");
       if( doVXC_ ) {
+        ProgramTimer::tick("Form VXC");
         if (not this->intParam.useGauXC) {
           // Using in-house DFT code to calculate VXC
           formVXC(pert);
@@ -301,8 +301,8 @@ namespace ChronusQ {
             }
           } }
         }  // end GauXC
+        ProgramTimer::tock("Form VXC");
       } // end VXC
-      ProgramTimer::tock("Form VXC"); 
 
     }; // formFock
 
@@ -387,6 +387,8 @@ namespace ChronusQ {
     void formVXC(EMPerturbation&); 
 
     void formEXCGradient(EMPerturbation&);
+    void formEXCGradientInHouse(EMPerturbation&);
+    void formEXCGradientGauXC(EMPerturbation&);
 
     // FXC Terms
     template <typename U>

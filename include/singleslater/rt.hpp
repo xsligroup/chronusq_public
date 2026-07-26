@@ -274,19 +274,34 @@ template <typename MatsT, typename IntsT>
  */
   template <typename MatsT, typename IntsT>
   template <typename M, enable_if_dcomplex<M>>
-  void SingleSlater<MatsT,IntsT>::RK4Propagation(bool includeTau, double dt, bool increment, EMPerturbation& pert_tp5, EMPerturbation& pert_t1){
+  void SingleSlater<MatsT,IntsT>::RK4Propagation(bool includeTau, double dt,
+    bool increment, EMPerturbation& pert_tp5, EMPerturbation& pert_t1, const RTFockFormation& fockFormation){
 
 
     size_t NB  = basisSet().nBasis;
     cqmatrix::PauliSpinorMatrices<MatsT> onePDMOrthoSave = *onePDMOrtho;
 
+    auto updateFock = [&](EMPerturbation& pert) {
+      ortho2aoDen();
+#ifdef CQ_ENABLE_MPI
+      // Broadcast the density to all MPI processes
+      if( MPISize(comm) > 1 ) {
+        for(MatsT *mat : this->onePDM->SZYXPointers())
+          MPIBCast(mat,NB*NB,0,comm);
+      }
+#endif
+      if(fockFormation) fockFormation(pert, increment);
+      else formFock(pert, increment);
+      ao2orthoFock();
+    };
+
     // Compute orthonormal tau matrix on root process
     if(MPIRank(comm) == 0) {
       if(includeTau){
         if(!tau) CErr("Tau should be initialized and computed");
-        // Convert tau matrix from ao basis to orthonormal basis 
+        // Convert tau matrix from ao basis to orthonormal basis
         if(!tauOrtho) tauOrtho = std::make_shared<cqmatrix::Matrix<MatsT>>(NB);
-          *(tauOrtho) = orthoSpinor->nonortho2ortho(*tau);
+        *(tauOrtho) = orthoSpinor->nonortho2ortho(*tau);
       }
 #ifdef __DEBUGTPB__
     tauOrtho->output(std::cout,"Ortho Tau Matrix",true);
@@ -312,17 +327,8 @@ template <typename MatsT, typename IntsT>
 
     // Compute P^(k1) = P(t) + 0.5 * Δt * k1
     *onePDMOrtho += k1 * MatsT(0.5*dt);
-    ortho2aoDen();
-    // Broadcast the density to all MPI processes
-#ifdef CQ_ENABLE_MPI
-    if( MPISize(comm) > 1 ) {
-      for(MatsT *mat : this->onePDM->SZYXPointers())
-        MPIBCast(mat,NB*NB,0,comm);
-    }
-#endif
     // Obtain new fock matrix at P^(k1)
-    formFock(pert_tp5, increment);
-    ao2orthoFock();
+    updateFock(pert_tp5);
     // Compute k2 = dP^(k1)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
     cqmatrix::PauliSpinorMatrices<MatsT> k2 = getTimeDerDen(includeTau);
 #ifdef __DEBUGTPB__
@@ -341,16 +347,7 @@ template <typename MatsT, typename IntsT>
     // Compute P^(k2) = P(t) + 0.5 * Δt * k2
     *onePDMOrtho += k2 * MatsT(0.5*dt);
     // Obtain new fock matrix at P^(k2)
-    ortho2aoDen();
-    // Broadcast the density to all MPI processes
-#ifdef CQ_ENABLE_MPI
-    if( MPISize(comm) > 1 ) {
-      for(MatsT *mat : this->onePDM->SZYXPointers())
-        MPIBCast(mat,NB*NB,0,comm);
-    }
-#endif
-    formFock(pert_tp5, increment);
-    ao2orthoFock();
+    updateFock(pert_tp5);
     // Compute k3 = dP^(k2)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
     cqmatrix::PauliSpinorMatrices<MatsT> k3 = getTimeDerDen(includeTau);
 #ifdef __DEBUGTPB__ 
@@ -369,15 +366,7 @@ template <typename MatsT, typename IntsT>
     // Compute P^(k3) = P(t) + Δt * k3
     *onePDMOrtho += k3 * MatsT(dt);
     // Obtain new fock matrix at P^(k3)
-    ortho2aoDen();
-#ifdef CQ_ENABLE_MPI
-    if( MPISize(comm) > 1 ) {
-      for(MatsT *mat : this->onePDM->SZYXPointers())
-        MPIBCast(mat,NB*NB,0,comm);
-    }
-#endif
-    formFock(pert_t1, increment);
-    ao2orthoFock();
+    updateFock(pert_t1);
     // Compute k4 = dP^(k3)/dt = -i[F,P] - ( τ P + P τ^*) in spinor form (S/Z)
     cqmatrix::PauliSpinorMatrices<MatsT> k4 = getTimeDerDen(includeTau);
 #ifdef __DEBUGTPB__ 
@@ -420,77 +409,43 @@ template <typename MatsT, typename IntsT>
  */
 template <typename MatsT, typename IntsT>
 template <typename M, enable_if_dcomplex<M>>
-void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt, bool doMagnus2, EMPerturbation& pert_t1) {
+void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt,
+  bool doMagnus2, EMPerturbation& pert_t1, const RTFockFormation& fockFormation) {
   
-  ROOT_ONLY(comm);
+  const bool isRoot = (MPIRank(comm) == 0);
 
   size_t NB  = basisSet().nBasis;
 
-  // Gather orthonormal density from S/Z to A/B blocks
-  std::vector<cqmatrix::Matrix<dcomplex>> onePDMOrthoAB  = getOnePDMOrtho();
-  // Save a copy of orthonormal density before propagation if doing magnus2
-  std::vector<cqmatrix::Matrix<dcomplex>> onePDMOrthoABSave  = {};
-  if (doMagnus2) onePDMOrthoABSave = getOnePDMOrtho();
+  // Function-scope buffers; only populated/used on root (replicated propagation).
+  std::vector<cqmatrix::Matrix<dcomplex>> onePDMOrthoAB;
+  std::vector<cqmatrix::Matrix<dcomplex>> onePDMOrthoABSave;
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k;
+  std::vector<std::shared_ptr<Orthogonalization<MatsT>>> ortho;
+  std::vector<cqmatrix::Matrix<dcomplex>> fockMatrixOrthoAB;
 
-  // For traveling basis, add tau term to protonic fock matrix
-  if(includeTau) addTauToFock();
+  if(isRoot) {
+    // Gather orthonormal density from S/Z to A/B blocks
+    onePDMOrthoAB = getOnePDMOrtho();
+    // Save a copy of orthonormal density before propagation if doing magnus2
+    if (doMagnus2) onePDMOrthoABSave = getOnePDMOrtho();
 
-  // Gather AO fock matrices from S/Z to A/B blocks
-  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k = getFock();
-  // Gather tranformation matrices
-  std::vector<std::shared_ptr<Orthogonalization<MatsT>>> ortho = getOrtho();
-  // Convert AO fock matrices to orthonormal basis (in A/B blocks)
-  std::vector<cqmatrix::Matrix<dcomplex>> fockMatrixOrthoAB = {};
-  for( size_t i = 0; i < fock_k.size(); i++ ) {
-    fockMatrixOrthoAB.emplace_back(fock_k[i]->nRows());
-    if( ortho[i]->hasOverlap() )
-      fockMatrixOrthoAB[i] = ortho[i]->nonortho2ortho(*fock_k[i]);
-    else 
-      fockMatrixOrthoAB[i] = *(fock_k[i]);
-  }
-
-  // Do propagation
-  for (size_t i = 0; i < fockMatrixOrthoAB.size(); i++) {
-    cqmatrix::Matrix<dcomplex> U(NB);
-    cqmatrix::Matrix<dcomplex> SCR(NB);
-
-    // U = e^(-i Δt F)
-    MatExp('D', NB, dcomplex(0., -dt), fockMatrixOrthoAB[i].pointer(), NB, U.pointer(), NB);
-
-    // P(t+1) = U P(t) U*
-    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),
-               U.pointer(), NB, onePDMOrthoAB[i].pointer(), NB, dcomplex(0.), SCR.pointer(), NB);
-    blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, dcomplex(1.),
-               SCR.pointer(), NB, U.pointer(), NB, dcomplex(0.), onePDMOrthoAB[i].pointer(), NB);
-  }
-
-  if (doMagnus2) {
-    // Convert orthonormal P(t+1) in A/B blocks to S/Z in ss.onePDMOrtho
-    setOnePDMOrtho(onePDMOrthoAB.data());
-    // Form a new fock matrix using AO P(t+1)
-    ortho2aoDen();
-    formFock(pert_t1, false);
-    
     // For traveling basis, add tau term to protonic fock matrix
     if(includeTau) addTauToFock();
-    
+
     // Gather AO fock matrices from S/Z to A/B blocks
-    std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k1 = getFock();
-    // Compute 0.5 * (F(k) + F(k+1))
-    for( size_t i = 0; i < fock_k.size(); i++ )
-      *fock_k[i] = 0.5 * (*fock_k[i] + *fock_k1[i]); 
+    fock_k = getFock();
+    // Gather tranformation matrices
+    ortho = getOrtho();
     // Convert AO fock matrices to orthonormal basis (in A/B blocks)
     for( size_t i = 0; i < fock_k.size(); i++ ) {
+      fockMatrixOrthoAB.emplace_back(fock_k[i]->nRows());
       if( ortho[i]->hasOverlap() )
         fockMatrixOrthoAB[i] = ortho[i]->nonortho2ortho(*fock_k[i]);
-      else 
+      else
         fockMatrixOrthoAB[i] = *(fock_k[i]);
     }
 
-    // Restore density before propagation
-    onePDMOrthoAB = onePDMOrthoABSave;
-
-    // Do progatation using new fock matrix
+    // Do propagation
     for (size_t i = 0; i < fockMatrixOrthoAB.size(); i++) {
       cqmatrix::Matrix<dcomplex> U(NB);
       cqmatrix::Matrix<dcomplex> SCR(NB);
@@ -500,14 +455,68 @@ void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt, 
 
       // P(t+1) = U P(t) U*
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),
-                U.pointer(), NB, onePDMOrthoAB[i].pointer(), NB, dcomplex(0.), SCR.pointer(), NB);
+                 U.pointer(), NB, onePDMOrthoAB[i].pointer(), NB, dcomplex(0.), SCR.pointer(), NB);
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, dcomplex(1.),
-                SCR.pointer(), NB, U.pointer(), NB, dcomplex(0.), onePDMOrthoAB[i].pointer(), NB);
+                 SCR.pointer(), NB, U.pointer(), NB, dcomplex(0.), onePDMOrthoAB[i].pointer(), NB);
     }
   }
 
-  // Convert orthonormal P(t+1) in A/B blocks to S/Z in ss.onePDMOrtho
-  setOnePDMOrtho(onePDMOrthoAB.data());
+  if (doMagnus2) {
+    // Convert orthonormal P(t+1) in A/B blocks to S/Z in ss.onePDMOrtho (root)
+    if(isRoot) setOnePDMOrtho(onePDMOrthoAB.data());
+    // Form a new fock matrix using AO P(t+1)
+    ortho2aoDen();
+#ifdef CQ_ENABLE_MPI
+    // Broadcast the propagated density so every rank forms its partial VXC from
+    //   the same P(t+1) before the collective grid reduce inside fockFormation.
+    if( MPISize(comm) > 1 ) {
+      for(MatsT *mat : this->onePDM->SZYXPointers())
+        MPIBCast(mat,NB*NB,0,comm);
+    }
+#endif
+    // COLLECTIVE: must be entered by all ranks.
+    if(fockFormation) fockFormation(pert_t1, false);
+    else formFock(pert_t1, false);
+
+    if(isRoot) {
+      // For traveling basis, add tau term to protonic fock matrix
+      if(includeTau) addTauToFock();
+
+      // Gather AO fock matrices from S/Z to A/B blocks
+      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fock_k1 = getFock();
+      // Compute 0.5 * (F(k) + F(k+1))
+      for( size_t i = 0; i < fock_k.size(); i++ )
+        *fock_k[i] = 0.5 * (*fock_k[i] + *fock_k1[i]);
+      // Convert AO fock matrices to orthonormal basis (in A/B blocks)
+      for( size_t i = 0; i < fock_k.size(); i++ ) {
+        if( ortho[i]->hasOverlap() )
+          fockMatrixOrthoAB[i] = ortho[i]->nonortho2ortho(*fock_k[i]);
+        else
+          fockMatrixOrthoAB[i] = *(fock_k[i]);
+      }
+
+      // Restore density before propagation
+      onePDMOrthoAB = onePDMOrthoABSave;
+
+      // Do progatation using new fock matrix
+      for (size_t i = 0; i < fockMatrixOrthoAB.size(); i++) {
+        cqmatrix::Matrix<dcomplex> U(NB);
+        cqmatrix::Matrix<dcomplex> SCR(NB);
+
+        // U = e^(-i Δt F)
+        MatExp('D', NB, dcomplex(0., -dt), fockMatrixOrthoAB[i].pointer(), NB, U.pointer(), NB);
+
+        // P(t+1) = U P(t) U*
+        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, NB, NB, NB, dcomplex(1.),
+                  U.pointer(), NB, onePDMOrthoAB[i].pointer(), NB, dcomplex(0.), SCR.pointer(), NB);
+        blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::ConjTrans, NB, NB, NB, dcomplex(1.),
+                  SCR.pointer(), NB, U.pointer(), NB, dcomplex(0.), onePDMOrthoAB[i].pointer(), NB);
+      }
+    }
+  }
+
+  // Convert orthonormal P(t+1) in A/B blocks to S/Z in ss.onePDMOrtho (root)
+  if(isRoot) setOnePDMOrtho(onePDMOrthoAB.data());
 
 }
   

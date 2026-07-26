@@ -131,8 +131,6 @@ namespace ChronusQ {
     size_t maxPrim;     ///< Max primitive dimension of basis
     size_t maxL;        ///< Max angular momentum of basis
 
-    bool nucBasis;      ///< Whether this basis is for nuclear
-
     BASIS_FUNCTION_TYPE basisType = REAL_GTO; ///< Type of basis function
 
     cartvec_t centers; ///< A list of centers that comprise the BasisSet
@@ -149,7 +147,8 @@ namespace ChronusQ {
     std::vector<size_t> mapSh2Bf;  ///< Map Shell # -> BF #
     std::vector<size_t> mapSh2Cen; ///< Map Shell # -> Cen #
     std::vector<size_t> mapCen2BfSt; ///< Map Cen # -> Starting BF #
-    std::vector<size_t> mapAllCen2BfSt; ///< Map All Cen (including classical atoms) # -> Starting BF #
+    std::vector<size_t> mapAllCen2BfSt; ///< Map All Cen # -> Starting BF #
+                                        /// if mapAllCen2BfSt[i] = nBasis, that means the ith center has no basis
 
     // Disable default constructor
     BasisSet() { };
@@ -161,7 +160,7 @@ namespace ChronusQ {
       bool stringDef, const Molecule &mol, 
       BASIS_FUNCTION_TYPE _basisType, 
       bool _forceCart = false, bool doPrint = true, 
-      bool _nucBasis = false);
+      const std::vector<size_t>& atomIndices = {});
        
     /**
      *  Copy constructor.

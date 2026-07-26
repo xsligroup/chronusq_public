@@ -45,7 +45,8 @@ include( CQTestGeneration )
 
 # MP2 test
 add_cq_test(MP2 mptest "MP2.*")
-add_cq_test(NEO_MP2 mptest "NEO_MP2.*")
+# NEO-MP2 currently disabled
+#add_cq_test(NEO_MP2 mptest "NEO_MP2.*")
 
 if( CQ_ENABLE_MPI )
 

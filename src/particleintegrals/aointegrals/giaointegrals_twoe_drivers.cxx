@@ -63,14 +63,10 @@ namespace ChronusQ {
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in InCore4indexTPI<dcomplex>",std::cout);
 
-    // no NEO or (ee|ee)
-    int NEOoption = 0;
-    // (pp|pp)
-    if (options.particle.charge == 1.0 )
-      NEOoption = 1;
-    // (ee|pp)
-    if (op == EP_ATTRACTION)
-      NEOoption = 2; 
+    // GIAO London phase sign is per-side particle charge (electron(-1) is default, proton(+1) flips)
+    double braCharge = options.particle.charge;
+    double ketCharge = options.particle2.charge;
+
 
     //if (op == EP_ATTRACTION) std::cout << "ATTENTION: DEBUG START" << std::endl;
 
@@ -175,10 +171,10 @@ namespace ChronusQ {
 #ifdef bottomupGIAO
         auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
         auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
 // SS bottom up end
 #else
 
@@ -188,7 +184,7 @@ namespace ChronusQ {
         // calculate integral (s1,s2|s3,s4)
         auto two2buff = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
 
 #ifdef _DEBUGGIAOERI
  std::cout<<"doing shell gradient ("<<s2<<" "<<s1<<"|"<<s3<<" "<<s4<<") "<<std::endl;
@@ -197,7 +193,7 @@ namespace ChronusQ {
         // calculate integral (s2,s1|s3,s4)
         auto two2buff_switch = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
 
 #endif
         
@@ -322,12 +318,7 @@ if ( std::abs(two2buff[ijkl]-two2buff_switch[ijkl]) > 1.0e-11  ) {
 
     // Debug output of the ERIs
 #ifdef _DEBUGGIAOERI
-    if (NEOoption==1)
-      std::cout << "Protonic" << std::endl;
-    else if (NEOoption==2)
-      std::cout << "eepp" << std::endl;
-    else
-      std::cout << "Electronic" << std::endl;
+    std::cout << "braCharge=" << braCharge << " ketCharge=" << ketCharge << std::endl;
     auto magAmp = emPert.getDipoleAmp(Magnetic);
     std::cout<<"magAmp 2e 0: "<< magAmp[0]<<" 1: "<< magAmp[1]<<" 2: "<< magAmp[2]<<std::endl; 
     std::cout << "Two-Electron GIAO Integrals (GIAO ERIs)" << std::endl;
@@ -397,14 +388,9 @@ if ( std::abs(two2buff[ijkl]-two2buff_switch[ijkl]) > 1.0e-11  ) {
     if (options.basisType == COMPLEX_GTO)
       CErr("Complex GTOs NYI in InCore4indexTPI<dcomplex>",std::cout);
 
-    // no NEO or (ee|ee)
-    int NEOoption = 0;
-    // (pp|pp)
-    if (options.particle.charge == 1.0 )
-      NEOoption = 1;
-    // (ee|pp)
-    if (op == EP_ATTRACTION)
-      NEOoption = 2;
+    // GIAO London phase sign is per-side particle charge (electron(-1) is default, proton(+1) flips)
+    double braCharge = options.particle.charge;
+    double ketCharge = options.particle2.charge;
 
     // Determine the number of OpenMP threads
     int nthreads = GetNumThreads();
@@ -499,7 +485,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
 
         auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI_deriv1(pair1_to_use,pair2_to_use,
           basisSet.shells[s1],basisSet.shells[s2],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
 
 #ifdef _DEBUGGIAOERI
  std::cout<<"doing shell gradient ("<<s2<<" "<<s1<<"|"<<s3<<" "<<s4<<") "<<std::endl;
@@ -507,7 +493,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
 
         auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI_deriv1(pair1_to_use_switch,pair2_to_use,
           basisSet.shells[s2],basisSet.shells[s1],
-          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],NEOoption);
+          basisSet2.shells[s3],basisSet2.shells[s4],&magAmp[0],braCharge,ketCharge);
 // SS bottom up end
 
         // TangDD Start
@@ -640,12 +626,7 @@ for(auto j = 0ul; j < NB; j++){
 // Debug output of the ERIs
 /*
 #ifdef _DEBUGGIAOERI
-    if (NEOoption==1)
-      std::cout << "Protonic" << std::endl;
-    else if (NEOoption==2)
-      std::cout << "eepp" << std::endl;
-    else
-      std::cout << "Electronic" << std::endl;
+    std::cout << "braCharge=" << braCharge << " ketCharge=" << ketCharge << std::endl;
     auto magAmp = emPert.getDipoleAmp(Magnetic);
     std::cout<<"magAmp 2e 0: "<< magAmp[0]<<" 1: "<< magAmp[1]<<" 2: "<< magAmp[2]<<std::endl; 
     std::cout << "Two-Electron GIAO Integrals order 1 gradient (GIAO ERIs) 0x" << std::endl;

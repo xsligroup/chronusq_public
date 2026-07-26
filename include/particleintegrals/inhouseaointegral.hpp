@@ -622,16 +622,16 @@ namespace ChronusQ {
     
     // bottom up GIAO ERI of shell pair 1 and 2 
     static std::vector<dcomplex> bottomupcomplexERI(libint2::ShellPair&,libint2::ShellPair&,
-      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,int);
+      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,double,double);
 
     // bottom up GIAO ERI of shell pair 12 and 34 - 1sr order gradient
     static std::vector<std::vector<dcomplex>> bottomupcomplexERI_deriv1(libint2::ShellPair & ,
     libint2::ShellPair &, libint2::Shell &, libint2::Shell &,
-    libint2::Shell &, libint2::Shell &, double *, int );
+    libint2::Shell &, libint2::Shell &, double *, double, double );
 
     // compute GIAO ERI of shell pair 1 and 2 
     static std::vector<dcomplex> computeGIAOERIabcd(libint2::ShellPair&,libint2::ShellPair&,
-      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,int);
+      libint2::Shell&,libint2::Shell&,libint2::Shell&,libint2::Shell&,double*,double,double);
 
     // complex horizontal recursion (ab||cd)
     static dcomplex twoecomphRRabcd( libint2::ShellPair&, libint2::ShellPair&, libint2::Shell& ,

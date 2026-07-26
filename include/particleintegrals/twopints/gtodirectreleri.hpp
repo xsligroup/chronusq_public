@@ -58,12 +58,14 @@ namespace ChronusQ {
       const GTODirectRelERIContraction<MatsU,IntsT> &other, int dummy = 0 ):
       GTODirectRelERIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     template <typename MatsU>
     GTODirectRelERIContraction(
       GTODirectRelERIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
       GTODirectRelERIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     GTODirectRelERIContraction( const GTODirectRelERIContraction &other ):

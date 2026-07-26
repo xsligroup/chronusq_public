@@ -80,6 +80,9 @@ class InCoreAsymmRITPI :
     bool combineBasisTruncate_ = false; // Whether to truncate linear dep after combining elec and prot aux basis, using CD 
     double combineBasisThresh_ = 0.0;   // Truncating threshold for combineauxbasis  
 
+    std::string label1_ = ""; // Label for the first auxiliary basis
+    std::string label2_ = ""; // Label for the second auxiliary basis
+
   public:
 
     // CONSTRUCTORS:
@@ -341,7 +344,8 @@ class InCoreAsymmRITPI :
 
     void setAux1Ref(const std::shared_ptr<InCoreCholeskyRIERI<IntsT>> &aux1_ref) { aux1_ref_ = aux1_ref; }
     void setAux2Ref(const std::shared_ptr<InCoreCholeskyRIERI<IntsT>> &aux2_ref) { aux2_ref_ = aux2_ref; }
-
+    void setLabel1(const std::string &label1) { label1_ = label1; }
+    void setLabel2(const std::string &label2) { label2_ = label2; }
     void setReportError(bool reportError) { reportError_ = reportError;}
 
     /*

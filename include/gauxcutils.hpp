@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <vector>
 #include <iterator>
 #include <cerr.hpp>
 #include <molecule.hpp>
@@ -18,17 +19,20 @@
 
 namespace ChronusQ {
 
+  struct QuantumSubsystem;
 
   class GauXCUtils {
 
     public:
 
       GauXC::BasisSet<double> gbasis;
-      GauXC::BasisSet<double> gpbasis;
+      std::vector<GauXC::BasisSet<double>> gbases;
       GauXC::Molecule gmol;
       std::vector<GauXC::XCTask> * lb_tasks;
       std::shared_ptr<GauXC::RuntimeEnvironment> grt;
+      std::shared_ptr<GauXC::LoadBalancer> load_balancer;
       std::shared_ptr<GauXC::XCIntegrator<Eigen::MatrixXd>> integrator_pointer=nullptr;
+      GauXC::MultiParticleFunctionalSpec multiparticle_functional_spec;
 
       // Get xHFX from GauXC functional definition or input.
       double xHFX = 0.;
@@ -56,10 +60,9 @@ namespace ChronusQ {
     bool useGPU = false;                
     float gpuMemFrac = 0.95;           
     double basisTol  = 1e-10;
-    double pbasisTol = 1e-10;
+    double otherBasisTol = 1e-10;
     size_t batchSize = 4096;
     std::string funcName;
-    std::string prot_funcName;
     ExchCXX::Spin xcSpin;
     ExchCXX::Backend xcBackend         = ExchCXX::Backend::libxc;
     GauXC::AtomicGridSizeDefault grid  = GauXC::AtomicGridSizeDefault::UltraFineGrid;  
@@ -81,10 +84,13 @@ namespace ChronusQ {
     std::string kernels;
 
     // Build a GauXCUtils class given using the parse GAUXCOptions
-    std::shared_ptr<GauXCUtils> buildGauXCUtils( const std::shared_ptr<const BasisSet>& basis, const std::shared_ptr<const BasisSet>& basis2,
+    std::shared_ptr<GauXCUtils> buildGauXCUtils( const std::shared_ptr<const BasisSet>& basis,
+        const Molecule& mol, MPI_Comm comm);
+    std::shared_ptr<GauXCUtils> buildGauXCUtils( const std::vector<QuantumSubsystem>& quantumSubsystems,
         const Molecule& mol, MPI_Comm comm);
 
-    void printGauXCSettings(std::ostream&out);
+    void printGauXCSettings(std::ostream&out,
+        const std::vector<QuantumSubsystem>* quantumSubsystems = nullptr);
   };
 
 }

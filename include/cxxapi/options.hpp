@@ -25,6 +25,7 @@
 
 #include <cxxapi/input.hpp>
 #include <cxxapi/procedural.hpp>
+#include <quantumsubsystems.hpp>
 #include <molecule.hpp>
 #include <basisset.hpp>
 #include <integrals.hpp>
@@ -145,7 +146,7 @@ namespace ChronusQ {
 
   // Parse the options relating to the BasisSet
   std::shared_ptr<BasisSet> CQBasisSetOptions(std::ostream &, CQInputFile &,
-    Molecule &, std::string);
+    Molecule &, std::string, const std::vector<size_t>& atomIndices = {});
 
   std::set<std::string> CQBASIS_VALID(const std::map<std::string, std::string>& inputSection);
 
@@ -164,8 +165,26 @@ namespace ChronusQ {
       std::shared_ptr<IntegralsBase> epaoints,
       SCFControls scfControls);
 
+  template <typename MatsT, typename IntsT>
+  std::shared_ptr<SingleSlaterBase> buildMultiParticleSS(
+    std::ostream& out,
+    Molecule& mol,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    const std::vector<std::shared_ptr<SingleSlaterBase>>& subSS,
+    SCFControls scfControls);
+
+  std::shared_ptr<SingleSlaterBase> CQMultiParticleSSOptions(
+    std::ostream& out,
+    CQInputFile& input,
+    Molecule& mol,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    SCFControls scfControls);
+
   std::set<std::string> CQQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection);
+  std::set<std::string> CQQUANTUMSUBSYSTEMQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQDFTINT_VALID(const std::map<std::string, std::string>& inputSection);
 
   // Parse RT options
@@ -186,6 +205,7 @@ namespace ChronusQ {
   );
 
   std::set<std::string> CQRT_VALID(const std::map<std::string, std::string>& inputSection);
+  void CQRTExpandSubsystemAlgorithms(TDSCFOptions&, const std::vector<QuantumSubsystem>&);
 
   // Parse Response options
   std::shared_ptr<ResponseBase> CQResponseOptions(
@@ -263,15 +283,20 @@ namespace ChronusQ {
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss,
     std::shared_ptr<MCWaveFunctionBase> mcscf,
     std::shared_ptr<RealTimeBase>& rt,
-    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions);
+    std::shared_ptr<TDEMPerturbation>& tdPert,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions,
+    const std::shared_ptr<GauXCOptions>& gauxcOptions = nullptr);
 
   JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
     std::shared_ptr<RealTimeBase>& rt,
     std::shared_ptr<TDEMPerturbation>& tdPert,
-    std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions);
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions,
+    const std::shared_ptr<GauXCOptions>& gauxcOptions = nullptr);
 
   std::set<std::string> CQDYNAMICS_VALID(const std::map<std::string, std::string>& inputSection);
 
@@ -321,7 +346,7 @@ namespace ChronusQ {
   
   // Parse GauXC options                                                           
   GauXCOptions CQGauXCOptions(std::ostream&, CQInputFile &input, SingleSlaterOptions &ssOptions,
-    SingleSlaterOptions &prot_ssOptions);                  
+    const std::vector<QuantumSubsystem>* quantumSubsystems = nullptr);
 
   std::set<std::string> CQCI_VALID(const std::map<std::string, std::string>& inputSection);
   

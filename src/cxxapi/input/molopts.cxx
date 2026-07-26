@@ -30,6 +30,28 @@
 namespace ChronusQ {
 
   /**
+   *  Validate quantum particle label
+   *  Allow only letters, numbers, and underscores
+   *
+  */
+  static void validateQuantumSystemLabel(const std::string& label) {
+
+    if( label.empty() )
+      CErr("Empty quantum particle label in MOLECULE.GEOM");
+  
+    if( not std::isalpha(static_cast<unsigned char>(label[0])) )
+      CErr("Quantum particle label must start with a letter: " + label);
+  
+    for( char c : label ) {
+      unsigned char uc = static_cast<unsigned char>(c);
+  
+      if( not std::isalnum(uc) and c != '_' )
+        CErr("Invalid quantum particle label: " + label +
+             ". Use only letters, numbers, and underscores.");
+    }
+  }
+
+  /**
    *
    *  Check valid keywords in the section.
    *
@@ -177,14 +199,20 @@ namespace ChronusQ {
       atoms.back().coord[2] = std::stod(tokens[3]) / AngPerBohr;
 
       // quantum nuclei
-      if (tokens.size() == 5 and tokens[4] == "Q") {
-        if (not doNEO)
+      if (tokens.size() == 5) {
+        if (not doNEO) // TODO: add auto detect?
           CErr("Quantum nuclei in non-NEO SCF");
-        else
-          atoms.back().quantum = true;
-      }
-      else if (tokens.size() == 5 and tokens[4] != "Q") {
-        CErr("Error in geometry reader. Do you want to specify quantum nuclei? Use keyword Q!");
+
+        std::string quantumLabel = tokens[4];
+        std::transform(quantumLabel.begin(), quantumLabel.end(), quantumLabel.begin(), [](char c){ return std::toupper(c); });
+
+        // Backward compatibility for old NEO input
+        if (quantumLabel == "Q") quantumLabel = "QP";
+        
+        validateQuantumSystemLabel(quantumLabel);
+        
+        atoms.back().quantum = true;
+        atoms.back().quantumLabel = quantumLabel;
       }
     }
 

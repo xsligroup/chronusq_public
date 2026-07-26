@@ -30,6 +30,7 @@
 #include <geometrymodifier.hpp>
 #include <geometrymodifier/moleculardynamics.hpp>
 #include <geometrymodifier/singlepoint.hpp>
+#include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
 
@@ -57,14 +58,18 @@ namespace ChronusQ {
 
   JobType CQGeometryOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcscf,
-    std::shared_ptr<RealTimeBase>& rt, 
-    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions)
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions,
+    const std::shared_ptr<GauXCOptions>& gauxcOptions)
   {
 
     JobType elecJob = job;
     if( job == JobType::BOMD or job == JobType::EHRENFEST or job == JobType::RT ) {
-      elecJob = CQDynamicsOptions(out, input, rstFile, job, mol, ss, mcscf, rt, tdPert, epints, emPert, tdSCFOptions);
+      elecJob = CQDynamicsOptions(out, input, rstFile, job, mol, ss, mcscf, rt, tdPert,
+        quantumSubsystems, quantumPairInteractions, emPert, tdSCFOptions, gauxcOptions);
     }
     // add else if job == OPT
     else {
@@ -75,25 +80,10 @@ namespace ChronusQ {
     return elecJob;
   }
 
-  // Function to get an IntegralsBase pointer out
-  IntegralsBase* extractIntPtr(std::shared_ptr<SingleSlaterBase> ss) {
-    IntegralsBase* ints = nullptr;
-
-    if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) ) {
-      ints = ss_t->aoints_.get();
-    }
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) ) {
-      ints = ss_t->aoints_.get();
-    }
-    else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) ) {
-      ints = ss_t->aoints_.get();
-    }
-
-    return ints;
-  }
-
   void createGradientIntegrals(CQInputFile& input, Molecule& mol,
-    std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<IntegralsBase> epints)
+    std::shared_ptr<SingleSlaterBase> ss,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions)
   {
 
 #define ADD_GRAD_INCORE(T) \
@@ -172,57 +162,59 @@ namespace ChronusQ {
 
     };
 
-    // Begin actual work!
+    auto multiBase = std::dynamic_pointer_cast<MultiParticleSSBase>(ss);
+    std::unordered_map<std::string,std::shared_ptr<SingleSlaterBase>> subSS;
 
-    // NEO
-    if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) {
-      auto labels = neoss->getLabels();
-      for( auto ilbl = 0; ilbl < labels.size(); ilbl++ ) {
-        auto ss1 = neoss->getSubSSBase(labels[ilbl]);
-        IntegralsBase* subints = extractIntPtr(ss1);
-        // TODO: Generalize this
-        std::string section = labels[ilbl] == "Protonic" ? "PINTS" : "INTS";
-        createGradInt(subints, ss1, nullptr, section);
-
-        auto intcast = dynamic_cast<Integrals<double>*>(subints);
-
-
-        for(auto jlbl = ilbl + 1; jlbl < labels.size(); jlbl++) {
-          auto ss2 = neoss->getSubSSBase(labels[jlbl]);
-          createGradInt(epints.get(), ss2, ss1, "EPINTS");
-          bool contractSecond = labels[ilbl] == "Protonic";
-
-          if(auto neoss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(neoss)) {
-            auto epcasted = std::dynamic_pointer_cast<Integrals<double>>(epints);
-            neoss_t->addGradientIntegrals(labels[ilbl], labels[jlbl], epcasted->gradERI, contractSecond);
-          }
-          else if(auto neoss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,double>>(neoss)) {
-            auto epcasted = std::dynamic_pointer_cast<Integrals<double>>(epints);
-            neoss_t->addGradientIntegrals(labels[ilbl], labels[jlbl], epcasted->gradERI, contractSecond);
-          }
-          else if(auto neoss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,dcomplex>>(neoss)) {
-            auto epcasted = std::dynamic_pointer_cast<Integrals<dcomplex>>(epints);
-            neoss_t->addGradientIntegrals(labels[ilbl], labels[jlbl], epcasted->gradERI, contractSecond);
-          }
-          else {
-            CErr("No successful NEOSS cast. This should never happen!");
-          }
-        }
-      }
+    for(auto& sys : quantumSubsystems) {
+      auto subsystem = multiBase ? multiBase->getSubSSBase(sys.label) : ss;
+      if(!subsystem or !sys.integrals)
+        CErr("Missing subsystem data while building gradient integrals for " + sys.label);
+      subSS.emplace(sys.label, subsystem);
+      createGradInt(sys.integrals.get(), subsystem, nullptr, sys.intsSection);
     }
-    // Conventional
-    else {
-      IntegralsBase* eints = extractIntPtr(ss);
-      createGradInt(eints, ss, nullptr, "INTS");
+
+    for(auto& pair : quantumPairInteractions) {
+      if(!multiBase or !pair.integrals)
+        CErr("Missing multiparticle data while building gradient integrals for " +
+          pair.labelA + "-" + pair.labelB);
+
+      auto ssA = subSS.at(pair.labelA);
+      auto ssB = subSS.at(pair.labelB);
+      createGradInt(pair.integrals.get(), ssA, ssB, pair.intsSection);
+
+      if(auto multiSS = std::dynamic_pointer_cast<MultiParticleSS<double,double>>(ss)) {
+        auto ints = std::dynamic_pointer_cast<Integrals<double>>(pair.integrals);
+        if(!ints) CErr("Invalid gradient integral type for " + pair.labelA + "-" + pair.labelB);
+        bool contractSecond = multiSS->getCrossTPIs(pair.labelA,pair.labelB).first;
+        multiSS->addGradientIntegrals(pair.labelA,pair.labelB,ints->gradERI,contractSecond);
+      }
+      else if(auto multiSS = std::dynamic_pointer_cast<MultiParticleSS<dcomplex,double>>(ss)) {
+        auto ints = std::dynamic_pointer_cast<Integrals<double>>(pair.integrals);
+        if(!ints) CErr("Invalid gradient integral type for " + pair.labelA + "-" + pair.labelB);
+        bool contractSecond = multiSS->getCrossTPIs(pair.labelA,pair.labelB).first;
+        multiSS->addGradientIntegrals(pair.labelA,pair.labelB,ints->gradERI,contractSecond);
+      }
+      else if(auto multiSS = std::dynamic_pointer_cast<MultiParticleSS<dcomplex,dcomplex>>(ss)) {
+        auto ints = std::dynamic_pointer_cast<Integrals<dcomplex>>(pair.integrals);
+        if(!ints) CErr("Invalid gradient integral type for " + pair.labelA + "-" + pair.labelB);
+        bool contractSecond = multiSS->getCrossTPIs(pair.labelA,pair.labelB).first;
+        multiSS->addGradientIntegrals(pair.labelA,pair.labelB,ints->gradERI,contractSecond);
+      }
+      else {
+        CErr("Pair gradient integrals require a MultiParticleSS object");
+      }
     }
 
   }
 
   JobType CQDynamicsOptions(std::ostream& out, CQInputFile& input, SafeFile& rstFile,
     JobType job, Molecule& mol, std::shared_ptr<SingleSlaterBase> ss, std::shared_ptr<MCWaveFunctionBase> mcwfn,
-    std::shared_ptr<RealTimeBase>& rt, 
-    std::shared_ptr<TDEMPerturbation>& tdPert, std::shared_ptr<IntegralsBase> epints,
-    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions)
+    std::shared_ptr<RealTimeBase>& rt,
+    std::shared_ptr<TDEMPerturbation>& tdPert,
+    std::vector<QuantumSubsystem>& quantumSubsystems,
+    std::vector<QuantumPairInteraction>& quantumPairInteractions,
+    EMPerturbation& emPert, TDSCFOptions& tdSCFOptions,
+    const std::shared_ptr<GauXCOptions>& gauxcOptions)
   {
 
     JobType elecJob;
@@ -333,169 +325,72 @@ namespace ChronusQ {
       std::cout<< "================================================================================" << std::endl;
       std::cout << std::endl;
 
-      createGradientIntegrals(input, mol, ss, epints);
-
-
+      createGradientIntegrals(input, mol, ss, quantumSubsystems, quantumPairInteractions);
 
       // Provide definition for gradient calculations
       md->gradientGetter = [&, ss](){ return ss->getGrad(emPert,false,false); };
 
-      // Provide definitions for 
-      //     - std::function<void()> updateBasisIntsHamiltonian; (for Ehrenfest and BOMD)
-      //     - std::function<double()> finalMidpointFock; (only for Ehrenfest)
-      // For NEOSS and regular singleslater, the definitions are different
-      if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) {
-        // Obtain NEO integrals and basis as a vector
-        std::vector<IntegralsBase*> ints;
-        std::vector<BasisSet*> bases;
-        BasisSet* ebasis = nullptr;
-        BasisSet* pbasis = nullptr;
-        IntegralsBase* pint = nullptr;
-        auto labels = neoss->getLabels();
-        for( auto label: labels ) {
-          auto subss = neoss->getSubSSBase(label);
-          ints.push_back(extractIntPtr(subss));
-          bases.push_back(&subss->basisSet());
-          if( label == "Electronic" ) {
-            ebasis = bases.back();
-          } else if( label == "Protonic" ) {
-            pbasis = bases.back();
-            pint = ints.back();
-          }
+      std::unordered_map<std::string,std::shared_ptr<BasisSet>> subsystemBasis;
+      for(auto& sys : quantumSubsystems) {
+        subsystemBasis.emplace(sys.label,sys.basis);
+        if(md->NEODynamicsOpts.tpb and sys.label != "E")
+          sys.integrals->options_.includeTau = true;
+      }
+
+      md->updateBasisIntsHamiltonian = [&, ss, subsystemBasis, gauxcOptions](){
+        // Update every subsystem basis and its intra-particle integrals.
+        for(auto& sys : quantumSubsystems) {
+          sys.basis->updateNuclearCoordinates(mol);
+          sys.integrals->computeAOTwoE(*sys.basis,mol,emPert);
         }
 
-        if(md->NEODynamicsOpts.tpb)
-          pint->options_.includeTau = true;
+        // Update every pair interaction with the same subsystem ordering used at setup.
+        for(auto& pair : quantumPairInteractions)
+          pair.integrals->computeAOTwoE(*subsystemBasis.at(pair.labelA),
+            *subsystemBasis.at(pair.labelB),mol,emPert);
 
+        // Rebuild the GauXC molecular grid with new geometry and new basis
+        if(ss->gauxcUtils and gauxcOptions) {
+          if(quantumSubsystems.size() > 1)
+            ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, mol, MPI_COMM_WORLD);
+          else
+            ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems.front().basis, mol, MPI_COMM_WORLD);
+        }
 
-        md->updateBasisIntsHamiltonian = [=, &mol, &emPert](){
-          // Update basis and two-e integrals at new geometry
-          for( auto isub = 0; isub < ints.size(); isub++ ) {
-            bases[isub]->updateNuclearCoordinates(mol);
-            ints[isub]->computeAOTwoE(*bases[isub], mol, emPert);
-          }
-          epints->computeAOTwoE(*ebasis, *pbasis, mol, emPert);
-          // Update 1-e integrals, including S metric and transformation matrix
-          ss->formCoreH(emPert,false);
+        // Update one-electron integrals, metric transformations and Fock matrices.
+        ss->formCoreH(emPert,false);
+        ss->formFock(emPert,false);
+      };
+
+      if(job == JobType::EHRENFEST) {
+        md->finalMidpointFock = [&, ss, md](){
+
+          // Update basis, integrals, and hamiltonian
+          md->updateBasisIntsHamiltonian();
+
+          // Transform the propagated density with the metric at the new geometry.
+          ss->ortho2aoDen();
+
+          // Recompute the Fock matrix and energy from the transformed density.
           ss->formFock(emPert,false);
-        };
-
-        if (job == JobType::EHRENFEST) {
-          md->finalMidpointFock = [=, &mol, &emPert](){
-            // Update basis, integrals, and hamiltonian
-            md->updateBasisIntsHamiltonian();
-
-            // Transform ortho density with new metric for property and gradient evaluation (on root process)
-            if( auto ss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(ss) )           ss_t->ortho2aoDen();
-            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,double>>(ss) )    ss_t->ortho2aoDen();
-            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,dcomplex>>(ss) )  ss_t->ortho2aoDen();
-            else CErr("Unsuccessful Cast!");
-            
-#ifdef CQ_ENABLE_MPI
-            // Broadcast the 1PDM to all MPI processes
-            if( MPISize(MPI_COMM_WORLD) > 1 ) {
-              auto bcastNEOOnePDM = [](auto neoss_typed) {
-                auto neoMap   = neoss_typed->getSubsystemMap();
-                auto neoOrder = neoss_typed->getOrder();
-                for(auto& label : neoOrder) {
-                    auto& subss = neoMap[label];
-                    size_t NB = subss->nAlphaOrbital();
-                    for(auto* mat : subss->onePDM->SZYXPointers())
-                        MPIBCast(mat, NB*NB, 0, subss->comm);
-                }
-            };
-            if( auto ss_t = std::dynamic_pointer_cast<NEOSS<double,double>>(ss) )           bcastNEOOnePDM(ss_t);
-            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,double>>(ss) )    bcastNEOOnePDM(ss_t);
-            else if( auto ss_t = std::dynamic_pointer_cast<NEOSS<dcomplex,dcomplex>>(ss) )  bcastNEOOnePDM(ss_t);
-            }
-#endif
-
-
-            // Recompute fock matrix and get updated energy
-            ss->formFock(emPert,false);
-            ss->computeEnergy(emPert);
-            // Add D3 correction to the total energy
+          ss->computeEnergy(emPert);
 #ifdef CQ_HAS_D3
-            if (ss->d3Utils) {
-              ss->d3Utils->evaluate(ss->molecule());
-              ss->totalEnergy += ss->d3Utils->result().energy;
-            }
+          if(ss->d3Utils) {
+            ss->d3Utils->evaluate(ss->molecule());
+            ss->totalEnergy += ss->d3Utils->result().energy;
+          }
 #endif
-            return ss->totalEnergy;
-          };
-        }
-
-        md->pertFirstAtom = [=, &mol, &emPert](){
-          // Apply perturbation for first atom
-          mol.atoms[0].coord[0] += md->mdOptions.pert_val_x;
-          mol.atoms[0].coord[1] += md->mdOptions.pert_val_y;
-          mol.atoms[0].coord[2] += md->mdOptions.pert_val_z;
-          mol.update();
+          return ss->totalEnergy;
         };
+      }
 
-      } // End definitions for updateBasisIntsHamiltonian and finalMidpointFock for when ss is NEOSS
-      else {
-        auto aoints = extractIntPtr(ss);
-        BasisSet* basis = &ss->basisSet();
-
-        md->updateBasisIntsHamiltonian = [=, &mol, &emPert]() {
-          // Update basis and two-e integrals at new geometry
-          basis->updateNuclearCoordinates(mol);
-          aoints->computeAOTwoE(*basis, mol, emPert);
-          // Update 1-e integrals, including S metric and transformation matrix
-          ss->formCoreH(emPert, false);
-          ss->formFock(emPert,false);
-        };
-
-        if (job == JobType::EHRENFEST) {
-          md->finalMidpointFock = [=, &mol, &emPert](){
-            // Update basis, integrals, and hamiltonian
-            md->updateBasisIntsHamiltonian();
-
-            // Transform ortho density with new metric for property and gradient evaluation (on root process)
-            if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )           ss_t->ortho2aoDen();
-            else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )    ss_t->ortho2aoDen();
-            else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )  ss_t->ortho2aoDen();
-            else CErr("Unsuccessful Cast!");
-
-#ifdef CQ_ENABLE_MPI
-            // Broadcast the 1PDM to all MPI processes
-            if( MPISize(MPI_COMM_WORLD) > 1 ) {
-              auto bcastPDM = [](auto ss_typed) {
-                size_t NB = ss_typed->nAlphaOrbital();
-                for(auto *mat : ss_typed->onePDM->SZYXPointers())
-                  MPIBCast(mat, NB*NB, 0, ss_typed->comm);
-              };
-              if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss) )           bcastPDM(ss_t);
-              else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss) )    bcastPDM(ss_t);
-              else if( auto ss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ss) )  bcastPDM(ss_t);
-            }
-#endif
-
-
-            // Recompute fock matrix and get updated energy
-            ss->formFock(emPert,false);
-            ss->computeEnergy(emPert);
-            // Add D3 correction to the total energy
-#ifdef CQ_HAS_D3
-            if (ss->d3Utils) {
-              ss->d3Utils->evaluate(ss->molecule());
-              ss->totalEnergy += ss->d3Utils->result().energy;
-            }
-#endif
-            return ss->totalEnergy;
-          };
-        }
-
-        md->pertFirstAtom = [=, &mol, &emPert](){
-          // Apply perturbation for first atom
-          mol.atoms[0].coord[0] += md->mdOptions.pert_val_x;
-          mol.atoms[0].coord[1] += md->mdOptions.pert_val_y;
-          mol.atoms[0].coord[2] += md->mdOptions.pert_val_z;
-          mol.update();
-        };
-
-      }  // End definitions for updateBasisIntsHamiltonian and finalMidpointFock for when ss is regular SingleSlater
+      md->pertFirstAtom = [&mol, md](){
+        // Apply perturbation for first atom
+        mol.atoms[0].coord[0] += md->mdOptions.pert_val_x;
+        mol.atoms[0].coord[1] += md->mdOptions.pert_val_y;
+        mol.atoms[0].coord[2] += md->mdOptions.pert_val_z;
+        mol.update();
+      };
 
       // Parse initial velocity
 

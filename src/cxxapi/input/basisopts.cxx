@@ -57,7 +57,7 @@ namespace ChronusQ {
    *  \returns Appropriate BasisSet object for the input parameters
    */
   std::shared_ptr<BasisSet> CQBasisSetOptions(std::ostream &out, CQInputFile &input,
-    Molecule &mol, std::string section) {
+    Molecule &mol, std::string section, const std::vector<size_t>& atomIndices) {
 
     // Determine if we're forcing cartesian functions
     bool forceCart(false);
@@ -66,10 +66,6 @@ namespace ChronusQ {
     // Determine if we're parsing the basis from a basis file or the input file
     bool inputBasis(false);
     OPTOPT( inputBasis = input.getData<bool>(section+"/DEFINEBASIS") )
-
-    // Determine if we're parsing a protonic basis
-    bool pBasis(false);
-    OPTOPT( pBasis = (!section.compare("PBASIS") or !section.compare("PGUESSBASIS")); ); 
 
     // Find the Basis Definition
     std::string basisName;
@@ -82,8 +78,8 @@ namespace ChronusQ {
     if ( basisName.empty() and basisDef.empty() ) {
       if ( section == "BASIS" )
         CErr("Basis file or specification not found!");
-      else if ( section == "PBASIS" )
-        CErr("Proton Basis file or specification not found!");
+      else if( not atomIndices.empty() )
+        CErr("Quantum-particle basis file or specification not found. Specify in [" + section + "]!");
       else
         return std::make_shared<BasisSet>();
     }
@@ -105,7 +101,7 @@ namespace ChronusQ {
     std::shared_ptr<BasisSet> basis =
         std::make_shared<BasisSet>(basisName,basisDef,inputBasis,
                                    mol,bType,forceCart,MPIRank() == 0,
-                                   pBasis);
+                                   atomIndices);
 
     // Ouput BasisSet information
     out << *basis << std::endl;

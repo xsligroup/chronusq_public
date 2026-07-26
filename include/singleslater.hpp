@@ -32,6 +32,7 @@
 #include <cubegen.hpp>
 #include <orthogonalization.hpp>
 #include <orbitalmodifier.hpp>
+#include <functional>
 
 // Debug print triggered by Wavefunction
   
@@ -85,6 +86,7 @@ namespace ChronusQ {
   // Use SFINAE to ensure RT functions only get instantiated when MatsT is dcomplex
   template <typename M>
   using enable_if_dcomplex = typename std::enable_if<std::is_same<M, dcomplex>::value, int>::type;
+  using RTFockFormation = std::function<void(EMPerturbation&, bool)>;
 
   /**
    *  \brief The SingleSlater class. The typed abstract interface for all
@@ -180,6 +182,8 @@ namespace ChronusQ {
     std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> onePDMGrad;
     // Energy weighted density matrix W
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> W;
+
+    std::vector<size_t> ownedAtomIndices; ///< Indices of atoms owned by this SingleSlater TODOAL: maybe move this somewhere else?
 
     // For modified of SCF calculations, different ways to build the density matrix
     std::shared_ptr<RDMBuilderBase<MatsT,IntsT>> RDMBuilder = nullptr;
@@ -286,9 +290,9 @@ namespace ChronusQ {
     template <typename M = MatsT, enable_if_dcomplex<M> = 0>
     void addTauToFock();
     template <typename M = MatsT, enable_if_dcomplex<M> = 0>
-    void RK4Propagation(bool, double, bool, EMPerturbation&, EMPerturbation&);
+    void RK4Propagation(bool, double, bool, EMPerturbation&, EMPerturbation&, const RTFockFormation& = {});
     template <typename M = MatsT, enable_if_dcomplex<M> = 0>
-    void unitaryPropagation(bool, double, bool, EMPerturbation&);
+    void unitaryPropagation(bool, double, bool, EMPerturbation&, const RTFockFormation& = {});
     template <typename M = MatsT, enable_if_dcomplex<M> = 0>
     cqmatrix::PauliSpinorMatrices<MatsT> getTimeDerDen(bool);
 
@@ -370,7 +374,7 @@ namespace ChronusQ {
     void ao2orthoFock();
     void ao2orthoMOs();
     void ao2orthoDen();
-    virtual void ortho2aoDen();
+    void ortho2aoDen();
     void ortho2aoMOs();
     void orthoAOMO();
 

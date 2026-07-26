@@ -41,6 +41,7 @@
 #include <basisset/remove_linear_dep_shells.hpp>
 #include <integrals.hpp>
 #include <singleslater.hpp>
+#include <singleslater/multiparticless.hpp>
 #include <coupledcluster.hpp>
 #include <mcwavefunction.hpp>
 #include <mcscf.hpp>
@@ -66,6 +67,7 @@
 #include <fockbuilder/matrixfock.hpp>
 
 #include <fockbuilder/neofock.hpp>
+#include <fockbuilder/interparticlefock.hpp>
 #include <itersolver.hpp>
 
 #include <unistd.h>
@@ -235,24 +237,45 @@ namespace ChronusQ {
 
     std::shared_ptr<BasisSet> dfbasis = CQBasisSetOptions(output,input,mol,"DFBASIS"); // Create BasisSet object for DFBasis if defined
     std::shared_ptr<BasisSet> guessbasis = input.containsSection("GUESSBASIS") ? CQBasisSetOptions(output,input,mol,"GUESSBASIS") : nullptr; // Guess basis set for density projection
-    std::shared_ptr<BasisSet> prot_basis = doNEO ? CQBasisSetOptions(output,input,mol,"PBASIS") : nullptr; // Create BasisSet object for nuclear orbitals if it's a NEO calculation
-    if(prot_basis) read_option_and_remove_linear_dependency(input,*prot_basis,mol,output);
-    std::shared_ptr<BasisSet> prot_guessbasis = input.containsSection("PGUESSBASIS") ? CQBasisSetOptions(output,input,mol,"PGUESSBASIS") : nullptr; // Protonic Guess basis set for density projection
-
-    // Parse Integral options from input file
     IntegralOptions aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"INTS");
-    IntegralOptions prot_aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"PINTS");
-    IntegralOptions ep_aoints_options = getIntegralOptions(output,input,basis,dfbasis,nullptr,"EPINTS");
+
+    std::vector<QuantumSubsystem> quantumSubsystems;
+
+    // Build electronic subsystem
+    quantumSubsystems.push_back({"E","E","QM","BASIS","DFBASIS","GUESSBASIS","INTS",basis,dfbasis,guessbasis,aoints_options});
+
+    // Build other quantum subsystems
+    for(const auto& label : mol.getQuantumSystemLabels()) {
+      auto subs = buildQuantumSubsystems(output,input,mol,label);
+      quantumSubsystems.insert(quantumSubsystems.end(),
+        std::make_move_iterator(subs.begin()),std::make_move_iterator(subs.end()));
+    }
+    const bool doRT = jobType == JobType::RT or jobType == JobType::EHRENFEST;
+    if(doRT) CQRTExpandSubsystemAlgorithms(tdSCFOptions, quantumSubsystems);
+
+    std::unordered_map<std::string, std::shared_ptr<BasisSet>> subsystemBasis;
+    for(auto& sys : quantumSubsystems) subsystemBasis[sys.label] = sys.basis;
     
-    // Build all integral objects. Each is in a shared pointer of IntegralBase
-    auto [aoints, prot_aoints, ep_aoints] = 
-        IntegralOptions::buildAllIntegrals(output, mol, basis, dfbasis, prot_basis,
-        aoints_options, prot_aoints_options, ep_aoints_options);
+    // Build pair interactions between quantum subsystems
+    std::vector<QuantumPairInteraction> quantumPairInteractions;
+    for(size_t i = 0; i < quantumSubsystems.size(); ++i) {
+      for(size_t j = i + 1; j < quantumSubsystems.size(); ++j) {
+        quantumPairInteractions.push_back(buildQuantumPairInteraction(output,input,mol,quantumSubsystems[i],quantumSubsystems[j]));
+      }
+    }
+
+    // Print Quantum Subsystem setup
+    printQuantumSetup(output, input, quantumSubsystems, quantumPairInteractions);
+
+    // Build Two-body integrals for all quantum subsystems and pair interactions
+    buildTwoBodyIntegrals(output, mol, quantumSubsystems, quantumPairInteractions);
+
+    // Electronic two-body integrals
+    auto aoints = quantumSubsystems[0].integrals;
 
     std::shared_ptr<SingleSlaterBase> ss  = nullptr;
 
     SingleSlaterOptions ssOptions;
-    SingleSlaterOptions prot_ssOptions;
 
     // EM Perturbation for SCF
     EMPerturbation emPert;
@@ -264,32 +287,38 @@ namespace ChronusQ {
     auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis,emPert,-1.0);
     // cubegen for NEO.
     std::shared_ptr<CubeGen> pcube = nullptr;
-    if (doNEO)
-      pcube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),prot_basis,emPert,1.0);
+    //TODDOAL: add logic to handle multiparticle cube generation
+    
+    
+
+
+
+    
 
     // Create the SingleSlater object
     if (doNEO) {
-      std::tie(ss, ssOptions, prot_ssOptions) = CQNEOSSOptions(output,input,mol,
-                                              *basis,*prot_basis,
-                                               aoints, prot_aoints,
-                                               ep_aoints, scfControls);
+      // Get Particle properties for each quantum subsystem
+      for(auto& sys : quantumSubsystems)
+        sys.ssOptions = CQSingleSlaterOptions(output,input,mol,*sys.basis,sys.integrals);
+
+      // Build MultiParticleSS object
+      ss = CQMultiParticleSSOptions(output,input,mol,quantumSubsystems,quantumPairInteractions,scfControls);
       ss->scfControls = scfControls;
-      // For NEO only one OrbitalModifier needs to be made since it is a
-      // driver for both the NEOSingleSlater and the aux_neoss
-      ss->buildOrbitalModifierOptions();
+      ssOptions = quantumSubsystems.front().ssOptions;
+      
 
-      // MO swapping for electronic subsystem
-      if( auto neoss = std::dynamic_pointer_cast<NEOBase>(ss) ) 
-      {
-        neoss->getSubSSBase("Electronic")->scfControls = ss->scfControls;
-        neoss->getSubSSBase("Protonic")->scfControls = ss->scfControls;
-        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Electronic")),"");
-        HandleOrbitalSwaps(output, input, *(neoss->getSubSSBase("Protonic")),"PROT_");
-      }
+      // TODOAL: in old NEO I think this only setups up the reference name printing, disable for now
+      //ss->buildOrbitalModifierOptions();
 
-      // Currently prot and elec share cube options.
-      ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);
-      ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, pcube);
+      // TODOAL: This is a strange behavior in dev. Probably need a separate fix
+      // Currently printLevel in SCF section has no control over the actual printing,
+      // as the true printing is controlled by "printLevel((MPIRank(c) == 0) ? 2 : 0)" in the SingleSlaterBase constructor. 
+      // This next line is previouly set in buildOrbitalModifierOptions (no reason at all). Here we hackily do it here.
+      ss->scfControls.printLevel = ss->printLevel; 
+
+      // TODOAL: handle MO swapping for MultiParticleSS
+
+      // TODOAL: handle cube generation for MultiParticleSS
     } else {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
@@ -303,11 +332,16 @@ namespace ChronusQ {
       ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);
     }
 
-    // GAUXC                                                                       
-    if (ssOptions.refOptions.isKSRef and ssOptions.intParam.useGauXC) {                                    
-      GauXCOptions gauxcOptions = CQGauXCOptions(output, input, ssOptions, prot_ssOptions);     
-      ss->gauxcUtils = gauxcOptions.buildGauXCUtils(basis, prot_basis, ss->molecule(), MPI_COMM_WORLD);
-    }                    
+    // GAUXC
+    std::shared_ptr<GauXCOptions> gauxcOptions;
+    if (ssOptions.refOptions.isKSRef and ssOptions.intParam.useGauXC) {
+      gauxcOptions = std::make_shared<GauXCOptions>(CQGauXCOptions(output, input, ssOptions,
+        doNEO ? &quantumSubsystems : nullptr));
+      if(doNEO)
+        ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, ss->molecule(), MPI_COMM_WORLD);
+      else
+        ss->gauxcUtils = gauxcOptions->buildGauXCUtils(basis, ss->molecule(), MPI_COMM_WORLD);
+    }
     
     // Dispersion correction
 #ifdef CQ_HAS_D3
@@ -338,10 +372,15 @@ namespace ChronusQ {
 
     if( rank == 0 ) {
       ss->savFile     = rstFile;
-      aoints->savFile = rstFile;
-      if (doNEO) { 
-        prot_aoints->savFile = rstFile;
-        ep_aoints->savFile   = rstFile;
+      // Attach savFile to every subsystem's SingleSlater and its integrals
+      for(auto& sys : quantumSubsystems) {
+        // the subsystem's own integrals object
+        if(sys.integrals) sys.integrals->savFile = rstFile;
+      }
+
+      // Attach savFile to every pair interaction's integrals
+      for(auto& pair : quantumPairInteractions) {
+        if(pair.integrals) pair.integrals->savFile = rstFile;
       }
     }
 
@@ -355,8 +394,8 @@ namespace ChronusQ {
     saveRefs( ssOptions, ss );
 
     // If doing NEO, propagate setup to subsystems
-    if(auto neoss = std::dynamic_pointer_cast<NEOBase>(ss)) {
-      neoss->setSubSetup();
+    if(auto multiParticleSS = std::dynamic_pointer_cast<MultiParticleSSBase>(ss)) {
+      multiParticleSS->setSubSetup();
     }
 
     // If we are doing RTCI we need a pointer to an mcscf object that is in this scope
@@ -376,7 +415,7 @@ namespace ChronusQ {
 //      }
 
       JobType elecJob = CQGeometryOptions(output, input, rstFile, job.jobType, mol, ss, mcwfn, rt, tdPert,
-        ep_aoints, emPert, tdSCFOptions);
+        quantumSubsystems, quantumPairInteractions, emPert, tdSCFOptions, gauxcOptions);
 
       // Loop over various structures
       while( mol.geometryModifier->hasNext() ) {
@@ -385,11 +424,8 @@ namespace ChronusQ {
         mol.geometryModifier->electronicPotentialEnergy = ss->totalEnergy;
         mol.geometryModifier->update(true, mol, firstStep, tdSCFOptions, ss, emPert, cubes);
         // Update basis to the new geometry
-        basis->updateNuclearCoordinates(mol);
-        if( dfbasis != nullptr ) dfbasis->updateNuclearCoordinates(mol);
-
-        if( doNEO ) {
-          prot_basis->updateNuclearCoordinates(mol);
+        for(auto& sys : quantumSubsystems) {
+          sys.basis->updateNuclearCoordinates(mol);
         }
 
         // Calculate integrals 
@@ -402,17 +438,35 @@ namespace ChronusQ {
                    and not (input.containsData("CC/SKIPSCF") and input.getData<bool>("CC/SKIPSCF"))) {
           std::cout << "Skipping integral calculations for CC. Assuming it's pre-computed." << std::endl;
         } else {
-          aoints->computeAOTwoE(*basis, mol, emPert);
-
-          if (doNEO) { 
-            prot_aoints->computeAOTwoE(*prot_basis, mol, emPert);
-            ep_aoints->computeAOTwoE(*basis, *prot_basis, mol, emPert); 
+          // Symmetric (intra-subsystem) two-body integrals
+          for(auto& sys : quantumSubsystems)
+            sys.integrals->computeAOTwoE(*sys.basis, mol, emPert);
+          // Asymmetric (cross/pair) two-body integrals
+          for(auto& pair : quantumPairInteractions) {
+            auto& basisA = subsystemBasis.at(pair.labelA);
+            auto& basisB = subsystemBasis.at(pair.labelB);
+            pair.integrals->computeAOTwoE(*basisA, *basisB, mol, emPert);
+          }
+          // Clean up raw ERI that might have been used during the asymmetric RI integral computation
+          for(auto& sys : quantumSubsystems) {
+            if(auto ints = std::dynamic_pointer_cast<Integrals<double>>(sys.integrals)) {
+              if(auto ri = std::dynamic_pointer_cast<InCoreRITPI<double>>(ints->TPI))
+                ri->clearRawERI();
+            }
           }
         }
+
+        // Rebuild the GauXC molecular grid with new geometry and new basis
+        if ((job.jobType == JobType::BOMD or job.jobType == JobType::EHRENFEST) and (ss->gauxcUtils and gauxcOptions)) {
+          if(doNEO)
+            ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, mol, MPI_COMM_WORLD);
+          else
+            ss->gauxcUtils = gauxcOptions->buildGauXCUtils(basis, mol, MPI_COMM_WORLD);
+        }
+
         // Note, these guessSSOptions does not apply to NEO guess
         SingleSlaterOptions guessSSOptions(ssOptions);
         guessSSOptions.scfControls.guessBasis = guessbasis;
-        guessSSOptions.scfControls.prot_guessBasis = prot_guessbasis;
         guessSSOptions.scfControls.scfGuessOutFile = rstFileName;
         //guessSSOptions.refOptions.isKSRef = false;
         //guessSSOptions.refOptions.nC = 1;
@@ -424,15 +478,11 @@ namespace ChronusQ {
 
           if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
             if (doNEO) {
-              auto neoss = std::dynamic_pointer_cast<NEOBase>(ss);
-              auto essbase =  neoss->getSubSSBase("Electronic");
-              auto pssbase =  neoss->getSubSSBase("Protonic");
-              compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, essbase, ssOptions);
-              if (prot_ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)
-                CErr("Protonic X2C not implemented yet", output);
-              else
-                pssbase->formCoreH(emPert, true);
-            } else
+              auto multiBase = std::dynamic_pointer_cast<MultiParticleSSBase>(ss);
+              if(!multiBase) CErr("Expected MultiParticleSS for NEO X2C", output);
+              auto essbase = multiBase->getSubSSBase("E");
+              compute_X2C_CoreH_Fock(mol, *basis, aoints, emPert, essbase, ssOptions);
+            }  else
               compute_X2C_CoreH_Fock( mol, *basis, aoints, emPert, ss, ssOptions);
             if (ssOptions.hamiltonianOptions.x2cType == X2C_TYPE::FOCK) {
               // If X2C.FOCK, the 2-component computation should be energy-only
@@ -458,7 +508,11 @@ namespace ChronusQ {
             found = true;                                \
           } catch(...) { };
 
-          // Construct RT object
+          // Construct SCF object
+          CONSTRUCT_NEWSCF( MultiParticleSS, double, double     );
+          CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, double   );
+          CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, dcomplex );
+
           CONSTRUCT_NEWSCF( NEOSS, double, double     );
           CONSTRUCT_NEWSCF( NEOSS, dcomplex, double   );
           CONSTRUCT_NEWSCF( NEOSS, dcomplex, dcomplex );
@@ -482,6 +536,8 @@ namespace ChronusQ {
         }
 
         if ( elecJob == JobType::MP2 ) {
+          if( doNEO )
+            CErr("NEO/multicomponent post-Hartree-Fock (MP2) is not yet implemented.");
           auto mp2 = CQMP2Options(output,input,ss);
           mp2->runMP2(emPert);
         }
@@ -525,8 +581,8 @@ namespace ChronusQ {
           } catch(...) { }
 
           // Construct RT object
-          CONSTRUCT_NEWRT( NEOSS, dcomplex, double   );
-          CONSTRUCT_NEWRT( NEOSS, dcomplex, dcomplex );
+          CONSTRUCT_NEWRT( MultiParticleSS, dcomplex, double   );
+          CONSTRUCT_NEWRT( MultiParticleSS, dcomplex, dcomplex );
 
           CONSTRUCT_NEWRT( HartreeFock, dcomplex, double   );
           CONSTRUCT_NEWRT( HartreeFock, dcomplex, dcomplex );
@@ -582,6 +638,9 @@ namespace ChronusQ {
         }
 
         if ( elecJob == JobType::MR or elecJob == JobType::PT ) {
+
+          if( doNEO )
+            CErr("NEO/multicomponent post-Hartree-Fock (MCSCF/CASCI/CASPT2) is not yet implemented.");
 
           EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
 

@@ -64,7 +64,13 @@ namespace ChronusQ {
 
     bool electron = (options.particle.charge < 0.);
 
-    std::string prefix = electron ? "INTS/" : "PINTS/";
+    std::string prefix;
+    if( !options.savFilePrefix.empty() )
+      prefix = options.savFilePrefix + "INTS/";              // MULTISS/QP0/INTS/
+    else {
+      bool electron = (options.particle.charge < 0.);
+      prefix = electron ? "INTS/" : "PINTS/";                // legacy
+    }
 
 #if 0
       std::cout << std::endl<<"Molecular Geometry in ComputeOneP: (Bohr)"<<std::endl;

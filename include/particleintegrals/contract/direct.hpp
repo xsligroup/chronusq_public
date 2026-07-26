@@ -1096,25 +1096,25 @@ namespace ChronusQ {
         // calculate integral (s1,s2|s3,s4)
         auto two2buff = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use,pair2_to_use,
           basisSet_.shells[s1],basisSet_.shells[s2],
-          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],0);
+          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],-1.0,-1.0);
 
 
         // calculate integral (s1,s2|s4,s3)
         auto two2buff_switch = ComplexGIAOIntEngine::bottomupcomplexERI(pair1_to_use_switch,pair2_to_use,
           basisSet_.shells[s2],basisSet_.shells[s1],
-          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],0);
+          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],-1.0,-1.0);
 #else 
 
         // calculate integral (s1,s2|s3,s4)
         auto two2buff = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use,pair2_to_use,
           basisSet_.shells[s1],basisSet_.shells[s2],
-          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],0);
+          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],-1.0,-1.0);
 
 
         // calculate integral (s1,s2|s4,s3)
         auto two2buff_switch = ComplexGIAOIntEngine::computeGIAOERIabcd(pair1_to_use_switch,pair2_to_use,
           basisSet_.shells[s2],basisSet_.shells[s1],
-          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],0);
+          basisSet_.shells[s3],basisSet_.shells[s4],&magAmp[0],-1.0,-1.0);
 
 #endif 
 

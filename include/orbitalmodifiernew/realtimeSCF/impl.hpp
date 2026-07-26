@@ -36,9 +36,45 @@
 #include <util/matout.hpp>
 #include <util/timer.hpp>
 #include <unsupported/Eigen/MatrixFunctions>
+#include <algorithm>
 
 
 namespace ChronusQ {
+
+template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
+std::vector<RealTimeAlgorithm>
+RealTimeSCF<singleSlaterT,MatsT,IntsT>::getDensityIntegrationAlgorithms() {
+
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    std::vector<RealTimeAlgorithm> algorithms;
+
+    // Match each flattened density block with its subsystem algorithm.
+    for(const auto& label : this->singleSlaterSystem.getOrder()) {
+      auto iter = tdSCFOptions.subsystemIntegrationAlgorithms.find(label);
+      if(iter == tdSCFOptions.subsystemIntegrationAlgorithms.end())
+        CErr("Missing RT integration algorithm for quantum subsystem " + label);
+      size_t nDensities = this->singleSlaterSystem.getSubSS(label)->getOnePDM().size();
+      algorithms.insert(algorithms.end(), nDensities, iter->second);
+    }
+
+    if(algorithms.size() != this->onePDMSquareOrtho.size())
+      CErr("Mismatch between RT density blocks and subsystem integration algorithms");
+
+    return algorithms;
+  } else
+    return std::vector<RealTimeAlgorithm>(this->onePDMSquareOrtho.size(), tdSCFOptions.integrationAlgorithm);
+}
+
+
+template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
+double RealTimeSCF<singleSlaterT,MatsT,IntsT>::getPropagationTimeStep(
+  RealTimeAlgorithm algorithm, bool startMMUTStep, bool finalMMUTStep) const {
+
+  if(algorithm == RealTimeAlgorithm::RTModifiedMidpoint and not (startMMUTStep or finalMMUTStep))
+    return 2. * tdSCFOptions.deltaT;
+
+  return tdSCFOptions.deltaT;
+}
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
 void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
@@ -85,6 +121,18 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
     for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) 
       previousOnePDMSquareOrtho[i] = this->onePDMSquareOrtho[i];
 
+  const auto densityIntegrationAlgorithms = getDensityIntegrationAlgorithms();
+  if(densityIntegrationAlgorithms.empty())
+    CErr("No density matrices available for real-time propagation");
+
+  const bool hasMMUT = std::find(densityIntegrationAlgorithms.begin(),
+    densityIntegrationAlgorithms.end(), RealTimeAlgorithm::RTModifiedMidpoint) !=
+    densityIntegrationAlgorithms.end();
+  const RealTimeAlgorithm uniformAlgorithm = densityIntegrationAlgorithms.front();
+  const bool useUniformUnitary = isUnitaryRTAlgorithm(uniformAlgorithm) and
+    std::all_of(densityIntegrationAlgorithms.begin(), densityIntegrationAlgorithms.end(),
+      [&](RealTimeAlgorithm algorithm) { return algorithm == uniformAlgorithm; });
+
   // Recover current time for the step information
   integrationProgress.currentTime = tdSCFOptions.restoreFromStep * tdSCFOptions.deltaT;
 
@@ -99,44 +147,57 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::run(EMPerturbation &perturbation) {
 
     // "Start" the MMUT if the current step is the first step or a restart step  or if field is discontinuous
     // "Finish" the MMUT if the current step is the last step or a irestart step or if field is discontinuous
-    if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
+    if(hasMMUT) {
       startMMUTStep = finalMMUTStep or (integrationProgress.currentStep == tdSCFOptions.restoreFromStep );
       finalMMUTStep = (integrationProgress.currentStep == tdSCFOptions.maxSteps ) or tdEMPerturbation.isFieldDiscontinuous(integrationProgress.currentTime, tdSCFOptions.deltaT);
       if(tdSCFOptions.iRestart > 0 and (integrationProgress.currentStep + 1) % tdSCFOptions.iRestart == 0) finalMMUTStep = true;
     };
 
-    // Determine the step type, half or full step, for the current integration step for MMUT
-    if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
-      if(startMMUTStep or finalMMUTStep) integrationProgress.currentDeltaT = tdSCFOptions.deltaT;
-      else integrationProgress.currentDeltaT = 2. * tdSCFOptions.deltaT;
-    } else {
-      integrationProgress.currentDeltaT = tdSCFOptions.deltaT;
-    }
+    // The global time step is used when all densities are propagated together.
+    integrationProgress.currentDeltaT = getPropagationTimeStep(
+      useUniformUnitary ? uniformAlgorithm : tdSCFOptions.integrationAlgorithm,
+      startMMUTStep, finalMMUTStep);
 
-    // Set up which density to propagate for specified integration algorithm
-    normalMMUTStep = true;
-    if(finalMMUTStep or startMMUTStep) normalMMUTStep = false;
+    // Set up the densities used for Fock formation and propagation
+    normalMMUTStep = not (finalMMUTStep or startMMUTStep);
     std::vector<cqmatrix::Matrix<MatsT>> onePDMSquareOrthoSave;
     if(MPIRank(this->mpiComm) == 0){
-      // Set up density for MMUT
-      if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
-        if(normalMMUTStep) {
-          std::swap(this->onePDMSquareOrtho,this->previousOnePDMSquareOrtho);
-        } else if (startMMUTStep or finalMMUTStep) {
-          if(printLevel > 0 and startMMUTStep) std::cout << "  *** Starting MMUT ***\n";
-          if(printLevel > 0 and finalMMUTStep) std::cout << "  *** Finishing MMUT ***\n";
-          for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
-            this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
-            if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2) onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
-          }
-        }
-      } else{
-        // Set up density for ForwardEuler and ExplicitMagnus2
-        for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
+      if(printLevel > 0 and startMMUTStep) std::cout << "  *** Starting MMUT ***\n";
+      if(printLevel > 0 and finalMMUTStep) std::cout << "  *** Finishing MMUT ***\n";
+
+      // When every subsystem uses the same unitary algorithm, set up their magnus2 propagation:
+      //   Magnus2 uses two propagations from the same starting density:
+      //   1. Save P(t). F(t) is formed below from onePDMSquareOrtho.
+      //   2. Propagate P(t) with F(t) to obtain a trial P(t+dt).
+      //   3. Form F(t+dt) from the trial density.
+      //   4. Restore P(t), average F(t) and F(t+dt), and propagate again.
+      //   Here we use onePDMSquareOrthoSave preserves P(t)
+      if(useUniformUnitary and
+         (uniformAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2 or
+         (uniformAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint and
+          not normalMMUTStep and tdSCFOptions.restartAlgorithm == RestartAlgorithm::ExplicitMagnus2)))
+        onePDMSquareOrthoSave = this->previousOnePDMSquareOrtho;
+
+      // Set up the density containers for each subsystem's propagation:
+      //   A normal MMUT step performs the two-step update
+      //     P(t+dt) = U P(t-dt) U^*, where U = exp[-i 2 dt F(t)].
+      //   1. previousOnePDMSquareOrtho initially stores the newest P(t), while
+      //      onePDMSquareOrtho retains P(t-dt) from the preceding MMUT step.
+      //   2. Swap them so onePDMSquareOrtho stores P(t), which is used below
+      //      to form F(t) and the propagator U.
+      //   3. The swap leaves previousOnePDMSquareOrtho storing P(t-dt), which
+      //      is propagated with U to produce P(t+dt).
+      //
+      //   Every other algorithm, including an MMUT start or finish step, uses
+      //   a one-step update starting from P(t):
+      //   1. previousOnePDMSquareOrtho stores P(t).
+      //   2. Copy it into onePDMSquareOrtho to form F(t).
+      //   3. Leave previousOnePDMSquareOrtho at P(t) as the propagation source.
+      for(size_t i = 0; i < this->onePDMSquareOrtho.size(); i++) {
+        if(densityIntegrationAlgorithms[i] == RealTimeAlgorithm::RTModifiedMidpoint and normalMMUTStep)
+          this->onePDMSquareOrtho[i].swap(this->previousOnePDMSquareOrtho[i]);
+        else
           this->onePDMSquareOrtho[i] = this->previousOnePDMSquareOrtho[i];
-          if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2 or tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour) 
-              onePDMSquareOrthoSave.emplace_back(this->previousOnePDMSquareOrtho[i]);
-        }
       }
     }
 
@@ -245,9 +306,13 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::createRTDataSets(size_t maxPoints) 
   savFile.createDataSet<double>("RTNEW/ENERGY", {maxDim});
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE",       {maxDim*3});
   savFile.createDataSet<double>("RTNEW/LEN_ELEC_DIPOLE_FIELD", {maxDim*3});
-  // For NEO, we'll save a few additional quantities
-  if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
-    savFile.createDataSet<double>("RTNEW/LEN_PROT_DIPOLE",       {maxDim*3});
+
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    for(const auto& label : this->singleSlaterSystem.getOrder()) {
+      const std::string prefix = "RTNEW/" + label;
+      savFile.createGroup(prefix);
+      savFile.createDataSet<double>(prefix + "/LEN_DIPOLE", {maxDim*3});
+    }
   }
 
   for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
@@ -279,10 +344,13 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveState(EMPerturbation& currentPe
   savFile.partialWriteData("RTNEW/STEP", &integrationProgress.currentStep, {integrationProgress.currentStep},{1},{0},{1});
   savFile.partialWriteData("RTNEW/ENERGY", &this->singleSlaterSystem.totalEnergy, {integrationProgress.currentStep},{1},{0},{1});
   savFile.partialWriteData("RTNEW/LEN_ELEC_DIPOLE", &this->singleSlaterSystem.elecDipole[0],{integrationProgress.currentStep*3}, {3},{0},{3});
-  // For NEO, we'll save a few additional quantities
-  if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
-    auto ss = dynamic_cast<NEOSS<MatsT,IntsT>*>(&this->singleSlaterSystem);
-    savFile.partialWriteData("RTNEW/LEN_PROT_DIPOLE", &(ss->get_prot_dipole()[0]),{integrationProgress.currentStep*3}, {3},{0},{3});
+
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    const auto& subsystemDipoles = this->singleSlaterSystem.getSubsystemDipoles();
+    for(const auto& label : this->singleSlaterSystem.getOrder())
+      savFile.partialWriteData("RTNEW/" + label + "/LEN_DIPOLE",
+        &subsystemDipoles.at(label)[0], {integrationProgress.currentStep*3},
+        {3}, {0}, {3});
   }
 
   std::array<double,3> elecDipoleField = currentPerturbation.getDipoleAmp(Electric);
@@ -514,33 +582,19 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert
   std::cout << std::endl;
   RTFormattedLineNew(std::cout,"* Integration Parameters:");
 
-  std::string methString;
-  if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint )
-    methString = "Modified Midpoint Unitary Transformation (MMUT)";
-  else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2)
-    methString = "Explicit 2nd Order Magnus";
-  else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour)
-    methString = "Runge-Kutta 4th Order";
-  else if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::ElectronicBornOppenheimer)
-    methString = "Electronic Born Oppenheimer";
-  else 
-    methString = "Forward Euler";
+  bool hasMMUT = tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint;
+  if constexpr (std::is_same_v<singleSlaterT<MatsT,IntsT>, MultiParticleSS<MatsT,IntsT>>) {
+    hasMMUT = false;
+    for(const auto& label : this->singleSlaterSystem.getOrder()) {
+      RealTimeAlgorithm algorithm = tdSCFOptions.subsystemIntegrationAlgorithms.at(label);
+      RTFormattedLineNew(std::cout, label + " Integration:", realTimeAlgorithmName(algorithm));
+      hasMMUT = hasMMUT or algorithm == RealTimeAlgorithm::RTModifiedMidpoint;
+    }
+  } else
+    RTFormattedLineNew(std::cout,"Electronic Integration:",
+      realTimeAlgorithmName(tdSCFOptions.integrationAlgorithm));
 
-  RTFormattedLineNew(std::cout,"Electronic Integration:",methString);
-
-  std::string protMethString;
-  if(tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint )
-    protMethString = "Modified Midpoint Unitary Transformation (MMUT)";
-  else if(tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTExplicitMagnus2)
-    protMethString = "Explicit 2nd Order Magnus";
-  else if(tdSCFOptions.protIntegrationAlgorithm == RealTimeAlgorithm::RTRungeKuttaOrderFour)
-    protMethString = "Runge-Kutta 4th Order";
-  else 
-    protMethString = "Forward Euler";
-  
-  RTFormattedLineNew(std::cout,"Protonic Integration:",protMethString);
-
-  if(tdSCFOptions.integrationAlgorithm == RealTimeAlgorithm::RTModifiedMidpoint ) {
+  if(hasMMUT) {
     std::string rstString;
     if(tdSCFOptions.restartAlgorithm == RestartAlgorithm::ForwardEuler )
       rstString = "Forward Euler";

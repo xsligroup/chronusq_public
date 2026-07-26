@@ -540,21 +540,25 @@ namespace ChronusQ {
       const RITPIContraction<MatsU,IntsT> &other, int dummy = 0 ):
       RITPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     template <typename MatsU>
     RITPIContraction(
       RITPIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
       RITPIContraction(other.ints_) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     RITPIContraction( const RITPIContraction &other ):
       RITPIContraction(other, 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
     RITPIContraction( RITPIContraction &&other ):
       RITPIContraction(std::move(other), 0) {
       this->contractSecond = other.contractSecond;
+      this->isCross = other.isCross;
     }
 
     // Computation interfaces

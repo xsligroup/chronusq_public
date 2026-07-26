@@ -86,7 +86,8 @@ namespace ChronusQ {
      *  \param [in] iCS  Whether or not to treat as closed shell
      */ 
     WaveFunction(MPI_Comm c, Molecule &mol, BasisSet &basis,
-                 std::shared_ptr<Integrals<IntsT>> aoi, size_t _nC, bool iCS, Particle p = {-1.0,1.0}) :
+                 std::shared_ptr<Integrals<IntsT>> aoi, size_t _nC, bool iCS, Particle p = {-1.0,1.0}, 
+                 std::optional<size_t> nParticleOverride = std::nullopt) :
       QuantumBase(c,_nC,iCS,p),
       WaveFunctionBase(c, mol, basis,_nC,iCS,p),
       Quantum<MatsT>(c,_nC,iCS,p,basis.nBasis),
@@ -111,14 +112,19 @@ namespace ChronusQ {
           this->nVB = nBasis - this->nOB;
         }
       } else {
-         this->nO = molecule_.nTotalP;
+
+         // if nParticleOverride is provided, use it instead of molecule_.nTotalP
+         size_t nProton = nParticleOverride.value_or(molecule_.nTotalP);
+         // high-spin multiplicity for THIS subsystem's count
+         size_t multipProton = nParticleOverride ? static_cast<size_t>(2 * nProton * 0.5 + 1) : molecule_.multip_proton;
+         this->nO = nProton;
          this->nV = 2*nBasis - nO;
  
          if( this->iCS ) {
            this->nOA = this->nO / 2; this->nOB = this->nO / 2;
            this->nVA = this->nV / 2; this->nVB = this->nV / 2;
          } else {
-           size_t nSingleP = molecule_.multip_proton - 1;
+           size_t nSingleP = multipProton - 1;
            this->nOB = (this->nO - nSingleP) / 2;
            this->nOA = this->nOB + nSingleP;
            this->nVA = nBasis - this->nOA;

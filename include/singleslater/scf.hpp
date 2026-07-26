@@ -52,8 +52,11 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO, std::string prefi
     size_t t_hash = std::is_same<MatsT, double>::value ? 1 : 2;
 
     // Save Field type
-    if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
-    else prefix += "SCF/";
+    std::string root = prefix.empty() ?
+      coreHBuilder->getHamiltonianOptions().savFilePrefix : prefix;
+    prefix = root + "SCF/";
+    if( root.empty() and this->particle.charge == 1.0 )
+      prefix = "PROT_" + prefix;   // legacy
 
     savFile.safeWriteData(prefix + "FIELD_TYPE", &t_hash, {1});
 
@@ -347,10 +350,16 @@ void SingleSlater<MatsT, IntsT>::ao2orthoDen() {
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::ortho2aoDen() {
 
-  ROOT_ONLY(comm);
+  if( MPIRank(comm) == 0 )
+    *this->onePDM = orthoSpinor->nonortho2ortho(*onePDMOrtho);
 
-  // NOTE: Density transforms the opposite way as operators, same as the coeffs
-  *this->onePDM = orthoSpinor->nonortho2ortho(*onePDMOrtho);
+#ifdef CQ_ENABLE_MPI
+  if( MPISize(comm) > 1 ) {
+    const size_t NB = this->onePDM->nRows();
+    for(auto* matrix : this->onePDM->SZYXPointers())
+      MPIBCast(matrix,NB*NB,0,comm);
+  }
+#endif
 
 #if 0
     print1PDMOrtho(std::cout);

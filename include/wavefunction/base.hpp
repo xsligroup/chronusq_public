@@ -77,7 +77,7 @@ namespace ChronusQ {
      *  \param [in] iCS  Whether or not to treat as closed shell
      */ 
     WaveFunctionBase(MPI_Comm c, Molecule &mol, BasisSet &basis,
-      size_t _nC, bool iCS, Particle p) : 
+      size_t _nC, bool iCS, Particle p, std::optional<size_t> = std::nullopt) : 
       QuantumBase(c,_nC,iCS,p), 
       molecule_(mol), basisSet_(basis) 
       { }; // WaveFunctionBase ctor 

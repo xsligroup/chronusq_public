@@ -97,7 +97,7 @@ namespace ChronusQ {
 
   IntegralOptions getIntegralOptions(std::ostream &out, CQInputFile &input, 
       std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
-      std::shared_ptr<BasisSet> basis2, std::string int_sec){
+      std::shared_ptr<BasisSet> basis2, std::string int_sec, bool isAsymmetric){
 
     // check the validity of the integral option section 
     if (not int_sec.compare("INTS") and not int_sec.compare("PINTS") and not int_sec.compare("EPINTS"))
@@ -136,8 +136,8 @@ namespace ChronusQ {
 
     // Set RI to be False by Default
     std::string RI = "FALSE";
-    // For EPINTS, the default should be set to auto
-    if(not int_sec.compare("EPINTS")) RI = "AUTO";
+    // For asymmetric integrals, the default RI should be set to auto
+    if(isAsymmetric) RI = "AUTO";
     // Parse RI option
     OPTOPT( RI = input.getData<std::string>(int_sec+"/RI");)
     trim(RI);
@@ -148,9 +148,9 @@ namespace ChronusQ {
     if(options.basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE and 
         RI.compare("FALSE")) {
 
-      // RI Keyword for EPINTS will be decoded differently than INTS/PINTS
-      if(not int_sec.compare("EPINTS")){
-        // Decode RI keywrod for EPINTS sections
+      // RI Keyword for asymmetric integrals will be decoded differently than INTS/PINTS
+      if(isAsymmetric){
+        // Decode RI keywrod for asymmetric integrals sections
         if (not RI.compare("AUTO")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::AUTO;
         } else if (not RI.compare("INT1_AUX") or not RI.compare("ELEC_AUX") ){
@@ -261,9 +261,10 @@ namespace ChronusQ {
    */  
   std::shared_ptr<IntegralsBase> 
   IntegralOptions::buildSymmIntegral(std::ostream &out, Molecule &mol, 
-      std::shared_ptr<BasisSet> basis, std::shared_ptr<BasisSet> dfbasis, std::string s) const{
+      std::shared_ptr<BasisSet> basis, std::shared_ptr<BasisSet> dfbasis, const std::string &label) const{
     
-    out << "Building integral object for the " << s << " subsystem:\n";
+    out << "Building integral object for subsystem [" << label << "]:\n";
+
 
     std::shared_ptr<IntegralsBase> aoi = nullptr;
 
@@ -330,15 +331,20 @@ namespace ChronusQ {
   std::shared_ptr<IntegralsBase> 
   IntegralOptions::buildAsymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
       std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts,
-      std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi) const{
+      std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi, const std::string &label1, const std::string &label2) const{
     
     
     std::shared_ptr<IntegralsBase> epaoi = nullptr;
 
+    // Generic labels for the two interacting subsystems' self-integrals and the cross integral.
+    const std::string self1  = "(" + label1 + " " + label1 + "|" + label1 + " " + label1 + ")";
+    const std::string self2  = "(" + label2 + " " + label2 + "|" + label2 + " " + label2 + ")";
+    const std::string cross  = "(" + label1 + " " + label1 + "|" + label2 + " " + label2 + ")";
+
     if (!basis2){
       CErr("Asymmetric integral object requires two different basis");
     } else {
-      out << "Building integral object for the electron-quantum proton Coulomb term:\n\n";
+      out << "Building interaction integral object for asymmetric integral: " << cross << "\n\n";
       if(basis->basisType == REAL_GTO and basis2->basisType == REAL_GTO) {
 
         std::shared_ptr<Integrals<double>> epaoint = std::make_shared<Integrals<double>>();
@@ -370,12 +376,12 @@ namespace ChronusQ {
               if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
-                out << "   Will use (ee|ee) to approxiamate (ee|pp) " << std::endl;
+                out << "   Will use " << self1 << " to approxiamate " << cross << std::endl;
                 if(aux1 and (aux1->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
-                  out << "     * Found existing aux basis from (ee|ee)!" << std::endl;
+                  out << "     * Found existing aux basis from " << self1 << "!" << std::endl;
                   aux1_ref = nullptr;
                 } else{
-                  out << "     * Can't find existing aux basis from (ee|ee) " << std::endl;
+                  out << "     * Can't find existing aux basis from " << self1 << " " << std::endl;
                   out << "       Will use CD to build aux basis on the fly at " << eopts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl; 
                   aux1 = 
                       std::make_shared<InCoreCholeskyRIERI<double>>(
@@ -398,12 +404,12 @@ namespace ChronusQ {
               if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
-                std::cout << "   Will use (pp|pp) to approxiamate (ee|pp) " << std::endl;
+                std::cout << "   Will use " << self2 << " to approxiamate " << cross << std::endl;
                 if(aux2 and (aux2->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
-                  out << "     * Found existing aux basis from (pp|pp)!" << std::endl;
+                  out << "     * Found existing aux basis from " << self2 << "!" << std::endl;
                   aux2_ref = nullptr;
                 } else{
-                  out << "     * Can't find existing aux basis from (pp|pp)" << std::endl;
+                  out << "     * Can't find existing aux basis from " << self2 << std::endl;
                   out << "       Will use CD to build aux basis on the fly at " << popts.cdriintsoptions.CDRI_thresh << " threshold" << std::endl;
                   aux2 = 
                       std::make_shared<InCoreCholeskyRIERI<double>>(
@@ -424,19 +430,19 @@ namespace ChronusQ {
             // Automatically determine what aux basis is available. If none is availale, do 4 index  
             } else {
               if(aux1){
-                out << "     * Detected existing aux basis from (ee|ee)!" << std::endl;
+                out << "     * Detected existing aux basis from " << self1 << "!" << std::endl;
                 auto_int1_aux = true;
                 if(aux2){
-                  out << "     * Detected existing aux basis from (pp|pp)!" << std::endl;
+                  out << "     * Detected existing aux basis from " << self2 << "!" << std::endl;
                   auto_two_aux = true;
                   auto_int1_aux = false;
                 } 
               } else {
                 if(aux2){
-                  out << "     * Detected existing aux basis from (pp|pp)!" << std::endl;
+                  out << "     * Detected existing aux basis from " << self2 << "!" << std::endl;
                   auto_int2_aux = true;
                 } else{
-                  out << "     * Can't find existing aux basis to approximate (ee|pp)" << std::endl; 
+                  out << "     * Can't find existing aux basis to approximate " << cross << std::endl; 
                   out << "       Will use incore 4-index" << std::endl;
                   auto_4I = true;
                 }
@@ -447,12 +453,12 @@ namespace ChronusQ {
               epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(aux1, basis2->nBasis, ASYMM_CD_ALG::INT1_AUX, cdriintsoptions.CDRI_build4I,
                                                                         MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
-              out << "Built (ee|pp) object that will use electronic aux basis. " << std::endl;
+              out << "Built " << cross << " object that will use " << label1 << " aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or auto_int2_aux){
               epaoint->TPI = std::make_shared<InCoreAsymmRITPI<double>>(basis->nBasis, aux2, ASYMM_CD_ALG::INT2_AUX, cdriintsoptions.CDRI_build4I,
                                                                         MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
-              out << "Built (ee|pp) object that will use protonic aux basis. " << std::endl;
+              out << "Built " << cross << " object that will use " << label2 << " aux basis. " << std::endl;
             } else if (cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR 
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS 
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX
@@ -466,16 +472,21 @@ namespace ChronusQ {
                                                                         cdriintsoptions.CDRI_combineBasisTruncate, combineBasisThresh,
                                                                         MPI_COMM_WORLD, cdriintsoptions.CDRI_asymmDistributed, cdriintsoptions.CDRI_asymmRedistribute);
               std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)->setReportError(cdriintsoptions.CDRI_reportError);
-              out << "Built (ee|pp) object that will use both electronic and protonic aux basis. " << std::endl;
+              out << "Built " << cross << " object that will use both " << label1 << " and " << label2 << " aux basis. " << std::endl;
             } else if (auto_4I) {
               epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(basis->nBasis, basis2->nBasis);
-              out << "Built 4-index (ee|pp) object. " << std::endl;
+              out << "Built 4-index " << cross << " object. " << std::endl;
             } else {
-              CErr ("aux basis for (ee|pp) is set up wrong. Can't build IncoreAsymmRITPI object!! ");
+              CErr ("aux basis for " + cross + " is set up wrong. Can't build IncoreAsymmRITPI object!! ");
             }
 
             if (aux1_ref) (std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI))->setAux1Ref(aux1_ref);
             if (aux2_ref) (std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI))->setAux2Ref(aux2_ref);
+
+            if (auto asymmTPI = std::dynamic_pointer_cast<InCoreAsymmRITPI<double>>(epaoint->TPI)) {
+              asymmTPI->setLabel1(label1);
+              asymmTPI->setLabel2(label2);
+            }
 
           }  
         }
@@ -491,13 +502,13 @@ namespace ChronusQ {
         } else {
           // DIRECT
           // Temporary DISABLE NEO+GIAO+DIRECT
-          CErr("Direct GIAO-NEO for (ee|pp) NYI",std::cout); 
+          CErr("Direct GIAO-NEO for " + cross + " NYI",std::cout); 
           epgiaoint->TPI = std::make_shared<DirectTPI<dcomplex>>(*basis,*basis2,mol,basicintsoptions.threshSchwarz);
         }
         epaoi = std::dynamic_pointer_cast<IntegralsBase>(epgiaoint);
         epaoi->options_.basisType = COMPLEX_GIAO;
       } else{
-        CErr("mixed GTO/GIAO for (ee|pp) NYI",std::cout);
+        CErr("mixed GTO/GIAO for " + cross + " NYI",std::cout);
       }  
     }
     
@@ -536,7 +547,7 @@ namespace ChronusQ {
       std::shared_ptr<IntegralsBase> paoi = basis2 ? popts.buildSymmIntegral(out, mol, basis2, dfbasis, "protonic") : nullptr;
 
       // Build Electron/Proton Coulumb Integrals (ee|pp) if we have protonic basis:
-      std::shared_ptr<IntegralsBase> epaoi = basis2 ? epopts.buildAsymmIntegral(out, mol, basis, dfbasis,basis2, eopts, popts, aoi, paoi) : nullptr;
+      std::shared_ptr<IntegralsBase> epaoi = basis2 ? epopts.buildAsymmIntegral(out, mol, basis, dfbasis,basis2, eopts, popts, aoi, paoi,"electronic","protonic") : nullptr;
 
       return  std::make_tuple(aoi, paoi, epaoi);
     }

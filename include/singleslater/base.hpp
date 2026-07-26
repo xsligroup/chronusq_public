@@ -123,7 +123,7 @@ namespace ChronusQ {
     SingleSlaterBase() = delete;
 
     SingleSlaterBase(MPI_Comm c, Molecule &mol, BasisSet &basis,
-      size_t _nC, bool iCS, Particle p) : 
+      size_t _nC, bool iCS, Particle p, std::optional<size_t> = std::nullopt) : 
       WaveFunctionBase(c,mol,basis,_nC,iCS,p), QuantumBase(c,_nC,iCS,p),
       printLevel((MPIRank(c) == 0) ? 2 : 0) { };
       
@@ -146,6 +146,9 @@ namespace ChronusQ {
 
     //   Form the core Hamiltonian
     virtual void formCoreH(EMPerturbation&, bool) = 0;
+
+    //   Transform the orthonormal density to the AO basis
+    virtual void ortho2aoDen() = 0;
 
     //   Save the current state of the wave function
     virtual void saveCurrentState(bool saveMO = true, std::string prefix = "") = 0;

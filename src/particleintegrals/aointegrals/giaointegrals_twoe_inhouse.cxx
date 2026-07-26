@@ -46,7 +46,7 @@ namespace ChronusQ {
   std::vector<dcomplex> ComplexGIAOIntEngine::computeGIAOERIabcd(
     libint2::ShellPair &pair1 , libint2::ShellPair &pair2, 
     libint2::Shell &shell1, libint2::Shell &shell2,
-    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption)  {
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, double braCharge, double ketCharge)  {
     
     dcomplex tmpVal=0.0,sqrPQ,PQ;
     std::vector<dcomplex> ERI_cart;
@@ -99,8 +99,8 @@ namespace ChronusQ {
     // NEO: GIAO phase is dependent on particle charge
     // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
 
-    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
-    if (NEOoption == 1) {
+    // GIAO London phase sign is per-side particle charge (electron(-1) is default, proton(+1) flips)
+    if (braCharge > 0.0) {
       ka[0] = -1.0 * ka[0];
       ka[1] = -1.0 * ka[1];
       ka[2] = -1.0 * ka[2];
@@ -109,7 +109,7 @@ namespace ChronusQ {
       kb[2] = -1.0 * kb[2];
     }
 
-    if (NEOoption > 0) {
+    if (ketCharge > 0.0) {
       kc[0] = -1.0 * kc[0];
       kc[1] = -1.0 * kc[1];
       kc[2] = -1.0 * kc[2];
@@ -232,7 +232,7 @@ namespace ChronusQ {
 
   std::vector<dcomplex> ComplexGIAOIntEngine::bottomupcomplexERI(libint2::ShellPair &pair1 ,
     libint2::ShellPair &pair2, libint2::Shell &shell1, libint2::Shell &shell2,
-    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption) {
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, double braCharge, double ketCharge) {
 
 
     // here calculate the phase factor in LONDON orbital
@@ -258,9 +258,7 @@ namespace ChronusQ {
     // NEO: GIAO phase is dependent on particle charge
     // exp(i*q^{e/p}*A(R)*r(e/p)) -> k = 0.5 * charge * (B x RA); for electron it's -1.
 
-    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
-    if (NEOoption == 1) {
-      //std::cout << "(pp|xx) detected.." << std::endl;
+    if (braCharge > 0.0) {
       ka[0] = -1.0 * ka[0];
       ka[1] = -1.0 * ka[1];
       ka[2] = -1.0 * ka[2];
@@ -268,7 +266,7 @@ namespace ChronusQ {
       kb[1] = -1.0 * kb[1];
       kb[2] = -1.0 * kb[2];
     }
-    if (NEOoption > 0) {
+    if (ketCharge > 0.0) {
       kc[0] = -1.0 * kc[0];
       kc[1] = -1.0 * kc[1];
       kc[2] = -1.0 * kc[2];
@@ -1225,7 +1223,7 @@ namespace ChronusQ {
    */
   std::vector<std::vector<dcomplex>> ComplexGIAOIntEngine::bottomupcomplexERI_deriv1(libint2::ShellPair &pair1 ,
     libint2::ShellPair &pair2, libint2::Shell &shell1, libint2::Shell &shell2,
-    libint2::Shell &shell3, libint2::Shell &shell4, double *H, int NEOoption) {
+    libint2::Shell &shell3, libint2::Shell &shell4, double *H, double braCharge, double ketCharge) {
 
 
     // here calculate the phase factor in LONDON orbital
@@ -1262,10 +1260,7 @@ namespace ChronusQ {
     H_workCD[1] = H[1];
     H_workCD[2] = H[2];
     
-    // NEO option: 0 - (ee|ee); 1 - (pp|pp); 2 - (ee|pp) 
-    if (NEOoption == 1) {
-      //std::cout << "Gradients for NEO-GIAO is experimantal!!" << std::endl;
-      //std::cout << "(pp|xx) detected.." << std::endl;
+    if (braCharge > 0.0) {
       ka[0] = -1.0 * ka[0];
       ka[1] = -1.0 * ka[1];
       ka[2] = -1.0 * ka[2];
@@ -1276,8 +1271,7 @@ namespace ChronusQ {
       H_workAB[1] = -1.0 * H[1];
       H_workAB[2] = -1.0 * H[2];
     }
-    if (NEOoption > 0) {
-      //std::cout << "Gradients for NEO-GIAO is experimantal!!" << std::endl;
+    if (ketCharge > 0.0) {
       kc[0] = -1.0 * kc[0];
       kc[1] = -1.0 * kc[1];
       kc[2] = -1.0 * kc[2];

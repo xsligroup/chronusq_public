@@ -133,6 +133,10 @@ namespace ChronusQ {
       printReg("      - Property Evaluation", "Compute Properties", scfId);
     }
 
+    // XC gradient (DFT part only) — total and per-call average, top-level scope
+    printReg("  - XC Gradient: classical (DFT)", "Form EXC Gradient", cqId);
+    printReg("  - XC Gradient: multiparticle (DFT)", "Form MultiParticle XC Gradient", cqId);
+
     // RT specific
     auto rtId = timer.getLabelId("Real Time Total");
     if ( rtId != 0 ) {

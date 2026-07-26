@@ -323,7 +323,7 @@ namespace ChronusQ {
     double FgY;
     double FgZ;
 
-    memset(ZMAT,0,IOff*sizeof(double));
+    memset(ZMAT,0,IOff*sizeof(IntsT));
 
     if( not onePDM1->hasXY() ) {
       for(auto iPt = 0; iPt < NPts; iPt++) { 
