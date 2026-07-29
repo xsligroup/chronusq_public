@@ -1,0 +1,31 @@
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ Be        0      0       0
+
+#
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = MCSCF
+
+[BASIS]
+basis = sto-3g 
+
+[MISC]
+mem = 1 GB
+nsmp = 2
+
+[CI]
+JOBTYPE = DASCI
+NACTORB = 7
+NACTELEC = 2
+DAS = 2
+{[1e,4o,"cas"],[1e,3o,"cas"]}
+swapmo:
+9 10
+NRoots = 1
+

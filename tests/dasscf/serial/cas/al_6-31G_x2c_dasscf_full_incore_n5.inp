@@ -1,0 +1,37 @@
+#
+#  Al/6-31G : DASSCF
+#  SERIAL
+#
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ Al        0      0       0
+
+#
+#  Job Specification
+#
+[QM]
+reference = X2CHF
+job = MCSCF
+
+[BASIS]
+basis = 6-31g
+
+[MISC]
+mem = 1 GB
+nsmp = 1
+
+[CI]
+JOBTYPE = DASSCF
+NACTORB = 8
+NACTELEC = 3
+DAS = 2
+{[3e,4o,"cas"],[0e,4o,"cas"]}
+stateaverage=true
+NRoots = 6
+
+[INTS]
+alg = incore
+tpitransalg = N5

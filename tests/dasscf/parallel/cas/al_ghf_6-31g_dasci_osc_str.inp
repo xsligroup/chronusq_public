@@ -1,0 +1,37 @@
+#
+#  Al/6-31G : MCSCF
+#  SERIAL
+#
+#  Molecule Specification 
+[Molecule]
+charge = 0
+mult = 2
+geom: 
+ Al        0      0       0
+
+# 
+#  Job Specification
+#
+[QM]
+reference = GHF
+job = MCSCF
+
+[BASIS]
+basis = 6-31g 
+
+[MISC]
+mem = 1 GB
+nsmp = 4
+
+[CI]
+JOBTYPE = DASCI
+NACTORB = 8
+NACTELEC = 3
+DAS = 2
+{[3e,4o,"cas"],[0e,4o,"cas"]}
+NRoots = 56
+CIDIAGALG = FullMatrix
+OSCISTREN = true
+# OSCISTREN_ORDER = 0 default
+# OSCISTREN_INITSTATES = 1 default
+

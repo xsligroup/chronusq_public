@@ -1,0 +1,41 @@
+#
+#  Al/6-31G : DASCI 4c BC RAS Davidson
+#  SERIAL
+#
+#  Molecule Specification
+[Molecule]
+charge = 0
+mult = 2
+geom:
+ Al        0      0       0
+
+#
+#  Job Specification
+#
+[QM]
+reference = 4CHF
+job = MCSCF
+
+[BASIS]
+basis = 6-31g
+
+[MISC]
+mem = 1 GB
+nsmp = 4
+
+[CI]
+JOBTYPE = DASCI
+NACTORB = 12
+NACTELEC = 5
+DAS = 3
+{[2e,2o,"ras1"],1+}
+{[3e,8o,"ras2"]}
+{[0e,2o,"ras3"],1-}
+NRoots = 6
+CIDIAGALG = davidson
+
+[INTS]
+alg = direct
+tpitransalg = N6
+DC = false
+libcint = true
