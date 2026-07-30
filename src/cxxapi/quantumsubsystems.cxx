@@ -6,19 +6,47 @@
 #include <cerr.hpp>
 #include <molecule.hpp>
 #include <unordered_map>
+#include <cctype>
+#include <algorithm>
 
 namespace ChronusQ {
 
+  // Strip the trailing particle index to get the base label that distinguishable particles share for input-section lookup. 
+  //   For example, if user has explicit "QP0","QP1","QP2" labels, they are supposed to provide "QP0QM", "QP0BASIS", "QP1QM", 
+  //   "QP1BASIS" ... which could be a lot of work preparing the input.
+  //   This helper allows extraction of base labels "QP0","QP1","QP2" -> "QP" such that they all read [QP*]
+  static std::string baseLabel(const std::string& label) {
+    size_t end = label.size();
+    while(end > 0 and std::isdigit(static_cast<unsigned char>(label[end-1]))) --end;
+    return label.substr(0, end);
+  }
+
+  static bool isGhostAtom(const Atom& atom) {
+    return atom.atomicNumber == 0 and atom.atomicMass == atomicReference["GH-0"].atomicMass;
+  }
+
   std::vector<QuantumSubsystem> buildQuantumSubsystems(
     std::ostream& out, CQInputFile& input, Molecule& mol, const std::string& inputLabel) {
-  
-    // Helper function to ensure backward compatibility with legacy NEO input file format
-    auto pick = [&](const std::string& canonical, const std::string& legacy) {
-      return inputLabel == "QP" and not input.containsSection(canonical) and input.containsSection(legacy) ? legacy : canonical;
+
+    const std::string base = baseLabel(inputLabel);
+
+    // Resolve an input section in following order: 
+    //    exact per-particle label        (inputLabel + suffix)
+    //    the shared base label           (inputLabel's base label + suffix)
+    //    legacy label                    ("PROT"/"P" + suffix)
+    // For example, for inputLabel QP0 and we are looking for section "BASIS"
+    //    we will first look for "QP0BASIS", then "QPBASIS", then "PBASIS"
+    auto resolveSection = [&](const std::string& suffix, const std::string& legacy) -> std::string {
+      const std::string exact = inputLabel + suffix;   // e.g. "QP0BASIS"
+      if(input.containsSection(exact)) return exact;
+      const std::string shared = base + suffix;        // e.g. "QPBASIS"
+      if(base != inputLabel and input.containsSection(shared)) return shared;
+      if(base == "QP" and input.containsSection(legacy)) return legacy;  // e.g. "PBASIS"
+      return exact;  // default; a required-but-missing section errors downstream
     };
-  
-    const std::string qmSection = pick(inputLabel + "QM","PROTQM");
-  
+
+    const std::string qmSection = resolveSection("QM","PROTQM");
+
     if(not input.containsSection(qmSection))
       CErr("Missing quantum subsystem section [" + qmSection + "]");
   
@@ -28,30 +56,53 @@ namespace ChronusQ {
     const bool distinguishable = input.containsData(qmSection + "/DISTINGUISHABLE") ?
       input.getData<bool>(qmSection + "/DISTINGUISHABLE") : false;
 
-    std::vector<size_t> qAtomIndices;
-    std::vector<size_t> basisAtomIndices;
+    const auto quantumLabels = mol.getQuantumSystemLabels();
+    // Built a comma-separated list of valid labels for the ghost center error message.
+    std::string validLabelsList;
+    for(size_t i = 0; i < quantumLabels.size(); ++i) validLabelsList += (i ? ", " : "") + quantumLabels[i];
+
+    // Collect this subsystem's real particles and its basis centers (real particles + labeled ghosts) in GEOMETRY ORDER
+    std::vector<size_t> qAtomIndices;      // indices of real particles 
+    std::vector<size_t> basisAtomIndices;  // indices of real particles + ghost centers, geometry order
     bool hasGhostCenters = false;
     for(size_t iAtm = 0; iAtm < mol.atoms.size(); ++iAtm) {
       const auto& atom = mol.atoms[iAtm];
-      const bool belongsToSubsystem = atom.quantum and atom.quantumLabel == inputLabel;
-      const bool isQuantumGhost = atom.atomicNumber == 0 and atom.atomicMass == atomicReference["GH-0"].atomicMass;
-      if(belongsToSubsystem)
+      if(isGhostAtom(atom)) {
+        // Reject an unlabeled ghost atom
+        if(atom.quantumLabel.empty())
+          CErr("Ghost center (GEOM atom " + std::to_string(iAtm + 1) + ") has no subsystem label. "
+               "Label every ghost with one of [" + validLabelsList + "] to indicate which subsystem it belongs to.");
+        // Reject a ghost atom whose label matches no valid subsystems
+        if(std::find(quantumLabels.begin(),quantumLabels.end(),atom.quantumLabel) == quantumLabels.end())
+          CErr("Ghost center (GEOM atom " + std::to_string(iAtm + 1) + ") is labeled '" +
+               atom.quantumLabel + "', which does not belong to valid quantum subsystem [" + validLabelsList + "].");
+        // Add to this subsystem's basis only when the label matches.
+        if(atom.quantumLabel == inputLabel) {
+          basisAtomIndices.push_back(iAtm);
+          hasGhostCenters = true;
+        }
+      }
+      else if(atom.quantum and atom.quantumLabel == inputLabel) {
         qAtomIndices.push_back(iAtm);
-      // GH carries quantum basis functions without adding a quantum particle.
-      if(belongsToSubsystem or isQuantumGhost)
         basisAtomIndices.push_back(iAtm);
-      if(isQuantumGhost)
-        hasGhostCenters = true;
+      }
     }
 
-    if(distinguishable and hasGhostCenters)
-      CErr("Ghost centers are not supported for distinguishable quantum subsystem " + inputLabel);
-  
-    // Count number of particles specified in this quantum subsystem
+    // Number of real particles specified in this quantum subsystem
     const size_t nPart = qAtomIndices.size();
-    // Number of quantum subsystems to actually build (1 for indistinguishable particles, nPart for distinguishable particles)
+    // Subsystems to build: DISTINGUISHABLE auto-expands the nPart particles into one subsystem each 
+    //   For example: QP on 2 atoms -> QP0, QP1
     const size_t nSys = distinguishable and nPart > 1 ? nPart : 1;
-  
+    const bool autoExpand = nSys > 1;
+
+    // Auto-expanded distinguishable particles are anonymous (QP -> QP0, QP1),
+    //   so a ghost cannot know which expanded particle owns it. Error out here.
+    // Require user to use explicit per-particle labels + a label-tagged ghost instead.
+    if(autoExpand and hasGhostCenters)
+      CErr("Ghost basis is not supported with auto-expanded distinguishable particles "
+           "(DISTINGUISHABLE=TRUE on a multi-particle label). Give each particle an "
+           "explicit label (e.g. " + base + "0, " + base + "1) and tag each ghost "
+           "with its owner (e.g. GH x y z " + base + "0).");
     std::vector<QuantumSubsystem> systems;
     systems.reserve(nSys);
   
@@ -59,23 +110,28 @@ namespace ChronusQ {
       QuantumSubsystem sys;
   
       sys.inputLabel = inputLabel;
-      sys.label = distinguishable ? inputLabel + std::to_string(i) : inputLabel;
-      sys.particleIndex = distinguishable ? i : 0;
-      sys.nQuantumParticles = distinguishable ? 1 : nPart;
+      sys.label = autoExpand ? inputLabel + std::to_string(i) : inputLabel;
+      sys.particleIndex = autoExpand ? i : 0;
+      sys.nQuantumParticles = autoExpand ? 1 : nPart;
 
       sys.qmSection = qmSection;
-      sys.basisSection = pick(inputLabel + "BASIS","PBASIS");
-      sys.dfbasisSection = pick(inputLabel + "DFBASIS","PDFBASIS");
-      sys.guessBasisSection = pick(inputLabel + "GUESSBASIS","PGUESSBASIS");
-      sys.intsSection = pick(inputLabel + "INTS","PINTS");
+      sys.basisSection = resolveSection("BASIS","PBASIS");
+      sys.dfbasisSection = resolveSection("DFBASIS","PDFBASIS");
+      sys.guessBasisSection = resolveSection("GUESSBASIS","PGUESSBASIS");
+      sys.intsSection = resolveSection("INTS","PINTS");
   
       if(not input.containsSection(sys.basisSection))
         CErr("Missing quantum subsystem basis section [" + sys.basisSection + "]");
   
       sys.particle = getParticleForSubsystem(input,mol,sys);
-  
-      // Distinguishable particles receive separate one-center basis objects.
-      sys.atomIndices = distinguishable ? std::vector<size_t>{qAtomIndices[i]} : basisAtomIndices;
+
+      // Basis centers for this subsystem:
+      //   autoExpand: one center per particle, no ghosts (guarded above).
+      //   otherwise : real particle(s) + ghost centers, in geometry order.
+      if(autoExpand)
+        sys.atomIndices = std::vector<size_t>{qAtomIndices[i]};
+      else
+        sys.atomIndices = basisAtomIndices;
       sys.basis = CQBasisSetOptions(out,input,mol,sys.basisSection,sys.atomIndices);
       read_option_and_remove_linear_dependency(input,*sys.basis,mol,out);
   
@@ -104,19 +160,26 @@ namespace ChronusQ {
     pair.inputLabelA = sysA.inputLabel;
     pair.inputLabelB = sysB.inputLabel;
 
-    const std::string sectionAB = pair.inputLabelA + pair.inputLabelB + "INTS";
-    const std::string sectionBA = pair.inputLabelB + pair.inputLabelA + "INTS";
+    const std::string baseA = baseLabel(pair.inputLabelA);
+    const std::string baseB = baseLabel(pair.inputLabelB);
 
-    if(input.containsSection(sectionAB))
-      pair.intsSection = sectionAB;
-    else if(input.containsSection(sectionBA))
-      pair.intsSection = sectionBA;
-    else if(((pair.inputLabelA == "E" and pair.inputLabelB == "QP") or
-             (pair.inputLabelB == "QP" and pair.inputLabelA == "E")) and
-            input.containsSection("EPINTS"))
+    // Resolve the pair-integral section, trying the exact labels then the shared
+    //   base labels (either order), so one [EQPINTS]/[QPQPINTS] covers every
+    //   expanded pair (E-QP0, E-QP1, QP0-QP1, ...). Legacy [EPINTS] still honored.
+    const std::vector<std::string> candidates = {
+      pair.inputLabelA + pair.inputLabelB + "INTS",   // e.g. "EQP0INTS"
+      pair.inputLabelB + pair.inputLabelA + "INTS",
+      baseA + baseB + "INTS",                          // e.g. "EQPINTS"
+      baseB + baseA + "INTS",
+    };
+    pair.intsSection = candidates.front();
+    bool resolved = false;
+    for(const auto& sec : candidates)
+      if(input.containsSection(sec)) { pair.intsSection = sec; resolved = true; break; }
+    if(not resolved and
+       ((baseA == "E" and baseB == "QP") or (baseA == "QP" and baseB == "E")) and
+       input.containsSection("EPINTS"))
       pair.intsSection = "EPINTS";
-    else
-      pair.intsSection = sectionAB;
 
     pair.integralOptions = getIntegralOptions(out,input,nullptr,nullptr,nullptr,pair.intsSection, true);
 
@@ -240,6 +303,7 @@ namespace ChronusQ {
   
     for(const auto &atom : mol.atoms) {
       if(!atom.quantum) continue;
+      if(isGhostAtom(atom)) continue; // ghosts carry no particle identity (charge/mass)
       if(atom.quantumLabel != sys.inputLabel) continue;
       massAMU = atom.atomicMass;
       charge  = static_cast<double>(atom.atomicNumber);

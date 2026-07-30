@@ -235,15 +235,14 @@ namespace ChronusQ {
       nTotalP = 0;
       size_t ind = 0;
       for ( Atom& atom : atoms ) {
-        if ( atom.quantum ) {
+        // Ghost centers (Z=0) carry electronic/quantum particle basis functions but does not increase particle numbers
+        const bool isGhost = atom.atomicNumber == 0;
+        if ( atom.quantum && !isGhost ) {
           // return an error if not hydrogen
-          if ( atom.atomicNumber != 1 && atom.atomicNumber != 0 )
+          if ( atom.atomicNumber != 1 )
             CErr("Non-Hydrogen quantum nuclei NYI.");
 
-          if ( atom.atomicNumber == 1)
-          {
-            nTotalP += 1;
-          }
+          nTotalP += 1;
           atomsQ.push_back(ind);
         }
         else 
@@ -283,6 +282,8 @@ namespace ChronusQ {
       for( const auto& atom : atoms ) {
         if( not atom.quantum )
           continue;
+        if( atom.atomicNumber == 0 ) // ghosts are basis-only; they never define a subsystem
+          continue;
         if( atom.quantumLabel.empty() ) //TODOAL: It cant be empty??
           continue;
         if( std::find(labels.begin(), labels.end(), atom.quantumLabel) == labels.end() )
@@ -294,7 +295,7 @@ namespace ChronusQ {
     size_t getNumQuantumParticles(const std::string& label) const {
       size_t count = 0;
       for( const auto& atom : atoms )
-        if( atom.quantum and atom.quantumLabel == label )
+        if( atom.quantum and atom.atomicNumber != 0 and atom.quantumLabel == label ) // Z=0 skips ghosts
           ++count;
       return count;
     }
