@@ -107,9 +107,7 @@ namespace ChronusQ {
 
     // Check if file exists
     if(basisFile_.fail()){
-      if( doPrint )
-      std::cout << "Cannot open basis set " + basisPath_ << std::endl;
-      exit(EXIT_FAILURE);
+      CErr("Cannot open basis set " + basisPath_, std::cout);
     } else if (doPrint)
       std::cout << "  *** Reading Basis Set from " + fullBasisPath << " ***" << std::endl;
 
