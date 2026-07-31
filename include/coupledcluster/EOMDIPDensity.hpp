@@ -149,7 +149,7 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  MatsT EOMDIP_3h1p<MatsT>::calcOscillatorStrength(size_t i){
+  dcomplex EOMDIP_3h1p<MatsT>::calcOscillatorStrength(size_t i){
     std::array<MatsT, 3> mu_g2x, mu_x2g;
     
     MBExpansionSet<MatsT> &Reom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->R_);
@@ -197,7 +197,7 @@ namespace ChronusQ{
 
     MatsT DS = mu_g2x[0] * mu_x2g[0] + mu_g2x[1] * mu_x2g[1] + mu_g2x[2] * mu_x2g[2];
 
-    MatsT f = 2./3 * this->theta[i] * DS;
+    dcomplex f = 2./3 * this->theta[i] * DS;
     return f;
 
   }

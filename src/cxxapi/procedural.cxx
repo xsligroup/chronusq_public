@@ -628,7 +628,13 @@ namespace ChronusQ {
             std::vector<std::pair<OPERATOR,size_t>> ops{{LEN_ELECTRIC_MULTIPOLE,1}};
             aoints->computeAOOneP(mol, *basis, emPert, ops, ssOptions.hamiltonianOptions);
           }
-          runCoupledCluster(jobType, mol, ss, aoints,  rstFile, input, output);
+          if (std::shared_ptr<SingleSlater<dcomplex,double>> ccref = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
+            runCoupledCluster(jobType, mol, ccref, aoints,  rstFile, input, output);
+          } else if (std::shared_ptr<SingleSlater<double,double>> ccref = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
+            runCoupledCluster(jobType, mol, ccref, aoints,  rstFile, input, output);
+          } else {
+            CErr("Unsupported reference type for coupled cluster!", output);
+          }
           TAManager::get().discard_cache();
           std::cout << TAManager::get() << std::endl;
 

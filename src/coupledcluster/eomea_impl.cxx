@@ -27,20 +27,31 @@
 namespace ChronusQ {
 
   template class EOMEA<dcomplex>;
+  template class EOMEA<double>;
 
 
-  std::shared_ptr<EOMCCBase<dcomplex>> build_EOMEA(
+  template <typename MatsT>
+  std::shared_ptr<EOMCCBase<MatsT>> build_EOMEA(
                                               const SafeFile &savFile,
-                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<MatsT> &intermediates, const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings) { 
 
 
-    std::shared_ptr<EOMCCBase<dcomplex>> eomcc = nullptr;
+    std::shared_ptr<EOMCCBase<MatsT>> eomcc = nullptr;
     eomcc = 
-      std::make_shared<EOMEA<dcomplex>> (
+      std::make_shared<EOMEA<MatsT>> (
         savFile,
         intermediates, eomSettings, ccSettings);
     return eomcc;
   }
+
+  template std::shared_ptr<EOMCCBase<dcomplex>> build_EOMEA(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
+  template std::shared_ptr<EOMCCBase<double>> build_EOMEA(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<double> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
 }
 

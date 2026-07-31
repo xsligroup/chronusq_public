@@ -43,6 +43,7 @@ namespace ChronusQ {
 
   template <typename MatsT>  class CCBase;
   template <typename MatsT>  class CCSD;
+  template <typename MatsT>  class RCCSD;
   template <typename MatsT>  class DFCCSD;
   template <typename MatsT>  class CCSDT;
   template <typename MatsT> struct CCIntermediates;
@@ -72,13 +73,14 @@ namespace ChronusQ {
     std::vector<size_t> frozen_virtual;
     bool skipSCF = false; // Skip SCF calculation
     bool skipCC = false; // Skip CC calculation, just read T amp from bin file
+    bool computeDipole = false; // Flag for compute ground state density and dipole
   };
 
   enum class EOMCCEigenVecType { RIGHT, LEFT};
 
 
   enum class EOM_TYPE { EE, IP, EA, DIP };
-  enum class EOM_IMPLEMENTATION { EOMCCSD, CVSEOMCCSD, EOMIP_2h1p, EOMIP_3h2p, EOMEA, EOMDIP_3h1p, EOMDIP_4h2p, SOMETHING_WRONG };
+  enum class EOM_IMPLEMENTATION { EOMCCSD, EOMRCCSD, CVSEOMCCSD, EOMIP_2h1p, EOMIP_3h2p, EOMEA, EOMDIP_3h1p, EOMDIP_4h2p, SOMETHING_WRONG };
   enum class EOM_HBAR_TYPE { EXPLICIT, IMPLICIT, DEBUG };
   enum class EOM_DIAG_METHOD { FULL, DAVIDSON, GPLHR };
 
@@ -118,6 +120,7 @@ namespace ChronusQ {
     size_t GramSchmidt_NRe = 1;
     double GramSchmidt_eps = 1e-12;
     bool oscillator_strength = false;
+    bool all_excited_dipole = false;
     bool save_hamiltonian = false; //currently only work for full_diag
     bool save_r = false;
     bool save_l = false;
@@ -126,6 +129,7 @@ namespace ChronusQ {
     bool skip_r = false;
     bool restart_r = false;
     bool restart_l = false;
+    bool singlet_only = false;
 
     EOMSettings() {
       find_eom_implementation();
@@ -139,14 +143,22 @@ namespace ChronusQ {
       return (n_core > 0 && n_core < nO) or (n_extvir > 0 && n_extvir < nO);
     }
 
-    void printEOMCCSettings(std::ostream &out);
+    void printEOMCCSettings(std::ostream &out, const CoupledClusterSettings& ccSettings);
 
-    size_t estimate_mem_peak() const;
+    void validateOrbitalSpaces(
+      size_t nO, size_t nV, const CoupledClusterSettings& ccSettings) const;
+
+    void assignUnspecifiedOrbitalToSpaces(
+      size_t nO, size_t nV, const CoupledClusterSettings& ccSettings);
+
+
+    template<typename MatsT>
+    size_t estimate_mem_peak(const CoupledClusterSettings& ccSettings) const;
     EOM_IMPLEMENTATION find_eom_implementation();
       private: 
     size_t n_MBExpansion() const;
     size_t MBExpansionSize() const;
-    size_t intermediate_mem() const;
+    size_t intermediate_mem(const CoupledClusterSettings& ccSettings) const;
   };
 
   template <typename MatsT>
@@ -169,6 +181,7 @@ namespace ChronusQ {
     char rLabel = 'r';  // Rydberg space, external virtual space, CVS continuum
     char dLabel = 'd';  // deep core space, frozen core space
     char fLabel = 'f';  // free electron space, frozen virtual space
+    char tLabel = 't';  // TiledArray block size
 
     // Integrals
     double  E_ref;
@@ -177,13 +190,20 @@ namespace ChronusQ {
     std::vector<double> eps;
     std::map<std::string,TArray> fockMatrix;
     std::map<std::string,TArray> antiSymMoInts;
+    std::map<std::string,TArray> moInts;
     std::map<std::string,TArray> riMoInts;
     std::map<std::string,TArray> muMatrix;
+
+    // Dipoles
+    std::array<double, 3> Mu_fzc;
+
+    //Reduced one-particle EOM-CCSD density matrices
+    TArray Rho_ij;
+    TArray Rho_ab;
+    TArray Rho_ia;
+    TArray Rho_ai;
     
     // Amplitudes
-//merge    TArray T1;
-//merge    TArray T2;
-//    TArray T3;
     std::shared_ptr<MBExpansion<MatsT>> T;
 
     // Intermediates (CCSD)
@@ -204,23 +224,12 @@ namespace ChronusQ {
     TArray G_ae;
     TArray G_mi;
 
-    // Intermediates (CCSD(T), CR)
-    TArray Pabcijk;
-    
+    // Intermediates (RHF reference CCSD)
+    TArray W_mbej_baab;
+    TArray W_mbej_baba;
+
     // Intermediates (CCSDT)
-    TArray tempPerm_oooo;
-    TArray tempPerm_vooo;
-    TArray tempPerm_vvoo;
-    TArray tempPerm_vvvo;
-    TArray tempPerm_vvvv;
-    TArray tempOp_vvvooo;
-    TArray tempOp_oooo;
-    TArray tempOp_vooo;
-    TArray tempOp_vvoo;
-    TArray tempOp_vvvo;
-    TArray tempOp_oo;
-    TArray tempOp_vo;
-    TArray tempOp_vv;
+    TArray Pabcijk;
 
     // Intermediates (EOMDIP)
     std::map<std::string, TArray> tempOps;
@@ -229,20 +238,9 @@ namespace ChronusQ {
     TArray Id_oo;
     TArray Id_oooo;
 
-    // T1-transformed Hbar intermediates
-    // Consider reusing the containers for EOMCCSDT
-    TArray Hbar_ooov;
-    TArray Hbar_vovv;
-    TArray Hbar_oooo;
-    TArray Hbar_ovov;
-    TArray Hbar_vvvv;
-    TArray Hbar_ovoo;
-    TArray Hbar_vvov;
-    TArray Hbar_vvoo;
-    TArray Hbar_oo;
-    TArray Hbar_ov;
-    TArray Hbar_vo;
-    TArray Hbar_vv;
+    void reorderMOs(MatsT *mo, size_t nO, size_t nV,
+                    CoupledClusterSettings& ccSettings,
+                    EOMSettings& eomSettings);
 
     template <typename IntsT>
     void initializeIntegrals(const cqmatrix::PauliSpinorMatrices<MatsT> &aoCoreH,
@@ -255,15 +253,34 @@ namespace ChronusQ {
                              MatsT *mo, size_t nO_, size_t nV_,
                              size_t blksize, double nucRepEnergy, CC_TYPE cctype,
                              double denomshift_, bool pertT3,
-                             bool rebuildFock = false);
+                             bool rebuildFock);
+
+    template <typename IntsT>
+    void initializeIntegrals_rhfRef(const cqmatrix::PauliSpinorMatrices<MatsT> &aoCoreH,
+                             const cqmatrix::PauliSpinorMatrices<MatsT> &aoFock,
+                             const cqmatrix::PauliSpinorMatrices<MatsT> &aoTwoeH,
+                             const TwoPInts<IntsT> &aoTPI,
+                             const MultipoleInts<IntsT> &lenElectric,
+                             CoupledClusterSettings& ccSettings,
+                             EOMSettings& eomSettings,
+                             MatsT *mo, size_t nO_, size_t nV_,
+                             size_t blksize, double nucRepEnergy, CC_TYPE cctype,
+                             double denomshift_, bool pertT3,
+                             bool rebuildFock);
     
     std::shared_ptr<CCBase<MatsT>> build_cc(
                                                    const SafeFile &savFile,
-                                                   CoupledClusterSettings & ccSettings) {
+                                                   CoupledClusterSettings & ccSettings, bool rhfRef = false) {
       std::shared_ptr<CCBase<MatsT>> cc = nullptr; 
       if (ccSettings.cctype == CC_TYPE::CCSD) {
-        cc = std::dynamic_pointer_cast<CCBase<MatsT>>(
-           std::make_shared<CCSD<MatsT>>(savFile,*this,ccSettings)); 
+        if (rhfRef) {
+          cc = std::dynamic_pointer_cast<CCBase<MatsT>>(
+             std::make_shared<RCCSD<MatsT>>(savFile,*this, ccSettings));
+
+        } else {
+          cc = std::dynamic_pointer_cast<CCBase<MatsT>>(
+             std::make_shared<CCSD<MatsT>>(savFile,*this,ccSettings));
+        }
       }
       else if (ccSettings.cctype == CC_TYPE::DFCCSD) {
         cc = std::dynamic_pointer_cast<CCBase<MatsT>>(
@@ -333,10 +350,10 @@ namespace ChronusQ {
 
     // Result correlation energy
     MatsT CorrE;
-    size_t estimate_mem_peak() const;
+    virtual size_t estimate_mem_peak() const = 0;
 
 
-    void getCorrEnergy();
+    virtual void getCorrEnergy();
     virtual void runConventional() = 0;
     void printBanner(double Eref) const;
     
@@ -345,8 +362,6 @@ namespace ChronusQ {
     virtual void initAmplitudes() = 0;
     virtual void doDIIS(MBExpansion<MatsT> &T_old, std::shared_ptr<DIISTA<MatsT>> diis );
 
-//    virtual void runPertT3ijk(){};
-//    virtual void runPertT3abc(){};
     virtual void cleanMemory(){}
 
     virtual void run(){}
@@ -385,6 +400,7 @@ namespace ChronusQ {
     virtual void run();
     void cleanMemory();
     void printAnalysis();
+    size_t estimate_mem_peak() const override;
 
     // Reference Gauss, Stanton, J. Chem. Phys. 103, 3561 (1995) DOI:10.1063/1.470240
     void build_tau_and_tilde_tau();
@@ -407,6 +423,79 @@ namespace ChronusQ {
     ~CCSD();
 
   };// class CCSD
+
+  template <typename MatsT>
+  class RCCSD : public CCBase<MatsT>
+  {
+
+    using TArray = TA::TArray<MatsT>;
+  protected:
+    // Intermediates
+    std::map<std::string,TArray> &moInts;
+
+    // Intermediates
+    TArray &tau_RHF;
+    TArray &tilde_tau_RHF;
+    TArray &Fae_RHF;
+    TArray &Fmi_RHF;
+    TArray &Fme_RHF;
+    TArray &Wmnij_RHF;
+    TArray &Wabef_RHF;
+    TArray &Wmbej_RHF_baab;
+    TArray &Wmbej_RHF_baba;
+
+    // Hamiltonian in TA implementation
+    std::map<std::string,TArray> &fockMatrix_ta_RHF;
+
+    // Amplitudes
+    MBExpansion<MatsT> &T_RHF;
+    TArray &T1_RHF;
+    TArray &T2_RHF;
+    MBExpansion<MatsT> T_RHF_old;
+
+    // Intermediates
+    TArray &Dai_RHF;
+    TArray &Dabij_RHF;
+
+  public:
+
+    static void convertTto2C(const MBExpansion<MatsT> &T_RHF, MBExpansion<MatsT> &T_2C);
+    static void convertTtoRHF(const MBExpansion<MatsT> &T_2C, MBExpansion<MatsT> &T_RHF);
+
+  public:
+    RCCSD(const SafeFile &savFile,
+         CCIntermediates<MatsT> &intermediatesRref,
+         const CoupledClusterSettings &ccSettings);
+
+    virtual void initAmplitudes();
+    virtual void initIntermediates();
+    virtual void doDIIS(MBExpansion<MatsT> &T_old, std::shared_ptr<DIISTA<MatsT>> diis ) override;
+    void doDIIS(MBExpansion<MatsT> &T_old, MBExpansion<MatsT> &T_new, std::shared_ptr<DIISTA<MatsT>> diis );
+    virtual void buildIntermediates();
+    //virtual void printBanner(double Eref) const;
+    virtual void runConventional();
+    virtual void run();
+    virtual void getCorrEnergy() override;
+    void cleanMemory();
+    size_t estimate_mem_peak() const override;
+
+    // Reference Gauss, Stanton, J. Chem. Phys. 103, 3561 (1995) DOI:10.1063/1.470240
+    void build_tau_and_tilde_tau();
+    // One-body intermediates
+    void build_tilde_Fae();
+    void build_tilde_Fmi();
+    void build_tilde_Fme();
+    // Two-body intermediates
+    void build_tilde_Wmnij();
+    void build_tilde_Wabef();
+    void build_tilde_Wmbej();
+    // T-amplitude equations
+    void updateT1(const TArray T1_old, const TArray T2_old);
+    void updateT2(const TArray T1_old, const TArray T2_old);
+
+    ~RCCSD();
+
+  };// class RCCSD
 
   template <typename MatsT>
   class DFCCSD : public CCBase<MatsT>
@@ -449,6 +538,7 @@ namespace ChronusQ {
     //virtual void printBanner(double Eref) const;
     virtual void runConventional();
     virtual void run();
+    size_t estimate_mem_peak() const override;
 
     // Reference Gauss, Stanton, J. Chem. Phys. 103, 3561 (1995) DOI:10.1063/1.470240
     void build_tau_and_tilde_tau();
@@ -511,6 +601,7 @@ namespace ChronusQ {
     virtual void run();
     void cleanMemory();
     void printAnalysis();
+    size_t estimate_mem_peak() const override;
 
     // Reference Gauss, Stanton, J. Chem. Phys. 103, 3561 (1995) DOI:10.1063/1.470240
     void build_tau_and_tilde_tau();
@@ -552,7 +643,7 @@ namespace ChronusQ {
     // Amplitudes
     std::shared_ptr<MBExpansion<MatsT>> Lg_;
 
-    MatsT* theta = nullptr;
+    dcomplex* theta = nullptr;
     std::shared_ptr<SolverVectors<MatsT>> R_;
     std::shared_ptr<SolverVectors<MatsT>> L_;
 
@@ -565,24 +656,24 @@ namespace ChronusQ {
     CoupledClusterSettings ccSettings_;
     EOMSettings eomSettings;
 
-    typename Davidson<dcomplex>::LinearTrans_t funcEOM;
-    typename Davidson<dcomplex>::LinearTrans_t funcRaw;
-    typename Davidson<dcomplex>::LinearTrans_t funcDebug;
-    typename Davidson<dcomplex>::LinearTrans_t PCEOM;
-    typename Davidson<dcomplex>::LinearTrans_t PCRaw;
-    typename Davidson<dcomplex>::LinearTrans_t PCDebug;
+    typename Davidson<MatsT>::LinearTrans_t funcEOM;
+    typename Davidson<MatsT>::LinearTrans_t funcRaw;
+    typename Davidson<MatsT>::LinearTrans_t funcDebug;
+    typename Davidson<MatsT>::LinearTrans_t PCEOM;
+    typename Davidson<MatsT>::LinearTrans_t PCRaw;
+    typename Davidson<MatsT>::LinearTrans_t PCDebug;
 
   public:
 
     void davidsonSolve();
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder(){return typename Davidson<dcomplex>::VecsGen_t();}
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){return typename Davidson<dcomplex>::LinearTrans_t(); }
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag){return typename Davidson<dcomplex>::LinearTrans_t();}
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder(){return typename Davidson<MatsT>::VecsGen_t();}
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){return typename Davidson<MatsT>::LinearTrans_t(); }
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag){return typename Davidson<MatsT>::LinearTrans_t();}
 
     virtual size_t nOVShift() const {return 0;}
     virtual bool isInBound(size_t idx) const {return false;} 
     virtual size_t oneBodySize() const {return 0;}
-    void print_largest_values_and_position(size_t i, dcomplex* r_vector, size_t Hbar_dim, const EOMSettings& eomSettings, CCIntermediates<dcomplex> & intermediates);
+    void print_largest_values_and_position(size_t i, MatsT* r_vector, size_t Hbar_dim, const EOMSettings& eomSettings, CCIntermediates<MatsT> & intermediates);
 
 
     EOMCCBase(const SafeFile &savFile,
@@ -610,7 +701,7 @@ namespace ChronusQ {
 
     void full_diagonalization();
     virtual cqmatrix::Matrix<MatsT> buildHbar(bool includeGroundState) const {return cqmatrix::Matrix<MatsT>(Hbar_dim);}
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const {}
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const {}
     void buildHbar_sigma(MatsT * out, bool diagOnly) const;
 
 
@@ -618,13 +709,13 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity(){}
-    virtual MatsT calcOscillatorStrength(size_t i){return 0.0;}
+    virtual dcomplex calcOscillatorStrength(size_t i){return 0.0;}
 
     // Get and Set results
-    MatsT* getTheta() const { return theta; }
-    void setTheta(MatsT *eVals, size_t n) {
+    dcomplex* getTheta() const { return theta; }
+    void setTheta(dcomplex *eVals, size_t n) {
       if (theta) CQMemManager::get().free(theta);
-      theta = CQMemManager::get().malloc<MatsT>(n);
+      theta = CQMemManager::get().malloc<dcomplex>(n);
       std::copy_n(eVals, n, theta);
     }
     std::shared_ptr<SolverVectors<MatsT>> getR() const { return R_; }
@@ -635,6 +726,11 @@ namespace ChronusQ {
 
     // Get EOM tensor dimension infomration
     std::vector<std::string> tensor_dimensions() const {return tensor_builder_;}
+
+    virtual std::array<MatsT, 3> calcGroundDipole() {
+      CErr("calcGroundDipole not implemented for this EOMCC type");
+      return {0.0, 0.0, 0.0};
+    }
     
   };
 
@@ -644,7 +740,7 @@ namespace ChronusQ {
     using TArray = TA::TArray<MatsT>;
 
     // complete EOM Hamiltonian for full diagonalization and debugging
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -681,10 +777,10 @@ namespace ChronusQ {
     TArray &D_abij;
 
     //Reduced one-particle EOM-CCSD density matrices
-    TArray Rho_ij;
-    TArray Rho_ab;
-    TArray Rho_ia;
-    TArray Rho_ai;
+    TArray &Rho_ij;
+    TArray &Rho_ab;
+    TArray &Rho_ia;
+    TArray &Rho_ai;
 
   public:
 
@@ -717,9 +813,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nOVshift_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag); 
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
     
     void fillGuess(MatsT *guess_vec, size_t n_vec)const;
     
@@ -760,7 +856,7 @@ namespace ChronusQ {
 
     // for full_diagonalize  algorithm
     virtual cqmatrix::Matrix<MatsT> buildHbar(bool includeGroundState) const;
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
     // For building CRCC denominator
     std::vector<MatsT> hbar1;
@@ -785,12 +881,153 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity();
-    virtual MatsT calcOscillatorStrength(size_t i);
+    virtual dcomplex calcOscillatorStrength(size_t i) override;
+
     void buildDensity(const TArray& t1, const TArray& t2,  const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
+    std::array<MatsT, 3> calcTransitionDipole(const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0,const TArray& l1, const TArray& l2, bool isSame = false);
+    std::array<MatsT, 3> calcGround2ExcitedTransitionDipole(size_t i);
+    std::array<MatsT, 3> calcExcited2GroundTransitionDipole(size_t i);
+    std::array<MatsT, 3> calcExcited2ExcitedTransitionDipole(size_t i, size_t j);
+    virtual std::array<MatsT, 3> calcGroundDipole() override;
+
     void formRho_ij(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
     void formRho_ab(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2);
     void formRho_ia(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
     void formRho_ai(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2);
+
+  };
+
+  template <typename MatsT>
+  class EOMRCCSD : public EOMCCBase <MatsT>{
+  protected:
+    using TArray = TA::TArray<MatsT>;
+
+    // RHF-based intermediates for EOM-RCCSD
+
+    // Hamiltonian in TA implementation
+    std::map<std::string,TArray> &fockMatrix_ta_RHF;
+    std::map<std::string,TArray> &Moints;
+    std::map<std::string,TArray> &muMatrix_RHF;
+
+    char vLabel_RHF;
+    char oLabel_RHF;
+    size_t nO_RHF;
+    size_t nV_RHF;
+    size_t nOVshift_RHF;
+
+    // Amplitudes
+    TArray &T1_RHF;
+    TArray &T2_RHF;
+
+    //Intermediates
+    // [Gauss:1995:3561] Table III
+    // [Asthana:2019:4102] Appendix
+    TArray &tau_RHF;
+    TArray &F_ae_RHF;
+    TArray &F_mi_RHF;
+    TArray &F_me_RHF;
+    TArray &W_mnij_RHF;
+    TArray &W_abef_RHF;
+    TArray &W_mbej_RHF_baab;
+    TArray &W_mbej_RHF_baba;
+    TArray &W_mnie_RHF;
+    TArray &W_amef_RHF;
+    TArray &W_mbij_RHF;
+    TArray &W_abei_RHF;
+
+    // Lambda intermediates:[Gauss:1995:3561] Table III (c)
+    TArray &G_ae_RHF;
+    TArray &G_mi_RHF;
+    TArray &D_ai_RHF;
+    TArray &D_abij_RHF;
+
+    //Reduced one-particle EOM-CCSD density matrices
+    TArray Rho_ij_RHF;
+    TArray Rho_ab_RHF;
+    TArray Rho_ia_RHF;
+    TArray Rho_ai_RHF;
+
+  public:
+
+
+    EOMRCCSD(const SafeFile &savFile,
+            CCIntermediates<MatsT> &intermediatesRref,
+            const EOMSettings &eomSettings,
+            const CoupledClusterSettings &ccSettings);
+
+    ~EOMRCCSD();
+
+  public:
+    size_t toCompoundS_RHF(size_t a, size_t i) const;
+    size_t toCompoundD_RHF(size_t a, size_t b, size_t i, size_t j) const;
+
+  public:
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
+
+    void fillGuess(MatsT *guess_vec, size_t n_vec)const;
+
+    void formF_ae();
+
+    void formF_mi();
+
+    void formW_mnij();
+
+    void formW_abef();
+
+    void formW_mbej();
+
+    void formW_mnie();
+
+    void formW_amef();
+
+    void formW_mbij();
+
+    void formW_abei();
+
+    void formR1_tilde_RHF(const TArray &R1, const TArray &R2, TArray &tildeR1) const;
+
+    void formR2_tilde_RHF(const TArray &R1, const TArray &R2, TArray &tildeR2) const;
+
+    //Lambda iterations
+    virtual void initializeLambda();
+    void updateG_ae_RHF(const TArray &L2, TArray &G_ae) const;
+    void updateG_mi_RHF(const TArray &L2, TArray &G_mi) const;
+    void formL1_tilde_RHF(const TArray &L1, const TArray &L2, const TArray &G_ae, const TArray &G_mi,
+                      TArray &tildeL1) const;
+    void formL2_tilde_RHF(const TArray &L1, const TArray &L2, const TArray &G_ae, const TArray &G_mi,
+                      TArray &tildeL2) const;
+    virtual void runLambda();
+
+    virtual void initializeEOMCC();
+    virtual void formEOMIntermediates();
+
+    // for full_diagonalize  algorithm
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
+
+    //Helper functions for diagonalization. Davidson/GPLHR
+    virtual void buildSigma(const MBExpansion<MatsT> &V, MBExpansion<MatsT> &HV, EOMCCEigenVecType vecType) const;
+
+    virtual void buildRightZeroBody(size_t nVec);
+
+
+    // Density functions
+    virtual void initializeDensity();
+    virtual dcomplex calcOscillatorStrength(size_t i) override;
+
+    std::array<MatsT, 3> calcTransitionDipole(const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0,const TArray& l1, const TArray& l2, bool isSame = false);
+    std::array<MatsT, 3> calcGround2ExcitedTransitionDipole(size_t i);
+    std::array<MatsT, 3> calcExcited2GroundTransitionDipole(size_t i);
+    std::array<MatsT, 3> calcExcited2ExcitedTransitionDipole(size_t i, size_t j);
+    virtual std::array<MatsT, 3> calcGroundDipole() override;
+
+    // RHF implementation
+    void buildDensity_RHF(const TArray& t1, const TArray& t2,  const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
+    void formRho_ij_RHF(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
+    void formRho_ab_RHF(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2);
+    void formRho_ia_RHF(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2, bool isSame = false);
+    void formRho_ai_RHF(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const MatsT l0, const TArray& l1, const TArray& l2);
 
   };
 
@@ -921,7 +1158,7 @@ namespace ChronusQ {
 
     // for full_diagonalize  algorithm
     //virtual cqmatrix::Matrix<MatsT> buildHbar(bool includeGroundState) const;
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     virtual bool isInBound(size_t idx) const { return idx < CVSoutOfBound_; }
@@ -963,9 +1200,9 @@ namespace ChronusQ {
     void buildSigmaLeft(const MBExpansion<MatsT> &V, MBExpansion<MatsT> &HV) const;
     void buildCVSLeftIntermediates();
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder() ; 
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType) ;
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag); 
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder() ;
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType) ;
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
     void fillGuess(MatsT *guess_vec, size_t n_vec)const;
     protected: 
@@ -975,7 +1212,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity();
-    virtual MatsT calcOscillatorStrength(size_t i);
+    virtual dcomplex calcOscillatorStrength(size_t i) override;
     void buildDensity(const TArray& t1, const TArray& t2,  const MatsT r0, const TArray& r1, const TArray& r2, const TArray& r2val, const MatsT l0, const TArray& l1, const TArray& l2, const TArray& l2val, bool isSame = false);
     void formRho_ij(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const TArray& r2val, const MatsT l0, const TArray& l1, const TArray& l2, const TArray& l2val, bool isSame = false);
     void formRho_ab(const TArray& t1, const TArray& t2, const MatsT r0, const TArray& r1, const TArray& r2, const TArray& r2val, const MatsT l0, const TArray& l1, const TArray& l2, const TArray& l2val);
@@ -987,7 +1224,7 @@ namespace ChronusQ {
   class EOMEA : public EOMCCBase <MatsT>{
   protected:
     using TArray = TA::TArray<MatsT>;
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -1038,9 +1275,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nV_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag);
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
 
     //Lambda iterations
@@ -1052,7 +1289,7 @@ namespace ChronusQ {
        
     virtual void formEOMIntermediates();
 
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     //Helper functions for diagonalization. Davidson/GPLHR
@@ -1062,7 +1299,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity(){}
-    virtual MatsT calcOscillatorStrength(size_t i){ return 0;}
+    virtual dcomplex calcOscillatorStrength(size_t i) override { return 0;}
     void buildDensity(const TArray& t1, const TArray& t2,  const TArray& r2, const TArray& r3, const TArray& l2, const TArray& l3){}
 
   };
@@ -1070,7 +1307,7 @@ namespace ChronusQ {
   class EOMIP_2h1p : public EOMCCBase <MatsT>{
   protected:
     using TArray = TA::TArray<MatsT>;
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -1123,9 +1360,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nO_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag);
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
     // EOMCCSD intermediates as usual
     // Wloch05_134113
@@ -1148,7 +1385,7 @@ namespace ChronusQ {
        
     virtual void formEOMIntermediates();
 
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     //Helper functions for diagonalization. Davidson/GPLHR
@@ -1158,7 +1395,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity(){}
-    virtual MatsT calcOscillatorStrength(size_t i){ return 0;}
+    virtual dcomplex calcOscillatorStrength(size_t i) override { return 0;}
     void buildDensity(const TArray& t1, const TArray& t2,  const TArray& r2, const TArray& r3, const TArray& l2, const TArray& l3){}
 
   };
@@ -1166,7 +1403,7 @@ namespace ChronusQ {
   class EOMIP_3h2p : public EOMCCBase <MatsT>{
   protected:
     using TArray = TA::TArray<MatsT>;
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -1226,9 +1463,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nO_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag);
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
     // EOMCCSD intermediates as usual
     // Wloch05_134113
@@ -1251,7 +1488,7 @@ namespace ChronusQ {
        
     virtual void formEOMIntermediates();
 
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     //Helper functions for diagonalization. Davidson/GPLHR
@@ -1261,7 +1498,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity(){}
-    virtual MatsT calcOscillatorStrength(size_t i){ return 0;}
+    virtual dcomplex calcOscillatorStrength(size_t i) override { return 0;}
     void buildDensity(const TArray& t1, const TArray& t2,  const TArray& r1, const TArray& r2, const TArray& r3, const TArray& l1, const TArray& l2, const TArray& l3){}
 
   };
@@ -1269,7 +1506,7 @@ namespace ChronusQ {
   class EOMDIP_3h1p : public EOMCCBase <MatsT>{
   protected:
     using TArray = TA::TArray<MatsT>;
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -1339,9 +1576,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nO2shift_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag);
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
     void fillGuess(MatsT *guess_vec, size_t n_vec)const;
 
@@ -1359,7 +1596,7 @@ namespace ChronusQ {
 
     // for full_diagonalize  algorithm
     virtual cqmatrix::Matrix<MatsT> buildHbar(bool includeGroundState) const;
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     //Helper functions for diagonalization. Davidson/GPLHR
@@ -1369,7 +1606,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity();
-    virtual MatsT calcOscillatorStrength(size_t i);
+    virtual dcomplex calcOscillatorStrength(size_t i) override;
     void buildDensity(const TArray& t1, const TArray& t2,  const TArray& r2, const TArray& r3, const TArray& l2, const TArray& l3);
   protected:
     void buildHbarSS(TArray & H_oooo) const;
@@ -1380,7 +1617,7 @@ namespace ChronusQ {
   class EOMDIP_4h2pCCSDT : public EOMCCBase <MatsT>{
   protected:
     using TArray = TA::TArray<MatsT>;
-    std::shared_ptr<cqmatrix::Matrix<dcomplex>> fullMat; 
+    std::shared_ptr<cqmatrix::Matrix<MatsT>> fullMat;
 
     char vLabel_;
     char oLabel_;
@@ -1447,9 +1684,9 @@ namespace ChronusQ {
     virtual size_t oneBodySize() const { return nO2shift_; }
 
   public:
-    virtual typename Davidson<dcomplex>::VecsGen_t EmptyDavidsonVectorBuilder();
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
-    virtual typename Davidson<dcomplex>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag);
+    virtual typename Davidson<MatsT>::VecsGen_t EmptyDavidsonVectorBuilder();
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType);
+    virtual typename Davidson<MatsT>::LinearTrans_t DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag);
 
 
     //Lambda iterations
@@ -1466,7 +1703,7 @@ namespace ChronusQ {
 
     // for full_diagonalize  algorithm
     virtual cqmatrix::Matrix<MatsT> buildHbar(bool includeGroundState) const { return cqmatrix::Matrix<MatsT>(1);}
-    virtual void buildDiag(MatsT * diag, std::vector<double> eps) const;
+    virtual void buildDiag(MatsT * diag, const std::vector<double> &eps) const override;
 
 
     //Helper functions for diagonalization. Davidson/GPLHR
@@ -1476,7 +1713,7 @@ namespace ChronusQ {
 
     // Density functions
     virtual void initializeDensity() {}
-    virtual MatsT calcOscillatorStrength(size_t i){ return 0;}
+    virtual dcomplex calcOscillatorStrength(size_t i) override { return 0;}
     void buildDensity(const TArray& t1, const TArray& t2,  const TArray& r2, const TArray& r3, const TArray& l2, const TArray& l3) {}
   protected:
     void buildHbarSS(TArray & H_oooo) const {}
@@ -1484,7 +1721,8 @@ namespace ChronusQ {
 
   };
 
-  void runCoupledCluster(JobType jobType, Molecule &mol, std::shared_ptr<SingleSlaterBase> ss,
+  template<typename MatsT, typename IntsT>
+  void runCoupledCluster(JobType jobType, Molecule &mol, std::shared_ptr<SingleSlater<MatsT,IntsT>> ccref,
                          std::shared_ptr<IntegralsBase> aoints,
                          SafeFile &rstFile, CQInputFile &input, std::ostream &output);
 

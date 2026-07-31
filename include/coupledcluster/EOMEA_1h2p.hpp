@@ -547,7 +547,7 @@ reuse_tmps_.emplace(std::make_pair("vvoo_1", TAmanager.malloc<MatsT>("vvoo")));
   }
 
   template <typename MatsT>
-  void EOMEA<MatsT>::buildDiag(MatsT * diag, std::vector<double> eps) const {
+  void EOMEA<MatsT>::buildDiag(MatsT * diag, const std::vector<double> &eps) const {
 
     TAManager &TAmanager = TAManager::get();
     size_t n_v = TAmanager.getRange(vLabel_).extent();
@@ -575,12 +575,12 @@ reuse_tmps_.emplace(std::make_pair("vvoo_1", TAmanager.malloc<MatsT>("vvoo")));
 
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::VecsGen_t EOMEA<MatsT>::EmptyDavidsonVectorBuilder(){
+  typename Davidson<MatsT>::VecsGen_t EOMEA<MatsT>::EmptyDavidsonVectorBuilder(){
       // Algorithm with implicit Hbar matrix
-      typename Davidson<dcomplex>::VecsGen_t vecsGenEOM;
+      typename Davidson<MatsT>::VecsGen_t vecsGenEOM;
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT) {
-        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
-          return std::make_shared<MBExpansionSet<dcomplex>>(this->tensor_builder_, nVec, this->savFile_);
+        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<MatsT>> {
+          return std::make_shared<MBExpansionSet<MatsT>>(this->tensor_builder_, nVec, this->savFile_);
         }; // implicit vecsGenerator
 
         return vecsGenEOM;
@@ -589,32 +589,32 @@ reuse_tmps_.emplace(std::make_pair("vvoo_1", TAmanager.malloc<MatsT>("vvoo")));
   }
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMEA<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
+  typename Davidson<MatsT>::LinearTrans_t EOMEA<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT) {
-        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
-          MBExpansionSet<dcomplex> *V_ptr = nullptr, *AV_ptr = nullptr;
+          MBExpansionSet<MatsT> *V_ptr = nullptr, *AV_ptr = nullptr;
           size_t Vshift = 0, AVshift = 0;
           try {
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& V_view = dynamic_cast<SolverVectorsView<dcomplex>&>(V);
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V_view.getVecs());
+            SolverVectorsView<MatsT>& V_view = dynamic_cast<SolverVectorsView<MatsT>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V_view.getVecs());
             Vshift = V_view.shift();
           }
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
           for (size_t i = 0; i < nVec; i++) {
-            const MBExpansion<dcomplex> &Vi = V_ptr->get(i + Vshift);
-            MBExpansion<dcomplex> &AVi = AV_ptr->get(i + AVshift);
+            const MBExpansion<MatsT> &Vi = V_ptr->get(i + Vshift);
+            MBExpansion<MatsT> &AVi = AV_ptr->get(i + AVshift);
             buildSigma(Vi, AVi, eigenVecType);
             TA::get_default_world().gop.fence();
             AVi.enforceSymmetry();
@@ -627,50 +627,56 @@ reuse_tmps_.emplace(std::make_pair("vvoo_1", TAmanager.malloc<MatsT>("vvoo")));
 
   }
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMEA<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag){
+  typename Davidson<MatsT>::LinearTrans_t EOMEA<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag){
 
       double PCsmall = this->eomSettings.davidson_preCond_small;
 
-      this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<dcomplex> &V,
-          SolverVectors<dcomplex> &AV) {
+      this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<MatsT> &V,
+          SolverVectors<MatsT> &AV) {
 
         AV.set_data(0, nVec, V, 0);
 
-        MBExpansionSet<dcomplex> *AV_ptr = nullptr;
+        MBExpansionSet<MatsT> *AV_ptr = nullptr;
         size_t AVshift = 0;
 
         try {
-          AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+          AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
         } catch(const std::bad_cast& e) {
-          SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-          AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+          SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+          AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
           AVshift = AV_view.shift();
         }
 
         for (size_t iVec = 0; iVec < nVec; iVec++) {
 
-          MBExpansion<dcomplex> &curB = AV_ptr->get(iVec + AVshift);
+          MBExpansion<MatsT> &curB = AV_ptr->get(iVec + AVshift);
+          MatsT curEigI = 0.0;
+          if constexpr (std::is_same_v<MatsT, double>) {
+            curEigI = curEig[iVec].real();
+          } else {
+            curEigI = curEig[iVec];
+          }
 
           MatsT * Diag_A = eomDiag;
-          TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEig, Diag_A, this, PCsmall](TA::TensorZ &tile){
+          TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEigI, Diag_A, this, PCsmall](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
-            dcomplex denom = 0.0;
+            MatsT denom = 0.0;
             std::vector<std::size_t> x{0};
             for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]) {
-              denom = curEig[iVec] - Diag_A[toCompoundS(x[0])];
+              denom = curEigI - Diag_A[toCompoundS(x[0])];
               if (std::abs(denom) >= PCsmall) tile[x] /= denom;
             }
           });
           TA::get_default_world().gop.fence();
 
           MatsT * Diag_ABI = eomDiag + this->Hbar_dimension_offsets.at("TwoBody");
-          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEig, Diag_ABI, this, PCsmall](TA::TensorZ &tile){
+          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEigI, Diag_ABI, this, PCsmall](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
-            dcomplex denom = 0.0;
+            MatsT denom = 0.0;
             std::vector<std::size_t> x{0, 0, 0};
             for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]){
               size_t a = x[0];
@@ -680,7 +686,7 @@ reuse_tmps_.emplace(std::make_pair("vvoo_1", TAmanager.malloc<MatsT>("vvoo")));
                 size_t b = x[1];
                 for(x[2] = lobound[2]; x[2] < upbound[2]; ++x[2]){
                   size_t i = x[2];
-                  denom = curEig[iVec] - Diag_ABI[toCompoundD(a, b, i)];
+                  denom = curEigI - Diag_ABI[toCompoundD(a, b, i)];
                   if (std::abs(denom) >= PCsmall) tile[x] /= denom;
                 }
               }

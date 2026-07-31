@@ -39,6 +39,7 @@ namespace ChronusQ{
       V_ = other.V_.clone();
       name_ = other.name_;
       rank_ = other.rank_;
+      symmetry_ = other.symmetry_;
       coefficient_ = other.coefficient_;
       index_of_vo_groups_ = other.index_of_vo_groups_;
       dims_by_type_ = other.dims_by_type_;
@@ -57,6 +58,7 @@ namespace ChronusQ{
     ta_labels_ = other.ta_labels_;
     name_ = other.name_;
     rank_ = other.rank_;
+    symmetry_ = other.symmetry_;
     coefficient_ = other.coefficient_;
     V_ = TAManager::get().malloc<MatsT>(shape_);
     V_ = other.V_.clone();
@@ -66,6 +68,7 @@ namespace ChronusQ{
     outOfBound_ = other.outOfBound_;
   }
   template MBTensor<dcomplex>::MBTensor(const MBTensor<dcomplex>& other);
+  template MBTensor<double>::MBTensor(const MBTensor<double>& other);
 
   /// move constructor
   template <typename MatsT>
@@ -77,6 +80,7 @@ namespace ChronusQ{
     std::swap(ta_labels_, other.ta_labels_);
     std::swap(name_, other.name_);
     std::swap(rank_, other.rank_);
+    std::swap(symmetry_, other.symmetry_);
     std::swap(coefficient_, other.coefficient_);
     std::swap(index_of_vo_groups_, other.index_of_vo_groups_);
     std::swap(dims_by_type_, other.dims_by_type_);
@@ -89,6 +93,16 @@ namespace ChronusQ{
   size_t MBTensor<MatsT>::size() const{
     TAManager &TAmanager = TAManager::get();
     if (shape_.length() == 0) return 0;
+    if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+      if (shape_ != "vvoo") {
+        CErr("MBTensor::size for RCCSD type tensor only implemented for vvoo shape.");
+      }
+      size_t nV = dim_[0];
+      size_t nO = dim_[2];
+      size_t nOV = nV * nO;
+      return nOV * (nOV + 1) / 2;
+    }
+
     std::unordered_map<char, int> letterCount;
     size_t size_vir = 1;
     for (char letter : vir_index_range_) {
@@ -135,13 +149,28 @@ namespace ChronusQ{
        CErr("MBTensor::dot product error, rank mismatch.");
     if (conjA){
       return V_(ta_labels_).inner_product(other.V_(ta_labels_)).get();
-      TA::get_default_world().gop.fence();    
     } else {
       return V_(ta_labels_).dot(other.V_(ta_labels_)).get();
-      TA::get_default_world().gop.fence();    
     }
-    TA::get_default_world().gop.fence();
     return MatsT(0);
+  }
+  template <typename MatsT>
+  MatsT MBTensor<MatsT>::dot_rank4_RCCSD(const MBTensor<MatsT> &other, bool conjA) const {
+    if (not ((rank() == 4 and symmetry() == MBTensorSymmetry::RCCSD)
+          and(other.rank() == 4 and other.symmetry() == MBTensorSymmetry::RCCSD))) {
+      CErr("MBTensor::dot_rank4_RCCSD error, both tensors must have rank 4 and RCCSD symmetry.");
+    }
+    std::string ta_labels_perm = other.ta_labels_;
+    std::swap(ta_labels_perm[0], ta_labels_perm[2]);
+    MatsT result = 0.0;
+    if (conjA){
+      result += 2.0 * V_(ta_labels_).inner_product(other.V_(ta_labels_)).get();
+      result -= V_(ta_labels_perm).inner_product(other.V_(ta_labels_)).get();
+    } else {
+      result += 2.0 * V_(ta_labels_).dot(other.V_(ta_labels_)).get();
+      result -= V_(ta_labels_perm).dot(other.V_(ta_labels_)).get();
+    }
+    return result;
   }
 
   /// add alpha times X into itself 
@@ -155,6 +184,16 @@ namespace ChronusQ{
   template <typename MatsT>
   void MBTensor<MatsT>::scale(MatsT factor) {
     V_(ta_labels_) = factor * V_(ta_labels_);
+  }
+
+  /// average symmetrical elements in the tensor object with RCCSD symmetry, eg, A_ijab = A_jiba
+  template <typename MatsT>
+  void MBTensor<MatsT>::symmetrize_rank4_RCCSD(){
+    std::string replace_to = ta_labels_;
+    std::swap(replace_to[0], replace_to[2]);
+    std::swap(replace_to[4], replace_to[6]);
+    V_(ta_labels_) += V_(replace_to);
+    V_(ta_labels_) = 0.5 * V_(ta_labels_);
   }
 
   /// average symmetrical elements in the tensor object with 2 fold symmetry, eg, A_ijxx=-A_jixx
@@ -214,6 +253,14 @@ namespace ChronusQ{
   /// average symmetrical elements in the tensor object 
   template <typename MatsT>
   void MBTensor<MatsT>::enforceSymmetry() {
+    // special case for RCCSD
+    if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+      if (shape_ != "vvoo") {
+        CErr("MBTensor::enforceSymmetry for RCCSD type tensor only implemented for vvoo shape.");
+      }
+      symmetrize_rank4_RCCSD();
+      return;
+    }
     // symmetrize virtual space
     std::map<char, std::vector<int>> locations;
     for (int i = 0; i < vir_index_range_.length(); i++) {
@@ -265,6 +312,21 @@ namespace ChronusQ{
   std::vector<size_t> MBTensor<MatsT>::findTensorIndices(size_t idx) const{
     TAManager &TAmanager = TAManager::get();
     std::vector<size_t> pqrs(rank_, SIZE_MAX);
+
+    if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+      if (shape_ != "vvoo") {
+        CErr("MBTensor::findTensorIndices for RCCSD type tensor only implemented for vvoo shape.");
+      }
+      size_t nO = dim_[2];
+      size_t jl = static_cast<size_t>(sqrt(2*idx + 0.25) - 0.5);
+      size_t ik = idx - jl * (jl+1) / 2;
+      pqrs[0] = ik / nO;
+      pqrs[1] = jl / nO;
+      pqrs[2] = ik % nO;
+      pqrs[3] = jl % nO;
+      return pqrs;
+    }
+
     std::vector<size_t> idxByType(dims_by_type_.size());
     size_t elementIndex = idx;
     for (int i = 0; i < dims_by_type_.size(); i++) {
@@ -368,6 +430,46 @@ namespace ChronusQ{
   void MBTensor<MatsT>::setSymmetricalElem(std::vector<size_t> pqrs, MatsT elem) {
     if (pqrs.size() != shape_.size())
        CErr("MBTensor::setSymmetrticalElem Tensor indices must correspond to the correct rank.");
+
+    if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+      if (shape_ != "vvoo") {
+        CErr("MBTensor::setSymmetricalElem for RCCSD type tensor only implemented for vvoo shape.");
+      }
+
+      std::vector<size_t> qpsr = {pqrs[1], pqrs[0], pqrs[3], pqrs[2]};
+
+      // assign one element to the TA object
+      TA::foreach_inplace(V_, [&pqrs, &qpsr, elem](TA::Tensor<MatsT> &tile) {
+          const auto& lobound = tile.range().lobound();
+          const auto& upbound = tile.range().upbound();
+
+          bool in_bounds_pqrs = true;
+          for (size_t i = 0; i < pqrs.size(); ++i) {
+              if (!(lobound[i] <= pqrs[i] && pqrs[i] < upbound[i])) {
+                  in_bounds_pqrs = false;
+                  break;
+              }
+          }
+
+          if (in_bounds_pqrs) {
+              tile[pqrs] = elem;
+          }
+
+          bool in_bounds_qpsr = true;
+          for (size_t i = 0; i < qpsr.size(); ++i) {
+              if (!(lobound[i] <= qpsr[i] && qpsr[i] < upbound[i])) {
+                  in_bounds_qpsr = false;
+                  break;
+              }
+          }
+
+          if (in_bounds_qpsr) {
+              tile[qpsr] = elem;
+          }
+      });
+
+      return;
+    }
    
 	// attach space info to pqrs label 
     std::vector<std::pair<size_t, char>> indices;
@@ -420,7 +522,7 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  MBExpansion<MatsT>::MBExpansion(std::vector<std::string> tensor_info1, bool memset):
+  MBExpansion<MatsT>::MBExpansion(std::vector<std::string> tensor_info1, bool memset, MBTensorSymmetry symmetry):
     tensor_info(tensor_info1){
     if ( tensor_info.size() % 3 != 0)
       CErr("MBExpansion:: must construct MBExpansion with vir_space_range, occ_space_range, space_name.");
@@ -445,7 +547,7 @@ namespace ChronusQ{
     //  CErr("MBExpansion:: The existing MBExpansion does not work for vectors that contain active space. Write setElem, toRaw, fromRaw, vLabel, oLabel to make it work!");
     //}
 
-    initialize(tensor_info, memset);
+    initialize(tensor_info, memset, symmetry);
     size_t offset = 0;
     for (size_t i = 0; i < V_.size(); i++) {
       tensor_offsets.push_back(offset);
@@ -456,8 +558,9 @@ namespace ChronusQ{
 
   template <typename MatsT>
   MBExpansion<MatsT>::MBExpansion(const MBExpansion<MatsT> &other) {
+    V_.reserve(other.V_.size());
     for (int i = 0; i < other.V_.size(); i++) {
-      V_.emplace_back(other.V_[i].vir_index_range(), other.V_[i].occ_index_range(), other.V_[i].name());
+      V_.emplace_back(other.V_[i].vir_index_range(), other.V_[i].occ_index_range(), other.V_[i].name(), false, other.V_[i].symmetry());
     }
     operator=(other);
   }
@@ -496,12 +599,13 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  void MBExpansion<MatsT>::initialize(std::vector<std::string> tensor_info, bool memset){
+  void MBExpansion<MatsT>::initialize(std::vector<std::string> tensor_info, bool memset, MBTensorSymmetry symmetry){
 
     V0_ = 0.0;
 
+    V_.reserve(tensor_info.size()/3);
     for (int i = 0; i < tensor_info.size(); i += 3) {
-      V_.emplace_back(tensor_info[i], tensor_info[i+1], tensor_info[i+2], memset);
+      V_.emplace_back(tensor_info[i], tensor_info[i+1], tensor_info[i+2], memset, symmetry);
     }
   }
   template <typename MatsT>
@@ -516,10 +620,20 @@ namespace ChronusQ{
       dotProduct += V0_ * other.V0_;
     }
     for (int i = 0; i < V_.size(); i++){
+      if (V_[i].rank() == 4 and V_[i].symmetry() == MBTensorSymmetry::RCCSD) {
+        if (other.V_[i].rank() == 4 and other.V_[i].symmetry() == MBTensorSymmetry::RCCSD) {
+          dotProduct += V_[i].dot_rank4_RCCSD(other.V_[i], conjA);
+          TA::get_default_world().gop.fence();
+          continue;
+        }
+        CErr("MBExpansion::dot product error, one of the tensors has RCCSD symmetry but the other does not.");
+      }
+      if (other.V_[i].rank() == 4 and other.V_[i].symmetry() == MBTensorSymmetry::RCCSD) {
+        CErr("MBExpansion::dot product error, one of the tensors has RCCSD symmetry but the other does not.");
+      }
       dotProduct += V_[i].coefficient() * V_[i].dot(other.V_[i], conjA);
       TA::get_default_world().gop.fence();    
     }
-    TA::get_default_world().gop.fence();
 
     return dotProduct;
   }
@@ -558,10 +672,11 @@ namespace ChronusQ{
 
   template <typename MatsT>
   void MBExpansion<MatsT>::conjugate() {
-    if (std::is_same<MatsT, double>::value) return;
-    V0_ = std::conj(V0_);
-    for (int i = 0; i < V_.size(); i++){
-      V_[i].conjugate();
+    if constexpr (not std::is_same_v<MatsT, double>) {
+      V0_ = std::conj(V0_);
+      for (int i = 0; i < V_.size(); i++){
+        V_[i].conjugate();
+      }
     }
   }
 
@@ -981,17 +1096,10 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  void MBExpansionSet<MatsT>::initialize(std::vector<std::string> &tensor_info, size_t nVec) {
+  void MBExpansionSet<MatsT>::initialize(std::vector<std::string> &tensor_info, size_t nVec, MBTensorSymmetry symmetry) {
     vecs_.reserve(nVec);
-    //std::vector<std::string> tmp;
-    //tmp.push_back(std::string({vLabel_}));
-    //tmp.push_back(std::string({oLabel_}));
-    //tmp.push_back(std::string("OneBody"));
-    //tmp.push_back(std::string({vLabel_,vLabel_}));
-    //tmp.push_back(std::string({oLabel_,oLabel_}));
-    //tmp.push_back(std::string("TwoBody"));
     for (size_t i = 0; i < nVec; i++)
-      vecs_.emplace_back(tensor_info);
+      vecs_.emplace_back(tensor_info, false, symmetry);
   }
 
   template <typename MatsT>
@@ -1265,9 +1373,9 @@ namespace ChronusQ{
 
   template <typename MatsT>
   void MBExpansionSet<MatsT>::writeToBinaryFile(const std::string& saveEntryName){
-        dcomplex * r_vector;
+        MatsT * r_vector;
         size_t Hbar_dim = vecs_[0].length();
-        r_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
+        r_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim);
         for(size_t i = 0; i < vecs_.size(); i++) {
           get(i).toRaw(r_vector, false);
           TA::get_default_world().gop.fence();

@@ -29,20 +29,31 @@
 namespace ChronusQ {
 
   template class EOMCCSD<dcomplex>;
+  template class EOMCCSD<double>;
 
 
-  std::shared_ptr<EOMCCBase<dcomplex>> build_EOMCCSD(
+  template <typename MatsT>
+  std::shared_ptr<EOMCCBase<MatsT>> build_EOMCCSD(
                                               const SafeFile &savFile,
-                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<MatsT> &intermediates, const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings) { 
 
 
-    std::shared_ptr<EOMCCBase<dcomplex>> eomcc = nullptr;
+    std::shared_ptr<EOMCCBase<MatsT>> eomcc = nullptr;
     eomcc = 
-      std::make_shared<EOMCCSD<dcomplex>> (
+      std::make_shared<EOMCCSD<MatsT>> (
         savFile,
         intermediates, eomSettings, ccSettings);
     return eomcc;
   }
+
+  template std::shared_ptr<EOMCCBase<dcomplex>> build_EOMCCSD(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
+  template std::shared_ptr<EOMCCBase<double>> build_EOMCCSD(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<double> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
 }
 

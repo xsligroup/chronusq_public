@@ -80,6 +80,11 @@ namespace cqmatrix {
         }
       }
 
+      bool exists(const std::string &dataSet) {
+        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        return file.exist(dataSet);
+      };
+
       template <typename T>
       inline HighFive::DataSet createDataSet(const std::string &dataSet,
               const std::vector<size_t> &dims) {

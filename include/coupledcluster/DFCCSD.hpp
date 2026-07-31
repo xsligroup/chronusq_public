@@ -84,7 +84,7 @@ namespace ChronusQ{
   void DFCCSD<MatsT>::initAmplitudes() {
     if(this->ccSettings_.restart){
       size_t size = this->T_.length();
-      dcomplex * t_amp = CQMemManager::get().malloc<dcomplex>(size);
+      MatsT * t_amp = CQMemManager::get().malloc<MatsT>(size);
       TA::get_default_world().gop.fence();
       if (MPIRank() == 0) this->savFile_.readData("/CC/T_AMPLITUDE", t_amp);
       if (MPIRank() == 0) this->savFile_.readData("/CC/REFERENCE_ENERGY",   &this->intermediates_.E_ref);
@@ -278,7 +278,7 @@ namespace ChronusQ{
 
         if(this->ccSettings_.save){
           size_t size = this->T_.length();
-          dcomplex * t_amp = CQMemManager::get().malloc<dcomplex>(size);
+          MatsT * t_amp = CQMemManager::get().malloc<MatsT>(size);
           TA::get_default_world().gop.fence();
           this->T_.toRaw(t_amp, false);
           TA::get_default_world().gop.fence();
@@ -657,4 +657,36 @@ namespace ChronusQ{
     TAmanager.discard_cache();
 
   }
+
+  template <typename MatsT>
+  size_t DFCCSD<MatsT>::estimate_mem_peak() const {
+    // will need further checking as the TA objects are dynamically allocated and freed at runtime
+    TAManager &TAmanager = TAManager::get();
+
+    size_t nDIIS = this->ccSettings_.useDIIS ? this->ccSettings_.nDIIS : 0;
+    size_t count = 0;
+    //                                             1         2       3       4         5           6     7        8
+    count += 7 * TAmanager.elem_per_TA("oo");   // muX_oo,   muY_oo, muZ_oo, coreH_oo, fock_oo,    F_oo, moDen_oo
+    count += 6 * TAmanager.elem_per_TA("ov");   // muX_ov,   muY_ov, muZ_ov, coreH_ov, fock_ov,    F_ov
+    count += 8 * TAmanager.elem_per_TA("vo");   // muX_vo,   muY_vo, muZ_vo, coreH_vo, fock_vo,    F_vo, Dai,     T1
+    count += 7 * TAmanager.elem_per_TA("vv");   // muX_vv,   muY_vv, muZ_vv, coreH_vv, fock_vv,    F_vv, TMPbe
+    count += 1 * TAmanager.elem_per_TA("b");    // tmp_Q
+    count += 3 * TAmanager.elem_per_TA("boo");  // riERIoo,  B_oo,   X_Qoo
+    count += 1 * TAmanager.elem_per_TA("bov");  // riERIov
+    count += 3 * TAmanager.elem_per_TA("bvo");  // riERIvo,  B_vo,   X_Qvo
+    count += 2 * TAmanager.elem_per_TA("bvv");  // riERIvv,  B_vv
+    count += 1 * TAmanager.elem_per_TA("oooo"); // W_oooo
+    count += 1 * TAmanager.elem_per_TA("oovv"); // W_oovv
+    count += 1 * TAmanager.elem_per_TA("voov"); // W_voov
+    count += 4 * TAmanager.elem_per_TA("vvoo"); // ERI_vvoo, Dabij,  T2,     tmp_t2
+    count += 1 * TAmanager.elem_per_TA("vvvv"); // W_abef
+
+    if (nDIIS) {
+      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vo");   // T1 DIIS copy?
+      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vvoo"); // T2 DIIS copy?
+    }
+
+    return count * sizeof(MatsT);
+  }
+
 };

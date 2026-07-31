@@ -31,10 +31,10 @@ if( CQ_ENABLE_TA )
     message(FATAL_ERROR "TA requires MPI. Please rerun with CQ_ENABLE_MPI=On" )
   endif()
 
-  set( ENABLE_SCALAPACK ON CACHE BOOL "Enable ScaLAPACK" FORCE )
+  set( TA_SCALAPACK ON CACHE BOOL "Enable ScaLAPACK Bindings in TiledArray" FORCE )
   FetchContent_Declare( tiledarray
     GIT_REPOSITORY https://github.com/ValeevGroup/tiledarray.git
-    GIT_TAG ec51edbcafc363c418f5ce235423463d2beb2785
+    GIT_TAG 84411a6c966bc7aa75b36a09635aa84c13b104bf
   )
   
   FetchContent_MakeAvailable( tiledarray )

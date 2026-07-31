@@ -123,13 +123,16 @@ namespace ChronusQ {
 
   template<>
   void TAManager::free(std::string ranges, TA::TArray<double> &&ta, bool discard) {
-    if (rTAs_.count(ranges) == 0)
-      CErr("Requested range label does not exist in TAManager!");
     if (discard) {
+      // if (rTAstat_[ranges].cur_total == 0)
+      //   CErr("ERROR!!! No TA of the given range is currently allocated in TAManager!");
       rTAstat_[ranges].cur_total--;
       cur_mem_ -= rTAstat_[ranges].mem_each_;
-    } else
+    } else {
+      if (rTAs_.count(ranges) == 0)
+        CErr("Requested range label does not exist in TAManager!");
       rTAs_[ranges].push_back(std::forward<TA::TArray<double>>(ta));
+    }
     ta = TA::TArray<double>();
   }
 
@@ -138,14 +141,17 @@ namespace ChronusQ {
 #ifdef DEBUG_TAMANAGER
     std::cout << "TAManager::free(" << ranges << (discard ? ", discard" : ", to cache") << ")" << std::endl;
 #endif
-    if (cTAs_.count(ranges) == 0)
-      CErr("Requested range label does not exist in TAManager!");
     if (discard) {
+      // if (cTAstat_[ranges].cur_total == 0)
+      //   CErr("ERROR!!! No TA of the given range is currently allocated in TAManager!");
       cTAstat_[ranges].cur_total--;
       cur_mem_ -= cTAstat_[ranges].mem_each_;
-    } else
+    } else {
+      if (cTAs_.count(ranges) == 0)
+        CErr("Requested range label does not exist in TAManager!");
       // if ta in cTAs_: CErr;
       cTAs_[ranges].push_back(std::forward<TA::TArray<dcomplex>>(ta));
+    }
     ta = TA::TArray<dcomplex>();
   }
 
@@ -154,11 +160,17 @@ namespace ChronusQ {
     std::cout << "TAManager::discard_cache()" << std::endl;
 #endif
     for (auto &sTA : rTAs_) {
+      // if (sTA.second.size() > rTAstat_[sTA.first].cur_total) {
+      //   CErr("ERROR!!! More TA of the given range is currently cached in TAManager than allocated!");
+      // }
       rTAstat_[sTA.first].cur_total -= sTA.second.size();
       cur_mem_ -= sTA.second.size() * rTAstat_[sTA.first].mem_each_;
       sTA.second.clear();
     }
     for (auto &sTA : cTAs_) {
+      // if (sTA.second.size() > cTAstat_[sTA.first].cur_total) {
+      //   CErr("ERROR!!! More TA of the given range is currently cached in TAManager than allocated!");
+      // }
       cTAstat_[sTA.first].cur_total -= sTA.second.size();
       cur_mem_ -= sTA.second.size() * cTAstat_[sTA.first].mem_each_;
 #ifdef DEBUG_TAMANAGER
@@ -203,7 +215,7 @@ namespace ChronusQ {
         out << "  " << std::fixed << std::right << std::setw(5) << std::setprecision(1)
             << mem_postfix.first << mem_postfix.second;
         out << "  " << std::setw(4) << sTA.second.cur_total;
-        out << "    " << std::setw(4) << manager.rTAs_.at(sTA.first).size();
+        out << "    " << std::setw(4) << (manager.rTAs_.count(sTA.first) == 0? 0 : manager.rTAs_.at(sTA.first).size());
         out << "    " << std::setw(4) << sTA.second.hist_total;
         out << "    " << std::setw(4) << sTA.second.peak << std::endl;
       }
@@ -221,7 +233,7 @@ namespace ChronusQ {
         out << "  " << std::fixed << std::right << std::setw(5) << std::setprecision(1)
         << mem_postfix.first << mem_postfix.second;
         out << "  " << std::setw(4) << sTA.second.cur_total;
-        out << "    " << std::setw(4) << manager.cTAs_.at(sTA.first).size();
+        out << "    " << std::setw(4) << (manager.cTAs_.count(sTA.first)? 0 : manager.cTAs_.at(sTA.first).size());
         out << "    " << std::setw(4) << sTA.second.hist_total;
         out << "    " << std::setw(4) << sTA.second.peak << std::endl;
       }

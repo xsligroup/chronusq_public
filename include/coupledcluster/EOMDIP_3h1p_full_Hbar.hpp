@@ -42,7 +42,7 @@ namespace ChronusQ{
 
     TAManager &TAmanager = TAManager::get();
     // %%%% Prepare Scalars %%%%
-    dcomplex scalar_0, scalar_1, scalar_2, scalar_3, scalar_4;
+    MatsT scalar_0, scalar_1, scalar_2, scalar_3, scalar_4;
     
     // %%%% Assign Scalars %%%%
     TArray  Id_oooo = TAmanager.malloc<MatsT>("oooo");

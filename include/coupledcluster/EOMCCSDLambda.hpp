@@ -117,6 +117,33 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCSD<MatsT>::runLambda() {
 
+    if (this->eomSettings.restart_l or this->eomSettings.restart_r) { // Restart from file, read in amplitudes
+
+      TA::get_default_world().gop.fence();
+      bool lg_amp_exist = false;
+      if (MPIRank() == 0) lg_amp_exist = this->savFile_.exists("/CC/LAMBDA_AMPLITUDE");
+      MPIBCast(lg_amp_exist, 0, MPI_COMM_WORLD);
+
+      if (lg_amp_exist) {
+        if (this->Lg_ == nullptr) this->initializeGroundStateLambda();
+        std::cout << "Reading Lambda amplitudes..." << std::endl;
+        size_t size = this->Lg_->length();
+        MatsT * lg_amp = CQMemManager::get().malloc<MatsT>(size);
+        TA::get_default_world().gop.fence();
+        if (MPIRank() == 0) this->savFile_.readData("/CC/LAMBDA_AMPLITUDE", lg_amp);
+        MPIBCast(lg_amp, size, 0, MPI_COMM_WORLD);
+        TA::get_default_world().gop.fence();
+        this->Lg_->fromRaw(lg_amp, false);
+        this->Lg_->zeroBody() = 1.0;
+        TA::get_default_world().gop.fence();
+        CQMemManager::get().free(lg_amp);
+        std::cout << "Reading Lambda amplitudes finished." << std::endl;
+
+        return;
+      }
+
+    }
+
     auto lambda_start = tick();
 
     initializeLambda();
@@ -200,6 +227,19 @@ namespace ChronusQ{
         std::cout << "\n  Lambda iteration converged in " << iter << " steps." << std::endl;
         std::cout << "\n  Lambda Completed: Iteration total time "<< std::setw(10) << std::right
                   << std::setprecision(6) << tock(lambda_start) << " s" << std::endl;
+
+        if(this->eomSettings.save_l){
+          size_t size = Lg.length();
+          MatsT * lg_amp = CQMemManager::get().malloc<MatsT>(size);
+          TA::get_default_world().gop.fence();
+          Lg.toRaw(lg_amp, false);
+          TA::get_default_world().gop.fence();
+          if(this->savFile_.exists()){
+            this->savFile_.safeWriteData("/CC/LAMBDA_AMPLITUDE", lg_amp, {size});
+          }
+          CQMemManager::get().free(lg_amp);
+        }
+
         std::cout << bannerEnd << std::endl;
         break;
       }
@@ -464,12 +504,7 @@ namespace ChronusQ{
       typedef std::vector<size_t> block;
 
       // grab relevant blocks
-      TArray w_mbij;
-      TArray w_acek;
-      TArray t2_ebij;
-      TArray t2_ackm;
-
-      TArray tmp;
+      TArray tmp = TAmanager.malloc<MatsT>("vvvttt");
 
       // m_{abc}^{ijk} contribution
       // w_{mb}^{ij}
@@ -485,14 +520,14 @@ namespace ChronusQ{
       block t2m_lower = {0,0,k,0};
       block t2m_upper = {v_tr,v_tr,k+1,o_tr};
 
-      w_mbij("m,b,i,j") = W_mbij("m,b,i,j").block(wm_lower,wm_upper);
-      w_acek("a,c,e,k") = W_abei("a,c,e,k").block(we_lower,we_upper);
-      t2_ebij("e,b,i,j") = T2_("e,b,i,j").block(t2e_lower,t2e_upper);
-      t2_ackm("a,c,k,m") = T2_("a,c,k,m").block(t2m_lower,t2m_upper);
+      auto w_mbij  = W_mbij("m,b,i,j").block(wm_lower,wm_upper);
+      auto w_acek  = W_abei("a,c,e,k").block(we_lower,we_upper);
+      auto t2_ebij = T2_("e,b,i,j").block(t2e_lower,t2e_upper);
+      auto t2_ackm = T2_("a,c,k,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k")  = w_mbij("m,b,i,j") * t2_ackm("a,c,k,m");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,b,i,j") * w_acek("a,c,e,k");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,b,i,j") * F_me("m,e") * t2_ackm("a,c,k,m");
+      tmp("a,b,c,i,j,k")  = w_mbij * t2_ackm;
+      tmp("a,b,c,i,j,k") += t2_ebij * w_acek;
+      tmp("a,b,c,i,j,k") -= t2_ebij * F_me("m,e") * t2_ackm;
 
       // t_{abc}^{kji} contribution
       // w_{mb}^{kj}
@@ -508,14 +543,14 @@ namespace ChronusQ{
       t2m_lower = {0,0,i,0};
       t2m_upper = {v_tr,v_tr,i+1,o_tr};
 
-      w_mbij("m,b,k,j") = W_mbij("m,b,k,j").block(wm_lower,wm_upper);
-      w_acek("a,c,e,i") = W_abei("a,c,e,i").block(we_lower,we_upper);
-      t2_ebij("e,b,k,j") = T2_("e,b,k,j").block(t2e_lower,t2e_upper);
-      t2_ackm("a,c,i,m") = T2_("a,c,i,m").block(t2m_lower,t2m_upper);
+      auto w_mbkj  = W_mbij("m,b,k,j").block(wm_lower,wm_upper);
+      auto w_acei  = W_abei("a,c,e,i").block(we_lower,we_upper);
+      auto t2_ebkj = T2_("e,b,k,j").block(t2e_lower,t2e_upper);
+      auto t2_acim = T2_("a,c,i,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("m,b,k,j") * t2_ackm("a,c,i,m");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,b,k,j") * w_acek("a,c,e,i");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,b,k,j") * F_me("m,e") * t2_ackm("a,c,i,m");
+      tmp("a,b,c,i,j,k") -= w_mbkj * t2_acim;
+      tmp("a,b,c,i,j,k") -= t2_ebkj * w_acei;
+      tmp("a,b,c,i,j,k") += t2_ebkj * F_me("m,e") * t2_acim;
 
       // t_{abc}^{ikj} contribution
       // w_{mb}^{ik}
@@ -531,19 +566,21 @@ namespace ChronusQ{
       t2m_lower = {0,0,j,0};
       t2m_upper = {v_tr,v_tr,j+1,o_tr};
 
-      w_mbij("m,b,i,k") = W_mbij("m,b,i,k").block(wm_lower,wm_upper);
-      w_acek("a,c,e,j") = W_abei("a,c,e,j").block(we_lower,we_upper);
-      t2_ebij("e,b,i,k") = T2_("e,b,i,k").block(t2e_lower,t2e_upper);
-      t2_ackm("a,c,j,m") = T2_("a,c,j,m").block(t2m_lower,t2m_upper);
+      auto w_mbik = W_mbij("m,b,i,k").block(wm_lower,wm_upper);
+      auto w_acej = W_abei("a,c,e,j").block(we_lower,we_upper);
+      auto t2_ebik = T2_("e,b,i,k").block(t2e_lower,t2e_upper);
+      auto t2_acjm = T2_("a,c,j,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("m,b,i,k") * t2_ackm("a,c,j,m");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,b,i,k") * w_acek("a,c,e,j");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,b,i,k") * F_me("m,e") * t2_ackm("a,c,j,m");
+      tmp("a,b,c,i,j,k") -= w_mbik * t2_acjm;
+      tmp("a,b,c,i,j,k") -= t2_ebik * w_acej;
+      tmp("a,b,c,i,j,k") += t2_ebik * F_me("m,e") * t2_acjm;
 
       // apply A(ac/b)
       m3 = tmp.clone(); // deep copy for safety
       m3("a,b,c,i,j,k") -= tmp("b,a,c,i,j,k");
       m3("a,b,c,i,j,k") -= tmp("a,c,b,i,j,k");
+
+      TAmanager.free("vvvttt", std::move(tmp));
     };
 
     // lambda to compute <0|(1+L1+L2) Hbar|ijkabc>
@@ -552,11 +589,7 @@ namespace ChronusQ{
       // for blocking purposes
       typedef std::vector<size_t> block;
 
-      TArray w_mbij, l2_ackm;
-      TArray w_acek, l2_ebij;
-      TArray w_acij, l1_bk;
-      TArray f_kb, l2_acij;
-      TArray tmp;
+      TArray tmp = TAmanager.malloc<MatsT>("vvvttt");
 
       // l_{abc}^{ijk} contribution
       // w_{ij}^{mb} * l_{km}^{ac}
@@ -572,19 +605,19 @@ namespace ChronusQ{
       block fdc_lower = {k,0},     fdc_upper = {k+1,v_tr};
       block ldc_lower = {0,0,i,j}, ldc_upper = {v_tr,v_tr,i+1,j+1};
 
-      w_mbij("i,j,m,b") = W_mnie("i,j,m,b").block(wm_lower,wm_upper);
-      l2_ackm("a,c,k,m") = L2_("a,c,k,m").block(lm_lower,lm_upper);
-      w_acek("e,k,a,c") = W_amef("e,k,a,c").block(we_lower,we_upper);
-      l2_ebij("e,b,i,j") = L2_("e,b,i,j").block(le_lower,le_upper);
-      w_acij("a,c,i,j") = conj(this->antiSymMoints["vvoo"]("a,c,i,j").block(wdc_lower,wdc_upper));
-      l1_bk("b,k") = L1_("b,k").block(l1_lower,l1_upper);
-      f_kb("k,b") = F_me("k,b").block(fdc_lower,fdc_upper);
-      l2_acij("a,c,i,j") = L2_("a,c,i,j").block(ldc_lower,ldc_upper);
+      auto w_mbij  = W_mnie("i,j,m,b").block(wm_lower,wm_upper);
+      auto l2_ackm = L2_("a,c,k,m").block(lm_lower,lm_upper);
+      auto w_acek  = W_amef("e,k,a,c").block(we_lower,we_upper);
+      auto l2_ebij = L2_("e,b,i,j").block(le_lower,le_upper);
+      auto w_acij  = conj(this->antiSymMoints["vvoo"]("a,c,i,j").block(wdc_lower,wdc_upper));
+      auto l1_bk   = L1_("b,k").block(l1_lower,l1_upper);
+      auto f_kb    = F_me("k,b").block(fdc_lower,fdc_upper);
+      auto l2_acij = L2_("a,c,i,j").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k")  = w_mbij("i,j,m,b") * l2_ackm("a,c,k,m");
-      tmp("a,b,c,i,j,k") += l2_ebij("e,b,i,j") * w_acek("e,k,a,c");
-      tmp("a,b,c,i,j,k") -= w_acij("a,c,i,j") * l1_bk("b,k");
-      tmp("a,b,c,i,j,k") -= l2_acij("a,c,i,j") * f_kb("k,b");
+      tmp("a,b,c,i,j,k")  = w_mbij * l2_ackm;
+      tmp("a,b,c,i,j,k") += l2_ebij * w_acek;
+      tmp("a,b,c,i,j,k") -= w_acij * l1_bk;
+      tmp("a,b,c,i,j,k") -= l2_acij * f_kb;
 
       // l_{abc}^{kji} contribution
       // w_{kj}^{mb} * l_{im}^{ac}
@@ -600,19 +633,19 @@ namespace ChronusQ{
       fdc_lower = {i,0},     fdc_upper = {i+1,v_tr};
       ldc_lower = {0,0,k,j}, ldc_upper = {v_tr,v_tr,k+1,j+1};
 
-      w_mbij("k,j,m,b") = W_mnie("k,j,m,b").block(wm_lower,wm_upper);
-      l2_ackm("a,c,i,m") = L2_("a,c,i,m").block(lm_lower,lm_upper);
-      w_acek("e,i,a,c") = W_amef("e,i,a,c").block(we_lower,we_upper);
-      l2_ebij("e,b,k,j") = L2_("e,b,k,j").block(le_lower,le_upper);
-      w_acij("a,c,k,j") = conj(this->antiSymMoints["vvoo"]("a,c,k,j").block(wdc_lower,wdc_upper));
-      l1_bk("b,i") = L1_("b,i").block(l1_lower,l1_upper);
-      f_kb("i,b") = F_me("i,b").block(fdc_lower,fdc_upper);
-      l2_acij("a,c,k,j") = L2_("a,c,k,j").block(ldc_lower,ldc_upper);
+      auto w_mbkj  = W_mnie("k,j,m,b").block(wm_lower,wm_upper);
+      auto l2_acim = L2_("a,c,i,m").block(lm_lower,lm_upper);
+      auto w_acei  = W_amef("e,i,a,c").block(we_lower,we_upper);
+      auto l2_ebkj = L2_("e,b,k,j").block(le_lower,le_upper);
+      auto w_ackj  = conj(this->antiSymMoints["vvoo"]("a,c,k,j").block(wdc_lower,wdc_upper));
+      auto l1_bi   = L1_("b,i").block(l1_lower,l1_upper);
+      auto f_ib    = F_me("i,b").block(fdc_lower,fdc_upper);
+      auto l2_ackj = L2_("a,c,k,j").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("k,j,m,b") * l2_ackm("a,c,i,m");
-      tmp("a,b,c,i,j,k") -= l2_ebij("e,b,k,j") * w_acek("e,i,a,c");
-      tmp("a,b,c,i,j,k") += w_acij("a,c,k,j") * l1_bk("b,i");
-      tmp("a,b,c,i,j,k") += l2_acij("a,c,k,j") * f_kb("i,b");
+      tmp("a,b,c,i,j,k") -= w_mbkj * l2_acim;
+      tmp("a,b,c,i,j,k") -= l2_ebkj * w_acei;
+      tmp("a,b,c,i,j,k") += w_ackj * l1_bi;
+      tmp("a,b,c,i,j,k") += l2_ackj * f_ib;
 
       // l_{abc}^{ikj} contribution
       // w_{ik}^{mb} * l_{jm}^{ac}
@@ -628,24 +661,26 @@ namespace ChronusQ{
       fdc_lower = {j,0},     fdc_upper = {j+1,v_tr};
       ldc_lower = {0,0,i,k}, ldc_upper = {v_tr,v_tr,i+1,k+1};
 
-      w_mbij("i,k,m,b") = W_mnie("i,k,m,b").block(wm_lower,wm_upper);
-      l2_ackm("a,c,j,m") = L2_("a,c,j,m").block(lm_lower,lm_upper);
-      w_acek("e,j,a,c") = W_amef("e,j,a,c").block(we_lower,we_upper);
-      l2_ebij("e,b,i,k") = L2_("e,b,i,k").block(le_lower,le_upper);
-      w_acij("a,c,i,k") = conj(this->antiSymMoints["vvoo"]("a,c,i,k").block(wdc_lower,wdc_upper));
-      l1_bk("b,j") = L1_("b,j").block(l1_lower,l1_upper);
-      f_kb("j,b") = F_me("j,b").block(fdc_lower,fdc_upper);
-      l2_acij("a,c,i,k") = L2_("a,c,i,k").block(ldc_lower,ldc_upper);
+      auto w_mbik  = W_mnie("i,k,m,b").block(wm_lower,wm_upper);
+      auto l2_acjm = L2_("a,c,j,m").block(lm_lower,lm_upper);
+      auto w_acej  = W_amef("e,j,a,c").block(we_lower,we_upper);
+      auto l2_ebik = L2_("e,b,i,k").block(le_lower,le_upper);
+      auto w_acik  = conj(this->antiSymMoints["vvoo"]("a,c,i,k").block(wdc_lower,wdc_upper));
+      auto l1_bj   = L1_("b,j").block(l1_lower,l1_upper);
+      auto f_jb    = F_me("j,b").block(fdc_lower,fdc_upper);
+      auto l2_acik = L2_("a,c,i,k").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("i,k,m,b") * l2_ackm("a,c,j,m");
-      tmp("a,b,c,i,j,k") -= l2_ebij("e,b,i,k") * w_acek("e,j,a,c");
-      tmp("a,b,c,i,j,k") += w_acij("a,c,i,k") * l1_bk("b,j");
-      tmp("a,b,c,i,j,k") += l2_acij("a,c,i,k") * f_kb("j,b");
+      tmp("a,b,c,i,j,k") -= w_mbik * l2_acjm;
+      tmp("a,b,c,i,j,k") -= l2_ebik * w_acej;
+      tmp("a,b,c,i,j,k") += w_acik * l1_bj;
+      tmp("a,b,c,i,j,k") += l2_acik * f_jb;
 
       // apply A(ac/b)
       l3  = tmp.clone(); // deep copy for safety
       l3("a,b,c,i,j,k") -= tmp("b,a,c,i,j,k");
       l3("a,b,c,i,j,k") -= tmp("a,c,b,i,j,k");
+      
+      TAmanager.free("vvvttt", std::move(tmp));
     };
 
     // split global_world
@@ -695,8 +730,8 @@ namespace ChronusQ{
           // round-robin distribute the loop
           if (this->ccSettings_.triplesMPI && global_iter % size != rank) continue;
 
-          TArray m3_ijk;
-          TArray l3_ijk_d;
+          TArray m3_ijk   = TAmanager.malloc<MatsT>("vvvttt");
+          TArray l3_ijk_d = TAmanager.malloc<MatsT>("vvvttt");
 
           compute_m3(i,j,k,m3_ijk);
           compute_l3(i,j,k,l3_ijk_d);
@@ -706,9 +741,13 @@ namespace ChronusQ{
           size_t nO2 = nO * nO;
           size_t nOV = nO * nV;
 
-          TArray l3_ijk_a = l3_ijk_d.clone();
-          TArray l3_ijk_b = l3_ijk_d.clone();
-          TArray l3_ijk_c = l3_ijk_d.clone();
+          TArray l3_ijk_a = TAmanager.malloc<MatsT>("vvvttt");
+          TArray l3_ijk_b = TAmanager.malloc<MatsT>("vvvttt");
+          TArray l3_ijk_c = TAmanager.malloc<MatsT>("vvvttt");
+
+          l3_ijk_a = l3_ijk_d.clone(); // another v3t3 object
+          l3_ijk_b = l3_ijk_d.clone(); // another v3t3 object
+          l3_ijk_c = l3_ijk_d.clone(); // another v3t3 object
 
           // offset i,j,k of blocked TiledArray object, otherwise wrong eps[x] index
           size_t i_off = i*this->ccSettings_.blksize;
@@ -716,7 +755,7 @@ namespace ChronusQ{
           size_t k_off = k*this->ccSettings_.blksize;
 
           // A denominator: <ijkabc|F|ijkabc>
-          TA::foreach_inplace(l3_ijk_a, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_ijk_a, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -740,7 +779,7 @@ namespace ChronusQ{
           });
 
           // B denominator: <ijkabc|H1|ijkabc>
-          TA::foreach_inplace(l3_ijk_b, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_ijk_b, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -764,7 +803,7 @@ namespace ChronusQ{
           });
 
           // C denominator: <ijkabc|H1+H2|ijkabc>
-          TA::foreach_inplace(l3_ijk_c, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_ijk_c, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -812,7 +851,7 @@ namespace ChronusQ{
           });
 
           // D denominator: <ijkabc|H1+H2+H3|ijkabc
-          TA::foreach_inplace(l3_ijk_d, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_ijk_d, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -920,6 +959,12 @@ namespace ChronusQ{
           this->CRCC23Energy_C += tmp_en_c;
           this->CRCC23Energy_D += tmp_en_d;
 
+          TAmanager.free("vvvttt", std::move(m3_ijk));
+          TAmanager.free("vvvttt", std::move(l3_ijk_a));
+          TAmanager.free("vvvttt", std::move(l3_ijk_b));
+          TAmanager.free("vvvttt", std::move(l3_ijk_c));
+          TAmanager.free("vvvttt", std::move(l3_ijk_d));
+
           std::cout << "  i: " << i << " j: " << j << " k: " << k << " done in " << tock(ijk_start) << "s"
                     << " from global_iter " << global_iter << " in rank " << rank << std::endl;
         }
@@ -959,12 +1004,7 @@ namespace ChronusQ{
       typedef std::vector<size_t> block;
 
       // grab relevant blocks
-      TArray w_mbij;
-      TArray w_acek;
-      TArray t2_ebij;
-      TArray t2_ackm;
-
-      TArray tmp;
+      TArray tmp = TAmanager.malloc<MatsT>("tttooo");
 
       // m_{abc}^{ijk} contribution
       // w_{mb}^{ij}
@@ -980,14 +1020,14 @@ namespace ChronusQ{
       block t2m_lower = {a,c,0,0};
       block t2m_upper = {a+1,c+1,o_tr,o_tr};
 
-      w_mbij("m,b,i,j") = W_mbij("m,b,i,j").block(wm_lower,wm_upper);
-      w_acek("a,c,e,k") = W_abei("a,c,e,k").block(we_lower,we_upper);
-      t2_ebij("e,b,i,j") = T2_("e,b,i,j").block(t2e_lower,t2e_upper);
-      t2_ackm("a,c,k,m") = T2_("a,c,k,m").block(t2m_lower,t2m_upper);
+      auto w_mbij  = W_mbij("m,b,i,j").block(wm_lower,wm_upper);
+      auto w_acek  = W_abei("a,c,e,k").block(we_lower,we_upper);
+      auto t2_ebij = T2_("e,b,i,j").block(t2e_lower,t2e_upper);
+      auto t2_ackm = T2_("a,c,k,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k")  = w_mbij("m,b,i,j") * t2_ackm("a,c,k,m");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,b,i,j") * w_acek("a,c,e,k");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,b,i,j") * F_me("m,e") * t2_ackm("a,c,k,m");
+      tmp("a,b,c,i,j,k")  = w_mbij * t2_ackm;
+      tmp("a,b,c,i,j,k") += t2_ebij * w_acek;
+      tmp("a,b,c,i,j,k") -= t2_ebij * F_me("m,e") * t2_ackm;
 
       // t_{bac}^{ijk} contribution
       // w_{ma}^{ij}
@@ -1003,14 +1043,14 @@ namespace ChronusQ{
       t2m_lower = {b,c,0,0};
       t2m_upper = {b+1,c+1,o_tr,o_tr};
 
-      w_mbij("m,a,i,j") = W_mbij("m,a,i,j").block(wm_lower,wm_upper);
-      w_acek("b,c,e,k") = W_abei("b,c,e,k").block(we_lower,we_upper);
-      t2_ebij("e,a,i,j") = T2_("e,a,i,j").block(t2e_lower,t2e_upper);
-      t2_ackm("b,c,k,m") = T2_("b,c,k,m").block(t2m_lower,t2m_upper);
+      auto w_maij  = W_mbij("m,a,i,j").block(wm_lower,wm_upper);
+      auto w_bcek  = W_abei("b,c,e,k").block(we_lower,we_upper);
+      auto t2_eaij = T2_("e,a,i,j").block(t2e_lower,t2e_upper);
+      auto t2_bckm = T2_("b,c,k,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("m,a,i,j") * t2_ackm("b,c,k,m");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,a,i,j") * w_acek("b,c,e,k");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,a,i,j") * F_me("m,e") * t2_ackm("b,c,k,m");
+      tmp("a,b,c,i,j,k") -= w_maij * t2_bckm;
+      tmp("a,b,c,i,j,k") -= t2_eaij * w_bcek;
+      tmp("a,b,c,i,j,k") += t2_eaij * F_me("m,e") * t2_bckm;
 
       // t_{acb}^{ijk} contribution
       // w_{mc}^{ij}
@@ -1026,19 +1066,21 @@ namespace ChronusQ{
       t2m_lower = {a,b,0,0};
       t2m_upper = {a+1,b+1,o_tr,o_tr};
 
-      w_mbij("m,c,i,j") = W_mbij("m,c,i,j").block(wm_lower,wm_upper);
-      w_acek("a,b,e,k") = W_abei("a,b,e,k").block(we_lower,we_upper);
-      t2_ebij("e,c,i,j") = T2_("e,c,i,j").block(t2e_lower,t2e_upper);
-      t2_ackm("a,b,k,m") = T2_("a,b,k,m").block(t2m_lower,t2m_upper);
+      auto w_mcij  = W_mbij("m,c,i,j").block(wm_lower,wm_upper);
+      auto w_abek  = W_abei("a,b,e,k").block(we_lower,we_upper);
+      auto t2_ecij = T2_("e,c,i,j").block(t2e_lower,t2e_upper);
+      auto t2_abkm = T2_("a,b,k,m").block(t2m_lower,t2m_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("m,c,i,j") * t2_ackm("a,b,k,m");
-      tmp("a,b,c,i,j,k") -= t2_ebij("e,c,i,j") * w_acek("a,b,e,k");
-      tmp("a,b,c,i,j,k") += t2_ebij("e,c,i,j") * F_me("m,e") * t2_ackm("a,b,k,m");
+      tmp("a,b,c,i,j,k") -= w_mcij * t2_abkm;
+      tmp("a,b,c,i,j,k") -= t2_ecij * w_abek;
+      tmp("a,b,c,i,j,k") += t2_ecij * F_me("m,e") * t2_abkm;
 
       // apply A(ij/k)
       m3 = tmp.clone(); // deep copy for safety
       m3("a,b,c,i,j,k") -= tmp("a,b,c,k,j,i");
       m3("a,b,c,i,j,k") -= tmp("a,b,c,i,k,j");
+
+      TAmanager.free("tttooo", std::move(tmp));
     };
 
     // lambda to compute <0|(1+L1+L2) Hbar|ijkabc>
@@ -1047,11 +1089,7 @@ namespace ChronusQ{
       // for blocking purposes
       typedef std::vector<size_t> block;
 
-      TArray w_mbij, l2_ackm;
-      TArray w_acek, l2_ebij;
-      TArray w_acij, l1_bk;
-      TArray f_kb, l2_acij;
-      TArray tmp;
+      TArray tmp = TAmanager.malloc<MatsT>("tttooo");
 
       // l_{abc}^{ijk} contribution
       // w_{ij}^{mb} * l_{km}^{ac}
@@ -1067,19 +1105,19 @@ namespace ChronusQ{
       block fdc_lower = {0,b},     fdc_upper = {o_tr,b+1};
       block ldc_lower = {a,c,0,0}, ldc_upper = {a+1,c+1,o_tr,o_tr};
 
-      w_mbij("i,j,m,b") = W_mnie("i,j,m,b").block(wm_lower,wm_upper);
-      l2_ackm("a,c,k,m") = L2_("a,c,k,m").block(lm_lower,lm_upper);
-      w_acek("e,k,a,c") = W_amef("e,k,a,c").block(we_lower,we_upper);
-      l2_ebij("e,b,i,j") = L2_("e,b,i,j").block(le_lower,le_upper);
-      w_acij("a,c,i,j") = conj(this->antiSymMoints["vvoo"]("a,c,i,j").block(wdc_lower,wdc_upper));
-      l1_bk("b,k") = L1_("b,k").block(l1_lower,l1_upper);
-      f_kb("k,b") = F_me("k,b").block(fdc_lower,fdc_upper);
-      l2_acij("a,c,i,j") = L2_("a,c,i,j").block(ldc_lower,ldc_upper);
+      auto w_mbij  = W_mnie("i,j,m,b").block(wm_lower,wm_upper);
+      auto l2_ackm = L2_("a,c,k,m").block(lm_lower,lm_upper);
+      auto w_acek  = W_amef("e,k,a,c").block(we_lower,we_upper);
+      auto l2_ebij = L2_("e,b,i,j").block(le_lower,le_upper);
+      auto w_acij  = conj(this->antiSymMoints["vvoo"]("a,c,i,j").block(wdc_lower,wdc_upper));
+      auto l1_bk   = L1_("b,k").block(l1_lower,l1_upper);
+      auto f_kb    = F_me("k,b").block(fdc_lower,fdc_upper);
+      auto l2_acij = L2_("a,c,i,j").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k")  = w_mbij("i,j,m,b") * l2_ackm("a,c,k,m");
-      tmp("a,b,c,i,j,k") += l2_ebij("e,b,i,j") * w_acek("e,k,a,c");
-      tmp("a,b,c,i,j,k") -= w_acij("a,c,i,j") * l1_bk("b,k");
-      tmp("a,b,c,i,j,k") -= l2_acij("a,c,i,j") * f_kb("k,b");
+      tmp("a,b,c,i,j,k")  = w_mbij * l2_ackm;
+      tmp("a,b,c,i,j,k") += l2_ebij * w_acek;
+      tmp("a,b,c,i,j,k") -= w_acij * l1_bk;
+      tmp("a,b,c,i,j,k") -= l2_acij * f_kb;
 
       // l_{bac}^{ijk} contribution
       // w_{ij}^{ma} * l_{km}^{bc}
@@ -1095,19 +1133,19 @@ namespace ChronusQ{
       fdc_lower = {0,a},     fdc_upper = {o_tr,a+1};
       ldc_lower = {b,c,0,0}, ldc_upper = {b+1,c+1,o_tr,o_tr};
 
-      w_mbij("i,j,m,a") = W_mnie("i,j,m,a").block(wm_lower,wm_upper);
-      l2_ackm("b,c,k,m") = L2_("b,c,k,m").block(lm_lower,lm_upper);
-      w_acek("e,k,b,c") = W_amef("e,k,b,c").block(we_lower,we_upper);
-      l2_ebij("e,a,i,j") = L2_("e,a,i,j").block(le_lower,le_upper);
-      w_acij("b,c,i,j") = conj(this->antiSymMoints["vvoo"]("b,c,i,j").block(wdc_lower,wdc_upper));
-      l1_bk("a,k") = L1_("a,k").block(l1_lower,l1_upper);
-      f_kb("k,a") = F_me("k,a").block(fdc_lower,fdc_upper);
-      l2_acij("b,c,i,j") = L2_("b,c,i,j").block(ldc_lower,ldc_upper);
+      auto w_maij  = W_mnie("i,j,m,a").block(wm_lower,wm_upper);
+      auto l2_bckm = L2_("b,c,k,m").block(lm_lower,lm_upper);
+      auto w_bcek  = W_amef("e,k,b,c").block(we_lower,we_upper);
+      auto l2_eaij = L2_("e,a,i,j").block(le_lower,le_upper);
+      auto w_bcij  = conj(this->antiSymMoints["vvoo"]("b,c,i,j").block(wdc_lower,wdc_upper));
+      auto l1_ak   = L1_("a,k").block(l1_lower,l1_upper);
+      auto f_ka    = F_me("k,a").block(fdc_lower,fdc_upper);
+      auto l2_bcij = L2_("b,c,i,j").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("i,j,m,a") * l2_ackm("b,c,k,m");
-      tmp("a,b,c,i,j,k") -= l2_ebij("e,a,i,j") * w_acek("e,k,b,c");
-      tmp("a,b,c,i,j,k") += w_acij("b,c,i,j") * l1_bk("a,k");
-      tmp("a,b,c,i,j,k") += l2_acij("b,c,i,j") * f_kb("k,a");
+      tmp("a,b,c,i,j,k") -= w_maij * l2_bckm;
+      tmp("a,b,c,i,j,k") -= l2_eaij * w_bcek;
+      tmp("a,b,c,i,j,k") += w_bcij * l1_ak;
+      tmp("a,b,c,i,j,k") += l2_bcij * f_ka;
 
       // l_{acb}^{ijk} contribution
       // w_{ij}^{mb} * l_{km}^{ac}
@@ -1123,24 +1161,26 @@ namespace ChronusQ{
       fdc_lower = {0,c},     fdc_upper = {o_tr,c+1};
       ldc_lower = {a,b,0,0}, ldc_upper = {a+1,b+1,o_tr,o_tr};
 
-      w_mbij("i,j,m,c") = W_mnie("i,j,m,c").block(wm_lower,wm_upper);
-      l2_ackm("a,b,k,m") = L2_("a,b,k,m").block(lm_lower,lm_upper);
-      w_acek("e,k,a,b") = W_amef("e,k,a,b").block(we_lower,we_upper);
-      l2_ebij("e,c,i,j") = L2_("e,c,i,j").block(le_lower,le_upper);
-      w_acij("a,b,i,j") = conj(this->antiSymMoints["vvoo"]("a,b,i,j").block(wdc_lower,wdc_upper));
-      l1_bk("c,k") = L1_("c,k").block(l1_lower,l1_upper);
-      f_kb("k,c") = F_me("k,c").block(fdc_lower,fdc_upper);
-      l2_acij("a,b,i,j") = L2_("a,b,i,j").block(ldc_lower,ldc_upper);
+      auto w_mcij  = W_mnie("i,j,m,c").block(wm_lower,wm_upper);
+      auto l2_abkm = L2_("a,b,k,m").block(lm_lower,lm_upper);
+      auto w_abek  = W_amef("e,k,a,b").block(we_lower,we_upper);
+      auto l2_ecij = L2_("e,c,i,j").block(le_lower,le_upper);
+      auto w_abij  = conj(this->antiSymMoints["vvoo"]("a,b,i,j").block(wdc_lower,wdc_upper));
+      auto l1_ck   = L1_("c,k").block(l1_lower,l1_upper);
+      auto f_kc    = F_me("k,c").block(fdc_lower,fdc_upper);
+      auto l2_abij = L2_("a,b,i,j").block(ldc_lower,ldc_upper);
 
-      tmp("a,b,c,i,j,k") -= w_mbij("i,j,m,c") * l2_ackm("a,b,k,m");
-      tmp("a,b,c,i,j,k") -= l2_ebij("e,c,i,j") * w_acek("e,k,a,b");
-      tmp("a,b,c,i,j,k") += w_acij("a,b,i,j") * l1_bk("c,k");
-      tmp("a,b,c,i,j,k") += l2_acij("a,b,i,j") * f_kb("k,c");
+      tmp("a,b,c,i,j,k") -= w_mcij * l2_abkm;
+      tmp("a,b,c,i,j,k") -= l2_ecij * w_abek;
+      tmp("a,b,c,i,j,k") += w_abij * l1_ck;
+      tmp("a,b,c,i,j,k") += l2_abij * f_kc;
 
       // apply A(ij/k)
       l3  = tmp.clone(); // deep copy for safety
       l3("a,b,c,i,j,k") -= tmp("a,b,c,k,j,i");
       l3("a,b,c,i,j,k") -= tmp("a,b,c,i,k,j");
+
+      TAmanager.free("tttooo", std::move(tmp));
     };
 
     // split global_world
@@ -1190,8 +1230,8 @@ namespace ChronusQ{
           // round-robin distribute the loop
           if (this->ccSettings_.triplesMPI && global_iter % size != rank) continue;
 
-          TArray m3_abc;
-          TArray l3_abc_d;
+          TArray m3_abc   = TAmanager.malloc<MatsT>("tttooo");
+          TArray l3_abc_d = TAmanager.malloc<MatsT>("tttooo");
 
           compute_m3(a,b,c,m3_abc);
           compute_l3(a,b,c,l3_abc_d);
@@ -1201,9 +1241,13 @@ namespace ChronusQ{
           size_t nO2 = nO * nO;
           size_t nOV = nO * nV;
 
-          TArray l3_abc_a = l3_abc_d.clone();
-          TArray l3_abc_b = l3_abc_d.clone();
-          TArray l3_abc_c = l3_abc_d.clone();
+          TArray l3_abc_a = TAmanager.malloc<MatsT>("tttooo");
+          TArray l3_abc_b = TAmanager.malloc<MatsT>("tttooo");
+          TArray l3_abc_c = TAmanager.malloc<MatsT>("tttooo");
+
+          l3_abc_a = l3_abc_d.clone(); // another t3o3 object
+          l3_abc_b = l3_abc_d.clone(); // another t3o3 object
+          l3_abc_c = l3_abc_d.clone(); // another t3o3 object
 
           // offset a,b,c of blocked TiledArray object, otherwise wrong eps[x] index
           size_t a_off = a*this->ccSettings_.blksize;
@@ -1211,7 +1255,7 @@ namespace ChronusQ{
           size_t c_off = c*this->ccSettings_.blksize;
 
           // A denominator: <ijkabc|F|ijkabc>
-          TA::foreach_inplace(l3_abc_a, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_abc_a, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -1235,7 +1279,7 @@ namespace ChronusQ{
           });
 
           // B denominator: <ijkabc|H1|ijkabc>
-          TA::foreach_inplace(l3_abc_b, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_abc_b, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -1259,7 +1303,7 @@ namespace ChronusQ{
           });
 
           // C denominator: <ijkabc|H1+H2|ijkabc>
-          TA::foreach_inplace(l3_abc_c, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_abc_c, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -1307,7 +1351,7 @@ namespace ChronusQ{
           });
 
           // D denominator: <ijkabc|H1+H2+H3|ijkabc
-          TA::foreach_inplace(l3_abc_d, [&, this](TA::TensorZ &tile){
+          TA::foreach_inplace(l3_abc_d, [&, this](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -1415,22 +1459,28 @@ namespace ChronusQ{
           this->CRCC23Energy_C += tmp_en_c;
           this->CRCC23Energy_D += tmp_en_d;
 
+          TAmanager.free("tttooo", std::move(m3_abc));
+          TAmanager.free("tttooo", std::move(l3_abc_a));
+          TAmanager.free("tttooo", std::move(l3_abc_b));
+          TAmanager.free("tttooo", std::move(l3_abc_c));
+          TAmanager.free("tttooo", std::move(l3_abc_d));
+
           std::cout << "  a: " << a << " b: " << b << " c: " << c << " done in " << tock(abc_start) << "s"
                     << " from global_iter " << global_iter << " in rank " << rank << std::endl;
         }
 
-        this_world.gop.fence();
-        global_world.gop.fence();
+    this_world.gop.fence();
+    global_world.gop.fence();
 
-        TA::set_default_world(global_world);
+    TA::set_default_world(global_world);
 
-        // sum over contribution if MPI parallel is run
-        if (this->ccSettings_.triplesMPI && size >1) {
-          global_world.gop.sum(this->CRCC23Energy_A);
-          global_world.gop.sum(this->CRCC23Energy_B);
-          global_world.gop.sum(this->CRCC23Energy_C);
-          global_world.gop.sum(this->CRCC23Energy_D);
-        }
+    // sum over contribution if MPI parallel is run
+    if (this->ccSettings_.triplesMPI && size >1) {
+      global_world.gop.sum(this->CRCC23Energy_A);
+      global_world.gop.sum(this->CRCC23Energy_B);
+      global_world.gop.sum(this->CRCC23Energy_C);
+      global_world.gop.sum(this->CRCC23Energy_D);
+    }
   }
 
 }; // namespace

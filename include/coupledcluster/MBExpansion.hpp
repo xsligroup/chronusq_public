@@ -32,6 +32,8 @@ namespace ChronusQ {
   template <typename MatsT>
   class EOMCCBase;
 
+  enum class MBTensorSymmetry { ANTI_SYMMETRIC, RCCSD };
+
   /// One single tensor of coupled cluster, such as T1, T2, L1, L2, R1, R2.
   template <typename MatsT>
   class MBTensor {
@@ -43,14 +45,16 @@ namespace ChronusQ {
     std::string ta_labels_ = ""; // eg: a,b,i,j
     std::string name_; // eg: OneBody, TwoBody etc
     int rank_;
+    MBTensorSymmetry symmetry_; // This controls the symmetry of the tensor
     double coefficient_; // coefficient for many body contribution, eg, 0.25 for vvoo type tensor
     std::vector<std::vector<int>> index_of_vo_groups_; //space index grouped by space. Eg. vvoo results in {{0,1},{2,3}}, vooo results in {{0},{1,2,3}}, lhcc results in {{0},{1},{2,3}}
     std::vector<size_t> dim_; // number of elements of each rank, lhcc results in {nL, nH, nC, nC}
     std::vector<size_t> dims_by_type_; // number of elements of each type. Eg vvoo results in {nV*(nV-1)/2, nO*(nO-1)/2}, lhcc results in {nL, nH, nC*(nC-1)/2}
     size_t outOfBound_ = 1;
     public:
-    MBTensor(std::string vir_index_range, std::string occ_index_range, std::string name, bool memset = false):
-        name_(name){
+    MBTensor(std::string vir_index_range, std::string occ_index_range, std::string name,
+             bool memset = false, MBTensorSymmetry symmetry = MBTensorSymmetry::ANTI_SYMMETRIC)
+          : name_(name), symmetry_(symmetry) {
         vir_index_range_ = vir_index_range.substr(0, vir_index_range.length()); 
         occ_index_range_ = occ_index_range.substr(0, occ_index_range.length());
         shape_ = vir_index_range_ + occ_index_range_;
@@ -126,6 +130,18 @@ namespace ChronusQ {
           outOfBound_ *= this_dim;
         }
         outOfBound_++;
+      if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+        if (shape_ != "vvoo") {
+          CErr("MBTensor::setSymmetricalElem for RCCSD type tensor only implemented for vvoo shape.");
+        }
+        size_t nV = dim_[0], nO = dim_[2];
+        size_t nOV = nV * nO;
+        outOfBound_ = nOV * (nOV + 1) / 2;
+        coefficient_ = 1.0;
+      }
+      if (rank() == 2 and symmetry_ == MBTensorSymmetry::RCCSD) {
+        coefficient_ = 2.0;
+      }
     }
 
     MBTensor() = delete;
@@ -151,6 +167,9 @@ namespace ChronusQ {
     /// get rank of tensor
     size_t rank() const {return shape_.length();}
 
+    /// get symmetry of the tensor
+    MBTensorSymmetry symmetry() const {return symmetry_;}
+
     /// get shape of tensor, eg vvoo
     const std::string shape() const {return shape_;}
 
@@ -170,11 +189,15 @@ namespace ChronusQ {
     /// get space of the TA object
     size_t size() const ;
 
+    /// get dimension of the tensor, eg. for vvoo type tensor, return {nV, nV, nO, nO}
+    const std::vector<size_t>& dim() const {return dim_;}
+
     /// take conjugate of the tensor
     void conjugate();
 
     /// calculate the dot product of the tensor with other, if conjA is true, do inner product
     MatsT dot(const MBTensor<MatsT> &other, bool conjA) const;
+    MatsT dot_rank4_RCCSD(const MBTensor<MatsT> &other, bool conjA) const;
 
     /// add alpha times X into itself 
     void axpy(MatsT alpha, const MBTensor<MatsT> &X);
@@ -183,12 +206,15 @@ namespace ChronusQ {
     void scale(MatsT factor) ;
 
     /// average symmetrical elements in the tensor object 
-    void enforceSymmetry(); 
+    void enforceSymmetry();
 
     void print(std::ostream& out) const{
       out << name_ << std::endl << V_ << std::endl;
     }
     private:
+    /// average symmetrical elements in the tensor object with RCCSD symmetry, eg, A_ijab = A_jiba
+    void symmetrize_rank4_RCCSD();
+
     /// average symmetrical elements in the tensor object with 2 fold symmetry, eg, A_ijxx=-A_jixx
     void symmetrize_two_indices(int ii, int jj);
       
@@ -227,6 +253,9 @@ namespace ChronusQ {
     }
     public:
     double sign(std::vector<size_t> pqrs) const{
+      if (rank() == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+        return 1.0;
+      }
       if (pqrs.size() != shape_.size())
        CErr("MBTensor::sign Tensor indices must correspond to the correct rank.");
 
@@ -252,6 +281,21 @@ namespace ChronusQ {
       if (pqrs.size() != shape_.size())
        CErr("MBTensor::toCompoundIdx Tensor indices must correspond to the correct rank.");
       size_t n = pqrs.size();
+
+      if (n == 4 and symmetry_ == MBTensorSymmetry::RCCSD) {
+        if (shape_ != "vvoo") {
+          CErr("MBTensor::toCompoundIdx for RCCSD type tensor only implemented for vvoo shape.");
+        }
+        if (pqrs[0] > pqrs[1] or (pqrs[0] == pqrs[1] and pqrs[2] > pqrs[3])) {
+          if (i_less_j_only) return outOfBound_;
+          std::swap(pqrs[0], pqrs[1]);
+          std::swap(pqrs[2], pqrs[3]);
+        }
+        // size_t ik = pqrs[0] * dim_[2] + pqrs[2];
+        size_t nO = dim_[2];
+        size_t jl = pqrs[1] * nO + pqrs[3];
+        return jl*(jl+1)/2 + pqrs[0] * nO + pqrs[2]; // jl*(jl+1)/2 + ik
+      }
 
       //bubble sort
       for (auto i = 0; i < n - 1; ++i) {
@@ -305,7 +349,7 @@ namespace ChronusQ {
     /// construct MBExpansion with instructions of each tensor. The variable tensor_info should be
     /// virtural_space_range_tensor_1, occupied_space_range_tensor_1, name_tensor_1
     /// virtural_space_range_tensor_2, occupied_space_range_tensor_2, name_tensor_2
-    MBExpansion(std::vector<std::string> tensor_info, bool memset = false);
+    MBExpansion(std::vector<std::string> tensor_info, bool memset = false, MBTensorSymmetry symmetry = MBTensorSymmetry::ANTI_SYMMETRIC);
     /// copy constructor
     MBExpansion(const MBExpansion<MatsT>& other);
     MBExpansion(MBExpansion<MatsT>&&);
@@ -343,7 +387,7 @@ namespace ChronusQ {
 
     void swap(MBExpansion<MatsT> &other);
 
-    void initialize(std::vector<std::string> tensor_info, bool memset);
+    void initialize(std::vector<std::string> tensor_info, bool memset, MBTensorSymmetry symmetry = MBTensorSymmetry::ANTI_SYMMETRIC);
  
     MatsT dot(const MBExpansion<MatsT> &other, bool conjA = true) const;
 
@@ -419,12 +463,13 @@ namespace ChronusQ {
     
     std::vector<MBExpansion<MatsT>> vecs_;
 
-    void initialize(std::vector<std::string> &tensor_info, size_t nVec);
+    void initialize(std::vector<std::string> &tensor_info, size_t nVec, MBTensorSymmetry symmetry);
    
     SafeFile & savFile_; 
   public:
-    MBExpansionSet(std::vector<std::string> tensor_info, size_t nVec, SafeFile & savFile): savFile_(savFile){
-      initialize(tensor_info, nVec);
+    MBExpansionSet(std::vector<std::string> tensor_info, size_t nVec, SafeFile & savFile,
+                   MBTensorSymmetry symmetry = MBTensorSymmetry::ANTI_SYMMETRIC): savFile_(savFile){
+      initialize(tensor_info, nVec, symmetry);
     }
 
     virtual size_t length() const override {
@@ -482,7 +527,7 @@ namespace ChronusQ {
       }
       this->sizeCheck(shift + nVec, "in MBExpansionSet<MatsT>::print");
       for (size_t i = 0; i < nVec; i++) {
-        get(i + shift).print(out, str + "(" + std::to_string(i) + ")");
+        get(i + shift).print(out, str + "(" + std::to_string(i + shift) + ")");
       }
     }
 

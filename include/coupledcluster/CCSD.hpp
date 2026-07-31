@@ -62,15 +62,9 @@ namespace ChronusQ{
     if (not Fae_.is_initialized()){
       Fae_ = TAmanager.malloc<MatsT>("vv");
     }
-//    if (not Fae_wDiag_.is_initialized()){
-//      Fae_wDiag_ = TAmanager.malloc<MatsT>("vv");
-//    }
     if (not Fmi_.is_initialized()){
       Fmi_ = TAmanager.malloc<MatsT>("oo");
     }
-//    if (not Fmi_wDiag_.is_initialized()){
-//      Fmi_wDiag_ = TAmanager.malloc<MatsT>("oo");
-//    }
     if (not Fme_.is_initialized()){
       Fme_ = TAmanager.malloc<MatsT>("ov");
     }
@@ -90,7 +84,7 @@ namespace ChronusQ{
   void CCSD<MatsT>::initAmplitudes() {
     if(this->ccSettings_.restart){
       size_t size = this->T_.length();
-      dcomplex * t_amp = CQMemManager::get().malloc<dcomplex>(size);
+      MatsT * t_amp = CQMemManager::get().malloc<MatsT>(size);
       TA::get_default_world().gop.fence();
       if (MPIRank() == 0) this->savFile_.readData("/CC/T_AMPLITUDE", t_amp);
       if (MPIRank() == 0) this->savFile_.readData("/CC/REFERENCE_ENERGY",   &this->intermediates_.E_ref);
@@ -193,35 +187,69 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  size_t CCBase<MatsT>::estimate_mem_peak() const {
+  size_t CCSD<MatsT>::estimate_mem_peak() const {
+    // will need further checking as the TA objects are dynamically allocated and freed at runtime
     TAManager &TAmanager = TAManager::get();
 
     size_t nDIIS = this->ccSettings_.useDIIS ? this->ccSettings_.nDIIS : 0;
     size_t count = 0;
-    count += 8 * TAmanager.elem_per_TA("oo");
-    count += 2 * TAmanager.elem_per_TA("oooo");
-    count += 5 * TAmanager.elem_per_TA("ov");
-    count += 1 * TAmanager.elem_per_TA("ovoo");
-    count += 1 * TAmanager.elem_per_TA("ovvo");
-    count += 7 * TAmanager.elem_per_TA("vo");
-    count += 1 * TAmanager.elem_per_TA("vooo");
-    count += 1 * TAmanager.elem_per_TA("vovo");
-    count += 8 * TAmanager.elem_per_TA("vv");
-    count += 7 * TAmanager.elem_per_TA("vvoo");
-    count += 1 * TAmanager.elem_per_TA("vvvo");
-    count += 2 * TAmanager.elem_per_TA("vvvv");
+    //                                             1         2       3       4         5           6     7      8
+    count += 8 * TAmanager.elem_per_TA("oo");   // muX_oo,   muY_oo, muZ_oo, coreH_oo, fock_oo,    Fmi_, TMPmj, moDen_oo
+    count += 6 * TAmanager.elem_per_TA("ov");   // muX_ov,   muY_ov, muZ_ov, coreH_ov, fock_ov,    Fme_
+    count += 7 * TAmanager.elem_per_TA("vo");   // muX_vo,   muY_vo, muZ_vo, coreH_vo, fock_vo,    Dai,  T1
+    count += 7 * TAmanager.elem_per_TA("vv");   // muX_vv,   muY_vv, muZ_vv, coreH_vv, fock_vv,    Fae_, TMPbe
+    count += 2 * TAmanager.elem_per_TA("oooo"); // ERI_oooo, Wmnij_
+    count += 1 * TAmanager.elem_per_TA("ovoo"); // TMPmbij
+    count += 1 * TAmanager.elem_per_TA("vooo"); // ERI_vooo
+    count += 1 * TAmanager.elem_per_TA("ovvo"); // Wmbej_,   tmp
+    count += 1 * TAmanager.elem_per_TA("vovo"); // ERI_vovo
+    count += 7 * TAmanager.elem_per_TA("vvoo"); // ERI_vvoo, Dabij,  T2,     tau_,     tilde_tau_, tmp,  Pabij,
+    count += 1 * TAmanager.elem_per_TA("vvvo"); // ERI_vvvo,
+    count += 2 * TAmanager.elem_per_TA("vvvv"); // ERI_vvvv, W_abef
 
     if (nDIIS) {
-      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vo");
-      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vvoo");
-      if (this->ccSettings_.cctype == CC_TYPE::CCSDT)  {
-        count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vvvooo");
-      }
+      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vo");   // T1 DIIS copy?
+      count += (nDIIS + 1) * 2 * TAmanager.elem_per_TA("vvoo"); // T2 DIIS copy?
     }
 
+    // CCSD(T) additional objects
     if (this->ccSettings_.pertT3) {
-      count += 3 * TAmanager.elem_per_TA("vvvooo");
+      size_t count_pertt3 = 0;
+
+      if (this->ccSettings_.loop_abc) {
+        // containers are t3o3 if looping over abc
+        count_pertt3 += 3 * TAmanager.elem_per_TA("tttooo"); // vt1, vt2, tmp
+      } else {
+        // containers are v3t3 if looping over ijk
+        count_pertt3 += 3 * TAmanager.elem_per_TA("vvvttt"); // vt1, vt2, tmp
+      }
+
+      // account for MPI parallelization
+      auto &global_world = TA::get_default_world();
+      const auto size = global_world.size();
+      if (this->ccSettings_.triplesMPI && size > 1) count_pertt3 = size * count_pertt3;
+      count += count_pertt3;
     }
+
+    // CR-CC(2,3) additional objects
+    if (this->ccSettings_.crcc) {
+      size_t count_crcc = 0;
+
+      if (this->ccSettings_.loop_abc) {
+        // containers are t3o3 if looping over abc
+        count_crcc += 6 * TAmanager.elem_per_TA("tttooo"); // m3, l3a, l3b, l3c, l3d, tmp
+      } else {
+        // containers are v3t3 if looping over ijk
+        count_crcc += 6 * TAmanager.elem_per_TA("vvvttt"); // m3, l3a, l3b, l3c, l3d, tmp
+      }
+
+      // account for MPI parallelization
+      auto &global_world = TA::get_default_world();
+      const auto size = global_world.size();
+      if (this->ccSettings_.triplesMPI && size > 1) count_crcc = size * count_crcc;
+      count += count_crcc;
+    }
+
     return count * sizeof(MatsT);
   }
 
@@ -314,7 +342,7 @@ namespace ChronusQ{
 
         if(this->ccSettings_.save){
           size_t size = this->T_.length();
-          dcomplex * t_amp = CQMemManager::get().malloc<dcomplex>(size);
+          MatsT * t_amp = CQMemManager::get().malloc<MatsT>(size);
           TA::get_default_world().gop.fence();
           this->T_.toRaw(t_amp, false);
           TA::get_default_world().gop.fence();
@@ -457,8 +485,6 @@ namespace ChronusQ{
 #ifdef DEBUG_CCSD
     std::cout << "Fae_4:" << Fae_ << std::endl;
 #endif
-
-//    Fae_("a,e") = Fae_wDiag_("a,e") - this->fockMatrix_ta["vv_diag"]("a,e");
   }
 
   /**
@@ -472,8 +498,6 @@ namespace ChronusQ{
     Fmi_("m,i") -= this->T1_("e,n") * conj(this->antiSymMoints["vooo"]("e,i,m,n"));
 
     Fmi_("m,i") += 0.5 * tilde_tau_("e,f,i,n") * conj(this->antiSymMoints["vvoo"]("e,f,m,n")); // TODO: better performance if we have this->antiSymMoints["oovv"]
-
-//    Fmi_("m,i") = Fmi_wDiag_("m,i") - this->fockMatrix_ta["oo_diag"]("m,i");
   }
 
   /**
@@ -647,11 +671,7 @@ namespace ChronusQ{
       typedef std::vector<size_t> block;
 
       // grab relevant blocks
-      TArray t2_ebij;
-      TArray v_acek;
-      TArray t2_acmk;
-      TArray v_bmij;
-      TArray tmp;
+      TArray tmp = TAmanager.malloc<MatsT>("vvvttt");
 
       // t_{abc}^{ijk} contribution
       // t2_{eb}^{ij}
@@ -667,12 +687,12 @@ namespace ChronusQ{
       block v2_lower = {0,0,i,j};
       block v2_upper = {v_tr,o_tr,i+1,j+1};
 
-      t2_ebij("e,b,i,j") = T2_("e,b,i,j").block(t21_lower,t21_upper);
-      v_acek("a,c,e,k")  = this->antiSymMoints["vvvo"]("a,c,e,k").block(v1_lower,v1_upper);
-      t2_acmk("a,c,m,k") = T2_("a,c,m,k").block(t22_lower,t22_upper);
-      v_bmij("b,m,i,j")  = this->antiSymMoints["vooo"]("b,m,i,j").block(v2_lower,v2_upper);
+      auto t2_ebij = T2_("e,b,i,j").block(t21_lower,t21_upper);
+      auto v_acek  = this->antiSymMoints["vvvo"]("a,c,e,k").block(v1_lower,v1_upper);
+      auto t2_acmk = T2_("a,c,m,k").block(t22_lower,t22_upper);
+      auto v_bmij  = this->antiSymMoints["vooo"]("b,m,i,j").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k") = v_acek("a,c,e,k") * t2_ebij("e,b,i,j") + t2_acmk("a,c,m,k") * v_bmij("b,m,i,j");
+      tmp("a,b,c,i,j,k") = v_acek * t2_ebij + t2_acmk * v_bmij;
 
       // t_{abc}^{kji} contribution
       // t2_{eb}^{kj}
@@ -688,12 +708,12 @@ namespace ChronusQ{
       v2_lower = {0,0,k,j};
       v2_upper = {v_tr,o_tr,k+1,j+1};
 
-      t2_ebij("e,b,k,j") = T2_("e,b,k,j").block(t21_lower,t21_upper);
-      v_acek("a,c,e,i")  = this->antiSymMoints["vvvo"]("a,c,e,i").block(v1_lower,v1_upper);
-      t2_acmk("a,c,m,i") = T2_("a,c,m,i").block(t22_lower,t22_upper);
-      v_bmij("b,m,k,j")  = this->antiSymMoints["vooo"]("b,m,k,j").block(v2_lower,v2_upper);
+      auto t2_ebkj = T2_("e,b,k,j").block(t21_lower,t21_upper);
+      auto v_acei  = this->antiSymMoints["vvvo"]("a,c,e,i").block(v1_lower,v1_upper);
+      auto t2_acmi = T2_("a,c,m,i").block(t22_lower,t22_upper);
+      auto v_bmkj  = this->antiSymMoints["vooo"]("b,m,k,j").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k") -= v_acek("a,c,e,i") * t2_ebij("e,b,k,j") + t2_acmk("a,c,m,i") * v_bmij("b,m,k,j");
+      tmp("a,b,c,i,j,k") -= v_acei * t2_ebkj + t2_acmi * v_bmkj;
 
       // t_{abc}^{ikj} contribution
       // t2_{eb}^{ik}
@@ -709,17 +729,19 @@ namespace ChronusQ{
       v2_lower = {0,0,i,k};
       v2_upper = {v_tr,o_tr,i+1,k+1};
 
-      t2_ebij("e,b,i,k") = T2_("e,b,i,k").block(t21_lower,t21_upper);
-      v_acek("a,c,e,j")  = this->antiSymMoints["vvvo"]("a,c,e,j").block(v1_lower,v1_upper);
-      t2_acmk("a,c,m,j") = T2_("a,c,m,j").block(t22_lower,t22_upper);
-      v_bmij("b,m,i,k")  = this->antiSymMoints["vooo"]("b,m,i,k").block(v2_lower,v2_upper);
+      auto t2_ebik = T2_("e,b,i,k").block(t21_lower,t21_upper);
+      auto v_acej  = this->antiSymMoints["vvvo"]("a,c,e,j").block(v1_lower,v1_upper);
+      auto t2_acmj = T2_("a,c,m,j").block(t22_lower,t22_upper);
+      auto v_bmik  = this->antiSymMoints["vooo"]("b,m,i,k").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k") -= v_acek("a,c,e,j") * t2_ebij("e,b,i,k") + t2_acmk("a,c,m,j") * v_bmij("b,m,i,k");
+      tmp("a,b,c,i,j,k") -= v_acej * t2_ebik + t2_acmj * v_bmik;
 
       // apply A(ac/b)
       t3 = tmp.clone(); // deep copy for safety
       t3("a,b,c,i,j,k") -= tmp("b,a,c,i,j,k");
       t3("a,b,c,i,j,k") -= tmp("a,c,b,i,j,k");
+
+      TAmanager.free("vvvttt", std::move(tmp));
     };
 
     // lambda to compute VT1(DC)
@@ -728,9 +750,7 @@ namespace ChronusQ{
       // for blocking purposes
       typedef std::vector<size_t> block;
 
-      TArray v_abij;
-      TArray t1_ck;
-      TArray tmp;
+      TArray tmp    = TAmanager.malloc<MatsT>("vvvttt");
 
       // t_{abc}^{ijk} contribution
       // t1_{c}_{k}
@@ -740,10 +760,10 @@ namespace ChronusQ{
       block v_lower = {0,0,i,j};
       block v_upper = {v_tr,v_tr,i+1,j+1};
 
-      v_abij("a,b,i,j") = this->antiSymMoints["vvoo"]("a,b,i,j").block(v_lower,v_upper);
-      t1_ck("c,k")  = T1_("c,k").block(t1_lower,t1_upper);
+      auto v_abij = this->antiSymMoints["vvoo"]("a,b,i,j").block(v_lower,v_upper);
+      auto t1_ck  = T1_("c,k").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") = v_abij("a,b,i,j") * t1_ck("c,k");
+      tmp("a,b,c,i,j,k") = v_abij * t1_ck;
 
       // t_{abc}^{kji} contribution
       // t1_{c}_{i}
@@ -753,10 +773,10 @@ namespace ChronusQ{
       v_lower = {0,0,k,j};
       v_upper = {v_tr,v_tr,k+1,j+1};
 
-      v_abij("a,b,k,j") = this->antiSymMoints["vvoo"]("a,b,k,j").block(v_lower,v_upper);
-      t1_ck("c,i")  = T1_("c,i").block(t1_lower,t1_upper);
+      auto v_abkj = this->antiSymMoints["vvoo"]("a,b,k,j").block(v_lower,v_upper);
+      auto t1_ci  = T1_("c,i").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") -= v_abij("a,b,k,j") * t1_ck("c,i");
+      tmp("a,b,c,i,j,k") -= v_abkj * t1_ci;
 
       // t_{abc}^{ikj} contribution
       // t1_{c}_{j}
@@ -766,10 +786,10 @@ namespace ChronusQ{
       v_lower = {0,0,i,k};
       v_upper = {v_tr,v_tr,i+1,k+1};
 
-      v_abij("a,b,i,k") = this->antiSymMoints["vvoo"]("a,b,i,k").block(v_lower,v_upper);
-      t1_ck("c,j")  = T1_("c,j").block(t1_lower,t1_upper);
+      auto v_abik = this->antiSymMoints["vvoo"]("a,b,i,k").block(v_lower,v_upper);
+      auto t1_cj  = T1_("c,j").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") -= v_abij("a,b,i,k") * t1_ck("c,j");
+      tmp("a,b,c,i,j,k") -= v_abik * t1_cj;
 
       // apply A(ab/c)
       t3  = tmp.clone(); // deep copy for safety
@@ -778,6 +798,8 @@ namespace ChronusQ{
 
       // Return (VT1)*
       t3("a,b,c,i,j,k") = conj(t3("a,b,c,i,j,k"));
+
+      TAmanager.free("vvvttt", std::move(tmp));
     };
 
     // MPI parallelization from MPQC
@@ -828,8 +850,8 @@ namespace ChronusQ{
           // round-robin distribute the loop
           if (this->ccSettings_.triplesMPI && global_iter % size != rank) continue;
 
-          TArray vt1_ijk;
-          TArray vt2_ijk;
+          TArray vt1_ijk = TAmanager.malloc<MatsT>("vvvttt");
+          TArray vt2_ijk = TAmanager.malloc<MatsT>("vvvttt");
 
           // <ijkabc| (VT2)_C |0>
           compute_vt2(i,j,k,vt2_ijk);
@@ -839,7 +861,7 @@ namespace ChronusQ{
           vt1_ijk("a,b,c,i,j,k") += conj(vt2_ijk("a,b,c,i,j,k")).set_world(this_world);
 
           // divide by MP denominator
-          TA::foreach_inplace(vt1_ijk, [this, &i, &j, &k](TA::TensorZ &tile){
+          TA::foreach_inplace(vt1_ijk, [this, &i, &j, &k](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -880,6 +902,9 @@ namespace ChronusQ{
           }
           this->PertT3Energy += tmp_en;
 
+          TAmanager.free("vvvttt", std::move(vt1_ijk));
+          TAmanager.free("vvvttt", std::move(vt2_ijk));
+
           std::cout << "  i: " << i << " j: " << j << " k: " << k << " done in " << tock(ijk_start) << "s"
                     << " from global_iter " << global_iter << " in rank " << rank << std::endl;
         }
@@ -914,11 +939,7 @@ namespace ChronusQ{
       typedef std::vector<size_t> block;
 
       // grab relevant blocks
-      TArray t2_ebij;
-      TArray v_acek;
-      TArray t2_acmk;
-      TArray v_bmij;
-      TArray tmp;
+      TArray tmp     = TAmanager.malloc<MatsT>("tttooo");
 
       // t_{abc}^{ijk} contribution
       // t2_{eb}^{ij}
@@ -934,12 +955,12 @@ namespace ChronusQ{
       block v2_lower = {b,0,0,0};
       block v2_upper = {b+1,o_tr,o_tr,o_tr};
 
-      t2_ebij("e,b,i,j") = T2_("e,b,i,j").block(t21_lower,t21_upper);
-      v_acek("a,c,e,k")  = this->antiSymMoints["vvvo"]("a,c,e,k").block(v1_lower,v1_upper);
-      t2_acmk("a,c,m,k") = T2_("a,c,m,k").block(t22_lower,t22_upper);
-      v_bmij("b,m,i,j")  = this->antiSymMoints["vooo"]("b,m,i,j").block(v2_lower,v2_upper);
+      auto t2_ebij = T2_("e,b,i,j").block(t21_lower,t21_upper);
+      auto v_acek  = this->antiSymMoints["vvvo"]("a,c,e,k").block(v1_lower,v1_upper);
+      auto t2_acmk = T2_("a,c,m,k").block(t22_lower,t22_upper);
+      auto v_bmij  = this->antiSymMoints["vooo"]("b,m,i,j").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k")  = v_acek("a,c,e,k") * t2_ebij("e,b,i,j") + t2_acmk("a,c,m,k") * v_bmij("b,m,i,j");
+      tmp("a,b,c,i,j,k")  = v_acek * t2_ebij + t2_acmk * v_bmij;
 
       // t_{bac}^{ijk} contribution
       // t2_{ea}^{ij}
@@ -956,12 +977,12 @@ namespace ChronusQ{
       v2_upper = {a+1,o_tr,o_tr,o_tr};
 
       // grab relevant blocks
-      t2_ebij("e,a,i,j") = T2_("e,a,i,j").block(t21_lower,t21_upper);
-      v_acek("b,c,e,k")  = this->antiSymMoints["vvvo"]("b,c,e,k").block(v1_lower,v1_upper);
-      t2_acmk("b,c,m,k") = T2_("b,c,m,k").block(t22_lower,t22_upper);
-      v_bmij("a,m,i,j")  = this->antiSymMoints["vooo"]("a,m,i,j").block(v2_lower,v2_upper);
+      auto t2_eaij = T2_("e,a,i,j").block(t21_lower,t21_upper);
+      auto v_bcek  = this->antiSymMoints["vvvo"]("b,c,e,k").block(v1_lower,v1_upper);
+      auto t2_bcmk = T2_("b,c,m,k").block(t22_lower,t22_upper);
+      auto v_amij  = this->antiSymMoints["vooo"]("a,m,i,j").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k") -= v_acek("b,c,e,k") * t2_ebij("e,a,i,j") + t2_acmk("b,c,m,k") * v_bmij("a,m,i,j");
+      tmp("a,b,c,i,j,k") -= v_bcek * t2_eaij + t2_bcmk * v_amij;
 
       // t_{acb}^{ijk} contribution
       // t2_{ec}^{ij}
@@ -978,17 +999,19 @@ namespace ChronusQ{
       v2_upper = {c+1,o_tr,o_tr,o_tr};
 
       // grab relevant blocks
-      t2_ebij("e,c,i,j") = T2_("e,c,i,j").block(t21_lower,t21_upper);
-      v_acek("a,b,e,k")  = this->antiSymMoints["vvvo"]("a,b,e,k").block(v1_lower,v1_upper);
-      t2_acmk("a,b,m,k") = T2_("a,b,m,k").block(t22_lower,t22_upper);
-      v_bmij("c,m,i,j")  = this->antiSymMoints["vooo"]("c,m,i,j").block(v2_lower,v2_upper);
+      auto t2_ecij = T2_("e,c,i,j").block(t21_lower,t21_upper);
+      auto v_abek  = this->antiSymMoints["vvvo"]("a,b,e,k").block(v1_lower,v1_upper);
+      auto t2_abmk = T2_("a,b,m,k").block(t22_lower,t22_upper);
+      auto v_cmij  = this->antiSymMoints["vooo"]("c,m,i,j").block(v2_lower,v2_upper);
 
-      tmp("a,b,c,i,j,k") -= v_acek("a,b,e,k") * t2_ebij("e,c,i,j") + t2_acmk("a,b,m,k") * v_bmij("c,m,i,j");
+      tmp("a,b,c,i,j,k") -= v_abek * t2_ecij + t2_abmk * v_cmij;
 
       // apply A(ij/k)
       t3 = tmp.clone(); // deep copy for safety
       t3("a,b,c,i,j,k") -= tmp("a,b,c,k,j,i");
       t3("a,b,c,i,j,k") -= tmp("a,b,c,i,k,j");
+
+      TAmanager.free("tttooo", std::move(tmp));
     };
 
     // lambda to compute VT1(DC)
@@ -997,9 +1020,7 @@ namespace ChronusQ{
       // for blocking purposes
       typedef std::vector<size_t> block;
 
-      TArray v_abij;
-      TArray t1_ck;
-      TArray tmp;
+      TArray tmp    = TAmanager.malloc<MatsT>("tttooo");
 
       // t_{abc}^{ijk} contribution
       // t1_{c}_{k}
@@ -1009,10 +1030,10 @@ namespace ChronusQ{
       block v_lower = {a,b,0,0};
       block v_upper = {a+1,b+1,o_tr,o_tr};
 
-      v_abij("a,b,i,j") = this->antiSymMoints["vvoo"]("a,b,i,j").block(v_lower,v_upper);
-      t1_ck("c,k")  = T1_("c,k").block(t1_lower,t1_upper);
+      auto v_abij = this->antiSymMoints["vvoo"]("a,b,i,j").block(v_lower,v_upper);
+      auto t1_ck  = T1_("c,k").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") = v_abij("a,b,i,j") * t1_ck("c,k");
+      tmp("a,b,c,i,j,k") = v_abij * t1_ck;
 
       // t_{cba}^{ijk} contribution
       // t1_{a}_{k}
@@ -1022,10 +1043,10 @@ namespace ChronusQ{
       v_lower = {c,b,0,0};
       v_upper = {c+1,b+1,o_tr,o_tr};
 
-      v_abij("c,b,i,j") = this->antiSymMoints["vvoo"]("c,b,i,j").block(v_lower,v_upper);
-      t1_ck("a,k")  = T1_("a,k").block(t1_lower,t1_upper);
+      auto v_cbij = this->antiSymMoints["vvoo"]("c,b,i,j").block(v_lower,v_upper);
+      auto t1_ak  = T1_("a,k").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") -= v_abij("c,b,i,j") * t1_ck("a,k");
+      tmp("a,b,c,i,j,k") -= v_cbij * t1_ak;
 
       // t_{acb}^{ijk} contribution
       // t1_{b}_{k}
@@ -1035,10 +1056,10 @@ namespace ChronusQ{
       v_lower = {a,c,0,0};
       v_upper = {a+1,c+1,o_tr,o_tr};
 
-      v_abij("a,c,i,j") = this->antiSymMoints["vvoo"]("a,c,i,j").block(v_lower,v_upper);
-      t1_ck("b,k")  = T1_("b,k").block(t1_lower,t1_upper);
+      auto v_acij = this->antiSymMoints["vvoo"]("a,c,i,j").block(v_lower,v_upper);
+      auto t1_bk  = T1_("b,k").block(t1_lower,t1_upper);
 
-      tmp("a,b,c,i,j,k") -= v_abij("a,c,i,j") * t1_ck("b,k");
+      tmp("a,b,c,i,j,k") -= v_acij * t1_bk;
 
       // apply A(ij/k)
       t3  = tmp.clone(); // deep copy for safety
@@ -1047,6 +1068,8 @@ namespace ChronusQ{
 
       // Return (VT1)*
       t3("a,b,c,i,j,k") = conj(t3("a,b,c,i,j,k"));
+
+      TAmanager.free("tttooo", std::move(tmp));
     };
 
     // MPI parallelization from MPQC
@@ -1097,8 +1120,8 @@ namespace ChronusQ{
           // round-robin distribute the loop
           if (this->ccSettings_.triplesMPI && global_iter % size != rank) continue;
 
-          TArray vt1_abc;
-          TArray vt2_abc;
+          TArray vt1_abc = TAmanager.malloc<MatsT>("tttooo");
+          TArray vt2_abc = TAmanager.malloc<MatsT>("tttooo");
 
           // <ijkabc| (VT2)_C |0>
           compute_vt2(a,b,c,vt2_abc);
@@ -1108,7 +1131,7 @@ namespace ChronusQ{
           vt1_abc("a,b,c,i,j,k") += conj(vt2_abc("a,b,c,i,j,k")).set_world(this_world);
 
           // divide by MP denominator
-          TA::foreach_inplace(vt1_abc, [this, &a, &b, &c](TA::TensorZ &tile){
+          TA::foreach_inplace(vt1_abc, [this, &a, &b, &c](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
@@ -1149,17 +1172,20 @@ namespace ChronusQ{
           }
           this->PertT3Energy += tmp_en;
 
+          TAmanager.free("tttooo", std::move(vt1_abc));
+          TAmanager.free("tttooo", std::move(vt2_abc));
+
           std::cout << "  a: " << a << " b: " << b << " c: " << c << " done in " << tock(abc_start) << "s"
                     << " from global_iter " << global_iter << " in rank " << rank << std::endl;
         }
 
-        this_world.gop.fence();
-        global_world.gop.fence();
+    this_world.gop.fence();
+    global_world.gop.fence();
 
-        TA::set_default_world(global_world);
+    TA::set_default_world(global_world);
 
-        // sum over contribution if MPI parallel is run
-        if (this->ccSettings_.triplesMPI && size >1) global_world.gop.sum(this->PertT3Energy);
+    // sum over contribution if MPI parallel is run
+    if (this->ccSettings_.triplesMPI && size >1) global_world.gop.sum(this->PertT3Energy);
 
   }
 

@@ -24,6 +24,7 @@ if(CQ_HAS_TA)
   target_sources( cq PRIVATE TAManager.cxx
                 cvseomccsd_impl.cxx
                 eomccsd_impl.cxx
+                eomrccsd_impl.cxx
                 eomdipccsd_impl.cxx
                 eomdipccsdt_impl.cxx
                 eomea_impl.cxx

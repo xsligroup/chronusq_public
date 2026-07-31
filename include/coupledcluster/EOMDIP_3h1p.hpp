@@ -1619,7 +1619,7 @@ namespace ChronusQ{
 
    /// for full_diagonaization and Davidson routine
   template <typename MatsT>
-  void EOMDIP_3h1p<MatsT>::buildDiag(MatsT * diag, std::vector<double> eps) const {
+  void EOMDIP_3h1p<MatsT>::buildDiag(MatsT * diag, const std::vector<double> &eps) const {
     TAManager &TAmanager = TAManager::get();
     size_t n_v = TAmanager.getRange(vLabel_).extent();
     size_t n_o = TAmanager.getRange(oLabel_).extent();
@@ -1882,12 +1882,12 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::VecsGen_t EOMDIP_3h1p<MatsT>::EmptyDavidsonVectorBuilder(){
+  typename Davidson<MatsT>::VecsGen_t EOMDIP_3h1p<MatsT>::EmptyDavidsonVectorBuilder(){
       // Algorithm with implicit Hbar matrix
-      typename Davidson<dcomplex>::VecsGen_t vecsGenEOM;
+      typename Davidson<MatsT>::VecsGen_t vecsGenEOM;
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT) {
-        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
-          return std::make_shared<MBExpansionSet<dcomplex>>(this->tensor_builder_, nVec, this->savFile_);
+        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<MatsT>> {
+          return std::make_shared<MBExpansionSet<MatsT>>(this->tensor_builder_, nVec, this->savFile_);
         }; // implicit vecsGenerator
 
         return vecsGenEOM;
@@ -1898,7 +1898,7 @@ namespace ChronusQ{
         std::cout << "  *** Start building the full matrix for explicit diagonalization ***" << std::endl;
 
         auto beginBuildHbar = tick();
-        fullMat = std::make_shared<cqmatrix::Matrix<dcomplex>>(buildHbar(false));
+        fullMat = std::make_shared<cqmatrix::Matrix<MatsT>>(buildHbar(false));
         std::cout << "    * Build Hbar spent "
                   << std::setw(10) << std::right << std::setprecision(6) << std::fixed
                   << tock(beginBuildHbar) << " s." << std::endl;
@@ -1906,15 +1906,15 @@ namespace ChronusQ{
 
       // Algorithm for debug, comparing implicit and explicit
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        typename Davidson<dcomplex>::VecsGen_t vecsGenRaw = [/*&Hbar_dim,*/ this](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
-          return std::make_shared<RawVectors<dcomplex>>(
+        typename Davidson<MatsT>::VecsGen_t vecsGenRaw = [/*&Hbar_dim,*/ this](size_t nVec)->std::shared_ptr<SolverVectors<MatsT>> {
+          return std::make_shared<RawVectors<MatsT>>(
               MPI_COMM_WORLD, this->Hbar_dim, nVec
               );
         };
 
-        typename Davidson<dcomplex>::VecsGen_t vecsGenDebug =
-            [this](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
-          return std::make_shared<MBExpansionSetDebug<dcomplex>>(
+        typename Davidson<MatsT>::VecsGen_t vecsGenDebug =
+            [this](size_t nVec)->std::shared_ptr<SolverVectors<MatsT>> {
+          return std::make_shared<MBExpansionSetDebug<MatsT>>(
               this->tensor_builder_, nVec, this->savFile_, MPI_COMM_WORLD
               );
         };
@@ -1925,33 +1925,33 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMDIP_3h1p<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
+  typename Davidson<MatsT>::LinearTrans_t EOMDIP_3h1p<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT or
           this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
-          MBExpansionSet<dcomplex> *V_ptr = nullptr, *AV_ptr = nullptr;
+          MBExpansionSet<MatsT> *V_ptr = nullptr, *AV_ptr = nullptr;
           size_t Vshift = 0, AVshift = 0;
           try {
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& V_view = dynamic_cast<SolverVectorsView<dcomplex>&>(V);
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V_view.getVecs());
+            SolverVectorsView<MatsT>& V_view = dynamic_cast<SolverVectorsView<MatsT>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V_view.getVecs());
             Vshift = V_view.shift();
           }
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
           for (size_t i = 0; i < nVec; i++) {
-            const MBExpansion<dcomplex> &Vi = V_ptr->get(i + Vshift);
-            MBExpansion<dcomplex> &AVi = AV_ptr->get(i + AVshift);
+            const MBExpansion<MatsT> &Vi = V_ptr->get(i + Vshift);
+            MBExpansion<MatsT> &AVi = AV_ptr->get(i + AVshift);
             //buildSigma(Vi.get_tensor("OneBody"), Vi.get_tensor("TwoBody"), AVi.get_tensor("OneBody"), AVi.get_tensor("TwoBody"), eigenVecType);
             buildSigma(Vi, AVi, eigenVecType);
             TA::get_default_world().gop.fence();
@@ -1964,8 +1964,8 @@ namespace ChronusQ{
       }
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::EXPLICIT or
           this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        this->funcRaw = [this, &eigenVecType]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->funcRaw = [this, &eigenVecType]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
           ROOT_ONLY(MPI_COMM_WORLD);
 
           size_t N = this->Hbar_dim;
@@ -1975,11 +1975,11 @@ namespace ChronusQ{
           switch(eigenVecType) {
             case EOMCCEigenVecType::RIGHT:
               blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,
-                         N,nVec,N,dcomplex(1.),fullMat->pointer(),N,V_ptr,N,dcomplex(0.),AV_ptr,N);
+                         N,nVec,N,MatsT(1.),fullMat->pointer(),N,V_ptr,N,MatsT(0.),AV_ptr,N);
               break;
             case EOMCCEigenVecType::LEFT:
               blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,
-                         nVec,N,N,dcomplex(1.),V_ptr,N,fullMat->pointer(),N,dcomplex(0.),AV_ptr,nVec);
+                         nVec,N,N,MatsT(1.),V_ptr,N,fullMat->pointer(),N,MatsT(0.),AV_ptr,nVec);
               IMatCopy('T', nVec, N, 1.0, AV_ptr,nVec, N);
               break;
           }
@@ -1990,32 +1990,32 @@ namespace ChronusQ{
       }
 
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        this->funcDebug = [this]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->funcDebug = [this]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
-          MBExpansionSetDebug<dcomplex> *V_ptr = nullptr, *AV_ptr = nullptr;
+          MBExpansionSetDebug<MatsT> *V_ptr = nullptr, *AV_ptr = nullptr;
           size_t Vshift = 0, AVshift = 0;
 
           try {
-            V_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(V);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& V_view = dynamic_cast<SolverVectorsView<dcomplex>&>(V);
-            V_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(V_view.getVecs());
+            SolverVectorsView<MatsT>& V_view = dynamic_cast<SolverVectorsView<MatsT>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(V_view.getVecs());
             Vshift = V_view.shift();
           }
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
-          SolverVectorsView<dcomplex> V_EOM(V_ptr->getEOMCCSet(), Vshift);
-          SolverVectorsView<dcomplex> V_Raw(V_ptr->getRawSet(), Vshift);
-          SolverVectorsView<dcomplex> AV_EOM(AV_ptr->getEOMCCSet(), AVshift);
-          SolverVectorsView<dcomplex> AV_Raw(AV_ptr->getRawSet(), AVshift);
+          SolverVectorsView<MatsT> V_EOM(V_ptr->getEOMCCSet(), Vshift);
+          SolverVectorsView<MatsT> V_Raw(V_ptr->getRawSet(), Vshift);
+          SolverVectorsView<MatsT> AV_EOM(AV_ptr->getEOMCCSet(), AVshift);
+          SolverVectorsView<MatsT> AV_Raw(AV_ptr->getRawSet(), AVshift);
 
           std::cout << "procedural.cxx::funcDebug before error = "
           << V_ptr->compareDebug(Vshift, nVec) << std::endl;
@@ -2037,56 +2037,62 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMDIP_3h1p<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag){
+  typename Davidson<MatsT>::LinearTrans_t EOMDIP_3h1p<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag){
       
       double PCsmall = this->eomSettings.davidson_preCond_small;
 
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT or
           this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
           AV.set_data(0, nVec, V, 0);
 
-          MBExpansionSet<dcomplex> *AV_ptr = nullptr;
+          MBExpansionSet<MatsT> *AV_ptr = nullptr;
           size_t AVshift = 0;
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
           for (size_t iVec = 0; iVec < nVec; iVec++) {
 
-            MBExpansion<dcomplex> &curB = AV_ptr->get(iVec + AVshift);
+            MBExpansion<MatsT> &curB = AV_ptr->get(iVec + AVshift);
+            MatsT curEigI = 0.0;
+            if constexpr (std::is_same_v<MatsT, double>) {
+              curEigI = curEig[iVec].real();
+            } else {
+              curEigI = curEig[iVec];
+            }
 
-            TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEig, eomDiag, this, PCsmall](TA::TensorZ &tile){
+            TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEigI, eomDiag, this, PCsmall](TA::Tensor<MatsT> &tile){
               const auto& lobound = tile.range().lobound();
               const auto& upbound = tile.range().upbound();
 
-              dcomplex denom = 0.0;
+              MatsT denom = 0.0;
               std::vector<std::size_t> x{0, 0};
               for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0])
                 for(x[1] = lobound[1]; x[1] < upbound[1]; ++x[1]) {
                   if (x[0] == x[1])
                     continue;
-                  denom = curEig[iVec] - eomDiag[toCompoundS(x[0], x[1])];
+                  denom = curEigI - eomDiag[toCompoundS(x[0], x[1])];
                   if (std::abs(denom) >= PCsmall) tile[x] /= denom;
                 }
             });
             TA::get_default_world().gop.fence();
 
             size_t nO = this->intermediates_.nOcc;
-            dcomplex *diagD = eomDiag + nO * (nO - 1) / 2;
+            MatsT *diagD = eomDiag + nO * (nO - 1) / 2;
 
-            TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEig, diagD, this, PCsmall](TA::TensorZ &tile){
+            TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEigI, diagD, this, PCsmall](TA::Tensor<MatsT> &tile){
               const auto& lobound = tile.range().lobound();
               const auto& upbound = tile.range().upbound();
 
-              dcomplex denom = 0.0;
+              MatsT denom = 0.0;
               std::vector<std::size_t> x{0, 0, 0, 0};
               for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]) {
                 size_t a = x[0];
@@ -2097,7 +2103,7 @@ namespace ChronusQ{
                         continue;
                       size_t i = x[1], j = x[2], k = x[3];
                       //signD(a,i,j,k);
-                      denom = curEig[iVec] - diagD[toCompoundD(a, i, j, k)];
+                      denom = curEigI - diagD[toCompoundD(a, i, j, k)];
                       if (std::abs(denom) >= PCsmall) tile[x] /= denom;
                     }
                 }
@@ -2112,22 +2118,28 @@ namespace ChronusQ{
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::EXPLICIT or 
           this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
 
-        this->PCRaw = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->PCRaw = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
           ROOT_ONLY(MPI_COMM_WORLD);
 
           //            prettyPrintSmart(std::cout, "eomDiag", eomDiag, Hbar_dim, 1, Hbar_dim);
 
-          dcomplex nom = 0.0, denom = 0.0;
-          const dcomplex *Vptr = tryGetRawVectorsPointer(V);
-          dcomplex *AVptr = tryGetRawVectorsPointer(AV);
+          MatsT denom = 0.0, nom = 0.0;
+          const MatsT *Vptr = tryGetRawVectorsPointer(V);
+          MatsT *AVptr = tryGetRawVectorsPointer(AV);
 
           // Scale by inverse diagonals
           for (size_t i = 0; i < nVec; i++) {
+            MatsT curEigI = 0.0;
+            if constexpr (std::is_same_v<MatsT, double>) {
+              curEigI = curEig[i].real();
+            } else {
+              curEigI = curEig[i];
+            }
             for(auto k = 0ul; k < this->Hbar_dim; k++ ) {
               nom = Vptr[k];
-              denom = curEig[i] - eomDiag[k];
+              denom = curEigI - eomDiag[k];
               if (std::abs(denom) >= PCsmall)
                 AVptr[k] = nom / denom;
               else
@@ -2140,32 +2152,32 @@ namespace ChronusQ{
         }; // explicit preConditioner
       }
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::DEBUG) {
-        this->PCDebug = [this]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->PCDebug = [this]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
-          MBExpansionSetDebug<dcomplex> *V_ptr = nullptr, *AV_ptr = nullptr;
+          MBExpansionSetDebug<MatsT> *V_ptr = nullptr, *AV_ptr = nullptr;
           size_t Vshift = 0, AVshift = 0;
 
           try {
-            V_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(V);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& V_view = dynamic_cast<SolverVectorsView<dcomplex>&>(V);
-            V_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(V_view.getVecs());
+            SolverVectorsView<MatsT>& V_view = dynamic_cast<SolverVectorsView<MatsT>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(V_view.getVecs());
             Vshift = V_view.shift();
           }
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSetDebug<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSetDebug<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
-          SolverVectorsView<dcomplex> V_EOM(V_ptr->getEOMCCSet(), Vshift);
-          SolverVectorsView<dcomplex> V_Raw(V_ptr->getRawSet(), Vshift);
-          SolverVectorsView<dcomplex> AV_EOM(AV_ptr->getEOMCCSet(), AVshift);
-          SolverVectorsView<dcomplex> AV_Raw(AV_ptr->getRawSet(), AVshift);
+          SolverVectorsView<MatsT> V_EOM(V_ptr->getEOMCCSet(), Vshift);
+          SolverVectorsView<MatsT> V_Raw(V_ptr->getRawSet(), Vshift);
+          SolverVectorsView<MatsT> AV_EOM(AV_ptr->getEOMCCSet(), AVshift);
+          SolverVectorsView<MatsT> AV_Raw(AV_ptr->getRawSet(), AVshift);
 
           std::cout << "procedural.cxx::PCDebug before error = "
           << V_ptr->compareDebug(Vshift, nVec) << std::endl;

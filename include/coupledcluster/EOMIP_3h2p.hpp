@@ -365,7 +365,7 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  void EOMIP_3h2p<MatsT>::buildDiag(MatsT * diag, std::vector<double> eps) const {
+  void EOMIP_3h2p<MatsT>::buildDiag(MatsT * diag, const std::vector<double> &eps) const {
 
     TAManager &TAmanager = TAManager::get();
     size_t n_v = TAmanager.getRange(vLabel_).extent();
@@ -403,12 +403,12 @@ namespace ChronusQ{
 
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::VecsGen_t EOMIP_3h2p<MatsT>::EmptyDavidsonVectorBuilder(){
+  typename Davidson<MatsT>::VecsGen_t EOMIP_3h2p<MatsT>::EmptyDavidsonVectorBuilder(){
       // Algorithm with implicit Hbar matrix
-      typename Davidson<dcomplex>::VecsGen_t vecsGenEOM;
+      typename Davidson<MatsT>::VecsGen_t vecsGenEOM;
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT) {
-        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<dcomplex>> {
-          return std::make_shared<MBExpansionSet<dcomplex>>(this->tensor_builder_, nVec, this->savFile_);
+        vecsGenEOM = [this](size_t nVec)->std::shared_ptr<SolverVectors<MatsT>> {
+          return std::make_shared<MBExpansionSet<MatsT>>(this->tensor_builder_, nVec, this->savFile_);
         }; // implicit vecsGenerator
 
         return vecsGenEOM;
@@ -417,32 +417,32 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMIP_3h2p<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
+  typename Davidson<MatsT>::LinearTrans_t EOMIP_3h2p<MatsT>::DavidsonResidualBuilder(EOMCCEigenVecType &eigenVecType){
       if (this->eomSettings.hbar_type == EOM_HBAR_TYPE::IMPLICIT) {
-        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<dcomplex> &V,
-            SolverVectors<dcomplex> &AV) {
+        this->funcEOM = [this, &eigenVecType]( size_t nVec, SolverVectors<MatsT> &V,
+            SolverVectors<MatsT> &AV) {
 
-          MBExpansionSet<dcomplex> *V_ptr = nullptr, *AV_ptr = nullptr;
+          MBExpansionSet<MatsT> *V_ptr = nullptr, *AV_ptr = nullptr;
           size_t Vshift = 0, AVshift = 0;
           try {
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& V_view = dynamic_cast<SolverVectorsView<dcomplex>&>(V);
-            V_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(V_view.getVecs());
+            SolverVectorsView<MatsT>& V_view = dynamic_cast<SolverVectorsView<MatsT>&>(V);
+            V_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(V_view.getVecs());
             Vshift = V_view.shift();
           }
 
           try {
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
           } catch(const std::bad_cast& e) {
-            SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-            AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+            SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+            AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
             AVshift = AV_view.shift();
           }
 
           for (size_t i = 0; i < nVec; i++) {
-            const MBExpansion<dcomplex> &Vi = V_ptr->get(i + Vshift);
-            MBExpansion<dcomplex> &AVi = AV_ptr->get(i + AVshift);
+            const MBExpansion<MatsT> &Vi = V_ptr->get(i + Vshift);
+            MBExpansion<MatsT> &AVi = AV_ptr->get(i + AVshift);
             buildSigma(Vi, AVi, eigenVecType);
             TA::get_default_world().gop.fence();
             AVi.enforceSymmetry();
@@ -455,50 +455,56 @@ namespace ChronusQ{
 
   }
   template <typename MatsT>
-  typename Davidson<dcomplex>::LinearTrans_t EOMIP_3h2p<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, dcomplex * eomDiag){
+  typename Davidson<MatsT>::LinearTrans_t EOMIP_3h2p<MatsT>::DavidsonPreconditionerBuilder(dcomplex * curEig, MatsT * eomDiag){
 
       double PCsmall = this->eomSettings.davidson_preCond_small;
 
-      this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<dcomplex> &V,
-          SolverVectors<dcomplex> &AV) {
+      this->PCEOM = [this, eomDiag, curEig, PCsmall]( size_t nVec, SolverVectors<MatsT> &V,
+          SolverVectors<MatsT> &AV) {
 
         AV.set_data(0, nVec, V, 0);
 
-        MBExpansionSet<dcomplex> *AV_ptr = nullptr;
+        MBExpansionSet<MatsT> *AV_ptr = nullptr;
         size_t AVshift = 0;
 
         try {
-          AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV);
+          AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV);
         } catch(const std::bad_cast& e) {
-          SolverVectorsView<dcomplex>& AV_view = dynamic_cast<SolverVectorsView<dcomplex>&>(AV);
-          AV_ptr = &dynamic_cast<MBExpansionSet<dcomplex>&>(AV_view.getVecs());
+          SolverVectorsView<MatsT>& AV_view = dynamic_cast<SolverVectorsView<MatsT>&>(AV);
+          AV_ptr = &dynamic_cast<MBExpansionSet<MatsT>&>(AV_view.getVecs());
           AVshift = AV_view.shift();
         }
 
         for (size_t iVec = 0; iVec < nVec; iVec++) {
 
-          MBExpansion<dcomplex> &curB = AV_ptr->get(iVec + AVshift);
+          MBExpansion<MatsT> &curB = AV_ptr->get(iVec + AVshift);
+          MatsT curEigI = 0.0;
+          if constexpr (std::is_same_v<MatsT, double>) {
+            curEigI = curEig[iVec].real();
+          } else {
+            curEigI = curEig[iVec];
+          }
 
           MatsT * Diag_A = eomDiag;
-          TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEig, Diag_A, this, PCsmall](TA::TensorZ &tile){
+          TA::foreach_inplace(curB.get_tensor("OneBody"), [iVec, curEigI, Diag_A, this, PCsmall](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
-            dcomplex denom = 0.0;
+            MatsT denom = 0.0;
             std::vector<std::size_t> x{0};
             for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]) {
-              denom = curEig[iVec] - Diag_A[toCompoundS(x[0])];
+              denom = curEigI - Diag_A[toCompoundS(x[0])];
               if (std::abs(denom) >= PCsmall) tile[x] /= denom;
             }
           });
           TA::get_default_world().gop.fence();
 
           MatsT * Diag_AIJ = eomDiag + this->Hbar_dimension_offsets.at("TwoBody");
-          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEig, Diag_AIJ, this, PCsmall](TA::TensorZ &tile){
+          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEigI, Diag_AIJ, this, PCsmall](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
-            dcomplex denom = 0.0;
+            MatsT denom = 0.0;
             std::vector<std::size_t> x{0, 0, 0};
             for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]){
               size_t a = x[0];
@@ -508,7 +514,7 @@ namespace ChronusQ{
                   if (x[1] == x[2])
                     continue;
                   size_t j = x[2];
-                  denom = curEig[iVec] - Diag_AIJ[toCompoundD(a, i, j)];
+                  denom = curEigI - Diag_AIJ[toCompoundD(a, i, j)];
                   if (std::abs(denom) >= PCsmall) tile[x] /= denom;
                 }
               }
@@ -517,11 +523,11 @@ namespace ChronusQ{
           TA::get_default_world().gop.fence();
 
           MatsT * Diag_ABIJK = eomDiag + this->Hbar_dimension_offsets.at("ThreeBody");
-          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEig, Diag_ABIJK, this, PCsmall](TA::TensorZ &tile){
+          TA::foreach_inplace(curB.get_tensor("TwoBody"), [iVec, curEigI, Diag_ABIJK, this, PCsmall](TA::Tensor<MatsT> &tile){
             const auto& lobound = tile.range().lobound();
             const auto& upbound = tile.range().upbound();
 
-            dcomplex denom = 0.0;
+            MatsT denom = 0.0;
             std::vector<std::size_t> x{0, 0, 0, 0, 0};
             for(x[0] = lobound[0]; x[0] < upbound[0]; ++x[0]){
               size_t a = x[0];
@@ -539,7 +545,7 @@ namespace ChronusQ{
                       if (x[2] == x[4] or x[3] == x[4])
                          continue;
                       size_t k = x[4];
-                      denom = curEig[iVec] - Diag_ABIJK[toCompoundT(a, b, i, j, k)];
+                      denom = curEigI - Diag_ABIJK[toCompoundT(a, b, i, j, k)];
                       if (std::abs(denom) >= PCsmall) tile[x] /= denom;
                     }
                   }

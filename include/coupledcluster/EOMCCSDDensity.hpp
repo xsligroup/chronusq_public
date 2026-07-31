@@ -182,60 +182,120 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  MatsT EOMCCSD<MatsT>::calcOscillatorStrength(size_t i){
-    std::array<MatsT, 3> mu_g2x, mu_x2g;
-    
-    MBExpansionSet<MatsT> &Reom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->R_);
-    MBExpansionSet<MatsT> &Leom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->L_);
+  std::array<MatsT, 3> EOMCCSD<MatsT>::calcTransitionDipole(
+    const MatsT r0, const TArray& r1, const TArray& r2,
+    const MatsT l0,const TArray& l1, const TArray& l2, bool isSame) {
 
+    std::array<MatsT, 3> mu;
+
+    buildDensity(T1_, T2_, r0, r1, r2, l0, l1, l2, isSame);
+    for (size_t j = 0; j < 3; j++) {
+      mu[j]  = dot(this->muMatrix[static_cast<char>('X' + j) + std::string("oo")]("i,j"), Rho_ij("i,j")).get();
+      TA::get_default_world().gop.fence();
+      mu[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("ov")]("i,a"), Rho_ia("i,a")).get();
+      TA::get_default_world().gop.fence();
+      mu[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vo")]("a,i"), Rho_ai("a,i")).get();
+      TA::get_default_world().gop.fence();
+      mu[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vv")]("a,b"), Rho_ab("a,b")).get();
+      TA::get_default_world().gop.fence();
+    }
+    TA::get_default_world().gop.fence();
+
+    if (isSame) // Add frozen core contribution to the transition dipole moment if the left and right states are the same
+      for (size_t j = 0; j < 3; j++) {
+        mu[j] += this->intermediates_.Mu_fzc[j];
+      }
+
+    return mu;
+
+  }
+
+  template <typename MatsT>
+  std::array<MatsT, 3> EOMCCSD<MatsT>::calcGround2ExcitedTransitionDipole(size_t i) {
+
+    // Prepare left ground state amplitudes
     MatsT L0_ = this->Lg_->zeroBody();
     TArray &L1_ = this->Lg_->get_tensor("OneBody");
     TArray &L2_ = this->Lg_->get_tensor("TwoBody");
 
-    buildDensity(T1_, T2_,
-                 Reom.get(i).zeroBody(),
-                 Reom.get(i).get_tensor("OneBody"),
-                 Reom.get(i).get_tensor("TwoBody"),
-                 L0_, L1_, L2_);
-    for (size_t j = 0; j < 3; j++) {
-      mu_g2x[j]  = dot(this->muMatrix[static_cast<char>('X' + j) + std::string("oo")]("i,j"), Rho_ij("i,j")).get();
-      TA::get_default_world().gop.fence();    
-      mu_g2x[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("ov")]("i,a"), Rho_ia("i,a")).get();
-      TA::get_default_world().gop.fence();    
-      mu_g2x[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vo")]("a,i"), Rho_ai("a,i")).get();
-      TA::get_default_world().gop.fence();    
-      mu_g2x[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vv")]("a,b"), Rho_ab("a,b")).get();
-      TA::get_default_world().gop.fence();    
-    }
-    TA::get_default_world().gop.fence();
+    MBExpansionSet<MatsT> &Reom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->R_);
+    return calcTransitionDipole(Reom.get(i).zeroBody(),
+                                Reom.get(i).get_tensor("OneBody"),
+                                Reom.get(i).get_tensor("TwoBody"),
+                                L0_, L1_, L2_);
+  }
 
+  template <typename MatsT>
+  std::array<MatsT, 3> EOMCCSD<MatsT>::calcExcited2GroundTransitionDipole(size_t i) {
+
+    // Prepare right ground state amplitudes
     TAManager &TAmanager = TAManager::get();
     TArray Rg1 = TAmanager.malloc<MatsT>("vo");
     Rg1("a,i") = 0.0 * Rg1("a,i");
     TArray Rg2 = TAmanager.malloc<MatsT>("vvoo");
     Rg2("a,b,i,j") = 0.0 * Rg2("a,b,i,j");
-    buildDensity(T1_, T2_, 1.0, Rg1, Rg2,
-                 Leom.get(i).zeroBody(),
-                 Leom.get(i).get_tensor("OneBody"),
-                 Leom.get(i).get_tensor("TwoBody"));
-    for (size_t j = 0; j < 3; j++) {
-      mu_x2g[j]  = dot(this->muMatrix[static_cast<char>('X' + j) + std::string("oo")]("i,j"), Rho_ij("i,j")).get();
-      TA::get_default_world().gop.fence();    
-      mu_x2g[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("ov")]("i,a"), Rho_ia("i,a")).get();
-      TA::get_default_world().gop.fence();    
-      mu_x2g[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vo")]("a,i"), Rho_ai("a,i")).get();
-      TA::get_default_world().gop.fence();    
-      mu_x2g[j] += dot(this->muMatrix[static_cast<char>('X' + j) + std::string("vv")]("a,b"), Rho_ab("a,b")).get();
-      TA::get_default_world().gop.fence();    
-    }
-    TA::get_default_world().gop.fence();
+
+    MBExpansionSet<MatsT> &Leom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->L_);
+
+    std::array<MatsT, 3> mu;
+    mu = calcTransitionDipole(1.0, Rg1, Rg2,
+                              Leom.get(i).zeroBody(),
+                              Leom.get(i).get_tensor("OneBody"),
+                              Leom.get(i).get_tensor("TwoBody"));
     TAmanager.free("vo", std::move(Rg1));
     TAmanager.free("vvoo", std::move(Rg2));
 
+    return mu;
+  }
+
+  template <typename MatsT>
+  std::array<MatsT, 3> EOMCCSD<MatsT>::calcExcited2ExcitedTransitionDipole(size_t i, size_t j) {
+
+    MBExpansionSet<MatsT> &Leom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->L_);
+    MBExpansionSet<MatsT> &Reom = *std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->R_);
+    return calcTransitionDipole(Reom.get(j).zeroBody(),
+                                Reom.get(j).get_tensor("OneBody"),
+                                Reom.get(j).get_tensor("TwoBody"),
+                                Leom.get(i).zeroBody(),
+                                Leom.get(i).get_tensor("OneBody"),
+                                Leom.get(i).get_tensor("TwoBody"),
+                                i == j);
+  }
+
+  template <typename MatsT>
+  std::array<MatsT, 3> EOMCCSD<MatsT>::calcGroundDipole() {
+
+    // Prepare left ground state amplitudes
+    MatsT L0_ = this->Lg_->zeroBody();
+    TArray &L1_ = this->Lg_->get_tensor("OneBody");
+    TArray &L2_ = this->Lg_->get_tensor("TwoBody");
+
+    // Prepare right ground state amplitudes
+    TAManager &TAmanager = TAManager::get();
+    TArray Rg1 = TAmanager.malloc<MatsT>("vo");
+    Rg1("a,i") = 0.0 * Rg1("a,i");
+    TArray Rg2 = TAmanager.malloc<MatsT>("vvoo");
+    Rg2("a,b,i,j") = 0.0 * Rg2("a,b,i,j");
+
+    std::array<MatsT, 3> mu;
+    mu = calcTransitionDipole(1.0, Rg1, Rg2, L0_, L1_, L2_, true);
+    TAmanager.free("vo", std::move(Rg1));
+    TAmanager.free("vvoo", std::move(Rg2));
+
+    return mu;
+
+  }
+
+  template <typename MatsT>
+  dcomplex EOMCCSD<MatsT>::calcOscillatorStrength(size_t i){
+    std::array<MatsT, 3> mu_g2x, mu_x2g;
+
+    mu_g2x = calcGround2ExcitedTransitionDipole(i);
+    mu_x2g = calcExcited2GroundTransitionDipole(i);
 
     MatsT DS = mu_g2x[0] * mu_x2g[0] + mu_g2x[1] * mu_x2g[1] + mu_g2x[2] * mu_x2g[2];
 
-    MatsT f = 2./3 * this->theta[i] * DS;
+    dcomplex f = 2./3 * this->theta[i] * DS;
     return f;
 
   }
@@ -469,7 +529,7 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  MatsT CVSEOMCCSD<MatsT>::calcOscillatorStrength(size_t i){
+  dcomplex CVSEOMCCSD<MatsT>::calcOscillatorStrength(size_t i){
     std::array<MatsT, 3> mu_g2x, mu_x2g;
 
 
@@ -528,7 +588,7 @@ namespace ChronusQ{
 
     MatsT DS = mu_g2x[0] * mu_x2g[0] + mu_g2x[1] * mu_x2g[1] + mu_g2x[2] * mu_x2g[2];
 
-    MatsT f = 2./3 * this->theta[i] * DS;
+    dcomplex f = 2./3 * this->theta[i] * DS;
     return f;
 
   }

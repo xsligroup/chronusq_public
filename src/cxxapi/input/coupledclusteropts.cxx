@@ -55,7 +55,8 @@ namespace ChronusQ {
       "FROZENVIRTUAL",
       "REBUILDFOCK",
       "SKIPSCF",
-      "SKIPCC"
+      "SKIPCC",
+      "DIPOLE"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -101,6 +102,7 @@ namespace ChronusQ {
         "GRAMSCHMIDTREPEAT",
         "GRAMSCHMIDTEPS",
         "OSCILLATORSTRENGTH",
+        "ALLEXCITEDSTATEDIPOLE",
         "SAVEHAMILTONIAN",
         "PRINTLARGEAMPLITUDE",
         "CCSGUESS",
@@ -108,7 +110,8 @@ namespace ChronusQ {
         "RESTARTR",
         "SKIPR",
         "SAVEL",
-        "SAVER"
+        "SAVER",
+        "SINGLETONLY"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -272,6 +275,10 @@ namespace ChronusQ {
         ccSettings.rebuildFock = true;
         std::cout << "      ccSettings.rebuildFock default to True for inequal number "
                   << "of electrons between reference and CCSD calculation." << std::endl;
+      }
+
+      if(input.containsData("CC/DIPOLE")){
+        OPTOPT(ccSettings.computeDipole = input.getData<bool>("CC/DIPOLE");)
       }
 
     }
@@ -477,6 +484,10 @@ namespace ChronusQ {
       OPTOPT(eomSettings.oscillator_strength = input.getData<bool>("EOMCC/OSCILLATORSTRENGTH");)
     }
 
+    if(input.containsData("EOMCC/ALLEXCITEDSTATEDIPOLE")){
+      OPTOPT(eomSettings.all_excited_dipole = input.getData<bool>("EOMCC/ALLEXCITEDSTATEDIPOLE");)
+    }
+
     if(input.containsData("EOMCC/SAVEHAMILTONIAN")){
       OPTOPT(eomSettings.save_hamiltonian = input.getData<bool>("EOMCC/SAVEHAMILTONIAN");)
     }
@@ -502,19 +513,24 @@ namespace ChronusQ {
 
     if(input.containsData("EOMCC/RESTARTR")){
       OPTOPT(eomSettings.restart_r = input.getData<bool>("EOMCC/RESTARTR");)
-      eomSettings.davidson_guess_multiplier = 1;
+      if (eomSettings.restart_r)
+        eomSettings.davidson_guess_multiplier = 1;
     }
 
     if(input.containsData("EOMCC/RESTARTL")){
       OPTOPT(eomSettings.restart_l = input.getData<bool>("EOMCC/RESTARTL");)
-      if (eomSettings.restart_l && eomSettings.restart_r) {
-        CErr("You cannot restart both Left and Right EOM amplitudes in the same EOMCC calculation");
+      if (eomSettings.restart_l) {
+        if (not eomSettings.restart_r) {
+          eomSettings.skip_r = true;
+        }
+        eomSettings.davidson_guess_multiplier = 1;
       }
-      eomSettings.davidson_guess_multiplier = 1;
-      eomSettings.skip_r = true;
     }
     if(input.containsData("EOMCC/SKIPR")){
       OPTOPT(eomSettings.skip_r = input.getData<bool>("EOMCC/SKIPR");)
+    }
+    if(input.containsData("EOMCC/SINGLETONLY")){
+      OPTOPT(eomSettings.singlet_only = input.getData<bool>("EOMCC/SINGLETONLY");)
     }
 
     //if (eomSettings.doCVS() && eomSettings.eom_type != EOM_TYPE::DIP) {

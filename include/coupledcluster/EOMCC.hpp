@@ -44,7 +44,7 @@ namespace ChronusQ{
 
   template <typename MatsT>
   void findTrueGroundStateEOMCCEigen(size_t Hbar_dim_w0,
-                                     MatsT* theta_w0, MatsT* VL_w0, MatsT* VR_w0, double e_conv);
+                                     dcomplex* theta_w0, MatsT* VL_w0, MatsT* VR_w0, double e_conv);
 
   template <typename _F>
   void biOrthoNormalize(size_t N, size_t nR, RawVectors<_F> &VL, RawVectors<_F> &VR);
@@ -52,9 +52,9 @@ namespace ChronusQ{
   template <typename _F>
   void biOrthoNormalize(size_t nR, MBExpansionSet<_F> &VL, MBExpansionSet<_F> &VR);
 
-
+  template <typename _F>
   std::vector<size_t> getGuessIndices(size_t nGuess, size_t length, const EOMSettings& eomSettings,
-                                      const dcomplex *eomDiag, MPI_Comm comm); // getGuessIndices
+                                      const _F *eomDiag, MPI_Comm comm); // getGuessIndices
 
   //template <typename MatsT>
   //inline double EOMCCBase<MatsT>::signT(size_t a, size_t b, size_t c, size_t i, size_t j, size_t k) const {
@@ -110,7 +110,7 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCBase<MatsT>::full_diagonalization() {
 
-    theta = CQMemManager::get().malloc<MatsT>(Hbar_dim);
+    theta = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
     RawVectors<MatsT> VL(MPI_COMM_WORLD, Hbar_dim, Hbar_dim);
     RawVectors<MatsT> VR(MPI_COMM_WORLD, Hbar_dim, Hbar_dim);
 
@@ -188,11 +188,11 @@ namespace ChronusQ{
 
     // Building Hbar matrix including H0S H0D blocks
     size_t Hbar_dim_w0 = Hbar_dim + 1;
-    MatsT* theta_w0 = nullptr;
+    dcomplex* theta_w0 = nullptr;
     RawVectors<MatsT> VL_w0(MPI_COMM_WORLD, Hbar_dim_w0, Hbar_dim_w0);
     RawVectors<MatsT> VR_w0(MPI_COMM_WORLD, Hbar_dim_w0, Hbar_dim_w0);
 
-    theta_w0 = CQMemManager::get().malloc<MatsT>(Hbar_dim_w0);
+    theta_w0 = CQMemManager::get().malloc<dcomplex>(Hbar_dim_w0);
 
     std::cout << " Start building the full matrix " << std::endl;
 
@@ -277,7 +277,7 @@ namespace ChronusQ{
                  1, Hbar_dim, Hbar_dim, 1.0, H0, 1, VR.getPtr(), Hbar_dim, 0.0, H0VR, 1);
 //      prettyPrintSmart(std::cout, "H0VR", H0VR, 1, Hbar_dim, 1);
       for (size_t i = 0; i < Hbar_dim; i++) {
-        H0VR[i] /= theta[i];
+        H0VR[i] /= std::real(theta[i]);
       }
 //      prettyPrintSmart(std::cout, "H0VR/theta", H0VR, 1, Hbar_dim, 1);
 
@@ -334,7 +334,13 @@ namespace ChronusQ{
 
     if (MPIRank() == 0) {
     for (size_t i = 0; i < Hbar_dim_w0; i++) {
-      SetMat('N', Hbar_dim_w0, 1, theta_w0[i], VR_w0.getPtr(i), Hbar_dim_w0, SCR + i * Hbar_dim_w0, Hbar_dim_w0);
+      MatsT theta_i = 0.0;
+      if constexpr (std::is_same_v<MatsT, dcomplex>) {
+        theta_i = theta_w0[i];
+      } else {
+        theta_i = std::real(theta_w0[i]);
+      }
+      SetMat('N', Hbar_dim_w0, 1, theta_i, VR_w0.getPtr(i), Hbar_dim_w0, SCR + i * Hbar_dim_w0, Hbar_dim_w0);
     }
     blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans,
                Hbar_dim_w0,Hbar_dim_w0,Hbar_dim_w0,
@@ -343,7 +349,13 @@ namespace ChronusQ{
               << blas::nrm2(Hbar_dim_w0*Hbar_dim_w0, SCR, 1) << std::endl;
 
     for (size_t i = 0; i < Hbar_dim_w0; i++) {
-      SetMat('C', Hbar_dim_w0, 1, theta_w0[i], VL_w0.getPtr(i), Hbar_dim_w0, SCR + i, Hbar_dim_w0);
+      MatsT theta_i = 0.0;
+      if constexpr (std::is_same_v<MatsT, dcomplex>) {
+        theta_i = theta_w0[i];
+      } else {
+        theta_i = std::real(theta_w0[i]);
+      }
+      SetMat('C', Hbar_dim_w0, 1, theta_i, VL_w0.getPtr(i), Hbar_dim_w0, SCR + i, Hbar_dim_w0);
     }
     blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans,
                Hbar_dim_w0,Hbar_dim_w0,Hbar_dim_w0,
@@ -380,7 +392,7 @@ namespace ChronusQ{
     std::vector<dcomplex> excitationE;
     std::cout << "----------------------------------------------" << std::endl;
     for (size_t i = 0; i < eomSettings.nroots ; i++){
-      MatsT f = calcOscillatorStrength(i);
+      dcomplex f = calcOscillatorStrength(i);
       std::cout << " Excited State: " << i << "  E = " << std::setprecision(12) << theta[i] << " Eh, "<< " f = " << f << std::endl;
       oscStrength.push_back(f);
       excitationE.push_back(theta[i]);
@@ -414,11 +426,11 @@ namespace ChronusQ{
   template <typename MatsT>
   void EOMCCBase<MatsT>:: davidsonSolve() { 
 
-      std::shared_ptr<Davidson<dcomplex>> davidson_r = nullptr;
-      std::shared_ptr<Davidson<dcomplex>> davidson_l = nullptr;
+      std::shared_ptr<Davidson<MatsT>> davidson_r = nullptr;
+      std::shared_ptr<Davidson<MatsT>> davidson_l = nullptr;
     // solving for R is required
       size_t Hbar_dim = getHbarDim();
-      dcomplex* eomDiag = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
+      MatsT* eomDiag = CQMemManager::get().malloc<MatsT>(Hbar_dim);
 
       /// Functions for Davidson
       EOMCCEigenVecType eigenVecType = EOMCCEigenVecType::RIGHT;
@@ -427,9 +439,9 @@ namespace ChronusQ{
       nGuess = std::min(nGuess, getHbarDim());
       dcomplex * curEig = CQMemManager::get().malloc<dcomplex>(nGuess);
 
-      typename Davidson<dcomplex>::VecsGen_t vecsGenerator =  this->EmptyDavidsonVectorBuilder(); //Davidson<dcomplex>::VecsGen_t(); // Generator for new vector sets
-      typename Davidson<dcomplex>::LinearTrans_t sigmaBuilder = this->DavidsonResidualBuilder(eigenVecType); // Sigma vector builder
-      typename Davidson<dcomplex>::LinearTrans_t preConditioner = this->DavidsonPreconditionerBuilder(curEig, eomDiag); // Preconditioner
+      typename Davidson<MatsT>::VecsGen_t vecsGenerator =  this->EmptyDavidsonVectorBuilder(); //Davidson<MatsT>::VecsGen_t(); // Generator for new vector sets
+      typename Davidson<MatsT>::LinearTrans_t sigmaBuilder = this->DavidsonResidualBuilder(eigenVecType); // Sigma vector builder
+      typename Davidson<MatsT>::LinearTrans_t preConditioner = this->DavidsonPreconditionerBuilder(curEig, eomDiag); // Preconditioner
 
       // Clear cached TA objects
       TAManager::get().discard_cache();
@@ -448,7 +460,7 @@ namespace ChronusQ{
       std::cout << "Right eigensolver iterations:" << std::endl << std::endl;
       auto beginRightEig = tick();
 
-      davidson_r = std::make_shared<Davidson<dcomplex>> (MPI_COMM_WORLD, getHbarDim(),
+      davidson_r = std::make_shared<Davidson<MatsT>> (MPI_COMM_WORLD, getHbarDim(),
                                   eomSettings.davidson_max_macro_iter,
                                   eomSettings.davidson_max_micro_iter,
                                   eomSettings.davidson_residual_conv, eomSettings.nroots,
@@ -483,18 +495,35 @@ namespace ChronusQ{
       // set guess for Davidson solver
       if (eomSettings.restart_r) {
         size_t nroots = eomSettings.nroots;
-        dcomplex * r_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
-        davidson_r->setGuess(nGuess, [&r_vector, Hbar_dim, nroots, this] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
+        MatsT * r_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim);
+        davidson_r->setGuess(nGuess, [&guessIndices, &r_vector, Hbar_dim, nroots, this] (size_t nGuess, SolverVectors<MatsT> &guessVec, size_t length) {
           guessVec.clear();
-          if (auto derivedObj = dynamic_cast<MBExpansionSet<dcomplex>*>(&guessVec)){
-            for (int i = 0; i< nroots; i++) {
-              if (MPIRank() == 0) savFile_.readData("/CC/EOMRVECTOR"+std::to_string(i), r_vector);
+          if (auto derivedObj = dynamic_cast<MBExpansionSet<MatsT>*>(&guessVec)){
+            int i = 0;
+            for (i = 0; i< nroots; i++) {
+              bool vecIexist = false;
+              if (MPIRank() == 0) {
+                vecIexist = savFile_.exists("/CC/EOMRVECTOR"+std::to_string(i));
+                if (vecIexist) {
+                  std::cout << "EOMCC Restart: right eigenvector of root " << i << " found in the restart file." << std::endl;
+                  savFile_.readData("/CC/EOMRVECTOR"+std::to_string(i), r_vector);
+                }
+              }
               TA::get_default_world().gop.fence();
-              MPIBCast(r_vector, Hbar_dim, 0, MPI_COMM_WORLD);
-              TA::get_default_world().gop.fence();
-              derivedObj->get(i).fromRaw(r_vector, false);
+              MPIBCast(vecIexist, 0, MPI_COMM_WORLD);
+              if (vecIexist) {
+                MPIBCast(r_vector, Hbar_dim, 0, MPI_COMM_WORLD);
+                TA::get_default_world().gop.fence();
+                derivedObj->get(i).fromRaw(r_vector, false);
+              } else {
+                std::cout << "EOMCC Restart: right eigenvector of root " << i << " NOT found in the restart file, traditional guess appended thereafter." << std::endl;
+                break; // stop if any of the root vector is missing
               }
             }
+            for (; i < nGuess; i++) {
+              derivedObj->set(guessIndices[i], i, 1.0);
+            }
+          }
         });
         MatsT CorrE;
         if (MPIRank() == 0) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
@@ -514,11 +543,11 @@ namespace ChronusQ{
           }
           size_t guess_dim = oneBodySize();
           nGuess = std::min(nGuess, guess_dim);
-          dcomplex * guess_vector = CQMemManager::get().malloc<dcomplex>(guess_dim * nGuess);
+          MatsT * guess_vector = CQMemManager::get().malloc<MatsT>(guess_dim * nGuess);
           fillGuess(guess_vector, nGuess);
-          davidson_r->setGuess(nGuess, [&guess_vector, guess_dim, this] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
+          davidson_r->setGuess(nGuess, [&guess_vector, guess_dim, this] (size_t nGuess, SolverVectors<MatsT> &guessVec, size_t length) {
             guessVec.clear();
-            if (auto derivedObj = dynamic_cast<MBExpansionSet<dcomplex>*>(&guessVec)){
+            if (auto derivedObj = dynamic_cast<MBExpansionSet<MatsT>*>(&guessVec)){
               for (int i = 0; i< nGuess; i++) {
                 derivedObj->get(i).partlyFromRaw(guess_vector + i * guess_dim, 1, false);
                 }
@@ -528,7 +557,7 @@ namespace ChronusQ{
 
         }
         else { // traditional guess
-          davidson_r->setGuess(nGuess, [&guessIndices] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
+          davidson_r->setGuess(nGuess, [&guessIndices] (size_t nGuess, SolverVectors<MatsT> &guessVec, size_t length) {
             guessVec.clear();
             for(size_t i = 0; i < nGuess; i++) guessVec.set(guessIndices[i], i, 1.0);
           });
@@ -556,7 +585,12 @@ namespace ChronusQ{
         std::cout << std::endl;
 
         for (size_t i = 0; i < eomSettings.nroots ; i++){
-          dcomplex E_tot = intermediates_.E_cc + davidson_r->eigVal()[i];
+          MatsT E_tot = intermediates_.E_cc;
+          if constexpr (std::is_same_v<MatsT, double>) {
+            E_tot += std::real(davidson_r->eigVal()[i]);
+          } else {
+            E_tot += davidson_r->eigVal()[i];
+          }
           std::cout << std::setprecision(12) << std::fixed;
           std::cout << "      State "  << std::setw(6) << std::left << i+1;
           std::cout << std::setw(34) << std::left;
@@ -579,8 +613,8 @@ namespace ChronusQ{
                 << tock(beginRightEig) << " s." << std::endl;
       if (MPIRank() == 0) savFile_.safeWriteData("/CC/EXCITATION_ENERGIES", davidson_r->eigVal(), {eomSettings.nroots});
       if (eomSettings.save_r) {
-        dcomplex * r_vector;
-        r_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim );
+        MatsT * r_vector;
+        r_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim );
         for(size_t i = 0; i < eomSettings.nroots; i++) {
           if (auto VR = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(davidson_r->VR()))
             VR->get(i).toRaw(r_vector, false);
@@ -599,13 +633,35 @@ namespace ChronusQ{
     }
     // solving for L is required
     if (eomSettings.oscillator_strength) {
+        // Initialize density matrices for oscillator strength calculation
+        initializeDensity();
+
+        // Run CC lambda equations
+        initializeGroundStateLambda();
+        runLambda(); // has CVS version
+
+        if (eomSettings.all_excited_dipole) {
+          // transition dipole moments between excited states requested
+          std::array<MatsT, 3> mu = calcGroundDipole();
+
+          std::cout << "  Ground State Dipole Moment w/o Nuclear Contribution no Negative Sign (a.u.): " << std::endl
+                    << "    X=" << std::setprecision(12) << std::fixed << mu[0]
+                    << "    Y=" << std::setprecision(12) << std::fixed << mu[1]
+                    << "    Z=" << std::setprecision(12) << std::fixed << mu[2]
+                    << std::endl << std::endl;
+
+          // Write data to bin file
+          if (savFile_.exists())
+            savFile_.safeWriteData("/CC/GROUND_STATE_DIPOLE", mu.data(), {3});
+        }
+
         eigenVecType = EOMCCEigenVecType::LEFT;
 
         std::cout << BannerMid << std::endl << std::endl;
         std::cout << "Left eigensolver iterations:" << std::endl << std::endl;
         auto beginLeftEig = tick();
 
-        davidson_l = std::make_shared<Davidson<dcomplex>> (MPI_COMM_WORLD, getHbarDim(),
+        davidson_l = std::make_shared<Davidson<MatsT>> (MPI_COMM_WORLD, getHbarDim(),
                                     eomSettings.davidson_max_macro_iter,
                                     eomSettings.davidson_max_micro_iter,
                                     eomSettings.davidson_residual_conv,
@@ -647,26 +703,46 @@ namespace ChronusQ{
         //    davidson_l->setSortByDistance();
 
         // guess for L
-        if (eomSettings.skip_r) {
+        if (eomSettings.skip_r or eomSettings.restart_l) {
           size_t nroots = eomSettings.nroots;
-          dcomplex * l_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
-          davidson_l->setGuess(nGuess, [&l_vector, Hbar_dim, nroots, this] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
+          MatsT * l_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim);
+          davidson_l->setGuess(nGuess, [&l_vector, Hbar_dim, nroots, eomDiag, this] (size_t nGuess, SolverVectors<MatsT> &guessVec, size_t length) {
             guessVec.clear();
-            if (auto derivedObj = dynamic_cast<MBExpansionSet<dcomplex>*>(&guessVec)){
-              for (int i = 0; i< nroots; i++) {
+            if (auto derivedObj = dynamic_cast<MBExpansionSet<MatsT>*>(&guessVec)){
+              int i = 0;
+              for (i = 0; i< nroots; i++) {
+                bool vecIexist = false;
                 if (MPIRank() == 0) {
-                  if (eomSettings.restart_l) {
+                  vecIexist = savFile_.exists("/CC/EOMLVECTOR"+std::to_string(i));
+                  if (vecIexist) {
+                    std::cout << "EOMCC Restart: left eigenvector of root " << i << " found in the restart file." << std::endl;
                     savFile_.readData("/CC/EOMLVECTOR"+std::to_string(i), l_vector);
-                  } else { 
-                    savFile_.readData("/CC/EOMRVECTOR"+std::to_string(i), l_vector);
+                  } else {
+                    vecIexist = savFile_.exists("/CC/EOMRVECTOR"+std::to_string(i));
+                    if (vecIexist) {
+                      std::cout << "EOMCC Restart: left eigenvector of root " << i << " NOT found in the restart file. Reading the right eigenvector as guess..." << std::endl;
+                      savFile_.readData("/CC/EOMRVECTOR"+std::to_string(i), l_vector);
+                    }
                   }
                 }
                 TA::get_default_world().gop.fence();
-                MPIBCast(l_vector, Hbar_dim, 0, MPI_COMM_WORLD);
-                TA::get_default_world().gop.fence();
-                derivedObj->get(i).fromRaw(l_vector, false);
+                MPIBCast(vecIexist, 0, MPI_COMM_WORLD);
+                if (vecIexist) {
+                  MPIBCast(l_vector, Hbar_dim, 0, MPI_COMM_WORLD);
+                  TA::get_default_world().gop.fence();
+                  derivedObj->get(i).fromRaw(l_vector, false);
+                } else {
+                  std::cout << "EOMCC Restart: neither left nor right eigenvector of root " << i << " NOT found in the restart file, traditional guess appended thereafter." << std::endl;
+                  break; // stop if any of the root vector is missing
                 }
               }
+              if (i == nGuess) return; // all guess vectors are set, return directly
+
+              std::vector<size_t> guessIndices = getGuessIndices(nGuess, getHbarDim(), eomSettings, eomDiag, MPI_COMM_WORLD);//, sortByDistance);
+              for (; i < nGuess; i++) {
+                derivedObj->set(guessIndices[i], i, 1.0);
+              }
+            }
           });
           MatsT CorrE;
           if (MPIRank() == 0) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
@@ -675,7 +751,7 @@ namespace ChronusQ{
           TA::get_default_world().gop.fence();
           CQMemManager::get().free(l_vector);
         } else {
-          davidson_l->setGuess(eomSettings.nroots, [davidson_r] (size_t nGuess, SolverVectors<dcomplex> &guessVec, size_t length) {
+          davidson_l->setGuess(eomSettings.nroots, [davidson_r] (size_t nGuess, SolverVectors<MatsT> &guessVec, size_t length) {
             guessVec.clear();
             guessVec.set_data(0, nGuess, *davidson_r->VR(), 0);
             guessVec.conjugate(0, nGuess);
@@ -693,19 +769,24 @@ namespace ChronusQ{
                   << tock(beginLeftEig) << " s." << std::endl;
         std::cout << BannerMid << std::endl;
 
-        std::shared_ptr<MBExpansionSet<dcomplex>> VL, VR;
+        std::shared_ptr<MBExpansionSet<MatsT>> VL, VR;
 
-        std::shared_ptr<MBExpansionSet<dcomplex>> r_saved = nullptr;
+        std::shared_ptr<MBExpansionSet<MatsT>> r_saved = nullptr;
         std::vector<dcomplex> excitation_energies(eomSettings.nroots);
-        if (eomSettings.skip_r) { //TODO
+        if (eomSettings.skip_r) {
           // read R from scratch file
           davidson_r = nullptr;
           size_t nroots = eomSettings.nroots;
-          r_saved = std::make_shared<MBExpansionSet<dcomplex>>(tensor_builder_, nroots, savFile_); //TODO
+
+          if (dynamic_cast<EOMRCCSD<MatsT>*>(this) != nullptr) // Restricted CC calculation, symmetry RCCSD
+            r_saved = std::make_shared<MBExpansionSet<MatsT>>(tensor_builder_, nroots, savFile_, MBTensorSymmetry::RCCSD);
+          else
+            r_saved = std::make_shared<MBExpansionSet<MatsT>>(tensor_builder_, nroots, savFile_);
           r_saved->clear();
-          dcomplex * r_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim);
-          if (auto derivedObj = std::dynamic_pointer_cast<MBExpansionSet<dcomplex>>(r_saved)){
+          MatsT * r_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim);
+          if (auto derivedObj = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(r_saved)){
             for (int i = 0; i< nroots; i++) {
+              std::cout << "EOMCC Skip R: reading right eigenvector of root " << i << " from the restart file." << std::endl;
               if (MPIRank() == 0) savFile_.readData("/CC/EOMRVECTOR"+std::to_string(i), r_vector);
               TA::get_default_world().gop.fence();
               MPIBCast(r_vector, Hbar_dim, 0, MPI_COMM_WORLD);
@@ -721,25 +802,25 @@ namespace ChronusQ{
         switch (eomSettings.hbar_type) {
           case EOM_HBAR_TYPE::IMPLICIT:
             if (davidson_r)
-                VR = std::dynamic_pointer_cast<MBExpansionSet<dcomplex>>(davidson_r->VR());
+                VR = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(davidson_r->VR());
             else
                 VR = r_saved;
-            VL = std::dynamic_pointer_cast<MBExpansionSet<dcomplex>>(davidson_l->VR());
+            VL = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(davidson_l->VR());
             break;
           case EOM_HBAR_TYPE::DEBUG:
-            VR = std::make_shared<MBExpansionSet<dcomplex>>(
-                std::dynamic_pointer_cast<MBExpansionSetDebug<dcomplex>>(davidson_r->VR())->getEOMCCSet());
-            VL = std::make_shared<MBExpansionSet<dcomplex>>(
-                std::dynamic_pointer_cast<MBExpansionSetDebug<dcomplex>>(davidson_l->VR())->getEOMCCSet());
+            VR = std::make_shared<MBExpansionSet<MatsT>>(
+                std::dynamic_pointer_cast<MBExpansionSetDebug<MatsT>>(davidson_r->VR())->getEOMCCSet());
+            VL = std::make_shared<MBExpansionSet<MatsT>>(
+                std::dynamic_pointer_cast<MBExpansionSetDebug<MatsT>>(davidson_l->VR())->getEOMCCSet());
             break;
           case EOM_HBAR_TYPE::EXPLICIT:
-            VR = std::make_shared<MBExpansionSet<dcomplex>>(tensor_builder_, eomSettings.nroots, savFile_);
-            VR->fromRaw(MPI_COMM_WORLD, 
-                        *std::dynamic_pointer_cast<RawVectors<dcomplex>>(davidson_r->VR()),
+            VR = std::make_shared<MBExpansionSet<MatsT>>(tensor_builder_, eomSettings.nroots, savFile_);
+            VR->fromRaw(MPI_COMM_WORLD,
+                        *std::dynamic_pointer_cast<RawVectors<MatsT>>(davidson_r->VR()),
                         *this, false, 0, 0, eomSettings.nroots);
-            VL = std::make_shared<MBExpansionSet<dcomplex>>(tensor_builder_, eomSettings.nroots, savFile_);
-            VL->fromRaw(MPI_COMM_WORLD, 
-                        *std::dynamic_pointer_cast<RawVectors<dcomplex>>(davidson_l->VR()),
+            VL = std::make_shared<MBExpansionSet<MatsT>>(tensor_builder_, eomSettings.nroots, savFile_);
+            VL->fromRaw(MPI_COMM_WORLD,
+                        *std::dynamic_pointer_cast<RawVectors<MatsT>>(davidson_l->VR()),
                         *this, false, 0, 0, eomSettings.nroots);
             break;
 
@@ -777,10 +858,104 @@ namespace ChronusQ{
 
         auto beginOsc = tick();
 
-        initializeDensity();
         std::cout << "----------------------------------------------" << std::endl;
         std::vector<dcomplex> oscStrength;
-        std::vector<double> excitationE;
+        std::vector<dcomplex> excitationE;
+
+        if (eomSettings.all_excited_dipole) {
+          // transition dipole moments between excited states requested
+          bool isRestricted = false;
+          EOMCCSD<MatsT>* eomccsd_ptr = dynamic_cast<EOMCCSD<MatsT>*>(this);
+          EOMRCCSD<MatsT>* eomrccsd_ptr = dynamic_cast<EOMRCCSD<MatsT>*>(this);
+          if (eomccsd_ptr == nullptr) {
+            if (eomrccsd_ptr != nullptr)
+              isRestricted = true;
+            else
+              CErr("Transition dipole moments between excited states is only implemented for EOMCCSD now!");
+          }
+
+          cqmatrix::Matrix<MatsT> mu_g2x(eomSettings.nroots, 3), mu_x2g(eomSettings.nroots, 3);
+          mu_g2x.clear();
+          mu_x2g.clear();
+          for (size_t i = 0; i < eomSettings.nroots ; i++){
+            std::array<MatsT, 3> mu_g2x_i, mu_x2g_i;
+
+            if (isRestricted) {
+              mu_g2x_i = eomrccsd_ptr->calcGround2ExcitedTransitionDipole(i);
+              mu_x2g_i = eomrccsd_ptr->calcExcited2GroundTransitionDipole(i);
+            } else {
+              mu_g2x_i = eomccsd_ptr->calcGround2ExcitedTransitionDipole(i);
+              mu_x2g_i = eomccsd_ptr->calcExcited2GroundTransitionDipole(i);
+            }
+
+            for (size_t j = 0; j < 3; j++) {
+              mu_g2x(i, j) = mu_g2x_i[j];
+              mu_x2g(i, j) = mu_x2g_i[j];
+            }
+
+            MatsT DS = mu_g2x_i[0] * mu_x2g_i[0] + mu_g2x_i[1] * mu_x2g_i[1] + mu_g2x_i[2] * mu_x2g_i[2];
+
+            dcomplex f = 2./3 * this->theta[i] * DS;
+
+            std::cout << std::setprecision(12) << std::fixed;
+            std::cout << "      State "  << std::setw(6) << std::left << i+1;
+            std::cout << std::setw(34) << std::left;
+            if (std::abs(davidson_l->eigVal()[i]) > 1e-6)
+              std::cout << std::fixed << std::setprecision(12);
+            else
+              std::cout << std::scientific << std::setprecision(6);
+            std::cout << davidson_l->eigVal()[i];
+            std::cout << std::setw(34) << std::left;
+            if (std::abs(f) > 1e-6)
+              std::cout << std::fixed << std::setprecision(12);
+            else
+              std::cout << std::scientific << std::setprecision(6);
+            std::cout << f;
+            std::cout << std::endl;
+
+            oscStrength.push_back(f);
+            excitationE.push_back(excitation_energies[i]);
+          }
+
+          prettyPrintSmart(std::cout, "Ground to excited state transition electric dipole moments (a.u.):",
+                           mu_g2x.pointer(), eomSettings.nroots, 3, eomSettings.nroots);
+          prettyPrintSmart(std::cout, "Excited to ground state transition electric dipole moments (a.u.):",
+                           mu_x2g.pointer(), eomSettings.nroots, 3, eomSettings.nroots);
+
+          // Write data to bin file
+          if (savFile_.exists()) {
+            savFile_.safeWriteData("/CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE", mu_g2x.pointer(), {3, eomSettings.nroots});
+            savFile_.safeWriteData("/CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE", mu_x2g.pointer(), {3, eomSettings.nroots});
+          }
+
+          // Implementation of transition dipole moments between excited states for EOMCCSD
+          cqmatrix::NDArray<MatsT> mu_x2x({eomSettings.nroots, eomSettings.nroots, 3});
+          mu_x2x.clear();
+          for (size_t i = 0; i < eomSettings.nroots ; i++){
+            for (size_t j = 0; j < eomSettings.nroots ; j++){
+              std::array<MatsT, 3> mu_x2x_ij;
+              if (isRestricted)
+                mu_x2x_ij = eomrccsd_ptr->calcExcited2ExcitedTransitionDipole(i, j);
+              else
+                mu_x2x_ij = eomccsd_ptr->calcExcited2ExcitedTransitionDipole(i, j);
+              for (size_t k = 0; k < 3; k++) {
+                mu_x2x(i, j, k) = mu_x2x_ij[k];
+              }
+            }
+          }
+
+          prettyPrintSmart(std::cout, "Transition Dipole Moments between Excited States X Component (a.u.)",
+                           &mu_x2x(0,0,0), eomSettings.nroots, eomSettings.nroots, eomSettings.nroots);
+          prettyPrintSmart(std::cout, "Transition Dipole Moments between Excited States Y Component (a.u.)",
+                           &mu_x2x(0,0,1), eomSettings.nroots, eomSettings.nroots, eomSettings.nroots);
+          prettyPrintSmart(std::cout, "Transition Dipole Moments between Excited States Z Component (a.u.)",
+                           &mu_x2x(0,0,2), eomSettings.nroots, eomSettings.nroots, eomSettings.nroots);
+
+          // Write data to bin file
+          if (savFile_.exists())
+            savFile_.safeWriteData("/CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE", mu_x2x.pointer(), {3, eomSettings.nroots, eomSettings.nroots});
+
+        } else // normal oscillator strength calculation
         for (size_t i = 0; i < eomSettings.nroots ; i++){
           dcomplex f = calcOscillatorStrength(i);
 
@@ -801,7 +976,7 @@ namespace ChronusQ{
           std::cout << std::endl;
           
           oscStrength.push_back(f);
-          excitationE.push_back(std::real(excitation_energies[i]));
+          excitationE.push_back(excitation_energies[i]);
         }
 
         TA::get_default_world().gop.fence();
@@ -818,8 +993,8 @@ namespace ChronusQ{
       }
 
       if (eomSettings.print_large_amplitude) {
-        dcomplex * r_vector;
-        r_vector = CQMemManager::get().malloc<dcomplex>(Hbar_dim );
+        MatsT * r_vector;
+        r_vector = CQMemManager::get().malloc<MatsT>(Hbar_dim );
         for(size_t i = 0; i < eomSettings.nroots; i++) {
           if (auto VR = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(R_))
             VR->get(i).toRaw(r_vector, false);
@@ -880,7 +1055,7 @@ namespace ChronusQ{
   }
 
   template <typename MatsT>
-  void EOMCCBase<MatsT>::print_largest_values_and_position(size_t i, dcomplex* r_vector, size_t Hbar_dim, const EOMSettings& eomSettings, CCIntermediates<dcomplex> & intermediates) {
+  void EOMCCBase<MatsT>::print_largest_values_and_position(size_t i, MatsT* r_vector, size_t Hbar_dim, const EOMSettings& eomSettings, CCIntermediates<MatsT> & intermediates) {
 
     if (eomSettings.eom_type != EOM_TYPE::EE && not eomSettings.containActive()) {
         CErr("PrintLargeAmplitude only implemented with CVS-EOMCCSD");

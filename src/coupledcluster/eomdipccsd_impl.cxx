@@ -27,20 +27,31 @@
 namespace ChronusQ {
 
   template class EOMDIP_3h1p<dcomplex>;
+  template class EOMDIP_3h1p<double>;
 
 
-  std::shared_ptr<EOMCCBase<dcomplex>> build_EOMDIP_3h1p(
+  template <typename MatsT>
+  std::shared_ptr<EOMCCBase<MatsT>> build_EOMDIP_3h1p(
                                               const SafeFile &savFile,
-                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<MatsT> &intermediates, const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings) { 
 
 
-    std::shared_ptr<EOMCCBase<dcomplex>> eomcc = nullptr;
+    std::shared_ptr<EOMCCBase<MatsT>> eomcc = nullptr;
     eomcc = 
-      std::make_shared<EOMDIP_3h1p<dcomplex>> (
+      std::make_shared<EOMDIP_3h1p<MatsT>> (
         savFile,
         intermediates, eomSettings, ccSettings);
     return eomcc;
   }
+
+  template std::shared_ptr<EOMCCBase<dcomplex>> build_EOMDIP_3h1p(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
+  template std::shared_ptr<EOMCCBase<double>> build_EOMDIP_3h1p(
+                                              const SafeFile &savFile,
+                                              CCIntermediates<double> &intermediates, const EOMSettings &eomSettings,
+                                              const CoupledClusterSettings &ccSettings);
 }
 

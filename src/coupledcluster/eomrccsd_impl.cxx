@@ -22,36 +22,38 @@
  *  
  */
 
-#include <coupledcluster/EOMIP_2h1p.hpp>
+#include <coupledcluster/EOMRCCSD.hpp>
 
 namespace ChronusQ {
 
-  template class EOMIP_2h1p<dcomplex>;
-  template class EOMIP_2h1p<double>;
+  template class EOMRCCSD<dcomplex>;
+  template class EOMRCCSD<double>;
 
 
   template <typename MatsT>
-  std::shared_ptr<EOMCCBase<MatsT>> build_EOMIP_2h1p(
+  std::shared_ptr<EOMCCBase<MatsT>> build_EOMRCCSD(
                                               const SafeFile &savFile,
-                                              CCIntermediates<MatsT> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<MatsT> &intermediates,
+                                              const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings) { 
 
 
     std::shared_ptr<EOMCCBase<MatsT>> eomcc = nullptr;
     eomcc = 
-      std::make_shared<EOMIP_2h1p<MatsT>> (
-        savFile,
-        intermediates, eomSettings, ccSettings);
+      std::make_shared<EOMRCCSD<MatsT>> (
+        savFile, intermediates, eomSettings, ccSettings);
     return eomcc;
   }
 
-  template std::shared_ptr<EOMCCBase<dcomplex>> build_EOMIP_2h1p(
+  template std::shared_ptr<EOMCCBase<dcomplex>> build_EOMRCCSD(
                                               const SafeFile &savFile,
-                                              CCIntermediates<dcomplex> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<dcomplex> &intermediates,
+                                              const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings);
-  template std::shared_ptr<EOMCCBase<double>> build_EOMIP_2h1p(
+  template std::shared_ptr<EOMCCBase<double>> build_EOMRCCSD(
                                               const SafeFile &savFile,
-                                              CCIntermediates<double> &intermediates, const EOMSettings &eomSettings,
+                                              CCIntermediates<double> &intermediates,
+                                              const EOMSettings &eomSettings,
                                               const CoupledClusterSettings &ccSettings);
 }
 

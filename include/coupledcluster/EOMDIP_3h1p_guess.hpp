@@ -197,7 +197,7 @@ namespace ChronusQ{
     CQMemManager::get().free(raw_copy);
 
 
-    MatsT * theta = CQMemManager::get().malloc<MatsT>(nO2shift_);
+    dcomplex * theta = CQMemManager::get().malloc<dcomplex>(nO2shift_);
     MatsT * VR    = CQMemManager::get().malloc<MatsT>(nO2shift_ * nO2shift_);
     MatsT * dummy = nullptr;
     if (MPIRank() == 0) GeneralEigen('N', 'V', nO2shift_, fullMat.pointer(), nO2shift_, theta, dummy, 1, VR, nO2shift_);
