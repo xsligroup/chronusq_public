@@ -320,20 +320,20 @@ namespace ChronusQ {
     void SADGuess(SingleSlaterOptions);
     void SCFGuess(SingleSlaterOptions);
     void TightGuess();
+    void NEOTightParticleGuess();
     void RandomGuess();
-    void ReadGuessMO( const std::shared_ptr<BasisSet> guessBasis, std::string );
-    void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis );
+    void ReadGuessMO( const std::shared_ptr<BasisSet> guessBasis, std::string prefix );
+    void ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasis, std::string prefix = "" );
     void FchkGuessMO();
-    void NEOTightProtonGuess();
     void NEOConvergeClassicalGuess(EMPerturbation &, const SingleSlaterOptions&);
     void computeNaturalOrbitals();
     void getNewOrbitals();
 
     // ReadGuess1PDM functions
-    void readSameTypeDenBin();
-    void readDiffTypeDenBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet );
+    void readSameTypeDenBin(std::string prefix = "");
+    void readDiffTypeDenBin(std::string binName, const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix = "");
     template <typename ScrMatsT>
-    void getScr1PDM(SafeFile &, const std::shared_ptr<BasisSet> );
+    void getScr1PDM(SafeFile &, const std::shared_ptr<BasisSet>, std::string prefix = "");
     template <typename ScrMatsT>
     void getScr1PDM(SafeFile &);
     

@@ -29,6 +29,7 @@
 #include <cxxapi/procedural.hpp>
 
 #include <filesystem>
+#include <algorithm>
 #include <util/files.hpp>
 #include <util/mpi.hpp>
 #include <util/threads.hpp>
@@ -320,6 +321,8 @@ namespace ChronusQ {
 
       // TODOAL: handle cube generation for MultiParticleSS
     } else {
+      if(not scfControls.subsystemGuesses.empty())
+        CErr("Per-subsystem SCF guess controls require SCF/NEO = TRUE", output);
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
       ssOptions.scfControls = scfControls;
       ss = ssOptions.buildSingleSlater(output,mol,*basis,aoints);
@@ -350,15 +353,26 @@ namespace ChronusQ {
     }
 #endif
 
-    if( (ss->scfControls.guess == READMO or
-         ss->scfControls.guess == READDEN or
-         ss->scfControls.prot_guess == READMO or
-         ss->scfControls.prot_guess == READDEN)
-         and not scrFileName.empty() )
-      ss->scrBinFileName = scrFileName;
-    else if( ss->scfControls.guess == FCHKMO or
-             ss->scfControls.prot_guess == FCHKMO )
-      ss->fchkFileName = scrFileName;
+    if(not doNEO) {
+      if((ss->scfControls.guess == READMO or
+          ss->scfControls.guess == READDEN) and not scrFileName.empty())
+        ss->scrBinFileName = scrFileName;
+      else if(ss->scfControls.guess == FCHKMO)
+        ss->fchkFileName = scrFileName;
+    } else {
+      const bool usesBinGuess = std::any_of(
+        quantumSubsystems.begin(), quantumSubsystems.end(), [](const auto& sys) {
+          return sys.ssOptions.scfControls.guess == READMO or sys.ssOptions.scfControls.guess == READDEN;
+        });
+      const bool usesFchkGuess = std::any_of(
+        quantumSubsystems.begin(), quantumSubsystems.end(), [](const auto& sys) {
+          return sys.ssOptions.scfControls.guess == FCHKMO;
+        });
+      if(usesBinGuess and not scrFileName.empty())
+        ss->scrBinFileName = scrFileName;
+      else if(usesFchkGuess)
+        ss->fchkFileName = scrFileName;
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -396,6 +410,7 @@ namespace ChronusQ {
     // If doing NEO, propagate setup to subsystems
     if(auto multiParticleSS = std::dynamic_pointer_cast<MultiParticleSSBase>(ss)) {
       multiParticleSS->setSubSetup();
+      multiParticleSS->saveSubsystemReferenceTypes();
     }
 
     // If we are doing RTCI we need a pointer to an mcscf object that is in this scope

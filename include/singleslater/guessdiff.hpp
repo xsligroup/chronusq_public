@@ -305,7 +305,8 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   template <typename ScrMatsT>
-  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet ) {
+  void SingleSlater<MatsT,IntsT>::getScr1PDM(SafeFile& scrBin,
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -314,9 +315,7 @@ namespace ChronusQ {
       if( this->nC == 4 ) NB=2*NB;
       auto NB2 = NB*NB;
 
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-          prefix = "/PROT_SCF/";
+      if(prefix.empty()) prefix = "/SCF/";
 
       auto DSdims = scrBin.getDims( prefix + "1PDM_SCALAR" );
       auto DZdims = scrBin.getDims( prefix + "1PDM_MZ" );
@@ -334,8 +333,13 @@ namespace ChronusQ {
       bool r2DX = DXdims.size() == 2;
 
       int scrRefType, binRefType;
-      scrBin.readData("REF/REFTYPE",&scrRefType);
-      savFile.readData("REF/REFTYPE",&binRefType);
+      if(prefix.find("MULTISS/") != std::string::npos) {
+        scrBin.readData(prefix + "REFTYPE", &scrRefType);
+        savFile.readData(prefix + "REFTYPE", &binRefType);
+      } else {
+        scrBin.readData("REF/REFTYPE",&scrRefType);
+        savFile.readData("REF/REFTYPE",&binRefType);
+      }
 
       std::cout << "    * Converting from " << refMap[scrRefType] << " to "
         << refMap[binRefType] << std::endl;
@@ -456,7 +460,8 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,double>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
+  void SingleSlater<double,double>::getScr1PDM<dcomplex>(SafeFile& scrBin,
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix) {
 
     CErr("Cannot do complex guess density for real calculation.");
 
@@ -464,7 +469,8 @@ namespace ChronusQ {
 
   template <>
   template <>
-  void SingleSlater<double,dcomplex>::getScr1PDM<dcomplex>(SafeFile& scrBin, const std::shared_ptr<BasisSet> guessBasisSet) {
+  void SingleSlater<double,dcomplex>::getScr1PDM<dcomplex>(SafeFile& scrBin,
+    const std::shared_ptr<BasisSet> guessBasisSet, std::string prefix) {
 
     CErr("Cannot do complex guess density for real calculation.");
 
@@ -491,8 +497,13 @@ namespace ChronusQ {
     auto MO2dims = scrBin.getDims( prefix + "MO2" );
 
     int scrRefType, binRefType;
-    scrBin.readData("REF/REFTYPE",&scrRefType);
-    savFile.readData("REF/REFTYPE",&binRefType);
+    if(prefix.find("MULTISS/") != std::string::npos) {
+      scrBin.readData(prefix + "REFTYPE", &scrRefType);
+      savFile.readData(prefix + "REFTYPE", &binRefType);
+    } else {
+      scrBin.readData("REF/REFTYPE",&scrRefType);
+      savFile.readData("REF/REFTYPE",&binRefType);
+    }
 
     std::cout << "    * Converting from " << refMap[scrRefType] << " to "
       << refMap[binRefType] << std::endl;

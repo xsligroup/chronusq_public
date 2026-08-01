@@ -32,6 +32,25 @@ TEST( NEO_RHF, water_sto3g_protsp ) {
  
 };
 
+TEST( NEO_RHF, water_sto3g_protsp_readmo ) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf_readmo",
+    "water_sto-3g_prot-sp_rhf.bin.ref", 1e-6,
+    true, true, true, true, false,
+    "water_sto-3g_prot-sp_rhf.scr.bin" );
+
+};
+
+TEST( NEO_RHF, water_sto3g_protsp_distinguishable_readden ) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf_distinguishable_readden",
+    "water_sto-3g_prot-sp_rhf_distinguishable.bin.ref", 1e-6,
+    true, true, true, true, false,
+    "water_sto-3g_prot-sp_rhf_distinguishable.scr.bin", false, true,
+    {"E", "QP0", "QP1"} );
+
+};
+
 TEST( NEO_RHF, coh2_ccpvdz_pb4d ) {
 
   CQNEOSCFTEST( "scf/serial/neo_rhf/coh2_ccpvdz_pb4d", "coh2_ccpvdz_pb4d.bin.ref", 1e-6, 

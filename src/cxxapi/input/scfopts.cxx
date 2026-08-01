@@ -26,6 +26,24 @@
 
 namespace ChronusQ {
 
+  namespace {
+
+    SS_GUESS parseSCFGuess(const std::string& value, const std::string& keyword) {
+      if(value == "CORE") return CORE;
+      if(value == "SAD") return SAD;
+      if(value == "TIGHT") return TIGHT;
+      if(value == "RANDOM") return RANDOM;
+      if(value == "READMO") return READMO;
+      if(value == "READDEN") return READDEN;
+      if(value == "SCF") return SCF;
+      if(value == "FCHKMO") return FCHKMO;
+      if(value == "CLASSICAL") return NEOConvergeClassical;
+      CErr("Unrecognized entry for " + keyword);
+      return SAD;
+    }
+
+  }
+
 
   std::set<std::string> CQSCF_VALID(const std::map<std::string, std::string>& inputSection) {
 
@@ -67,6 +85,16 @@ namespace ChronusQ {
       "LINEARDEPTOL",
       "DENMODIFIER"
     };
+
+    // <LABEL>_GUESS for Multiparticle SCF guesses
+    // Accept all <LABEL>_GUESS here but will error out in resolveSubsystemGuessOptions for invalid "LABEL"
+    const std::string suffix = "_GUESS";
+    for(const auto& item : inputSection) {
+      const auto& key = item.first;
+      if(key.size() > suffix.size() and
+         key.compare(key.size() - suffix.size(), suffix.size(), suffix) == 0)
+        allowedKeywords.insert(key);
+    }
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
   }
@@ -206,42 +234,40 @@ namespace ChronusQ {
     std::string guessString = "SAD";
     OPTOPT( guessString = input.getData<std::string>("SCF/GUESS"); )
     trim(guessString);
-    if( not guessString.compare("CORE") )
-      scfControls.guess = CORE;
-    else if( not guessString.compare("SAD") )
-      scfControls.guess = SAD;
-    else if( not guessString.compare("TIGHT") )
-      scfControls.guess = TIGHT;
-    else if( not guessString.compare("RANDOM") )
-      scfControls.guess = RANDOM;
-    else if( not guessString.compare("READMO") )
-      scfControls.guess = READMO;
-    else if( not guessString.compare("READDEN") )
-      scfControls.guess = READDEN;
-    else if( not guessString.compare("FCHKMO") )
-      scfControls.guess = FCHKMO;
-    else if( not guessString.compare("CLASSICAL") )
-      scfControls.guess = NEOConvergeClassical;
-    else
-      CErr("Unrecognized entry for SCF/GUESS");
+    scfControls.guess = parseSCFGuess(guessString, "SCF/GUESS");
     
 
-    // Proton Guess For NEO Calculations
-    std::string prot_guessString = "TIGHT";
-    OPTOPT( prot_guessString = input.getData<std::string>("SCF/PROT_GUESS"); )
-    trim(prot_guessString);
-    if( not prot_guessString.compare("CORE") )
-      scfControls.prot_guess = CORE;
-    else if( not prot_guessString.compare("RANDOM") )
-      scfControls.prot_guess = RANDOM;
-    else if( not prot_guessString.compare("READMO") )
-      scfControls.prot_guess = READMO;
-    else if( not prot_guessString.compare("READDEN") )
-      scfControls.prot_guess = READDEN;
-    else if( not prot_guessString.compare("TIGHT") )
-      scfControls.prot_guess = NEOTightProton;
-    else
-      CErr("Unrecognized entry for SCF/PROT_GUESS");
+    // Proton Guess For Legacy NEO Calculations
+    const bool hasProtGuess = input.containsData("SCF/PROT_GUESS");
+    SS_GUESS protGuess = TIGHT;
+    if(hasProtGuess) {
+      std::string protGuessString = input.getData<std::string>("SCF/PROT_GUESS");
+      trim(protGuessString);
+      protGuess = parseSCFGuess(protGuessString, "SCF/PROT_GUESS");
+    }
+
+    // Get all LABEL_GUESS keywords specified by the user under SCF section
+    // And record them in subsystemGuesses
+    const std::string guessSuffix = "_GUESS";
+    for(const auto& [key, value] : input.getSection("SCF")) {
+      if(key == "GUESS" or key == "PROT_GUESS" or
+         key.size() <= guessSuffix.size() or
+         key.compare(key.size() - guessSuffix.size(), guessSuffix.size(), guessSuffix) != 0)
+        continue;
+      std::string label = key.substr(0, key.size() - guessSuffix.size());
+      if(label.empty()) continue;
+      std::string selection = value;
+      trim(selection);
+      scfControls.subsystemGuesses[label] = parseSCFGuess(selection, "SCF/" + key);
+    }
+
+    // Handle legacy NEO input keyword PROT_GUESS (Transfer to QP_GUESS)
+    if(hasProtGuess) {
+      if(scfControls.subsystemGuesses.count("QP"))
+        CErr("Cannot set both SCF/PROT_GUESS and SCF/QP_GUESS");
+      scfControls.subsystemGuesses["QP"] = protGuess;
+      scfControls.prot_guess = protGuess == TIGHT ? NEOTightParticle : protGuess;
+    }
     
     std::string neoonlyoptstring;
     OPTOPT( neoonlyoptstring = input.getData<std::string>("SCF/NEOOPTIMIZEONLY"); )

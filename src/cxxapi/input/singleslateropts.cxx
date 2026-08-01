@@ -26,6 +26,7 @@
 #include <cxxapi/output.hpp>
 #include <cerr.hpp>
 #include <regex>
+#include <set>
 #include <corehbuilder.hpp>
 #include <corehbuilder/nonrel.hpp>
 #include <corehbuilder/fourcomp.hpp>
@@ -44,6 +45,45 @@
 #include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
+
+  void resolveSubsystemGuessOptions(std::vector<QuantumSubsystem>& quantumSubsystems, const SCFControls& scfControls) {
+
+    // Track the XXX_GUESS (in the SCF input section) that are used the subsystems,
+    // and error out at the end when invalid XXX_GUESS are set by users
+    std::set<std::string> recognizedGuessLabels;
+
+    for(auto& sys : quantumSubsystems) {
+      SCFControls subsystemSCFControls = scfControls;
+      subsystemSCFControls.guessBasis = sys.guessBasis;
+
+      // Electronic subsystem uses scfControls.guess (parsed from SCF/GUESS)
+      // Other subsystem uses tight guess by default
+      SS_GUESS subsystemGuess = sys.label == "E" ? scfControls.guess : TIGHT;
+      // An input label such as QP applies to every runtime subsystem (QP0, QP1, QP2 ... when doing distinguisable)
+      if(auto inputLabelGuess = scfControls.subsystemGuesses.find(sys.inputLabel);
+          inputLabelGuess != scfControls.subsystemGuesses.end()) {
+        subsystemGuess = inputLabelGuess->second;
+        recognizedGuessLabels.insert(inputLabelGuess->first);
+      }
+      // An exact runtime label such as QP0 overrides the input-label selection
+      if(auto runtimeLabelGuess = scfControls.subsystemGuesses.find(sys.label);
+          runtimeLabelGuess != scfControls.subsystemGuesses.end()) {
+        subsystemGuess = runtimeLabelGuess->second;
+        recognizedGuessLabels.insert(runtimeLabelGuess->first);
+      }
+      if(subsystemGuess == NEOConvergeClassical and sys.label != "E")
+        CErr("SCF/CLASSICAL guess is only valid for subsystem E; specify " +
+             sys.inputLabel + "_GUESS for subsystem " + sys.label);
+      // Non-electronic TIGHT guess uses the NEO-specific NEOTightParticle function
+      subsystemSCFControls.guess = (subsystemGuess == TIGHT and sys.label != "E") ? NEOTightParticle : subsystemGuess;
+      sys.ssOptions.scfControls = subsystemSCFControls;
+    }
+
+    // Reject input XXX_GUESS that did not match either an input or runtime subsystem label.
+    for(const auto& [label, guess] : scfControls.subsystemGuesses)
+      if(not recognizedGuessLabels.count(label))
+        CErr("SCF guess specified for unknown quantum subsystem " + label);
+  }
 
   /**
    *
@@ -1940,16 +1980,24 @@ namespace ChronusQ {
     std::vector<std::shared_ptr<SingleSlaterBase>> subSS;
     subSS.reserve(quantumSubsystems.size());
   
+    // Parse and retain every subsystem's own reference/hamiltonian options
+    // before resolving guesses. Guess resolution needs the complete label set
+    // and must not be overwritten by a later options parse.
     for(auto& sys : quantumSubsystems) {
       if(!sys.basis)     CErr("Missing basis for quantum subsystem " + sys.label);
       if(!sys.integrals) CErr("Missing integrals for quantum subsystem " + sys.label);
   
       sys.ssOptions = getSingleSlaterOptions(out, input, mol, *sys.basis, sys.integrals, sys.particle, sys.qmSection);
+      sys.ssOptions.hamiltonianOptions.savFilePrefix = "MULTISS/" + sys.label + "/";
       if(sys.particle.charge >= 0) {
-        sys.ssOptions.hamiltonianOptions.savFilePrefix = "MULTISS/" + sys.label + "/";
         if(sys.ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)  CErr("X2C for other particles not implemented yet");
       }
       if(sys.nQuantumParticles > 0) sys.ssOptions.hamiltonianOptions.nParticleOverride = sys.nQuantumParticles;
+    }
+
+    resolveSubsystemGuessOptions(quantumSubsystems, scfControls);
+
+    for(auto& sys : quantumSubsystems) {
       subSS.push_back(sys.ssOptions.buildSingleSlater(out,  mol, *sys.basis, sys.integrals));
     }
   
@@ -1994,6 +2042,7 @@ namespace ChronusQ {
       if(!sys.atomIndices.empty()) ss->ownedAtomIndices = sys.atomIndices; 
       
       multiSS->addSubsystem(sys.label, ss);
+      multiSS->setSubsystemGuessOptions(sys.label, sys.ssOptions);
     }
   
     for(const auto& interaction : quantumPairInteractions) {

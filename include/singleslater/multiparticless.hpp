@@ -41,6 +41,7 @@ namespace ChronusQ {
     virtual std::shared_ptr<SingleSlaterBase> getSubSSBase(std::string label) = 0;
     virtual std::vector<std::string> getLabels() = 0;
     virtual void setSubSetup() = 0;
+    virtual void saveSubsystemReferenceTypes() = 0;
   };
 
   template <typename MatsT, typename IntsT>
@@ -136,6 +137,7 @@ namespace ChronusQ {
 
       // Direct access to specific inter-particle FockBuilders
       LabeledMap<LabeledMap<std::shared_ptr<InterParticleFockBuilder<MatsT,IntsT>>>> interFockBuilders;
+      LabeledMap<SingleSlaterOptions> subsystemGuessOptions;
 
       // Storage for subsystem dipoles (bare particle dipoles moments, not including classical nuclear contributions)
       LabeledMap<std::array<double,3>> subsystemDipole;
@@ -187,6 +189,11 @@ namespace ChronusQ {
       void addSubsystem(
         const std::string label,
         std::shared_ptr<SingleSlater<MatsT,IntsT>> ss);
+
+      void setSubsystemGuessOptions(const std::string& label,
+        const SingleSlaterOptions& options) {
+        subsystemGuessOptions[label] = options;
+      }
 
       // Add pair-wise interaction between two subsystems
       void addInteraction(const std::string label1, const std::string label2,
@@ -279,6 +286,21 @@ namespace ChronusQ {
         return subsystemDipole;
       }
 
+      void saveSubsystemReferenceTypes(std::string prefix) {
+        ROOT_ONLY(this->comm);
+        if( !this->savFile.exists() ) return;
+
+        const std::string root = prefix + "MULTISS/";
+        applyToEachLabeled([&](const std::string& label, SubSSPtr&){
+          int refType = subsystemGuessOptions.at(label).refOptions.refType;
+          this->savFile.safeWriteData(root + label + "/SCF/REFTYPE", &refType, {1});
+        });
+      }
+
+      void saveSubsystemReferenceTypes() override {
+        saveSubsystemReferenceTypes("");
+      }
+
       void saveCurrentState(bool saveMO = true, std::string prefix = "") override {
         const std::string root = prefix + "MULTISS/";
 
@@ -286,6 +308,7 @@ namespace ChronusQ {
         applyToEachLabeled([&](const std::string& label, SubSSPtr& ss){
           ss->saveCurrentState(saveMO, root + label + "/");
         });
+        saveSubsystemReferenceTypes(prefix);
         ROOT_ONLY(this->comm);
 
         if( !this->savFile.exists() )
@@ -322,7 +345,10 @@ namespace ChronusQ {
       void initializeSCF() override;
 
       void formGuess(EMPerturbation &pert, const SingleSlaterOptions& ssopt) override {
-        applyToEach([&](SubSSPtr& ss){ ss->formGuess(pert, ssopt); });
+        applyToEachLabeled([&](const std::string& label, SubSSPtr& ss){
+          const auto it = subsystemGuessOptions.find(label);
+          ss->formGuess(pert, it == subsystemGuessOptions.end() ? ssopt : it->second);
+        });
       }
 
       void formFockForTargets(EMPerturbation& emPert, const std::vector<std::string>& targets, 
@@ -367,18 +393,17 @@ namespace ChronusQ {
       void setSubSetup() override {
         applyToEachLabeled([&](const std::string& label, SubSSPtr& ss){
           ss->scfControls = this->scfControls;
+          if(const auto it = subsystemGuessOptions.find(label);
+             it != subsystemGuessOptions.end()) {
+            ss->scfControls.guess = it->second.scfControls.guess;
+            ss->scfControls.guessBasis = it->second.scfControls.guessBasis;
+          }
           ss->savFile = this->savFile;
           ss->fchkFileName = this->fchkFileName;
           ss->gauxcUtils = this->gauxcUtils;
           ss->scrBinFileName = this->scrBinFileName;
         });
 
-        // TODOAL: add logic in input parser to set guess for each subsystem
-        // Currently hackily use default proton guess (tight guess) for quantum particle with positive charge
-        applyToEach([&](SubSSPtr& ss){
-          if( ss->particle.charge > 0 )
-            ss->scfControls.guess = this->scfControls.prot_guess;
-        });
       }
 
       void printSetup(std::ostream& out);

@@ -188,10 +188,9 @@ namespace ChronusQ {
 
     } else if( scfControls.guess == RANDOM ) RandomGuess();
       else if( scfControls.guess == READMO ) ReadGuessMO( ssOptions.scfControls.guessBasis, ssOptions.hamiltonianOptions.savFilePrefix );
-      else if( scfControls.guess == READDEN ) { if( this->particle.charge == 1.0 ) ReadGuess1PDM( ssOptions.scfControls.prot_guessBasis );
-                                                else                               ReadGuess1PDM( ssOptions.scfControls.guessBasis ); }
+      else if( scfControls.guess == READDEN ) ReadGuess1PDM( ssOptions.scfControls.guessBasis, ssOptions.hamiltonianOptions.savFilePrefix );
       else if( scfControls.guess == FCHKMO ) FchkGuessMO();
-      else if( scfControls.guess == NEOTightProton ) NEOTightProtonGuess();
+      else if( scfControls.guess == NEOTightParticle ) NEOTightParticleGuess();
       else if( scfControls.guess == NEOConvergeClassical ) NEOConvergeClassicalGuess(pert,ssOptions);
       else if( this->molecule().nAtoms == 1  and scfControls.guess == SAD ) CoreGuess();
       else if( scfControls.guess == CORE ) CoreGuess();
@@ -290,6 +289,83 @@ namespace ChronusQ {
 
     this->onePDM->output(std::cout, "Guess PDM", true);
   };
+
+  /**
+  *** \brief Build a localized particle guess by occupying the AO with tightest exponnents
+  ***        (without assuming basis ordering)
+  **/
+  template <typename MatsT, typename IntsT>
+  void SingleSlater<MatsT,IntsT>::NEOTightParticleGuess() {
+    BasisSet& basis = this->basisSet();
+
+    // Collect AOs basis placed on each quantum particle basis center
+    std::vector<std::vector<size_t>> aosForCenter;
+
+    for(size_t atomIndex : this->ownedAtomIndices) {
+      if(atomIndex >= this->molecule().atoms.size())
+        CErr("NEO TIGHT guess received an out-of-range owned atom index");
+
+      const auto& atom = this->molecule().atoms[atomIndex];
+
+      if(not atom.quantum)
+        CErr("NEO TIGHT guess received a non-quantum owned atom");
+
+      // Ghost basis centers (Z=0) carry basis functions but no particle, so a tight
+      // density on their center not well defined.
+      if(atom.atomicNumber == 0)
+        CErr("NEO TIGHT guess is not supported with ghost basis centers; use CORE guess instead");
+
+      // Collect the shells located on this particle center
+      std::vector<size_t> centerShellIndices;
+      for(size_t shellIndex = 0; shellIndex < basis.shells.size(); ++shellIndex)
+        if(basis.mapSh2Cen[shellIndex] == atomIndex)
+          centerShellIndices.push_back(shellIndex);
+
+      // Rank shells by largest primitive exponent so the tightest candidate comes first
+      std::stable_sort(centerShellIndices.begin(), centerShellIndices.end(),
+        [&basis](size_t leftShellIndex, size_t rightShellIndex) {
+          return *std::max_element(basis.shells[leftShellIndex].alpha.begin(),
+                                   basis.shells[leftShellIndex].alpha.end()) >
+                 *std::max_element(basis.shells[rightShellIndex].alpha.begin(),
+                                   basis.shells[rightShellIndex].alpha.end());
+        });
+
+      // Expand the ordered shells into their AO indices
+      std::vector<size_t> centerAOCandidates;
+      for(size_t shellIndex : centerShellIndices) {
+        const size_t firstAOIndex = basis.mapSh2Bf[shellIndex];
+        for(size_t componentIndex = 0; componentIndex < basis.shells[shellIndex].size(); ++componentIndex)
+          centerAOCandidates.push_back(firstAOIndex + componentIndex);
+      }
+      if(centerAOCandidates.empty())
+        CErr("NEO TIGHT guess found no basis functions on particle center " + std::to_string(atomIndex));
+      aosForCenter.push_back(std::move(centerAOCandidates));
+    }
+    if(aosForCenter.empty())
+      CErr("NEO TIGHT guess found no quantum-particle centers");
+
+    // Assign particles to occupy the tightest AOs.
+    if(this->nOA != aosForCenter.size())
+      CErr("NEO TIGHT guess requires one particle per quantum center");
+    std::vector<size_t> occupiedAOIndices;
+    for(const auto& aoCandidatesOnCenter : aosForCenter)
+      occupiedAOIndices.push_back(aoCandidatesOnCenter.front());
+
+    // Initialize the occupations in both the density and MO coefficients.
+    this->onePDM->clear();
+    this->mo[0].clear();
+    if(this->nC == 1 and not this->iCS) this->mo[1].clear();
+    for(size_t occupiedOrbitalIndex = 0; occupiedOrbitalIndex < occupiedAOIndices.size(); ++occupiedOrbitalIndex) {
+      const size_t aoIndex = occupiedAOIndices[occupiedOrbitalIndex];
+      this->onePDM->S()(aoIndex, aoIndex) = MatsT(1.);
+      this->mo[0](aoIndex, occupiedOrbitalIndex) = MatsT(1.);
+    }
+    // Forcing high-spin so Z density equals scalar density.
+    if(this->onePDM->hasZ())
+      this->onePDM->Z() = this->onePDM->S();
+
+    std::cout << "      Quantum particles occupy tight orbitals on their centers." << std::endl << std::endl;
+  }
 
   /**
    *  \brief Populates the initial Fock matrix with the core
@@ -567,7 +643,8 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasisSet) {
+  void SingleSlater<MatsT,IntsT>::ReadGuess1PDM( const std::shared_ptr<BasisSet> guessBasisSet,
+    std::string prefix) {
 
     //Check if 1PDM comes from save file or scratch file
     if( MPIRank(comm) == 0 ) {
@@ -582,7 +659,7 @@ namespace ChronusQ {
         // it is not compatible with basis set projection. Use -s instead!
         if( guessBasisSet ) CErr("    * ERROR: -z is incompatible with basis set projection, use -s instead.");
 
-        readSameTypeDenBin();
+        readSameTypeDenBin(prefix);
 
       } else {
 
@@ -590,7 +667,7 @@ namespace ChronusQ {
           std::cout << "    * Reading in guess density (scratch file) from file "
             << scrBinFileName << std::endl;
 
-        readDiffTypeDenBin(scrBinFileName, guessBasisSet);
+        readDiffTypeDenBin(scrBinFileName, guessBasisSet, prefix);
 
         if( printLevel > 0 )
           std::cout << "    * Saving prepared 1-PDMs to file "
@@ -599,9 +676,8 @@ namespace ChronusQ {
         // Saving post-transformed 1-PDMs to restart file
         if( savFile.exists() ) {
 
-          std::string prefix = "SCF/";
-          if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
-
+          if(prefix.empty()) prefix = "SCF/";
+          else prefix += "SCF/";
           savFile.safeWriteData(prefix + "1PDM", *this->onePDM);
 
         }
@@ -635,7 +711,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readSameTypeDenBin() {
+  void SingleSlater<MatsT,IntsT>::readSameTypeDenBin(std::string prefix) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -644,9 +720,8 @@ namespace ChronusQ {
       size_t c_hash = 2;
 
       size_t savHash;
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-        prefix = "/PROT_SCF/";
+      if(prefix.empty()) prefix = "/SCF/";
+      else prefix += "SCF/";
 
       try{
         savFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -812,7 +887,8 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readDiffTypeDenBin(std::string binName, const std::shared_ptr<BasisSet> guessBasis ) {
+  void SingleSlater<MatsT,IntsT>::readDiffTypeDenBin(std::string binName,
+    const std::shared_ptr<BasisSet> guessBasis, std::string prefix) {
 
     if( MPIRank(comm) == 0 ) {
 
@@ -824,9 +900,8 @@ namespace ChronusQ {
       size_t c_hash = 2;
       size_t savHash;
 
-      std::string prefix = "/SCF/";
-      if (this->particle.charge == 1.0)
-        prefix = "/PROT_SCF/";
+      if(prefix.empty()) prefix = "/SCF/";
+      else prefix += "SCF/";
 
       try{
         binFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -854,11 +929,11 @@ namespace ChronusQ {
       // Assumes square 1PDM
       if( s_is_double ){
 
-        getScr1PDM<double>(binFile, guessBasis);
+        getScr1PDM<double>(binFile, guessBasis, prefix);
 
       } else if( s_is_complex ){
 
-        getScr1PDM<dcomplex>(binFile, guessBasis);
+        getScr1PDM<dcomplex>(binFile, guessBasis, prefix);
 
       } else CErr("Could not determine type of scratch bin file");
 
@@ -997,9 +1072,8 @@ namespace ChronusQ {
 
           size_t NB  = this->nAlphaOrbital();
           size_t NBC = this->nC * NB;
-          prefix += "SCF/";
-          if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
-
+          if(prefix.empty()) prefix = "SCF/";
+          else prefix += "SCF/";
           savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
           if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
 
@@ -1026,8 +1100,8 @@ namespace ChronusQ {
 
         size_t NB  = this->nAlphaOrbital();
         size_t NBC = this->nC * NB;
-        std::string prefix = "SCF/";
-        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+        if(prefix.empty()) prefix = "SCF/";
+        else prefix += "SCF/";
 
         savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
 
@@ -1047,8 +1121,8 @@ namespace ChronusQ {
 
         size_t NB  = this->nAlphaOrbital();
         size_t NBC = this->nC * NB;
-        std::string prefix = "SCF/";
-        if( this->particle.charge == 1.0 ) prefix = "PROT_" + prefix;
+        if(prefix.empty()) prefix = "SCF/";
+        else prefix += "SCF/";
 
         savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
 
@@ -1076,8 +1150,8 @@ namespace ChronusQ {
 
       size_t savHash;
 
-      if (this->particle.charge == 1.0) prefix += "/PROT_SCF/";
-      else prefix += "/SCF/";
+      if(prefix.empty()) prefix = "/SCF/";
+      else prefix += "SCF/";
 
       try{
         savFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -1184,7 +1258,7 @@ namespace ChronusQ {
    *
    **/
   template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName, 
+  void SingleSlater<MatsT,IntsT>::readDiffTypeMOBin(std::string binName,
     const std::shared_ptr<BasisSet> guessBasis, std::string prefix ) {
 
     if( MPIRank(comm) == 0 ) {
@@ -1198,9 +1272,8 @@ namespace ChronusQ {
 
       size_t savHash;
 
-      
-      if (this->particle.charge == 1.0) prefix += "/PROT_SCF/";
-      else prefix += "/SCF/";
+      if(prefix.empty()) prefix = "/SCF/";
+      else prefix += "SCF/";
 
       try{
         binFile.readData(prefix + "FIELD_TYPE", &savHash);
@@ -1289,38 +1362,6 @@ namespace ChronusQ {
   } // SingleSlater<T>::FchkGuessMO()
 
   /**
-   *  \brief For NEO Protons Only: 
-   *         Occupy the tightest orbital for each quantum pron
-   **/
-  template <typename MatsT, typename IntsT>
-  void SingleSlater<MatsT,IntsT>::NEOTightProtonGuess(){
-    
-    if(this->particle.charge<0)
-      CErr("NEOTightProtonGuess Doesn't Apply to Electronic Wavefunction");
-
-    size_t numProt = this->nOA, NB = this->basisSet().nBasis, NB_per_prot = NB / numProt;
-    
-    this->onePDM->S().clear();
-    if (this->nC == 2) {
-      this->onePDM->X().clear();
-      this->onePDM->Y().clear(); 
-    }
-    this->mo[0].clear();
-    // GNEO still keep a high-alpha guess
-    if (this->nC == 1)
-      this->mo[1].clear();
-    for(int i = 0; i < numProt; i++) {
-      this->onePDM->S()(i*NB_per_prot, i*NB_per_prot) = IntsT(1.0);
-      this->mo[0](i*NB_per_prot, i) = IntsT(1.0);
-    }
-    this->onePDM->Z() = this->onePDM->S();
-
-    std::cout << "      Each quantum proton occupies the tightest orbital. " << std::endl;
-    std::cout << std::endl;
-
-  } // SingleSlater<MatsT,IntsT>::NEOTightProtonGuess()
-
-  /**
    *  \brief For NEO Electronic Wavefunction Only: 
    *         Converge a classical SCF, then use converged density as guess for NEO electronic subsystem
    **/
@@ -1338,6 +1379,7 @@ namespace ChronusQ {
     this->onePDM->clear();
 
     SingleSlaterOptions classicalSSOptions(ssOptions);
+    classicalSSOptions.scfControls.guess = SAD;
 
     // Create a temporary molecule and set quantum atoms to be classical
     Molecule tempMol(this->molecule());
@@ -1356,7 +1398,6 @@ namespace ChronusQ {
 
     classicalSS->printLevel = 1;
     classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;
-    classicalSS->scfControls.guess =   SAD;
     classicalSS->scfControls.diisAlg =   CDIIS;
     classicalSS->buildOrbitalModifierOptions();
 

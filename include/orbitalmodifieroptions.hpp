@@ -30,6 +30,7 @@
 #include <cubegenoptions.hpp>
 #include <d3utils.hpp>
 #include <map>
+#include <unordered_map>
 
 namespace ChronusQ {
 
@@ -110,7 +111,7 @@ namespace ChronusQ {
     SCF,
     FCHKMO,
     // Specific Guess Options For NEO
-    NEOTightProton,
+    NEOTightParticle,
     NEOConvergeClassical
   };
   /**
@@ -174,9 +175,9 @@ namespace ChronusQ {
 
     // Guess Settings
     SS_GUESS guess = SAD;
-    SS_GUESS prot_guess = NEOTightProton;
+    SS_GUESS prot_guess = NEOTightParticle;
+    std::unordered_map<std::string, SS_GUESS> subsystemGuesses;
     std::shared_ptr<BasisSet> guessBasis;      ///< Optional guess basis set to project from
-    std::shared_ptr<BasisSet> prot_guessBasis; ///< Optional protonic guess basis set to project from
     std::string scfGuessOutFile;            ///< Optional guess save file name for SCF guess
     std::vector<std::string> NEOSubSystemOpt; ///< Optional only optimizing one of the subsystems
     bool NEOStepwiseOpt = false; ///< Optional for doing a non-simultaneous NEO optimization

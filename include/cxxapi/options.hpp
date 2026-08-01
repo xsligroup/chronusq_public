@@ -182,6 +182,9 @@ namespace ChronusQ {
     std::vector<QuantumPairInteraction>& quantumPairInteractions,
     SCFControls scfControls);
 
+  /// Resolve SCF guess options parsed from the input for each subsystem in a multiparticle calculation
+  void resolveSubsystemGuessOptions(std::vector<QuantumSubsystem>& quantumSubsystems, const SCFControls& scfControls);
+
   std::set<std::string> CQQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQQUANTUMSUBSYSTEMQM_VALID(const std::map<std::string, std::string>& inputSection);
