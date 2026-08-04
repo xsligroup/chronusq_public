@@ -804,11 +804,11 @@ namespace ChronusQ {
       if( ks ) intParam = ks->intParam;
       else if( auto aux_ks = dynamic_cast<KohnSham<MatsT,IntsT>*>( this->aux_ss ) )
         intParam = aux_ks->intParam;
-      BeckeIntegrator<EulerMac> 
+      BeckeIntegrator<EulerMac>
         integrator(intComm,ss.molecule(),basis,aux_basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
           (isGGA ? GRADIENT : NOGRAD), (epcisGGA ? GRADIENT : NOGRAD), 
-          intParam.epsilon);
+          intParam.basisTol);
 
       // Integrate the VXC
       integrator.integrate<size_t>(vxcbuild);
@@ -1551,11 +1551,11 @@ namespace ChronusQ {
       if( ks ) intParam = ks->intParam;
       else if( auto aux_ks = dynamic_cast<KohnSham<dcomplex,dcomplex>*>( this->aux_ss ) )
         intParam = aux_ks->intParam;
-      BeckeIntegrator<EulerMac> 
+      BeckeIntegrator<EulerMac>
         integrator(intComm,ss.molecule(),basis,aux_basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
           (isGGA ? GRADIENT : NOGRAD), (epcisGGA ? GRADIENT : NOGRAD), 
-          intParam.epsilon);
+          intParam.basisTol);
 
       // Integrate the VXC
       integrator.integrate<size_t>(vxcbuild, pert, this->aux_ss->particle.charge>0);

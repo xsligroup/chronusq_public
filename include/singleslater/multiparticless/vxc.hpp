@@ -603,7 +603,7 @@ namespace ChronusQ {
       for(size_t p = 0; p < nP; p++) typsN[p] = needGrad[p] ? GRADIENT : NOGRAD;
 
       BeckeIntegrator<EulerMac> integrator(intComm, this->molecule(), bases, typsN,
-        EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch, intParam.epsilon);
+        EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch, intParam.basisTol);
 
       size_t nGridPts = 0;
       integrator.integrateN<size_t>(nGridPts, vxcbuild);
@@ -1372,7 +1372,7 @@ namespace ChronusQ {
       }
 
       BeckeIntegrator<EulerMac> integrator(intComm, this->molecule(), evalBases, typsN,
-        EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch, intParam.epsilon);
+        EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch, intParam.basisTol);
 
       size_t nGridPts = 0;
       integrator.integrateN<size_t>(nGridPts, vxcbuild, pert, phaseScales);

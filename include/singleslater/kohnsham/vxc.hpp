@@ -651,10 +651,10 @@ namespace ChronusQ {
 
 
       // Create the BeckeIntegrator object
-      BeckeIntegrator<EulerMac> 
+      BeckeIntegrator<EulerMac>
         integrator(intComm,this->molecule(),basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
-          (isGGA ? GRADIENT : NOGRAD), intParam.epsilon);
+          (isGGA ? GRADIENT : NOGRAD), intParam.basisTol);
 
       // Integrate the VXC
       integrator.integrate<size_t>(vxcbuild);
@@ -1511,10 +1511,10 @@ namespace ChronusQ {
 
 
       // Create the BeckeIntegrator object
-      BeckeIntegrator<EulerMac> 
+      BeckeIntegrator<EulerMac>
         integrator(intComm,this->molecule(),basis,
         EulerMac(intParam.nRad), intParam.nAng, intParam.nRadPerBatch,
-          (isGGA ? GRADIENT : NOGRAD), intParam.epsilon);
+          (isGGA ? GRADIENT : NOGRAD), intParam.basisTol);
 
       // Integrate the VXC
       integrator.integrate<size_t>(vxcbuild,pert);

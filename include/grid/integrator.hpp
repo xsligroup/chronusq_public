@@ -1159,7 +1159,7 @@ namespace ChronusQ {
 #if INT_DEBUG_LEVEL < 3
         if (std::abs(maxWeight) < epsilon) {
           //std::cerr << "batch screened" << std::endl;
-          return;
+          //return; // this return screens batch based on weight only
         }
 #endif
 #else
@@ -1373,7 +1373,7 @@ namespace ChronusQ {
 
         // Modify weights according to the Becke partition scheme; screen batch
         auto maxWeight = evalPartitionWeights(iAtm,cenR_loc,weights);
-        if (std::abs(maxWeight) < epsilon) return;
+        //if (std::abs(maxWeight) < epsilon) return; //this return screens batch based on weight only
 
         std::vector<std::vector<size_t>> batchEvalShells_vec = allShells;
         std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec = allSubMat;
@@ -1511,7 +1511,7 @@ namespace ChronusQ {
 
         // Modify weights according to the Becke partition scheme; screen batch
         auto maxWeight = evalPartitionWeights(iAtm,cenR_loc,weights);
-        if (std::abs(maxWeight) < epsilon) return;
+        //if (std::abs(maxWeight) < epsilon) return; //this return screens batch based on weight only
 
         std::vector<std::vector<size_t>> batchEvalShells_vec = allShells;
         std::vector<std::vector<std::pair<size_t,size_t>>> batchSubMat_vec = allSubMat;
@@ -1913,7 +1913,7 @@ namespace ChronusQ {
 #if INT_DEBUG_LEVEL < 3
         if (std::abs(maxWeight) < epsilon) {
           //std::cerr << "batch screened" << std::endl;
-          return;
+          //return; // this return screens batch based on weight only
         }
 #endif
 #else

@@ -156,7 +156,8 @@ namespace ChronusQ {
       "NRAD",
       "NMACRO",
       "INHOUSE",
-      "GAUXC"
+      "GAUXC",
+      "BASISTOL"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -524,6 +525,7 @@ namespace ChronusQ {
       OPTOPT( gauFlag1              = not input.getData<bool>("DFTINT/INHOUSE") );
       OPTOPT( gauFlag2              = input.getData<bool>("DFTINT/GAUXC") ); 
       intParam.useGauXC = gauFlag1 or gauFlag2;
+      OPTOPT( intParam.basisTol = input.getData<double>("DFTINT/BASISTOL")  );
 
     }
 

@@ -96,6 +96,7 @@ namespace ChronusQ {
     size_t nRad         = 100;   ///< # Radial points
     size_t nRadPerBatch = 4;     ///< # Radial points / macro batch
     bool   useGauXC     = false; ///< Use GauXC as the DFT engine
+    double basisTol     = 1e-12;  ///< Basis Screening Tolerance for use in BeckeIntegrator
   };
 
   /**
