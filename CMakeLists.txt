@@ -39,6 +39,7 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 # -----------------------------------------------------------------------------
 
 option(CQ_ENABLE_MPI    "Enable MPI parallelism"          OFF)
+option(CQ_ENABLE_SPARSE "Enable Sparse STP-DAS"          OFF)
 option(CQ_ENABLE_TA     "Enable TA"  OFF)
 option(ENABLE_COVERAGE  "Enable coverage and profiling"   OFF)
 option(CQ_ENABLE_CUDA   "Enable CUDA for GauXC"           OFF)

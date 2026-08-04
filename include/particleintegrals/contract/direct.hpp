@@ -1659,7 +1659,7 @@ namespace ChronusQ {
 
 #ifdef CQ_ENABLE_MPI
       // MPI partition s12 blocks
-      if( (s12 < mpiS12St) or (s12 >= mpiS12End) ) { s12++; continue; }
+      // if( (s12 < mpiS12St) or (s12 >= mpiS12End) ) { s12++; continue; }
 #endif
 
       // Round-Robin work distribution
@@ -2102,23 +2102,22 @@ namespace ChronusQ {
     // Combine all G[X] contributions onto Root process
     if( mpiSize > 1 ) {
 
-      // FIXME: This should be able to be done with MPI_IN_PLACE for
-      // the root process
+    //   // FIXME: This should be able to be done with MPI_IN_PLACE for
+    //   // the root process
+    //   MatsT* mpiScr;
+    //   if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<MatsT>(nBasis*nBasis);
 
-      MatsT* mpiScr;
-      if( mpiRank == 0 ) mpiScr = CQMemManager::get().malloc<MatsT>(nBasis*nBasis);
+    //   for( auto &C : matList ) {
+//  //     prettyPrintSmart(std::cerr,"AX in Direct",C.AX,nBasis,nBasis,nBasis);
 
-      for( auto &C : matList ) {
-//      prettyPrintSmart(std::cerr,"AX in Direct",C.AX,nBasis,nBasis,nBasis);
+    //     MPIReduce( C.AX, nBasis*nBasis, mpiScr, 0, comm );
 
-        MPIReduce( C.AX, nBasis*nBasis, mpiScr, 0, comm );
+    //     // Copy over the output buffer on root
+    //     if( mpiRank == 0 ) std::copy_n(mpiScr,nBasis*nBasis,C.AX);
 
-        // Copy over the output buffer on root
-        if( mpiRank == 0 ) std::copy_n(mpiScr,nBasis*nBasis,C.AX);
+    //   }
 
-      }
-
-      if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
+    //   if( mpiRank == 0 ) CQMemManager::get().free(mpiScr);
 
     }
 

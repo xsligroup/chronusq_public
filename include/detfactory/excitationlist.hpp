@@ -210,6 +210,21 @@ class FullCD1eExListGenerator {
     }
   }
 
+#ifdef CQ_ENABLE_SPARSE
+  template <typename Visitor>
+  void visitAllSparseExcitations(Visitor visitor) {
+    visitSparseExcitations(0ul, nBraDets_, std::forward<Visitor>(visitor));
+  }
+
+ template <typename Visitor>
+  void visitSparseExcitations(size_t braBegin, size_t braEnd, Visitor visitor) {
+    for (size_t K = braBegin; K < braEnd; ++K) {
+      buildExcitations_(K, 0ul);
+      visitor(K, excitations_);
+    }
+  }
+#endif
+
 }; // class FullCD1eExListGenerator
 
 } // namespace ChronusQ

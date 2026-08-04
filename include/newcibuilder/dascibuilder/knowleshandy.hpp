@@ -111,5 +111,5 @@ void DASCISigma2eBuilder::buildKnowlesHandy(
       } // inner loop 
   ); // visitAllExcitations 
 } // DASCISigma2eBuilder<MatsT>::buildKnowlesHandy
-  
+
 } // namespace ChronusQ

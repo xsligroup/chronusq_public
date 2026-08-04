@@ -30,6 +30,10 @@
 #include <util/mpi.hpp>
 #include <util/matout.hpp>
 
+#include <itersolver/cqSparseMatrix.hpp>
+#include <boost/sort/sort.hpp>
+#include <execution>
+
 namespace ChronusQ {
 
 
@@ -880,6 +884,303 @@ namespace ChronusQ {
 
   }; // class SolverVectorsView
 
+   /*
+    * \brief DistributedSparseVectors
+    *
+    * The actual storage of the data is divided into blocks
+    *   across different nodes.
+    *
+    *   Default is split evenly, but can be initialized with input
+    *
+    */
+#ifdef CQ_ENABLE_SPARSE
+  template <typename _F>
+  class DistributedSparseVectors : public SolverVectors<_F> {
+
+  protected:
+
+    MPI_Comm comm_;
+    size_t len_;
+    size_t size_ = 0;
+
+    // lengths across all nodes
+    std::vector<size_t> lens_; // lengths at each node
+    std::vector<size_t> accLens_; // accumulated lengths at each node
+
+    size_t localLen_;
+    size_t localOffset_;
+
+    // local data storage
+    LLSparseMatrix<_F> vecs_;
+
+  public:
+
+    // dividing the vector evenly
+    explicit DistributedSparseVectors(MPI_Comm c,
+                                size_t len, size_t size) :
+        comm_(c), len_(len), size_(size) {
+
+      CErr("DistributedSparseVectors doesn't have the first constructor");
+    }
+
+
+    // dividing the vector with inputs
+    explicit DistributedSparseVectors(MPI_Comm c,
+                                const std::vector<size_t>& lens, size_t size):
+        comm_(c), lens_(lens), size_(size) {
+
+      size_t nNodes = MPISize(comm_);
+
+      while (lens_.size() < nNodes) {
+        lens_.push_back(0ul);
+      }
+
+      if (lens_.size() > nNodes ) {
+        CErr("Can't distribute data to blocks more than number of nodes");
+      }
+
+      accLens_.resize(nNodes);
+      accLens_[0] = lens[0];
+      for (auto i = 1ul; i < nNodes; ++i) {
+        accLens_[i] = accLens_[i - 1] + lens_[i];
+      }
+      len_ = accLens_.back();
+      localLen_ = lens_[MPIRank(comm_)];
+      localOffset_ = MPIRank(comm_) == 0 ? 0ul : accLens_[MPIRank(comm_) - 1];
+
+      alloc();
+    }
+
+    DistributedSparseVectors(const DistributedSparseVectors<_F> &other):
+        DistributedSparseVectors(other.comm_, other.other.lens_, other.size_) {
+      set_data(0, size_, other, 0ul, false);
+    }
+
+    DistributedSparseVectors(DistributedSparseVectors<_F> &&other):
+        comm_(other.comm_),
+        vecs_(std::move(other.vecs_)), len_(other.len_), lens_(other.lens_),
+        accLens_(other.accLens_), size_(other.size_) {
+    }
+
+    virtual ~DistributedSparseVectors() { dealloc(); }
+
+    MPI_Comm getMPIcomm() const { return comm_; }
+
+    void dealloc() {
+      vecs_.setZero();
+    }
+
+    void alloc() {
+      dealloc();
+
+      try {
+        vecs_.resize(size_);
+      } catch (...) {
+        std::cout << std::fixed;
+        std::cout << "Insufficient memory for DistributedSparseVectors object, "
+                    <<  " (" << (localLength() * size_ / 1e9) * sizeof(_F) << " GB)"
+                    << std::endl;
+        CErr();
+        }
+    }
+
+
+    virtual size_t length() const override { return len_; }
+    virtual size_t size() const override { return size_; }
+
+    size_t lengthAtNode(size_t i) const { return lens_[i]; }
+    size_t localLength() const { return localLen_; }
+    size_t localOffset() const { return localOffset_; }
+    auto& getVecs() { return vecs_; }
+    const auto& getVecs() const { return vecs_; }
+
+    // Get element
+    virtual _F get(size_t i, size_t j) const override {
+      if (i >= length() or j >= size()) {
+        CErr("Geting invalid place in DistributedSparseVectors object.");
+      }
+
+      // find where it's stored
+      size_t nodeId = std::distance(accLens_.begin(),
+          std::upper_bound(accLens_.begin(), accLens_.end(), i));
+
+      _F result = _F(0);
+
+      if (MPIRank(comm_) == nodeId) {
+        result = vecs_.get(i - localOffset_, j);
+      }
+      MPIBCast(result, nodeId, comm_);
+
+      return result;
+    }
+
+    // Set element
+    virtual void set(size_t i, size_t j, _F value) override {
+      if (i >= length() or j >= size()) {
+        CErr("Setting invalid place in DistributedSparseVectors object.");
+      }
+
+      if (i >= localOffset_ and i < accLens_[MPIRank(comm_)]) {
+	vecs_.sortedInsert(i - localOffset_, j, value);
+      }
+    }
+
+    using SolverVectors<_F>::clear;
+    void clear(size_t shift, size_t nVec) override {
+      if (nVec == 0) return;
+
+      this->sizeCheck(shift + nVec, "DistributedSparseVectors<_F>::clear");
+      vecs_.setZero(shift, nVec);
+    }
+
+
+    DistributedSparseVectors<_F> copy(size_t shift, size_t nVec) const {
+
+      this->sizeCheck(shift + nVec, "DistributedSparseVectors<_F>::copy");
+
+      DistributedSparseVectors<_F> vecs(comm_, lens_, nVec);
+      vecs.vecs_.copy(vecs_, shift, nVec);
+      return vecs;
+    }
+
+
+    using SolverVectors<_F>::print;
+    void print(std::ostream& out, std::string str, size_t shift, size_t nVec) const override {
+      CErr("Print not implemented yet");
+    }
+
+
+    virtual void multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
+                                 _F alpha, _F const *B, int64_t ldb,
+                                 _F beta, SolverVectors<_F> &C, size_t shiftC) const override;
+
+    virtual void dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
+                             int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA = true) const override;
+
+    virtual void swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) override;
+
+    virtual void set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable = false) override;
+
+    using SolverVectors<_F>::scale;
+    virtual void scale(_F scalar, size_t shift, size_t nVec) override;
+
+    using SolverVectors<_F>::conjugate;
+    virtual void conjugate(size_t shift, size_t nVec) override;
+
+    virtual void axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) override;
+
+    virtual void trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) override;
+
+    virtual int QR(size_t shift, size_t nVec, _F *R = nullptr, int LDR = 0) override;
+
+    using SolverVectors<_F>::norm2F;
+    virtual double norm2F(size_t shift, size_t nVec) const override;
+
+    using SolverVectors<_F>::maxNormElement;
+    virtual double maxNormElement(size_t shift, size_t nVec) const override;
+
+    template <typename Compare>
+    void getKIndicesAndValues(size_t K, size_t iVec,
+        std::vector<size_t>& kIndices, std::vector<_F>& kValues,
+        Compare comp) const {
+
+       //copy C[iVec] into localIndices in parallel
+       std::vector<std::pair<size_t, _F>> localIndices(vecs_.nonZeros(iVec));
+       std::copy(std::execution::par, vecs_.cbegin(iVec), vecs_.cend(iVec), localIndices.begin());
+
+       size_t nLocalK = std::min(K, vecs_.nonZeros(iVec));
+
+       //equivalent to stable sort in O(N) time
+       std::nth_element(std::execution::par, localIndices.begin(), localIndices.begin() + nLocalK - 1, localIndices.end(), 
+	 [&] (const auto& i, const auto& j) {
+             return comp(i.second, j.second) or (std::norm(i.second) == std::norm(j.second) and i.first < j.first);
+             }
+       );
+
+       std::sort(localIndices.begin(), localIndices.begin() + nLocalK,
+           [&] (const auto& i, const auto& j) {
+             return comp(i.second, j.second) or (std::norm(i.second) == std::norm(j.second) and i.first < j.first);
+       });
+
+       if (MPISize() == 1) {
+         for (auto i = 0ul; i < nLocalK; ++i) {
+           kIndices.push_back(localIndices[i].first);
+           kValues.push_back(localIndices[i].second);
+         }
+         return;
+       }
+
+       /*
+        * MPI case
+        */
+       std::vector<size_t> kLocalIndices;
+       std::vector<_F> kLocalValues;
+       for (auto i = 0ul; i < nLocalK; ++i) {
+         kLocalIndices.push_back(localIndices[i].first + localOffset_);
+         kLocalValues.push_back(localIndices[i].second);
+       }
+
+       size_t nonZeros = vecs_.nonZeros(iVec);
+       MPIAllReduce(nonZeros, this->comm_);
+       // reduction
+       size_t nResultK = std::min(K, nonZeros);
+
+       // gather sizes
+       std::vector<size_t> recv_sizes = MPIGather(nLocalK, 0, this->comm_);
+       size_t totalGatheredSize = (MPIRank(this->comm_) == 0) ?
+           std::accumulate(recv_sizes.begin(), recv_sizes.end(), size_t(0ul)) : 1ul;
+
+       std::vector<size_t> gatheredIndices(totalGatheredSize);
+       std::vector<_F> gatheredValues(totalGatheredSize);
+       MPIGatherV(&kLocalIndices[0], nLocalK, &gatheredIndices[0], recv_sizes, 0, this->comm_);
+       MPIGatherV(&kLocalValues[0], nLocalK, &gatheredValues[0], recv_sizes, 0, this->comm_);
+
+       kIndices.resize(nResultK);
+       kValues.resize(nResultK);
+       if (MPIRank(this->comm_) == 0) {
+	       std::vector<size_t>  localIndicesFinal(totalGatheredSize);
+         std::iota(localIndicesFinal.begin(), localIndicesFinal.end(), 0ul);
+         std::stable_sort(localIndicesFinal.begin(), localIndicesFinal.end(),
+           [&] (size_t i, size_t j) {
+             return comp(gatheredValues[i], gatheredValues[j]);
+         });
+
+         for (auto i = 0ul; i < nResultK; ++i) {
+           kIndices[i] = gatheredIndices[localIndicesFinal[i]];
+           kValues[i] = gatheredValues[localIndicesFinal[i]];
+         }
+       }
+       MPIBCast(&kIndices[0], nResultK, 0, this->comm_);
+       MPIBCast(&kValues[0], nResultK, 0, this->comm_);
+    } // getKIndicesAndValues
+
+  }; // class DistributedSparseVectors
+
+
+  template <typename _F>
+  auto tryGetDistributedSparseVectorsLocalPointer(SolverVectors<_F>& vecs, size_t shift = 0) {
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+        }
+    );
+
+    return shift;
+  }
+
+  template <typename _F>
+  auto tryGetDistributedSparseVectorsLocalPointer(const SolverVectors<_F>& vecs, size_t shift = 0) {
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(vecs,
+        [&] (auto& vecsRef, size_t extraShift) {
+          shift += extraShift;
+        }
+    );
+
+    return shift;
+  }
+#endif
+
+
   template <typename T, typename _F, typename Operation>
   void tryDowncastReferenceTo(SolverVectors<_F>& vecs, Operation op) {
     try {
@@ -890,10 +1191,10 @@ namespace ChronusQ {
         op(dynamic_cast<T&>(vecs_view.getVecs()), vecs_view.shift());
       }
     } catch (const std::bad_cast& e) {
-      CErr("SolverVectors Downcast failed!"); 
+      CErr("SolverVectors Downcast failed!");
     }
-  }    
-  
+  }
+
   template <typename T, typename _F, typename Operation>
   void tryDowncastReferenceTo(const SolverVectors<_F> & vecs, Operation op) {
     try {
@@ -904,10 +1205,10 @@ namespace ChronusQ {
         op(dynamic_cast<const T&>(vecs_view.getVecs()), vecs_view.shift());
       }
     } catch (const std::bad_cast& e) {
-      CErr("const SolverVectors Downcast failed!"); 
+      CErr("const SolverVectors Downcast failed!");
     }
   }
-  
+
   template <typename _F>
   _F* tryGetRawVectorsPointer(SolverVectors<_F>& vecs, size_t shift = 0) {
     _F* pointer = nullptr;
@@ -955,5 +1256,6 @@ namespace ChronusQ {
     );
     return pointer;
   }
+
 
 } // namespace ChronusQ

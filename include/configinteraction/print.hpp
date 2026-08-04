@@ -65,6 +65,9 @@ void CISettings::print(bool fourComp) {
     FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
     FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
     FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
+    FormattedLine(std::cout,"  Sparse Davidson:", SparseDavidson ? "True" : "False");
+    if(SparseDavidson)
+      FormattedLine(std::cout,"  Sparse Davidson Screening Threshold:", SparseDavidsonEps);
 
   } else CErr("NYI CI Algorithm");
   
@@ -263,19 +266,59 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIFooter( ) {
   std::vector<size_t> kLargestCAddr; 
   std::vector<MatsT> kLargestC;
 
-  for (auto i = 0ul; i < nS; i++) { 
+
+  if(!ciSettings.SparseDavidson) {
+    std::shared_ptr<DistributedVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedVectors<MatsT>>(CIVectors);
+    for (auto i = 0ul; i < nS; i++) {
+
      kLargestCAddr.clear();
      kLargestC.clear();
      std::vector<std::pair<double, size_t>> CWindows;
      CWindows.emplace_back(0.0, nPrintC);
-     CIVectors->getKIndicesAndValues(nPrintC, i, kLargestCAddr, kLargestC, CWindows,
+     
+     CIVectorsCast->getKIndicesAndValues(nPrintC, i, kLargestCAddr, kLargestC, CWindows,
          [](const MatsT& a, const MatsT& b) { return std::norm(a) > std::norm(b); }
      );
+
+     auto largestVal = CIVectorsCast->get(kLargestCAddr[0], i);
+     //Rotate each state such that the largest coefficient is real and positive
+     for(auto& coeff : kLargestC) { 
+       coeff *= std::abs(largestVal) / largestVal;
+     }
 
      // only print k Largest coefficient
      size_t nDetPerLine = this->printDetailedCICoeffs ? 1 : 5;
      printCIState(this->detFactory, std::cout, i, this->StateEnergy[i], kLargestCAddr, kLargestC, nDetPerLine, this->printDetailedCICoeffs);  
+
+    }
   }
+  else {
+#ifdef CQ_ENABLE_SPARSE
+    std::shared_ptr<DistributedSparseVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedSparseVectors<MatsT>>(CIVectors);
+    for (auto i = 0ul; i < nS; i++) {
+
+     kLargestCAddr.clear();
+     kLargestC.clear();
+     CIVectorsCast->getKIndicesAndValues(nPrintC, i, kLargestCAddr, kLargestC,
+         [](const MatsT& a, const MatsT& b) { return std::norm(a) > std::norm(b); }
+     );
+
+     auto largestVal = CIVectorsCast->get(kLargestCAddr[0], i);
+     //Rotate each state such that the largest coefficient is real and positive
+     for(auto& coeff : kLargestC) {
+       coeff *= std::abs(largestVal) / largestVal;
+     }
+
+     // only print k Largest coefficient
+     size_t nDetPerLine = this->printDetailedCICoeffs ? 1 : 5;
+     printCIState(this->detFactory, std::cout, i, this->StateEnergy[i], kLargestCAddr, kLargestC, nDetPerLine, this->printDetailedCICoeffs);  
+
+    }
+#else
+    CErr("Please ENABLE_SPARSE in compilation");
+#endif
+  }
+
 
   this->print1RDMs();
   

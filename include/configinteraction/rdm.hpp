@@ -31,14 +31,35 @@ namespace ChronusQ {
 template <typename MatsT, typename IntsT>
 void ConfigurationInteraction<MatsT, IntsT>::computeTDM(
   size_t s1, size_t s2, std::shared_ptr<cqmatrix::Matrix<MatsT>> tdm) {
-  ciBuilder->buildTDM(*CIVectors, *CIVectors, {s1, s2}, tdm);
+  
+  if(!ciSettings.SparseDavidson) {
+    std::shared_ptr<DistributedVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedVectors<MatsT>>(CIVectors);
+    ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2}, tdm);
+  }
+  else {
+#ifdef CQ_ENABLE_SPARSE
+    std::shared_ptr<DistributedSparseVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedSparseVectors<MatsT>>(CIVectors);
+    ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2}, tdm);
+#endif
+  }
 } // ConfigInteraction::computeTDM 
 
 
 template <typename MatsT, typename IntsT>
 void ConfigurationInteraction<MatsT, IntsT>::compute2TDM(
   size_t s1, size_t s2, std::shared_ptr<InCore4indexTPI<MatsT>> twoTDM) {
-  ciBuilder->buildTDM(*CIVectors, *CIVectors, {s1, s2}, nullptr, false, 1.0, twoTDM);
+  
+  if(!ciSettings.SparseDavidson) {
+    std::shared_ptr<DistributedVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedVectors<MatsT>>(CIVectors);
+    ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2}, nullptr, false, 1.0, twoTDM);
+  }
+  else {
+#ifdef CQ_ENABLE_SPARSE
+    std::shared_ptr<DistributedSparseVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedSparseVectors<MatsT>>(CIVectors);
+    ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2}, nullptr, false, 1.0, twoTDM);
+#endif
+  }
+ 
 } // ConfigInteraction::compute2TDM
 
 
@@ -48,27 +69,43 @@ void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   const auto& weights = this->SAWeight;
   oneRDMSOI->clear();
   twoRDMSOI->clear();
-  
+
   size_t si = (this->StateAverage) ? 0ul: this->NStates - 1;
   
   for (; si < this->NStates; ++si) {
     const auto w = (this->StateAverage) ? weights[si] : 1.0;
 #ifdef CQ_ENABLE_MPI 
     bool reduceRDM = (si == this->NStates - 1) ? true : false;    
-#endif    
-    ciBuilder->buildTDM(*CIVectors, *CIVectors, {si, si}, 
+#endif   
+    if(!ciSettings.SparseDavidson) {
+      std::shared_ptr<DistributedVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedVectors<MatsT>>(CIVectors);
+  
+      ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {si, si}, 
         oneRDMSOI, true, w, twoRDMSOI, true, w
 #ifdef CQ_ENABLE_MPI 
         , reduceRDM, reduceRDM
 #endif    
         );
+    }
+    else {
+
+#ifdef CQ_ENABLE_SPARSE
+      std::shared_ptr<DistributedSparseVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedSparseVectors<MatsT>>(CIVectors);
+
+      ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {si, si},
+        oneRDMSOI, true, w, twoRDMSOI, true, w
+        , reduceRDM, reduceRDM
+        );
+#endif
+    }
   }
 
   size_t nCorrO = this->corrSpace.nCorrO;
   auto & RDM2 = *twoRDMSOI;
   auto & RDM1 = *oneRDMSOI;
 
-  
+  //subtract one-electron terms from 2TDM.
+  //These only occur in case 3b (two-electron excitation is all within the same DAS), so only subtract terms for which p,q==r,s are in the same DAS
   #pragma omp parallel for schedule(static) default(shared)
   for (auto q = 0ul; q < nCorrO; q++) {
 

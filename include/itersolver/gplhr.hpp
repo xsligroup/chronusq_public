@@ -38,8 +38,12 @@ namespace ChronusQ {
   template <typename _F>
   bool GPLHR<_F>::runMicro() {
 
-
+#ifdef CQ_ENABLE_MPI
     bool isRoot = MPIRank(this->comm_) == 0;
+#else
+    bool isRoot = true;
+#endif
+
     bool isConverged = false;
 
 
@@ -168,9 +172,10 @@ namespace ChronusQ {
 
 
 
-
+#ifdef CQ_ENABLE_MPI
     // Sync processes
     MPI_Barrier(this->comm_);
+#endif
 
 
     std::shared_ptr<SolverVectors<_F>> VSend  = V;
@@ -180,9 +185,10 @@ namespace ChronusQ {
     // AV <- A * V
     this->linearTrans_(nR, *VSend, *AVRecv);
 
+#ifdef CQ_ENABLE_MPI
     // Sync processes
     MPI_Barrier(this->comm_);
-
+#endif
 
 
 
@@ -336,10 +342,10 @@ namespace ChronusQ {
 
 //      } // ROOT only
 
-
+#ifdef CQ_ENABLE_MPI
       // Sync processes
       MPI_Barrier(this->comm_);
-
+#endif
       // AW <- A * W
       auto LTst = tick();
 
@@ -350,10 +356,10 @@ namespace ChronusQ {
 
 
       double LTdur = tock(LTst);
-
+#ifdef CQ_ENABLE_MPI
       // Sync processes
       MPI_Barrier(this->comm_);
-    
+#endif    
 
       // Form S-blocks
         
@@ -396,20 +402,20 @@ namespace ChronusQ {
 //        }
 
 
-
+#ifdef CQ_ENABLE_MPI
         // Sync processes
         MPI_Barrier(this->comm_);
-
+#endif
         // AS(k) = A * S(k) 
         LTst = tick();
 
         this->linearTrans_(nR, *SSend, *ASRecv);
 
         LTdur += tock(LTst);
-
+#ifdef CQ_ENABLE_MPI
         // Sync processes
         MPI_Barrier(this->comm_);
-
+#endif
       }
 
 
@@ -560,19 +566,20 @@ namespace ChronusQ {
         if( isRoot ) 
           std::cout << "  * Refreshing AV at iteration " << iter+1 
             << std::endl;
-
+#ifdef CQ_ENABLE_MPI
         // Sync processes
         MPI_Barrier(this->comm_);
-
+#endif
         LTst = tick();
 
 
         this->linearTrans_(nR,*VSend,*AVRecv);
 
         LTdur += tock(LTst);
-
+#ifdef CQ_ENABLE_MPI
         // Sync processes
         MPI_Barrier(this->comm_);
+#endif
       }
 
 //      if( isRoot ) {
@@ -635,10 +642,10 @@ namespace ChronusQ {
 
 //      } // ROOT only
 
-
+#ifdef CQ_ENABLE_MPI
       // Bcast converged
       MPIBCast(isConverged,0,this->comm_);
-
+#endif
 
 
 
@@ -694,9 +701,9 @@ namespace ChronusQ {
 
     } // end for
 
-
+#ifdef CQ_ENABLE_MPI
     MPI_Barrier(this->comm_); // Sync processes
-
+#endif
     
 
 

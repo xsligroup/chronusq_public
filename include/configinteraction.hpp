@@ -48,10 +48,17 @@ struct CISettings {
 
    // for davidson and gplhr
    size_t maxCIIter        = 128;        
-   double ciVectorConv     = 1.0e-6;    
+   double ciVectorConv     = 1.0e-6;
+   bool checkEigenValue = true;
+   bool checkEigenVector = true;
+   bool checkResidue = false;
    size_t maxDavidsonSpace = 20;
    size_t nDavidsonGuess   = 3;
    std::vector<std::pair<double, size_t>> energyRefs;
+   
+   //Sparse Davidson
+   bool SparseDavidson = false;
+   double SparseDavidsonEps = 1e-12;
 
    // SCF Settings 
    bool doSCF           = false;
@@ -78,7 +85,8 @@ class ConfigurationInteraction: public PostHartreeFock<MatsT, IntsT> {
 public:
   
   // potentially to be expanded to sparse vectors
-  std::shared_ptr<DistributedVectors<MatsT>> CIVectors = nullptr;
+  //std::shared_ptr<DistributedVectors<MatsT>> CIVectors = nullptr;
+  std::shared_ptr<SolverVectors<MatsT>> CIVectors = nullptr;
 
   CISettings ciSettings;
   std::shared_ptr<DeterminantFactory> detFactory = nullptr;

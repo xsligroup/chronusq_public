@@ -25,19 +25,9 @@
 
 #include <chronusq_sys.hpp>
 #include <custom_storage.hpp>
+#include <atomic>
 
-#ifdef _OPENMP
-#define MEM_IN_OMP_WARNING(func) \
-    do { \
-        if (omp_in_parallel()) { \
-            std::cout << "Warning: " #func \
-                      << " called from within parallel region. " \
-                      << "This may lead to deadlock." << std::endl; \
-        } \
-    } while (false)
-#else
 #define MEM_IN_OMP_WARNING(func) do {} while (false)
-#endif
 
 //#define MEM_PRINT
 
@@ -53,14 +43,26 @@ namespace ChronusQ {
 
     std::unique_ptr<CQMemBackend> mem_backend; ///< Memory backend
     size_t BlockSize_ = 2048; ///< Segregation block size
-    size_t NAlloc_ = 0;       ///< Number of blocks currently allocated
+    size_t NAlloc_ = 0; ///< Number of blocks currently allocated
     size_t NAllocHigh_ = 0;   ///< High-water mark of allocated blocks
-
+    
     std::unordered_map<void*,std::pair<size_t,size_t>> AllocatedBlocks_;
       ///< Map from block pointer to the size of the block
 
     // Private default constructor
     CQMemManager() = default;
+
+    //used for thread-safe high water-mark tracking
+    std::atomic<size_t> exteriorAlloc;
+    std::atomic<size_t> maxExteriorAlloc;
+
+    template<typename T>
+    void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
+    {
+      T prev_value = maximum_value;
+      while(prev_value < value and not maximum_value.compare_exchange_weak(prev_value, value))
+      {}
+    }
 
   public:
 
@@ -97,6 +99,9 @@ namespace ChronusQ {
       NAlloc_ = 0;
       NAllocHigh_ = 0;
       AllocatedBlocks_.clear();
+      exteriorAlloc.store(0);
+      maxExteriorAlloc.store(0);
+
       switch (type) {
         case CQMemBackendType::PREALLOCATED:
           mem_backend = std::make_unique<CustomMemManager>(N, BlockSize);
@@ -109,6 +114,20 @@ namespace ChronusQ {
       }
     };
 
+    template <typename T>
+    T* threadSafeMalloc(size_t n) {
+      T* ptr = (T*)(::operator new(n * sizeof(T)));
+      exteriorAlloc.fetch_add(n * sizeof(T));
+      update_maximum(maxExteriorAlloc, exteriorAlloc.load());
+      return ptr;
+
+    }
+
+    template <typename T>
+    void threadSafeFree(T* &ptr, size_t n) {
+      exteriorAlloc.fetch_sub(n * sizeof(T));
+      ::operator delete((void*)ptr);
+    }
 
      /**
       *  \brief Allocates a contiguous block of memory of a specified
@@ -353,7 +372,7 @@ namespace ChronusQ {
       if (CustomMemManager *cmm = dynamic_cast<CustomMemManager*>(mem_backend.get()))
         out << cmm->alloc_span() / 1e9;
       else
-        out << NAllocHigh_ * BlockSize_ / 1e9;
+        out << (NAllocHigh_ * BlockSize_ + maxExteriorAlloc.load()) / 1e9;
       out << " GB." << std::endl;
 
     }; // CQMemManager::printAllocTable

@@ -26,12 +26,22 @@
 #include <newcibuilder/dascibuilder.hpp>
 #include <newcibuilder/dascibuilder/defaultbuildtdms.hpp>
 #include <newcibuilder/dascibuilder/defaultbuildsigma.hpp>
+#ifdef CQ_ENABLE_SPARSE
+#include <newcibuilder/dascibuilder/defaultsparsebuildtdms.hpp>
+#include <newcibuilder/dascibuilder/defaultsparsebuildsigma.hpp>
+#endif
 #include <newcibuilder/dascibuilder/knowleshandy.hpp>
 #include <newcibuilder/dascibuilder/olsenroos.hpp>
 #include <newcibuilder/dascibuilder/frischli.hpp>
 #include <newcibuilder/dascibuilder/smallblockhamiltonian.hpp>
 #include <newcibuilder/dascibuilder/largeblockhamiltonian.hpp>
 #include <util/scratch.hpp>
+
+
+#include <unordered_set>
+#ifdef CQ_ENABLE_SPARSE
+#include <newcibuilder/dascibuilder/defaultformsuba.hpp>
+#endif
 
 namespace ChronusQ {
 
@@ -54,7 +64,7 @@ void DASCIBuilder<MatsT>::setSigma2eContractionAlgorithm(std::string alg) {
   } else {
     CErr("Unknown Sigma 2e Contraction Algorithm in DASCI");
   }
-  this->estimateLocalMemoryForMPIComm();  
+  this->estimateLocalMemoryForMPIComm(); 
   estimateMemoryForIntermediates();
 }
 
@@ -65,7 +75,7 @@ template <typename MatsT>
 void DASCIBuilder<MatsT>::estimateMemoryForIntermediates() {
   
   std::vector<size_t> KExDims, LExDims, dummy, nonExDims;
-  size_t nSCR1 = 0ul, nSCR2 = 0ul, nSCR3 = 0ul, nSCRSigma = 0ul; 
+  size_t nSCR1 = 0ul, nSCR2 = 0ul, nSCR3 = 0ul, nSCRSigma = 0ul, nNZQP = 0ul; 
   
   const auto braCategoricalSpace = this->detFactory_.braCategoricalSpace();
   const auto ketCategoricalSpace = this->detFactory_.ketCategoricalSpace();
@@ -94,7 +104,9 @@ void DASCIBuilder<MatsT>::estimateMemoryForIntermediates() {
     
     size_t nNZqp = exList_qp.nNonZeroExcitations();
     size_t nNZrs = exList_rs.nNonZeroExcitations();
-     
+    
+    nNZQP = std::max(nNZQP, nNZqp);
+
     switch (twoEcontAlg_) {
       case DASCISigma2eContAlg::KNOWLESHANDY:
       case DASCISigma2eContAlg::OLSENROOS:
@@ -131,9 +143,10 @@ void DASCIBuilder<MatsT>::estimateMemoryForIntermediates() {
   this->nSCR_.insert_or_assign("SCR3", nSCR3);
   this->nSCR_.insert_or_assign("Sigma", nSCRSigma);
   
+  this->nSCR_.insert_or_assign("NZqp", nNZQP); 
 
-  std::cout << " - Intermediates in DASCIBuilder Needs "
-            << ((nSCR1 + nSCR2 + nSCR3 + nSCRSigma) / 1e9 ) * sizeof(MatsT) * GetNumThreads() 
+  std::cout << " - Intermediates in DASCIBuilder Need "
+	    << ((nSCR1 + nSCR2 + nSCR3 + nSCRSigma) / 1e9 ) * sizeof(MatsT) * GetNumThreads()
             << " GB";
   if (static_cast<size_t>(twoEcontAlg_) < 5) {
     std::cout << " per vector";
@@ -306,5 +319,68 @@ void DASCIBuilder<MatsT>::buildSigma2e(
   } // twoEExcitations
 
 } // buildSigma2e
+
+
+/*
+ * Loop to build Sigma 2e Part for every CatK <- CatJ <- CatL
+ * 
+ * exList_qp: CatJ <- Ex(q, p) <- CatK
+ * exList_rs: CatJ <- Ex(r, s) <- CatL
+ */
+#ifdef CQ_ENABLE_SPARSE
+template <typename MatsT>
+void DASCIBuilder<MatsT>::buildSigma2e(
+    const LocalCISparseVectorsView<MatsT>& C,
+    const LocalCISparseVectorsView<MatsT>& myC,
+    const LocalCISparseVectorsView<MatsT>& Sigma,
+    HashSparseMatrix<MatsT>& SCRSigma_hash, dcomplex* curEigenvalues, double eps) const {
+  
+
+  assert(C.size() == Sigma.size());
+  size_t nVec = C.size();
+
+  auto nLAThreads = GetLAThreads();
+  const auto& twoEExcitations = this->detFactory_.twoEExcitations();
+
+  const auto braCategoricalSpace = this->detFactory_.braCategoricalSpace();
+  const auto ketCategoricalSpace = this->detFactory_.ketCategoricalSpace();
+
+    #pragma omp parallel for schedule(dynamic) default(shared)
+    for (const auto& twoEEx : twoEExcitations) {
+
+      // skip invalid categories
+      if ((not C.containsLocalCategory(twoEEx.categoricalIndices.second)) or C.getVecsByCat()[twoEEx.categoricalIndices.second - C.localCategoryBegin()].nonZeros() == 0) {
+        continue;
+      }
+
+      const auto& s2e = *this->moints_->template getIntegral<DASTwoPInts, MatsT>(twoEEx.term);
+
+      const auto& braCategory = dynamic_cast<const FullDeterminantCategory&>(
+        *braCategoricalSpace->getCategory(twoEEx.categoricalIndices.first));
+      const auto& ketCategory = dynamic_cast<const FullDeterminantCategory&>(
+        *ketCategoricalSpace->getCategory(twoEEx.categoricalIndices.second));
+      const auto& exList_qp = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[0]);
+      const auto& exList_rs = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[1]);
+
+      std::vector<size_t> KExOffs, KNonExOffs, KExDims, LExOffs, LNonExOffs, LExDims, dummy, nonExDims;
+      DoubleFullCD1eExListGenerator double1eExListsGen(exList_qp, exList_rs, twoEEx.exSpaces);
+      const auto& exSpaces = double1eExListsGen.excitationSpaces();
+      braCategory.separateExAndNonExDimensions(exSpaces, KExOffs, KExDims, KNonExOffs, nonExDims);
+      ketCategory.separateExAndNonExDimensions(exSpaces, LExOffs, LExDims, LNonExOffs, dummy);
+
+      auto ketNonExLooper = constructTensorLooper(nonExDims, LNonExOffs);
+      auto braNonExLooper = constructTensorLooper(nonExDims, KNonExOffs);
+      auto nonExLooper = constructTensorLooper(nonExDims, LNonExOffs, KNonExOffs);
+
+      DASCISigma2eBuilder::buildSparseNaive(
+        nVec, C.getVecsByCat()[twoEEx.categoricalIndices.second - C.localCategoryBegin()], C.getShift(),
+        SCRSigma_hash, Sigma.getCatOffest(twoEEx.categoricalIndices.first), s2e, double1eExListsGen,
+        KExOffs, LExOffs, nonExLooper, twoEEx.symmetryFactor * 0.5
+      );
+
+    } // twoEExcitations
+
+  } // buildSigma2e
+#endif
 
 } // namespace ChronusQ

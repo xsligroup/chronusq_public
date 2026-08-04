@@ -35,6 +35,10 @@
 #include <itersolver/solvervectors.hpp>
 #include <itersolver/solvervectorsimpl.hpp>
 
+#ifdef CQ_ENABLE_SPARSE
+  #include <itersolver/cqSparseMatrix.hpp>
+#endif
+
 namespace ChronusQ {
   
 /*
@@ -313,7 +317,16 @@ public:
       MPI_Comm comm, size_t size) const {
     return std::make_shared<DistributedVectors<MatsT>>(comm, distributedCategoryLengths_, size);
   }
-  
+
+#ifdef CQ_ENABLE_SPARSE
+  // generate Sparse CIVector function
+  template <typename MatsT>
+  std::shared_ptr<DistributedSparseVectors<MatsT>> constructDistributedSparseCIVectors(
+      MPI_Comm comm, size_t size) const {
+    return std::make_shared<DistributedSparseVectors<MatsT>>(comm, distributedCategoryLengths_, size);
+  }
+#endif
+
   template <typename MatsT>
   LocalCIVectorsView<MatsT> createLocalCIVectorsView(MatsT* data, size_t nVec, MPI_Comm comm, int iNode) const {
     if (MPIRank(comm) == iNode) {
@@ -349,7 +362,60 @@ public:
       size_t shift, size_t nVec) const {
     return createLocalCIVectorsView(ciVectors.getLocalPtr(shift), nVec);
   }
-  
+
+
+
+
+
+
+
+
+
+#ifdef CQ_ENABLE_SPARSE
+  template <typename MatsT>
+  LocalCISparseVectorsView<MatsT> createLocalCIVectorsView(char* data, size_t dataNonZeros, size_t nVec, MPI_Comm comm, int iNode) const {
+    if (MPIRank(comm) == iNode) {
+      return LocalCISparseVectorsView<MatsT>(data, dataNonZeros, localNDeterminants_, nVec,
+        localCategoryBegin_, localCategoryEnd_, localCategoryOffsets_);
+
+    } else {
+      // create alternative local variables
+      size_t localCategoryBegin = (iNode == 0ul) ? 0ul : distributedAccumulatedNCategories_[iNode - 1];
+      size_t localCategoryEnd = distributedAccumulatedNCategories_[iNode];
+      size_t localNDeterminants = distributedCategoryLengths_[iNode];
+      std::vector<size_t> localCategoryOffsets = {0ul};
+      for (auto i = localCategoryBegin; i < localCategoryEnd - 1; ++i) {
+         localCategoryOffsets.push_back(localCategoryOffsets.back() + categories_[i]->nDeterminants());
+      }
+      return LocalCISparseVectorsView<MatsT>(data, dataNonZeros, localNDeterminants, nVec,
+          localCategoryBegin, localCategoryEnd, localCategoryOffsets);
+    }
+  }
+
+  template <typename MatsT>
+  LocalCISparseVectorsView<MatsT> createLocalCIVectorsView(DistributedSparseVectors<MatsT>& ciVectors,
+      size_t shift, size_t nVec) const {
+    return LocalCISparseVectorsView<MatsT>(ciVectors.getVecs(), localNDeterminants_, nVec,
+        localCategoryBegin_, localCategoryEnd_, localCategoryOffsets_, shift);
+  }
+
+  template <typename MatsT>
+  LocalCISparseVectorsView<MatsT> createLocalCIVectorsView(const DistributedSparseVectors<MatsT>& ciVectors,
+      size_t shift, size_t nVec) const {
+    return LocalCISparseVectorsView<MatsT>(const_cast<LLSparseMatrix<MatsT>&>(ciVectors.getVecs()), localNDeterminants_, nVec,
+        localCategoryBegin_, localCategoryEnd_, localCategoryOffsets_, shift);  
+  }
+#endif
+
+
+
+
+
+
+
+
+
+
   // initalizer
   void initializeDistributedCatMap(MPI_Comm comm) {
     

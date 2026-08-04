@@ -26,10 +26,18 @@ message( "\n\n" )
 message( "ChronusQ Linear Algebra Settings:\n" )
 
 # Eigen3
-find_package(Eigen3 CONFIG REQUIRED)
-set_property( TARGET cq APPEND PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR}
-)
+if( NOT TARGET Eigen3::Eigen)
+
+	FetchContent_Declare( Eigen3
+       GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+       GIT_TAG 3.4.1
+     )
+     FetchContent_MakeAvailable( Eigen3 )
+
+endif()
+
+target_link_libraries(cq PUBLIC Eigen3::Eigen)
+
 
 if( NOT CQ_ENABLE_TA )
 if( CQ_ENABLE_MPI )
@@ -94,6 +102,29 @@ endif()
 
 target_link_libraries( cq PUBLIC lapackpp )
 
+endif()
+
+if( CQ_ENABLE_SPARSE )
+  if( CQ_ENABLE_MPI )
+    find_package( TBB QUIET )
+    if( NOT TBB_FOUND AND NOT TARGET TBB::tbb )
+      message( STATUS "TBB not found -- fetching oneTBB from source" )
+      set( TBB_TEST     OFF CACHE BOOL "" FORCE )
+      set( TBB_EXAMPLES OFF CACHE BOOL "" FORCE )
+      set( TBB_STRICT   OFF CACHE BOOL "" FORCE ) 
+      set( TBB_INSTALL  ON  CACHE BOOL "" FORCE )
+      FetchContent_Declare( tbb
+        GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB.git
+        GIT_TAG        v2021.12.0
+        GIT_SHALLOW    TRUE
+      )
+      FetchContent_MakeAvailable( tbb )
+    endif()
+    target_link_libraries( cq PUBLIC TBB::tbb )
+    set(CQ_ENABLE_SPARSE ON CACHE BOOL "" FORCE)
+  else()
+    message( FATAL_ERROR "Sparse treatment requires MPI to be enabled (CQ_ENABLE_MPI=ON)" )
+  endif()
 endif()
 
 message( "\n\n\n" )

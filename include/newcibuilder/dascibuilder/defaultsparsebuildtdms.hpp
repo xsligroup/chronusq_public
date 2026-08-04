@@ -1,0 +1,370 @@
+/*
+ *  This file is part of the Chronus Quantum (ChronusQ) software package
+ *
+ *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
+ *
+ *  This program is free software; you ca redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ *  Contact the Developers:
+ *    E-Mail: xsli@uw.edu
+ *
+ */
+#pragma once
+#ifdef CQ_ENABLE_SPARSE
+#include <cqlinalg/blasext.hpp>
+#include <newcibuilder/dascibuilder.hpp>
+#include <detfactory/excitationlist.hpp>
+#include <itersolver/cqSparseMatrix.hpp>
+
+namespace ChronusQ {
+   
+template <typename MatsT>
+void DASCIBuilder<MatsT>::build1TDM(
+    const LocalCISparseVectorsView<MatsT>& CBra,
+    const LocalCISparseVectorsView<MatsT>& CKet,
+    cqmatrix::Matrix<MatsT>& oneTDM,
+    const double scale) const {
+
+  const auto& orbOffs = this->detFactory_.orbOffsInEachSpace();
+
+  const auto braCategoricalSpace = this->detFactory_.braCategoricalSpace();
+  const auto ketCategoricalSpace = this->detFactory_.ketCategoricalSpace();
+
+  std::vector<cqmatrix::Matrix<MatsT>> SCR;
+  for (auto i = 0ul; i < GetNumThreads() - 1; i++) {
+    SCR.emplace_back(oneTDM.dimension());
+    SCR.back().clear();
+  }
+
+  if(scale == 0.0)
+    return;
+
+  for(const auto& oneEEx: this->detFactory_.oneEExcitations()) {
+    // std::cout << " contraction on term - " << oneEEx.term << std::endl;
+
+    // MPI Parallelism
+    if (not (CKet.containsLocalCategory(oneEEx.categoricalIndices.second)  and CKet.getVecsByCat()[oneEEx.categoricalIndices.second - CKet.localCategoryBegin()].nonZeros() > 0)) continue;
+    
+    const auto& catK = dynamic_cast<const FullDeterminantCategory&>(
+        *braCategoricalSpace->getCategory(oneEEx.categoricalIndices.first));
+    const auto& catL = dynamic_cast<const FullDeterminantCategory&>(
+        *ketCategoricalSpace->getCategory(oneEEx.categoricalIndices.second));
+    const auto symmFactSign = oneEEx.symmetryFactor > 0 ?  scale: - scale;
+    const auto& exList = dynamic_cast<const FullCD1eExList&>(*oneEEx.exLists[0]);
+
+    const auto pqExSpaces = oneEEx.exSpaces;
+    const auto pOrbOff = orbOffs[pqExSpaces[0]];
+    const auto qOrbOff = orbOffs[pqExSpaces[1]];
+    std::unordered_set<size_t> exSpaces({pqExSpaces[0], pqExSpaces[1]});
+    std::vector<size_t> KExOffsBuffer, KNonExOffs, LExOffsBuffer, LNonExOffs, dummy, nonExDims;
+    catK.separateExAndNonExDimensions(exSpaces, KExOffsBuffer, dummy, KNonExOffs, nonExDims);
+    catL.separateExAndNonExDimensions(exSpaces, LExOffsBuffer, dummy, LNonExOffs, dummy);
+
+    std::pair<size_t, size_t> LExOffs, KExOffs;
+    if (exSpaces.size() == 1) {
+      LExOffs = {LExOffsBuffer[0], 0ul};
+      KExOffs = {KExOffsBuffer[0], 0ul};
+    } else if (pqExSpaces[0] < pqExSpaces[1]) {
+      LExOffs = {LExOffsBuffer[0], LExOffsBuffer[1]};
+      KExOffs = {KExOffsBuffer[0], KExOffsBuffer[1]};
+    } else {
+      LExOffs = {LExOffsBuffer[1], LExOffsBuffer[0]};
+      KExOffs = {KExOffsBuffer[1], KExOffsBuffer[0]};
+    }
+
+    const size_t nKExDets = exList.nBraDeterminants();
+    const size_t nKExPerThread = std::ceil(double(nKExDets) / GetNumThreads());
+
+    size_t nonZeroCKets = CKet.getVecsByCat()[oneEEx.categoricalIndices.second - CKet.localCategoryBegin()].nonZeros(0);
+    size_t nonZeroCBras = CBra.getVecsByCat()[oneEEx.categoricalIndices.first - CBra.localCategoryBegin()].nonZeros(0);
+
+    if(nonZeroCKets == 0 or nonZeroCBras == 0) {
+      continue;
+    }
+
+    #pragma omp parallel default(shared)
+    {
+      auto exListGen = exList.generator(LExOffs, KExOffs);
+      const auto& KEx = exListGen->braExAddress();
+
+      // binding non excitation part address
+      auto nonExLooper = constructTensorLooper(nonExDims, LNonExOffs, KNonExOffs);
+      const auto& LNonEx = nonExLooper->address();
+      const auto& KNonEx = nonExLooper->auxAddress();
+      size_t iThread = GetThreadID();
+      size_t KBegin = nKExPerThread * iThread;
+      size_t KEnd   = std::min(nKExDets, KBegin + nKExPerThread);
+      auto& oneTDMSCR = (iThread == 0) ? oneTDM : SCR[iThread - 1];
+
+      exListGen->visitExcitations(KBegin, KEnd,
+          [&] (const auto& KExIter, const auto& pqExcitations) {
+            for (const auto& [pp, qq, LEx, pqSign]: pqExcitations) {
+              double fc = pqSign ? -1.: 1.;
+              auto p = pp + pOrbOff;
+              auto q = qq + qOrbOff;
+
+	      auto itCKetBegin = CKet.getVecsByCat()[oneEEx.categoricalIndices.second - CKet.localCategoryBegin()].cbegin(0);
+              auto itCBraBegin = CBra.getVecsByCat()[oneEEx.categoricalIndices.first - CBra.localCategoryBegin()].cbegin(0);
+
+	      auto itCKet = itCKetBegin;
+	      auto itCBra = itCBraBegin;
+
+	      //Need to find intersection of CKet[L], CBra[K] and tensor looper
+	      nonExLooper->setIndex(0ul);
+	      
+	      while ((not nonExLooper->isEnd()) and std::distance(itCKetBegin, itCKet) < nonZeroCKets and std::distance(itCBraBegin, itCBra) < nonZeroCBras) {
+        
+      		size_t deltaCKet = 1, deltaCBra = 1, deltaNonEx = 1;
+
+		while(std::distance(itCKetBegin, itCKet) < nonZeroCKets and itCKet->first < LEx + LNonEx) {
+		  itCKet += deltaCKet;
+		  deltaCKet *= 2;
+		}
+		itCKet -= deltaCKet / 2;
+		
+		while(std::distance(itCBraBegin, itCBra) < nonZeroCBras and itCBra->first < KEx + KNonEx) {
+		  itCBra += deltaCBra;
+		  deltaCBra *= 2;
+		}
+		itCBra -= deltaCBra / 2;
+ 
+		while((not nonExLooper->isEnd()) and LEx + LNonEx < itCKet->first) {
+		  nonExLooper->setIndex(nonExLooper->index() + deltaNonEx);
+		  deltaNonEx *= 2;
+		}
+		nonExLooper->setIndex(nonExLooper->index() - deltaNonEx / 2);
+
+	        if (itCKet->first == LEx + LNonEx and itCBra->first == KEx + KNonEx) {
+		  auto K = KEx + KNonEx;
+                  auto L = LEx + LNonEx;
+		  const auto pqVal = symmFactSign * fc * SmartConj(itCBra->second) * itCKet->second;
+            	  oneTDMSCR(p, q) += pqVal;
+		  
+		  nonExLooper->increment();
+            	  ++itCBra;
+            	  ++itCKet;
+                }
+		
+                else if (itCBra->first < KEx + KNonEx)
+                  ++itCBra;
+                else if (itCKet->first < LEx + LNonEx)
+                  ++itCKet;
+                else 
+                  nonExLooper->increment();
+    	      }
+            }
+          }
+      );
+    } // parallel region
+  } // oneEExcitations
+
+  // data reduction
+  for (const auto& oneTDMSCR : SCR) oneTDM += oneTDMSCR;
+
+} // DASCIBuilder::compute1TDMs
+
+/*
+ * compute twoTDM_IJ(t, w, u, v) =
+ *   \sum_{KL} conjugate(CI(K)) <K|EtuEwv|L>CJ(L)
+ */
+template <typename MatsT>
+void DASCIBuilder<MatsT>::build2TDM(
+    const LocalCISparseVectorsView<MatsT>& CBra,
+    const LocalCISparseVectorsView<MatsT>& CKet,
+    InCore4indexTPI<MatsT>& twoTDM,
+    const double scale) const {
+
+  const auto& orbOffs = this->detFactory_.orbOffsInEachSpace();
+
+  const auto braCategoricalSpace = this->detFactory_.braCategoricalSpace();
+  const auto ketCategoricalSpace = this->detFactory_.ketCategoricalSpace();
+
+  // TODO: break down the SCR storage in the future
+  std::vector<InCore4indexTPI<MatsT>> SCR;
+  for (auto i = 0ul; i < GetNumThreads() - 1; i++) {
+    SCR.emplace_back(twoTDM.nBasis());
+    SCR.back().clear();
+  }
+
+  if(scale == 0.0)
+    return;
+
+  for (const auto& twoEEx: this->detFactory_.twoEExcitations()) {
+    // std::cout << " contraction on term - " << twoEEx.term << std::endl;
+
+    // MPI Parallelism
+    if (not (CKet.containsLocalCategory(twoEEx.categoricalIndices.second) and CKet.getVecsByCat()[twoEEx.categoricalIndices.second - CKet.localCategoryBegin()].nonZeros() > 0)) continue;
+
+    const auto& catK = dynamic_cast<const FullDeterminantCategory&>(
+        *braCategoricalSpace->getCategory(twoEEx.categoricalIndices.first));
+    const auto& catL = dynamic_cast<const FullDeterminantCategory&>(
+        *ketCategoricalSpace->getCategory(twoEEx.categoricalIndices.second));
+
+    const auto symmFactSign = twoEEx.symmetryFactor > 0 ?  scale: - scale;
+
+    const auto& exList_qp = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[0]);
+    const auto& exList_rs = dynamic_cast<const FullCD1eExList&>(*twoEEx.exLists[1]);
+
+    size_t nonZeroCKets = CKet.getVecsByCat()[twoEEx.categoricalIndices.second - CKet.localCategoryBegin()].nonZeros(0);
+    size_t nonZeroCBras = CBra.getVecsByCat()[twoEEx.categoricalIndices.first - CBra.localCategoryBegin()].nonZeros(0);
+
+    if(nonZeroCKets == 0 or nonZeroCBras == 0) {
+      continue;
+    }
+
+    #pragma omp parallel default(shared)
+    {
+      DoubleFullCD1eExListGenerator double1eExListsGen(exList_qp, exList_rs, twoEEx.exSpaces);
+      const auto& exSpaces = double1eExListsGen.excitationSpaces();
+      std::vector<size_t> KExOffs, KNonExOffs, LExOffs, LNonExOffs, dummy, nonExDims;
+      catK.separateExAndNonExDimensions(exSpaces, KExOffs, dummy, KNonExOffs, nonExDims);
+      catL.separateExAndNonExDimensions(exSpaces, LExOffs, dummy, LNonExOffs, dummy);
+
+      auto nonExLooper = constructTensorLooper(nonExDims, LNonExOffs, KNonExOffs);
+      // binding non excitation part address
+      const auto& LNonEx = nonExLooper->address();
+      const auto& KNonEx = nonExLooper->auxAddress();
+
+      const auto& pqrsSpaces = double1eExListsGen.pqrsSpaces();
+      const auto pOrbOff = orbOffs[pqrsSpaces[0]];
+      const auto qOrbOff = orbOffs[pqrsSpaces[1]];
+      const auto rOrbOff = orbOffs[pqrsSpaces[2]];
+      const auto sOrbOff = orbOffs[pqrsSpaces[3]];
+
+      size_t iThread = GetThreadID();
+      const size_t nJExDets = double1eExListsGen.totalDimension();
+      const size_t nJExPerThread = std::ceil(double(nJExDets) / GetNumThreads());
+      size_t JBegin = nJExPerThread * iThread;
+      size_t JEnd   = std::min(nJExDets, JBegin + nJExPerThread);
+      auto& twoTDMSCR = (iThread == 0) ? twoTDM : SCR[iThread - 1];
+
+      double1eExListsGen.visitExcitations(JBegin, JEnd, LExOffs, KExOffs,
+          [&] (const auto& JExIter, const auto& qpExcitations, const auto& rsExcitations) {
+
+            for (const auto& [qq, pp, KEx, pqSign]: qpExcitations)
+            for (const auto& [rr, ss, LEx, rsSign]: rsExcitations) {
+              double fc = (pqSign == rsSign) ? 1. : -1.;
+              auto p = pp + pOrbOff;
+              auto q = qq + qOrbOff;
+              auto r = rr + rOrbOff;
+              auto s = ss + sOrbOff;
+
+	      auto itCKetBegin = CKet.getVecsByCat()[twoEEx.categoricalIndices.second - CKet.localCategoryBegin()].cbegin(0);
+              auto itCBraBegin = CBra.getVecsByCat()[twoEEx.categoricalIndices.first - CBra.localCategoryBegin()].cbegin(0);
+
+              auto itCKet = itCKetBegin;
+              auto itCBra = itCBraBegin;
+
+	      //Need to find intersection of CKet[L], CBra[K] and tensor looper
+              nonExLooper->setIndex(0ul);
+
+              while ((not nonExLooper->isEnd()) and std::distance(itCKetBegin, itCKet) < nonZeroCKets and std::distance(itCBraBegin, itCBra) < nonZeroCBras) {
+
+                size_t deltaCKet = 1, deltaCBra = 1, deltaNonEx = 1;
+
+                while(std::distance(itCKetBegin, itCKet) < nonZeroCKets and itCKet->first < LEx + LNonEx) {
+                  itCKet += deltaCKet;
+                  deltaCKet *= 2;
+                }
+                itCKet -= deltaCKet / 2;
+
+                while(std::distance(itCBraBegin, itCBra) < nonZeroCBras and itCBra->first < KEx + KNonEx) {
+                  itCBra += deltaCBra;
+                  deltaCBra *= 2;
+                }
+                itCBra -= deltaCBra / 2;
+
+                while((not nonExLooper->isEnd()) and LEx + LNonEx < itCKet->first) {
+                  nonExLooper->setIndex(nonExLooper->index() + deltaNonEx);
+                  deltaNonEx *= 2;
+                }
+                nonExLooper->setIndex(nonExLooper->index() - deltaNonEx / 2);
+
+                if (itCKet->first == LEx + LNonEx and itCBra->first == KEx + KNonEx) {
+                  auto K = KEx + KNonEx;
+                  auto L = LEx + LNonEx;
+                  const auto pqrsVal = symmFactSign * fc * SmartConj(itCBra->second) * itCKet->second;
+	
+		  const auto pqrsExSpaces = twoEEx.exSpaces;
+                  const auto pSpace = pqrsExSpaces[0];
+                  const auto qSpace = pqrsExSpaces[1];
+                  const auto rSpace = pqrsExSpaces[2];
+                  const auto sSpace = pqrsExSpaces[3];
+	
+		  //remove redundancies
+                  MatsT symmFact = MatsT(1.);
+                  if (pSpace == rSpace) symmFact /= 2;
+                  if (qSpace == sSpace) symmFact /= 2;
+
+                  //case 1:
+                  if(pSpace != qSpace and pSpace != sSpace and rSpace != qSpace and rSpace != sSpace) {
+                    twoTDMSCR(p, q, r, s) += symmFact * pqrsVal;
+                    twoTDMSCR(r, s, p, q) += symmFact * pqrsVal;
+                    twoTDMSCR(r, q, p, s) -= symmFact * pqrsVal;
+                    twoTDMSCR(p, s, r, q) -= symmFact * pqrsVal;
+                  }
+
+                  //case 2
+                  else if(rSpace != qSpace and pSpace == sSpace) {
+                    twoTDMSCR(p, q, r, s) += symmFact * pqrsVal;
+                    twoTDMSCR(r, s, p, q) += symmFact * pqrsVal;
+                    twoTDMSCR(r, q, p, s) -= symmFact * pqrsVal;
+                    twoTDMSCR(p, s, r, q) -= symmFact * pqrsVal;
+                  }
+                  //case 3 a
+                  else if(pSpace == qSpace and rSpace == sSpace and pSpace != rSpace) {
+                    twoTDMSCR(p, q, r, s) += pqrsVal;
+                    twoTDMSCR(r, s, p, q) += pqrsVal;
+                    twoTDMSCR(r, q, p, s) -= pqrsVal;
+                    twoTDMSCR(p, s, r, q) -= pqrsVal;
+                  }
+                  //case 3 b
+                  else if(pSpace == qSpace and rSpace == sSpace and pSpace == rSpace) {
+                    twoTDMSCR(p, q, r, s) += pqrsVal;
+                  }
+                  else {
+                    std::cout << "Excitation p " << p << " q " << q << " r " << r << " s " << s << std::endl;
+                    CErr("was no captured in 2TDMs symmetry-aware tensor looper!");
+                  }
+
+                  nonExLooper->increment();
+                  ++itCBra;
+                  ++itCKet;
+                }
+
+                else if (itCBra->first < KEx + KNonEx)
+                  ++itCBra;
+                else if (itCKet->first < LEx + LNonEx)
+                  ++itCKet;
+                else 
+                  nonExLooper->increment();
+              }
+            }
+          }
+      ); // visitAllExcitations
+    } // parallel region
+  } // twoEExcitations
+
+  // data reduction
+  size_t N = twoTDM.nBasis();
+  size_t N4 = N * N * N * N;
+  for (const auto& twoTDMSCR : SCR) {
+   blas::axpy(N4, MatsT(1.), twoTDMSCR.pointer(), 1, twoTDM.pointer(), 1);
+  }
+
+} // DASCIBuilder::compute2TDMs
+
+} // namespace ChronusQ
+#endif

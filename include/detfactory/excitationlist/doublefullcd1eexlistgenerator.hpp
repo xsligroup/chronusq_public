@@ -91,12 +91,27 @@ class DoubleFullCD1eExListGenerator {
       const std::vector<size_t>& KExOff, Visitor visitor) const {
     visitExcitations(0ul, totalDimension(), LExOff, KExOff, std::forward<Visitor>(visitor));
   };
-  
+
+#ifdef CQ_ENABLE_SPARSE
+  template <class Visitor>
+  void visitAllSparseExcitations(const std::vector<size_t>& LExOff,
+      const std::vector<size_t>& KExOff, Visitor visitor) const {
+    visitSparseExcitations(0ul, totalDimension(), LExOff, KExOff, std::forward<Visitor>(visitor));
+  };
+#endif
+
   // Major interface for building contraction loops
   template <class Visitor>
   void visitExcitations(size_t JBegin, size_t JEnd,
                         const std::vector<size_t>& ketExOff,
                         const std::vector<size_t>& braExOff, Visitor visitor) const;
+
+#ifdef CQ_ENABLE_SPARSE
+  template <class Visitor>
+  void visitSparseExcitations(size_t JBegin, size_t JEnd,
+                        const std::vector<size_t>& ketExOff,
+                        const std::vector<size_t>& braExOff, Visitor visitor) const;
+#endif
 
 }; // class DoubleFullCD1eExListGenerator 
 
@@ -245,5 +260,73 @@ void DoubleFullCD1eExListGenerator::visitExcitations(
   } //  main loop
 
 } // DoubleFullCD1eExListGenerator::visitExcitations
-  
+
+#ifdef CQ_ENABLE_SPARSE
+template <class Visitor>
+void DoubleFullCD1eExListGenerator::visitSparseExcitations(
+    size_t JBegin, size_t JEnd,
+    const std::vector<size_t>& ketExOff,
+    const std::vector<size_t>& braExOff,
+    Visitor visitor) const {
+
+  assert(ketExOff.size() == JDims_.size());
+  assert(braExOff.size() == JDims_.size());
+
+  // TensorLooper returns the relative address of p,q,r,s in their own space
+  auto TL = constructTensorLooper(JDims_);
+  const auto& TLIndices = *TL;
+  const auto& Jp = TLIndices[pPos_];
+  const auto& Jq = TLIndices[qPos_];
+  const auto& Jr = TLIndices[rPos_];
+  const auto& Js = TLIndices[sPos_];
+
+  // K, L offsets regarding to K, L addresses in a category
+  const size_t LrExOff = ketExOff[rPos_];
+  const size_t LsExOff = (rPos_ == sPos_) ? 0ul: ketExOff[sPos_];
+  const size_t LpExOff = (pPos_ == rPos_ or pPos_ == sPos_) ? 0ul: ketExOff[pPos_];
+  const size_t LqExOff = (qPos_ == pPos_ or qPos_ == rPos_ or qPos_ == sPos_) ? 0ul: ketExOff[qPos_];
+
+  const size_t KpExOff = (pPos_ == qPos_) ? 0ul: braExOff[pPos_];
+  const size_t KqExOff = braExOff[qPos_];
+  const size_t KrExOff = (rPos_ == pPos_ or rPos_ == qPos_) ? 0ul: braExOff[rPos_];
+  const size_t KsExOff = (sPos_ == rPos_ or sPos_ == pPos_ or sPos_ == qPos_) ? 0ul: braExOff[sPos_];
+
+  auto qpExGen = qpExList_.generator({KqExOff, KpExOff}, {0ul, 0ul});
+  auto rsExGen = rsExList_.generator({LrExOff, LsExOff}, {0ul, 0ul});
+
+
+  // main outer loop, handles the excitation part with dynamic load balancing
+  const auto& JIndex = TL->index();
+  const auto& rsExs = rsExGen->excitations();
+  const auto& qpExs = qpExGen->excitations();
+    
+  for (TL->setIndex(JBegin); JIndex < JEnd; TL->increment()) {
+    // computing the working ExLists
+    const auto Jqp = Jp * JpExOff_ + Jq * JqExOff_;
+    const auto Jrs = Jr * JrExOff_ + Js * JsExOff_;
+    const auto Lqp = Jp * LpExOff + Jq * LqExOff;
+    const auto Krs = Jr * KrExOff + Js * KsExOff;
+
+    // std::cout << " JEx = " << TL->index() << std::endl;
+    // std::cout << " Jqp = " << Jqp << ", "
+    //           << catJqp->addressToString(Jqp)
+    //           << std::endl;
+    // std::cout << " Jrs = " << Jrs << ", "
+    //           << catJrs->addressToString(Jrs)
+    //           << std::endl;
+
+
+    // std::cout << "Build Contractions for Jrs = " << Jrs << ", Jqp = " << Jqp
+    //           << ", Lqp = " << Lqp << ", Krs = " << Krs << std::endl;
+    rsExGen->updateExcitations(Jrs, Lqp);
+    qpExGen->updateExcitations(Jqp, Krs);
+
+    //std::cout << "Contraction Build finished" << std::endl;
+
+    visitor(JIndex, qpExs,  rsExs);
+  } //  main loop
+
+} // DoubleFullCD1eExListGenerator::visitSparseExcitations
+#endif
+
 } // namespace ChronusQ

@@ -331,7 +331,18 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   
   // allocate CI vector
   size_t NS = this->NStates;
-  CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, NS);
+
+
+  if(ciSettings.SparseDavidson) {
+#ifdef CQ_ENABLE_SPARSE
+      CIVectors = newCategoricalSpace->constructDistributedSparseCIVectors<MatsT>(this->comm, NS);
+#else
+      CErr("ENABLE_SPARSE was turned off during compilation! Recompile with CQ_ENABLE_SPARSE");   
+#endif
+  }
+  else {
+    CIVectors = newCategoricalSpace->constructDistributedCIVectors<MatsT>(this->comm, NS);
+  }
 
   auto dasciBuilder = std::make_shared<DASCIBuilder<MatsT>>(this->comm, this->moints, *detFactory);
   dasciBuilder->setSigma2eContractionAlgorithm(ciSettings.ciSigma2eContAlg);

@@ -602,4 +602,288 @@ namespace ChronusQ {
 
   }
 
+
+
+
+#ifdef CQ_ENABLE_SPARSE
+  template <typename _F>
+  void DistributedSparseVectors<_F>::multiply_matrix(size_t shiftA, blas::Op transB, int64_t n, int64_t k,
+                                               _F alpha, _F const *B, int64_t ldb,
+                                               _F beta, SolverVectors<_F> &C, size_t shiftC) const {
+
+    this->sizeCheck(shiftA + k, "A during DistributedSparseVectors<_F>::multiply_matrix");
+    C.sizeCheck(shiftC + n, "C during DistributedSparseVectors<_F>::multiply_matrix");
+
+    // downcasting C
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(C,
+                                                   [&](auto& CRef, size_t extraShiftC) {
+          if (localLength() != CRef.localLength()) {
+            CErr("C Doesn't have same local length as A in multiply_matrix");
+          }
+          shiftC += extraShiftC;
+         
+	  //C = alpha * this * op(B) + beta * C
+	  CRef.vecs_.scale(beta, shiftC, n);
+	  vecs_.kAdd(shiftA, transB, n, k, alpha, B, ldb, CRef.vecs_, shiftC);
+	  return;
+
+
+
+
+
+
+
+
+	  if(alpha == _F(0.))
+	    return;
+
+	  #pragma omp parallel for schedule(static) default(shared)
+	  for(size_t Ccol = 0; Ccol < n; Ccol++) {
+            for(size_t Acol = 0; Acol < k; Acol++) {
+	      switch(transB) {
+	        case blas::Op::NoTrans:
+	        {
+	          if(B[Acol + ldb * Ccol] != _F(0.))
+	      CRef.vecs_.add(vecs_, alpha * B[Acol + ldb * Ccol], Ccol + shiftC, Acol + shiftA, 1);
+	          break;
+	        }
+	        case blas::Op::Trans:
+	        {
+	    if(B[Ccol + ldb * Acol] != _F(0.))
+	            CRef.vecs_.add(vecs_, alpha * B[Ccol + ldb * Acol], Ccol + shiftC, Acol + shiftA, 1);
+	    break;
+	        }
+	        case blas::Op::ConjTrans:
+	        {
+	    if(B[Ccol + ldb * Acol] != _F(0.))
+	      CRef.vecs_.add(vecs_, alpha * SmartConj(B[Ccol + ldb * Acol]), Ccol + shiftC, Acol + shiftA, 1);
+	    break;
+	        }
+	        default:
+	    CErr("multiply_matrix with this blas::Op is not implemented yet");
+	     }
+           }
+         } 
+
+	  /*
+	  for(size_t Ccol = 0; Ccol < n; Ccol++) {
+            for(size_t Acol = 0; Acol < k; Acol++) {
+	      switch(transB) {
+	        case blas::Op::NoTrans:
+                  //CRef.vecs_.col(Ccol + shiftC) += alpha * vecs_.col(Acol + shiftA) * B[Acol + ldb * Ccol];
+	    CRef.vecs_.add(vecs_, alpha * B[Acol + ldb * Ccol], shiftC, shiftA, 1);
+	          break;
+	        case blas::Op::Trans:
+	    //CRef.vecs_.col(Ccol + shiftC) += alpha * vecs_.col(Acol + shiftA) * B[Ccol + ldb * Acol];
+	    CRef.vecs_.add(vecs_, alpha * B[Ccol + ldb * Acol], shiftC, shiftA, 1);
+	    break;
+	        case blas::Op::ConjTrans:
+	    //CRef.vecs_.col(Ccol + shiftC) += alpha * vecs_.col(Acol + shiftA) * SmartConj(B[Ccol + ldb * Acol]);
+	    CRef.vecs_.add(vecs_, alpha * SmartConj(B[Ccol + ldb * Acol]), shiftC, shiftA, 1);
+	    break;
+	        default:
+	    CErr("multiply_matrix with this blas::Op is not implemented yet");
+	      }
+            }
+          }*/
+       }
+     );
+
+  }
+
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::dot_product(size_t shiftA, const SolverVectors<_F> &B, size_t shiftB,
+                                           int64_t m, int64_t n, _F *C, int64_t ldc, bool conjA) const {
+    if (m * n == 0) return;
+
+    this->sizeCheck(shiftA + m, "A during DistributedSparseVectors<_F>::dot_product");
+    B.sizeCheck(shiftB + n, "B during DistributedSparseVectors<_F>::dot_product");
+
+    if (length() != B.length())
+      CErr("Lengths of vectors does not match for dot product.");
+
+#ifdef CQ_ENABLE_MPI
+    _F* CRes = CQMemManager::get().malloc<_F>(m * n);
+#endif
+
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
+          if (localLength() != BRef.localLength()) {
+            CErr("B Doesn't have same local length as A in dot product");
+          }
+          shiftB += extraShiftB;
+
+	  #pragma omp parallel for schedule(dynamic) collapse(2) default(shared)
+	  for(size_t col = 0; col < n; col++) {
+            for(size_t row = 0; row < m; row++) {
+	       _F dotProduct = vecs_.dot(BRef.vecs_, row + shiftA, col + shiftB);
+#ifdef CQ_ENABLE_MPI
+               CRes[row + col * m] = dotProduct;
+#else
+	       C[row + col * ldc] = dotProduct;
+#endif
+	    }
+	  }
+        }
+    );
+
+    bool localC = C == nullptr;
+    if (localC) C = CQMemManager::get().malloc<_F>(ldc * n);
+
+    // AllReduce
+    if (m == ldc) {
+      MPIAllReduce(CRes, m * n, C, comm_);
+    } else {
+      for (size_t i = 0; i < n; i++) {
+        MPIAllReduce(CRes + i * m, m, C + i * ldc, comm_);
+      }
+    }
+
+    CQMemManager::get().free(CRes);
+    if (localC) CQMemManager::get().free(C);
+  }
+
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::set_data(size_t shiftA, size_t nVec, const SolverVectors<_F> &B, size_t shiftB, bool moveable) {
+
+    // check more length
+    if (length() != B.length())
+      CErr("Lengths of vectors does not match for set_data.");
+
+    this->sizeCheck(shiftA + nVec, "A during DistributedSparseVectors<_F>::set_data");
+    B.sizeCheck(shiftB + nVec, "B during DistributedSparseVectors<_F>::set_data");
+
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
+          if (BRef.localLength() != localLength() ) {
+            CErr("A and B don't have matching size locally to perform set data");
+          }
+          shiftB += extraShiftB;
+	  if(moveable) {
+	    for(size_t j = 0; j < nVec; j++)
+	      vecs_.getCol(shiftA + j) = std::move(BRef.vecs_.getCol(shiftB + j));
+	  }
+	  else
+	    vecs_.set_from_other(BRef.vecs_, shiftA, shiftB, nVec); 
+        }
+    );
+  }
+
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::swap_data(size_t shiftA, size_t nVec, SolverVectors<_F> &B, size_t shiftB) {
+
+    // check more length
+    if (length() != B.length())
+      CErr("Lengths of vectors does not match for set_data.");
+
+    this->sizeCheck(shiftA + nVec, "A during DistributedSparseVectors<_F>::swap_data");
+    B.sizeCheck(shiftB + nVec, "B during DistributedSparseVectors<_F>::swap_data");
+
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(B,
+                                                   [&](auto& BRef, size_t extraShiftB) {
+          if (BRef.localLength() != localLength() ) {
+            CErr("A and B don't have matching size locally to perform swapping data");
+          }
+          shiftB += extraShiftB;
+	  vecs_.swap(BRef.vecs_, shiftA, shiftB, nVec);
+        }
+    );
+  }
+
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::scale(_F scalar, size_t shiftA, size_t nVec) {
+    if (nVec == 0) return;
+
+    this->sizeCheck(shiftA + nVec, "A during DistributedSparseVectors<_F>::scale");
+    vecs_.scale(scalar, shiftA, nVec);
+  }
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::conjugate(size_t shiftA, size_t nVec) {
+
+    if (std::is_same<_F, double>::value) return;
+    if (nVec == 0) return;
+
+    this->sizeCheck(shiftA + nVec, "A during DistributedSparseVectors<_F>::conjugate");
+    vecs_.conjugate(shiftA, nVec);
+  }
+
+
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::axpy(size_t shiftY, size_t nVec, _F alpha, const SolverVectors<_F> &X, size_t shiftX) {
+
+    if (length() != X.length())
+      CErr("Lengths of vectors does not match for axpy.");
+
+    this->sizeCheck(shiftY + nVec, "Y during DistributedSparseVectors<_F>::axpy");
+    X.sizeCheck(shiftX + nVec, "X during DistributedSparseVectors<_F>::axpy");
+
+    tryDowncastReferenceTo<DistributedSparseVectors<_F>>(X,
+                                                   [&](auto& XRef, size_t extraShiftX) {
+          if (XRef.localLength() != localLength() ) {
+            CErr("X and Y don't have matching size locally to perform axpy");
+          }
+
+          shiftX += extraShiftX;
+	  vecs_.add(XRef.vecs_, alpha, shiftY, shiftX, nVec);
+        }
+    );
+  }
+
+  template <typename _F>
+  void DistributedSparseVectors<_F>::trsm(size_t shift, int64_t n, _F alpha, _F const *A, int64_t lda) {
+    CErr("trsm NYI for DistributedSparseVectors");
+  }
+
+
+  template <typename _F>
+  int DistributedSparseVectors<_F>::QR(size_t shift, size_t nVec, _F *R, int LDR) {
+    CErr("QR NYI for DistributedSparseVectors");
+    return 0;
+  }
+
+  template <typename _F>
+  double DistributedSparseVectors<_F>::norm2F(size_t shift, size_t nVec) const {
+
+    this->sizeCheck(shift + nVec, "in DistributedSparseVectors<_F>::norm2F");
+    double v = 0.0;
+    if (nVec == 0) return v;
+
+    v = vecs_.normSquared(shift, nVec);
+
+#ifdef CQ_ENABLE_MPI
+    return std::sqrt(MPIAllReduce(v, comm_));
+#else
+    return std::sqrt(v);
+#endif
+  }
+
+  template <typename _F>
+  double DistributedSparseVectors<_F>::maxNormElement(size_t shift, size_t nVec) const {
+    // TODO: need to sync the vectors across different nodes before calling this
+    this->sizeCheck(shift + nVec, "in DistributedSparseVectors<_F>::maxNormElement");
+    double v = 0.0;
+    if (nVec == 0) return v;
+    
+    v = vecs_.maxNormElement(shift, nVec);
+
+    // all reduce
+#ifdef CQ_ENABLE_MPI
+    double m;
+    MPI_Allreduce(&v, &m, 1, MPI_DOUBLE, MPI_MAX, comm_);
+    return m;
+#else
+    return v;
+#endif
+  }
+
+#endif
+
+
+
 } // namespace ChrounsQ

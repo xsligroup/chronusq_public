@@ -28,6 +28,7 @@
 
 #include <util/mpi.hpp>
 #include <util/math.hpp>
+#include <util/scratch.hpp>
 
 #include <itersolver/solvervectors.hpp>
 
@@ -555,9 +556,9 @@ namespace ChronusQ {
     bool DoHerm = false;
 
     // Convergence options
-    bool checkEigenValueConv = true;
-    bool checkEigenVectorConv = true;
-    bool checkResidueConv = false;
+    bool checkEigenValueConv = false;
+    bool checkEigenVectorConv = false;
+    bool checkResidueConv = true;
     bool convOnGramSchmidt = true;
     double eigenValueCrit = 1e-7;
     double eigenVectorCrit = 1e-5;
@@ -593,6 +594,10 @@ namespace ChronusQ {
     using LinearTrans_t = typename IterDiagonalizer<_F>::LinearTrans_t;
     using Shift_t       = typename IterDiagonalizer<_F>::Shift_t;
 
+    typedef std::function< void(size_t,size_t,SolverVectors<_F>&,std::vector<_F>&) >    SubAFormer_t;
+    SubAFormer_t formSubspaceMatrix_;
+    //LinearTrans_t formSubspaceMatrix_;
+
     Davidson(
       MPI_Comm c,
       const size_t N,
@@ -603,14 +608,41 @@ namespace ChronusQ {
       const LinearTrans_t &linearTrans,
       const LinearTrans_t &preNoShift,
       const VecsGen_t &vecGen = VecsGen_t(),
+      const bool checkEigenValue = true,
+      const bool checkEigenVector = true,
+      const bool checkResidue = false,
       const Shift_t &shiftVec = Shift_t(),
       const size_t m = 50,
       const size_t kG = 3):
       IterDiagonalizer<_F>(c,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
-                           linearTrans,preNoShift,vecGen,shiftVec), m(m), kG(kG) {
+                           linearTrans,preNoShift,vecGen,shiftVec), m(m), kG(kG), checkEigenValueConv(checkEigenValue), checkEigenVectorConv(checkEigenVector), checkResidueConv(checkResidue) {
       eigenVectorCrit = conv;
       eigenValueCrit = 1e-2 * conv;
     }
+
+    Davidson(
+      MPI_Comm c,
+      const size_t N,
+      const size_t MAXMACROITER,
+      const size_t MAXMICROITER,
+      double conv,
+      size_t nR,
+      const SubAFormer_t &formSubspaceMatrix,
+      const LinearTrans_t &linearTrans,
+      const LinearTrans_t &preNoShift,
+      const VecsGen_t &vecGen = VecsGen_t(),
+      const bool checkEigenValue = true,
+      const bool checkEigenVector = true,
+      const bool checkResidue = false,
+      const Shift_t &shiftVec = Shift_t(),
+      const size_t m = 50,
+      const size_t kG = 3): formSubspaceMatrix_(formSubspaceMatrix),
+      IterDiagonalizer<_F>(c,N,m*nR,MAXMACROITER,MAXMICROITER,conv,nR,nR*kG,
+                           linearTrans,preNoShift,vecGen,shiftVec), m(m), kG(kG), checkEigenValueConv(checkEigenValue), checkEigenVectorConv(checkEigenVector), checkResidueConv(checkResidue) {
+      eigenVectorCrit = conv;
+      eigenValueCrit = 1e-2 * conv;
+    }
+
 
     ~Davidson() {
 
@@ -705,6 +737,8 @@ namespace ChronusQ {
     }
 
     bool runMicro() override;
+
+    bool runSparseMicro();
 
     void restart() override;
 

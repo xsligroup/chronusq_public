@@ -480,9 +480,7 @@ namespace ChronusQ {
         //posthf->noSOI = std::stoi(SOI.str());
       }
     }
-  }
-
-
+  } // HandleSavePDMSPostHF
 
 }; // namespace ChronusQ
 

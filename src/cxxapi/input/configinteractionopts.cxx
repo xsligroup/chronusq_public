@@ -47,6 +47,9 @@ namespace ChronusQ {
       "MAXINTERSPACEEX",
       "CIDIAGALG",
       "CICONV",
+      "CICHECKRESIDUECONV",
+      "CICHECKEIGENVECTORCONV",
+      "CICHECKEIGENVALUECONV",
       "CISIGMA2EALG",
       "MAXCIITER",
       "MAXSCFITER",
@@ -80,6 +83,8 @@ namespace ChronusQ {
       // "RAS1ORBITAL",
       // "RAS2ORBITAL",
       // "RAS3ORBITAL",
+      "SPARSEDAVIDSON",
+      "EPSSPARSE",
       "DAS",
       "SAVEONEPDMS"
     };
@@ -428,13 +433,23 @@ namespace ChronusQ {
       ciSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
       OPTOPT( ciSettings->maxCIIter = 
                 input.getData<size_t>("CI/MAXCIITER"); )
-      OPTOPT( ciSettings->ciVectorConv = 
+      OPTOPT( ciSettings->ciVectorConv =
                 input.getData<double>("CI/CICONV"); )
+      OPTOPT( ciSettings->checkEigenValue =
+		input.getData<bool>("CI/CICHECKEIGENVALUECONV"); )
+      OPTOPT( ciSettings->checkEigenVector =
+                input.getData<bool>("CI/CICHECKEIGENVECTORCONV"); )
+      OPTOPT( ciSettings->checkResidue =
+                input.getData<bool>("CI/CICHECKRESIDUECONV"); )
       OPTOPT( ciSettings->maxDavidsonSpace = 
                 input.getData<size_t>("CI/MAXDAVIDSONSPACE");)
       OPTOPT( ciSettings->nDavidsonGuess = 
                 input.getData<size_t>("CI/NDAVIDSONGUESS");)
       if (!EnergyRefs.empty()) ciSettings->energyRefs = EnergyRefs;
+      OPTOPT( ciSettings->SparseDavidson =
+                input.getData<bool>("CI/SPARSEDAVIDSON");)
+      OPTOPT( ciSettings->SparseDavidsonEps =
+                input.getData<double>("CI/EPSSPARSE");)
     } else if(not ciALG.empty())
       CErr(ciALG + "is not a valid CI/CIDIAGALG",out);
     
@@ -442,7 +457,11 @@ namespace ChronusQ {
     OPTOPT( ciSigma2eALG = input.getData<std::string>("CI/CISIGMA2EALG");)
     trim(ciSigma2eALG);
     ciSettings->ciSigma2eContAlg = ciSigma2eALG;
-    
+
+    if(ciSettings->SparseDavidson and not (ciSigma2eALG == "NAIVE" or ciSigma2eALG == "DEFAULT" or ciSigma2eALG == "NAIVELOOP" or ciSigma2eALG == "NL")) {
+      CErr("Only ciSigma2eALG = NAIVE supports sparse DAS");
+    }
+
     // Parse Orbital Rotation Options
     if (isSCF) {
       

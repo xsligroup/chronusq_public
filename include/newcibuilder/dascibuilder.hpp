@@ -90,17 +90,71 @@ public:
       const LocalCIVectorsView<const MatsT>& CKet, 
       InCore4indexTPI<MatsT>& twoTDM,
       const double scale = 1.0) const override;
-  
+ 
+#ifdef CQ_ENABLE_SPARSE
+  void buildSigma1e(const LocalCISparseVectorsView<MatsT>& C, const LocalCISparseVectorsView<MatsT>& myC, 
+      const LocalCISparseVectorsView<MatsT>& Sigma, HashSparseMatrix<MatsT>& SCRSigma_hash, dcomplex* curEigenvalues, double eps) const override;
+
+  void buildSigma2e(const LocalCISparseVectorsView<MatsT>& C,
+      const LocalCISparseVectorsView<MatsT>& myC,
+      const LocalCISparseVectorsView<MatsT>& Sigma, HashSparseMatrix<MatsT>& SCRSigma_hash,
+      dcomplex* curEigenvalues, double eps) const override;
+
+
+  void formSubA2e(const LocalCISparseVectorsView<MatsT>& C, const LocalCISparseVectorsView<MatsT>& myC,
+      std::vector<MatsT>& VAV, size_t iVec, size_t jVec) const override;
+
+  void formSubA1e(const LocalCISparseVectorsView<MatsT>& C, const LocalCISparseVectorsView<MatsT>& myC,
+      std::vector<MatsT>& VAV, size_t iVec, size_t jVec) const override;
+
+
+  void build1TDM(
+      const LocalCISparseVectorsView<MatsT>& CBra,
+      const LocalCISparseVectorsView<MatsT>& CKet,
+      cqmatrix::Matrix<MatsT>& oneTDM,
+      const double scale = 1.0) const override;
+
+  void build2TDM(
+      const LocalCISparseVectorsView<MatsT>& CBra,
+      const LocalCISparseVectorsView<MatsT>& CKet,
+      InCore4indexTPI<MatsT>& twoTDM,
+      const double scale = 1.0) const override;
+#endif
+
+
+
+
 }; // class DASCIBuilder
 
 // helper class
 namespace DASCISigma2eBuilder {
+
+#ifdef CQ_ENABLE_SPARSE
+  template <typename MatsT>
+  void formSubANaive(std::vector<MatsT>& VAV,
+    size_t nVec, const LLSparseMatrix<MatsT>& C, size_t shiftC,
+    size_t nTot, const LLSparseMatrix<MatsT>& myC, size_t shiftMyC,
+    const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+    const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs,
+    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact, size_t iVec, size_t jVec);
+#endif
+
   template <typename MatsT>
   void buildNaive(
       size_t nVec, const MatsT* C, size_t LDC, MatsT* Sigma, size_t LDS,
       const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
       const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs, 
       std::shared_ptr<TensorLooper>& NonExLooper, const double symmFact);
+
+#ifdef CQ_ENABLE_SPARSE
+  template <typename MatsT>
+  void buildSparseNaive(
+    size_t nVec, const LLSparseMatrix<MatsT>& C,
+    size_t shiftC, HashSparseMatrix<MatsT>& Sigma, size_t Sigma_iCatOffset,
+    const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
+    const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs,
+    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact);
+#endif
 
   template <typename MatsT>
   void buildKnowlesHandy(

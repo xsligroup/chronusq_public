@@ -44,6 +44,9 @@
 // MKL
 #cmakedefine _CQ_MKL
 
+// SPARSE
+#cmakedefine CQ_ENABLE_SPARSE
+
 // MPI / ScaLAPACK / BLACS
 #cmakedefine CQ_ENABLE_MPI
 #cmakedefine CQ_ENABLE_CUDA

@@ -80,6 +80,7 @@ namespace ChronusQ {
 
   REGISTER_MPI_TYPE(double, MPI_DOUBLE)
   REGISTER_MPI_TYPE(int,    MPI_INT   )
+  REGISTER_MPI_TYPE(char,    MPI_CHAR   )
   REGISTER_MPI_TYPE(int64_t,MPI_INT64_T)
   REGISTER_MPI_TYPE(size_t, MPI_UINT64_T)
 
@@ -640,5 +641,98 @@ static inline void MPIAlltoallv(const T                         *sendbuf,
 #endif
 
   }
+
+#ifdef CQ_ENABLE_SPARSE
+  template <typename T>
+  class MPIWin {
+
+    std::vector<MPI_Win> windows_;
+    // std::vector<size_t> all_sizes_;
+    const size_t max_window_size_ = MPI_MAX_INT / sizeof(T);   
+    size_t size_;
+    std::vector<MPI_Request> requests_;
+
+   public:
+    MPIWin() = delete;
+    MPIWin(T* msg, size_t size, MPI_Comm c): size_(size) {
+      size_t n_windows = (size_ + max_window_size_ - 1) / max_window_size_;
+      size_t n_windows_local = n_windows;
+      MPI_Allreduce(MPI_IN_PLACE, &n_windows, 1, mpi_data_type<size_t>(), MPI_MAX, c);   
+      windows_.resize(n_windows);
+      // std::cout << "n_windows = " << n_windows << std::endl;
+      // std::cout << "size_ = " << size_ << std::endl;
+      for (auto i = 0ul; i < n_windows; i++) {
+        T* msg_i = nullptr;
+        size_t s_i = 0ul;
+        if (i < n_windows_local) {
+          s_i = (i == n_windows_local - 1) ? size_ - (max_window_size_ * (n_windows_local - 1)) : max_window_size_;
+          msg_i = msg + i * max_window_size_; 
+        }
+        MPI_Win_create(msg_i, s_i * sizeof(T), sizeof(T), MPI_INFO_NULL, c, &windows_[i]);
+        MPI_Win_fence(0, windows_[i]);
+      }
+    }
+    ~MPIWin() {}
+
+    size_t size() { return size_; }
+
+    // locks
+    void lock(int lock_type, int rank, int assert) {
+      for (auto& win: windows_) MPI_Win_lock(lock_type, rank, assert, win);
+    }
+    void unlock(int rank) {
+      for (auto& win: windows_) MPI_Win_unlock(rank, win);
+    }
+    void lock_all(int assert) {
+      for (auto& win : windows_) MPI_Win_lock_all(assert, win);
+    }
+    void unlock_all() {
+      for (auto& win : windows_) MPI_Win_unlock_all(win);
+    }
+    void flush(size_t rank) {
+      for (auto& win : windows_) MPI_Win_flush(rank, win);
+    } 
+    void free() {
+      for (auto& win : windows_)  MPI_Win_free(&win);
+    }
+    void get(T* buffer, size_t len, size_t target, size_t displacement) {
+      size_t w = displacement / max_window_size_;
+      size_t d = displacement % max_window_size_;
+      size_t l = std::min(max_window_size_ - d, len);
+      MPI_Get(buffer, l, mpi_data_type<T>(), target, d, l, mpi_data_type<T>(), windows_[w]);
+      if (l != len) get(buffer + l, len - l, target, displacement + l); 
+    } // get
+    void put(const T* buffer, size_t len, size_t target, size_t displacement) {
+      size_t w = displacement / max_window_size_;
+      size_t d = displacement % max_window_size_;
+      size_t l = std::min(max_window_size_ - d, len);
+      MPI_Put(buffer, l, mpi_data_type<T>(), target, d, l, mpi_data_type<T>(), windows_[w]);
+      if (l != len) put(buffer + l, len - l, target, displacement + l); 
+    } // put
+
+    void rget(T* buffer, size_t len, size_t target, size_t displacement) {
+      size_t w = displacement / max_window_size_;
+      size_t d = displacement % max_window_size_;
+      size_t l = std::min(max_window_size_ - d, len);
+      requests_.push_back(MPI_REQUEST_NULL);
+      MPI_Rget(buffer, l, mpi_data_type<T>(), target, d, l, mpi_data_type<T>(), windows_[w], &requests_.back());
+      if (l != len) rget(buffer + l, len - l, target, displacement + l);
+    } // rget
+    void rput(T* buffer, size_t len, size_t target, size_t displacement) {
+      size_t w = displacement / max_window_size_;
+      size_t d = displacement % max_window_size_;
+      size_t l = std::min(max_window_size_ - d, len);
+      requests_.push_back(MPI_REQUEST_NULL);
+      MPI_Rput(buffer, l, mpi_data_type<T>(), target, d, l, mpi_data_type<T>(), windows_[w], &requests_.back());
+      if (l != len) rput(buffer + l, len - l, target, displacement + l);
+    } // rput
+    void wait() {
+      MPIWait(requests_);
+      requests_.clear();
+    }
+
+  }; // class MPIWin
+#endif
+
 }; // namespace ChronusQ
 

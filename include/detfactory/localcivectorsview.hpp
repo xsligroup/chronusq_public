@@ -22,6 +22,9 @@
  *
  */
 #pragma once
+#ifdef CQ_ENABLE_SPARSE
+  #include <itersolver/cqSparseMatrix.hpp>
+#endif
 
 namespace ChronusQ {
 
@@ -97,5 +100,161 @@ class LocalCIVectorsView {
   }
 
 }; // class DASCIVectorViewer
+
+
+/*
+ * \brief LocalCISparseVectorsView class
+ *
+ * A class for easier access categorical raw pointers
+ *
+ */
+#ifdef CQ_ENABLE_SPARSE
+template <typename MatsT>
+class LocalCISparseVectorsView {
+
+ private:
+
+  size_t shift_;//This is the shift of the DistributedVector, this replaces getLocalPtr(shift)
+
+  size_t localLen_;
+  size_t size_;
+
+  std::vector<size_t> nonZerosArray;
+  LLSparseMatrix<MatsT>* vecs_ = nullptr;
+  std::vector<LLSparseMatrix<MatsT>> vecsByCat_;
+
+  size_t localCategoryBegin_;
+  size_t localCategoryEnd_;
+  std::vector<size_t> localCategoryOffsets_;
+
+ public:
+
+  LocalCISparseVectorsView() = default;
+  LocalCISparseVectorsView(const LocalCISparseVectorsView&) = default;
+  LocalCISparseVectorsView(LocalCISparseVectorsView&&) = default;
+
+  LocalCISparseVectorsView(LLSparseMatrix<MatsT>& vecs, size_t localLength, size_t size,
+      size_t localCategoryBegin, size_t localCategoryEnd,
+      const std::vector<size_t>& localCategoryOffsets, size_t shift = 0):
+      localLen_(localLength), size_(size), localCategoryBegin_(localCategoryBegin),
+      localCategoryEnd_(localCategoryEnd),
+      localCategoryOffsets_(localCategoryOffsets), vecs_(&vecs), shift_(shift) {
+
+  }
+
+  LocalCISparseVectorsView(char* vecsBuffer, size_t dataNonZeros, size_t localLength, size_t size,
+      size_t localCategoryBegin, size_t localCategoryEnd,
+      const std::vector<size_t>& localCategoryOffsets, size_t shift = 0):
+      localLen_(localLength), size_(size), localCategoryBegin_(localCategoryBegin),
+      localCategoryEnd_(localCategoryEnd),
+      localCategoryOffsets_(localCategoryOffsets), shift_(shift) {
+
+      toVecsByCat(vecsBuffer, dataNonZeros);
+  }
+  
+  size_t size() const { return size_; }
+  size_t localLength() const { return localLen_; }
+  size_t localCategoryBegin() const { return localCategoryBegin_; }
+  size_t localCategoryEnd() const { return localCategoryEnd_; }
+
+  bool containsLocalCategory(size_t i) const {
+    return i >= localCategoryBegin_ and i < localCategoryEnd_;
+  }
+
+  size_t getCatOffest(size_t iCat) const {
+    return localCategoryOffsets_[iCat - localCategoryBegin_];
+  }
+
+  size_t getShift() const{
+    return shift_;
+  }
+  
+  auto getVecsPtr() {
+    return vecs_;
+  }
+
+  const auto getVecsPtr() const {
+    return vecs_;
+  }
+
+  const auto& getVecsByCat() const {
+    return vecsByCat_;
+  }
+
+  void toVecsByCat(size_t nVec) {
+	
+    vecsByCat_.resize(localCategoryEnd_ - localCategoryBegin_);
+    #pragma omp parallel for
+    for(auto& mat : vecsByCat_)
+      mat.resize(nVec);
+
+    #pragma omp parallel for schedule(static) default(shared)
+    for (size_t col = 0; col < nVec; ++col) {
+      size_t iCat = localCategoryBegin_;
+      for(auto it = vecs_->cbegin(shift_ + col); it != vecs_->cend(shift_ + col); it++) {
+        size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+        while(it->first >= adjustedOffset) {
+          iCat++;
+          adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+        }
+        size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1)) - getCatOffest(iCat);
+	vecsByCat_[iCat - localCategoryBegin_].sortedInsert(it->first - getCatOffest(iCat), col, it->second);
+      }
+    } 
+  }
+  
+  void toVecsByCat(char* vecsBuffer, size_t nonZeros) {
+
+    nonZerosArray.resize(size_);
+
+    vecsByCat_.resize(localCategoryEnd_ - localCategoryBegin_);
+    #pragma omp parallel for
+    for(auto& mat : vecsByCat_)
+      mat.resize(size_);
+
+    size_t* prevBuffRowCols = (size_t*)vecsBuffer;
+    MatsT* prevBuffVals = (MatsT*)(vecsBuffer + nonZeros * sizeof(size_t) * 2);
+
+    for(size_t element = 0; element < nonZeros; element++) {
+
+      size_t row = *prevBuffRowCols;
+      size_t col = *(prevBuffRowCols + 1);
+      nonZerosArray[col]++; //update num of non-zeros at column col
+      MatsT value = *prevBuffVals;
+
+      size_t iCat = localCategoryBegin_;
+      size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+
+
+      while(row >= adjustedOffset) {
+        iCat++;
+        adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+      }
+
+      size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1)) - getCatOffest(iCat);
+      vecsByCat_[iCat - localCategoryBegin_].sortedInsert(row - getCatOffest(iCat), col, value);
+
+      prevBuffRowCols += 2;
+      prevBuffVals++;
+    }
+  }
+
+  size_t nonZeros(size_t iVec) {
+    if(iVec >= nonZerosArray.size()) {
+      CErr("localView trying to get non-zeros of non-existing column");
+    }
+    return nonZerosArray[iVec];
+  }
+
+  void reduceSigmaIntermediate(HashSparseMatrix<MatsT>& B) {
+    vecs_->setFromHashSparseMatrix(B, shift_, 0, size_);
+  }
+
+  void reduceSigmaIntermediate(HashSparseMatrix<MatsT>& A, HashSparseMatrix<MatsT>& B) {
+    vecs_->setFromTwoHashSparseMatrices(A, B, shift_, 0, size_);
+  }
+
+}; // class DASCISparseVectorViewer
+#endif
 
 } // namespace ChronusQ

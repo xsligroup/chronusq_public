@@ -121,6 +121,7 @@ public:
   Matrix& operator=( const ScaledMatrix<ScalarT, MatsU>& );
 
   const std::vector<size_t>& dimensions() const{ return array_->dimensions(); }
+  size_t dimension() const {if(dimensions()[0] != dimensions()[1]){CErr("Requesting dimension() if non-square matrix");} return dimensions()[0];} 
   size_t nRows() const { return dimensions()[0]; }
   size_t nColumns() const { return dimensions()[1]; }
 
