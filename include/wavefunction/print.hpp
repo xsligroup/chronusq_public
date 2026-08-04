@@ -300,7 +300,7 @@ namespace ChronusQ {
       sectors = {NegStates,OccStates,VirtStates};
     } else {
       OccStates = NO;
-      VirtStates = NB;
+      VirtStates = nC*NB;
       sectors = {OccStates,VirtStates};
     }
     size_t start = 0;
@@ -412,7 +412,9 @@ namespace ChronusQ {
 
     // Set number of occupied orbitals
     size_t NO = (this->nC == 1 ? this->nOA : this->nO);
+    size_t NO_beta = (this->nC == 1 ? this->nOB : this->nO);
     if ( this->nC == 4 ) NO = this->nO + this->nC * this->nAlphaOrbital()/2;
+    if ( this->nC == 4 ) NO_beta = this->nO + this->nC * this->nAlphaOrbital()/2;
 
     bool MOcoeffs = printLevel % 2 == 1;
     bool analyzeMO = printLevel / 2 > 0;
@@ -535,10 +537,10 @@ namespace ChronusQ {
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Beta)";
       if( this->nC == 4 ) out << " for Large component";
       if( this->nC == 1 )
-        analyzeMOPrint(out, NB, NOrb, NO, aoints_->overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, NO_beta, aoints_->overlap->pointer(),
               this->mo[1].pointer(), NOrb, molecule(), basisSet(), groupAtm);
       else
-        analyzeMOPrint(out, NB, NOrb, NO, aoints_->overlap->pointer(),
+        analyzeMOPrint(out, NB, NOrb, NO_beta, aoints_->overlap->pointer(),
               this->mo[0].pointer() + (this->nC/2)*NB, NOrb, molecule(), basisSet(),
               groupAtm);
 
@@ -570,4 +572,3 @@ namespace ChronusQ {
 
 
 }; // namespace ChronusQ
-
