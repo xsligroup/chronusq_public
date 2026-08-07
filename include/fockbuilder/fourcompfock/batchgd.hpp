@@ -51,7 +51,7 @@ namespace ChronusQ {
       //
       // because coulombMatrix is cqmatrix::Matrix instead of cqmatrix::PauliSpinorMatrices
       // so the dividing is not accurate 
-      if( std::dynamic_pointer_cast<InCore4indexRelERIContraction<MatsT,IntsT>>(ss.TPI) ) {
+      if( std::dynamic_pointer_cast<InCoreRelERIContraction<MatsT,IntsT>>(ss.TPI) ) {
         
         // cache the ss pointers
         std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> ss1PDM 

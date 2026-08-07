@@ -717,6 +717,8 @@ CQ_CINT_OPT_WRAPPER(int2e_ip1_optimizer);
 CQ_CINT_INT2E_WRAPPER(int2e_ip1_cart);
 CQ_CINT_INT2E_WRAPPER(int2e_ip1_sph);
 CQ_CINT_INT2E_WRAPPER(int2e_ip1_spinor);
+CQ_INT_WRAPPER(int2e_ip1_cart);
+CQ_INT_WRAPPER(int2e_ip1_sph);
 
 /* (i j|R12 |NABLA k l) */
 CQ_CINT_OPT_WRAPPER(int2e_ip2_optimizer);

@@ -129,7 +129,7 @@ namespace ChronusQ {
   // IntsU can only be complex here
   template <typename IntsT>
   template <typename IntsU>
-  InCore4indexRelERI<IntsU> InCore4indexRelERI<IntsT>::spatialToSpinBlock() const {
+  Incore4indexTPIList<IntsU> InCoreRelERI<IntsT>::spatialToSpinBlock() const {
     
     size_t nSpinorRelComp;
     size_t NB    = this->nBasis();
@@ -138,29 +138,31 @@ namespace ChronusQ {
     dcomplex scale = 1./(4*SpeedOfLight*SpeedOfLight);
     dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
 
-    if (this->nRelComp() == 0)       nSpinorRelComp = 0; // direct Coulomb  (LL|LL)
-    else if (this->nRelComp() == 4)  nSpinorRelComp = 1; // + Dirac Coulomb (LL|SS) 
-    else if (this->nRelComp() == 23) nSpinorRelComp = 2; // + Gaunt (LS |dot SL) ??
+    if (not DC_ and not gaunt_ and not SSSS_ and not gauge_)   nSpinorRelComp = 0; // direct Coulomb  (LL|LL)
+    else if (DC_ and not gaunt_ and not SSSS_ and not gauge_)  nSpinorRelComp = 1; // + Dirac Coulomb (LL|SS)
+    else if (DC_ and gaunt_ and not SSSS_ and not gauge_)      nSpinorRelComp = 2; // + Gaunt (LS |dot SL) ??
     else CErr("Unrecognizable nRelComponent");
   
-    InCore4indexRelERI<IntsU> spinor(twoNB, nSpinorRelComp);    
-    
+    Incore4indexTPIList<IntsU> spinor(twoNB, nSpinorRelComp + 1);
+
     // LLLL part
     {
-      auto tmp = InCore4indexTPI<IntsT>::template spatialToSpinBlock<IntsU>();
+      auto tmp = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(LLLL_)->template spatialToSpinBlock<IntsU>();
       SetMat('N', twoNB2, twoNB2, dcomplex(1.), tmp.pointer(), twoNB2, 
-        spinor.pointer(), twoNB2);
+        spinor[0].pointer(), twoNB2);
     } 
 
     #define ADD_COMPONENTS_TO_SPINOR_RELERI(TRANS1, TRANS2, SCALE, COMP, SPINOR) \
-    { auto tmp = this->components_[COMP].template spatialToSpinBlock<IntsU>(TRANS1, TRANS2);\
+    { auto tmp = dynamic_cast<InCore4indexTPI<IntsT>&>(                          \
+          (*std::dynamic_pointer_cast<Incore4indexTPIList<IntsT>>(this->DC_))[COMP])  \
+          .template spatialToSpinBlock<IntsU>(TRANS1, TRANS2);\
       MatAdd('N', 'N', twoNB2, twoNB2, dcomplex(1.), SPINOR.pointer(), twoNB2, \
         SCALE, tmp.pointer(), twoNB2, SPINOR.pointer(), twoNB2); }
     
     // SSLL part
     if (nSpinorRelComp > 0) {
       
-      auto & SSLL = spinor.components_[0];
+      auto & SSLL = spinor[1];
     
       SSLL.clear();
       // SSLL += I(1)I(2) ∇A∙∇B(ij|kl)
@@ -175,13 +177,13 @@ namespace ChronusQ {
       //SSLL.output(std::cout, "DC SSLL AO Integrals", true);
     } 
   
-    if (nSpinorRelComp > 1) { 
-      CErr("Guant term spatial to spinor transformation is not implemented");
+    if (nSpinorRelComp > 1) {
+      CErr("Gaunt term spatial to spinor transformation is not implemented");
     }
   
     return spinor;
   
-  } // InCore4indexRelERI::spatialToSpinBlock
+  } // InCoreRelERI::spatialToSpinBlock
   
   template <typename IntsT>
   template <typename IntsU>
@@ -247,13 +249,13 @@ namespace ChronusQ {
 
   template <>
   template <>
-  InCore4indexRelERI<double>  InCore4indexRelERI<double>::spatialToSpinBlock() const { 
+  Incore4indexTPIList<double>  InCoreRelERI<double>::spatialToSpinBlock() const {
     CErr("It's not valid to have double for relativitic 2C spinor");
     abort();
   };
 
-  template InCore4indexRelERI<dcomplex> InCore4indexRelERI<double>::spatialToSpinBlock() const;
-  template InCore4indexRelERI<dcomplex> InCore4indexRelERI<dcomplex>::spatialToSpinBlock() const;
+  template Incore4indexTPIList<dcomplex> InCoreRelERI<double>::spatialToSpinBlock() const;
+  template Incore4indexTPIList<dcomplex> InCoreRelERI<dcomplex>::spatialToSpinBlock() const;
   
   template InCoreRITPI<double> InCoreRITPI<double>::spatialToSpinBlock() const;
   template InCoreRITPI<dcomplex> InCoreRITPI<double>::spatialToSpinBlock() const;

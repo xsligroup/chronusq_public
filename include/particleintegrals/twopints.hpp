@@ -37,7 +37,15 @@ namespace ChronusQ {
     LLSS,
     SSSS,
     GAUNT,
-    GAUGE
+    GAUGE,
+    DC_COULOMB,
+    DC_EXCHANGE,
+    SSSS_COULOMB,
+    SSSS_EXCHANGE,
+    GAUNT_COULOMB,
+    GAUNT_EXCHANGE,
+    GAUGE_COULOMB,
+    GAUGE_EXCHANGE,
   }; ///< 2-Body Tensor Contraction Specification
 
 
@@ -67,9 +75,11 @@ namespace ChronusQ {
 
     TWOBODY_CONTRACTION_TYPE contType;
 
-    double* ERI4 = nullptr;
+    int ERI4Ind = -1;
 
     INTEGRAL_TRANSPOSE intTrans;
+
+    double* ERI4 = nullptr;
 
 
   }; // struct TwoBodyContraction
@@ -288,5 +298,110 @@ namespace ChronusQ {
     bool printContractionTiming = false;
 
   }; // class TPIContractions
+  
+  template <typename IntsT>
+  class InCoreTPI : public TwoPInts<IntsT> {
+
+    template <typename IntsU>
+    friend class InCoreTPI;
+
+  public:
+
+    // Constructor
+    InCoreTPI() = delete;
+    InCoreTPI(size_t nb, size_t snb = 0):
+      TwoPInts<IntsT>(nb, snb) {}
+    InCoreTPI( const InCoreTPI &other ) = default;
+    InCoreTPI( InCoreTPI &&other ) = default;
+    template <typename IntsU>
+    InCoreTPI( const InCoreTPI<IntsU> &other, int = 0 ):
+    InCoreTPI(other.nBasis(), other.snBasis()) {}
+
+    InCoreTPI& operator=( const InCoreTPI &other ) = default;
+    InCoreTPI& operator=( InCoreTPI &&other ) = default;
+
+    // Tensor direct access
+    virtual IntsT* pointer() = 0;
+    virtual const IntsT* pointer() const = 0;
+
+    // Computation interfaces
+    virtual void computeAOInts(BasisSet &basisSet, Molecule &mol,
+                               EMPerturbation &emPert, OPERATOR op,
+                               const HamiltonianOptions &hamiltonianOptions) = 0;
+
+
+    virtual void computeAOInts(BasisSet &basisSet, BasisSet &basisSet2, 
+                               Molecule &mol, EMPerturbation &emPert, OPERATOR op, 
+                               const HamiltonianOptions &hamiltonianOptions) = 0;
+
+    virtual void clear() = 0;
+
+    virtual void output(std::ostream &out, const std::string &s = "",
+                        bool printFull = false) const = 0;
+
+    virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
+      TwoPInts<IntsT>::broadcast(comm, root);
+    }
+
+    virtual ~InCoreTPI() {}
+
+  }; // class InCoreTPI
+  
+
+  template <typename MatsT, typename IntsT>
+  class InCoreTPIContraction : public TPIContractions<MatsT,IntsT> {
+
+    template <typename MatsU, typename IntsU>
+    friend class InCoreTPIContraction;
+
+  public:
+
+    // Constructors
+
+    InCoreTPIContraction() = delete;
+    InCoreTPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
+      TPIContractions<MatsT,IntsT>(tpi) {}
+
+    template <typename MatsU>
+    InCoreTPIContraction(
+        const InCoreTPIContraction<MatsU,IntsT> &other, int dummy = 0 ):
+        InCoreTPIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+    template <typename MatsU>
+    InCoreTPIContraction(
+        InCoreTPIContraction<MatsU,IntsT> &&other, int dummy = 0 ):
+        InCoreTPIContraction(other.ints_) {
+      this->contractSecond = other.contractSecond;
+    }
+
+    InCoreTPIContraction( const InCoreTPIContraction &other ):
+    InCoreTPIContraction(other, 0) {
+      this->contractSecond = other.contractSecond;
+    }
+    InCoreTPIContraction( InCoreTPIContraction &&other ):
+    InCoreTPIContraction(std::move(other), 0) {
+      this->contractSecond = other.contractSecond;
+    }
+
+    // Computation interfaces
+    virtual void twoBodyContract(
+        MPI_Comm comm,
+        const bool,
+        std::vector<TwoBodyContraction<MatsT>>&,
+        EMPerturbation&) const;
+
+    // Computation interfaces
+    virtual void JContract(
+        MPI_Comm,
+        TwoBodyContraction<MatsT>&) const = 0;
+
+    virtual void KContract(
+        MPI_Comm,
+        TwoBodyContraction<MatsT>&) const = 0;
+
+    virtual ~InCoreTPIContraction() {}
+
+  }; // class InCoreTPIContraction
 
 }; // namespace ChronusQ

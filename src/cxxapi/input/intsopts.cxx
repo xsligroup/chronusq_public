@@ -78,6 +78,10 @@ namespace ChronusQ {
       "GAUNT",        // True or False
       "SSSS",         // True or False
       "GAUGE",        // True or False
+      
+      "RILLLL",       // True or False
+      "RISSLL",       // True or False
+      "RISSSS",       // True or False
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -119,7 +123,7 @@ namespace ChronusQ {
     else if( not ALG.compare("INCORE") )
       options.basicintsoptions.contrAlg = CONTRACTION_ALGORITHM::INCORE;
     else
-      CErr(ALG + " not a valid "+ int_sec + ".ALG",out);
+      CErr(ALG + " not a valid "+ int_sec + "/ALG",out);
 
 
     std::string TPITRANSALG = "N6"; 
@@ -166,7 +170,7 @@ namespace ChronusQ {
         } else if (not RI.compare("COMBINEMATRIX")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEMATRIX;
         } else {
-          CErr(RI + " is not a valid "+ int_sec + ".RI keyword",out);
+          CErr(RI + " is not a valid "+ int_sec + "/RI keyword",out);
         }
 
         std::string reportError = "FALSE";
@@ -176,17 +180,17 @@ namespace ChronusQ {
         } else if(not reportError.compare("TRUE")) {
           options.cdriintsoptions.CDRI_reportError = true;
         } else {
-          CErr(reportError + " is not a valid " + int_sec + ".RIREPORTERROR keyword", out);
+          CErr(reportError + " is not a valid " + int_sec + "/RIREPORTERROR keyword", out);
         }
 
-        OPTOPT( options.cdriintsoptions.CDRI_asymmDistributed = input.getData<bool>(int_sec+".RIDISTRIBUTE"); )
-        OPTOPT( options.cdriintsoptions.CDRI_asymmRedistribute = input.getData<bool>(int_sec+".RIREDISTRIBUTE"); )
+        OPTOPT( options.cdriintsoptions.CDRI_asymmDistributed = input.getData<bool>(int_sec+"/RIDISTRIBUTE"); )
+        OPTOPT( options.cdriintsoptions.CDRI_asymmRedistribute = input.getData<bool>(int_sec+"/RIREDISTRIBUTE"); )
 
       } else{
         // Decode RI keywrod for INTS / PINTS sections
           if(not RI.compare("AUXBASIS") ) {
             if (dfbasis->nBasis < 1)
-              CErr("Keyword "+ int_sec + ".RI requires a non-empty DFbasis->",std::cout);
+              CErr("Keyword "+ int_sec + "/RI requires a non-empty DFbasis->",std::cout);
           } else if (not RI.compare("TRADITIONAL")) {
             options.cdriintsoptions.CDalg = CHOLESKY_ALG::TRADITIONAL;
           } else if (not RI.compare("DYNAMICALL")) {
@@ -200,7 +204,7 @@ namespace ChronusQ {
           } else if (not RI.compare("READPIVOTS")) {
             options.cdriintsoptions.CDalg = CHOLESKY_ALG::READ_PIVOTS;
           } else {
-            CErr(RI + "is not a valid "+ int_sec + ".RI keyword",out);
+            CErr(RI + "is not a valid "+ int_sec + "/RI keyword",out);
           }
       }
     }
@@ -217,6 +221,12 @@ namespace ChronusQ {
     OPTOPT( options.cdriintsoptions.CDRI_build4I = input.getData<bool>(int_sec+"/RIBUILD4INDEX"); )
     OPTOPT( options.cdriintsoptions.CDRI_distributed = input.getData<bool>(int_sec+"/RIDISTRIBUTE"); )
     OPTOPT( options.cdriintsoptions.CDRI_redistribute = input.getData<bool>(int_sec+"/RIREDISTRIBUTE"); )
+
+    // Parse 4C-RI options
+    OPTOPT( options.cdriintsoptions.CDRI_LLLL = input.getData<bool>(int_sec+"/RILLLL"); )
+    OPTOPT( options.cdriintsoptions.CDRI_SSLL = input.getData<bool>(int_sec+"/RISSLL"); )
+    OPTOPT( options.cdriintsoptions.CDRI_SSSS = input.getData<bool>(int_sec+"/RISSSS"); )
+
     return options;
   }
 

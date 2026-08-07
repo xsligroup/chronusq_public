@@ -54,7 +54,8 @@ namespace ChronusQ {
     std::shared_ptr<SingleSlaterBase> buildSingleSlater(
         std::ostream &out,
         Molecule &mol, BasisSet &basis,
-        std::shared_ptr<IntegralsBase> aoints) const;
+        std::shared_ptr<IntegralsBase> aoints,
+        const IntegralOptions &aoints_options = {}) const;
 
   };
 

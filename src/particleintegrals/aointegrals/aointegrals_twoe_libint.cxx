@@ -737,13 +737,13 @@ namespace ChronusQ {
 
 
   template <>
-  void InCore4indexRelERI<dcomplex>::computeERIDCB(BasisSet&, Molecule&,
+  void Incore4indexTPIList<dcomplex>::computeERIDCB(BasisSet&, Molecule&,
       EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
     CErr("Only real GTOs are allowed",std::cout);
   };
 
   template <>
-  void InCore4indexRelERI<double>::computeERIDCB(BasisSet &basisSet_, Molecule&,
+  void Incore4indexTPIList<double>::computeERIDCB(BasisSet &basisSet_, Molecule&,
       EMPerturbation&, OPERATOR, const HamiltonianOptions &hamiltonianOptions) {
 
     // Determine the number of OpenMP threads
@@ -829,8 +829,8 @@ namespace ChronusQ {
     int BzDy = 55;
     int BzDz = 56;
 
-    for (InCore4indexTPI<double>& c : components_)
-      c.clear();
+    for (auto c : components_)
+      c->clear();
 
     auto topERIDCB = tick();
 
@@ -843,6 +843,9 @@ namespace ChronusQ {
 
       size_t n1,n2,n3,n4,i,j,k,l,ijkl,bf1,bf2,bf3,bf4;
       size_t s4_max;
+
+      auto nERIRef = 0;
+      if (hamiltonianOptions.DiracCoulomb) nERIRef +=4; // Dirac-Coulomb
 
       for(size_t s1(0), bf1_s(0), s1234(0); s1 < basisSet_.nShell; 
           bf1_s+=n1, s1++) { 
@@ -886,11 +889,11 @@ namespace ChronusQ {
 
 #ifdef __DEBUGERI__
 
-          std::cout << std::scientific << std::setprecision(16); 
+          std::cout << std::scientific << std::setprecision(16);
 #if 0
 	  std::cout <<"Libint ∇A∙∇B(ij|kl)"<<std::endl;
-	  std::cout<<buff[AxBx][ijkl]<<std::endl; 
-	  std::cout<<buff[AxBy][ijkl]<<std::endl; 
+	  std::cout<<buff[AxBx][ijkl]<<std::endl;
+	  std::cout<<buff[AxBy][ijkl]<<std::endl;
 	  std::cout<<buff[AxBz][ijkl]<<std::endl;
 	  std::cout<<buff[AyBx][ijkl]<<std::endl;
 	  std::cout<<buff[AyBy][ijkl]<<std::endl;
@@ -902,8 +905,8 @@ namespace ChronusQ {
 
 #if 0
 	  std::cout <<"Libint ∇A∙∇C(ij|kl)"<<std::endl;
-	  std::cout<<buff[AxCx][ijkl]<<std::endl; 
-	  std::cout<<buff[AxCy][ijkl]<<std::endl; 
+	  std::cout<<buff[AxCx][ijkl]<<std::endl;
+	  std::cout<<buff[AxCy][ijkl]<<std::endl;
 	  std::cout<<buff[AxCz][ijkl]<<std::endl;
 	  std::cout<<buff[AyCx][ijkl]<<std::endl;
 	  std::cout<<buff[AyCy][ijkl]<<std::endl;
@@ -915,8 +918,8 @@ namespace ChronusQ {
 
 #if 0
 	  std::cout <<"Libint ∇A∙∇D(ij|kl)"<<std::endl;
-	  std::cout<<buff[AxDx][ijkl]<<std::endl; 
-	  std::cout<<buff[AxDy][ijkl]<<std::endl; 
+	  std::cout<<buff[AxDx][ijkl]<<std::endl;
+	  std::cout<<buff[AxDy][ijkl]<<std::endl;
 	  std::cout<<buff[AxDz][ijkl]<<std::endl;
 	  std::cout<<buff[AyDx][ijkl]<<std::endl;
 	  std::cout<<buff[AyDy][ijkl]<<std::endl;
@@ -928,8 +931,8 @@ namespace ChronusQ {
 
 #if 0
 	  std::cout <<"Libint ∇B∙∇C(ij|kl)"<<std::endl;
-	  std::cout<<buff[BxCx][ijkl]<<std::endl; 
-	  std::cout<<buff[BxCy][ijkl]<<std::endl; 
+	  std::cout<<buff[BxCx][ijkl]<<std::endl;
+	  std::cout<<buff[BxCy][ijkl]<<std::endl;
 	  std::cout<<buff[BxCz][ijkl]<<std::endl;
 	  std::cout<<buff[ByCx][ijkl]<<std::endl;
 	  std::cout<<buff[ByCy][ijkl]<<std::endl;
@@ -942,8 +945,8 @@ namespace ChronusQ {
 
 #if 0
 	  std::cout <<"Libint ∇B∙∇D(ij|kl)"<<std::endl;
-	  std::cout<<buff[BxDx][ijkl]<<std::endl; 
-	  std::cout<<buff[BxDy][ijkl]<<std::endl; 
+	  std::cout<<buff[BxDx][ijkl]<<std::endl;
+	  std::cout<<buff[BxDy][ijkl]<<std::endl;
 	  std::cout<<buff[BxDz][ijkl]<<std::endl;
 	  std::cout<<buff[ByDx][ijkl]<<std::endl;
 	  std::cout<<buff[ByDy][ijkl]<<std::endl;
@@ -956,8 +959,8 @@ namespace ChronusQ {
 
 #if 0
 	  std::cout <<"Libint ∇C∙∇D(ij|kl)"<<std::endl;
-	  std::cout<<buff[CxDx][ijkl]<<std::endl; 
-	  std::cout<<buff[CxDy][ijkl]<<std::endl; 
+	  std::cout<<buff[CxDx][ijkl]<<std::endl;
+	  std::cout<<buff[CxDy][ijkl]<<std::endl;
 	  std::cout<<buff[CxDz][ijkl]<<std::endl;
 	  std::cout<<buff[CyDx][ijkl]<<std::endl;
 	  std::cout<<buff[CyDy][ijkl]<<std::endl;
@@ -978,6 +981,8 @@ namespace ChronusQ {
           auto KLJI = bf3 + bf4*NB + bf2*NB2 + bf1*NB3;
           auto LKJI = bf4 + bf3*NB + bf2*NB2 + bf1*NB3;
 #if 1
+    /* Dirac-Coulomb Integrals */
+    if(hamiltonianOptions.DiracCoulomb) { // Dirac-Coulomb ∇_i∇_j(ij|kl)
           /* Coulomb */
           // ∇A∙∇B(ij|kl)
           auto dAdotdB = buff[AxBx][ijkl] + buff[AyBy][ijkl] + buff[AzBz][ijkl];
@@ -1034,6 +1039,7 @@ namespace ChronusQ {
           (*this)[1].pointer()[LKJI] = -dCcrossdD_x;
           (*this)[2].pointer()[LKJI] = -dCcrossdD_y;
           (*this)[3].pointer()[LKJI] = -dCcrossdD_z;
+    }
 #endif
 
           /* Gaunt */
@@ -1069,330 +1075,330 @@ namespace ChronusQ {
   
             // ∇B∙∇C(ij|kl) followed by ∇Bx∇C(ij|kl) X, Y, and Z
             // (ij|kl)
-            (*this)[4].pointer()[IJKL] = dBdotdC;
-            (*this)[5].pointer()[IJKL] = dBcrossdC_x;
-            (*this)[6].pointer()[IJKL] = dBcrossdC_y;
-            (*this)[7].pointer()[IJKL] = dBcrossdC_z;
+            (*this)[nERIRef + 0].pointer()[IJKL] = dBdotdC;
+            (*this)[nERIRef + 1].pointer()[IJKL] = dBcrossdC_x;
+            (*this)[nERIRef + 2].pointer()[IJKL] = dBcrossdC_y;
+            (*this)[nERIRef + 3].pointer()[IJKL] = dBcrossdC_z;
             // (ji|kl)
-            (*this)[4].pointer()[JIKL] = dAdotdC;
-            (*this)[5].pointer()[JIKL] = dAcrossdC_x;
-            (*this)[6].pointer()[JIKL] = dAcrossdC_y;
-            (*this)[7].pointer()[JIKL] = dAcrossdC_z;
+            (*this)[nERIRef + 0].pointer()[JIKL] = dAdotdC;
+            (*this)[nERIRef + 1].pointer()[JIKL] = dAcrossdC_x;
+            (*this)[nERIRef + 2].pointer()[JIKL] = dAcrossdC_y;
+            (*this)[nERIRef + 3].pointer()[JIKL] = dAcrossdC_z;
             // (ij|lk)
-            (*this)[4].pointer()[IJLK] = dBdotdD;
-            (*this)[5].pointer()[IJLK] = dBcrossdD_x;
-            (*this)[6].pointer()[IJLK] = dBcrossdD_y;
-            (*this)[7].pointer()[IJLK] = dBcrossdD_z;
+            (*this)[nERIRef + 0].pointer()[IJLK] = dBdotdD;
+            (*this)[nERIRef + 1].pointer()[IJLK] = dBcrossdD_x;
+            (*this)[nERIRef + 2].pointer()[IJLK] = dBcrossdD_y;
+            (*this)[nERIRef + 3].pointer()[IJLK] = dBcrossdD_z;
             // (ji|lk)
-            (*this)[4].pointer()[JILK] = dAdotdD;
-            (*this)[5].pointer()[JILK] = dAcrossdD_x;
-            (*this)[6].pointer()[JILK] = dAcrossdD_y;
-            (*this)[7].pointer()[JILK] = dAcrossdD_z;
+            (*this)[nERIRef + 0].pointer()[JILK] = dAdotdD;
+            (*this)[nERIRef + 1].pointer()[JILK] = dAcrossdD_x;
+            (*this)[nERIRef + 2].pointer()[JILK] = dAcrossdD_y;
+            (*this)[nERIRef + 3].pointer()[JILK] = dAcrossdD_z;
             // (kl|ij)
-            (*this)[4].pointer()[KLIJ] = dAdotdD;
-            (*this)[5].pointer()[KLIJ] = -dAcrossdD_x;
-            (*this)[6].pointer()[KLIJ] = -dAcrossdD_y;
-            (*this)[7].pointer()[KLIJ] = -dAcrossdD_z;
+            (*this)[nERIRef + 0].pointer()[KLIJ] = dAdotdD;
+            (*this)[nERIRef + 1].pointer()[KLIJ] = -dAcrossdD_x;
+            (*this)[nERIRef + 2].pointer()[KLIJ] = -dAcrossdD_y;
+            (*this)[nERIRef + 3].pointer()[KLIJ] = -dAcrossdD_z;
             // (lk|ij)
-            (*this)[4].pointer()[LKIJ] = dAdotdC;
-            (*this)[5].pointer()[LKIJ] = -dAcrossdC_x;
-            (*this)[6].pointer()[LKIJ] = -dAcrossdC_y;
-            (*this)[7].pointer()[LKIJ] = -dAcrossdC_z;
+            (*this)[nERIRef + 0].pointer()[LKIJ] = dAdotdC;
+            (*this)[nERIRef + 1].pointer()[LKIJ] = -dAcrossdC_x;
+            (*this)[nERIRef + 2].pointer()[LKIJ] = -dAcrossdC_y;
+            (*this)[nERIRef + 3].pointer()[LKIJ] = -dAcrossdC_z;
             // (kl|ji)
-            (*this)[4].pointer()[KLJI] = dBdotdD;
-            (*this)[5].pointer()[KLJI] = -dBcrossdD_x;
-            (*this)[6].pointer()[KLJI] = -dBcrossdD_y;
-            (*this)[7].pointer()[KLJI] = -dBcrossdD_z;
+            (*this)[nERIRef + 0].pointer()[KLJI] = dBdotdD;
+            (*this)[nERIRef + 1].pointer()[KLJI] = -dBcrossdD_x;
+            (*this)[nERIRef + 2].pointer()[KLJI] = -dBcrossdD_y;
+            (*this)[nERIRef + 3].pointer()[KLJI] = -dBcrossdD_z;
             // (lk|ji)
-            (*this)[4].pointer()[LKJI] = dBdotdC;
-            (*this)[5].pointer()[LKJI] = -dBcrossdC_x;
-            (*this)[6].pointer()[LKJI] = -dBcrossdC_y;
-            (*this)[7].pointer()[LKJI] = -dBcrossdC_z;
-  
-  
+            (*this)[nERIRef + 0].pointer()[LKJI] = dBdotdC;
+            (*this)[nERIRef + 1].pointer()[LKJI] = -dBcrossdC_x;
+            (*this)[nERIRef + 2].pointer()[LKJI] = -dBcrossdC_y;
+            (*this)[nERIRef + 3].pointer()[LKJI] = -dBcrossdC_z;
+
+
             // ∇B_x∇C_y(ij|kl) + ∇B_y∇C_x(ij|kl)
             // (ij|kl)
-            (*this)[8].pointer()[IJKL] = buff[BxCy][ijkl] + buff[ByCx][ijkl];
+            (*this)[nERIRef + 4].pointer()[IJKL] = buff[BxCy][ijkl] + buff[ByCx][ijkl];
             // (ji|kl)
-            (*this)[8].pointer()[JIKL] = buff[AxCy][ijkl] + buff[AyCx][ijkl];
+            (*this)[nERIRef + 4].pointer()[JIKL] = buff[AxCy][ijkl] + buff[AyCx][ijkl];
             // (ij|lk)
-            (*this)[8].pointer()[IJLK] = buff[BxDy][ijkl] + buff[ByDx][ijkl];
+            (*this)[nERIRef + 4].pointer()[IJLK] = buff[BxDy][ijkl] + buff[ByDx][ijkl];
             // (ji|lk)
-            (*this)[8].pointer()[JILK] = buff[AxDy][ijkl] + buff[AyDx][ijkl];
+            (*this)[nERIRef + 4].pointer()[JILK] = buff[AxDy][ijkl] + buff[AyDx][ijkl];
             // (kl|ij)
-            (*this)[8].pointer()[KLIJ] = buff[AxDy][ijkl] + buff[AyDx][ijkl];
+            (*this)[nERIRef + 4].pointer()[KLIJ] = buff[AxDy][ijkl] + buff[AyDx][ijkl];
             // (kl|ji)
-            (*this)[8].pointer()[KLJI] = buff[BxDy][ijkl] + buff[ByDx][ijkl];
+            (*this)[nERIRef + 4].pointer()[KLJI] = buff[BxDy][ijkl] + buff[ByDx][ijkl];
             // (lk|ij)
-            (*this)[8].pointer()[LKIJ] = buff[AxCy][ijkl] + buff[AyCx][ijkl];
+            (*this)[nERIRef + 4].pointer()[LKIJ] = buff[AxCy][ijkl] + buff[AyCx][ijkl];
             // (lk|ji)
-            (*this)[8].pointer()[LKJI] = buff[BxCy][ijkl] + buff[ByCx][ijkl];
-  
-  
+            (*this)[nERIRef + 4].pointer()[LKJI] = buff[BxCy][ijkl] + buff[ByCx][ijkl];
+
+
             // ∇B_y∇C_x(ij|kl)
             // (ij|kl)
-            (*this)[9].pointer()[IJKL] = buff[ByCx][ijkl];
+            (*this)[nERIRef + 5].pointer()[IJKL] = buff[ByCx][ijkl];
             // (ji|kl)
-            (*this)[9].pointer()[JIKL] = buff[AyCx][ijkl];
+            (*this)[nERIRef + 5].pointer()[JIKL] = buff[AyCx][ijkl];
             // (ij|lk)
-            (*this)[9].pointer()[IJLK] = buff[ByDx][ijkl];
+            (*this)[nERIRef + 5].pointer()[IJLK] = buff[ByDx][ijkl];
             // (ji|lk)
-            (*this)[9].pointer()[JILK] = buff[AyDx][ijkl];
+            (*this)[nERIRef + 5].pointer()[JILK] = buff[AyDx][ijkl];
             // (kl|ij)
-            (*this)[9].pointer()[KLIJ] = buff[AxDy][ijkl];
+            (*this)[nERIRef + 5].pointer()[KLIJ] = buff[AxDy][ijkl];
             // (kl|ji)
-            (*this)[9].pointer()[KLJI] = buff[BxDy][ijkl];
+            (*this)[nERIRef + 5].pointer()[KLJI] = buff[BxDy][ijkl];
             // (lk|ij)
-            (*this)[9].pointer()[LKIJ] = buff[AxCy][ijkl];
+            (*this)[nERIRef + 5].pointer()[LKIJ] = buff[AxCy][ijkl];
             // (lk|ji)
-            (*this)[9].pointer()[LKJI] = buff[BxCy][ijkl];
-  
-  
+            (*this)[nERIRef + 5].pointer()[LKJI] = buff[BxCy][ijkl];
+
+
             // ∇B_x∇C_z(ij|kl) + ∇B_z∇C_x(ij|kl)
             // (ij|kl)
-            (*this)[10].pointer()[IJKL] = buff[BxCz][ijkl] + buff[BzCx][ijkl];
+            (*this)[nERIRef + 6].pointer()[IJKL] = buff[BxCz][ijkl] + buff[BzCx][ijkl];
             // (ji|kl)
-            (*this)[10].pointer()[JIKL] = buff[AxCz][ijkl] + buff[AzCx][ijkl];
+            (*this)[nERIRef + 6].pointer()[JIKL] = buff[AxCz][ijkl] + buff[AzCx][ijkl];
             // (ij|lk)
-            (*this)[10].pointer()[IJLK] = buff[BxDz][ijkl] + buff[BzDx][ijkl];
+            (*this)[nERIRef + 6].pointer()[IJLK] = buff[BxDz][ijkl] + buff[BzDx][ijkl];
             // (ji|lk)
-            (*this)[10].pointer()[JILK] = buff[AxDz][ijkl] + buff[AzDx][ijkl];
+            (*this)[nERIRef + 6].pointer()[JILK] = buff[AxDz][ijkl] + buff[AzDx][ijkl];
             // (kl|ij)
-            (*this)[10].pointer()[KLIJ] = buff[AxDz][ijkl] + buff[AzDx][ijkl];
+            (*this)[nERIRef + 6].pointer()[KLIJ] = buff[AxDz][ijkl] + buff[AzDx][ijkl];
             // (kl|ji)
-            (*this)[10].pointer()[KLJI] = buff[BxDz][ijkl] + buff[BzDx][ijkl];
+            (*this)[nERIRef + 6].pointer()[KLJI] = buff[BxDz][ijkl] + buff[BzDx][ijkl];
             // (lk|ij)
-            (*this)[10].pointer()[LKIJ] = buff[AxCz][ijkl] + buff[AzCx][ijkl];
+            (*this)[nERIRef + 6].pointer()[LKIJ] = buff[AxCz][ijkl] + buff[AzCx][ijkl];
             // (lk|ji)
-            (*this)[10].pointer()[LKJI] = buff[BxCz][ijkl] + buff[BzCx][ijkl];
-  
-  
+            (*this)[nERIRef + 6].pointer()[LKJI] = buff[BxCz][ijkl] + buff[BzCx][ijkl];
+
+
             // ∇B_z∇C_x(ij|kl)
             // (ij|kl)
-            (*this)[11].pointer()[IJKL] = buff[BzCx][ijkl];
+            (*this)[nERIRef + 7].pointer()[IJKL] = buff[BzCx][ijkl];
             // (ji|kl)
-            (*this)[11].pointer()[JIKL] = buff[AzCx][ijkl];
+            (*this)[nERIRef + 7].pointer()[JIKL] = buff[AzCx][ijkl];
             // (ij|lk)
-            (*this)[11].pointer()[IJLK] = buff[BzDx][ijkl];
+            (*this)[nERIRef + 7].pointer()[IJLK] = buff[BzDx][ijkl];
             // (ji|lk)
-            (*this)[11].pointer()[JILK] = buff[AzDx][ijkl];
+            (*this)[nERIRef + 7].pointer()[JILK] = buff[AzDx][ijkl];
             // (kl|ij)
-            (*this)[11].pointer()[KLIJ] = buff[AxDz][ijkl];
+            (*this)[nERIRef + 7].pointer()[KLIJ] = buff[AxDz][ijkl];
             // (kl|ji)
-            (*this)[11].pointer()[KLJI] = buff[BxDz][ijkl];
+            (*this)[nERIRef + 7].pointer()[KLJI] = buff[BxDz][ijkl];
             // (lk|ij)
-            (*this)[11].pointer()[LKIJ] = buff[AxCz][ijkl];
+            (*this)[nERIRef + 7].pointer()[LKIJ] = buff[AxCz][ijkl];
             // (lk|ji)
-            (*this)[11].pointer()[LKJI] = buff[BxCz][ijkl];
-  
-  
+            (*this)[nERIRef + 7].pointer()[LKJI] = buff[BxCz][ijkl];
+
+
             // ∇B_y∇C_z(ij|kl) + ∇B_z∇C_y(ij|kl)
             // (ij|kl)
-            (*this)[12].pointer()[IJKL] = buff[ByCz][ijkl] + buff[BzCy][ijkl];
+            (*this)[nERIRef + 8].pointer()[IJKL] = buff[ByCz][ijkl] + buff[BzCy][ijkl];
             // (ji|kl)
-            (*this)[12].pointer()[JIKL] = buff[AyCz][ijkl] + buff[AzCy][ijkl];
+            (*this)[nERIRef + 8].pointer()[JIKL] = buff[AyCz][ijkl] + buff[AzCy][ijkl];
             // (ij|lk)
-            (*this)[12].pointer()[IJLK] = buff[ByDz][ijkl] + buff[BzDy][ijkl];
+            (*this)[nERIRef + 8].pointer()[IJLK] = buff[ByDz][ijkl] + buff[BzDy][ijkl];
             // (ji|lk)
-            (*this)[12].pointer()[JILK] = buff[AyDz][ijkl] + buff[AzDy][ijkl];
+            (*this)[nERIRef + 8].pointer()[JILK] = buff[AyDz][ijkl] + buff[AzDy][ijkl];
             // (kl|ij)
-            (*this)[12].pointer()[KLIJ] = buff[AyDz][ijkl] + buff[AzDy][ijkl];
+            (*this)[nERIRef + 8].pointer()[KLIJ] = buff[AyDz][ijkl] + buff[AzDy][ijkl];
             // (kl|ji)
-            (*this)[12].pointer()[KLJI] = buff[ByDz][ijkl] + buff[BzDy][ijkl];
+            (*this)[nERIRef + 8].pointer()[KLJI] = buff[ByDz][ijkl] + buff[BzDy][ijkl];
             // (lk|ij)
-            (*this)[12].pointer()[LKIJ] = buff[AyCz][ijkl] + buff[AzCy][ijkl];
+            (*this)[nERIRef + 8].pointer()[LKIJ] = buff[AyCz][ijkl] + buff[AzCy][ijkl];
             // (lk|ji)
-            (*this)[12].pointer()[LKJI] = buff[ByCz][ijkl] + buff[BzCy][ijkl];
-  
-  
+            (*this)[nERIRef + 8].pointer()[LKJI] = buff[ByCz][ijkl] + buff[BzCy][ijkl];
+
+
             // ∇B_z∇C_y(ij|kl)
             // (ij|kl)
-            (*this)[13].pointer()[IJKL] = buff[BzCy][ijkl];
+            (*this)[nERIRef + 9].pointer()[IJKL] = buff[BzCy][ijkl];
             // (ji|kl)
-            (*this)[13].pointer()[JIKL] = buff[AzCy][ijkl];
+            (*this)[nERIRef + 9].pointer()[JIKL] = buff[AzCy][ijkl];
             // (ij|lk)
-            (*this)[13].pointer()[IJLK] = buff[BzDy][ijkl];
+            (*this)[nERIRef + 9].pointer()[IJLK] = buff[BzDy][ijkl];
             // (ji|lk)
-            (*this)[13].pointer()[JILK] = buff[AzDy][ijkl];
+            (*this)[nERIRef + 9].pointer()[JILK] = buff[AzDy][ijkl];
             // (kl|ij)
-            (*this)[13].pointer()[KLIJ] = buff[AyDz][ijkl];
+            (*this)[nERIRef + 9].pointer()[KLIJ] = buff[AyDz][ijkl];
             // (kl|ji)
-            (*this)[13].pointer()[KLJI] = buff[ByDz][ijkl];
+            (*this)[nERIRef + 9].pointer()[KLJI] = buff[ByDz][ijkl];
             // (lk|ij)
-            (*this)[13].pointer()[LKIJ] = buff[AyCz][ijkl];
+            (*this)[nERIRef + 9].pointer()[LKIJ] = buff[AyCz][ijkl];
             // (lk|ji)
-            (*this)[13].pointer()[LKJI] = buff[ByCz][ijkl];
-  
-  
+            (*this)[nERIRef + 9].pointer()[LKJI] = buff[ByCz][ijkl];
+
+
             // - ∇B_x∇C_x(ij|kl) - ∇B_y∇C_y(ij|kl) + ∇B_z∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[14].pointer()[IJKL] = - buff[BxCx][ijkl] - buff[ByCy][ijkl] + buff[BzCz][ijkl];
+            (*this)[nERIRef + 10].pointer()[IJKL] = - buff[BxCx][ijkl] - buff[ByCy][ijkl] + buff[BzCz][ijkl];
             // (ji|kl)
-            (*this)[14].pointer()[JIKL] = - buff[AxCx][ijkl] - buff[AyCy][ijkl] + buff[AzCz][ijkl];
+            (*this)[nERIRef + 10].pointer()[JIKL] = - buff[AxCx][ijkl] - buff[AyCy][ijkl] + buff[AzCz][ijkl];
             // (ij|lk)
-            (*this)[14].pointer()[IJLK] = - buff[BxDx][ijkl] - buff[ByDy][ijkl] + buff[BzDz][ijkl];
+            (*this)[nERIRef + 10].pointer()[IJLK] = - buff[BxDx][ijkl] - buff[ByDy][ijkl] + buff[BzDz][ijkl];
             // (ji|lk)
-            (*this)[14].pointer()[JILK] = - buff[AxDx][ijkl] - buff[AyDy][ijkl] + buff[AzDz][ijkl];
+            (*this)[nERIRef + 10].pointer()[JILK] = - buff[AxDx][ijkl] - buff[AyDy][ijkl] + buff[AzDz][ijkl];
             // (kl|ij)
-            (*this)[14].pointer()[KLIJ] = - buff[AxDx][ijkl] - buff[AyDy][ijkl] + buff[AzDz][ijkl];
+            (*this)[nERIRef + 10].pointer()[KLIJ] = - buff[AxDx][ijkl] - buff[AyDy][ijkl] + buff[AzDz][ijkl];
             // (kl|ji)
-            (*this)[14].pointer()[KLJI] = - buff[BxDx][ijkl] - buff[ByDy][ijkl] + buff[BzDz][ijkl];
+            (*this)[nERIRef + 10].pointer()[KLJI] = - buff[BxDx][ijkl] - buff[ByDy][ijkl] + buff[BzDz][ijkl];
             // (lk|ij)
-            (*this)[14].pointer()[LKIJ] = - buff[AxCx][ijkl] - buff[AyCy][ijkl] + buff[AzCz][ijkl];
+            (*this)[nERIRef + 10].pointer()[LKIJ] = - buff[AxCx][ijkl] - buff[AyCy][ijkl] + buff[AzCz][ijkl];
             // (lk|ji)
-            (*this)[14].pointer()[LKJI] = - buff[BxCx][ijkl] - buff[ByCy][ijkl] + buff[BzCz][ijkl];
-  
-  
+            (*this)[nERIRef + 10].pointer()[LKJI] = - buff[BxCx][ijkl] - buff[ByCy][ijkl] + buff[BzCz][ijkl];
+
+
             // ∇B_x∇C_x(ij|kl) - ∇B_y∇C_y(ij|kl) - ∇B_z∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[15].pointer()[IJKL] = buff[BxCx][ijkl] - buff[ByCy][ijkl] - buff[BzCz][ijkl];
+            (*this)[nERIRef + 11].pointer()[IJKL] = buff[BxCx][ijkl] - buff[ByCy][ijkl] - buff[BzCz][ijkl];
             // (ji|kl)
-            (*this)[15].pointer()[JIKL] = buff[AxCx][ijkl] - buff[AyCy][ijkl] - buff[AzCz][ijkl];
+            (*this)[nERIRef + 11].pointer()[JIKL] = buff[AxCx][ijkl] - buff[AyCy][ijkl] - buff[AzCz][ijkl];
             // (ij|lk)
-            (*this)[15].pointer()[IJLK] = buff[BxDx][ijkl] - buff[ByDy][ijkl] - buff[BzDz][ijkl];
+            (*this)[nERIRef + 11].pointer()[IJLK] = buff[BxDx][ijkl] - buff[ByDy][ijkl] - buff[BzDz][ijkl];
             // (ji|lk)
-            (*this)[15].pointer()[JILK] = buff[AxDx][ijkl] - buff[AyDy][ijkl] - buff[AzDz][ijkl];
+            (*this)[nERIRef + 11].pointer()[JILK] = buff[AxDx][ijkl] - buff[AyDy][ijkl] - buff[AzDz][ijkl];
             // (kl|ij)
-            (*this)[15].pointer()[KLIJ] = buff[AxDx][ijkl] - buff[AyDy][ijkl] - buff[AzDz][ijkl];
+            (*this)[nERIRef + 11].pointer()[KLIJ] = buff[AxDx][ijkl] - buff[AyDy][ijkl] - buff[AzDz][ijkl];
             // (kl|ji)
-            (*this)[15].pointer()[KLJI] = buff[BxDx][ijkl] - buff[ByDy][ijkl] - buff[BzDz][ijkl];
+            (*this)[nERIRef + 11].pointer()[KLJI] = buff[BxDx][ijkl] - buff[ByDy][ijkl] - buff[BzDz][ijkl];
             // (lk|ij)
-            (*this)[15].pointer()[LKIJ] = buff[AxCx][ijkl] - buff[AyCy][ijkl] - buff[AzCz][ijkl];
+            (*this)[nERIRef + 11].pointer()[LKIJ] = buff[AxCx][ijkl] - buff[AyCy][ijkl] - buff[AzCz][ijkl];
             // (lk|ji)
-            (*this)[15].pointer()[LKJI] = buff[BxCx][ijkl] - buff[ByCy][ijkl] - buff[BzCz][ijkl];
-  
-  
+            (*this)[nERIRef + 11].pointer()[LKJI] = buff[BxCx][ijkl] - buff[ByCy][ijkl] - buff[BzCz][ijkl];
+
+
             // - ∇B_x∇C_x(ij|kl) + ∇B_y∇C_y(ij|kl) - ∇B_z∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[16].pointer()[IJKL] = - buff[BxCx][ijkl] + buff[ByCy][ijkl] - buff[BzCz][ijkl];
+            (*this)[nERIRef + 12].pointer()[IJKL] = - buff[BxCx][ijkl] + buff[ByCy][ijkl] - buff[BzCz][ijkl];
             // (ji|kl)
-            (*this)[16].pointer()[JIKL] = - buff[AxCx][ijkl] + buff[AyCy][ijkl] - buff[AzCz][ijkl];
+            (*this)[nERIRef + 12].pointer()[JIKL] = - buff[AxCx][ijkl] + buff[AyCy][ijkl] - buff[AzCz][ijkl];
             // (ij|lk)
-            (*this)[16].pointer()[IJLK] = - buff[BxDx][ijkl] + buff[ByDy][ijkl] - buff[BzDz][ijkl];
+            (*this)[nERIRef + 12].pointer()[IJLK] = - buff[BxDx][ijkl] + buff[ByDy][ijkl] - buff[BzDz][ijkl];
             // (ji|lk)
-            (*this)[16].pointer()[JILK] = - buff[AxDx][ijkl] + buff[AyDy][ijkl] - buff[AzDz][ijkl];
+            (*this)[nERIRef + 12].pointer()[JILK] = - buff[AxDx][ijkl] + buff[AyDy][ijkl] - buff[AzDz][ijkl];
             // (kl|ij)
-            (*this)[16].pointer()[KLIJ] = - buff[AxDx][ijkl] + buff[AyDy][ijkl] - buff[AzDz][ijkl];
+            (*this)[nERIRef + 12].pointer()[KLIJ] = - buff[AxDx][ijkl] + buff[AyDy][ijkl] - buff[AzDz][ijkl];
             // (kl|ji)
-            (*this)[16].pointer()[KLJI] = - buff[BxDx][ijkl] + buff[ByDy][ijkl] - buff[BzDz][ijkl];
+            (*this)[nERIRef + 12].pointer()[KLJI] = - buff[BxDx][ijkl] + buff[ByDy][ijkl] - buff[BzDz][ijkl];
             // (lk|ij)
-            (*this)[16].pointer()[LKIJ] = - buff[AxCx][ijkl] + buff[AyCy][ijkl] - buff[AzCz][ijkl];
+            (*this)[nERIRef + 12].pointer()[LKIJ] = - buff[AxCx][ijkl] + buff[AyCy][ijkl] - buff[AzCz][ijkl];
             // (lk|ji)
-            (*this)[16].pointer()[LKJI] = - buff[BxCx][ijkl] + buff[ByCy][ijkl] - buff[BzCz][ijkl];
-  
-  
+            (*this)[nERIRef + 12].pointer()[LKJI] = - buff[BxCx][ijkl] + buff[ByCy][ijkl] - buff[BzCz][ijkl];
+
+
             // ∇B_x∇C_x(ij|kl)
             // (ij|kl)
-            (*this)[17].pointer()[IJKL] = buff[BxCx][ijkl];
+            (*this)[nERIRef + 13].pointer()[IJKL] = buff[BxCx][ijkl];
             // (ji|kl)
-            (*this)[17].pointer()[JIKL] = buff[AxCx][ijkl];
+            (*this)[nERIRef + 13].pointer()[JIKL] = buff[AxCx][ijkl];
             // (ij|lk)
-            (*this)[17].pointer()[IJLK] = buff[BxDx][ijkl];
+            (*this)[nERIRef + 13].pointer()[IJLK] = buff[BxDx][ijkl];
             // (ji|lk)
-            (*this)[17].pointer()[JILK] = buff[AxDx][ijkl];
+            (*this)[nERIRef + 13].pointer()[JILK] = buff[AxDx][ijkl];
             // (kl|ij)
-            (*this)[17].pointer()[KLIJ] = buff[AxDx][ijkl];
+            (*this)[nERIRef + 13].pointer()[KLIJ] = buff[AxDx][ijkl];
             // (kl|ji)
-            (*this)[17].pointer()[KLJI] = buff[BxDx][ijkl];
+            (*this)[nERIRef + 13].pointer()[KLJI] = buff[BxDx][ijkl];
             // (lk|ij)
-            (*this)[17].pointer()[LKIJ] = buff[AxCx][ijkl];
+            (*this)[nERIRef + 13].pointer()[LKIJ] = buff[AxCx][ijkl];
             // (lk|ji)
-            (*this)[17].pointer()[LKJI] = buff[BxCx][ijkl];
-  
-  
+            (*this)[nERIRef + 13].pointer()[LKJI] = buff[BxCx][ijkl];
+
+
             // ∇B_x∇C_y(ij|kl)
             // (ij|kl)
-            (*this)[18].pointer()[IJKL] = buff[BxCy][ijkl];
+            (*this)[nERIRef + 14].pointer()[IJKL] = buff[BxCy][ijkl];
             // (ji|kl)
-            (*this)[18].pointer()[JIKL] = buff[AxCy][ijkl];
+            (*this)[nERIRef + 14].pointer()[JIKL] = buff[AxCy][ijkl];
             // (ij|lk)
-            (*this)[18].pointer()[IJLK] = buff[BxDy][ijkl];
+            (*this)[nERIRef + 14].pointer()[IJLK] = buff[BxDy][ijkl];
             // (ji|lk)
-            (*this)[18].pointer()[JILK] = buff[AxDy][ijkl];
+            (*this)[nERIRef + 14].pointer()[JILK] = buff[AxDy][ijkl];
             // (kl|ij)
-            (*this)[18].pointer()[KLIJ] = buff[AyDx][ijkl];
+            (*this)[nERIRef + 14].pointer()[KLIJ] = buff[AyDx][ijkl];
             // (kl|ji)
-            (*this)[18].pointer()[KLJI] = buff[ByDx][ijkl];
+            (*this)[nERIRef + 14].pointer()[KLJI] = buff[ByDx][ijkl];
             // (lk|ij)
-            (*this)[18].pointer()[LKIJ] = buff[AyCx][ijkl];
+            (*this)[nERIRef + 14].pointer()[LKIJ] = buff[AyCx][ijkl];
             // (lk|ji)
-            (*this)[18].pointer()[LKJI] = buff[ByCx][ijkl];
-  
-  
+            (*this)[nERIRef + 14].pointer()[LKJI] = buff[ByCx][ijkl];
+
+
             // ∇B_x∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[19].pointer()[IJKL] = buff[BxCz][ijkl];
+            (*this)[nERIRef + 15].pointer()[IJKL] = buff[BxCz][ijkl];
             // (ji|kl)
-            (*this)[19].pointer()[JIKL] = buff[AxCz][ijkl];
+            (*this)[nERIRef + 15].pointer()[JIKL] = buff[AxCz][ijkl];
             // (ij|lk)
-            (*this)[19].pointer()[IJLK] = buff[BxDz][ijkl];
+            (*this)[nERIRef + 15].pointer()[IJLK] = buff[BxDz][ijkl];
             // (ji|lk)
-            (*this)[19].pointer()[JILK] = buff[AxDz][ijkl];
+            (*this)[nERIRef + 15].pointer()[JILK] = buff[AxDz][ijkl];
             // (kl|ij)
-            (*this)[19].pointer()[KLIJ] = buff[AzDx][ijkl];
+            (*this)[nERIRef + 15].pointer()[KLIJ] = buff[AzDx][ijkl];
             // (kl|ji)
-            (*this)[19].pointer()[KLJI] = buff[BzDx][ijkl];
+            (*this)[nERIRef + 15].pointer()[KLJI] = buff[BzDx][ijkl];
             // (lk|ij)
-            (*this)[19].pointer()[LKIJ] = buff[AzCx][ijkl];
+            (*this)[nERIRef + 15].pointer()[LKIJ] = buff[AzCx][ijkl];
             // (lk|ji)
-            (*this)[19].pointer()[LKJI] = buff[BzCx][ijkl];
-  
-  
-  	  // ∇B_y∇C_y(ij|kl)
+            (*this)[nERIRef + 15].pointer()[LKJI] = buff[BzCx][ijkl];
+
+
+            // ∇B_y∇C_y(ij|kl)
             // (ij|kl)
-            (*this)[20].pointer()[IJKL] = buff[ByCy][ijkl];
+            (*this)[nERIRef + 16].pointer()[IJKL] = buff[ByCy][ijkl];
             // (ji|kl)
-            (*this)[20].pointer()[JIKL] = buff[AyCy][ijkl];
+            (*this)[nERIRef + 16].pointer()[JIKL] = buff[AyCy][ijkl];
             // (ij|lk)
-            (*this)[20].pointer()[IJLK] = buff[ByDy][ijkl];
+            (*this)[nERIRef + 16].pointer()[IJLK] = buff[ByDy][ijkl];
             // (ji|lk)
-            (*this)[20].pointer()[JILK] = buff[AyDy][ijkl];
+            (*this)[nERIRef + 16].pointer()[JILK] = buff[AyDy][ijkl];
             // (kl|ij)
-            (*this)[20].pointer()[KLIJ] = buff[AyDy][ijkl];
+            (*this)[nERIRef + 16].pointer()[KLIJ] = buff[AyDy][ijkl];
             // (kl|ji)
-            (*this)[20].pointer()[KLJI] = buff[ByDy][ijkl];
+            (*this)[nERIRef + 16].pointer()[KLJI] = buff[ByDy][ijkl];
             // (lk|ij)
-            (*this)[20].pointer()[LKIJ] = buff[AyCy][ijkl];
+            (*this)[nERIRef + 16].pointer()[LKIJ] = buff[AyCy][ijkl];
             // (lk|ji)
-            (*this)[20].pointer()[LKJI] = buff[ByCy][ijkl];
-  
-  
-  	  // ∇B_y∇C_z(ij|kl)
+            (*this)[nERIRef + 16].pointer()[LKJI] = buff[ByCy][ijkl];
+
+
+            // ∇B_y∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[21].pointer()[IJKL] = buff[ByCz][ijkl];
+            (*this)[nERIRef + 17].pointer()[IJKL] = buff[ByCz][ijkl];
             // (ji|kl)
-            (*this)[21].pointer()[JIKL] = buff[AyCz][ijkl];
+            (*this)[nERIRef + 17].pointer()[JIKL] = buff[AyCz][ijkl];
             // (ij|lk)
-            (*this)[21].pointer()[IJLK] = buff[ByDz][ijkl];
+            (*this)[nERIRef + 17].pointer()[IJLK] = buff[ByDz][ijkl];
             // (ji|lk)
-            (*this)[21].pointer()[JILK] = buff[AyDz][ijkl];
+            (*this)[nERIRef + 17].pointer()[JILK] = buff[AyDz][ijkl];
             // (kl|ij)
-            (*this)[21].pointer()[KLIJ] = buff[AzDy][ijkl];
+            (*this)[nERIRef + 17].pointer()[KLIJ] = buff[AzDy][ijkl];
             // (kl|ji)
-            (*this)[21].pointer()[KLJI] = buff[BzDy][ijkl];
+            (*this)[nERIRef + 17].pointer()[KLJI] = buff[BzDy][ijkl];
             // (lk|ij)
-            (*this)[21].pointer()[LKIJ] = buff[AzCy][ijkl];
+            (*this)[nERIRef + 17].pointer()[LKIJ] = buff[AzCy][ijkl];
             // (lk|ji)
-            (*this)[21].pointer()[LKJI] = buff[BzCy][ijkl];
-  
-  
+            (*this)[nERIRef + 17].pointer()[LKJI] = buff[BzCy][ijkl];
+
+
             // ∇B_z∇C_z(ij|kl)
             // (ij|kl)
-            (*this)[22].pointer()[IJKL] = buff[BzCz][ijkl];
+            (*this)[nERIRef + 18].pointer()[IJKL] = buff[BzCz][ijkl];
             // (ji|kl)
-            (*this)[22].pointer()[JIKL] = buff[AzCz][ijkl];
+            (*this)[nERIRef + 18].pointer()[JIKL] = buff[AzCz][ijkl];
             // (ij|lk)
-            (*this)[22].pointer()[IJLK] = buff[BzDz][ijkl];
+            (*this)[nERIRef + 18].pointer()[IJLK] = buff[BzDz][ijkl];
             // (ji|lk)
-            (*this)[22].pointer()[JILK] = buff[AzDz][ijkl];
+            (*this)[nERIRef + 18].pointer()[JILK] = buff[AzDz][ijkl];
             // (kl|ij)
-            (*this)[22].pointer()[KLIJ] = buff[AzDz][ijkl];
+            (*this)[nERIRef + 18].pointer()[KLIJ] = buff[AzDz][ijkl];
             // (kl|ji)
-            (*this)[22].pointer()[KLJI] = buff[BzDz][ijkl];
+            (*this)[nERIRef + 18].pointer()[KLJI] = buff[BzDz][ijkl];
             // (lk|ij)
-            (*this)[22].pointer()[LKIJ] = buff[AzCz][ijkl];
+            (*this)[nERIRef + 18].pointer()[LKIJ] = buff[AzCz][ijkl];
             // (lk|ji)
-            (*this)[22].pointer()[LKJI] = buff[BzCz][ijkl];
+            (*this)[nERIRef + 18].pointer()[LKJI] = buff[BzCz][ijkl];
   
   	  } // Gaunt
         }; // ijkl loop
@@ -1407,6 +1413,7 @@ namespace ChronusQ {
 
 
 #ifdef __DEBUGERI__
+    // TODO: Update indices due to function move from InCoreRelERI to Incore4indexTPIList
 
     std::cout << std::scientific << std::setprecision(16);
 
@@ -1619,19 +1626,20 @@ namespace ChronusQ {
 
 
   template <>
-  void InCore4indexRelERI<dcomplex>::computeERIGauge(BasisSet&, Molecule&,
+  void Incore4indexTPIList<dcomplex>::computeERIGauge(BasisSet&, Molecule&,
                                                      EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
       CErr("Only real GTOs are allowed",std::cout);
   };
 
   template <>
-  void InCore4indexRelERI<double>::computeERIGauge(BasisSet &basisSet_, Molecule &,
+  void Incore4indexTPIList<double>::computeERIGauge(BasisSet &basisSet_, Molecule &,
                                                    EMPerturbation &, OPERATOR,
                                                    const HamiltonianOptions &hamiltonianOptions) {
 
     std::cout << "in house gauge integral" << std::endl;
 
-    auto nERIRef = 4; // Dirac-Coulomb
+    auto nERIRef = 0;
+    if (hamiltonianOptions.DiracCoulomb) nERIRef +=4; // Dirac-Coulomb
     if (hamiltonianOptions.Gaunt) nERIRef += 19; // Gaunt
     if (hamiltonianOptions.DiracCoulombSSSS) nERIRef += 16; // Dirac-Coulomb-SSSS
 
@@ -3653,7 +3661,7 @@ namespace ChronusQ {
     std::cout << "In-House-ERI-Gauge duration   = " << durERIGauge << std::endl;
 
 
-  } // InCore4indexRelERI<double>::computeERIGauge
+  } // InCoreRelERI<double>::computeERIGauge
 
 
 

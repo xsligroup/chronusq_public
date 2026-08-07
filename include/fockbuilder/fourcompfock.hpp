@@ -24,7 +24,7 @@
 #pragma once
 
 #include <fockbuilder.hpp>
-
+//#define HAS_FORMGD_3INDEX
 
 namespace ChronusQ {
 
@@ -59,7 +59,10 @@ namespace ChronusQ {
     void formGD(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
     void formGDInCore(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
     void formGDDirect(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
+
+#ifdef HAS_FORMGD_3INDEX
     void formGD3Index(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool increment = false, double xHFX = 1., bool HerDen = true);
+#endif
     
     void formRawGDInBatches(SingleSlater<MatsT,IntsT> &, EMPerturbation &, bool, double, bool, 
       std::vector<std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>>> &, 

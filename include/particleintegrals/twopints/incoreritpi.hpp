@@ -54,7 +54,7 @@ namespace ChronusQ {
 
 
   template <typename IntsT>
-  class InCoreRITPI : public TwoPInts<IntsT> {
+  class InCoreRITPI : public InCoreTPI<IntsT> {
 
     template <typename IntsU>
     friend class InCoreRITPI;
@@ -76,11 +76,11 @@ namespace ChronusQ {
     // Constructor
     InCoreRITPI() = delete;
     InCoreRITPI(size_t nb, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
-        TwoPInts<IntsT>(nb), NBRI(0), NBNBRI(0), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
+        InCoreTPI<IntsT>(nb), NBRI(0), NBNBRI(0), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
       malloc();
     }
     InCoreRITPI(size_t nb, size_t nbri, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
-        TwoPInts<IntsT>(nb), NBRI(nbri), NBNBRI(nb*nbri), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
+        InCoreTPI<IntsT>(nb), NBRI(nbri), NBNBRI(nb*nbri), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
       malloc();
     }
     InCoreRITPI( const InCoreRITPI &other ):
@@ -95,7 +95,7 @@ namespace ChronusQ {
         CErr("Cannot create a Real InCoreRITPI from a Complex one.");
       std::copy_n(other.eri3j_->data(), this->nBasis()*NBNBRI, eri3j_->data());
     }
-    InCoreRITPI( InCoreRITPI &&other ) noexcept: TwoPInts<IntsT>(std::move(other)),
+    InCoreRITPI( InCoreRITPI &&other ) noexcept: InCoreTPI<IntsT>(std::move(other)),
         NBRI(other.NBRI), NBNBRI(other.NBNBRI), comm_(other.comm_), distributed_(other.distributed_), 
         eri3j_(std::move(other.eri3j_)), redistribute_(other.redistribute_) {
     }
@@ -153,8 +153,8 @@ namespace ChronusQ {
     std::shared_ptr<ERI3JBase<IntsT>> eri3j() const { return eri3j_; }
 
     // Tensor direct access
-    IntsT* pointer() { return eri3j_->data(); }
-    const IntsT* pointer() const { return eri3j_->data(); }
+    virtual IntsT* pointer() override { return eri3j_->data(); }
+    virtual const IntsT* pointer() const override { return eri3j_->data(); }
     MPI_Comm comm() const { return comm_; }
     bool isDistributed() const { return distributed_; }
     bool redistribute() const { return redistribute_; }
@@ -211,7 +211,7 @@ namespace ChronusQ {
     }
 
     virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
-      TwoPInts<IntsT>::broadcast(comm, root);
+      InCoreTPI<IntsT>::broadcast(comm, root);
 
 #ifdef CQ_ENABLE_MPI
       if( MPISize(comm) > 1 ) {
@@ -361,7 +361,6 @@ namespace ChronusQ {
     std::vector<std::vector<libint2::Shell>> shellPrims_; // Mappings from primitives to CGTOs
     std::vector<IntsT*> coefBlocks_; // Mappings from primitives to CGTOs
     bool updatePivots_ = true; // Update pivots
-
 
     // Libint
     size_t maxNcontrAMSize_ = 1, maxNprimAMSize_ = 1, maxAMSize_ = 1;
@@ -522,7 +521,7 @@ namespace ChronusQ {
 
 
   template <typename MatsT, typename IntsT>
-  class RITPIContraction : public TPIContractions<MatsT,IntsT> {
+  class RITPIContraction : public InCoreTPIContraction<MatsT,IntsT> {
 
     template <typename MatsU, typename IntsU>
     friend class RITPIContraction;
@@ -533,7 +532,7 @@ namespace ChronusQ {
 
     RITPIContraction() = delete;
     RITPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
-      TPIContractions<MatsT,IntsT>(tpi) {}
+      InCoreTPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>
     RITPIContraction(
@@ -560,21 +559,6 @@ namespace ChronusQ {
       this->contractSecond = other.contractSecond;
       this->isCross = other.isCross;
     }
-
-    // Computation interfaces
-    virtual void twoBodyContract(
-        MPI_Comm comm,
-        const bool,
-        std::vector<TwoBodyContraction<MatsT>>&,
-        EMPerturbation&) const;
-
-    virtual void JContract(
-        MPI_Comm,
-        TwoBodyContraction<MatsT>&) const = 0;
-
-    virtual void KContract(
-        MPI_Comm,
-        TwoBodyContraction<MatsT>&) const = 0;
 
     virtual ~RITPIContraction() {}
 

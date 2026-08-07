@@ -51,7 +51,7 @@ namespace ChronusQ {
     prot_basis = CQBasisSetOptions(std::cout,input_,mol,"PBASIS",protBasisAtomIndices);
 
     aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EPINTS");
-    auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis,aoints);
+    auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis);
 
     SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert);
     ssOptions.scfControls = scfControls;

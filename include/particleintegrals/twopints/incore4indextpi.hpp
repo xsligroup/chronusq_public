@@ -31,7 +31,7 @@
 namespace ChronusQ {
 
   template <typename IntsT>
-  class InCore4indexTPI : public TwoPInts<IntsT> {
+  class InCore4indexTPI : public InCoreTPI<IntsT> {
 
     template <typename IntsU>
     friend class InCore4indexTPI;
@@ -45,7 +45,7 @@ namespace ChronusQ {
     // Constructor
     InCore4indexTPI() = delete;
     InCore4indexTPI(size_t nb, size_t snb = 0):
-        TwoPInts<IntsT>(nb, snb) {
+        InCoreTPI<IntsT>(nb, snb) {
       NB2  = this->nBasis()*this->nBasis();
       sNB2 = this->snBasis()*this->snBasis();
       NB3  = NB2 * this->snBasis();
@@ -63,7 +63,7 @@ namespace ChronusQ {
         CErr("Cannot create a Real InCore4indexTPI from a Complex one.");
       std::copy_n(other.TPI, NB2*sNB2, TPI);
     }
-    InCore4indexTPI( InCore4indexTPI &&other ): TwoPInts<IntsT>(std::move(other)),
+    InCore4indexTPI( InCore4indexTPI &&other ): InCoreTPI<IntsT>(std::move(other)),
       NB2(other.NB2), sNB2(other.sNB2), NB3(other.NB3), TPI(other.TPI) {
       other.TPI = nullptr;
     }
@@ -97,13 +97,13 @@ namespace ChronusQ {
     }
 
     // Single element interfaces
-    virtual IntsT operator()(size_t p, size_t q, size_t r, size_t s) const {
+    IntsT operator()(size_t p, size_t q, size_t r, size_t s) const {
       return TPI[p + q*this->nBasis() + r*NB2 + s*NB3];
     }
     IntsT& operator()(size_t p, size_t q, size_t r, size_t s) {
       return TPI[p + q*this->nBasis() + r*NB2 + s*NB3];
     }
-    virtual IntsT operator()(size_t pq, size_t rs) const {
+    IntsT operator()(size_t pq, size_t rs) const {
       return TPI[pq + rs*NB2];
     }
     IntsT& operator()(size_t pq, size_t rs) {
@@ -111,8 +111,8 @@ namespace ChronusQ {
     }
 
     // Tensor direct access
-    IntsT* pointer() { return TPI; }
-    const IntsT* pointer() const { return TPI; }
+    virtual IntsT* pointer() override { return TPI; }
+    virtual const IntsT* pointer() const override { return TPI; }
 
     // Computation interfaces
     virtual void computeAOInts(BasisSet &basisSet, Molecule &mol,
@@ -180,7 +180,7 @@ namespace ChronusQ {
     }
 
     virtual void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) {
-      TwoPInts<IntsT>::broadcast(comm, root);
+      InCoreTPI<IntsT>::broadcast(comm, root);
 
 #ifdef CQ_ENABLE_MPI
       if( MPISize(comm) > 1 ) {
@@ -245,7 +245,7 @@ namespace ChronusQ {
   }; // class InCore4indexTPI
 
   template <typename MatsT, typename IntsT>
-  class InCore4indexTPIContraction : public TPIContractions<MatsT,IntsT> {
+  class InCore4indexTPIContraction : public InCoreTPIContraction<MatsT,IntsT> {
 
     template <typename MatsU, typename IntsU>
     friend class InCore4indexTPIContraction;
@@ -256,7 +256,7 @@ namespace ChronusQ {
 
     InCore4indexTPIContraction() = delete;
     InCore4indexTPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi):
-      TPIContractions<MatsT,IntsT>(tpi) {}
+      InCoreTPIContraction<MatsT,IntsT>(tpi) {}
 
     template <typename MatsU>
     InCore4indexTPIContraction(
@@ -285,12 +285,6 @@ namespace ChronusQ {
     }
 
     // Computation interfaces
-    virtual void twoBodyContract(
-        MPI_Comm comm,
-        const bool,
-        std::vector<TwoBodyContraction<MatsT>>&,
-        EMPerturbation&) const;
-
     virtual void JContract(
         MPI_Comm,
         TwoBodyContraction<MatsT>&) const;

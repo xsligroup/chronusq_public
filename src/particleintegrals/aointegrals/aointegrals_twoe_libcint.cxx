@@ -35,7 +35,7 @@
 
 //#define __DEBUGERI__
 #define __INHOUSEGAUGE__
-// _REPORT_INCORE_INTEGRAL_TIMINGS 
+// #define _REPORT_INCORE_INTEGRAL_TIMINGS
 
 namespace ChronusQ {
 
@@ -83,7 +83,7 @@ namespace ChronusQ {
 
     std::cout<<"Using Libcint "<<std::endl;
 
-#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
     auto topERI4 = tick();
 #endif
 
@@ -165,7 +165,7 @@ namespace ChronusQ {
 
     }; // omp region
 
-#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS
     auto durERI4 = tock(topERI4);
     std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
 #endif
@@ -192,13 +192,13 @@ namespace ChronusQ {
 
 
   template <>
-  void InCore4indexRelERI<dcomplex>::computeERICINT(BasisSet&, Molecule&,
+  void Incore4indexTPIList<dcomplex>::computeERICINT(BasisSet&, Molecule&,
       EMPerturbation&, OPERATOR, const HamiltonianOptions&) {
     CErr("Only real GTOs are allowed",std::cout);
   };
 
   template <>
-  void InCore4indexRelERI<double>::computeERICINT(BasisSet &originalBasisSet, Molecule &molecule_,
+  void Incore4indexTPIList<double>::computeERICINT(BasisSet &originalBasisSet, Molecule &molecule_,
       EMPerturbation&, OPERATOR, const HamiltonianOptions &hamiltonianOptions) {
 
     if (originalBasisSet.forceCart)
@@ -285,8 +285,6 @@ namespace ChronusQ {
     size_t NB3 = NB2*NB;
     size_t NB4 = NB2*NB2;
 
-    InCore4indexTPI<double>::clear();
-
 
     // Get threads result buffer
     size_t buffN4 = buffSize*buffSize*buffSize*buffSize;
@@ -305,113 +303,6 @@ namespace ChronusQ {
 
     std::cout<<"Using Libcint "<<std::endl;
 
-#if 1 // (ij|kl)
-
-#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
-    auto topERI4 = tick();
-#endif
-
-    #pragma omp parallel
-    {
-      int thread_id = GetThreadID();
-
-      size_t n1,n2,n3,n4,i,j,k,l,ijkl,bf1,bf2,bf3,bf4;
-      size_t s4_max;
-      int shls[4];
-      double *buff = buffAll+buffN4*thread_id;
-      double *cache = cacheAll+cache_size*thread_id;
-
-      for(size_t s1(0), bf1_s(0), s1234(0); s1 < nShells; 
-          bf1_s+=n1, s1++) { 
-
-        n1 = basisSet_.shells[s1].size(); // Size of Shell 1
-
-      for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s+=n2, s2++) {
-
-        n2 = basisSet_.shells[s2].size(); // Size of Shell 2
-
-      for(size_t s3(0), bf3_s(0); s3 <= s1; bf3_s+=n3, s3++) {
-
-        n3 = basisSet_.shells[s3].size(); // Size of Shell 3
-        s4_max = (s1 == s3) ? s2 : s3; // Determine the unique max of Shell 4
-
-      for(size_t s4(0), bf4_s(0); s4 <= s4_max; bf4_s+=n4, s4++, s1234++) {
-
-        n4 = basisSet_.shells[s4].size(); // Size of Shell 4
-
-        // Round Robbin work distribution
-        #ifdef _OPENMP
-        if( s1234 % nthreads != thread_id ) continue;
-        #endif
-
-        shls[0] = int(s1);
-        shls[1] = int(s2);
-        shls[2] = int(s3);
-        shls[3] = int(s4);
-
-        if (basisSet_.forceCart) {
-          if(int2e_cart(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
-        } else {
-          if(int2e_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)==0) continue;
-        }
-
-        // permutational symmetry
-	ijkl = 0ul;
-        for(l = 0ul, bf4 = bf4_s ; l < n4; ++l, bf4++)
-        for(k = 0ul, bf3 = bf3_s ; k < n3; ++k, bf3++) 
-        for(j = 0ul, bf2 = bf2_s ; j < n2; ++j, bf2++) 
-        for(i = 0ul, bf1 = bf1_s ; i < n1; ++i, bf1++) 
-	{
-
-            // (12 | 34)
-            (*this)(bf1, bf2, bf3, bf4) = buff[ijkl];
-            // (12 | 43)
-            (*this)(bf1, bf2, bf4, bf3) = buff[ijkl];
-            // (21 | 34)
-            (*this)(bf2, bf1, bf3, bf4) = buff[ijkl];
-            // (21 | 43)
-            (*this)(bf2, bf1, bf4, bf3) = buff[ijkl];
-            // (34 | 12)
-            (*this)(bf3, bf4, bf1, bf2) = buff[ijkl];
-            // (43 | 12)
-            (*this)(bf4, bf3, bf1, bf2) = buff[ijkl];
-            // (34 | 21)
-            (*this)(bf3, bf4, bf2, bf1) = buff[ijkl];
-            // (43 | 21)
-            (*this)(bf4, bf3, bf2, bf1) = buff[ijkl];
-
-	    ijkl++;
-
-        }; // ijkl loop
-      }; // s4
-      }; // s3
-      }; // s2
-      }; // s1
-
-    }; // omp region
-
-#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
-    auto durERI4 = tock(topERI4);
-    //std::cout << "L = "<< basisSet_.shells[s1].contr[0].l<<" "<<basisSet_.shells[s2].contr[0].l<<" "
-    //	               << basisSet_.shells[s3].contr[0].l<<" "<<basisSet_.shells[s4].contr[0].l<<std::endl;
-    std::cout << "Libcint-ERI4 duration   = " << durERI4 << std::endl;
-#endif
-
-#ifdef __DEBUGERI__
-    // Debug output of the ERIs
-    std::cout << std::scientific << std::setprecision(16);
-    std::cout << "Libcint ERI (ab|cd)" << std::endl;
-    for(auto i = 0ul; i < NB; i++)
-    for(auto j = 0ul; j < NB; j++)
-    for(auto k = 0ul; k < NB; k++)
-    for(auto l = 0ul; l < NB; l++){
-      std::cout << "(" << i << "," << j << "|" << k << "," << l << ")  ";
-      std::cout << (*this)(i, j, k, l) << std::endl;
-    };
-#endif // __DEBUGERI__ 
-
-#endif // (ijkl)
-
 
 
 
@@ -419,7 +310,7 @@ namespace ChronusQ {
     /* Dirac-Coulomb Integrals */
     if(hamiltonianOptions.DiracCoulomb) { // Dirac-Coulomb ∇_i∇_j(ij|kl)
 
-      for (InCore4indexTPI<double>& c : components_) c.clear();
+      for (auto c : components_) c->clear();
   
       int AxBx = 0;
       int AxBy = 1;
@@ -543,7 +434,7 @@ namespace ChronusQ {
   
       }; // omp region
  
-#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS
       auto durERIDC = tock(topERIDC);
       std::cout << "Libcint-ERI-Dirac-Coulomb duration   = " << durERIDC << std::endl;
 #endif   
@@ -633,8 +524,9 @@ namespace ChronusQ {
         for(size_t s3(0), bf3_s(0); s3 <= s1 ; bf3_s+=n3, s3++) {
   
           n3 = basisSet_.shells[s3].size(); // Size of Shell 3
+          s4_max = (s1 == s3) ? s2 + 1 : nShells; // Determine the unique max of Shell 4
   
-        for(size_t s4(0), bf4_s(0); s4 < nShells ; bf4_s+=n4, s4++, s1234++) {
+        for(size_t s4(0), bf4_s(0); s4 < s4_max ; bf4_s+=n4, s4++, s1234++) {
   
           n4 = basisSet_.shells[s4].size(); // Size of Shell 4
   
@@ -814,7 +706,7 @@ namespace ChronusQ {
   
       }; // omp region
  
-#ifdef  _REPORT_INCORE_INTEGRAL_TIMINGS
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS
       auto durERIGaunt = tock(topERIGaunt);
       std::cout << "Libcint-ERI-Gaunt duration   = " << durERIGaunt << std::endl;
 #endif
@@ -1406,7 +1298,7 @@ namespace ChronusQ {
       }; // omp region
  
 
-#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto durERIDCSSSS = tock(topERIDCSSSS);
       std::cout << "Libcint-ERI-Dirac-Coulomb-SSSS duration   = " << durERIDCSSSS << std::endl;
 #endif
@@ -1815,7 +1707,7 @@ namespace ChronusQ {
       }
 
 
-#ifdef _REPORT_INCORE_CONTRACTION_TIMINGS 
+#ifdef _REPORT_INCORE_INTEGRAL_TIMINGS 
       auto durERIGauge = tock(topERIGauge);
       std::cout << "Libcint-ERI-Gauge duration   = " << durERIGauge << std::endl;
 #endif
@@ -1870,7 +1762,7 @@ namespace ChronusQ {
     prettyPrintSmart(std::cout,"Rank-2 ERI22 ∇∇(ab|cd)",(*this)[22].pointer(), NB*NB,NB*NB,NB*NB);
 #endif
 
-  }; // InCore4indexRelERI<double>::computeERICINT
+  }; // InCoreRelERI<double>::computeERICINT
 
 
 
@@ -2044,7 +1936,7 @@ namespace ChronusQ {
     };
 #endif // __DEBUGERI__
 
-  }; // InCore4indexRelERI<double>::computeERIGCCINT
+  }; // InCoreRelERI<double>::computeERIGCCINT
 
 
 }; // namespace ChronusQ

@@ -30,6 +30,7 @@ aointegrals/aointegrals_twoe_libcint.cxx
 aointegrals/aointegrals_twoe_inhouse.cxx
 aointegrals/aointegrals_twoe_ri.cxx
 aointegrals/aointegrals_twoe_asymm_ri.cxx
+aointegrals/aointegrals_twoe_rel_ri.cxx
 aointegrals/aointegrals_utilities.cxx
 aointegrals/giaointegrals_twoe_drivers.cxx
 aointegrals/giaointegrals_onee_drivers.cxx

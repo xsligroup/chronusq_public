@@ -300,7 +300,7 @@ namespace ChronusQ {
     if (doNEO) {
       // Get Particle properties for each quantum subsystem
       for(auto& sys : quantumSubsystems)
-        sys.ssOptions = CQSingleSlaterOptions(output,input,mol,*sys.basis,sys.integrals);
+        sys.ssOptions = CQSingleSlaterOptions(output,input,mol,*sys.basis);
 
       // Build MultiParticleSS object
       ss = CQMultiParticleSSOptions(output,input,mol,quantumSubsystems,quantumPairInteractions,scfControls);
@@ -323,9 +323,9 @@ namespace ChronusQ {
     } else {
       if(not scfControls.subsystemGuesses.empty())
         CErr("Per-subsystem SCF guess controls require SCF/NEO = TRUE", output);
-      ssOptions = CQSingleSlaterOptions(output,input,mol,*basis,aoints);
+      ssOptions = CQSingleSlaterOptions(output,input,mol,*basis);
       ssOptions.scfControls = scfControls;
-      ss = ssOptions.buildSingleSlater(output,mol,*basis,aoints);
+      ss = ssOptions.buildSingleSlater(output,mol,*basis, aoints, aoints_options);
       ss->buildOrbitalModifierOptions();
 
       // MO swapping

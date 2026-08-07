@@ -30,6 +30,7 @@
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
 #include <particleintegrals/twopints/incoreasymmritpi.hpp>
+#include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <typeinfo>
 #include <memory>
 
@@ -73,6 +74,10 @@ namespace ChronusQ {
     } else if (tID == typeid(DistributedRITPIContraction<MatsT,IntsT>)) {
       return std::make_shared<DistributedRITPIContraction<MatsU,IntsT>>(
                *std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT,IntsT>>(ch));
+
+    } else if (tID == typeid(InCoreRelERIContraction<MatsU,IntsT>)) {
+      return std::make_shared<InCoreRelERIContraction<MatsU,IntsT>>(
+               *std::dynamic_pointer_cast<InCoreRelERIContraction<MatsT,IntsT>>(ch));
 
     } else {
       std::stringstream errMsg;

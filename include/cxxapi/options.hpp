@@ -139,8 +139,7 @@ namespace ChronusQ {
   void parseIntParam(std::ostream &, CQInputFile &, IntegrationParam &);
 
   void parseHamiltonianOptions(std::ostream &, CQInputFile &, 
-    BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
-    RefOptions &refOptions, HamiltonianOptions &hamiltonianOptions, std::string);
+    BasisSet &basis, RefOptions &refOptions, HamiltonianOptions &hamiltonianOptions, std::string);
 
   bool parseAtomicType(std::ostream &, CQInputFile &, ATOMIC_X2C_TYPE &, std::string);
 
@@ -153,8 +152,7 @@ namespace ChronusQ {
 
   // Parse the options relating to the SingleSlaterOptions
   SingleSlaterOptions CQSingleSlaterOptions(
-      std::ostream &, CQInputFile &, Molecule &, BasisSet &,
-      std::shared_ptr<IntegralsBase>);
+      std::ostream &, CQInputFile &, Molecule &, BasisSet &);
 
   // Parse the options relating to NEOSS
   std::tuple<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions, SingleSlaterOptions> CQNEOSSOptions(

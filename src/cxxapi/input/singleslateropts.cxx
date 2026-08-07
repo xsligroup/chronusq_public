@@ -571,8 +571,7 @@ namespace ChronusQ {
    *
    */
   void parseHamiltonianOptions(std::ostream &out, CQInputFile &input, 
-    BasisSet &basis, std::shared_ptr<IntegralsBase> aoints,
-    RefOptions &refOptions, HamiltonianOptions &hamiltonianOptions, std::string section) {
+    BasisSet &basis, RefOptions &refOptions, HamiltonianOptions &hamiltonianOptions, std::string section) {
 
     // Parse hamiltonianOptions
     hamiltonianOptions.basisType = basis.basisType;
@@ -735,14 +734,8 @@ namespace ChronusQ {
     // Parse Integral library
     OPTOPT( hamiltonianOptions.Libcint = input.getData<bool>("INTS/LIBCINT") )
 
-    if (hamiltonianOptions.Libcint) {
-      if (basis.forceCart)
-        CErr("Libcint + cartesian GTO NYI.");
-      if (auto aoi = std::dynamic_pointer_cast<Integrals<double>>(aoints))
-        if (auto rieri = std::dynamic_pointer_cast<InCoreAuxBasisRIERI<double>>(aoi->TPI))
-          if (rieri->auxbasisSet()->forceCart)
-            CErr("Libcint + cartesian GTO NYI.");
-    }
+    if (hamiltonianOptions.Libcint and basis.forceCart)
+      CErr("Libcint + cartesian GTO NYI.");
 
 
     OPTOPT( hamiltonianOptions.BareCoulomb = input.getData<bool>("INTS/BARECOULOMB") )
@@ -1178,7 +1171,6 @@ namespace ChronusQ {
   SingleSlaterOptions getSingleSlaterOptions(
       std::ostream &out, CQInputFile &input,
       Molecule &mol, BasisSet &basis,
-      std::shared_ptr<IntegralsBase> aoints,
       Particle p, std::string section) {
 
     out << "  *** Parsing " << section << "/REFERENCE options ***\n";
@@ -1244,8 +1236,7 @@ namespace ChronusQ {
 
 
     // Parse hamiltonianOptions
-    parseHamiltonianOptions(out,input,basis,aoints,
-        options.refOptions,options.hamiltonianOptions,section);
+    parseHamiltonianOptions(out,input,basis,options.refOptions,options.hamiltonianOptions,section);
 
     // Error checking here to have access to the particle set
     if(mol.nTotalP > 1 && options.hamiltonianOptions.ignoreProtonTwoBody)
@@ -1278,7 +1269,8 @@ namespace ChronusQ {
   SingleSlaterOptions::buildSingleSlater(
       std::ostream &out,
       Molecule &mol, BasisSet &basis,
-      std::shared_ptr<IntegralsBase> aoints) const {
+      std::shared_ptr<IntegralsBase> aoints,
+      const IntegralOptions &aoints_options) const {
 
 
     // Build Functional List
@@ -1424,6 +1416,9 @@ namespace ChronusQ {
 
 //        CErr("4C + Real WFN is not a valid option",std::cout);
       } else if(auto p = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ss)) {
+
+        std::shared_ptr<Integrals<double>> aoints_double = std::dynamic_pointer_cast<Integrals<double>>(aoints);
+
         p->coreHBuilder = std::make_shared<FourComponent<dcomplex,double>>(
             *std::dynamic_pointer_cast<Integrals<double>>(aoints), hamiltonianOptions);
 
@@ -1502,16 +1497,6 @@ namespace ChronusQ {
     // Construct ERIContractions
     if(refOptions.refType == isFourCRef) {
 
-      size_t nERI4DCB = 0; // Bare-Coulomb
-
-      if( hamiltonianOptions.Gaunt ) nERI4DCB = 23; // Dirac-Coulomb-Gaunt
-      else if( hamiltonianOptions.DiracCoulomb ) nERI4DCB = 4; // Dirac-Coulomb
-
-      
-      if( hamiltonianOptions.DiracCoulombSSSS ) nERI4DCB += 16; // Dirac-Coulomb-SSSS
-
-      if( hamiltonianOptions.Gauge ) nERI4DCB += 26; // Gauge
-
 
       if(auto p = std::dynamic_pointer_cast<SingleSlater<double,double>>(ss)) {
 
@@ -1520,9 +1505,24 @@ namespace ChronusQ {
 
         if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-          TPI = std::make_shared<InCore4indexRelERI<double>>(basis.nBasis,nERI4DCB);
+          TPI = std::make_shared<InCoreRelERI<double>>(basis.nBasis,
+              hamiltonianOptions.DiracCoulomb, hamiltonianOptions.Gaunt,
+              hamiltonianOptions.DiracCoulombSSSS, hamiltonianOptions.Gauge);
 
-          p->TPI = std::make_shared<InCore4indexRelERIContraction<double,double>>(TPI);
+          p->TPI = std::make_shared<InCoreRelERIContraction<double,double>>(TPI);
+
+        } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
+
+          auto cdRelTPI = std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(tpi_typed);
+          if (not cdRelTPI)
+            CErr("Only Cholesky-type 4-component RI implemented.", std::cout);
+
+          std::shared_ptr<InCoreRelERI<double>> relTPI =
+              std::make_shared<InCoreRelERI<double>>(cdRelTPI, hamiltonianOptions, aoints_options.cdriintsoptions);
+
+          TPI = relTPI;
+
+          p->TPI = std::make_shared<InCoreRelERIContraction<double,double>>(TPI);
 
         } else if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
@@ -1541,9 +1541,24 @@ namespace ChronusQ {
 
         if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
 
-          TPI = std::make_shared<InCore4indexRelERI<double>>(basis.nBasis,nERI4DCB);
+          TPI = std::make_shared<InCoreRelERI<double>>(basis.nBasis,
+              hamiltonianOptions.DiracCoulomb, hamiltonianOptions.Gaunt,
+              hamiltonianOptions.DiracCoulombSSSS, hamiltonianOptions.Gauge);
 
-          p->TPI = std::make_shared<InCore4indexRelERIContraction<dcomplex,double>>(TPI);
+          p->TPI = std::make_shared<InCoreRelERIContraction<dcomplex,double>>(TPI);
+
+        } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
+
+          auto cdRelTPI = std::dynamic_pointer_cast<InCoreCholeskyRIERI<double>>(tpi_typed);
+          if (not cdRelTPI)
+            CErr("Only Cholesky-type 4-component RI implemented.", std::cout);
+
+          std::shared_ptr<InCoreRelERI<double>> relTPI =
+              std::make_shared<InCoreRelERI<double>>(cdRelTPI, hamiltonianOptions, aoints_options.cdriintsoptions);
+
+          TPI = relTPI;
+
+          p->TPI = std::make_shared<InCoreRelERIContraction<dcomplex,double>>(TPI);
 
         } else if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
 
@@ -1813,10 +1828,9 @@ namespace ChronusQ {
   // Regular SingleSlater wrapper
   SingleSlaterOptions CQSingleSlaterOptions(
     std::ostream &out, CQInputFile &input,
-    Molecule &mol, BasisSet &basis,
-    std::shared_ptr<IntegralsBase> aoints) {
+    Molecule &mol, BasisSet &basis) {
 
-    return getSingleSlaterOptions(out, input, mol, basis, aoints, {-1., 1.}, "QM");
+    return getSingleSlaterOptions(out, input, mol, basis, {-1., 1.}, "QM");
 
   }
 
@@ -1835,7 +1849,7 @@ namespace ChronusQ {
 #define NEO_LIST(T) \
     MPI_COMM_WORLD,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
 
-    SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, eaoints, {-1., 1.}, "QM");
+    SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, {-1., 1.}, "QM");
 
     // If doing a NEO calculation with different Deuterium, scale the mass here
     // Note this also checks that all quantum particles are the same mass, as right now
@@ -1872,7 +1886,7 @@ namespace ChronusQ {
       mass = massAMU * AUPerAMU - nelec;
     }
    
-    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, paoints, {1., mass}, "PROTQM");
+    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, {1., mass}, "PROTQM");
 
     std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
     std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
@@ -1989,7 +2003,7 @@ namespace ChronusQ {
       if(!sys.basis)     CErr("Missing basis for quantum subsystem " + sys.label);
       if(!sys.integrals) CErr("Missing integrals for quantum subsystem " + sys.label);
   
-      sys.ssOptions = getSingleSlaterOptions(out, input, mol, *sys.basis, sys.integrals, sys.particle, sys.qmSection);
+      sys.ssOptions = getSingleSlaterOptions(out, input, mol, *sys.basis, sys.particle, sys.qmSection);
       sys.ssOptions.hamiltonianOptions.savFilePrefix = "MULTISS/" + sys.label + "/";
       if(sys.particle.charge >= 0) {
         if(sys.ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)  CErr("X2C for other particles not implemented yet");

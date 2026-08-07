@@ -31,6 +31,7 @@
 #include <util/matout.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
+#include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/onepints.hpp>
@@ -42,6 +43,7 @@
 #include <set>
 #include <algorithm>
 
+#include<cxxapi/input.hpp>
 #include <libcint.hpp>
 
 //#define __DEBUGERI__
@@ -4575,6 +4577,8 @@ namespace ChronusQ {
       indexer = [NB](size_t p, size_t q) { return p + q * NB; };
     }
 
+    clear();
+
     // Determine the number of OpenMP threads
     size_t nthreads = GetNumThreads();
 
@@ -4753,6 +4757,8 @@ namespace ChronusQ {
     } else {
       indexer = [NB, subqBegin](size_t p, size_t q) { return p + (q - subqBegin) * NB; };
     }
+
+    clear();
 
     // Determine the number of OpenMP threads
     size_t nthreads = GetNumThreads();
@@ -5934,6 +5940,12 @@ namespace ChronusQ {
     std::cout << std::endl << "Cholesky-RI duration = " << durCholeskyRI << " s " << std::endl;
 
     std::cout << std::endl << BannerEnd << std::endl;
+
+#ifdef __DEBUGERI__
+    for (size_t q = 0; q < NBRI; q++)
+      prettyPrintSmart(std::cout, "CD."+std::to_string(q),
+                       pointer()+q, NB, NB, NB * NBRI, NBRI);
+#endif
 
   }; // InCoreCholeskyRIERI<double>::computeAOInts
 

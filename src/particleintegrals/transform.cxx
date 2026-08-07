@@ -51,7 +51,7 @@ namespace ChronusQ {
    */
   template <typename IntsT>
   template <typename TransT, typename OutT>
-  void InCore4indexRelERI<IntsT>::subsetTransformWithLSComps(
+  void Incore4indexTPIList<IntsT>::subsetTransformWithLSComps(
       const std::string & LSComps, char TRANS, 
       const TransT* TL, int LDTL, const TransT* TS, int LDTS,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
@@ -103,22 +103,22 @@ namespace ChronusQ {
     CQMemManager::get().free(SCR, SCR2);
   };
 
-  template void InCore4indexRelERI<double>::subsetTransformWithLSComps(
+  template void Incore4indexTPIList<double>::subsetTransformWithLSComps(
       const std::string & LSComps, char TRANS, 
       const double* TL, int LDTL, const double* TS, int LDTS,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       const double* in, double* out, bool increment) const;
-  template void InCore4indexRelERI<double>::subsetTransformWithLSComps(
+  template void Incore4indexTPIList<double>::subsetTransformWithLSComps(
       const std::string & LSComps, char TRANS, 
       const dcomplex* TL, int LDTL, const dcomplex* TS, int LDTS,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       const double* in, dcomplex* out, bool increment) const;
-  template void InCore4indexRelERI<dcomplex>::subsetTransformWithLSComps(
+  template void Incore4indexTPIList<dcomplex>::subsetTransformWithLSComps(
       const std::string & LSComps, char TRANS, 
       const dcomplex* TL, int LDTL, const dcomplex* TS, int LDTS,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       const dcomplex* in, dcomplex* out, bool increment) const;
-  template void InCore4indexRelERI<dcomplex>::subsetTransformWithLSComps(
+  template void Incore4indexTPIList<dcomplex>::subsetTransformWithLSComps(
       const std::string & LSComps, char TRANS, 
       const double* TL, int LDTL, const double* TS, int LDTS,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
@@ -320,7 +320,7 @@ namespace ChronusQ {
    */
   template <typename IntsT>
   template <typename TransT, typename OutT>
-  void InCore4indexRelERI<IntsT>::subsetTransform(
+  void Incore4indexTPIList<IntsT>::subsetTransform(
       char TRANS, const TransT* T, int LDT,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       OutT* out, bool increment) const {
@@ -369,14 +369,14 @@ namespace ChronusQ {
     // NR LLLL part
     // std::cout << "----Transform LLLL " << std::endl;
     subsetTransformWithLSComps("LLLL", TRANS, TLarge, NB, TSmall, NB, 
-      TCol_off_sizes, this->pointer(), out);
+      TCol_off_sizes, (*this)[0].pointer(), out);
     
-    if (this->nRelComp() > 0) {
+    if (this->components_.size() > 1) {
 
       // Dirac-Coulomb Term 
 //      size_t out_LDA = TCol_off_sizes[0].second*TCol_off_sizes[1].second;
 //      bool outSymm =  (TCol_off_sizes[0] == TCol_off_sizes[2] and TCol_off_sizes[1] == TCol_off_sizes[3]); 
-      auto & spinor = components_[0];
+      auto & spinor = (*this)[1];
       
 //      if (outSymm) {
 //        OutT * SCR = CQMemManager::get().template malloc<OutT>(out_LDA*out_LDA);
@@ -410,26 +410,26 @@ namespace ChronusQ {
 //      }
     }
 
-    if (this->nRelComp() > 1) {
-      CErr("Guant terms AO to MO transformation is not implemented");
+    if (this->components_.size() > 2) {
+      CErr("Gaunt terms AO to MO transformation is not implemented");
     }      
 
     CQMemManager::get().free(TLarge, TSmall);
-  }; // InCore4indexRelERI::subsetTransform
-  
-  template void InCore4indexRelERI<double>::subsetTransform(
+  }; // Incore4indexTPIList::subsetTransform
+
+  template void Incore4indexTPIList<double>::subsetTransform(
       char TRANS, const double* T, int LDT,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       double* out, bool increment) const;
-  template void InCore4indexRelERI<double>::subsetTransform(
+  template void Incore4indexTPIList<double>::subsetTransform(
       char TRANS, const dcomplex* T, int LDT,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       dcomplex* out, bool increment) const;
-  template void InCore4indexRelERI<dcomplex>::subsetTransform(
+  template void Incore4indexTPIList<dcomplex>::subsetTransform(
       char TRANS, const double* T, int LDT,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       dcomplex* out, bool increment) const;
-  template void InCore4indexRelERI<dcomplex>::subsetTransform(
+  template void Incore4indexTPIList<dcomplex>::subsetTransform(
       char TRANS, const dcomplex* T, int LDT,
       const std::vector<std::pair<size_t,size_t>> &off_sizes,
       dcomplex* out, bool increment) const;

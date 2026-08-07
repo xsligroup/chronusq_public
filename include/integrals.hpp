@@ -288,6 +288,11 @@ namespace ChronusQ {
     bool CDRI_redistribute = false; ///< Whether to redistribute the 3-index ERI across MPI processes
     bool CDRI_asymmDistributed = mpi_default; ///< Whether to distribute the 3-index ERI across MPI processes for asymmetric integral
     bool CDRI_asymmRedistribute = false; ///< Whether to redistribute the 3-index ERI across MPI processes for asymmetric integral
+
+    // 4C-DC RI options
+    bool CDRI_LLLL = true; ///< Whether to perform RI on LLLL term
+    bool CDRI_SSLL = true; ///< Whether to perform RI on SSLL term
+    bool CDRI_SSSS = true; ///< Whether to perform RI on SSSS term
   };
 
 

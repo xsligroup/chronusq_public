@@ -34,32 +34,41 @@
 namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
-  std::shared_ptr<InCore4indexTPI<MatsT>> 
+  std::shared_ptr<ParticleIntegrals>
   MOIntsTransformer<MatsT,IntsT>::formAOTPIInCore(bool cacheAOTPI) {
-      
-      // cache AOTPI
-      auto AOTPI = ints_cache_.getIntegral<InCore4indexTPI,MatsT>("AOTPI");
 
-      if (not AOTPI) { 
+      // cache AOTPI
+      std::shared_ptr<ParticleIntegrals> AOTPI;
+      if (ss_.nC != 4)
+        AOTPI = ints_cache_.getIntegral<InCore4indexTPI,MatsT>("AOTPI");
+      else
+        AOTPI = ints_cache_.getIntegral<Incore4indexTPIList,MatsT>("AOTPI");
+
+      if (not AOTPI) {
         if(ss_.nC == 1) {
           AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(
-                    *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints_->TPI)); 
+                    *std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints_->TPI));
+          if (cacheAOTPI) ints_cache_.addIntegral("AOTPI",
+              std::dynamic_pointer_cast<InCore4indexTPI<MatsT>>(AOTPI));
         } else if (ss_.nC == 2) {
           std::cout << "  * Using bare Coulomb Operator for 2e Integrals" << std::endl;
           AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(
             std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ss_.aoints_->TPI)
-              ->template spatialToSpinBlock<MatsT>()); 
+              ->template spatialToSpinBlock<MatsT>());
+          if (cacheAOTPI) ints_cache_.addIntegral("AOTPI",
+              std::dynamic_pointer_cast<InCore4indexTPI<MatsT>>(AOTPI));
         } else if (ss_.nC == 4) {
-          AOTPI = std::dynamic_pointer_cast<InCore4indexTPI<MatsT>>(
-            std::make_shared<InCore4indexRelERI<MatsT>>(
-              std::dynamic_pointer_cast<InCore4indexRelERI<IntsT>>(ss_.aoints_->TPI)
-                ->template spatialToSpinBlock<MatsT>()));
+          AOTPI =
+            std::make_shared<Incore4indexTPIList<MatsT>>(
+              std::dynamic_pointer_cast<InCoreRelERI<IntsT>>(ss_.aoints_->TPI)
+                ->template spatialToSpinBlock<MatsT>());
+          if (cacheAOTPI) ints_cache_.addIntegral("AOTPI",
+              std::dynamic_pointer_cast<Incore4indexTPIList<MatsT>>(AOTPI));
         }
 
-        if (cacheAOTPI) ints_cache_.addIntegral("AOTPI", AOTPI);
-      } 
+      }
 
-     return AOTPI; 
+     return AOTPI;
   }; // MOIntsTransformer::cacheAOTPIInCore
   
   /**
@@ -88,9 +97,10 @@ namespace ChronusQ {
       }
       
       if (ss_.nC != 4) {
-        AOTPI->subsetTransform('N', MO, nAO, off_sizes, SCR);
+        std::dynamic_pointer_cast<InCore4indexTPI<MatsT>>(AOTPI)
+            ->subsetTransform('N', MO, nAO, off_sizes, SCR);
       } else {
-        auto AOTPI4C = std::dynamic_pointer_cast<InCore4indexRelERI<MatsT>>(AOTPI);
+        auto AOTPI4C = std::dynamic_pointer_cast<Incore4indexTPIList<MatsT>>(AOTPI);
         AOTPI4C->subsetTransform('N', MO, nAO, off_sizes, SCR);
       }
       

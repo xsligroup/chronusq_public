@@ -199,7 +199,7 @@ public:
     MatsT*, const std::string &, bool,
     TPI_TRANS_DELTA_TYPE delta = NO_KRONECKER_DELTA);
   
-  std::shared_ptr<InCore4indexTPI<MatsT>> formAOTPIInCore(bool);
+  std::shared_ptr<ParticleIntegrals> formAOTPIInCore(bool);
   void subsetTransformTPIInCoreN5(const std::vector<std::pair<size_t,size_t>> &, 
     MatsT*, bool, TPI_TRANS_DELTA_TYPE delta = NO_KRONECKER_DELTA);
 

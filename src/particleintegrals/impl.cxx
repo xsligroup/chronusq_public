@@ -103,9 +103,9 @@ namespace ChronusQ {
   template class GTODirectTPIContraction<dcomplex, double>;
   template class GTODirectTPIContraction<dcomplex, dcomplex>;
 
-  template class InCore4indexRelERIContraction<double, double>;
-  template class InCore4indexRelERIContraction<dcomplex, double>;
-  template class InCore4indexRelERIContraction<dcomplex, dcomplex>;
+  template class InCoreRelERIContraction<double, double>;
+  template class InCoreRelERIContraction<dcomplex, double>;
+  template class InCoreRelERIContraction<dcomplex, dcomplex>;
 
   template class GTODirectRelERIContraction<double, double>;
   template class GTODirectRelERIContraction<dcomplex, double>;
