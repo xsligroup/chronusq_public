@@ -886,10 +886,21 @@ namespace ChronusQ {
       auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
       auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
 
+      auto const regexSCALE = std::regex(R"([+-]?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))([eE][+-]?[0-9]+)?)");
+
+      std::smatch scale;
+
       if( std::regex_search(GauntOptions, regexTRUE) ) {
         hamiltonianOptions.Gaunt = true;
         hamiltonianOptions.GauntType = TYPE_4C::All;
         hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+       } else if ( std::regex_search(GauntOptions, scale, regexSCALE)){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+
+        double scale_ = std::stod(scale.str(0));
+        hamiltonianOptions.GauntScale = scale_;  
       } else if ( std::regex_search(GauntOptions, regexFALSE) ){
         hamiltonianOptions.Gaunt = false;
       }
@@ -941,10 +952,21 @@ namespace ChronusQ {
       auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
       auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
 
+      auto const regexSCALE = std::regex(R"([+-]?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))([eE][+-]?[0-9]+)?)");
+
+      std::smatch scale;
+
       if( std::regex_search(GaugeOptions, regexTRUE) ) {
         hamiltonianOptions.Gauge = true;
         hamiltonianOptions.GaugeType = TYPE_4C::All;
         hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(GaugeOptions, scale, regexSCALE)){
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+
+        double scale_ = std::stod(scale.str(0));
+        hamiltonianOptions.GaugeScale = scale_;
       } else if ( std::regex_search(GaugeOptions, regexFALSE) ){
         hamiltonianOptions.Gauge = false;
       }
@@ -1001,6 +1023,10 @@ namespace ChronusQ {
       auto const regex1C = std::regex("1c|1center|onecenter",std::regex_constants::icase);
       auto const regexAMF = std::regex("amf|atomicmeanfield",std::regex_constants::icase);
 
+      auto const regexSCALE = std::regex(R"([+-]?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))([eE][+-]?[0-9]+)?)");
+
+      std::smatch scale;
+
       if( std::regex_search(BreitOptions, regexTRUE) ) {
         hamiltonianOptions.Gaunt = true;
         hamiltonianOptions.GauntType = TYPE_4C::All;
@@ -1008,6 +1034,18 @@ namespace ChronusQ {
         hamiltonianOptions.Gauge = true;
         hamiltonianOptions.GaugeType = TYPE_4C::All;
         hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+      } else if ( std::regex_search(BreitOptions, scale, regexSCALE)){
+        hamiltonianOptions.Gaunt = true;
+        hamiltonianOptions.GauntType = TYPE_4C::All;
+        hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::None;
+        hamiltonianOptions.Gauge = true;
+        hamiltonianOptions.GaugeType = TYPE_4C::All;
+        hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::None;
+
+        double scale_ = std::stod(scale.str(0));
+        hamiltonianOptions.GauntScale = scale_;  
+        hamiltonianOptions.GaugeScale = scale_;
+        
       } else if ( std::regex_search(BreitOptions, regexFALSE) ){
         hamiltonianOptions.Gaunt = false;
         hamiltonianOptions.Gauge = false;
@@ -1086,29 +1124,35 @@ namespace ChronusQ {
 
     // DKS
     X = "DEFAULT";
-    OPTOPT( X = input.getData<std::string>(section + ".DKSTYPE")  );
+    OPTOPT( X = input.getData<std::string>(section + "/DKSTYPE")  );
     trim(X);
     if( not X.compare("VLL") ) {
       if( not ( refOptions.isKSRef and (refOptions.refType == isFourCRef ))){
     	CErr("DKS requires 4C + a DFT Functional", out);
       } else {
-	hamiltonianOptions.dksType = DKS_TYPE::VLL;
+	  hamiltonianOptions.dksType = DKS_TYPE::VLL;
+      } 
+    } else if( not X.compare("FULL") ) {
+      if( not ( refOptions.isKSRef and (refOptions.refType == isFourCRef ))){
+    	CErr("DKS requires 4C + a DFT Functional", out);
+      } else {
+	  hamiltonianOptions.dksType = DKS_TYPE::FULL;
       } 
     } else if ( not X.compare("DEFAULT") ) {
       if( not ( refOptions.isKSRef and (refOptions.refType == isFourCRef ))){
    	hamiltonianOptions.dksType = DKS_TYPE::OFF;
-	} else {
-  	  hamiltonianOptions.dksType = DKS_TYPE::VLL;
-	}
+      } else {
+          hamiltonianOptions.dksType = DKS_TYPE::FULL;
+      }
     } else { 
-	CErr(X + " not a valid " + section + ".DKSTYPE",out);
+	CErr(X + " not a valid " + section + "/DKSTYPE",out);
     } //DKS
 
     // For NEO (and in particular post-NEO-HF methods)
     OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + "/IGNOREPROTONTWOBODY"));
 
     // For RI J/K contraction with 3-index ERI
-    OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + ".ONECENTERK"));
+    OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + "/ONECENTERK"));
 
   }
 
@@ -1222,6 +1266,8 @@ namespace ChronusQ {
             CErr("EPC18_1 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
           else if(!options.refOptions.funcName.compare("EPC18_2"))
             CErr("EPC18_2 Not Implemented In-House. Turn inhouse flag to false to use GauXC");
+          else if(!options.refOptions.funcName.compare("LDA"))
+            CErr("LDA Not Implemented In-House. Turn inhouse flag to false to use GauXC");
           else if(!options.refOptions.funcName.compare("EPC17_2"))
             options.refOptions.funcName = "EPC17"; 
         } else{
@@ -1811,12 +1857,18 @@ namespace ChronusQ {
     out << std::endl;
 
 
-    char TYPE_DKS_NAME[2][20] = {"Off","VLL"};
+    char TYPE_DKS_NAME[3][20] = {"Off","VLL","FULL"};
 
     out << "  " << std::setw(fieldNameWidth) << "Dirac-Kohn-Sham Options:" << std::endl;
     out << bannerMid << std::endl;
     out << "  " << std::setw(fieldNameWidth) << "Approximation---"
 	<< TYPE_DKS_NAME[static_cast<int>(options.dksType)] << std::endl;
+    if(options.Gaunt)
+    out << "  " << std::setw(fieldNameWidth) << "Gaunt Scaling---"
+        << options.GauntScale << std::endl;
+    if(options.Gauge)
+    out << "  " << std::setw(fieldNameWidth) << "Gauge Scaling---"
+        << options.GaugeScale << std::endl;
 
     out << std::endl << BannerEnd << std::endl;
 

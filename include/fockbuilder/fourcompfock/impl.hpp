@@ -62,16 +62,23 @@ namespace ChronusQ {
     InCoreRelERI<IntsT> &relERI =
         *std::dynamic_pointer_cast<InCoreRelERI<IntsT>>(ss.aoints_->TPI);
 
-    bool computeExchange;
+    bool computeExchange = true;
+    bool do_VLL = false;
+    double xHFX_VLL = 1.; 
     
     // Check if doing DFT
     // DKS w/ VXCLL requires computeExchange for all functionals (even pure)
     if (typeid(ss) == typeid(KohnSham<MatsT,IntsT>)){
-      computeExchange = 1;
+      computeExchange = true;
+    if(this->hamiltonianOptions_.dksType == DKS_TYPE::VLL){
+      computeExchange = true;
+      xHFX_VLL = xHFX;
+      do_VLL = true;
+    }}
+    else {
+	    computeExchange = std::abs(xHFX) >= 1e-12;
     }
-    else{
-      computeExchange = std::abs(xHFX) >= 1e-12;
-    }
+
     
     if (not HerDen and computeExchange) CErr("formGDInCore with exchange term NYI for non-Hermitian density ");
     
@@ -255,7 +262,7 @@ namespace ChronusQ {
       if(computeExchange) {
       for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
         cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
-        SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), exchangeMatrixLL[c].pointer(), NB1C,
+        SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL, exchangeMatrixLL[c].pointer(), NB1C,
                (*ss.exchangeMatrix)[c].pointer(), NB2C);
       }
       }
@@ -2807,9 +2814,13 @@ namespace ChronusQ {
     } 
 
     // Form GD: G[D] = 2.0*J[D] - K[D]
-    if(computeExchange) {
-      *ss.twoeH -= *ss.exchangeMatrix;
-    } 
+    if( computeExchange ){
+      if( do_VLL)  {
+        *ss.twoeH -= *ss.exchangeMatrix;
+      } else {
+        *ss.twoeH -= xHFX * *ss.exchangeMatrix;
+      } 
+    }
     // G[D] += 2*J[D]
     *ss.twoeH += 2.0 * *ss.coulombMatrix;
 
@@ -3902,19 +3913,31 @@ namespace ChronusQ {
     size_t SL = NB1C;
 
     auto MS = SCALAR;
-    bool computeExchange;
+    bool computeExchange = true;
+    bool do_VLL = false;
 
     size_t mpiRank   = MPIRank(ss.comm);
     bool   isNotRoot = mpiRank != 0;
 
+    double xHFX_VLL = 1.; 
+
+    double xGaugeX = this->hamiltonianOptions_.GaugeScale;
+    double xGauntX = this->hamiltonianOptions_.GauntScale;
+
     // Check if doing DFT
     // DKS w/ VXCLL requires computeExchange for all functionals (even pure)
     if (typeid(ss) == typeid(KohnSham<MatsT,IntsT>)){
-      computeExchange = 1;
-    }
+    if(this->hamiltonianOptions_.dksType == DKS_TYPE::VLL){
+      computeExchange = true;
+      xHFX_VLL = xHFX;
+      xHFX = 1.;
+      do_VLL = true;
+    }}
     else{
-      computeExchange = std::abs(xHFX) >= 1e-12;
+      computeExchange = true;
+      xHFX_VLL = 1.;
     }
+
     cqmatrix::PauliSpinorMatrices<MatsT> exchangeMatrixLL(NB1C);
 
     cqmatrix::PauliSpinorMatrices<MatsT> contract1PDMLL(NB1C);
@@ -4066,10 +4089,10 @@ namespace ChronusQ {
         SetMat('N', NB1C, NB1C, MatsT(2.), CScrLLMS, NB1C, ss.twoeH->S().pointer(), NB2C);
         // Scaled by percent HF exchange
         if (computeExchange) {
-          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMS, NB1C, ss.exchangeMatrix->S().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMX, NB1C, ss.exchangeMatrix->X().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMY, NB1C, ss.exchangeMatrix->Y().pointer(), NB2C);
-          SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), XScrLLMZ, NB1C, ss.exchangeMatrix->Z().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL*xHFX, XScrLLMS, NB1C, ss.exchangeMatrix->S().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL*xHFX, XScrLLMX, NB1C, ss.exchangeMatrix->X().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL*xHFX, XScrLLMY, NB1C, ss.exchangeMatrix->Y().pointer(), NB2C);
+          SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL*xHFX, XScrLLMZ, NB1C, ss.exchangeMatrix->Z().pointer(), NB2C);
         }
 
       } else {
@@ -4103,7 +4126,7 @@ namespace ChronusQ {
         if(computeExchange) {
           for(auto i = 0; i < ss.exchangeMatrix->nComponent();i++){
             cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
-            SetMat('N', NB1C, NB1C, MatsT(1.*xHFX), exchangeMatrixLL[c].pointer(), NB1C,
+            SetMat('N', NB1C, NB1C, MatsT(1.)*xHFX_VLL*xHFX, exchangeMatrixLL[c].pointer(), NB1C,
                    (*ss.exchangeMatrix)[c].pointer(), NB2C);
           }
         }
@@ -4198,16 +4221,16 @@ namespace ChronusQ {
                       ss.twoeH->Z().pointer()+SS, NB2C);
 
       // Add Dirac-Coulomb contributions to the LLSS block
-      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMS, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C2*xHFX, XScrLSMS, NB1C, MatsT(1.0), 
 		      ss.exchangeMatrix->S().pointer()+LS, NB2C,
 		      ss.exchangeMatrix->S().pointer()+LS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMX, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C2*xHFX, XScrLSMX, NB1C, MatsT(1.0), 
 		      ss.exchangeMatrix->X().pointer()+LS, NB2C,
 		      ss.exchangeMatrix->X().pointer()+LS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMY, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C2*xHFX, XScrLSMY, NB1C, MatsT(1.0), 
 		      ss.exchangeMatrix->Y().pointer()+LS, NB2C,
 		      ss.exchangeMatrix->Y().pointer()+LS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C2, XScrLSMZ, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C2*xHFX, XScrLSMZ, NB1C, MatsT(1.0), 
 		      ss.exchangeMatrix->Z().pointer()+LS, NB2C,
 		      ss.exchangeMatrix->Z().pointer()+LS, NB2C);
 
@@ -4343,16 +4366,16 @@ namespace ChronusQ {
 
       if (computeExchange) {
       // Add (SS|SS) exchange contributions to the SSSS block
-      MatAdd('N','N', NB1C, NB1C, -C4, XScrSSMS, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C4*xHFX, XScrSSMS, NB1C, MatsT(1.0), 
                       ss.exchangeMatrix->S().pointer()+SS, NB2C,
                       ss.exchangeMatrix->S().pointer()+SS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C4, XScrSSMX, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C4*xHFX, XScrSSMX, NB1C, MatsT(1.0), 
                       ss.exchangeMatrix->X().pointer()+SS, NB2C,
                       ss.exchangeMatrix->X().pointer()+SS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C4, XScrSSMY, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C4*xHFX, XScrSSMY, NB1C, MatsT(1.0), 
                       ss.exchangeMatrix->Y().pointer()+SS, NB2C,
                       ss.exchangeMatrix->Y().pointer()+SS, NB2C);
-      MatAdd('N','N', NB1C, NB1C, -C4, XScrSSMZ, NB1C, MatsT(1.0), 
+      MatAdd('N','N', NB1C, NB1C, -C4*xHFX, XScrSSMZ, NB1C, MatsT(1.0), 
                       ss.exchangeMatrix->Z().pointer()+SS, NB2C,
                       ss.exchangeMatrix->Z().pointer()+SS, NB2C);
       }
@@ -4512,16 +4535,16 @@ namespace ChronusQ {
       MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaunttwoeH->Z().pointer(), NB2C, MatsT(1.0), 
                     ss.twoeH->Z().pointer(), NB2C,
                     ss.twoeH->Z().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGauntX, ss.gauntexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->S().pointer(), NB2C,
                     ss.exchangeMatrix->S().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGauntX, ss.gauntexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->X().pointer(), NB2C,
                     ss.exchangeMatrix->X().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGauntX, ss.gauntexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->Y().pointer(), NB2C,
                     ss.exchangeMatrix->Y().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gauntexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGauntX, ss.gauntexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->Z().pointer(), NB2C,
                     ss.exchangeMatrix->Z().pointer(), NB2C);
 
@@ -4675,16 +4698,16 @@ namespace ChronusQ {
       MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugetwoeH->Z().pointer(), NB2C, MatsT(1.0), 
                     ss.twoeH->Z().pointer(), NB2C,
                     ss.twoeH->Z().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGaugeX, ss.gaugeexchangeMatrix->S().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->S().pointer(), NB2C,
                     ss.exchangeMatrix->S().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGaugeX, ss.gaugeexchangeMatrix->X().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->X().pointer(), NB2C,
                     ss.exchangeMatrix->X().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGaugeX, ss.gaugeexchangeMatrix->Y().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->Y().pointer(), NB2C,
                     ss.exchangeMatrix->Y().pointer(), NB2C);
-      MatAdd('N','N', NB2C, NB2C, MatsT(1.0), ss.gaugeexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
+      MatAdd('N','N', NB2C, NB2C, MatsT(1.0)*xGaugeX, ss.gaugeexchangeMatrix->Z().pointer(), NB2C, MatsT(1.0), 
                     ss.exchangeMatrix->Z().pointer(), NB2C,
                     ss.exchangeMatrix->Z().pointer(), NB2C);
       
@@ -4729,12 +4752,10 @@ namespace ChronusQ {
     // Copy LS to SL part of the twoeH[MZ]
     SetMat('C', NB1C, NB1C, MatsT(1.0), ss.twoeH->Z().pointer()+LS, NB2C, ss.twoeH->Z().pointer()+SL, NB2C);
     
-    // Form GD: G[D] = 2.0*J[D] - K[D]
-    *ss.twoeH -= *ss.exchangeMatrix;
-
-
-
-
+    if( computeExchange ){
+      *ss.twoeH -= *ss.exchangeMatrix;
+    } 
+     
     CQMemManager::get().free(CScrLLMS);
     CQMemManager::get().free(CScrSSMS);
     CQMemManager::get().free(CScrSSMX);

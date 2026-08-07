@@ -33,7 +33,7 @@ namespace ChronusQ {
 
   enum class X2C_TYPE {OFF, ONEE, TWOE, FOCK};
 
-  enum class DKS_TYPE {OFF, VLL};
+  enum class DKS_TYPE {OFF, VLL, FULL};
 
   /**
    * Type of screened nuclear spin–orbit approximation
@@ -107,6 +107,10 @@ namespace ChronusQ {
     bool DiracCoulombSSSS = true; // SSSS to Dirac-Coulomb
     bool Gaunt = false; // Gaunt
     bool Gauge = false; // Gauge
+
+    double GauntScale = 1.0; // Gaunt Exchange Scaling for 4CDFT
+    double GaugeScale = 1.0; // Gauge Exchange Scaling for 4CDFT
+
     TYPE_4C DiracCoulombType = TYPE_4C::All; // Type of Dirac-Coulomb - All, Spin Free, Spin Dependent
     TYPE_4C SSSSType = TYPE_4C::All;         // Type of SSSS - All, Spin Free, Spin Dependent
     TYPE_4C GauntType = TYPE_4C::All;        // Type of Gaunt - All, Spin Free, Spin Dependent

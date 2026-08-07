@@ -48,11 +48,10 @@ endif()
 
 FetchContent_Declare(
   gauxc
-  # GauXC master + general multiparticle host DFT
+  # GauXC master + general multiparticle host DFT + 4C-DKS
   GIT_REPOSITORY https://github.com/aodongliu/GauXC.git
-  GIT_TAG 5e8484399d82168b4f23ab69e7ac822390e91efd
+  GIT_TAG 346ebf358c8dcabda92076e3a18acb7e7a93cb5d
 )
-
 #CMAKE_ARGS "-DGAUXC_ENABLE_MPI=${CQ_ENABLE_MPI} -DGAUXC_ENABLE_CUDA=${CQ_ENABLE_CUDA}"
 
 FetchContent_MakeAvailable( gauxc )

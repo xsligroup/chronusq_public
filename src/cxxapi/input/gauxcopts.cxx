@@ -51,7 +51,7 @@ namespace ChronusQ {
         "GRID",                     // string: fine, ultrafine, superfine, GM3, GM5
         "PRUNINGSCHEME",            // string: unpruned, robust, treutler
         "XCWEIGHTALG",              // string: Becke, SSF, LKO
-        "RADIALQUAD",               // string: MuraKnowles,MurrayHandyLaming,TreutlerAldrichs
+        "RADIALQUAD",               // string: MuraKnowles,MurrayHandyLaming,TreutlerAhlrichs
         "XCBACKEND",                // string: libxc, builtin
         "INTKERNEL",                 // string: default, shellbatched (gpu only), incore (gpu only), reference (cpu only)
         "FUNCTIONAL",               // Build functional from list of allowed x and c kernels. 
@@ -492,7 +492,7 @@ namespace ChronusQ {
     out << "  " << std::setw(width) << "Radial Quadrature:";
     out << (radialQuad==GauXC::RadialQuad::MurrayHandyLaming ? "MurrayHandyLaming" 
         :   radialQuad==GauXC::RadialQuad::MuraKnowles ?       "MuraKnowles" 
-        :   "TreutlerAldrichs")  << std::endl;
+        :   "TreutlerAhlrichs")  << std::endl;
 
   }
 

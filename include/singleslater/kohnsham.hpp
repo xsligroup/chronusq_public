@@ -30,6 +30,7 @@
 #include <util/timer.hpp>
 #include <dft.hpp>
 #include <gauxcutils.hpp>
+#include <physcon.hpp>
 
 // KS_DEBUG_LEVEL == 1 - Timing
 #ifndef KS_DEBUG_LEVEL
@@ -172,7 +173,6 @@ namespace ChronusQ {
      *  Compute VXC and increment the fock matrix
      */  
     virtual void formFock(EMPerturbation &pert, bool increment = false, double HFX = 0.) {
-
       double xHFX;
       if (not this->intParam.useGauXC) {
         xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
@@ -195,8 +195,8 @@ namespace ChronusQ {
           // Get system info 
           bool is_gks = this->onePDM->hasZ() and this->onePDM->hasXY();
           bool is_uks = this->onePDM->hasZ() and not this->onePDM->hasXY();
-          bool is_rks = not is_uks and not is_gks; 
-          bool is_4C = this->nC == 4;
+          bool is_dks = this->nC == 4;
+          bool is_rks = not is_uks and not is_gks and not is_dks; 
 
           size_t NB = this->basisSet().nBasis; 
 
@@ -208,12 +208,136 @@ namespace ChronusQ {
           Eigen::MatrixXd VXCs, VXCz, VXCx, VXCy;
 
           // 4 component LL Approximation
-           if (is_4C) {
+          if (is_dks) {
+            // Parse 4C-DFT Options
+            bool vll  = false;
+            bool full = false;
+            auto dkstype = this->fockBuilder->hamiltonianOptions_.dksType;
+            if(dkstype == DKS_TYPE::VLL){
+            vll = true;
+          } else if (dkstype == DKS_TYPE::FULL) {
+            full = true;
+          } 
+            Eigen::Matrix<double, -1, -1> Ps_SS, Pz_SS, Py_SS, Px_SS, Ps_imag, Pz_imag, Py_imag, Px_imag,Ps_SS_imag, Pz_SS_imag, Py_SS_imag, Px_SS_imag;
+            
+            if (full) {
+            Eigen::MatrixXd VXCs_raw, VXCz_raw, VXCx_raw, VXCy_raw, VXC_zero;
+            Eigen::MatrixXd VXCs_raw_s, VXCz_raw_s, VXCx_raw_s, VXCy_raw_s;
+            Eigen::MatrixXd VXCs(2*NB,2*NB), VXCz(2*NB,2*NB), VXCx(2*NB,2*NB), VXCy(2*NB,2*NB);
+            Eigen::MatrixXd VXCs_raw_s_im, VXCz_raw_s_im, VXCx_raw_s_im, VXCy_raw_s_im;
+            Eigen::MatrixXcd VXCs_im(2*NB,2*NB), VXCz_im(2*NB,2*NB), VXCx_im(2*NB,2*NB), VXCy_im(2*NB,2*NB);
+            Eigen::Matrix<MatsT,Eigen::Dynamic,Eigen::Dynamic> VXCs_SS(NB,NB), VXCz_SS(NB,NB), VXCx_SS(NB,NB), VXCy_SS(NB,NB);
 
+            VXC_zero = Eigen::MatrixXd::Zero(NB,NB);
+            VXCs_raw = VXCz_raw = VXCx_raw = VXCy_raw = Eigen::MatrixXd::Zero(NB,NB);
+            VXCs_raw_s = VXCz_raw_s = VXCx_raw_s = VXCy_raw_s = Eigen::MatrixXd::Zero(NB,NB);
+            VXCs_raw_s_im = VXCz_raw_s_im = VXCx_raw_s_im = VXCy_raw_s_im = Eigen::MatrixXd::Zero(NB,NB);
+            VXCs_im = VXCz_im = VXCx_im = VXCy_im = Eigen::MatrixXcd::Zero(2*NB,2*NB);
+
+            VXCs_SS = VXCz_SS = VXCx_SS = VXCy_SS = Eigen::Matrix<MatsT,Eigen::Dynamic,Eigen::Dynamic>::Zero(NB,NB);
+
+            // Initialize needed matrices for Component and Spin Scatter
+            bool allocateLLMS = true; 
+            bool allocateSS   = true;
+            bool allocateLSSL = false;
+
+            auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(0, false, false);
+
+            auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMSSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMLSSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto onePDMSLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+
+            auto onePDMLL = allocateLLMS ? onePDMLLSCR: dummy_pauli;
+            auto onePDMSS = allocateSS   ? onePDMSSSCR: dummy_pauli;
+            auto onePDMLS = allocateLSSL ? onePDMLSSCR: dummy_pauli;
+            auto onePDMSL = allocateLSSL ? onePDMSLSCR: dummy_pauli;
+
+            // Scatter 1 Particle Density Matrix into component blocks.
+            this->onePDM->componentScatter(*onePDMLL, *onePDMLS, *onePDMSL, *onePDMSS);
+        
+            // Scatter LL block of density into Pauli spin components.
+            Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().S().pointer(), NB, NB);
+            Px = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().X().pointer(), NB, NB);
+            Py = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Y().pointer(), NB, NB);
+            Pz = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Z().pointer(), NB, NB);
+
+            // Ps_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->imag_part().S().pointer(), NB, NB);
+            // Px_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->imag_part().X().pointer(), NB, NB);
+            // Py_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->imag_part().Y().pointer(), NB, NB);
+            // Pz_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->imag_part().Z().pointer(), NB, NB);
+
+            // Scatter SS block of density into Pauli spin components.
+            Ps_SS = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->real_part().S().pointer(), NB, NB);
+            Px_SS = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->real_part().X().pointer(), NB, NB);
+            Py_SS = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->real_part().Y().pointer(), NB, NB);
+            Pz_SS = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->real_part().Z().pointer(), NB, NB);
+
+            Ps_SS_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->imag_part().S().pointer(), NB, NB);
+            Px_SS_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->imag_part().X().pointer(), NB, NB);
+            Py_SS_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->imag_part().Y().pointer(), NB, NB);
+            Pz_SS_imag = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMSS->imag_part().Z().pointer(), NB, NB);
+            
+            // // Prints the particle count for LL and SS, use to compare against the dft integrated values.
+            // Eigen::Matrix<double, -1, -1> T, S;
+            // T = Eigen::Map<Eigen::Matrix<double, -1, -1>>(reinterpret_cast<double*>(this->aoints_->kinetic->pointer()), NB, NB);
+            // S = Eigen::Map<Eigen::Matrix<double, -1, -1>>(reinterpret_cast<double*>(this->aoints_->overlap->pointer()), NB, NB);
+
+            // std::cout<<"trace(Ps*S) 1/2c2*trace(Ps_SS * T)"<<std::endl;
+            // std::cout<<(Ps*S).trace()<<" "<<(1./(2*SpeedOfLight*SpeedOfLight))*(Ps_SS*T).trace()<<std::endl;
+            // //
+
+            std::tie(EXC, VXCs_raw, VXCz_raw, VXCy_raw, VXCx_raw, VXCs_raw_s, VXCz_raw_s, VXCy_raw_s, VXCx_raw_s , VXCs_raw_s_im, VXCz_raw_s_im, VXCy_raw_s_im, VXCx_raw_s_im) 
+                  = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px, Ps_SS, Pz_SS, Py_SS, Px_SS, Ps_SS_imag, Pz_SS_imag, Py_SS_imag, Px_SS_imag );
+            
+            auto VXCLL = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+            auto VXCSS = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB, true, true);
+
+            VXCLL->clear();
+            VXCSS->clear();
+
+            VXCLL->S() += VXCs_raw;
+            VXCLL->Z() += VXCz_raw;
+            VXCLL->Y() += VXCy_raw;
+            VXCLL->X() += VXCx_raw;
+
+            VXCs_SS.real() << VXCs_raw_s;
+            VXCz_SS.real() << VXCz_raw_s;
+            VXCy_SS.real() << VXCy_raw_s;
+            VXCx_SS.real() << VXCx_raw_s;
+            
+            if constexpr (std::is_same_v<typename decltype(VXCs_SS)::Scalar, dcomplex >){
+              VXCs_SS.imag() << VXC_zero;
+              VXCz_SS.imag() << VXC_zero;
+              VXCy_SS.imag() << VXC_zero;
+              VXCx_SS.imag() << VXC_zero;
+
+              // VXCs_SS.imag() << VXCs_raw_s_im;
+              // VXCz_SS.imag() << VXCz_raw_s_im;
+              // VXCy_SS.imag() << VXCy_raw_s_im;
+              // VXCx_SS.imag() << VXCx_raw_s_im;
+            }
+
+            VXCSS->S() += VXCs_SS;
+            VXCSS->Z() += VXCz_SS;
+            VXCSS->Y() += VXCy_SS;
+            VXCSS->X() += VXCx_SS;
+
+
+            this->fockMatrix->componentAdd('N',MatsT(2.),"LL",*VXCLL);
+            this->fockMatrix->componentAdd('N',MatsT(2.),"SS",*VXCSS);
+
+            // EXC Energy
+            this->XCEnergy = EXC;
+
+          } //End full
+          else if (vll){
             Eigen::MatrixXd VXCs_raw, VXCz_raw, VXCx_raw, VXCy_raw, VXC_zero;
             Eigen::MatrixXd VXCs(2*NB,2*NB), VXCz(2*NB,2*NB), VXCx(2*NB,2*NB), VXCy(2*NB,2*NB);
             VXC_zero = Eigen::MatrixXd::Zero(NB,NB);
 
+            Ps = Pz = Py = Px = Eigen::MatrixXd::Zero(NB,NB);
+            
             // Initialize needed matrices for Component and Spin Scatter
             bool allocateLLMS = true; 
             bool allocateSS   = false;
@@ -240,13 +364,15 @@ namespace ChronusQ {
             Py = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Y().pointer(), NB, NB);
             Pz = Eigen::Map<Eigen::Matrix<double, -1, -1>>(onePDMLL->real_part().Z().pointer(), NB, NB);
 
-            std::tie(EXC, VXCs_raw, VXCz_raw, VXCy_raw, VXCx_raw) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px);
+
+            std::tie(EXC, VXCs_raw, VXCz_raw, VXCy_raw, VXCx_raw) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px );
 
             // Form VXCLL mat in Pauli form by padding
             VXCs << VXCs_raw, VXC_zero, VXC_zero, VXC_zero;
             VXCz << VXCz_raw, VXC_zero, VXC_zero, VXC_zero;
             VXCy << VXCy_raw, VXC_zero, VXC_zero, VXC_zero;
             VXCx << VXCx_raw, VXC_zero, VXC_zero, VXC_zero;
+
 
             // EXC Energy
             this->XCEnergy = EXC;
@@ -258,7 +384,7 @@ namespace ChronusQ {
             if(!is_rks){
               VXCz *= 2.0;
               this->fockMatrix->Z() +=  VXCz;
-              if(is_gks or is_4C){
+              if(is_gks or is_dks){
                 VXCy *= 2.0;
                 VXCx *= 2.0;
                 this->fockMatrix->Y() +=  VXCy;
@@ -266,12 +392,14 @@ namespace ChronusQ {
             
               }
             }
-          }
-           else {
-            
+          } // End VLL
+        } // End DKS
+
+        else {
+            auto VXC_zero = Eigen::MatrixXd::Zero(NB,NB);
+
           // Call corresonding epc evaluation functions 
           Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().S().pointer(), NB, NB); 
-
           if (is_rks) {                                        
             Ps /= 2.0; // Need to scale by 0.5 due to GauXC's RKS logic
             std::tie(EXC, VXCs) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps );
@@ -282,10 +410,10 @@ namespace ChronusQ {
             } else {              
               Py = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().Y().pointer(), NB, NB); 
               Px = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().X().pointer(), NB, NB); 
+
               std::tie(EXC, VXCs, VXCz, VXCy, VXCx) = this->gauxcUtils->integrator_pointer->eval_exc_vxc( Ps, Pz, Py, Px);
             }
           }
-           
           // Assign computed EXC and VXC (with a scaling factor of 2)
           this->XCEnergy = EXC;
           VXCs *= 2.0;
@@ -293,13 +421,14 @@ namespace ChronusQ {
           if(!is_rks){
             VXCz *= 2.0;
             this->fockMatrix->Z() +=  VXCz;
-            if(is_gks){
+            if(is_gks or is_dks){
               VXCy *= 2.0;
               VXCx *= 2.0;
               this->fockMatrix->Y() +=  VXCy;
               this->fockMatrix->X() +=  VXCx;
             }
-          } }
+          } 
+        }
         }  // end GauXC
         ProgramTimer::tock("Form VXC");
       } // end VXC

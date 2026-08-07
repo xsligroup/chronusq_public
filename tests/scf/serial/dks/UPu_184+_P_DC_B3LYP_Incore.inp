@@ -11,7 +11,7 @@ geom:
 [QM]
 reference = 4CB3LYP
 job = SCF
-dkstype = vll
+dkstype = full
 
 [SCF]
 guess = core

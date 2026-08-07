@@ -29,7 +29,7 @@
  *       to be implemented.
  */
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Direct
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, B3LYP Direct
 TEST( DKS, UPu_184_plus_P_DC_B3LYP_Direct ) {
 
   CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_B3LYP_Direct",
@@ -38,7 +38,7 @@ TEST( DKS, UPu_184_plus_P_DC_B3LYP_Direct ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Direct
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, BLYP Direct
 TEST( DKS, UPu_184_plus_P_DC_BLYP_Direct ) {
 
   CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_BLYP_Direct",
@@ -47,7 +47,7 @@ TEST( DKS, UPu_184_plus_P_DC_BLYP_Direct ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Incore
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, B3LYP Incore
 TEST( DKS, UPu_184_plus_P_DC_B3LYP_Incore ) {
 
   CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_B3LYP_Incore",
@@ -56,11 +56,47 @@ TEST( DKS, UPu_184_plus_P_DC_B3LYP_Incore ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Incore
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, BLYP Incore
 TEST( DKS, UPu_184_plus_P_DC_BLYP_Incore ) {
 
   CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_BLYP_Incore",
     "UPu_184+_P_DC_BLYP_Direct.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+////////
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Direct
+TEST( DKS, UPu_184_plus_P_DC_B3LYP_Direct_VLL ) {
+
+  CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_B3LYP_Direct_VLL",
+    "UPu_184+_P_DC_B3LYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Direct
+TEST( DKS, UPu_184_plus_P_DC_BLYP_Direct_VLL ) {
+
+  CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_BLYP_Direct_VLL",
+    "UPu_184+_P_DC_BLYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Incore
+TEST( DKS, UPu_184_plus_P_DC_B3LYP_Incore_VLL ) {
+
+  CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_B3LYP_Incore_VLL",
+    "UPu_184+_P_DC_B3LYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Incore
+TEST( DKS, UPu_184_plus_P_DC_BLYP_Incore_VLL ) {
+
+  CQSCFTEST( "scf/serial/dks/UPu_184+_P_DC_BLYP_Incore_VLL",
+    "UPu_184+_P_DC_BLYP_Direct_VLL.bin.ref",1e-8,
     false, false, false, false, false, true);
 
 };
@@ -71,7 +107,7 @@ TEST( DKS, UPu_184_plus_P_DC_BLYP_Incore ) {
 
 #ifdef _CQ_DO_PARTESTS
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Direct
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, B3LYP Direct
 TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Direct ) {
 
   CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_B3LYP_Direct",
@@ -80,7 +116,7 @@ TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Direct ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Direct
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, BLYP Direct
 TEST( DKS, PAR_UPu_184_plus_P_DC_BLYP_Direct ) {
 
   CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_BLYP_Direct",
@@ -89,7 +125,7 @@ TEST( DKS, PAR_UPu_184_plus_P_DC_BLYP_Direct ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Incore
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, B3LYP Incore
 TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Incore ) {
 
   CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_B3LYP_Incore",
@@ -98,11 +134,47 @@ TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Incore ) {
 
 };
 
-// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Incore
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham, BLYP Incore
 TEST( DKS, PAR_UPu_184_plus_P_DC_BLYP_Incore ) {
 
   CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_BLYP_Incore",
     "UPu_184+_P_DC_BLYP_Direct.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Direct
+TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Direct_VLL ) {
+
+  CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_B3LYP_Direct_VLL",
+    "UPu_184+_P_DC_B3LYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Direct
+TEST( DKS, PAR_UPu_184_plus_P_DC_BLYP_Direct_VLL ) {
+
+  CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_BLYP_Direct_VLL",
+    "UPu_184+_P_DC_BLYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, B3LYP Incore
+TEST( DKS, PAR_UPu_184_plus_P_DC_B3LYP_Incore_VLL ) {
+
+  CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_B3LYP_Incore_VLL",
+    "UPu_184+_P_DC_B3LYP_Direct_VLL.bin.ref",1e-8,
+    false, false, false, false, false, true);
+
+};
+
+// Two electron U-Pu 184+ test Dirac-Kohn-Sham VXCLL Approx, BLYP Incore
+TEST( DKS, PAR_UPu_184_plus_P_DC_BLYP_Incore_VLL ) {
+
+  CQSCFTEST( "scf/parallel/dks/UPu_184+_P_DC_BLYP_Incore_VLL",
+    "UPu_184+_P_DC_BLYP_Direct_VLL.bin.ref",1e-8,
     false, false, false, false, false, true);
 
 };

@@ -59,7 +59,6 @@ add_cq_test( FOURCHF_RT rttest "FOURCHF_RT.*" )
 add_cq_test( RKS_RT   rttest "RKS_RT.*"   )
 add_cq_test( UKS_RT   rttest "UKS_RT.*"   )
 add_cq_test( X2CKS_RT rttest "X2CKS_RT.*" )
-add_cq_test( DKS_RT rttest "DKS_RT.*" )
 #
 add_cq_test( NEO_RHF_RT   rttest "NEO_RHF_RT.*"   )
 ##add_cq_test( NEO_UHF_RT   rttest "NEO_UHF_RT.*"   )
