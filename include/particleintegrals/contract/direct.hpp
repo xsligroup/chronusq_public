@@ -76,6 +76,11 @@
 
 namespace ChronusQ {
 
+  inline double ReProd(const double &a, const double &b) { return a*b; }
+  inline double ReProd(const dcomplex &a, const dcomplex &b) {
+    return a.real()*b.real() - a.imag()*b.imag();
+  }
+
   template <typename MatsT>
   void ShellBlockNorm(std::vector<libint2::Shell> &shSet, MatsT *MAT, 
     size_t LDM, double *ShBlk) {
@@ -2235,6 +2240,24 @@ namespace ChronusQ {
       const bool screen,
       std::vector<std::vector<TwoBodyContraction<MatsT>>>& cList) const {
 
+    directScaffoldGradImpl(comm, screen, cList, {}, {}, nullptr);
+
+  }
+
+  template <typename MatsT, typename IntsT>
+  void DirectGradContraction<MatsT,IntsT>::directScaffoldGradImpl(
+      MPI_Comm comm,
+      const bool screen,
+      std::vector<std::vector<TwoBodyContraction<MatsT>>>& cList,
+      const std::vector<const MatsT*>& traceDensities,
+      const std::vector<double>& traceCoeffs,
+      std::vector<double>* gradientOut) const {
+
+    // Determine mode/output here.
+    // If gradientOut is not nullPtr, directly trace with density for each dF/dI and output gradient
+    // Otherwise, output each dF/dI and trace with density outside
+    const bool TRACE = (gradientOut != nullptr);
+
     // -----------------------------------------------------------------
     // SCREENING DESIGN NOTE (Horn, Weiss, Haeser, Ehrig, Ahlrichs,
     // J. Comput. Chem. 12 (1991) 1058, DOI 10.1002/jcc.540120903)
@@ -2299,6 +2322,17 @@ namespace ChronusQ {
         NonHermitian |= not x.HER;
 
     const bool sameBasisSet12 = (&basisSet_ == &basisSet2_);
+
+    if (TRACE) {
+      if (traceDensities.size() != nMat or traceCoeffs.size() != nMat)
+        CErr("gradTwoBodyTraceContract needs one trace density and one trace "
+             "coefficient per contraction.", std::cout);
+      // The hermitization equivalence above only holds for Hermitian A and D
+      if (NonHermitian)
+        CErr("Trace-mode gradient contraction requires Hermitian densities.",
+             std::cout);
+      gradientOut->assign(nTotGrad, 0.);
+    }
 
 #ifdef _PROFILE_DIRECT_GRAD
     // Precompute J/K op factors per non-null gradient buffer
@@ -2425,6 +2459,16 @@ namespace ChronusQ {
     // Threads, Gradients, Matrices, Basis, Basis
     std::vector<std::vector<std::vector<MatsT*>>> AXthreads;
     MatsT *AXRaw = nullptr;
+
+    std::vector<std::vector<double>> gradThreads;
+
+    if (TRACE) {
+
+    gradThreads.assign(nThreads, {});
+    AXthreads.assign(nThreads, {});
+
+    } else {
+
     if(nThreads != 1) {
       AXRaw = CQMemManager::get().malloc<MatsT>(nTotGrad*nThreads*nMat*nBasis*nBasis);
       const size_t totalSize = nTotGrad*nThreads*nMat*nBasis*nBasis;
@@ -2456,6 +2500,8 @@ namespace ChronusQ {
       }
     }
 
+    } // if (TRACE) ... else
+
     // Set Linbint precision
     engines[0].set_precision(std::numeric_limits<double>::epsilon());
 
@@ -2484,6 +2530,12 @@ namespace ChronusQ {
     const auto& buf_vec = engine.results();
     
     auto &AX_loc = AXthreads[thread_id];
+
+    double *gradLoc = nullptr;
+    if (TRACE) {
+      gradThreads[thread_id].assign(nTotGrad, 0.);
+      gradLoc = gradThreads[thread_id].data();
+    }
 
     size_t n1,n2;
     size_t shell_atoms[4];
@@ -2700,11 +2752,85 @@ namespace ChronusQ {
         const size_t iSh = iGrad / 3; // Shell on which the gradient is taken
 
         // Gradient component that is relevant for this contraction
-        std::vector<TwoBodyContraction<MatsT>>& gradList =
-          cList[shell_atoms[iSh]*3 + xyz];
+        const size_t gComp = shell_atoms[iSh]*3 + xyz;
+        std::vector<TwoBodyContraction<MatsT>>& gradList = cList[gComp];
+
+        if (TRACE) {
+
+        for(size_t iMat = 0; iMat < nMat; iMat++) {
+
+          const MatsT* __restrict__ Xmat = gradList[iMat].X;
+          const MatsT* __restrict__ Dmat = traceDensities[iMat];
+          double acc  = 0.;
+          double pref = 0.;
+
+          if ( gradList[iMat].contType == COULOMB ) {
+
+            pref = w;
+            size_t ijkl = 0ul;
+            for(auto i = 0ul, bf1 = bf1_s; i < n1; i++, bf1++)
+            for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++) {
+
+              // J(1,2) += w * I * Re X(4,3)  ->  weighted by Re D(1,2)
+              const double DR12 = std::real(Dmat[bf1 + bf2*nBasis]);
+
+              if (sameBasisSet12) {
+                // J(4,3) += w * I * Re X(1,2)  ->  weighted by Re D(4,3)
+                const double XR12 = std::real(Xmat[bf1 + bf2*nBasis]);
+                for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++)
+                for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++)
+                  acc += ( DR12 * std::real(Xmat[bf4 + bf3*snBasis])
+                         + XR12 * std::real(Dmat[bf4 + bf3*nBasis]) )
+                         * buff[ijkl];
+              } else {
+                for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++)
+                for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++)
+                  acc += DR12 * std::real(Xmat[bf4 + bf3*snBasis]) * buff[ijkl];
+              }
+
+            } // ij loop
+
+          } else if( gradList[iMat].contType == EXCHANGE ) {
+
+            if (not sameBasisSet12)
+              CErr("No exchange contraction between two different basis!", std::cout);
+
+            pref = w_half;
+            size_t ijkl = 0ul;
+            for(auto i = 0ul, bf1 = bf1_s; i < n1; i++, bf1++)
+            for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++)
+            for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++) {
+
+              // Loop invariant in l
+              const MatsT D13 = Dmat[bf1 + bf3*nBasis];
+              const MatsT X13 = Xmat[bf1 + bf3*nBasis];
+              const MatsT D23 = Dmat[bf2 + bf3*nBasis];
+              const MatsT X23 = Xmat[bf2 + bf3*nBasis];
+
+            for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++) {
+
+              // K(1,3) += w_half * I * conj X(4,2)   ->  weighted by conj D(1,3)
+              // K(4,2) += w_half * I * conj X(1,3)   ->  weighted by conj D(4,2)
+              // K(4,1) += w_half * I * conj X(2,3)   ->  weighted by conj D(4,1)
+              // K(2,3) += w_half * I * conj X(4,1)   ->  weighted by conj D(2,3)
+              acc += ( ReProd(D13, Xmat[bf4 + bf2*nBasis])
+                     + ReProd(Dmat[bf4 + bf2*nBasis], X13)
+                     + ReProd(Dmat[bf4 + bf1*nBasis], X23)
+                     + ReProd(D23, Xmat[bf4 + bf1*nBasis]) ) * buff[ijkl];
+
+            } // l loop
+            } // ijk
+
+          } // EXCHANGE
+
+          gradLoc[gComp] += traceCoeffs[iMat] * pref * acc;
+
+        } // Matrices
+
+        } else {
 
         // Thread local storage for this contraction
-        auto& AX_Grad_loc = AX_loc[shell_atoms[iSh]*3 + xyz];
+        auto& AX_Grad_loc = AX_loc[gComp];
 
 
         // loop over matrices in contraction
@@ -2777,6 +2903,8 @@ namespace ChronusQ {
 
         } // Matrices
 
+        } // if (TRACE) ... else
+
 
         } // Gradient components
 
@@ -2798,6 +2926,17 @@ namespace ChronusQ {
 #ifdef _PROFILE_DIRECT_GRAD
     _prof_t_parallel_end = _prof_clock::now();
 #endif
+
+    if (TRACE) {
+
+    // Post-parallel reduction
+    for(size_t iThread = 0ul; iThread < nThreads; iThread++) {
+      if (gradThreads[iThread].empty()) continue;
+      for(size_t iGrad = 0ul; iGrad < nTotGrad; iGrad++)
+        (*gradientOut)[iGrad] += gradThreads[iThread][iGrad];
+    }
+
+    } else {
 
     // Post-parallel reduction + symmetrization
     #pragma omp parallel for collapse(2) schedule(static)
@@ -2835,6 +2974,8 @@ namespace ChronusQ {
       }
     }
 
+    } // if (TRACE) ... else
+
     if (AXRaw          != nullptr) CQMemManager::get().free(AXRaw);
     if (ShBlkNorms_raw != nullptr) CQMemManager::get().free(ShBlkNorms_raw);
     if (ShBlkNorms1_raw != nullptr) CQMemManager::get().free(ShBlkNorms1_raw);
@@ -2844,6 +2985,12 @@ namespace ChronusQ {
     // The hermitization above is linear, so summing the locally-hermitized
     // partials equals hermitizing the global sum.
     if (mpiSize > 1) {
+      if (TRACE) {
+        std::vector<double> mpiScr(nTotGrad, 0.);
+        MPIAllReduce(gradientOut->data(), static_cast<int>(nTotGrad),
+                     mpiScr.data(), comm);
+        *gradientOut = std::move(mpiScr);
+      } else {
       MatsT* mpiScr = nullptr;
       if (mpiRank == 0) mpiScr = CQMemManager::get().malloc<MatsT>(nBasis*nBasis);
       for (size_t iGrad = 0; iGrad < nTotGrad; iGrad++)
@@ -2852,6 +2999,7 @@ namespace ChronusQ {
         if (mpiRank == 0) std::copy_n(mpiScr, nBasis*nBasis, cList[iGrad][iMat].AX);
       }
       if (mpiRank == 0) CQMemManager::get().free(mpiScr);
+      }
     }
 #endif
     

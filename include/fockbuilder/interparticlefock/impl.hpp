@@ -84,10 +84,13 @@ namespace ChronusQ {
 
     // Form contraction
     std::unique_ptr<GradContractions<MatsT,IntsT>> contract;
+    bool isDirect = false;
     if(std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>((*gradTPI)[0]))
       contract = std::make_unique<InCore4indexGradContraction<MatsT,IntsT>>(*gradTPI);
-    else if(std::dynamic_pointer_cast<DirectTPI<IntsT>>((*gradTPI)[0]))
+    else if(std::dynamic_pointer_cast<DirectTPI<IntsT>>((*gradTPI)[0])) {
       contract = std::make_unique<DirectGradContraction<MatsT,IntsT>>(*gradTPI);
+      isDirect = true;
+    }
     else
       CErr("Gradients of RI inter-particle integrals NYI!");
 
@@ -95,7 +98,24 @@ namespace ChronusQ {
     //   gradient integrals
     contract->contractSecond = contraction->contractSecond;
     contract->isCross = true;            // Important for GIAO JContract
-    contract->traceDensity = ss.onePDM;  // Determines the density to screen in Direct AO two-e gradient formation 
+    contract->traceDensity = ss.onePDM;  // Determines the density to screen in Direct AO two-e gradient formation
+
+    const double prefactor = 2. * ss.particle.charge * this->aux_ss->particle.charge;
+
+    if ( isDirect ) {
+
+      std::vector<TwoBodyContraction<MatsT>> twoBodyContraction = { {this->aux_ss->onePDM->S().pointer(), nullptr, true, COULOMB} };
+      std::vector<const MatsT*> traceDens = { ss.onePDM->S().pointer() };
+      // gradient[I] = 0.25 * prefactor * Tr( P_S . J^I )
+      std::vector<double> traceCoef = { 0.25 * prefactor };
+
+      std::vector<double> gradient;
+      contract->gradTwoBodyTraceContract(MPI_COMM_WORLD, true, twoBodyContraction,
+                                         traceDens, traceCoef, gradient, pert);
+
+      return gradient;
+
+    }
 
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;
@@ -122,7 +142,6 @@ namespace ChronusQ {
     // Contract to gradient
     std::vector<double> gradient;
     cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(NB, false, false);
-    const double prefactor = 2. * ss.particle.charge * this->aux_ss->particle.charge;
     for(size_t iGrad = 0; iGrad < nGrad; iGrad++) {
       twoEGrad.S() = prefactor * JList[iGrad];
       double gradVal = ss.template computeOBProperty<SCALAR>(

@@ -453,14 +453,51 @@ namespace ChronusQ {
     // Form contraction
     // TODO: There's gotta be a better way to do this...
     std::unique_ptr<GradContractions<MatsT,IntsT>> contract = nullptr;
+    bool isDirect = false;
     if ( std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(gradERI[0]) ) {
       contract = std::make_unique<InCore4indexGradContraction<MatsT,IntsT>>(gradERI);
     }
     else if ( std::dynamic_pointer_cast<DirectTPI<IntsT>>(gradERI[0]) ) {
       contract = std::make_unique<DirectGradContraction<MatsT,IntsT>>(gradERI);
+      isDirect = true;
     }
     else
       CErr("Gradients of RI NYI!");
+
+    // New direct path: form the derivative Fock matrices F^I on the fly
+    // (without storing them) and trace them against the density directly to
+    // form the gradient.
+    if ( isDirect ) {
+
+      std::vector<TwoBodyContraction<MatsT>> twoBodyContraction;
+      std::vector<const MatsT*> traceDens;
+      std::vector<double> traceCoef;
+
+      auto addTerm = [&](MatsT* X, MatsT* D, TWOBODY_CONTRACTION_TYPE type, double coeff) {
+        twoBodyContraction.push_back({X, nullptr, true, type});
+        traceDens.push_back(D);
+        traceCoef.push_back(coeff);
+      };
+
+      // gradient[I] = 0.25 * ( 2 Tr(P_S J^I_S) - xHFX sum_c Tr(P_c K^I_c) )
+      addTerm(ss.onePDM->S().pointer(), ss.onePDM->S().pointer(), COULOMB, 0.5);
+      if( std::abs(xHFX) > 1e-12 ) {
+        addTerm(ss.onePDM->S().pointer(), ss.onePDM->S().pointer(), EXCHANGE, -0.25*xHFX);
+        if (hasZ)
+          addTerm(ss.onePDM->Z().pointer(), ss.onePDM->Z().pointer(), EXCHANGE, -0.25*xHFX);
+        if (hasXY) {
+          addTerm(ss.onePDM->Y().pointer(), ss.onePDM->Y().pointer(), EXCHANGE, -0.25*xHFX);
+          addTerm(ss.onePDM->X().pointer(), ss.onePDM->X().pointer(), EXCHANGE, -0.25*xHFX);
+        }
+      }
+
+      std::vector<double> gradient;
+      contract->gradTwoBodyTraceContract(MPI_COMM_WORLD, true, twoBodyContraction,
+                                         traceDens, traceCoef, gradient, pert);
+
+      return gradient;
+
+    }
 
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;

@@ -72,10 +72,43 @@ namespace ChronusQ {
       }
     };
 
+    virtual void gradTwoBodyTraceContract(
+        MPI_Comm comm, bool screen,
+        std::vector<TwoBodyContraction<MatsT>>& twoBodyContraction,
+        const std::vector<const MatsT*>& traceDensities,
+        const std::vector<double>& traceCoeffs,
+        std::vector<double>& gradientOut,
+        EMPerturbation&) const{
+
+      if (std::is_same<IntsT,dcomplex>::value)
+        CErr("trace-mode gradients NYI for complex integrals");
+
+      // Hackily turns off screening if threshSchwarz_ is 0.0
+      DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
+      const bool doScreen = (tpi.threshSchwarz() == 0.0) ? false : screen;
+
+      std::vector<std::vector<TwoBodyContraction<MatsT>>> cList(this->grad_.size(), twoBodyContraction);
+
+      directScaffoldGradImpl(comm, doScreen, cList, traceDensities, traceCoeffs, &gradientOut);
+    };
+
     void directScaffoldGrad(
         MPI_Comm,
         const bool,
         std::vector<std::vector<TwoBodyContraction<MatsT>>>&) const;
+
+    // Shared scaffold for both output modes. A null gradientOut writes
+    // derivative Fock matrices into cList[..].AX; a non-null gradientOut
+    // accumulates scalar gradient contributions directly, without ever
+    // forming those matrices. The mode is resolved once, outside the
+    // quartet loops.
+    void directScaffoldGradImpl(
+        MPI_Comm,
+        const bool,
+        std::vector<std::vector<TwoBodyContraction<MatsT>>>&,
+        const std::vector<const MatsT*>&,
+        const std::vector<double>&,
+        std::vector<double>*) const;
 
     virtual ~DirectGradContraction() {}
 

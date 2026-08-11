@@ -354,6 +354,26 @@ namespace ChronusQ {
       gradTwoBodyContract(comm,true,contList);
     }
 
+    /**
+     *  Trace-mode gradient contraction: never materializes derivative Fock
+     *  matrices. For each gradient component I it accumulates
+     *
+     *    grad[I] += sum_iMat traceCoeff[iMat] * ReTr( traceDensity[iMat] * A^I_iMat )
+     *
+     *  where A^I_iMat is the (hermitized) derivative Fock matrix 
+     *
+     */
+    virtual void gradTwoBodyTraceContract(
+      MPI_Comm,
+      bool,
+      std::vector<TwoBodyContraction<MatsT>>&,
+      const std::vector<const MatsT*>&,
+      const std::vector<double>&,
+      std::vector<double>&,
+      EMPerturbation&) const{
+      CErr("gradTwoBodyTraceContract NYI for this contraction type");
+    }
+
     // Destructor
     virtual ~GradContractions() {}
 

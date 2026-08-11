@@ -95,11 +95,13 @@ namespace ChronusQ {
 
     // Form contraction
     std::unique_ptr<GradContractions<MatsT,IntsT>> contract = nullptr;
+    bool isDirect = false;
     if ( std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>((*gradTPI)[0]) ) {
       contract = std::make_unique<InCore4indexGradContraction<MatsT,IntsT>>(*gradTPI);
     }
     else if ( std::dynamic_pointer_cast<DirectTPI<IntsT>>((*gradTPI)[0]) ) {
       contract = std::make_unique<DirectGradContraction<MatsT,IntsT>>(*gradTPI);
+      isDirect = true;
     }
     else
       CErr("Gradients of RI NYI!");
@@ -107,6 +109,22 @@ namespace ChronusQ {
     //   gradient integrals
     contract->contractSecond = contraction->contractSecond;
     contract->traceDensity = ss.onePDM;
+
+    if ( isDirect ) {
+
+      std::vector<TwoBodyContraction<MatsT>> twoBodyContraction =
+        { {this->aux_ss->onePDM->S().pointer(), nullptr, true, COULOMB} };
+      std::vector<const MatsT*> traceDens = { ss.onePDM->S().pointer() };
+      // gradient[I] = 0.25 * Tr( P_S . (-2 J^I) ) = -0.5 * Tr( P_S . J^I )
+      std::vector<double> traceCoef = { -0.5 };
+
+      std::vector<double> gradient;
+      contract->gradTwoBodyTraceContract(MPI_COMM_WORLD, true, twoBodyContraction,
+                                         traceDens, traceCoef, gradient, pert);
+
+      return gradient;
+
+    }
 
     // Create contraction list
     std::vector<std::vector<TwoBodyContraction<MatsT>>> cList;
