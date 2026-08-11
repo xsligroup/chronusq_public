@@ -98,7 +98,7 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
     virtual void getNewOrbitals(EMPerturbation& pert) = 0;
 
     // Printing functions
-    virtual void printRunHeader(EMPerturbation&)   = 0;
+    virtual void printRunHeader(EMPerturbation&) const = 0;
     virtual void printIteration(bool printDiff = true)  = 0;
 
     void ao2orthoFock(std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> fockSquareAO = {});

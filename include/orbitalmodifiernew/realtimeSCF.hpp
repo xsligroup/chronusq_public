@@ -87,7 +87,7 @@ class RealTimeSCF : public OrbitalModifierNew<singleSlaterT, MatsT, IntsT> {
 
   IntegrationProgressNew integrationProgress;  ///< Current state of the time propagation
 
-  int printLevel = 1; ///< Amount of printing in RT calc
+  mutable int printLevel = 1; ///< Amount of printing in RT calc
   bool printDen = false; ///< Print density to out file
   bool printContractionTiming =false; ///< Print contraction timing during RT propagation
 
@@ -139,7 +139,7 @@ public:
   // RealTime procedural functions
   void run(EMPerturbation&) override; // From RealTimeBase
   void getNewOrbitals(EMPerturbation&) override {};
-  void printRunHeader(EMPerturbation&) override;
+  void printRunHeader(EMPerturbation&) const override;
   void printIteration(bool printDiff = false) override;
 
   void formFock(bool,double);
@@ -180,11 +180,11 @@ public:
   }
 
 
-  void RTFormattedLineNew(std::ostream &, std::string);
-  void RTFormattedLineNew(std::ostream &, std::string, double);
-  void RTFormattedLineNew(std::ostream &, std::string, size_t);
-  void RTFormattedLineNew(std::ostream &, std::string, std::string);
-  void RTFormattedLineNew(std::ostream &, std::string, double, std::string);
+  void RTFormattedLineNew(std::ostream &, std::string) const;
+  void RTFormattedLineNew(std::ostream &, std::string, double) const;
+  void RTFormattedLineNew(std::ostream &, std::string, size_t) const;
+  void RTFormattedLineNew(std::ostream &, std::string, std::string) const;
+  void RTFormattedLineNew(std::ostream &, std::string, double, std::string) const;
 
 };
 

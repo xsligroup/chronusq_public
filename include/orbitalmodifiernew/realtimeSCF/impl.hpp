@@ -534,32 +534,32 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube() {
 }; // RealTime::saveCube
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s) const {
   out << std::setw(38) << "  " + s << std::endl;
 }
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, double v) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, double v) const {
   out << std::setw(38) << "  " + s << v << std::endl;
 }
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, size_t v) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, size_t v) const {
   out << std::setw(38) << "  " + s << v << std::endl;
 }
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, std::string v) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, std::string v) const {
   out << std::setw(38) << "  " + s << v << std::endl;
 }
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, double v, std::string u) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::RTFormattedLineNew(std::ostream &out, std::string s, double v, std::string u) const {
   out << std::setw(38) << "  " + s << v << u << std::endl;
 }
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& perturbation) {
+void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& perturbation) const {
 
   // No printing if silent
   if( this->printLevel == 0 ) return;

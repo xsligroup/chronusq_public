@@ -49,30 +49,30 @@ void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::getNewOrbitals(EMPerturbatio
 
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-  void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::printRunHeader(std::ostream& out, EMPerturbation& pert) const {
-  OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::printRunHeader(out, pert);
+  void ConventionalSCFNew<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert) const {
+  OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::printRunHeader(pert);
 
   // Print DIIS Algorithm info
   if( this->scfControls.doExtrap ) {
     if( this->scfControls.doDamp ) {
-      out << std::setw(38) << std::left << "  Static Damping Factor:" << this->scfControls.dampParam << std::endl;
-      out << std::setw(38) << std::left << "  Damping Error:" << this->scfControls.dampError << std::endl;
+      std::cout << std::setw(38) << std::left << "  Static Damping Factor:" << this->scfControls.dampParam << std::endl;
+      std::cout << std::setw(38) << std::left << "  Damping Error:" << this->scfControls.dampError << std::endl;
     }
 
     if( this->scfControls.diisAlg != NONE ) {
-      out << std::setw(38) << std::left << "  DIIS Extrapolation Algorithm:";
-      if( this->scfControls.diisAlg == CDIIS ) out << "CDIIS";
-      if( this->scfControls.diisAlg == EDIIS ) out << "EDIIS";
-      if( this->scfControls.diisAlg == CEDIIS ) out << "CEDIIS";
-      out << std::endl;
+      std::cout << std::setw(38) << std::left << "  DIIS Extrapolation Algorithm:";
+      if( this->scfControls.diisAlg == CDIIS ) std::cout << "CDIIS";
+      if( this->scfControls.diisAlg == EDIIS ) std::cout << "EDIIS";
+      if( this->scfControls.diisAlg == CEDIIS ) std::cout << "CEDIIS";
+      std::cout << std::endl;
 
       if( this->scfControls.diisAlg == CEDIIS ) {
-        out << std::left << "    * CDIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
-        out << std::left << "    * EDIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
-        out << std::left << "    * will switch at " << std::fixed << std::setprecision(8) << this->scfControls.cediisSwitch << " for max([F,D])"
+        std::cout << std::left << "    * CDIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
+        std::cout << std::left << "    * EDIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
+        std::cout << std::left << "    * will switch at " << std::fixed << std::setprecision(8) << this->scfControls.cediisSwitch << " for max([F,D])"
             << std::endl;
       } else {
-        out << std::left << "    * DIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
+        std::cout << std::left << "    * DIIS will track up to " << this->scfControls.nKeep << " previous iterations" << std::endl;
       }
     }
   }

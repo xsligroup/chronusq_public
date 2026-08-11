@@ -99,7 +99,7 @@ public:
 
   // ModifyOrbital Functions
   void getNewOrbitals(EMPerturbation&);
-  void printRunHeader(std::ostream&, EMPerturbation&) const;
+  void printRunHeader(EMPerturbation&) const override;
 
 
   // SCF extrapolation functions (see include/singleslater/extrap.hpp for docs)

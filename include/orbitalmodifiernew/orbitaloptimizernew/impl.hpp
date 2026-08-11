@@ -169,7 +169,7 @@ void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::run(EMPerturbation& pert) {
 };   // OrbitalOptimizer<MatsT,IntsT>::SCF()
 
 template <template <typename, typename> class singleSlaterT, typename MatsT, typename IntsT>
-void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert) {
+void OrbitalOptimizerNew<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert) const {
 
   std::cout << BannerTop << std::endl;
   std::cout << "Self Consistent Field (SCF) Settings:" << std::endl << std::endl;

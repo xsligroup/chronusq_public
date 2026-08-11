@@ -77,7 +77,7 @@ class OrbitalOptimizerNew : public OrbitalModifierNew<singleSlaterT, MatsT, Ints
     virtual double computeFDCConv() { return 0.; };
 
     //   Print SCF header, footer and progress
-    void printRunHeader(EMPerturbation&) override;
+    void printRunHeader(EMPerturbation&) const override;
     void printHeaderFinal() const;
     void printIteration(bool printDiff = true) override;
 
