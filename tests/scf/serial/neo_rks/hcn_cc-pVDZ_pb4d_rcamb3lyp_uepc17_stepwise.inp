@@ -1,0 +1,54 @@
+# Stepwise counterpart of hcn_cc-pVDZ_pb4d_rcamb3lyp_uepc17.inp.
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ N  0.00000  0.000000  0.000000
+ C  1.15824  0.000000  0.000000
+ H  2.22844  0.000000  0.000100  Q
+
+[QM]
+reference = Real RCAMB3LYP
+job = SCF
+
+[PROTQM]
+reference = Real UEPC17
+
+[SCF]
+neo = true
+guess = classical
+prot_guess = tight
+accuracy = 1e-10
+maxiter = 512
+neostepwiseoptimize = true
+neooptimizefirst = protonic
+
+[DFTINT]
+inhouse = false
+nrad = 99
+nang = 590
+
+[GAUXC]
+grid = ultrafine
+pruningscheme = unpruned
+radialquad = murrayhandylaming
+xcweightalg = becke
+
+[BASIS]
+basis = cc-pvdz
+
+[PBASIS]
+basis = prot-pb4-d
+
+[INTS]
+alg = direct
+
+[PINTS]
+alg = incore
+
+[EPINTS]
+alg = incore
+
+[MISC]
+nsmp = 1
+mem = 512 MB

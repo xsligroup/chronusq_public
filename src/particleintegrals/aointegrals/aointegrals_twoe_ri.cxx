@@ -602,7 +602,8 @@ namespace ChronusQ {
       BasisSet &basisSet, libint2::Engine &engine,
       std::vector<std::vector<libint2::Shell>> &shellPrims_,
       std::vector<double*> &coefBlocks_, double *workBlock,
-      const double *&resPQRS) {
+      const double *&resPQRS,
+      libint2::Operator op = libint2::Operator::coulomb) {
 
     std::pair<size_t, double> counter_timer(0, 0.0);
 
@@ -654,10 +655,22 @@ namespace ChronusQ {
 
             // Evaluate ERI for shell quartet
             auto beginERI = tick();
-            engine.compute2<
-              libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-                  primsP[PP], primsQ[QQ], primsR[RR], primsS[SS]
-            );
+            switch (op) {
+              case libint2::Operator::coulomb:
+                engine.compute2<
+                  libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                      primsP[PP], primsQ[QQ], primsR[RR], primsS[SS]
+                );
+                break;
+              case libint2::Operator::erfc_coulomb:
+                engine.compute2<
+                  libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+                      primsP[PP], primsQ[QQ], primsR[RR], primsS[SS]
+                );
+                break;
+              default:
+                CErr("Unrecognized two-electron kernel in libintGeneralContractionERI.");
+            }
             counter_timer.second += tock(beginERI);
             counter_timer.first++;
             buff = buf_vec[0];
@@ -908,13 +921,28 @@ namespace ChronusQ {
 
             // Evaluate ERI for shell quartet
             auto beginERI = tick();
-            engines[thread_id].compute2<
-              libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-                  basisSet.shells[P],
-                  basisSet.shells[Q],
-                  basisSet.shells[P],
-                  basisSet.shells[Q]
-            );
+            switch (kernel_) {
+              case Kernel::Coulomb:
+                engines[thread_id].compute2<
+                  libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                      basisSet.shells[P],
+                      basisSet.shells[Q],
+                      basisSet.shells[P],
+                      basisSet.shells[Q]
+                );
+                break;
+              case Kernel::ShortRangeErfc:
+                engines[thread_id].compute2<
+                  libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+                      basisSet.shells[P],
+                      basisSet.shells[Q],
+                      basisSet.shells[P],
+                      basisSet.shells[Q]
+                );
+                break;
+              default:
+                CErr("Unrecognized two-electron kernel in InCoreCholeskyRIERI.");
+            }
             lt1ERI += tock(beginERI);
             lc1ERI++;
             const auto *buff = buf_vec[0];
@@ -997,7 +1025,7 @@ namespace ChronusQ {
                 P, Q, P, Q,
                 basisSet, engines[thread_id],
                 shellPrims_, coefBlocks_, workBlocks[thread_id],
-                resPQRS);
+                resPQRS, this->libintOperator());
             lt1ERI += counter_timer.second;
             lc1ERI += counter_timer.first;
 
@@ -1668,13 +1696,28 @@ namespace ChronusQ {
 
         // Evaluate ERI for shell quartet
         auto beginERI = tick();
-        engines[thread_id].compute2<
-          libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-              basisSet.shells[R],
-              basisSet.shells[S],
-              basisSet.shells[P],
-              basisSet.shells[Q]
-        );
+        switch (kernel_) {
+          case Kernel::Coulomb:
+            engines[thread_id].compute2<
+              libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                  basisSet.shells[R],
+                  basisSet.shells[S],
+                  basisSet.shells[P],
+                  basisSet.shells[Q]
+            );
+            break;
+          case Kernel::ShortRangeErfc:
+            engines[thread_id].compute2<
+              libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+                  basisSet.shells[R],
+                  basisSet.shells[S],
+                  basisSet.shells[P],
+                  basisSet.shells[Q]
+            );
+            break;
+          default:
+            CErr("Unrecognized two-electron kernel in InCoreCholeskyRIERI.");
+        }
         lt1ERI += tock(beginERI);
         lc1ERI++;
         const auto *buff =  buf_vec[0] ;
@@ -1746,7 +1789,7 @@ namespace ChronusQ {
             P, Q, R, S,
             basisSet, engines[thread_id],
             shellPrims_, coefBlocks_, workBlocks[thread_id],
-            resPQRS);
+            resPQRS, this->libintOperator());
         lt1ERI += counter_timer.second;
         lc1ERI += counter_timer.first;
 
@@ -4935,13 +4978,28 @@ namespace ChronusQ {
                 and basisSet.shells[R].ncontr() == 1 and basisSet.shells[S].ncontr() == 1) {
               // Evaluate ERI for shell quartet
               auto beginERI = tick();
-              engines[thread_id].compute2<
-                  libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-                  basisSet.shells[R],
-                  basisSet.shells[S],
-                  basisSet.shells[P],
-                  basisSet.shells[Q]
-              );
+              switch (kernel_) {
+                case Kernel::Coulomb:
+                  engines[thread_id].compute2<
+                      libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                      basisSet.shells[R],
+                      basisSet.shells[S],
+                      basisSet.shells[P],
+                      basisSet.shells[Q]
+                  );
+                  break;
+                case Kernel::ShortRangeErfc:
+                  engines[thread_id].compute2<
+                      libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+                      basisSet.shells[R],
+                      basisSet.shells[S],
+                      basisSet.shells[P],
+                      basisSet.shells[Q]
+                  );
+                  break;
+                default:
+                  CErr("Unrecognized two-electron kernel in InCoreCholeskyRIERI.");
+              }
               lt2ERI += tock(beginERI);
               lc2ERI++;
               const auto *buff =  buf_vec[0] ;
@@ -5033,7 +5091,7 @@ namespace ChronusQ {
                   P, Q, R, S,
                   basisSet, engines[thread_id],
                   shellPrims_, coefBlocks_, workBlocks[thread_id],
-                  resPQRS);
+                  resPQRS, this->libintOperator());
               lt2ERI += counter_timer.second;
               lc2ERI += counter_timer.first;
 
@@ -5240,13 +5298,28 @@ namespace ChronusQ {
                 and basisSet.shells[R].ncontr() == 1 and basisSet.shells[S].ncontr() == 1) {
               // Evaluate ERI for shell quartet
               auto beginERI = tick();
-              engines[thread_id].compute2<
-                libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-                    basisSet.shells[R],
-                    basisSet.shells[S],
-                    basisSet.shells[P],
-                    basisSet.shells[Q]
-              );
+              switch (kernel_) {
+                case Kernel::Coulomb:
+                  engines[thread_id].compute2<
+                    libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+                        basisSet.shells[R],
+                        basisSet.shells[S],
+                        basisSet.shells[P],
+                        basisSet.shells[Q]
+                  );
+                  break;
+                case Kernel::ShortRangeErfc:
+                  engines[thread_id].compute2<
+                    libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+                        basisSet.shells[R],
+                        basisSet.shells[S],
+                        basisSet.shells[P],
+                        basisSet.shells[Q]
+                  );
+                  break;
+                default:
+                  CErr("Unrecognized two-electron kernel in InCoreCholeskyRIERI.");
+              }
               lt2ERI += tock(beginERI);
               lc2ERI++;
               const auto *buff =  buf_vec[0] ;
@@ -5288,7 +5361,7 @@ namespace ChronusQ {
                   P, Q, R, S,
                   basisSet, engines[thread_id],
                   shellPrims_, coefBlocks_, workBlocks[thread_id],
-                  resPQRS);
+                  resPQRS, this->libintOperator());
               lt2ERI += counter_timer.second;
               lc2ERI += counter_timer.first;
 
@@ -5619,6 +5692,13 @@ namespace ChronusQ {
       }
     }
 
+    if (kernel_ == Kernel::ShortRangeErfc) {
+      if (alg_ != CHOLESKY_ALG::DYNAMIC_ERI)
+        CErr("Short-range erfc RI ERIs are only implemented for DYNAMIC_ERI.",std::cout);
+      if (libcint_)
+        CErr("Short-range erfc RI ERIs are only implemented with Libint2.",std::cout);
+    }
+
     if (updatePivots_) {
       std::cout << "Parameters and options:" << std::endl;
       std::cout << bannerMid << std::endl;
@@ -5698,9 +5778,11 @@ namespace ChronusQ {
       engines.resize(nthreads);
 
       // Initialize the first engine for the integral evaluation
-      engines[0] = libint2::Engine(libint2::Operator::coulomb,
+      engines[0] = libint2::Engine(this->libintOperator(),
         basisSet.maxPrim, basisSet.maxL,0);
       engines[0].set_precision(0.);
+      if (kernel_ == Kernel::ShortRangeErfc)
+        engines[0].set_params(omega_);
 
       // Copy over the engines to other threads if need be
       for(size_t i = 1; i < nthreads; i++) engines[i] = engines[0];

@@ -49,6 +49,37 @@ TEST( NEO_RKS, water_sto3g_protsp_rb3lyp_uepc19) {
  
 }
 
+// H2O: electronic R-HSE06/cc-pVDZ with U-EPC17/prot-pb4-d.
+TEST( NEO_RKS, h2o_ccpvdz_pb4d_rhse06_uepc17_incore) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rks/h2o_cc-pVDZ_pb4d_rhse06_uepc17",
+    "h2o_cc-pVDZ_pb4d_rhse06_uepc17.bin.ref" );
+
+}
+
+// HCN: electronic R-CAM-B3LYP/cc-pVDZ with U-EPC17/prot-pb4-d.
+TEST( NEO_RKS, hcn_ccpvdz_pb4d_rcamb3lyp_uepc17_direct) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rks/hcn_cc-pVDZ_pb4d_rcamb3lyp_uepc17",
+    "hcn_cc-pVDZ_pb4d_rcamb3lyp_uepc17.bin.ref" );
+
+}
+
+TEST( NEO_RKS, hcn_ccpvdz_pb4d_rcamb3lyp_uepc17_stepwise) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rks/hcn_cc-pVDZ_pb4d_rcamb3lyp_uepc17_stepwise",
+    "hcn_cc-pVDZ_pb4d_rcamb3lyp_uepc17.bin.ref" );
+
+}
+
+// COH2: electronic R-wB97X/cc-pVDZ with U-EPC17/prot-pb4-d.
+TEST( NEO_RKS, coh2_ccpvdz_pb4d_rwb97x_uepc17_incore) {
+
+  CQNEOSCFTEST( "scf/serial/neo_rks/coh2_cc-pVDZ_pb4d_rwb97x_uepc17",
+    "coh2_cc-pVDZ_pb4d_rwb97x_uepc17.bin.ref" );
+
+}
+
 
 #ifdef _CQ_DO_PARTESTS
 
@@ -76,7 +107,4 @@ TEST( NEO_RKS, par_water_sto3g_protsp_rb3lyp_uepc19) {
 }
 
 #endif
-
-
-
 

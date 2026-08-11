@@ -64,6 +64,39 @@ TEST( GAUXC_KS, Water_ccpVTZ_B3LYP_CUSTOM ) {
       true, true, true, true, true, true, false, "no", true );
 
 }
+
+// HSE06 / cc-pVDZ
+TEST( GAUXC_KS, Water_ccpVDZ_HSE06_Direct ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVDZ_HSE06_direct", "water_cc-pVDZ_HSE06_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// LC-wPBE / cc-pVDZ
+TEST( GAUXC_KS, Water_ccpVDZ_LCwPBE_Direct ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVDZ_LCwPBE_direct", "water_cc-pVDZ_LCwPBE_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// wB97 / cc-pVDZ
+TEST( GAUXC_KS, Water_ccpVDZ_WB97_InCore ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVDZ_WB97_incore", "water_cc-pVDZ_WB97_incore.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// wB97 / cc-pVDZ (Cholesky-RI short-range erfc-K vs incore reference)
+TEST( GAUXC_KS, Water_ccpVDZ_WB97_RI_DynamicERI ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/water_cc-pVDZ_WB97_ri_dynamiceri", "water_cc-pVDZ_WB97_incore.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
 // -------------------END RKS TESTS-------------------
 
 
@@ -84,7 +117,41 @@ TEST( GAUXC_KS, Oxygen_6311pGss_BLYP ) {
       true, true, true, true, true, true, false, "no", true  );
 
 }
+
+// LRC-wPBE / cc-pVDZ
+TEST( GAUXC_KS, O2_ccpVDZ_ULRCwPBE_Direct ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/o2_cc-pVDZ_ULRCwPBE_direct", "o2_cc-pVDZ_ULRCwPBE_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+}
+
+// wB97X / cc-pVDZ
+TEST( GAUXC_KS, O2_ccpVDZ_UWB97X_Direct ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/o2_cc-pVDZ_UWB97X_direct", "o2_cc-pVDZ_UWB97X_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
+// wB97X / cc-pVDZ (Cholesky-RI short-range erfc-K vs direct reference)
+TEST( GAUXC_KS, O2_ccpVDZ_UWB97X_RI_DynamicERI ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/o2_cc-pVDZ_UWB97X_ri_dynamiceri", "o2_cc-pVDZ_UWB97X_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+
 // -------------------END UKS TESTS-------------------
+
+// -------------------START GKS TESTS-------------------
+// CAM-B3LYP / cc-pVDZ
+TEST( GAUXC_KS, O2_ccpVDZ_GCAMB3LYP_Direct ) {
+
+  CQSCFTEST( "scf/serial/gauxc_ks/o2_cc-pVDZ_GCAMB3LYP_direct", "o2_cc-pVDZ_GCAMB3LYP_direct.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true  );
+
+}
+// -------------------END GKS TESTS-------------------
 
 
 

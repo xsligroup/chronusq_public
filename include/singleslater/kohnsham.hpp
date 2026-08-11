@@ -31,6 +31,9 @@
 #include <dft.hpp>
 #include <gauxcutils.hpp>
 #include <physcon.hpp>
+#include <fockbuilder/kcoef.hpp>
+#include <particleintegrals/twopints/gtodirecttpi.hpp>
+#include <particleintegrals/twopints/impl.hpp>
 
 // KS_DEBUG_LEVEL == 1 - Timing
 #ifndef KS_DEBUG_LEVEL
@@ -71,6 +74,11 @@ namespace ChronusQ {
     std::vector<std::vector<double> > XCGradient; ///< Exchange-correlation energy gradient
 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<IntsT>> VXC; ///< VXC terms
+
+    // Allocated during GauXC setup only for range-separated functionals
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> shortRangeExchangeMatrix;
+    std::shared_ptr<TPIContractions<MatsT,IntsT>>         shortRangeExchangeContraction;
+    std::shared_ptr<GradInts<TwoPInts,IntsT>>             shortRangeExchangeGradIntegrals;
 
     // Current Timings
     double VXCDur;
@@ -167,6 +175,121 @@ namespace ChronusQ {
     KohnSham(KohnSham<MatsT,IntsT> &&other);
 
 
+    void setupRangeSeparatedHybridExchange(const ExchCXX::HybCoeffs &rangeSeparatedHybridCoefficients) {
+      if (this->nC > 2)
+        CErr("Range-separated hybrid exchange is currently implemented only for 1C and 2C references.");
+      if (this->basisSet().basisType != REAL_GTO)
+        CErr("Range-separated hybrid exchange is currently implemented only for real GTOs.");
+
+      // Build the erfc TPI using the same settings as the regular electronic TPI.
+      if (not this->aoints_->shortRangeTPI) {
+        this->aoints_->shortRangeTPI = this->aoints_->TPI->createWithKernel(TPI_KERNEL::ShortRangeErfc, rangeSeparatedHybridCoefficients.omega);
+        EMPerturbation pert;
+        auto begin = tick();
+        this->aoints_->shortRangeTPI->computeAOInts(this->basisSet(), this->molecule(), pert,
+                                                    ELECTRON_REPULSION, this->fockBuilder->getHamiltonianOptions());
+        if (MPIRank(this->comm) == 0)
+          std::cout << "    ShortRange-Erfc-K integral setup duration = " << tock(begin) << " s" << std::endl;
+
+        if (auto srtpi = std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(this->aoints_->shortRangeTPI))
+          if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(srtpi->eri3j()))
+            if (srtpi->redistribute()) eri3j->redistributeToSplitNBRI();
+      }
+
+      // Set up contraction and output matrix
+      shortRangeExchangeContraction = makeTPIContraction<MatsT,IntsT>(this->aoints_->shortRangeTPI);
+      shortRangeExchangeContraction->printContractionTiming = this->scfControls.printContractionTiming;
+      shortRangeExchangeMatrix = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(*this->exchangeMatrix);
+
+      // The erfc-K gradient contribution stays direct for now (TODOAL: support Incore integrals)
+      std::shared_ptr<DirectTPI<IntsT>> shortRangeExchangeDirectTPI;
+      if (auto directTPI = std::dynamic_pointer_cast<DirectTPI<IntsT>>(this->aoints_->shortRangeTPI)) {
+        shortRangeExchangeDirectTPI = directTPI;
+      } else {
+        shortRangeExchangeDirectTPI =
+          std::make_shared<DirectTPI<IntsT>>(this->basisSet(), this->basisSet(), this->molecule(), 1e-12,
+                                             DirectTPI<IntsT>::Kernel::ShortRangeErfc, rangeSeparatedHybridCoefficients.omega);
+        shortRangeExchangeDirectTPI->computeSchwarz();
+      }
+
+      std::vector<std::shared_ptr<DirectTPI<IntsT>>> gradIntegrals(3*this->molecule().nAtoms,shortRangeExchangeDirectTPI);
+      shortRangeExchangeGradIntegrals = std::make_shared<GradInts<TwoPInts,IntsT>>(this->basisSet().nBasis,this->molecule().nAtoms,
+                                                                                   std::move(gradIntegrals));
+    }
+
+    void setupRangeSeparatedHybridExchange() override {
+      if (not this->gauxcUtils or not this->gauxcUtils->isRangeSeparatedHybrid()) return;
+      // Clear the existing erfc tensor so it is rebuilt for the current geometry.
+      if (this->aoints_) this->aoints_->shortRangeTPI = nullptr;
+      shortRangeExchangeContraction.reset();
+      shortRangeExchangeMatrix.reset();
+      shortRangeExchangeGradIntegrals.reset();
+      setupRangeSeparatedHybridExchange(this->gauxcUtils->hybridCoefficients);
+    }
+
+    /**
+     *  \brief Form the short-range erfc exchange correction.
+     *
+     *  K_RSH = alpha K_full + beta K_erfc. 
+     */
+    void formRangeSeparatedHybridExchange(EMPerturbation &pert, const ExchCXX::HybCoeffs &rangeSeparatedHybridCoefficients) {
+
+      if (not shortRangeExchangeContraction)
+        CErr("Range-separated hybrid exchange was not initialized during setup.");
+
+      shortRangeExchangeMatrix->clear();
+      auto shortRangeExchangeBegin = tick();
+
+      auto ritpi_incore = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT,IntsT>>(shortRangeExchangeContraction);
+      auto ritpi_dist   = std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT,IntsT>>(shortRangeExchangeContraction);
+      const bool useKCoef = this->nC == 1 and (ritpi_incore or (ritpi_dist and ritpi_dist->canUseKCoef()));
+
+      if (useKCoef) {
+        contractExchangeKCoef(this->comm, this->iCS, not this->denEqCoeff_, *this,
+                              shortRangeExchangeContraction, *shortRangeExchangeMatrix);
+      } else {
+        std::vector<TwoBodyContraction<MatsT>> contractions;
+        contractions.push_back({this->onePDM->S().pointer(),
+                                shortRangeExchangeMatrix->S().pointer(),
+                                true, EXCHANGE});
+        if (shortRangeExchangeMatrix->hasZ())
+          contractions.push_back({this->onePDM->Z().pointer(),
+                                  shortRangeExchangeMatrix->Z().pointer(),
+                                  true, EXCHANGE});
+        if (shortRangeExchangeMatrix->hasXY()) {
+          contractions.push_back({this->onePDM->Y().pointer(),
+                                  shortRangeExchangeMatrix->Y().pointer(),
+                                  true, EXCHANGE});
+          contractions.push_back({this->onePDM->X().pointer(),
+                                  shortRangeExchangeMatrix->X().pointer(),
+                                  true, EXCHANGE});
+        }
+        shortRangeExchangeContraction->twoBodyContract(this->comm, true, contractions, pert);
+      }
+
+      if (MPIRank(this->comm) == 0 and this->scfControls.printContractionTiming)
+        std::cout << "        ShortRange-Erfc-K (RSH) " << (useKCoef ? "K-coeff" : "density")
+                  << " contraction duration = " << tock(shortRangeExchangeBegin) << " s" << std::endl;
+
+      if (MPIRank(this->comm) == 0) {
+        const double shortRangeExchangeCoefficient = rangeSeparatedHybridCoefficients.beta;
+        *this->twoeH -= shortRangeExchangeCoefficient * *shortRangeExchangeMatrix;
+        *this->fockMatrix -= shortRangeExchangeCoefficient * *shortRangeExchangeMatrix;
+      }
+    }
+
+    std::vector<double> getShortRangeExchangeGrad(
+      EMPerturbation &pert, double shortRangeExchangeCoefficient) {
+
+      if(not shortRangeExchangeGradIntegrals)
+        CErr("Range-separated exchange gradient integrals were not initialized.");
+      shortRangeExchangeGradIntegrals->computeAOInts(this->basisSet(),this->basisSet(),this->molecule(),pert,
+                                                     ELECTRON_REPULSION,this->fockBuilder->getHamiltonianOptions());
+      return this->fockBuilder->getShortRangeExchangeGrad(*this,pert,*shortRangeExchangeGradIntegrals,
+                                                          shortRangeExchangeCoefficient);
+    }
+
+
     /**
      *  \brief Kohn-Sham specialization of formFock
      *
@@ -174,13 +297,21 @@ namespace ChronusQ {
      */  
     virtual void formFock(EMPerturbation &pert, bool increment = false, double HFX = 0.) {
       double xHFX;
+      const ExchCXX::HybCoeffs *rangeSeparatedHybridCoefficients = nullptr;
       if (not this->intParam.useGauXC) {
         xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
       } else {
-        xHFX = this->gauxcUtils->xHFX;
+        if (this->gauxcUtils->isRangeSeparatedHybrid()) {
+          rangeSeparatedHybridCoefficients = &this->gauxcUtils->hybridCoefficients;
+          xHFX = rangeSeparatedHybridCoefficients->alpha;
+        } else {
+          xHFX = this->gauxcUtils->xHFX;
+        }
       }
 
       SingleSlater<MatsT,IntsT>::formFock(pert,increment,xHFX);
+      if (rangeSeparatedHybridCoefficients)
+        formRangeSeparatedHybridExchange(pert, *rangeSeparatedHybridCoefficients);
 
       if( doVXC_ ) {
         ProgramTimer::tick("Form VXC");
@@ -441,8 +572,16 @@ namespace ChronusQ {
      *  Compute EXC gradient and increment the HF gradient
      */
     std::vector<double> getGrad(EMPerturbation& pert, bool equil, bool saveInts, double xHFX = 1.) {
-      
-      xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
+
+      const ExchCXX::HybCoeffs *rangeSeparatedHybridCoefficients = nullptr;
+      if(not this->intParam.useGauXC) {
+        xHFX = functionals.size() != 0 ? functionals.back()->xHFX : 1.;
+      } else if(this->gauxcUtils->isRangeSeparatedHybrid()) {
+        rangeSeparatedHybridCoefficients = &this->gauxcUtils->hybridCoefficients;
+        xHFX = rangeSeparatedHybridCoefficients->alpha;
+      } else {
+        xHFX = this->gauxcUtils->xHFX;
+      }
 
       size_t nAtoms = this->molecule().nAtoms;
       size_t nGrad = 3*nAtoms;
@@ -450,6 +589,11 @@ namespace ChronusQ {
       // Obtain HF gradient
       std::vector<double> gradient(nGrad, 0.);
       gradient = SingleSlater<MatsT,IntsT>::getGrad(pert,equil,saveInts,xHFX);
+
+      if(rangeSeparatedHybridCoefficients) {
+        auto shortRangeGradient = getShortRangeExchangeGrad(pert,rangeSeparatedHybridCoefficients->beta);
+        std::transform(gradient.begin(),gradient.end(),shortRangeGradient.begin(),gradient.begin(),std::plus<double>());
+      }
 
       for(size_t ic = 0; ic < nAtoms; ic++) 
         for(size_t XYZ = 0; XYZ < 3; XYZ++) 

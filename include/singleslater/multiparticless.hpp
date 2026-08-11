@@ -389,6 +389,24 @@ namespace ChronusQ {
         out << bannerTop << std::endl;
       }
 
+      void setupRangeSeparatedHybridExchange() override {
+        if (not this->gauxcUtils or not this->gauxcUtils->isRangeSeparatedHybrid())
+          return;
+
+        // Propagate shared settings (including gauxcUtils) to subsystems first
+        setSubSetup();
+
+        // Rebuild the electronic subsystem's short-range erfc exchange on the current geometry
+        auto electronic = subsystems.find("E");
+        if(electronic == subsystems.end())
+          CErr("NEO range-separated hybrid exchange requires an electronic Kohn-Sham subsystem labeled E.");
+        auto ks = std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(electronic->second);
+        if(not ks or ks->nC != 1)
+          CErr("NEO range-separated hybrid exchange is currently implemented only for RKS/UKS Kohn-Sham electronic subsystems.");
+
+        ks->setupRangeSeparatedHybridExchange();
+      }
+
       // Propagate options that were set by value in the *Options functions
       void setSubSetup() override {
         applyToEachLabeled([&](const std::string& label, SubSSPtr& ss){
@@ -403,7 +421,6 @@ namespace ChronusQ {
           ss->gauxcUtils = this->gauxcUtils;
           ss->scrBinFileName = this->scrBinFileName;
         });
-
       }
 
       void printSetup(std::ostream& out);

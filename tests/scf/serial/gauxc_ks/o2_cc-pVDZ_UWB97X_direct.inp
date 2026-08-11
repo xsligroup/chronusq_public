@@ -1,0 +1,36 @@
+# O2 U-wB97X/cc-pVDZ triplet with direct full and short-range K builds.
+[Molecule]
+charge = 0
+mult = 3
+geom:
+ O               0.00000000000   0.00000000000   0.00000000000
+ O               1.20000000000   0.00000000000   0.00000000000
+
+[QM]
+reference = Real UWB97X
+job = SCF
+
+[SCF]
+accuracy = 1e-10
+maxiter = 100
+
+[DFTINT]
+inhouse = false
+nrad = 99
+nang = 590
+
+[GAUXC]
+grid = ultrafine
+pruningscheme = unpruned
+radialquad = murrayhandylaming
+xcweightalg = becke
+
+[INTS]
+alg = direct
+
+[BASIS]
+basis = cc-pvdz
+
+[MISC]
+nsmp = 1
+mem = 256 MB

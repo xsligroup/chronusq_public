@@ -167,6 +167,14 @@ namespace ChronusQ {
     virtual void printProperties() = 0;
     virtual void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) = 0;
 
+    // Set up the short-range exchange integrals used by range-separated hybrids.  
+    // Overridden by derived classes that support it (KohnSham, MultiParticleSS); 
+    // The base implementation errors out for unsupported references.
+    virtual void setupRangeSeparatedHybridExchange() {
+      if (gauxcUtils and gauxcUtils->isRangeSeparatedHybrid())
+        CErr("Range-separated hybrid exchange is not implemented for SingleSlaterBase.");
+    }
+
 #ifdef TEST_MOINTSTRANSFORMER
     virtual void MOIntsTransformationTest(EMPerturbation &pert) = 0;
 #endif

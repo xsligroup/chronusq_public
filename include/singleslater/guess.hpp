@@ -1395,6 +1395,12 @@ namespace ChronusQ {
             classicalSSOptions.buildSingleSlater(std::cout,  tempMol, 
                 this->basisSet(), tempaoints));
     classicalSS->gauxcUtils = this->gauxcUtils;
+    if(classicalSS->gauxcUtils and classicalSS->gauxcUtils->isRangeSeparatedHybrid()) {
+      auto classicalKS = std::dynamic_pointer_cast<KohnSham<MatsT,IntsT>>(classicalSS);
+      if(not classicalKS)
+        CErr("A range-separated classical NEO guess requires a Kohn-Sham reference.");
+      classicalKS->setupRangeSeparatedHybridExchange(classicalSS->gauxcUtils->hybridCoefficients);
+    }
 
     classicalSS->printLevel = 1;
     classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;

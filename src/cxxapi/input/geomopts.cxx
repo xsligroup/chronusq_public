@@ -355,6 +355,7 @@ namespace ChronusQ {
             ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, mol, MPI_COMM_WORLD);
           else
             ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems.front().basis, mol, MPI_COMM_WORLD);
+          ss->setupRangeSeparatedHybridExchange();
         }
 
         // Update one-electron integrals, metric transformations and Fock matrices.

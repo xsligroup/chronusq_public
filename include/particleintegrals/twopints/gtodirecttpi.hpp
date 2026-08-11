@@ -23,15 +23,31 @@
  */
 #pragma once
 
+#include <cmath>
 #include <particleintegrals/twopints.hpp>
 
 namespace ChronusQ {
+
+  inline libint2::Operator libintOperator(TPI_KERNEL kernel) {
+    switch (kernel) {
+      case TPI_KERNEL::Coulomb:
+        return libint2::Operator::coulomb;
+      case TPI_KERNEL::ShortRangeErfc:
+        return libint2::Operator::erfc_coulomb;
+    }
+    CErr("Unrecognized two-electron kernel in libintOperator.");
+    return libint2::Operator::coulomb;
+  }
 
   template <typename IntsT>
   class DirectTPI : public TwoPInts<IntsT> {
 
     template <typename IntsU>
     friend class DirectTPI;
+
+  public:
+
+    using Kernel = TPI_KERNEL;
 
   protected:
     BasisSet &basisSet_;
@@ -47,18 +63,22 @@ namespace ChronusQ {
 
     // Constructor
     DirectTPI() = delete;
-    DirectTPI(BasisSet &basis, BasisSet &basis2, Molecule &mol, double threshSchwarz):
-        TwoPInts<IntsT>(basis.nBasis, basis2.nBasis), 
+    DirectTPI(BasisSet &basis, BasisSet &basis2, Molecule &mol,
+              double threshSchwarz, Kernel kernel = Kernel::Coulomb,
+              double omega = 0.):
+        TwoPInts<IntsT>(basis.nBasis, basis2.nBasis, kernel, omega),
         basisSet_(basis), basisSet2_(basis2),molecule_(mol),
         threshSchwarz_(threshSchwarz) {}
     DirectTPI( const DirectTPI &other ):
-        DirectTPI(other.basisSet(), other.basisSet2(), other.molecule(), other.threshSchwarz_) {
+        DirectTPI(other.basisSet(), other.basisSet2(), other.molecule(),
+                  other.threshSchwarz_, other.kernel(), other.rangeSeparationParameter()) {
       std::copy_n(other.schwarz_, basisSet_.nShell*basisSet_.nShell, schwarz_);
       std::copy_n(other.schwarz2_, basisSet2_.nShell*basisSet2_.nShell, schwarz2_);
     }
     template <typename IntsU>
     DirectTPI( const DirectTPI<IntsU> &other, int = 0 ):
-        DirectTPI(other.basisSet_, other.basisSet2_, other.molecule_, other.threshSchwarz_) {
+        DirectTPI(other.basisSet_, other.basisSet2_, other.molecule_,
+                  other.threshSchwarz_, other.kernel(), other.rangeSeparationParameter()) {
       if (other.schwarz_) {
         size_t NS = basisSet().nShell;
         schwarz_ = CQMemManager::get().malloc<double>(NS*NS);
@@ -90,6 +110,16 @@ namespace ChronusQ {
     double*& schwarz2() { return schwarz2_; }
     double*& schwarzGrad() { return schwarzGrad_; }
     double*& schwarzGrad2() { return schwarzGrad2_; }
+
+    libint2::Operator libintOperator() const {
+      return ChronusQ::libintOperator(this->kernel());
+    }
+
+    // Build the same direct TPI over a different interaction kernel
+    std::shared_ptr<TwoPInts<IntsT>> createWithKernel(TPI_KERNEL kernel, double omega) const override {
+      return std::make_shared<DirectTPI<IntsT>>(basisSet_, basisSet2_, molecule_,
+                                                threshSchwarz_, kernel, omega);
+    }
 
     // Single element interfaces
     virtual IntsT operator()(size_t p, size_t q, size_t r, size_t s) const override {

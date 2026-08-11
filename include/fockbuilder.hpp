@@ -78,6 +78,9 @@ namespace ChronusQ {
 
     // Compute the 2e gradient
     virtual std::vector<double> getGDGrad(SingleSlater<MatsT,IntsT>&, EMPerturbation&, double xHFX = 1.);
+
+    // Compute the short-range exact-exchange contribution to the 2e gradient.
+    virtual std::vector<double> getShortRangeExchangeGrad(SingleSlater<MatsT,IntsT>&, EMPerturbation&, GradInts<TwoPInts,IntsT>&, double coefficient);
     
     // Compute the Pulay gradient
     std::vector<double> getPulayGrad(SingleSlater<MatsT,IntsT>&, bool, bool useW = true);

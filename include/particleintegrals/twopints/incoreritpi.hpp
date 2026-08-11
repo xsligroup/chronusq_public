@@ -23,8 +23,10 @@
  */
 #pragma once
 
+#include <cmath>
 #include <particleintegrals/twopints.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
+#include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <cqlinalg/blas1.hpp>
 #include <cqlinalg/blas3.hpp>
 #include <cqlinalg/blasutil.hpp>
@@ -75,21 +77,25 @@ namespace ChronusQ {
 
     // Constructor
     InCoreRITPI() = delete;
-    InCoreRITPI(size_t nb, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
-        InCoreTPI<IntsT>(nb), NBRI(0), NBNBRI(0), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
+    InCoreRITPI(size_t nb, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false,
+                TPI_KERNEL kernel = TPI_KERNEL::Coulomb, double omega = 0.):
+        InCoreTPI<IntsT>(nb, 0, kernel, omega), NBRI(0), NBNBRI(0), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
       malloc();
     }
-    InCoreRITPI(size_t nb, size_t nbri, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
-        InCoreTPI<IntsT>(nb), NBRI(nbri), NBNBRI(nb*nbri), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
+    InCoreRITPI(size_t nb, size_t nbri, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false,
+                TPI_KERNEL kernel = TPI_KERNEL::Coulomb, double omega = 0.):
+        InCoreTPI<IntsT>(nb, 0, kernel, omega), NBRI(nbri), NBNBRI(nb*nbri), comm_(comm), distributed_(distributed), redistribute_(redistribute) {
       malloc();
     }
     InCoreRITPI( const InCoreRITPI &other ):
-        InCoreRITPI(other.nBasis(), other.nRIBasis()) {
+        InCoreRITPI(other.nBasis(), other.nRIBasis(), MPI_COMM_NULL, false, false,
+                    other.kernel(), other.rangeSeparationParameter()) {
       std::copy_n(other.eri3j_->data(), this->nBasis()*NBNBRI, eri3j_->data());
     }
     template <typename IntsU>
     InCoreRITPI( const InCoreRITPI<IntsU> &other, int = 0 ):
-        InCoreRITPI(other.nBasis(), other.nRIBasis()) {
+        InCoreRITPI(other.nBasis(), other.nRIBasis(), MPI_COMM_NULL, false, false,
+                    other.kernel(), other.rangeSeparationParameter()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real InCoreRITPI from a Complex one.");
@@ -348,6 +354,10 @@ namespace ChronusQ {
     template <typename IntsU>
     friend class InCoreCholeskyRIERI;
 
+  public:
+
+    using Kernel = TPI_KERNEL;
+
   protected:
     CHOLESKY_ALG alg_; // Algorithm for building 3-index Cholesky vectors
     double tau_; // Maximum error allowed in the decomposition
@@ -385,8 +395,9 @@ namespace ChronusQ {
     InCoreCholeskyRIERI(size_t nb, double tau,
         CHOLESKY_ALG alg = CHOLESKY_ALG::DYNAMIC_ERI, bool genContr = true,
         double sigma = 0.01, size_t maxQual = 1000, size_t minShrink = 10,
-        bool build4I = false, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false):
-        InCoreRITPI<IntsT>(nb, comm, distributed, redistribute), alg_(alg), tau_(tau),
+        bool build4I = false, MPI_Comm comm = MPI_COMM_NULL, bool distributed = false, bool redistribute = false,
+        Kernel kernel = Kernel::Coulomb, double omega = 0.):
+        InCoreRITPI<IntsT>(nb, comm, distributed, redistribute, kernel, omega), alg_(alg), tau_(tau),
         sigma_(sigma), maxQual_(maxQual), minShrinkCycle_(minShrink),
         generalContraction_(genContr), build4I_(build4I) {}
 
@@ -412,6 +423,18 @@ namespace ChronusQ {
     const std::vector<size_t>& pivots() const { return pivots_; }// List of selected pivots
     void setUpdatePivots(bool updatePivots) { updatePivots_ = updatePivots; }
     bool updatePivots() const { return updatePivots_; }
+
+    libint2::Operator libintOperator() const {
+      return ChronusQ::libintOperator(this->kernel());
+    }
+
+    // Rebuild the Cholesky RI TPI over a different interaction kernel
+    std::shared_ptr<TwoPInts<IntsT>> createWithKernel(TPI_KERNEL kernel, double omega) const override {
+      return std::make_shared<InCoreCholeskyRIERI<IntsT>>(
+          this->nBasis(), tau_, alg_, generalContraction_,
+          sigma_, maxQual_, minShrinkCycle_, build4I_, this->comm(),
+          this->isDistributed(), this->redistribute(), kernel, omega);
+    }
 
     // 4-index ERI direct access
     void setFourIndexERI(std::shared_ptr<InCore4indexTPI<IntsT>> eri4I) {
@@ -500,6 +523,8 @@ namespace ChronusQ {
       out << "    * Contraction Algorithm: ";
       out << "INCORE Cholesky decomposition RI (Gemm)";
       out << std::endl;
+      if (this->kernel() == Kernel::ShortRangeErfc)
+        out << "    * Short-range erfc kernel, omega = " << this->rangeSeparationParameter() << std::endl;
       if (printFull) {
         out << bannerTop << std::endl;
         size_t NB = this->nBasis(), NBRI = this->nRIBasis();

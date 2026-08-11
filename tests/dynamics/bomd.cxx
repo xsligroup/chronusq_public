@@ -34,6 +34,30 @@ TEST( BOMD, h2o_bomd_rb3lyp ) {
 
 }
 
+// Classical water R-HSE06/cc-pVDZ RSH gradient
+TEST( BOMD, h2o_bomd_rhse06 ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/bomd/h2o_bomd_rhse06",
+    "h2o_bomd_rhse06.bin.ref");
+
+}
+
+// HCN NEO R-CAM-B3LYP/cc-pVDZ + U-EPC17/prot-pb4-d RSH gradient direct
+TEST( BOMD, hcn_neo_bomd_rcamb3lyp_uepc17 ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/bomd/hcn_neo_bomd_rcamb3lyp_uepc17",
+    "hcn_neo_bomd_rcamb3lyp_uepc17.bin.ref");
+
+}
+
+// HCN NEO R-CAM-B3LYP/cc-pVDZ + U-EPC17/prot-pb4-d RSH gradient incore
+TEST( BOMD, hcn_neo_bomd_rcamb3lyp_uepc17_incore ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/bomd/hcn_neo_bomd_rcamb3lyp_uepc17_incore",
+    "hcn_neo_bomd_rcamb3lyp_uepc17.bin.ref");
+
+}
+
 #ifdef _CQ_DO_PARTESTS
 TEST( BOMD, PAR_h2o_bomd_rb3lyp ) {
 

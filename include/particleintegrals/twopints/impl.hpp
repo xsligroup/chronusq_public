@@ -31,6 +31,7 @@
 #include <particleintegrals/twopints/incoreritpi.hpp>
 #include <particleintegrals/twopints/incoreasymmritpi.hpp>
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
+#include <particleintegrals/twopints/distributedritpi.hpp>
 #include <typeinfo>
 #include <memory>
 
@@ -83,6 +84,38 @@ namespace ChronusQ {
       std::stringstream errMsg;
       errMsg << "TPIContractions implementation \"" << tID.name() << "\" not registered in convert." << std::endl;
       CErr(errMsg.str(),std::cout);
+    }
+
+    return nullptr;
+
+  }
+
+  /**
+   *  \brief Build TPIContraction object matching the runtime TwoPInts object.
+   */
+  template <typename MatsT, typename IntsT>
+  std::shared_ptr<TPIContractions<MatsT,IntsT>>
+  makeTPIContraction(std::shared_ptr<TwoPInts<IntsT>> tpi) {
+
+    if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<IntsT>>(tpi)) {
+
+      return std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(tpi_typed);
+
+    } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<IntsT>>(tpi)) {
+
+      if (std::dynamic_pointer_cast<DistributedERI3J<IntsT>>(tpi_typed->eri3j()))
+        return std::make_shared<DistributedRITPIContraction<MatsT,IntsT>>(tpi_typed);
+      else
+        return std::make_shared<InCoreRITPIContraction<MatsT,IntsT>>(tpi_typed);
+
+    } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(tpi)) {
+
+      return std::make_shared<InCore4indexTPIContraction<MatsT,IntsT>>(tpi_typed);
+
+    } else {
+
+      CErr("Invalid TPInts type in makeTPIContraction.",std::cout);
+
     }
 
     return nullptr;

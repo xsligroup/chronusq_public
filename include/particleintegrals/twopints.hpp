@@ -22,11 +22,18 @@
  *
  */
 #pragma once
+#include <cmath>
 #include <particleintegrals.hpp>
 #include <matrix.hpp>
 #include <util/mpi.hpp>
 
 namespace ChronusQ {
+
+  /// Two-particle interaction kernel: full Coulomb or short-range erfc-attenuated
+  enum class TPI_KERNEL {
+    Coulomb,
+    ShortRangeErfc
+  };
 
   enum TWOBODY_CONTRACTION_TYPE {
     COULOMB, ///< (mn | kl) X(lk)
@@ -118,9 +125,12 @@ namespace ChronusQ {
   class TwoPInts : public ParticleIntegrals {
 
   protected:
-    
-    // second basis numbers 
+
+    // second basis numbers
     size_t sNB;
+
+    TPI_KERNEL kernel_ = TPI_KERNEL::Coulomb; ///< Interaction kernel (Coulomb or short-range erfc)
+    double omega_ = 0.; ///< Range-separation parameter for short-range integrals
 
   public:
 
@@ -130,17 +140,24 @@ namespace ChronusQ {
     TwoPInts( const TwoPInts & ) = default;
     TwoPInts( TwoPInts && ) = default;
 
-    TwoPInts(size_t nb, size_t snb = 0):
-        ParticleIntegrals(nb), sNB(snb) {
-        
+    TwoPInts(size_t nb, size_t snb = 0,
+             TPI_KERNEL kernel = TPI_KERNEL::Coulomb, double omega = 0.):
+        ParticleIntegrals(nb), sNB(snb), kernel_(kernel), omega_(omega) {
         // if the second basis does not exist, set it to be the same as the first one
         if (snb == 0) 
           sNB = nb; 
+
+        // Validate the range-separation parameter for attenuated kernels
+        if (kernel_ == TPI_KERNEL::ShortRangeErfc and
+            (not std::isfinite(omega_) or omega_ <= 0.))
+          CErr("Short-range erfc integrals require finite omega > 0.");
+        if (kernel_ == TPI_KERNEL::Coulomb) omega_ = 0.;
      }
 
     template <typename IntsU>
     TwoPInts( const TwoPInts<IntsU> &other, int = 0 ):
-        TwoPInts(other.nBasis(), other.snBasis()) {
+        TwoPInts(other.nBasis(), other.snBasis(),
+                 other.kernel(), other.rangeSeparationParameter()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real TwoPInts from a Complex one.");
@@ -149,9 +166,26 @@ namespace ChronusQ {
     // return the basis numbers of the second particle
     size_t snBasis() const { return sNB; }
 
+    // Interaction kernel accessors
+    TPI_KERNEL kernel() const { return kernel_; }
+    double rangeSeparationParameter() const { return omega_; }
+
     // Single element interfaces
     virtual IntsT operator()(size_t, size_t, size_t, size_t) const = 0;
     virtual IntsT operator()(size_t, size_t) const = 0;
+
+    /**
+     *  \brief Construct a fresh integral object of the same settings
+     *  but evaluated with a different interaction kernel
+     *
+     *  The base implementation errors out. 
+     *  Supported derived classes (Direct, Incore, DynamicERI) implement this in their own classes.
+     */
+    virtual std::shared_ptr<TwoPInts<IntsT>> createWithKernel(TPI_KERNEL kernel, double omega) const {
+      CErr("Short-range/attenuated kernels are not implemented for this "
+           "integral representation; use ALG=DIRECT, ALG=INCORE, or RI=DYNAMICERI.");
+      return nullptr;
+    }
 
     void broadcast(MPI_Comm comm = MPI_COMM_WORLD, int root = 0) override {
       ParticleIntegrals::broadcast(comm, root);
@@ -159,6 +193,10 @@ namespace ChronusQ {
 #ifdef CQ_ENABLE_MPI
       if( MPISize(comm) > 1 ) {
         MPIBCast(sNB,root,comm);
+        int kernel = static_cast<int>(kernel_);
+        MPIBCast(kernel, root, comm);
+        kernel_ = static_cast<TPI_KERNEL>(kernel);
+        MPIBCast(omega_, root, comm);
       }
 #endif
     }
@@ -309,13 +347,15 @@ namespace ChronusQ {
 
     // Constructor
     InCoreTPI() = delete;
-    InCoreTPI(size_t nb, size_t snb = 0):
-      TwoPInts<IntsT>(nb, snb) {}
+    InCoreTPI(size_t nb, size_t snb = 0,
+              TPI_KERNEL kernel = TPI_KERNEL::Coulomb, double omega = 0.):
+      TwoPInts<IntsT>(nb, snb, kernel, omega) {}
     InCoreTPI( const InCoreTPI &other ) = default;
     InCoreTPI( InCoreTPI &&other ) = default;
     template <typename IntsU>
     InCoreTPI( const InCoreTPI<IntsU> &other, int = 0 ):
-    InCoreTPI(other.nBasis(), other.snBasis()) {}
+    InCoreTPI(other.nBasis(), other.snBasis(),
+              other.kernel(), other.rangeSeparationParameter()) {}
 
     InCoreTPI& operator=( const InCoreTPI &other ) = default;
     InCoreTPI& operator=( InCoreTPI &&other ) = default;

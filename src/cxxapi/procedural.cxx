@@ -344,6 +344,7 @@ namespace ChronusQ {
         ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, ss->molecule(), MPI_COMM_WORLD);
       else
         ss->gauxcUtils = gauxcOptions->buildGauXCUtils(basis, ss->molecule(), MPI_COMM_WORLD);
+      ss->setupRangeSeparatedHybridExchange();
     }
     
     // Dispersion correction
@@ -477,6 +478,7 @@ namespace ChronusQ {
             ss->gauxcUtils = gauxcOptions->buildGauXCUtils(quantumSubsystems, mol, MPI_COMM_WORLD);
           else
             ss->gauxcUtils = gauxcOptions->buildGauXCUtils(basis, mol, MPI_COMM_WORLD);
+          ss->setupRangeSeparatedHybridExchange();
         }
 
         // Note, these guessSSOptions does not apply to NEO guess

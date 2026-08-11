@@ -34,6 +34,18 @@ namespace ChronusQ {
       std::shared_ptr<GauXC::XCIntegrator<Eigen::MatrixXd>> integrator_pointer=nullptr;
       GauXC::MultiParticleFunctionalSpec multiparticle_functional_spec;
 
+      // Hybrid functional coefficients through ExchCXX
+      // ExchCXX HybCoeffs definition for reference:
+      // double alpha = 0.0; // the coefficient of HF part for global hybrid functionals or the coefficient of long-range HF part for range-separated functionals
+      // double beta  = 0.0; // the deduction of the short-range part. Following the notation of libxc. So the real coefficient of short-range HF is alpha + beta
+      // double omega = 0.0; // the range-separation parameter
+      ExchCXX::HybCoeffs hybridCoefficients;
+
+      // Using the same definition as ExchCXX
+      bool isRangeSeparatedHybrid() const {
+        return hybridCoefficients.beta != 0.0 or hybridCoefficients.omega != 0.0;
+      }
+
       // Get xHFX from GauXC functional definition or input.
       double xHFX = 0.;
 
@@ -45,6 +57,7 @@ namespace ChronusQ {
 
       static ExchCXX::Functional get_functional(std::string fname);
       static ExchCXX::Functional get_epcfunctional(std::string fname);
+      static bool is_range_separated(std::string fname);
       static GauXC::Molecule make_gmol(const Molecule& molecule);
       static GauXC::BasisSet<double> make_gbasis(const BasisSet& basis);
       static ExchCXX::XCKernel get_xckernel(std::string kernel, ExchCXX::Spin xcSpin, ExchCXX::Backend xcBackend );

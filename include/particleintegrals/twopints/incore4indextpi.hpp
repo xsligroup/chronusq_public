@@ -44,20 +44,23 @@ namespace ChronusQ {
 
     // Constructor
     InCore4indexTPI() = delete;
-    InCore4indexTPI(size_t nb, size_t snb = 0):
-        InCoreTPI<IntsT>(nb, snb) {
+    InCore4indexTPI(size_t nb, size_t snb = 0,
+                    TPI_KERNEL kernel = TPI_KERNEL::Coulomb, double omega = 0.):
+        InCoreTPI<IntsT>(nb, snb, kernel, omega) {
       NB2  = this->nBasis()*this->nBasis();
       sNB2 = this->snBasis()*this->snBasis();
       NB3  = NB2 * this->snBasis();
       malloc();
     }
     InCore4indexTPI( const InCore4indexTPI &other ):
-        InCore4indexTPI(other.nBasis(), other.snBasis()) {
+        InCore4indexTPI(other.nBasis(), other.snBasis(),
+                        other.kernel(), other.rangeSeparationParameter()) {
       std::copy_n(other.TPI, NB2*sNB2, TPI);
     }
     template <typename IntsU>
     InCore4indexTPI( const InCore4indexTPI<IntsU> &other, int = 0 ):
-        InCore4indexTPI(other.nBasis(), other.snBasis()) {
+        InCore4indexTPI(other.nBasis(), other.snBasis(),
+                        other.kernel(), other.rangeSeparationParameter()) {
       if (std::is_same<IntsU, dcomplex>::value
           and std::is_same<IntsT, double>::value)
         CErr("Cannot create a Real InCore4indexTPI from a Complex one.");
@@ -114,9 +117,17 @@ namespace ChronusQ {
     virtual IntsT* pointer() override { return TPI; }
     virtual const IntsT* pointer() const override { return TPI; }
 
+    // Build the same incore TPI over a different interaction kernel
+    std::shared_ptr<TwoPInts<IntsT>> createWithKernel(TPI_KERNEL kernel, double omega) const override {
+      return std::make_shared<InCore4indexTPI<IntsT>>(this->nBasis(), this->snBasis(), kernel, omega);
+    }
+
     // Computation interfaces
     virtual void computeAOInts(BasisSet &basisSet, Molecule &mol,
         EMPerturbation &emPert, OPERATOR op, const HamiltonianOptions &hamiltonianOptions) {
+
+      if (this->kernel() == TPI_KERNEL::ShortRangeErfc and hamiltonianOptions.Libcint)
+        CErr("Short-range erfc incore ERIs are only implemented with Libint2.");
 
       // Use Libcint to compute nonrelativistic integrals
       if ( hamiltonianOptions.Libcint ) computeERIGCCINT(basisSet, mol, emPert, op, hamiltonianOptions);

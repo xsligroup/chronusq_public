@@ -51,6 +51,18 @@ ExchCXX::Functional GauXCUtils::get_functional(std::string fname) {
     return ExchCXX::Functional::LDA; 
   } else if (!fname.compare("BHANDH")) {
     return ExchCXX::Functional::BHANDH; 
+  } else if (!fname.compare("CAMB3LYP")) {
+    return ExchCXX::Functional::CAMB3LYP;
+  } else if (!fname.compare("HSE06")) {
+    return ExchCXX::Functional::HSE06;
+  } else if (!fname.compare("LRCWPBE")) {
+    return ExchCXX::Functional::LRCwPBE;
+  } else if (!fname.compare("LCWPBE")) {
+    return ExchCXX::Functional::LCwPBE;
+  } else if (!fname.compare("WB97")) {
+    return ExchCXX::Functional::wB97;
+  } else if (!fname.compare("WB97X")) {
+    return ExchCXX::Functional::wB97X;
   } else if (!fname.compare("CUSTOM")) {
     CErr("Custom Requires Functional Definition under GAUXC header.");
   
@@ -83,6 +95,19 @@ ExchCXX::Functional GauXCUtils::get_epcfunctional(std::string fname) {
     CErr("Invalid EPCFunctional for Gauxc");
   }
 
+}
+
+bool GauXCUtils::is_range_separated(std::string fname) {
+  // Derive from ExchCXX's own definition
+  if (not ExchCXX::functional_map.key_exists(fname)) return false;
+  try {
+    // is_range_separated() only reads hyb_coefs_, which is spin-independent.
+    // Build with Polarized so EPC kernels (which require polarized spin, e.g. EPC17_2) can be constructed
+    // treat any functional that cannot be built as not range-separated.
+    return ExchCXX::XCFunctional(ExchCXX::Backend::builtin, ExchCXX::functional_map.value(fname), ExchCXX::Spin::Polarized).is_range_separated();
+  } catch (const std::exception&) {
+    return false;
+  }
 }
 
 ExchCXX::XCKernel GauXCUtils::get_xckernel(std::string kernel, ExchCXX::Spin xcSpin, ExchCXX::Backend xcBackend) {

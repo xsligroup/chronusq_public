@@ -185,6 +185,8 @@ namespace ChronusQ {
 
     // 2-particle storage
     std::shared_ptr<TwoPInts<IntsT>> TPI = nullptr;
+    // Attenuated short-range TPI with erfc kernel for range-separated hybrid exchange
+    std::shared_ptr<TwoPInts<IntsT>> shortRangeTPI = nullptr;
 
     // Gradient storage
     std::shared_ptr<GradInts<OnePInts,IntsT>> gradOverlap = nullptr;

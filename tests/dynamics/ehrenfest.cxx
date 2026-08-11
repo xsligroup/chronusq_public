@@ -56,6 +56,20 @@ TEST( EHRENFEST_DYNAMICS, h2o_neoehrenfest_rb3lyp_epc17_mmut_tpb ) {
 
 }
 
+TEST( EHRENFEST_DYNAMICS, h2o_ehrenfest_rhse06_mmut ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/h2o_ehrenfest_rhse06_mmut",
+    "h2o_ehrenfest_rhse06_mmut.bin.ref");
+
+}
+
+TEST( EHRENFEST_DYNAMICS, hcn_neoehrenfest_rcamb3lyp_uepc17_mmut ) {
+
+  CQDYNAMICSTEST( "dynamics/serial/ehrenfest/hcn_neoehrenfest_rcamb3lyp_uepc17_mmut",
+    "hcn_neoehrenfest_rcamb3lyp_uepc17_mmut.bin.ref");
+
+}
+
 
 
 

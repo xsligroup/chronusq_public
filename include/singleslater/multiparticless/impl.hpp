@@ -215,14 +215,23 @@ namespace ChronusQ {
 
       // Intra-XC owned by the unified driver is added below. Independent KS
       //   subsystems continue to use their established gradient path.
-      if(ks and not ks->functionals.empty() and not unifiedIntraXC.count(label))
+      const bool ownsXCGrad = ks and (not ks->functionals.empty() or (ks->intParam.useGauXC and this->gauxcUtils));
+      if(ownsXCGrad and not unifiedIntraXC.count(label))
         localGradient = ks->getGrad(pert,equil,saveInts,xHFX);
       else {
         double subsystemXHFX = 1.;
-        if(ks and not ks->functionals.empty())
+        const ExchCXX::HybCoeffs *rshCoefficients = nullptr;
+        if(label == "E" and ks and this->gauxcUtils and this->gauxcUtils->isRangeSeparatedHybrid()) {
+          rshCoefficients = &this->gauxcUtils->hybridCoefficients;
+          subsystemXHFX = rshCoefficients->alpha;
+        } else if(ks and not ks->functionals.empty()) {
           subsystemXHFX = ks->functionals.back()->xHFX;
-        localGradient = ss->SingleSlater<MatsT,IntsT>::getGrad(
-          pert,equil,saveInts,subsystemXHFX);
+        }
+        localGradient = ss->SingleSlater<MatsT,IntsT>::getGrad(pert,equil,saveInts,subsystemXHFX);
+        if(rshCoefficients) {
+          auto shortRangeGradient = ks->getShortRangeExchangeGrad(pert,rshCoefficients->beta);
+          std::transform(localGradient.begin(),localGradient.end(),shortRangeGradient.begin(),localGradient.begin(),std::plus<double>());
+        }
       }
 
       for(size_t iGrad = 0; iGrad < nGrad; iGrad++)

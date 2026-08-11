@@ -1,0 +1,52 @@
+# H2O NEO R-HSE06/cc-pVDZ + U-EPC17/prot-pb4-d.
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O     0.0     -0.076    0.0
+ H     0.867    0.601    0.0  Q
+ H    -0.867    0.601    0.0  Q
+
+[QM]
+reference = Real RHSE06
+job = SCF
+
+[PROTQM]
+reference = Real UEPC17
+
+[SCF]
+neo = true
+guess = classical
+prot_guess = tight
+accuracy = 1e-10
+maxiter = 512
+
+[DFTINT]
+inhouse = false
+nrad = 99
+nang = 590
+
+[GAUXC]
+grid = ultrafine
+pruningscheme = unpruned
+radialquad = murrayhandylaming
+xcweightalg = becke
+
+[BASIS]
+basis = cc-pvdz
+
+[PBASIS]
+basis = prot-pb4-d
+
+[INTS]
+alg = incore
+
+[PINTS]
+alg = incore
+
+[EPINTS]
+alg = incore
+
+[MISC]
+nsmp = 1
+mem = 512 MB

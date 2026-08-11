@@ -1446,6 +1446,7 @@ namespace ChronusQ {
     const size_t nMat     = matList.size();
     const size_t nShell   = basisSet_.nShell;
     const size_t snShell  = basisSet2_.nShell;
+    const typename DirectTPI<IntsT>::Kernel eriKernel = tpi.kernel();
 
 
     // Check whether any of the contractions are non-hermetian
@@ -1470,9 +1471,12 @@ namespace ChronusQ {
     std::vector<libint2::Engine> engines(nThreads);
 
     // Construct engine for master thread
-    engines[0] = libint2::Engine(libint2::Operator::coulomb,
+    engines[0] = libint2::Engine(tpi.libintOperator(),
       std::max(basisSet_.maxPrim, basisSet2_.maxPrim), 
       std::max(basisSet_.maxL, basisSet2_.maxL),0);
+
+    if (eriKernel == DirectTPI<IntsT>::Kernel::ShortRangeErfc)
+      engines[0].set_params(tpi.rangeSeparationParameter());
 
 
     // Allocate scratch for raw integral batches
@@ -1824,16 +1828,34 @@ namespace ChronusQ {
 
 #if 1
         // Evaluate ERI for shell quartet (s1 s2 | s3 s4)
-        engine.compute2<
-          libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-          basisSet_.shells[s1],
-          basisSet_.shells[s2],
-          basisSet2_.shells[s3],
-          basisSet2_.shells[s4]
+        switch (eriKernel) {
+          case DirectTPI<IntsT>::Kernel::Coulomb:
+            engine.compute2<
+              libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+              basisSet_.shells[s1],
+              basisSet_.shells[s2],
+              basisSet2_.shells[s3],
+              basisSet2_.shells[s4]
 #ifdef _PRECOMPUTE_SHELL_PAIRS
-          ,sigPair12,sigPair34
+              ,sigPair12,sigPair34
 #endif
-        );
+            );
+            break;
+          case DirectTPI<IntsT>::Kernel::ShortRangeErfc:
+            engine.compute2<
+              libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 0>(
+              basisSet_.shells[s1],
+              basisSet_.shells[s2],
+              basisSet2_.shells[s3],
+              basisSet2_.shells[s4]
+#ifdef _PRECOMPUTE_SHELL_PAIRS
+              ,sigPair12,sigPair34
+#endif
+            );
+            break;
+          default:
+            CErr("Unrecognized two-electron kernel in direct contraction.");
+        }
 #endif
 #ifdef _REPORT_INTEGRAL_TIMINGS
 //        ProgramTimer::tock("Direct Int Form");
@@ -2293,6 +2315,7 @@ namespace ChronusQ {
     DirectTPI<IntsT> &tpi = dynamic_cast<DirectTPI<IntsT>&>(*this->grad_[0]);
     BasisSet& basisSet_  = this->contractSecond ? tpi.basisSet2() : tpi.basisSet();
     BasisSet& basisSet2_ = this->contractSecond ? tpi.basisSet()  : tpi.basisSet2();
+    const typename DirectTPI<IntsT>::Kernel eriKernel = tpi.kernel();
 
     size_t nThreads  = GetNumThreads();
     size_t LAThreads = GetLAThreads();
@@ -2448,9 +2471,11 @@ namespace ChronusQ {
     std::vector<libint2::Engine> engines(nThreads);
 
     // Construct engine for master thread
-    engines[0] = libint2::Engine(libint2::Operator::coulomb,
+    engines[0] = libint2::Engine(tpi.libintOperator(),
       std::max(basisSet_.maxPrim, basisSet2_.maxPrim), 
       std::max(basisSet_.maxL, basisSet2_.maxL),1);
+    if (eriKernel == DirectTPI<IntsT>::Kernel::ShortRangeErfc)
+      engines[0].set_params(tpi.rangeSeparationParameter());
 
     // 12 derivatives per integral (3 xyz * 4 shells)
     size_t nGrad = 12;
@@ -2704,12 +2729,26 @@ namespace ChronusQ {
         auto _prof_t0 = _prof_clock::now();
 #endif
 
-        engine.compute2<
-          libint2::Operator::coulomb, libint2::BraKet::xx_xx, 1>(
-          basisSet_.shells[s1],
-          basisSet_.shells[s2],
-          basisSet2_.shells[s3],
-          basisSet2_.shells[s4]);
+        switch (eriKernel) {
+          case DirectTPI<IntsT>::Kernel::Coulomb:
+            engine.compute2<
+              libint2::Operator::coulomb, libint2::BraKet::xx_xx, 1>(
+              basisSet_.shells[s1],
+              basisSet_.shells[s2],
+              basisSet2_.shells[s3],
+              basisSet2_.shells[s4]);
+            break;
+          case DirectTPI<IntsT>::Kernel::ShortRangeErfc:
+            engine.compute2<
+              libint2::Operator::erfc_coulomb, libint2::BraKet::xx_xx, 1>(
+              basisSet_.shells[s1],
+              basisSet_.shells[s2],
+              basisSet2_.shells[s3],
+              basisSet2_.shells[s4]);
+            break;
+          default:
+            CErr("Unrecognized two-electron kernel in direct gradient contraction.");
+        }
 
         // libint internal screening: buf_vec[0] == nullptr signals the whole
         // derivative set was screened. libint leaves buf_vec[1..11] pointing at

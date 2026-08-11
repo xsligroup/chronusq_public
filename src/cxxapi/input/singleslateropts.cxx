@@ -38,6 +38,7 @@
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/giaodirecteri.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
+#include <particleintegrals/twopints/impl.hpp>
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
 
@@ -198,6 +199,12 @@ namespace ChronusQ {
       "PBE0",
       "BHANDHLYP",
       "BHANDH",
+      "CAMB3LYP",
+      "HSE06",
+      "LRCWPBE",
+      "LCWPBE",
+      "WB97",
+      "WB97X",
       "LDA",
       //Gets definition of  Custom Functional from [GAUXC] section of input
       "CUSTOM"
@@ -1247,6 +1254,9 @@ namespace ChronusQ {
     if( options.refOptions.isKSRef ){
       
       parseIntParam(out, input, options.intParam);
+
+      if( GauXCUtils::is_range_separated(options.refOptions.funcName) and not options.intParam.useGauXC )
+        CErr(options.refOptions.funcName + " requires the GauXC DFT engine. Set DFTINT/GAUXC = TRUE.", out);
       
       // Determine EPC functional is available in CQ/GauXC, and edit keywords in needed
       if(options.refOptions.isEPCRef){
@@ -1630,28 +1640,8 @@ namespace ChronusQ {
       std::shared_ptr<TwoPInts<double>> TPI =
           std::dynamic_pointer_cast<Integrals<double>>(aoints)->TPI;
 
-      if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
+      p->TPI = makeTPIContraction<double,double>(TPI);
 
-        p->TPI = std::make_shared<GTODirectTPIContraction<double,double>>(tpi_typed);
-
-      } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
-
-        if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(tpi_typed->eri3j())) {
-          p->TPI = std::make_shared<DistributedRITPIContraction<double,double>>(tpi_typed);
-        } else {
-          p->TPI = std::make_shared<InCoreRITPIContraction<double,double>>(tpi_typed);
-        }
-
-      } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
-
-        p->TPI = std::make_shared<InCore4indexTPIContraction<double,double>>(tpi_typed);
-
-      } else {
-
-        CErr("Invalid TPInts type for Wavefunction<double,double>",std::cout);
-
-      }
-      
       p->TPI->printContractionTiming = scfControls.printContractionTiming;
 
       if (hamiltonianOptions.oneCenterK) {
@@ -1664,28 +1654,8 @@ namespace ChronusQ {
       std::shared_ptr<TwoPInts<double>> TPI =
           std::dynamic_pointer_cast<Integrals<double>>(aoints)->TPI;
 
-      if (auto tpi_typed = std::dynamic_pointer_cast<DirectTPI<double>>(TPI)) {
+      p->TPI = makeTPIContraction<dcomplex,double>(TPI);
 
-        p->TPI = std::make_shared<GTODirectTPIContraction<dcomplex,double>>(tpi_typed);
-
-      } else if (auto tpi_typed = std::dynamic_pointer_cast<InCoreRITPI<double>>(TPI)) {
-
-        if (auto eri3j = std::dynamic_pointer_cast<DistributedERI3J<double>>(tpi_typed->eri3j())) {
-          p->TPI = std::make_shared<DistributedRITPIContraction<dcomplex,double>>(tpi_typed);
-        } else {
-          p->TPI = std::make_shared<InCoreRITPIContraction<dcomplex,double>>(tpi_typed);
-        }
-
-      } else if (auto tpi_typed = std::dynamic_pointer_cast<InCore4indexTPI<double>>(TPI)) {
-
-        p->TPI = std::make_shared<InCore4indexTPIContraction<dcomplex,double>>(tpi_typed);
-
-      } else {
-
-        CErr("Invalid TPInts type for Wavefunction<dcomplex,double>",std::cout);
-
-      }
-      
       p->TPI->printContractionTiming = scfControls.printContractionTiming;
 
       if (hamiltonianOptions.oneCenterK) {

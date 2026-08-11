@@ -26,6 +26,7 @@
 #include <fockbuilder.hpp>
 #include <memory>
 #include <util/timer.hpp>
+#include <fockbuilder/kcoef.hpp>
 #include <cqlinalg.hpp>
 #include <matrix.hpp>
 #include <particleintegrals/twopints/incoreritpi.hpp>
@@ -161,67 +162,13 @@ namespace ChronusQ {
         (std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI) or
          (distributed_ritpi && distributed_ritpi->canUseKCoef()))) {
 
-      auto ritpi_incore = std::dynamic_pointer_cast<InCoreRITPIContraction<MatsT, IntsT>>(ss.TPI);
       auto ritpi_dist   = std::dynamic_pointer_cast<DistributedRITPIContraction<MatsT, IntsT>>(ss.TPI);
       auto riKCoeffBegin = tick();
-      bool isRoot = (MPIRank(ss.comm) == 0);
 
-      const bool useCholeskyMOs = !ss.denEqCoeff_;
-      //const bool useCholeskyMOs = true;
-      decltype(ss.getCholeskyMOs()) choleskyMOs;
-      if (useCholeskyMOs && isRoot)
-      choleskyMOs = ss.getCholeskyMOs();
-
-      // Contract one spin block: handles MO selection, broadcast, dispatch
-      auto contractSpin = [&](int spin) -> cqmatrix::Matrix<MatsT> {
-      size_t nO = 0;
-      MatsT* mo = nullptr;
-      if (isRoot) {
-        if (useCholeskyMOs) {
-          nO = choleskyMOs[spin]->nColumns();
-          mo = choleskyMOs[spin]->pointer();
-        } else {
-          nO = (spin == 0) ? ss.nOA : ss.nOB;
-          mo = ss.mo[spin].pointer();
-        }
-      }
-
-      cqmatrix::Matrix<MatsT> Kblock(NB);
-
-      if (ritpi_incore) {
-        if (isRoot && nO > 0)
-          ritpi_incore->KCoefContract(ss.comm, nO, mo, Kblock.pointer());
-        else
-          Kblock.clear();
-      } else {
-      #ifdef CQ_ENABLE_MPI
-        MPIBCast(&nO, 1, 0, ss.comm);
-      #endif
-        if (nO > 0) {
-          auto* mo_buf = CQMemManager::get().malloc<MatsT>(NB * nO);
-          if (isRoot) std::copy_n(mo, NB * nO, mo_buf);
-      #ifdef CQ_ENABLE_MPI
-          MPIBCast(mo_buf, NB * nO, 0, ss.comm);
-      #endif
-          ritpi_dist->KCoefContract(ss.comm, nO, mo_buf, Kblock.pointer());
-          CQMemManager::get().free(mo_buf);
-        } else {
-          Kblock.clear();
-        }
-      }
-      return Kblock;
-      };
-
-      auto AAblock = contractSpin(0);
-      auto BBblock = ss.iCS ? cqmatrix::Matrix<MatsT>(NB) : contractSpin(1);
-
-      // Only root assembles spin-block exchange matrices
-      if (isRoot) {
+      // Contract RI-K with MO coefficients
+      contractExchangeKCoef(ss.comm, ss.iCS, not ss.denEqCoeff_, ss, ss.TPI, *exchangeMatrices[0]);
       for (auto i = 0ul; i < nBatch; i++)
-        *exchangeMatrices[i] = ss.iCS
-          ? cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock)
-          : cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(AAblock, BBblock);
-      }
+        *exchangeMatrices[i] = *exchangeMatrices[0];
 
       if (ss.TPI->printContractionTiming) {
         int wRank = 0, wSize = 1;
@@ -587,6 +534,54 @@ namespace ChronusQ {
     return gradient;
 
   } // FockBuilder::getGDGrad
+
+  /**
+   *  \brief Compute beta K_erfc contribution in a range-separated hybrid.
+   */
+  template <typename MatsT, typename IntsT>
+  std::vector<double> FockBuilder<MatsT,IntsT>::getShortRangeExchangeGrad(
+    SingleSlater<MatsT,IntsT>& ss, EMPerturbation& pert,
+    GradInts<TwoPInts,IntsT>& shortRangeExchangeGradIntegrals, double shortRangeExchangeCoefficient) {
+
+    const bool hasXY = ss.exchangeMatrix->hasXY();
+    const bool hasZ = ss.exchangeMatrix->hasZ();
+
+    auto shortRangeExchangeDirectTPI = std::dynamic_pointer_cast<DirectTPI<IntsT>>(shortRangeExchangeGradIntegrals[0]);
+    if(not shortRangeExchangeDirectTPI)
+      CErr("Short-range exchange gradients require DirectTPI.");
+    if(shortRangeExchangeDirectTPI->kernel() != DirectTPI<IntsT>::Kernel::ShortRangeErfc)
+      CErr("Short-range exchange gradients require the erfc Coulomb kernel.");
+
+    DirectGradContraction<MatsT,IntsT> directGradContraction(shortRangeExchangeGradIntegrals);
+
+    // Trace mode: the derivative erfc-K matrices are contracted against the
+    // density as they are formed, so the 3*nAtoms K^I are never stored.
+    std::vector<TwoBodyContraction<MatsT>> twoBodyContraction;
+    std::vector<const MatsT*> traceDens;
+    std::vector<double> traceCoef;
+
+    auto addTerm = [&](MatsT* X, MatsT* D, TWOBODY_CONTRACTION_TYPE type, double coeff) {
+      twoBodyContraction.push_back({X, nullptr, true, type});
+      traceDens.push_back(D);
+      traceCoef.push_back(coeff);
+    };
+
+    // gradient[I] = -0.25 * beta * sum_c Tr(P_c K^I_c)
+    const double coeff = -0.25*shortRangeExchangeCoefficient;
+    addTerm(ss.onePDM->S().pointer(), ss.onePDM->S().pointer(), EXCHANGE, coeff);
+    if(hasZ)
+      addTerm(ss.onePDM->Z().pointer(), ss.onePDM->Z().pointer(), EXCHANGE, coeff);
+    if(hasXY) {
+      addTerm(ss.onePDM->Y().pointer(), ss.onePDM->Y().pointer(), EXCHANGE, coeff);
+      addTerm(ss.onePDM->X().pointer(), ss.onePDM->X().pointer(), EXCHANGE, coeff);
+    }
+
+    std::vector<double> gradient;
+    directGradContraction.gradTwoBodyTraceContract(ss.comm, true, twoBodyContraction,
+                                                   traceDens, traceCoef, gradient, pert);
+
+    return gradient;
+  } // FockBuilder::getShortRangeExchangeGrad
 
   
   // Pulay contribution

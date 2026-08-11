@@ -173,10 +173,24 @@ namespace ChronusQ {
     
     // Parse xc evalution backend for ExchCXX
     std::string inputXCBackend = "LIBXC";
+    bool xcBackendSpecified = input.containsData("GAUXC/XCBACKEND");
     OPTOPT( inputXCBackend = input.getData<std::string>("GAUXC/XCBACKEND"); )
     if (not inputXCBackend.compare("LIBXC")) gauxcOpts.xcBackend = ExchCXX::Backend::libxc;
     else if (not inputXCBackend.compare("BUILTIN")) gauxcOpts.xcBackend = ExchCXX::Backend::builtin;
     else CErr(inputXCBackend + " not a valid GAUXC/XCBACKEND Keyword",out);
+
+    if( GauXCUtils::is_range_separated(gauxcOpts.funcName) ) {
+      // Range-separated functionals only supported by ExchCXX Builtin backend
+      // Error out if user explicitly use LibXC backend
+      if( xcBackendSpecified and gauxcOpts.xcBackend == ExchCXX::Backend::libxc )
+        CErr(gauxcOpts.funcName + " currently requires the ExchCXX builtin backend. Set XCBACKEND = BUILTIN.", out);
+
+      // If unspecified, use Builtin backend
+      if( not xcBackendSpecified ) {
+        gauxcOpts.xcBackend = ExchCXX::Backend::builtin;
+        out << "  Selecting the ExchCXX builtin backend for " << gauxcOpts.funcName << "." << std::endl;
+      }
+    }
     
     out << std::endl;
 
@@ -271,6 +285,7 @@ namespace ChronusQ {
       
 
       gauxcUtils->xHFX = hyb_coeffs.alpha;
+      gauxcUtils->hybridCoefficients = hyb_coeffs;
 
       gauxcUtils->integrator_pointer = integrator_factory.get_shared_instance(func, lb);
       
@@ -288,6 +303,7 @@ namespace ChronusQ {
 
       GauXC::MultiParticleFunctionalSpec functional_spec;
       functional_spec.intra_functionals.resize(quantumSubsystems.size());
+      std::shared_ptr<GauXC::functional_type> electronic_functional;
 
       auto make_intra_functional = [&](const std::string& name, ExchCXX::Spin spin) {
         if(!name.compare("CUSTOM")) {
@@ -318,7 +334,9 @@ namespace ChronusQ {
         if(i == 0 and ref.isKSRef and not ref.isEPCRef) {
           ExchCXX::Spin spin = ref.refType != isRRef ?
             ExchCXX::Spin::Polarized : ExchCXX::Spin::Unpolarized;
-          functional_spec.intra_functionals[i].push_back(make_intra_functional(ref.funcName, spin));
+          electronic_functional = make_intra_functional(ref.funcName, spin);
+          hyb_coeffs = electronic_functional->hyb_exx();
+          functional_spec.intra_functionals[i].push_back(electronic_functional);
         }
 
         if(ref.isEPCRef) {
@@ -337,6 +355,7 @@ namespace ChronusQ {
       std::shared_ptr<GauXCUtils> gauxcUtils = std::make_shared<GauXCUtils>();
       gauxcUtils->multiparticle_functional_spec = functional_spec;
       gauxcUtils->xHFX = hyb_coeffs.alpha;
+      gauxcUtils->hybridCoefficients = hyb_coeffs;
 
       gauxcUtils->gmol = gauxcUtils->make_gmol(mol);
       gauxcUtils->gbases.reserve(bases.size());

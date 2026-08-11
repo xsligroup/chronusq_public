@@ -1,0 +1,38 @@
+# Water R-LC-wPBE/cc-pVDZ with direct full-Coulomb J/K and a separate
+# Libint-direct short-range exchange correction.
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ O               0.00000000000  -0.07579184359   0.00000000000
+ H               0.86681182900   0.60143577930   0.00000000000
+ H              -0.86681182900   0.60143577930   0.00000000000
+
+[QM]
+reference = Real RLCWPBE
+job = SCF
+
+[SCF]
+accuracy = 1e-10
+maxiter = 100
+
+[DFTINT]
+inhouse = false
+nrad = 99
+nang = 590
+
+[GAUXC]
+grid = ultrafine
+pruningscheme = unpruned
+radialquad = murrayhandylaming
+xcweightalg = becke
+
+[INTS]
+alg = direct
+
+[BASIS]
+basis = cc-pvdz
+
+[MISC]
+nsmp = 1
+mem = 256 MB

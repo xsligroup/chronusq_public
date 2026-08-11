@@ -45,6 +45,8 @@ namespace ChronusQ {
     doVXC_(other.doVXC_)
     { 
       KOHNSHAM_COLLECTIVE_OP(COPY_OTHER_MEMBER,COPY_OTHER_MEMBER_VEC_OP);
+      if (this->gauxcUtils and this->gauxcUtils->isRangeSeparatedHybrid())
+        setupRangeSeparatedHybridExchange(this->gauxcUtils->hybridCoefficients);
     };
 
   template <typename MatsT, typename IntsT>
@@ -56,6 +58,8 @@ namespace ChronusQ {
     VXC(std::move(other.VXC)), doVXC_(std::move(other.doVXC_))
     { 
       KOHNSHAM_COLLECTIVE_OP(MOVE_OTHER_MEMBER,MOVE_OTHER_MEMBER_VEC_OP);
+      if (this->gauxcUtils and this->gauxcUtils->isRangeSeparatedHybrid())
+        setupRangeSeparatedHybridExchange(this->gauxcUtils->hybridCoefficients);
     };
 
   template <typename MatsT, typename IntsT>

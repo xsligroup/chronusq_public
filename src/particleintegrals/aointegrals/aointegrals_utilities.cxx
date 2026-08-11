@@ -66,9 +66,12 @@ namespace ChronusQ {
       schwarz2() = CQMemManager::get().malloc<double>(basisSet2().nShell*basisSet2().nShell);
 
     // Define the libint2 integral engine
-    libint2::Engine engine(libint2::Operator::coulomb,
+    libint2::Engine engine(libintOperator(),
       std::max(basisSet().maxPrim, basisSet2().maxPrim),
       std::max(basisSet().maxL,basisSet2().maxL), 0);
+
+    if (this->kernel() == Kernel::ShortRangeErfc)
+      engine.set_params(this->rangeSeparationParameter());
 
     engine.set_precision(0.); // Don't screen prims during evaluation
 
@@ -194,7 +197,12 @@ void DirectTPI<IntsT>::computeSchwarzGrad() {
 
   auto topT = std::chrono::high_resolution_clock::now();
 
-  auto computeR_oneBasis = [](BasisSet& bs, double*& R_out) {
+  const auto eriOperator = libintOperator();
+  const bool isShortRangeErfc = this->kernel() == Kernel::ShortRangeErfc;
+  const double omega = this->rangeSeparationParameter();
+
+  auto computeR_oneBasis = [eriOperator, isShortRangeErfc, omega]
+    (BasisSet& bs, double*& R_out) {
 
     const size_t nShell = bs.nShell;
     R_out = CQMemManager::get().malloc<double>(nShell * nShell);
@@ -207,8 +215,9 @@ void DirectTPI<IntsT>::computeSchwarzGrad() {
     // Per-thread engines.
     const size_t nThreads = GetNumThreads();
     std::vector<libint2::Engine> engines(nThreads);
-    engines[0] = libint2::Engine(libint2::Operator::coulomb,
-                                 bs.maxPrim, bs.maxL, 0);
+    engines[0] = libint2::Engine(eriOperator, bs.maxPrim, bs.maxL, 0);
+    if (isShortRangeErfc)
+      engines[0].set_params(omega);
     engines[0].set_precision(0.);
     for (size_t t = 1; t < nThreads; t++) engines[t] = engines[0];
 
@@ -391,8 +400,10 @@ void DirectTPI<IntsT>::computeSchwarzGrad() {
 
     const size_t s1_stride = std::max<size_t>(1, nShell / 60);
 
-    libint2::Engine eng_fd(libint2::Operator::coulomb,
+    libint2::Engine eng_fd(libintOperator(),
                            basisSet().maxPrim, basisSet().maxL, 0);
+    if (this->kernel() == Kernel::ShortRangeErfc)
+      eng_fd.set_params(this->rangeSeparationParameter());
     eng_fd.set_precision(0.);
     const auto& buf_fd = eng_fd.results();
 
