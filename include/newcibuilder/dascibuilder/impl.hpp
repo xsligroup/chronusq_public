@@ -26,20 +26,16 @@
 #include <newcibuilder/dascibuilder.hpp>
 #include <newcibuilder/dascibuilder/defaultbuildtdms.hpp>
 #include <newcibuilder/dascibuilder/defaultbuildsigma.hpp>
-#ifdef CQ_ENABLE_SPARSE
-#include <newcibuilder/dascibuilder/defaultsparsebuildtdms.hpp>
-#include <newcibuilder/dascibuilder/defaultsparsebuildsigma.hpp>
-#endif
 #include <newcibuilder/dascibuilder/knowleshandy.hpp>
 #include <newcibuilder/dascibuilder/olsenroos.hpp>
 #include <newcibuilder/dascibuilder/frischli.hpp>
 #include <newcibuilder/dascibuilder/smallblockhamiltonian.hpp>
 #include <newcibuilder/dascibuilder/largeblockhamiltonian.hpp>
 #include <util/scratch.hpp>
-
-
 #include <unordered_set>
 #ifdef CQ_ENABLE_SPARSE
+#include <newcibuilder/dascibuilder/defaultsparsebuildtdms.hpp>
+#include <newcibuilder/dascibuilder/defaultsparsebuildsigma.hpp>
 #include <newcibuilder/dascibuilder/defaultformsuba.hpp>
 #endif
 
@@ -374,8 +370,8 @@ void DASCIBuilder<MatsT>::buildSigma2e(
 
       DASCISigma2eBuilder::buildSparseNaive(
         nVec, C.getVecsByCat()[twoEEx.categoricalIndices.second - C.localCategoryBegin()], C.getShift(),
-        SCRSigma_hash, Sigma.getCatOffest(twoEEx.categoricalIndices.first), s2e, double1eExListsGen,
-        KExOffs, LExOffs, nonExLooper, twoEEx.symmetryFactor * 0.5
+        SCRSigma_hash, Sigma.getCatOffset(twoEEx.categoricalIndices.first), s2e, double1eExListsGen,
+        KExOffs, LExOffs, nonExLooper, twoEEx.symmetryFactor * 0.5, eps
       );
 
     } // twoEExcitations

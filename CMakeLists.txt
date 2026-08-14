@@ -70,6 +70,12 @@ target_link_libraries( cq INTERFACE OpenMP::OpenMP_CXX )
 include(HandleMPI)
 message( "\n\n" )
 
+# Parallel STL 
+if( CQ_ENABLE_SPARSE )
+  include(HandleParallelSTL)
+  message( "\n\n" )
+endif()
+
 # add includers
 target_include_directories( cq PUBLIC 
   "${PROJECT_SOURCE_DIR}/include" 

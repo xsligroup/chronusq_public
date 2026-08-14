@@ -211,7 +211,7 @@ namespace ChronusQ {
       printSub("      -compute HV with Sigma", "compute HV", "MS Heff", perturbId); 
       printSub("      -diagonalization", "Heff diag", "MS Heff", perturbId);
     }
-
+    
     auto MP2Id = timer.getLabelId("MP2 Total");
     if(MP2Id != 0) {
       printReg(" - MP2","MP2 Total",MP2Id);
@@ -220,7 +220,6 @@ namespace ChronusQ {
       printReg("   - RDM Formation","MP2 RDM",MP2Id);
       printReg("   - RDM Diagonalization","MP2 RDM Diag",MP2Id);
     }
-
 
     auto ciId = timer.getLabelId("Configuration Interaction Total");
     if ( ciId != 0 ) {
@@ -250,7 +249,17 @@ namespace ChronusQ {
       printReg("      - IVO Generation", "Gen IVOs", ciId);
       printReg("    - Property Evaluation", "Property Eval", ciId);
     }
-    
+ 
+    // MRPT specific
+    auto mrptId = timer.getLabelId("MRPT Total");
+    if ( mrptId != 0 ) {
+      printReg("  - MRPT", "MRPT Total", mrptId);
+      printReg("    - PT Category Build", "PT Category Build", mrptId);
+      printReg("    - Integral Transformation", "Integral Trans", mrptId);
+      printReg("    - Build PT Sigma", "Build PT Sigma", mrptId);
+      printReg("    - Compute Amplitudes", "Compute Amplitudes", mrptId);
+    }
+   
     // Print footer
     out << BannerEnd << std::endl;
 

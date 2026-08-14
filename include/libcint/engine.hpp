@@ -122,6 +122,42 @@ class LibcintEngine {
     }
   } // allocate_int2e_cache
 
+  // Allocate int2eScalar cache
+  void allocate_int2eScalar_cache(const HamiltonianOptions& HOp) {
+    size_t cache_size = 0;
+    for (int i = 0; i < nShells_; i++) {
+      int shells[4]{i, i, i, i};
+      if (HOp.BareCoulomb or HOp.DiracCoulomb) {
+        cache_size = std::max(cache_size, compute_int2e_sph(nullptr, shells));
+      }  
+      if (HOp.DiracCoulomb or HOp.DiracCoulombSSSS) {
+        cache_size = std::max(cache_size, compute_int2e_pp1pp2_sph(nullptr, shells));
+      } 
+      if (HOp.DiracCoulomb) {
+        cache_size = std::max(cache_size, compute_int2e_pp1_sph(nullptr, shells));
+      }
+      if (HOp.Gaunt) {
+        cache_size = std::max(cache_size, compute_int2e_gaunt_ps1ps2_sph(nullptr, shells));
+      }
+      if (HOp.Gauge) {
+        cache_size = std::max(cache_size, compute_int2e_gauge_r1_sp1sp2_sph(nullptr, shells));
+        cache_size = std::max(cache_size, compute_int2e_gauge_r2_sp1sp2_sph(nullptr, shells));
+        cache_size = std::max(cache_size, compute_int2e_gauge_r1_sp1ps2_sph(nullptr, shells));
+        cache_size = std::max(cache_size, compute_int2e_gauge_r2_sp1ps2_sph(nullptr, shells));
+
+      }
+    }
+
+    //std::cout << " cache_size = " << cache_size << std::endl;
+    for (auto & c : cache_) {
+      if (c) CQMemManager::get().free(c);
+    }
+    cache_.clear();
+    for (auto i = 0ul; i < GetNumThreads(); ++i) {
+      cache_.push_back(CQMemManager::get().malloc<double>(cache_size));
+    }
+  } // allocate_int2eScalar cache
+
   // define computing interfaces
 #define DEFINE_CQ_LibcintEngine_INT2E_FUNC(function_name)                                    \
   size_t compute_##function_name(double *out, int *shells) const {                           \
@@ -133,7 +169,9 @@ class LibcintEngine {
         nullptr, cache_[GetThreadID()]);                                                     \
   }
 
+  // Bare Coulomb
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_sph)
+  // Spin-Dependent DC, DC-SSSS, Gaunt and Gauge
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_ipvip1ipvip2_sph)
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_ipvip1_sph)
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_ip1ip2_sph)
@@ -141,7 +179,15 @@ class LibcintEngine {
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r2_ssp1sps2_sph)
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r1_ssp1ssp2_sph)
   DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r2_ssp1ssp2_sph)
-  
+  // Spin-Free DC, DC-SSSS, Gaunt and Gauge
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_pp1pp2_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_pp1_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gaunt_ps1ps2_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r1_sp1sp2_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r2_sp1sp2_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r1_sp1ps2_sph)
+  DEFINE_CQ_LibcintEngine_INT2E_FUNC(int2e_gauge_r2_sp1ps2_sph)
+
 }; // class LibcintEngine
 
 } // namespace ChronusQ

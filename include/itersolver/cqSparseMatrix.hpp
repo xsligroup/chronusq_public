@@ -1,6 +1,11 @@
 #pragma once
 #ifdef CQ_ENABLE_SPARSE
+
 #include <vector>
+#include <algorithm>
+#ifdef CQ_HAS_PARALLEL_STL
+  #include <execution>
+#endif
 #include <util/math.hpp>
 #include <memmanager.hpp>
 #include <cerr.hpp>
@@ -421,14 +426,14 @@ class LLSparseMatrix {
 
 	size_t endA = data[shiftA + j].size();	
 	data[shiftA + j].resize(endA + B.data[shiftB + j].size());
-        std::copy(std::execution::par, B.data[shiftB + j].cbegin(), B.data[shiftB + j].cend(), data[shiftA + j].begin() + endA);
+        std::copy(CQ_EXEC_PAR B.data[shiftB + j].cbegin(), B.data[shiftB + j].cend(), data[shiftA + j].begin() + endA);
 	
 	#pragma omp parallel for default(shared)
 	for(auto it =  data[shiftA + j].begin() + endA; it != data[shiftA + j].end(); it++) {
 	  it->second *= beta;	
 	}
 
-	std::inplace_merge(std::execution::par, data[shiftA + j].begin(), data[shiftA + j].begin() + endA, data[shiftA + j].end(),
+	std::inplace_merge(CQ_EXEC_PAR data[shiftA + j].begin(), data[shiftA + j].begin() + endA, data[shiftA + j].end(),
 	  [&] (const auto& i, const auto& j) {
             return i.first < j.first;
           }
@@ -442,7 +447,7 @@ class LLSparseMatrix {
           }
         }
 	
-	auto newEnd = std::remove_if(std::execution::par,  data[shiftA + j].begin(),  data[shiftA + j].end(), [](const auto& x){ return x.second == MatsT(0.); });
+	auto newEnd = std::remove_if(CQ_EXEC_PAR  data[shiftA + j].begin(),  data[shiftA + j].end(), [](const auto& x){ return x.second == MatsT(0.); });
         data[shiftA + j].erase(newEnd, data[shiftA + j].end());
 	
       }
@@ -463,7 +468,7 @@ class LLSparseMatrix {
               {
                 if(B[Acol + ldb * Ccol] != MatsT(0.)) {
                   res.resize(res.size() + data[shiftA + Acol].size());
-                  std::transform(std::execution::par, data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
+                  std::transform(CQ_EXEC_PAR data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
                     [&](auto& x){return std::make_pair(x.first, alpha * B[Acol + ldb * Ccol] * (x.second));}
                   );
                 }
@@ -473,7 +478,7 @@ class LLSparseMatrix {
               {
                 if(B[Ccol + ldb * Acol] != MatsT(0.)) {
                   res.resize(res.size() + data[shiftA + Acol].size());
-                  std::transform(std::execution::par, data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
+                  std::transform(CQ_EXEC_PAR data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
                     [&](auto& x){return std::make_pair(x.first, alpha * B[Ccol + ldb * Acol] * (x.second));}
                   );
                 }
@@ -483,7 +488,7 @@ class LLSparseMatrix {
               {
                 if(B[Ccol + ldb * Acol] != MatsT(0.)) {
                   res.resize(res.size() + data[shiftA + Acol].size());
-                  std::transform(std::execution::par, data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
+                  std::transform(CQ_EXEC_PAR data[shiftA + Acol].cbegin(),  data[shiftA + Acol].cend(), res.end() - data[shiftA + Acol].size(),
                     [&](auto& x){return std::make_pair(x.first, alpha * SmartConj(B[Ccol + ldb * Acol]) * (x.second));}
                   );
                 }
@@ -512,7 +517,7 @@ class LLSparseMatrix {
           }
         }
 
-        auto newEnd = std::remove_if(std::execution::par, res.begin(), res.end(), [](const auto& x){ return x.second == MatsT(0.); });
+        auto newEnd = std::remove_if(CQ_EXEC_PAR res.begin(), res.end(), [](const auto& x){ return x.second == MatsT(0.); });
         res.erase(newEnd, res.end());
       }
     }
@@ -595,7 +600,7 @@ class LLSparseMatrix {
 
 
 
-        std::copy(std::execution::par, serialBCol.cbegin(), serialBCol.cend(), data[shiftA + col].begin());
+        std::copy(CQ_EXEC_PAR serialBCol.cbegin(), serialBCol.cend(), data[shiftA + col].begin());
 	boost::sort::block_indirect_sort(data[shiftA + col].begin(), data[shiftA + col].end(), 
           [&] (const auto& i, const auto& j) {
             return i.first < j.first;

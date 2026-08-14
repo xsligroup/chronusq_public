@@ -22,13 +22,11 @@
  *
  */
 
-//! MO: This module is not used. Intended for use with DAS framework but for now using tpi_ssfock (same as mcscf)
-
 #pragma once
 
 #include <mointstransformer.hpp>
 #include <mointstransformer/shellblockmo.hpp>
-
+#include <util/print.hpp>
 #include <libcint/engine.hpp>
 #include <util/timer.hpp>
 #include <fockbuilder/fourcompfock/batchgd.hpp>
@@ -39,7 +37,7 @@
 #include <cqlinalg/blasutil.hpp>
 
 
-#define _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
+// #define _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
 
 namespace ChronusQ {
 
@@ -580,9 +578,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /***********************************/
   if (HOp.BareCoulomb) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    auto startTime = tick();
+    std::cout << "  Transforming 2e-INTS: BareCoulomb ..." << std::endl;
     #endif
-
+    auto startTime = tick();
     // Get the sizes all density SCR
     size_t maxNDenSCR = 0ul;
     size_t n_s34 = 0ul;
@@ -859,10 +857,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     
     CQMemManager::get().free(buffERIAll, buffDensity);
 
-
-    
-  #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     double totalTime = tock(startTime);
+    FormattedLine(std::cout, "Time to Bare-Coulomb Transform(s): ", totalTime); 
+  #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
 
       auto printTimings = [] (const std::string& section, 
           const std::vector<double> ts) {
@@ -880,8 +877,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
       #endif
 
-      std::cout << "\nTiming for bare Coulomb fully direct transformation: " << std::endl;
-      std::cout << "Total time: " << totalTime << "s" << std::endl;
       std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
       std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
       printTimings("t(Ints)", tInts_all);
@@ -912,9 +907,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   if constexpr (std::is_same_v<MatsT, std::complex<double>>) {
   if (HOp.DiracCoulomb) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    auto startTime = tick();
+    std::cout << "  Transforming 2e-INTS: DiracCoulomb (LL|LL, LS|LS) ..." << std::endl;
     #endif
-
+    auto startTime = tick();
     enum ERI_2ND_DERIV {
       AxBx,
       AxBy,
@@ -1388,8 +1383,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     CQMemManager::get().free(buffERIAll, ERIBuffer, buffDensityLLMS,
              buffDensitySSMS, buffDensitySSMX, buffDensitySSMY, buffDensitySSMZ);
 
+    double totalTime = tock(startTime);
+    FormattedLine(std::cout, "Time to DC(LL/LS) Transform(s): ", totalTime);
+
   #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-      double totalTime = tock(startTime);
 
       auto printTimings = [] (const std::string& section,
           const std::vector<double> ts) {
@@ -1407,8 +1404,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
       #endif
 
-      std::cout << "\nTiming for Dirac Coulomb fully direct transformation: " << std::endl;
-      std::cout << "Total time: " << totalTime << "s" << std::endl;
       std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
       std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
       printTimings("t(Ints)", tInts_all);
@@ -1435,9 +1430,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /****************************************/
   if (HOp.DiracCoulombSSSS) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    auto startTime = tick();
+    std::cout << "  Transforming 2e-INTS: DiracCoulomb (SS|SS) ..." << std::endl;
     #endif
-    
+    auto startTime = tick();
     enum ERI_4TH_DERIV {
         AxBxCxDx,
         AxBxCxDy,
@@ -2011,9 +2006,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   // std::cout << "After DC + SSSS ERI Norm = " << std::setprecision(16) << 
   // lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
 
-#ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     double totalTime = tock(startTime);
-
+    FormattedLine(std::cout, "Time to DC(SS) Transform(s): ", totalTime);
+#ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     auto printTimings = [] (const std::string& section,
         const std::vector<double> ts) {
         std::cout << std::setw(20) << section  << ": "
@@ -2030,8 +2025,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
-    std::cout << "\nTiming for DC SSSS fully direct transformation: " << std::endl;
-    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);
@@ -2057,9 +2050,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /*******************/
   if (HOp.Gaunt) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    auto startTime = tick();
+    std::cout << "  Transforming 2e-INTS: Gaunt ..." << std::endl;
     #endif
-
+    auto startTime = tick();
     enum Gaunt_2ND_DERIV_AC {
         AxCx,
         AxCy,
@@ -2538,8 +2531,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   //  std::cout << "After Gaunt ERI Norm = " << std::setprecision(16) << 
   //   lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
 
-#ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     double totalTime = tock(startTime);
+    FormattedLine(std::cout, "Time to Gaunt Transform(s): ", totalTime);
+#ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
 
     auto printTimings = [] (const std::string& section,
         const std::vector<double> ts) {
@@ -2557,8 +2551,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
-    std::cout << "\nTiming for Gaunt fully direct transformation: " << std::endl;
-    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);
@@ -2584,9 +2576,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /*******************/
   if (HOp.Gauge) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    auto startTime = tick();
+    std::cout << "  Transforming 2e-INTS: Gauge ..." << std::endl;
     #endif
-      enum Gauge_ERI {
+    auto startTime = tick();
+    enum Gauge_ERI {
         SxSx, // σ_x * σ_x     0
         SySx, // σ_y * σ_x     1
         SzSx, // σ_z * σ_x     2
@@ -3100,6 +3093,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   //  std::cout << "After Gauge ERI Norm = " << std::setprecision(16) << 
   //   lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
 
+    double totalTime = tock(startTime);
+    FormattedLine(std::cout, "Time to Gaunt Transform(s): ", totalTime);
+
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     double totalTime = tock(startTime);
 
@@ -3119,10 +3115,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
-
-
-    std::cout << "\nTiming for Gauge fully direct transformation: " << std::endl;
-    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);

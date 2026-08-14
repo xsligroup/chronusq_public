@@ -58,8 +58,9 @@ void davidsonGuess(size_t nGuess, const DistributedVectors<MatsT>& diagH,
 
 } // davidsonGuess
 
-#ifdef CQ_ENABLE_SPARSE
+
 // davidson guess w/o building diagH
+#ifdef CQ_ENABLE_SPARSE
 template <typename MatsT>
 void davidsonGuessNoDiagH(size_t nGuess,
     SolverVectors<MatsT>& Guess, const CategoricalSpace& categoricalSpace, std::shared_ptr<NewCIBuilder<MatsT>> ciBuilder) {
@@ -93,7 +94,6 @@ void davidsonGuessNoDiagH(size_t nGuess,
 
 } // davidsonGuess w/o building diagH
 #endif
-
 
 // davidson preconditioner
 template <typename MatsT>
@@ -150,11 +150,11 @@ void davidsonSparsePreconditioner(DistributedSparseVectors<MatsT>& localR, size_
     for(auto it = (RLocalView.getVecsPtr())->begin(Rshift + j); it != (RLocalView.getVecsPtr())->end(Rshift + j); it++) {
       
       size_t iCat = RLocalView.localCategoryBegin();
-      size_t adjustedOffset = iCat == RLocalView.localCategoryEnd() - 1? RLocalView.localLength() : RLocalView.getCatOffest(iCat + 1);
+      size_t adjustedOffset = iCat == RLocalView.localCategoryEnd() - 1? RLocalView.localLength() : RLocalView.getCatOffset(iCat + 1);
 
       while(it->first >= adjustedOffset) {
 	iCat++;
-	adjustedOffset = iCat == RLocalView.localCategoryEnd() - 1? RLocalView.localLength() : RLocalView.getCatOffest(iCat + 1);
+	adjustedOffset = iCat == RLocalView.localCategoryEnd() - 1? RLocalView.localLength() : RLocalView.getCatOffset(iCat + 1);
       }
 
       const auto& cat = dynamic_cast<const FullDeterminantCategory&>(*categoricalSpace.getCategory(iCat));
@@ -164,7 +164,7 @@ void davidsonSparsePreconditioner(DistributedSparseVectors<MatsT>& localR, size_
       auto addresser = detCatGen.addresser();
       std::vector<uint64_t> braDetStrings(detCatGen.nSpaces(), 0ul);
 
-      addresser.addressToBitStrings(it->first - RLocalView.getCatOffest(iCat), braDetStrings);
+      addresser.addressToBitStrings(it->first - RLocalView.getCatOffset(iCat), braDetStrings);
 
       determinantsToOccs(braDetStrings, nEs, nOrbs, occ);
       MatsT tmp = MatsT(0.);
@@ -391,7 +391,6 @@ void ConfigurationInteraction<MatsT, IntsT>::solveCI() {
 
     // release the memory of current CI Vecs to have more memory for intermediates
     CIVectors = nullptr;
-    std::cout << "Using SPARSE CI Davidson" << std::endl;
     // set davidson parameters
     size_t kG = ciSettings.nDavidsonGuess;
     size_t m  = std::max(ciSettings.maxDavidsonSpace, kG);

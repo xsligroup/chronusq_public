@@ -23,7 +23,6 @@
  */
 
 #include <cxxapi/input.hpp>
-#include <cxxapi/output.hpp>
 #include <cxxapi/options.hpp>
 #include <cxxapi/boilerplate.hpp>
 #include <cxxapi/procedural.hpp>
@@ -46,6 +45,7 @@
 #include <coupledcluster.hpp>
 #include <mcwavefunction.hpp>
 #include <mcscf.hpp>
+#include <newperturb.hpp>
 #include <perturb.hpp>
 #include <mp.hpp>
 
@@ -695,6 +695,12 @@ namespace ChronusQ {
             ci->savFile = rstFile;
             ci->run(additionalPert);
             if(cube) ci->runCube(cubes);
+            
+            if (input.containsSection("MRPT")) {
+              auto mrpt = CQMRPTSettings(output,input,ci);
+              mrpt->savFile = rstFile;
+              mrpt->run(additionalPert);  
+            }
           }
         }
 

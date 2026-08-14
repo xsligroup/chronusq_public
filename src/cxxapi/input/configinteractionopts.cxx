@@ -60,7 +60,6 @@ namespace ChronusQ {
       "SCFALG",
       "ROTATENEGORBS",
       "HESSDIAGSCALE",
-      "ACTIVEORBITAL",
       "SWAPMO",
       // "INORBITAL",
       // "FVORBITAL",
@@ -302,6 +301,7 @@ namespace ChronusQ {
     ci->setupCorrelatedMOSpace(std::accumulate(nActOs.begin(), nActOs.end(), 0), nActE, 0, 0);
     size_t corrOOffset = ci->corrSpace.nNegMO + ci->corrSpace.nFCore + ci->corrSpace.nInact;
     OPTOPT( ciSettings->maxInterSpaceEx = input.getData<int>("CI/MAXINTERSPACEEX"); )
+    ciSettings->nThreads_ = GetNumThreads();
     ConstructActiveSpaces(out, input, nActOs, nActE, corrOOffset, ciSettings->maxInterSpaceEx,
                           ciSettings->activeSpaces, ciSettings->refOcc, "CI");
     //ReadReferenceOcc(out, input, ciSettings->refOcc, "CI");
@@ -469,7 +469,7 @@ namespace ChronusQ {
       
       if (ss->nC == 4) {
         // default as true
-        ciSettings->ORSettings.rotate_negative_positive = true;
+        ciSettings->ORSettings.rotate_negative_positive = false;
         OPTOPT(ciSettings->ORSettings.rotate_negative_positive
           = input.getData<bool>("CI/ROTATENEGORBS"); )
       }

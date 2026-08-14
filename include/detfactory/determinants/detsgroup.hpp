@@ -77,7 +77,7 @@ public:
       output += ", nE = ";
       output += std::to_string(nElectrons_);
       throw std::invalid_argument(output);
-    }   
+    }  
     nDeterminants_ = Comb(nOrbitals_, nElectrons_);
   }
 

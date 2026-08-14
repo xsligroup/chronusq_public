@@ -75,7 +75,7 @@ class LocalCIVectorsView {
 
   MatsT* getCategoryPointer(size_t iCat, size_t iVec = 0) const {
     if (not containsLocalCategory(iCat) or iVec >= size_) {
-       CErr("Can't access pointer that exceeing the definition in LocalCIVectorsView");
+       CErr("Can't access pointer that exceeding the definition in LocalCIVectorsView");
     }
     return data_ + iVec * localLen_ + localCategoryOffsets_[iCat - localCategoryBegin_];
   }
@@ -161,7 +161,7 @@ class LocalCISparseVectorsView {
     return i >= localCategoryBegin_ and i < localCategoryEnd_;
   }
 
-  size_t getCatOffest(size_t iCat) const {
+  size_t getCatOffset(size_t iCat) const {
     return localCategoryOffsets_[iCat - localCategoryBegin_];
   }
 
@@ -192,13 +192,13 @@ class LocalCISparseVectorsView {
     for (size_t col = 0; col < nVec; ++col) {
       size_t iCat = localCategoryBegin_;
       for(auto it = vecs_->cbegin(shift_ + col); it != vecs_->cend(shift_ + col); it++) {
-        size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+        size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1);
         while(it->first >= adjustedOffset) {
           iCat++;
-          adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+          adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1);
         }
-        size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1)) - getCatOffest(iCat);
-	vecsByCat_[iCat - localCategoryBegin_].sortedInsert(it->first - getCatOffest(iCat), col, it->second);
+        size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1)) - getCatOffset(iCat);
+	vecsByCat_[iCat - localCategoryBegin_].sortedInsert(it->first - getCatOffset(iCat), col, it->second);
       }
     } 
   }
@@ -223,16 +223,16 @@ class LocalCISparseVectorsView {
       MatsT value = *prevBuffVals;
 
       size_t iCat = localCategoryBegin_;
-      size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+      size_t adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1);
 
 
       while(row >= adjustedOffset) {
         iCat++;
-        adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1);
+        adjustedOffset = iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1);
       }
 
-      size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffest(iCat + 1)) - getCatOffest(iCat);
-      vecsByCat_[iCat - localCategoryBegin_].sortedInsert(row - getCatOffest(iCat), col, value);
+      size_t iCatSize = (iCat == localCategoryEnd_ - 1? localLen_ : getCatOffset(iCat + 1)) - getCatOffset(iCat);
+      vecsByCat_[iCat - localCategoryBegin_].sortedInsert(row - getCatOffset(iCat), col, value);
 
       prevBuffRowCols += 2;
       prevBuffVals++;

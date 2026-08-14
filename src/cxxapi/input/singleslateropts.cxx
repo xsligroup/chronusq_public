@@ -2000,6 +2000,9 @@ namespace ChronusQ {
       CErr("NEO w/ mixed GTO/GIAO NYI, \nor Unreconized MatsT/IntsT combination in CQNEOSSOptions");
     }
 
+    // Need to copy this over 
+    epaoints->options_.erfOmega=pssopt.hamiltonianOptions.erfOmega;
+    
     return {neoss, essopt, pssopt};
 
   }

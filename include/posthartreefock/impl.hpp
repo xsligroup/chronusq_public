@@ -28,7 +28,6 @@
 #include <util/preprocessor.hpp>
 #include <util/print.hpp>
 
-
 // Template for a collective operation on the members of a 
 // PostHartreeFock object
 // #define DEBUG_MULTISTATEWFN_IMPL
@@ -162,11 +161,7 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
 
     // Save oscillator strength
     if(osc_str) {
-      if(osc_str_order == 0){
-      savFile.safeWriteData("POSTHF/OSC_STR_ZERO_ORDER", osc_str_array.data(), {NosS1, NS});}      
-      else if(osc_str_order == 2){
-      savFile.safeWriteData("POSTHF/OSC_STR_SECOND_ORDER", osc_str_array.data(), {NosS1, NS});} 
-    }
+      savFile.safeWriteData("POSTHF/OSC_STRENGTH", osc_str_array.data(), {NosS1, NS}); }
   }  
 
 } // PostHartreeFock<T>::saveCuurentStates

@@ -19,26 +19,29 @@
 # 
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
-#
 
-set(INPUT_SRC input/parse.cxx input/freeparsers.cxx)
+message( "\n\n" )
+message( "ChronusQ Parallel STL Settings Check:\n" )
+include(CheckCXXSourceCompiles)
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX20_STANDARD_COMPILE_OPTION}")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+check_cxx_source_compiles("
+  #include <algorithm>
+  #include <execution>
+  #include <vector>
+  void f() {
+    std::vector<int> v{3,1,2};
+    std::sort(std::execution::par, v.begin(), v.end());
+  }
+" CQ_HAS_PARALLEL_STL)
+unset(CMAKE_TRY_COMPILE_TARGET_TYPE)
+unset(CMAKE_REQUIRED_FLAGS)
 
-set(OPT_SRC input/molopts.cxx input/basisopts.cxx 
-    input/singleslateropts.cxx input/scfopts.cxx input/rtopts.cxx
-    input/intsopts.cxx input/miscopts.cxx input/respopts.cxx 
-    input/coupledclusteropts.cxx input/geomopts.cxx input/mcscfopts.cxx
-    input/cubeopts.cxx 
-    input/saverefs.cxx input/perturbopts.cxx input/mpopts.cxx
-    input/mrptopts.cxx input/posthfopts.cxx input/configinteractionopts.cxx
-    input/gauxcopts.cxx procedural.cxx output.cxx options.cxx
-    quantumsubsystems.cxx)
-
-target_sources(cq PRIVATE ${INPUT_SRC} ${OPT_SRC})
-
-add_executable(chronusq chronusq.cxx)
-target_link_libraries(chronusq PUBLIC cq)
-
-add_custom_target(linkexe ALL
-  ${CMAKE_COMMAND} -E create_symlink ${PROJECT_BINARY_DIR}/src/cxxapi/chronusq ${PROJECT_BINARY_DIR}/chronusq )
-
-install(TARGETS chronusq RUNTIME DESTINATION "bin")
+if(CQ_HAS_PARALLEL_STL)
+  target_compile_definitions( cq PUBLIC
+    CQ_HAS_PARALLEL_STL
+    CQ_EXEC_PAR=std::execution::par, )
+else()
+  message(STATUS "std::execution not available -- parallel STL algorithms will run serially")
+  target_compile_definitions( cq PUBLIC CQ_EXEC_PAR= )
+endif()

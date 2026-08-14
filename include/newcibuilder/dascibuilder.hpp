@@ -153,7 +153,7 @@ namespace DASCISigma2eBuilder {
     size_t shiftC, HashSparseMatrix<MatsT>& Sigma, size_t Sigma_iCatOffset,
     const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
     const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs,
-    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact);
+    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact, double eps);
 #endif
 
   template <typename MatsT>

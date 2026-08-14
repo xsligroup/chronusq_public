@@ -34,6 +34,7 @@
 #include <detfactory/localcivectorsview.hpp>
 #include <itersolver/solvervectors.hpp>
 #include <itersolver/solvervectorsimpl.hpp>
+#include <itersolver/cqSparseMatrix.hpp>
 
 #ifdef CQ_ENABLE_SPARSE
   #include <itersolver/cqSparseMatrix.hpp>
@@ -116,6 +117,15 @@ public:
     return id;
   };
 
+  std::string generateCategoryID(const DeterminantCategory& cat) const {
+    std::string id = "";
+    for (const auto& g: cat.detGroups()) {
+      id += std::to_string(g.nElectrons()) + "-";
+    }
+    id.pop_back();
+    return id;
+  };
+
   // create a new category ID based on the space occupations
   // Category ID is a string consisting of space occupation number (number of electrons
   // in each space)
@@ -139,7 +149,50 @@ public:
       nDeterminants_ += newCategory->nDeterminants();
     }
   };
+
+  // Return true if two categories have the same ID
+  bool compareCategories(std::shared_ptr<const DeterminantCategory> Category1, 
+    std::shared_ptr<const DeterminantCategory> Category2) const {
+    
+    auto cat1ID = generateCategoryID(*Category1);
+    auto cat2ID = generateCategoryID(*Category2);
+    if (cat1ID == cat2ID) return true;
+    else return false;
+
+  }
+
+  // Remove vector of determinant categories
+  void removeCategories(const std::vector<std::shared_ptr<DeterminantCategory>> &delCategory) {
+    if (delCategory.empty()) return;
+    std::unordered_set<std::string> removeCategoryID;
+    for (const auto &cat: delCategory) removeCategoryID.insert(generateCategoryID(*cat));
+
+    // Remove categories and update data structures
+    std::vector<std::shared_ptr<DeterminantCategory>> Categories;
+    std::unordered_map<std::string, size_t> CategoricalIDToIndexMap;
+    size_t NDeterminants = 0ul;
+    size_t Offset = 0ul;
+
+    for (const auto& cat : categories_) {
+      auto categoryID = generateCategoryID(*cat);
+      if (removeCategoryID.count(categoryID) == 0) {
+        // Keep this category
+        Categories.push_back(cat);
+        CategoricalIDToIndexMap[categoryID] = Categories.size() - 1;
+        cat->setOffset(Offset);
+        Offset += cat->nDeterminants();
+        NDeterminants += cat->nDeterminants();
+      }
+    }
+
+    // Update the internal data structures
+    categories_ = std::move(Categories);
+    categoricalIDToIndexMap_ = std::move(CategoricalIDToIndexMap);
+    nDeterminants_ = NDeterminants;
+
+  }
   
+
   // Build and add user-defined reference categories.
   // Each category is a collection of distributed active space with initially
   // defined space occupations
@@ -174,18 +227,13 @@ public:
               spaceOcc[j]--;
               addReferenceCategory(spaceOcc);
             }
-            //spaceOcc = cat->nElectronsInEachSpace();
-            //while (spaceOcc[j] < activeSpaces_[j].nOrbitals and spaceOcc[i] > 0) {
-            //  spaceOcc[j]++;
-            //  spaceOcc[i]--;
-            //  addFullDetsCategory(spaceOcc);
-            //}
           }
         }
     }
     expandCategoryWithInterGroupExcitation(exLevel);
-  }
 
+  } 
+            
   // Build categories based on excitation operators arising from the base categories.
   // Note that new categories are generated with single excitation at a time from the previous set
   // until reaching the target excitation. Redundant categories are removed.
@@ -225,6 +273,7 @@ public:
     }
 
   } // expandCategoryWithInterSpaceExcitation
+
   
   void output(std::ostream& os, const std::string& s = "", 
     bool printMapping = false) const { 

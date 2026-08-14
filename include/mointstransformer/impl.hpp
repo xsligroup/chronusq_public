@@ -30,6 +30,7 @@
 #include <mointstransformer/tpi_incore_n5.hpp>
 #include <mointstransformer/tpi_full_direct.hpp>
 #include <util/timer.hpp>
+#include <util/print.hpp>
 
 namespace ChronusQ {
 
@@ -327,14 +328,19 @@ template <typename MatsT, typename IntsT>
 void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
     MatsT* MOTPI, const std::string& moType) {
   
+  const auto& HOp = ss_.fockBuilder->hamiltonianOptions_;
   auto off_sizes = parseMOType(moType);
+  std::cout << BannerTop << std::endl;
+  FormattedLine(std::cout, "Direct Relativistic AO->MO Transformation Initiated.");
+  FormattedLine(std::cout, "Transformation uses the Coulomb Gauge.");
   directTransformTPIBatch(pert, MOTPI, off_sizes);
+  std::cout << BannerTop << std::endl;
 
 }
 
 
-  template<typename MatsT, typename IntsT>
-  void MixedMOIntsTransformer<MatsT, IntsT>::transformAsymmTPI(EMPerturbation & pert,
+template<typename MatsT, typename IntsT>
+void MixedMOIntsTransformer<MatsT, IntsT>::transformAsymmTPI(EMPerturbation & pert,
                                                                MatsT * MOTPI,
                                                                const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p1tf,
                                                                const std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p2tf,

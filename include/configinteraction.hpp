@@ -60,6 +60,9 @@ struct CISettings {
    bool SparseDavidson = false;
    double SparseDavidsonEps = 1e-12;
 
+   //Threads
+   size_t nThreads_;
+
    // SCF Settings 
    bool doSCF           = false;
    bool doIVOs          = false;
@@ -118,9 +121,7 @@ public:
   ~ConfigurationInteraction(){ dealloc(); }
 
   void initialization();
-
   size_t nDeterminants() const { return  detFactory->ketCategoricalSpace()->nDeterminants(); }
-  
   void run(EMPerturbation &) override;
   void computeTDM(size_t s1, size_t s2, std::shared_ptr<cqmatrix::Matrix<MatsT>> tdm) override;
   void compute2TDM(size_t s1, size_t s2, std::shared_ptr<InCore4indexTPI<MatsT>> twoTDM) override;

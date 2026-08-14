@@ -67,7 +67,6 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
    */
 
   double fc1C = (this->reference()->nC == 1) ? 2.0 : 1.0;
-   
   ProgramTimer::tick("MOINTSTRANSFORM CORE ENERGY");
   if (MPIRank(this->comm) == 0) {
     MatsT * h1e_II  = CQMemManager::get().malloc<MatsT>(nCoreO);
@@ -258,4 +257,4 @@ void PostHartreeFock<MatsT,IntsT>::prepareMOIntegrals(
   return; 
 } // prepareMOIntegrals 
 
-} // namespace ChronusQ
+} // namespace ChronusQ  

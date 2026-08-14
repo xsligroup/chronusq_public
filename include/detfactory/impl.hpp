@@ -213,7 +213,7 @@ inline void DeterminantFactory::generateComputingGraph(bool usingExRI) {
     for (auto j = 0ul; j < ketCategoricalSpace_->nCategories(); ++j) {
       const auto& ketCat = ketCategoricalSpace_->getCategory(j);
         ketSpaceOcc = ketCat->SpaceOccupations();
-      
+     
       // find excitations spaces 
       iBraSpace.clear();
       iKetSpace.clear();

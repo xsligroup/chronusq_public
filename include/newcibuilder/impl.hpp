@@ -182,7 +182,7 @@ void NewCIBuilder<MatsT>::largestDiagH(DistributedSparseVectors<MatsT>& C,
             }
 
             //we want vector 'localElements' to store the K largest H values
-            size_t index = addr + CLocalView.getCatOffest(i);
+            size_t index = addr + CLocalView.getCatOffset(i);
             MatsT diagHElement = tmp;
 
             if(localElements[GetThreadID()].size() < K) {
@@ -330,7 +330,7 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
   
   auto SigmaView = detFactory_.braCategoricalSpace()
       ->createLocalCIVectorsView(Sigma, SigmaShift, nVec);
-  
+ 
   // MPI parallelization here
 #ifdef CQ_ENABLE_MPI 
   
@@ -372,7 +372,7 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
     ProgramTimer::tick("Sigma MPI COMM Create CView");
     localC = bcast_ptr;
     auto CView = detFactory_.ketCategoricalSpace()
-        ->createLocalCIVectorsView(localC, nVec, comm_, iBCast - 1);
+      ->createLocalCIVectorsView(localC, nVec, comm_, iBCast - 1);
     ProgramTimer::tock("Sigma MPI COMM Create CView");
     
     // send broadcast requests for next
@@ -389,7 +389,7 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
     }
 
 #else
-  auto CView = detFactory_.ketCategoricalSpace()
+    auto CView = detFactory_.ketCategoricalSpace()
       ->createLocalCIVectorsView(C, CShift, nVec);
 #endif
 
@@ -461,8 +461,8 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
 
   size_t nTotalDet = detFactory_.braCategoricalSpace()->nDeterminants();
   size_t nContractionDone = 0;
-  std::cout << std::endl << "      * Sigma Contraction Progress:"
-            << std::fixed << std::setprecision(2) << std::right << std::endl;
+  // std::cout << std::endl << "      * Sigma Contraction Progress:"
+  //          << std::fixed << std::setprecision(2) << std::right << std::endl;
   auto contraction_start = tick();
 
   double idle_time = 0.;
@@ -564,7 +564,7 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
     
     char* vecsBuffer = (MPISize(comm_) > 1 and MPIRank(comm_) != iBCast - 1) ? bcast_ptr_prev : localC_MPIBuff0;
     auto CView = detFactory_.ketCategoricalSpace()
-        ->createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], nVec, comm_, iBCast - 1);
+        ->template createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], nVec, comm_, iBCast - 1);
 
     ProgramTimer::tock("Sigma MPI COMM Create CView");
 
@@ -586,12 +586,12 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
     auto ratio = double(nContractionDone) / double(nTotalDet);
     auto dur_contraction = tock(contraction_start);
 
-    std::cout << "        - completed "
-              << std::setw(6) << 100 * ratio
-              << "%, time elapsed " << std::setw(10) <<  dur_contraction << " s"
-              << ", approximatedly needs " << std::setw(10)
-              << dur_contraction / ratio - dur_contraction  <<  " s more"
-              << std::endl;
+    // std::cout << "        - completed "
+    //           << std::setw(6) << 100 * ratio
+    //           << "%, time elapsed " << std::setw(10) <<  dur_contraction << " s"
+    //           << ", approximatedly needs " << std::setw(10)
+    //           << dur_contraction / ratio - dur_contraction  <<  " s more"
+    //           << std::endl;
 
   } // Broadcast C
 
@@ -639,8 +639,6 @@ void NewCIBuilder<MatsT>::buildSigma(size_t nVec,
 
 
 
-
-
 template <typename MatsT>
 void NewCIBuilder<MatsT>::formSubA(size_t nVec, size_t nTot,
     const DistributedSparseVectors<MatsT> & C, size_t CShift,
@@ -655,8 +653,8 @@ void NewCIBuilder<MatsT>::formSubA(size_t nVec, size_t nTot,
 
   size_t nTotalDet = detFactory_.braCategoricalSpace()->nDeterminants();
   size_t nContractionDone = 0;
-  std::cout << std::endl << "      * Sigma Contraction Progress:"
-            << std::fixed << std::setprecision(2) << std::right << std::endl;
+//  std::cout << std::endl << "      * Sigma Contraction Progress:"
+//            << std::fixed << std::setprecision(2) << std::right << std::endl;
   auto contraction_start = tick();
 
   double idle_time = 0.;
@@ -754,7 +752,7 @@ void NewCIBuilder<MatsT>::formSubA(size_t nVec, size_t nTot,
 
     char* vecsBuffer = (MPISize(comm_) > 1 and MPIRank(comm_) != iBCast - 1) ? bcast_ptr_prev : localC_MPIBuff0;
     auto CView = detFactory_.ketCategoricalSpace()
-        ->createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], nVec, comm_, iBCast - 1);
+        ->template createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], nVec, comm_, iBCast - 1);
 
     ProgramTimer::tock("Sigma MPI COMM Create CView");
 
@@ -780,12 +778,12 @@ void NewCIBuilder<MatsT>::formSubA(size_t nVec, size_t nTot,
     auto ratio = double(nContractionDone) / double(nTotalDet);
     auto dur_contraction = tock(contraction_start);
 
-    std::cout << "        - completed "
-              << std::setw(6) << 100 * ratio
-              << "%, time elapsed " << std::setw(10) <<  dur_contraction << " s"
-              << ", approximatedly needs " << std::setw(10)
-              << dur_contraction / ratio - dur_contraction  <<  " s more"
-              << std::endl;
+//    std::cout << "        - completed "
+//              << std::setw(6) << 100 * ratio
+//              << "%, time elapsed " << std::setw(10) <<  dur_contraction << " s"
+//              << ", approximatedly needs " << std::setw(10)
+//              << dur_contraction / ratio - dur_contraction  <<  " s more"
+//              << std::endl;
 
   } // Broadcast C
 
@@ -819,7 +817,6 @@ void NewCIBuilder<MatsT>::formSubA(size_t nVec, size_t nTot,
 
 }
 #endif
-
 
 
 
@@ -1110,7 +1107,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedSparseVectors<MatsT>& CBra,
      
     char* vecsBuffer = (MPISize(comm_) > 1 and MPIRank(comm_) != iBCast - 1) ? bcast_ptr_prev : localC_MPIBuff0;
     auto CKetJView = detFactory_.ketCategoricalSpace()
-        ->createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], 1, comm_, iBCast - 1);
+        ->template createLocalCIVectorsView<MatsT>(vecsBuffer, nonZerosRanks[iBCast - 1], 1, comm_, iBCast - 1);
 
     if (oneTDM and nonZerosRanks[iBCast - 1] > 0) {
       build1TDM(CBraIView, CKetJView, *oneTDM, oneTDMScale);
@@ -1122,7 +1119,7 @@ void NewCIBuilder<MatsT>::buildTDM(const DistributedSparseVectors<MatsT>& CBra,
 
 #else
     auto CKetJView = detFactory_.ketCategoricalSpace()
-        ->createLocalCIVectorsView(CKet, stateIndices.second, 1ul);
+        ->template createLocalCIVectorsView<MatsT>(CKet, stateIndices.second, 1ul);
 
     if (oneTDM) {
       build1TDM(CBraIView, CKetJView, *oneTDM, oneTDMScale);

@@ -66,7 +66,7 @@ void DASCIBuilder<MatsT>::buildSigma1e(
       continue;
     }
 
-    size_t Sigma_iCatOffset = Sigma.getCatOffest(oneEEx.categoricalIndices.first);
+    size_t Sigma_iCatOffset = Sigma.getCatOffset(oneEEx.categoricalIndices.first);
 
     const auto& h1e = *(this->moints_->template getIntegral<DASOnePInts, MatsT>(oneEEx.term));
     // h1e.output(std::cout, oneEEx.term, true);
@@ -217,11 +217,13 @@ void DASCIBuilder<MatsT>::buildSigma1e(
                   nonExLooper->setIndex(nonExIdx);	
                 }
                 else {
+                  auto h1val = ((itC + CIdx)->second) * h1e_pq;
                   auto K = braEx + braNonEx;
-		  SCRSigma_hash.update(K + Sigma_iCatOffset, iVec, ((itC + CIdx)->second) * h1e_pq);
                   CIdx++;
                   nonExIdx++;
-		  nonExLooper->increment();
+		              nonExLooper->increment();
+                  if (std::abs(h1val) < eps) {continue;}
+		              SCRSigma_hash.update(K + Sigma_iCatOffset, iVec, h1val);
                 }
               }
             }
@@ -241,7 +243,7 @@ void DASCISigma2eBuilder::buildSparseNaive(
     size_t nVec, const LLSparseMatrix<MatsT>& C, size_t shiftC, HashSparseMatrix<MatsT>& Sigma, size_t Sigma_iCatOffset,
     const DASTwoPInts<MatsT>& s2e, DoubleFullCD1eExListGenerator& double1eExListsGen,
     const std::vector<size_t>& KExOffs, const std::vector<size_t>& LExOffs,
-    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact) {
+    std::shared_ptr<TensorLooper>& nonExLooper, const double symmFact, double eps) {
   
   // binding non excitation part address
   const auto& LNonEx = nonExLooper->address();
@@ -351,8 +353,10 @@ void DASCISigma2eBuilder::buildSparseNaive(
 	          for (const auto& [q, p, KEx, pqSign]: qpExcitations) {
                     MatsT h2e_pqrs = (pqSign == rsSign) ? symmFact * s2e(p, q, r, s) : -symmFact * s2e(p, q, r, s);
                     if(h2e_pqrs == MatsT(0.)) {continue;}
+                    auto h2val = ((itC + CIdx)->second) * h2e_pqrs; 
                     auto K = KEx + KNonEx;
-		    Sigma.update(K + Sigma_iCatOffset, iVec, ((itC + CIdx)->second) * h2e_pqrs);
+                    if (std::abs(h2val) < eps) {continue;}
+            		    Sigma.update(K + Sigma_iCatOffset, iVec, h2val);
                   }
                   CIdx++;
                   nonExIdx++;

@@ -165,13 +165,13 @@ inline void CQDASSCFTEST( std::string in, std::string ref,
 
     std::cout << " * PERFORMING DASSCF OSCILLATOR STRENGTH CHECK " << std::endl;
 
-    auto oscDim     = resFile.getDims("POSTHF/OSC_STR_ZERO_ORDER");
+    auto oscDim     = resFile.getDims("POSTHF/OSC_STRENGTH");
     ASSERT_EQ(oscDim.size(),2);
     std::vector<double> xDummy, yDummy;
     xDummy.resize(oscDim[0] * oscDim[1]);
     yDummy.resize(oscDim[0] * oscDim[1]);
-    refFile.readData("POSTHF/OSC_STR_ZERO_ORDER", &xDummy[0]);
-    resFile.readData("POSTHF/OSC_STR_ZERO_ORDER", &yDummy[0]);
+    refFile.readData("POSTHF/OSC_STRENGTH", &xDummy[0]);
+    resFile.readData("POSTHF/OSC_STRENGTH", &yDummy[0]);
 
     for(auto i = 0; i < oscDim[0]; i++)
     for(auto j = 0; j < oscDim[1]; j++)

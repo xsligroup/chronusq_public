@@ -340,7 +340,28 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     MatrixAXPY('T', MatsT(-1.), pauliSCR.X(), symmDenSS.X()); 
     
   } // genSymmDenSS
-  
+ 
+  void genSymmDenSSMS(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
+      cqmatrix::PauliSpinorMatrices<MatsT>& symmDenSSMS) const {
+    
+    size_t thread_id = GetThreadID();
+    auto& spinorSCR = spinorSCR_[thread_id];
+    auto& pauliSCR = pauliSCR_[thread_id];
+    
+    this->computeAODensityFromMO(p ,q, shell_block_small_mo_[shell_mu], shell_block_small_mo_[shell_nu], spinorSCR); 
+    size_t nNu = spinorSCR.nRows() / 2;
+    size_t nMu = spinorSCR.nColumns() / 2;
+    symmDenSSMS.resize(nNu, nMu);
+    spinorSCR.spinScatter(symmDenSSMS, false, false);
+    
+    this->computeAODensityFromMO(p ,q, shell_block_small_mo_[shell_nu], shell_block_small_mo_[shell_mu], spinorSCR); 
+    pauliSCR.resize(nMu, nNu);
+    spinorSCR.spinScatter(pauliSCR, false, false);
+    
+    MatrixAXPY('T', MatsT(1.), pauliSCR.S(), symmDenSSMS.S()); 
+    
+  } // genSymmDenSSMS
+ 
   void genDenLSpmDenSL(size_t p, size_t q, size_t shell_mu, size_t shell_nu,
       cqmatrix::PauliSpinorMatrices<MatsT>& denLSpmDenSL) const {
 
@@ -387,7 +408,7 @@ class FourCShellBlockMO: public ShellBlockMO<MatsT> {
     this->transform(spinorSCR, shell_block_large_mo_[shell_mu], shell_block_large_mo_[shell_nu],
                     intermediate, mat, pOff_size, qOff_size, increment);
   }
-
+ 
   void transformLS(const cqmatrix::PauliSpinorMatrices<MatsT>& pauli, 
       size_t shell_mu, size_t shell_nu, cqmatrix::Matrix<MatsT>& mat, 
       const std::pair<size_t, size_t>& pOff_size,

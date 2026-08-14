@@ -32,7 +32,9 @@
 
 #include <itersolver/cqSparseMatrix.hpp>
 #include <boost/sort/sort.hpp>
+#ifdef CQ_HAS_PARALLEL_STL
 #include <execution>
+#endif
 
 namespace ChronusQ {
 
@@ -442,7 +444,7 @@ namespace ChronusQ {
       
       alloc();
     }
-    
+   
     // scatter data from root
     void scatter(size_t shift, size_t nVec, const _F* A, size_t LDA, int root) {
       this->sizeCheck(nVec + shift, "DistributedVectors<_F>::scatter");
@@ -951,6 +953,35 @@ namespace ChronusQ {
       alloc();
     }
 
+    explicit DistributedSparseVectors(const DistributedVectors<_F>& dVectors,
+      double threshold = 0.0) : comm_(dVectors.getMPIcomm()),
+      len_(dVectors.length()), size_(dVectors.size()) {
+
+        size_t nNodes = MPISize(comm_);
+        for (size_t i = 0; i < nNodes; ++i)
+          lens_.push_back(dVectors.lengthAtNode(i));
+        accLens_.resize(nNodes);
+        accLens_[0] = lens_[0];
+        for (size_t i = 1; i < nNodes; ++i)
+          accLens_[i] = accLens_[i - 1] + lens_[i];
+  
+        localLen_    = lens_[MPIRank(comm_)];
+        localOffset_ = (MPIRank(comm_) == 0) ? 0ul : accLens_[MPIRank(comm_) - 1];
+        alloc(); 
+  
+        size_t localLen = dVectors.localLength();
+        size_t nVec     = dVectors.size();
+        for (size_t j = 0; j < nVec; ++j) {
+          const _F* col = dVectors.getLocalPtr(j);
+        for (size_t i = 0; i < localLen; ++i) {
+          if (std::norm(col[i]) > threshold) {
+            vecs_.sortedInsert(i, j, col[i]);
+          }
+        }
+      }
+    }
+      
+
     DistributedSparseVectors(const DistributedSparseVectors<_F> &other):
         DistributedSparseVectors(other.comm_, other.other.lens_, other.size_) {
       set_data(0, size_, other, 0ul, false);
@@ -1086,12 +1117,12 @@ namespace ChronusQ {
 
        //copy C[iVec] into localIndices in parallel
        std::vector<std::pair<size_t, _F>> localIndices(vecs_.nonZeros(iVec));
-       std::copy(std::execution::par, vecs_.cbegin(iVec), vecs_.cend(iVec), localIndices.begin());
+       std::copy(CQ_EXEC_PAR vecs_.cbegin(iVec), vecs_.cend(iVec), localIndices.begin());
 
        size_t nLocalK = std::min(K, vecs_.nonZeros(iVec));
 
        //equivalent to stable sort in O(N) time
-       std::nth_element(std::execution::par, localIndices.begin(), localIndices.begin() + nLocalK - 1, localIndices.end(), 
+       std::nth_element(CQ_EXEC_PAR localIndices.begin(), localIndices.begin() + nLocalK - 1, localIndices.end(), 
 	 [&] (const auto& i, const auto& j) {
              return comp(i.second, j.second) or (std::norm(i.second) == std::norm(j.second) and i.first < j.first);
              }

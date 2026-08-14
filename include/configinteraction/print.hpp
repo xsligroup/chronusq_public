@@ -65,7 +65,7 @@ void CISettings::print(bool fourComp) {
     FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
     FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
     FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
-    FormattedLine(std::cout,"  Sparse Davidson:", SparseDavidson ? "True" : "False");
+    FormattedLine(std::cout,"  Sparse Implementation of STP-DAS:", SparseDavidson ? "True" : "False");
     if(SparseDavidson)
       FormattedLine(std::cout,"  Sparse Davidson Screening Threshold:", SparseDavidsonEps);
 
@@ -119,22 +119,21 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIHeader() {
     FormattedLine(std::cout, "* No-pair Approxmiation:", this->FourCompNoPair);
   }
   
-  std::cout << std::endl;
-  this->printCorrMOSpace();
-  
-  FormattedLine(std::cout, "* Active Spaces:");
-  std::cout << ciSettings.activeSpaces << std::endl;
+  //std::cout << std::endl;
+  //this->printCorrMOSpace();
+  //FormattedLine(std::cout, "* Active Spaces:");
+  //std::cout << ciSettings.activeSpaces << std::endl;
   
   if (ciSettings.refOcc.size() > 0) {
-    std::cout << "  * Reference Category Occupancy (From input) in Each Space:" << std::endl;
-    size_t counter = 1ul;
-    for (auto const & occs: ciSettings.refOcc) {
-      std::cout << "    - Reference " << std::setw(3) << counter << ": ";
-      for (auto const & occ: occs) std::cout << std::setw(3) << occ << " ";
-      std::cout << std::endl;
-      counter++;
-    }
-    std::cout << std::endl << "  * Maximum Excitation from Reference: " 
+    //std::cout << "  * Reference Category Occupancy (From input) in Each Space:" << std::endl;
+    //size_t counter = 1ul;
+    //for (auto const & occs: ciSettings.refOcc) {
+    //  std::cout << "    - Reference " << std::setw(3) << counter << ": ";
+    //  for (auto const & occ: occs) std::cout << std::setw(3) << occ << " ";
+    //  std::cout << std::endl;
+    //  counter++;
+    //}
+    std::cout << "  * Maximum Excitation from Reference: " 
       << (ciSettings.maxInterSpaceEx < 0 ? "All Excitation" : std::to_string(ciSettings.maxInterSpaceEx) )
       << std::endl;
   }

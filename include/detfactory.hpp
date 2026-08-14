@@ -76,7 +76,7 @@ class DeterminantFactory {
   
   // Excitation List Storage, only one copy is stored
   // Key for full list: nEx-ExSpaceInvolvedInKetDetCat
-  //   such as 1e-(ne,no) or 1e-(ne1,no1)-(ne2, no2) optional(-R)
+  // such as 1e-(ne,no) or 1e-(ne1,no1)-(ne2, no2) optional(-R)
   std::unordered_map<std::string, std::shared_ptr<NewExcitationList>> exLists_;
   
   // Contraction Tasks
@@ -162,7 +162,7 @@ public:
   // virtual function to do precomputations
   void computeExcitationList() { 
     for (auto & l: exLists_) {
-      std::cout << "Compute Excitation List " << l.first << " (" << l.second->storageSize()/1e9 << "GB )"<< std::endl;
+      // std::cout << "Compute Excitation List " << l.first << " (" << l.second->storageSize()/1e9 << "GB )"<< std::endl;
       l.second->computeExcitationList(); 
     }
   }

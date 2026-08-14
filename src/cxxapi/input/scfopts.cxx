@@ -69,6 +69,7 @@ namespace ChronusQ {
       "NEO",
       "PROT_GUESS",
       "SWAPMO",
+      "PROT_SWAPMO",
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",

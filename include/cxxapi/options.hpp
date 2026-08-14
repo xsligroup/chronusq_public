@@ -38,6 +38,7 @@
 #include <regex>
 #include <cubegen.hpp> 
 #include <perturb.hpp>
+#include <newperturb.hpp>
 #include <mp.hpp>
 #include <memory>
 
@@ -353,10 +354,13 @@ namespace ChronusQ {
   
   // Save reference info
   void saveRefs(SingleSlaterOptions &, std::shared_ptr<SingleSlaterBase> &);
+  // NewPerturb Options
+  std::shared_ptr<PostHartreeFockBase> CQMRPTSettings(std::ostream &,
+            CQInputFile &, std::shared_ptr<PostHartreeFockBase> &);
+  void CQMRPT_VALID(std::ostream &, CQInputFile &);
   // Parse Perturb options
   std::shared_ptr<MCWaveFunctionBase> CQPerturbOptions(std::ostream &,
             CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &);
-
   // Parse MP2 options
   std::shared_ptr<MP2Base> CQMP2Options(std::ostream &, CQInputFile &, 
               std::shared_ptr<SingleSlaterBase> &);

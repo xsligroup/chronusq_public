@@ -31,6 +31,8 @@
 #include <orbitalrotation.hpp>
 
 // #define DEBUG_ConfigInteraction_IMPL
+// #define DEBUG_SCALAR_REL_INTS
+// #define _DIFF_RDM
 
 namespace ChronusQ {
   
@@ -50,7 +52,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
   // Initial Printing
   this->printCIHeader();
   
-  detFactory->output(std::cout, "Configuration Interactions");
+  // detFactory->output(std::cout, "Configuration Interactions");
 
   // ConfigInteraction Initial CI solution
   std::cout << "Cycle 0:\n" << std::endl;
@@ -236,8 +238,10 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
         CErr("OSCISTRENGTH ORDER NYI!");
       }
     }
-   
+
+#ifdef _DIFF_RDM   
     if (this->NStates > 1) PostHartreeFock<MatsT,IntsT>::OneRDMDiff();
+#endif
 
     ProgramTimer::tock("Property Eval");
   }
@@ -285,7 +289,7 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   // make sure the active space partitioning in CategoricalSpace is in reference to
   // detFactory's active spaces
   // newCategoricalSpace is an object of CategoricalSpace class.
-  std::cout << "Construct Categorical Space" << std::endl;
+  // std::cout << "Construct Categorical Space" << std::endl;
   auto buildCat = tick();
   auto newCategoricalSpace = detFactory->buildEmptyDetsSpace();
 
@@ -296,8 +300,8 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   // build new categories based on excitation operator
   newCategoricalSpace->expandCategory(ciSettings.maxInterSpaceEx);
   auto durationBuildCat = tock(buildCat);
-  std::cout << "Construct Categorical Space Done: " << durationBuildCat << " s"<<std::endl;
-  std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
+  // std::cout << "Construct Categorical Space Done: " << durationBuildCat << " s"<<std::endl;
+  // std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
   std::cout << "Total Number of Determinants = "<<newCategoricalSpace->nDeterminants()<<std::endl;
 
   // Check and modify NStates to Ndets if NStates > Ndets
@@ -306,9 +310,17 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
     std::cout << "Requested Number of States > NDeterminants :: Modifying NStates to NDeterminants!" 
       << "\nNew NRoots = " << this->NStates << "\n" << std::endl;
   }
+
+  // Check Number of Threads:
+  size_t nThreads = GetNumThreads();
+  if (nThreads > newCategoricalSpace->nDeterminants()) {
+    SetNumThreads(newCategoricalSpace->nDeterminants());
+    std::cout << "WARNING: Number of Threads set to -> " << GetNumThreads() <<
+      std::endl;
+  }
+
   // For MPI
   newCategoricalSpace->initializeDistributedCatMap(this->comm);
-  
   detFactory->setKetCategoricalSpace(newCategoricalSpace);
   detFactory->setBraCategoricalSpace(newCategoricalSpace);
 

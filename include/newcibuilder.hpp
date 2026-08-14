@@ -50,7 +50,7 @@ class NewCIBuilder {
   MPI_Comm comm_;
   const std::shared_ptr<const IntegralsCollection> moints_; // integrals
   const DeterminantFactory& detFactory_;      // for CI vectors
-  
+
   // for scratches
   std::unordered_map<std::string, size_t> nSCR_;
   
@@ -64,8 +64,8 @@ class NewCIBuilder {
   NewCIBuilder(MPI_Comm comm, 
       const std::shared_ptr<const IntegralsCollection> moints,
       const DeterminantFactory& detF):
-      comm_(comm),
-      moints_(moints), detFactory_(detF) { }
+      comm_(comm), moints_(moints), detFactory_(detF) { }
+
 
   NewCIBuilder(const NewCIBuilder<MatsT>&) = default;
   NewCIBuilder(NewCIBuilder<MatsT>&&)      = default;
@@ -124,8 +124,8 @@ class NewCIBuilder {
       , bool reduceOneTDM = true, bool reduceTwoTDM = true 
 #endif
       ) const;
-
-#ifdef CQ_ENABLE_SPARSE
+ 
+#ifdef CQ_ENABLE_SPARSE 
    virtual void buildTDM(const DistributedSparseVectors<MatsT>& CBra,
       const DistributedSparseVectors<MatsT>& CKet,
       const std::pair<size_t, size_t>& stateIndices,
