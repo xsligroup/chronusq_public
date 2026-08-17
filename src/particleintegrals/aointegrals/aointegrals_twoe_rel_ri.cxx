@@ -958,7 +958,7 @@ std::cout << "Libcint-ERI-Dirac-Coulomb duration   = " << durERIDC << std::endl;
 
       }; // omp region
       for (size_t t = 0; t < 4; t++) {
-        double scale_denom = 4*SpeedOfLight*SpeedOfLight;
+        double scale_denom = 4*SpeedOfLight()*SpeedOfLight();
         double maxElem = *std::max_element(&maxElems[t*nthreads],&maxElems[(t+1)*nthreads]);
         std::cout << "SSLL-" << t << " element MAX = " << maxElem << "  scale by 1/(2mc)^2 = " << maxElem/scale_denom << std::endl;
         double maxError = *std::max_element(&maxErrors[t*nthreads],&maxErrors[(t+1)*nthreads]);
@@ -1570,7 +1570,7 @@ std::cout << "Libcint-ERI-Dirac-Coulomb duration   = " << durERIDC << std::endl;
 
       }; // omp region
       for (size_t t = 0; t < 16; t++) {
-        double scale_denom = 4*SpeedOfLight*SpeedOfLight;
+        double scale_denom = 4*SpeedOfLight()*SpeedOfLight();
         scale_denom *= scale_denom;
         double maxElem = *std::max_element(&maxElems[t*nthreads],&maxElems[(t+1)*nthreads]);
         std::cout << "SSSS-" << t << " element MAX = " << maxElem << "  scale by 1/(2mc)^2 = " << maxElem/scale_denom << std::endl;

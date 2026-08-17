@@ -179,3 +179,6 @@ BasisDef:
         0.8000000              1.0000000        
   ****
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

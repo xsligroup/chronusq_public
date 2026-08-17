@@ -122,8 +122,8 @@ namespace ChronusQ {
     // Compute 1/(2mc)^2
     //dcomplex scale = 1.;
     //dcomplex iscale = dcomplex(0.0, 1.0);
-    dcomplex scale = 1./(4*SpeedOfLight*SpeedOfLight);
-    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+    dcomplex scale = 1./(4*SpeedOfLight()*SpeedOfLight());
+    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
 
 
 
@@ -602,8 +602,8 @@ namespace ChronusQ {
       // when using Breit interaction, all the gaunt and gauge multiplied by 1/2 
       if(this->hamiltonianOptions_.Gauge) {//Gauge
         // std::cout<<"use Breit interaction, Gaunt part devide by 2"<<std::endl;
-        scale = 0.5* 1./(4*SpeedOfLight*SpeedOfLight);
-        iscale = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+        scale = 0.5* 1./(4*SpeedOfLight()*SpeedOfLight());
+        iscale = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
       }
 // SS end
 
@@ -1469,7 +1469,7 @@ namespace ChronusQ {
 
     if(this->hamiltonianOptions_.DiracCoulombSSSS) {//Dirac-Coulomb-SSSS
 
-      double C4 = 1./(16*SpeedOfLight*SpeedOfLight*SpeedOfLight*SpeedOfLight);
+      double C4 = 1./(16*SpeedOfLight()*SpeedOfLight()*SpeedOfLight()*SpeedOfLight());
       dcomplex scaleC4 = dcomplex(C4,0.0);
       dcomplex iscaleC4 = dcomplex(0.0,C4);
 
@@ -2070,11 +2070,11 @@ namespace ChronusQ {
 #endif
 
 
-      scale = 0.5* 1./(4*SpeedOfLight*SpeedOfLight);
-      iscale = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+      scale = 0.5* 1./(4*SpeedOfLight()*SpeedOfLight());
+      iscale = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
 
-      dcomplex scalef = 0.5* 1./(4*SpeedOfLight*SpeedOfLight);
-      dcomplex iscalef = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+      dcomplex scalef = 0.5* 1./(4*SpeedOfLight()*SpeedOfLight());
+      dcomplex iscalef = 0.5* dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
 
 
       if (computeExchange) {
@@ -2933,8 +2933,8 @@ namespace ChronusQ {
     // Compute 1/(2mc)^2
     //dcomplex scale = 1.;
     //dcomplex iscale = dcomplex(0.0, 1.0);
-    dcomplex scale = 1./(4*SpeedOfLight*SpeedOfLight);
-    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+    dcomplex scale = 1./(4*SpeedOfLight()*SpeedOfLight());
+    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
       cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
@@ -4002,7 +4002,7 @@ namespace ChronusQ {
 
 
     // Compute 1/(2mc)^2
-    auto C2 = 1./(4*SpeedOfLight*SpeedOfLight);
+    auto C2 = 1./(4*SpeedOfLight()*SpeedOfLight());
 
     for(size_t i = 0; i < contract1PDM.nComponent(); i++) {
       cqmatrix::PAULI_SPINOR_COMPS c = static_cast<cqmatrix::PAULI_SPINOR_COMPS>(i);
@@ -4319,7 +4319,7 @@ namespace ChronusQ {
 #ifdef _FOCK_CONTRACTION_TIME
       auto topDCSS_FSS = tick();
 #endif
-      double C4 = 1./(16*SpeedOfLight*SpeedOfLight*SpeedOfLight*SpeedOfLight);
+      double C4 = 1./(16*SpeedOfLight()*SpeedOfLight()*SpeedOfLight()*SpeedOfLight());
   
       /*++++++++++++++++++++++++++++++++++++++++++++*/
       /* Start of Dirac-Coulomb (SS|SS) Contraction */

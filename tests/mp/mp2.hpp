@@ -46,7 +46,7 @@ inline void CQNORMALMP( std::string in, std::string ref ) {
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    TEST_OUT + in + ".bin",
+    CQTestOut(in,".bin"),
     "", false);
 
 #endif
@@ -63,12 +63,12 @@ inline void CQBINMP( std::string in, std::string ref ) {
 #else
 
   std::ifstream  src(MP_TEST_REF + ref, std::ios::binary);
-  std::ofstream  dst(TEST_OUT + in + ".bin", std::ios::binary);
+  std::ofstream  dst(CQTestOut(in,".bin"), std::ios::binary);
   dst << src.rdbuf();
   dst.flush();
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    TEST_OUT + in + ".bin",
+    CQTestOut(in,".bin"),
     "", true);
 
 #endif
@@ -84,9 +84,16 @@ inline void CQSCRMP( std::string in, std::string ref, std::string scr ) {
 
 #else
 
+  // Run off a private copy of the reference scratch file: the job
+  // writes to its scratch file, and tests run side by side.
+  std::ifstream  scrSrc(MP_TEST_REF + scr, std::ios::binary);
+  std::ofstream  scrDst(CQTestOut(in,".scr.bin"), std::ios::binary);
+  scrDst << scrSrc.rdbuf();
+  scrDst.flush();
+
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    TEST_OUT + in + ".bin",
-    MP_TEST_REF + scr, false);
+    CQTestOut(in,".bin"),
+    CQTestOut(in,".scr.bin"), false);
 
 #endif
 
@@ -102,13 +109,20 @@ inline void CQBINSCRMP( std::string in, std::string ref, std::string scr ) {
 #else
 
   std::ifstream  src(MP_TEST_REF + ref, std::ios::binary);
-  std::ofstream  dst(TEST_OUT + in + ".bin", std::ios::binary);
+  std::ofstream  dst(CQTestOut(in,".bin"), std::ios::binary);
   dst << src.rdbuf();
   dst.flush();
 
+  // Run off a private copy of the reference scratch file: the job
+  // writes to its scratch file, and tests run side by side.
+  std::ifstream  scrSrc(MP_TEST_REF + scr, std::ios::binary);
+  std::ofstream  scrDst(CQTestOut(in,".scr.bin"), std::ios::binary);
+  scrDst << scrSrc.rdbuf();
+  scrDst.flush();
+
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
-    TEST_OUT + in + ".bin",
-    MP_TEST_REF + scr, true);
+    CQTestOut(in,".bin"),
+    CQTestOut(in,".scr.bin"), true);
 
 #endif
 
@@ -127,8 +141,8 @@ inline void CQMPTEST( std::string in, std::string ref,
 
 #ifndef _CQ_GENERATE_TESTS
 
-  SafeFile refFile(MP_TEST_REF + ref,  true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(MP_TEST_REF + ref,  true,  true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
   
   std::cout << " * PERFORMING MP2 ENERGY CHECK " << std::endl;
 

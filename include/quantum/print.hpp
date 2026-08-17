@@ -78,13 +78,13 @@ namespace ChronusQ {
 
     out << std::fixed; 
     out <<  std::setw(5) << std::left << "X=" << std::setw(20) << std::right 
-           << this->elecDipole[0] / EBohrPerDebye;
+           << this->elecDipole[0] / EBohrPerDebye();
 
     out <<  std::setw(5) << std::left << " Y=" << std::setw(20) << std::right 
-           << this->elecDipole[1] / EBohrPerDebye;
+           << this->elecDipole[1] / EBohrPerDebye();
 
     out <<  std::setw(5) << std::left << " Z=" << std::setw(20) << std::right 
-           << this->elecDipole[2] / EBohrPerDebye;
+           << this->elecDipole[2] / EBohrPerDebye();
 
 
     // Quadrupoles
@@ -93,33 +93,33 @@ namespace ChronusQ {
                          <<  "(Debye-\u212B)" << std::endl;
 
     out << std::left << std::setw(5) <<"XX=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[0][0] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[0][0] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XY=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[0][1] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[0][1] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XZ=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[0][2] * AngPerBohr/EBohrPerDebye 
+                     << this->elecQuadrupole[0][2] * AngPerBohr()/EBohrPerDebye()
                      << std::endl;
 
     out << std::left << std::setw(5) <<"YX=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[1][0] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[1][0] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YY=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[1][1] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[1][1] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YZ=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[1][2] * AngPerBohr/EBohrPerDebye 
+                     << this->elecQuadrupole[1][2] * AngPerBohr()/EBohrPerDebye()
                      << std::endl;
 
     out << std::left << std::setw(5) <<"ZX=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[2][0] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[2][0] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZY=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[2][1] * AngPerBohr/EBohrPerDebye;
+                     << this->elecQuadrupole[2][1] * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZZ=" << std::right << std::setw(20) 
-                     << this->elecQuadrupole[2][2] * AngPerBohr/EBohrPerDebye 
+                     << this->elecQuadrupole[2][2] * AngPerBohr()/EBohrPerDebye()
                      << std::endl;
 
     out << std::endl << std::endl;
@@ -133,111 +133,111 @@ namespace ChronusQ {
 
     out << std::left << std::setw(5) <<"XXX=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][0][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XXY=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][0][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XXZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][0][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"XYX=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][1][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XYY=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][1][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XYZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][1][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"XZX=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][2][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XZY=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][2][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" XZZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[0][2][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"YXX=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][0][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YXY=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][0][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YXZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][0][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"YYX=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][1][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YYY=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][1][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YYZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][1][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"YZX=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][2][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YZY=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][2][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" YZZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[1][2][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"ZXX=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][0][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZXY=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][0][1] *
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZXZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][0][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"ZYX=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][1][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZYY=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][1][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZYZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][1][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
     out << std::left << std::setw(5) <<"ZZX=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][2][0] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZZY=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][2][1] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye();
 
     out << std::left << std::setw(5) <<" ZZZ=" << std::right << std::setw(20) 
                        << this->elecOctupole[2][2][2] * 
-                         AngPerBohr * AngPerBohr/EBohrPerDebye << std::endl;
+                         AngPerBohr() * AngPerBohr()/EBohrPerDebye() << std::endl;
 
 
 
@@ -264,5 +264,4 @@ namespace ChronusQ {
 
   }; // QuantumBase::printSpin
 };
-
 

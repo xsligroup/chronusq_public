@@ -195,6 +195,8 @@ namespace ChronusQ {
 
     CQINPUT_VALID(output,input);
 
+    CQPhysConSetOptions(output, input);
+
     // TEMPORARY
     bool doTemp = true;
 

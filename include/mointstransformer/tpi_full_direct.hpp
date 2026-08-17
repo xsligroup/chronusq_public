@@ -142,7 +142,7 @@ class SchwarzIntegrals {
       SchwarzSSSS = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzSSSS->clear(); 
       auto& SchwarzSSSSMat = *SchwarzSSSS;
-      double C2 = 1. / (4 * SpeedOfLight * SpeedOfLight);
+      double C2 = 1. / (4 * SpeedOfLight() * SpeedOfLight());
       
       #pragma omp parallel
       {
@@ -179,7 +179,7 @@ class SchwarzIntegrals {
       SchwarzGaunt = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGaunt->clear(); 
       auto& SchwarzGauntMat = *SchwarzGaunt;
-      double C1 = 1. / (2 * SpeedOfLight);
+      double C1 = 1. / (2 * SpeedOfLight());
       
       #pragma omp parallel
       {
@@ -223,7 +223,7 @@ class SchwarzIntegrals {
       SchwarzGauge = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGauge->clear(); 
       auto& SchwarzGaugeMat = *SchwarzGauge;
-      double C1 = 1. / (2 * SpeedOfLight);
+      double C1 = 1. / (2 * SpeedOfLight());
       
       #pragma omp parallel
       {
@@ -1368,7 +1368,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   #endif
 
               // Scaling of the eri. 2 * 1/4c^2
-              MatsT C2 = 2./(4*SpeedOfLight*SpeedOfLight);
+              MatsT C2 = 2./(4*SpeedOfLight()*SpeedOfLight());
               MatsT scale = C2;
               blas::axpy(npq, scale, rsERI.pointer(), 1, MOTPI + iMat * npq, 1);
 
@@ -1988,7 +1988,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
             auto topUpdate = tick();
 #endif
               // Scaling with 2 * 1/16c^4.
-              MatsT C4 = 2./(16*SpeedOfLight*SpeedOfLight*SpeedOfLight*SpeedOfLight);
+              MatsT C4 = 2./(16*SpeedOfLight()*SpeedOfLight()*SpeedOfLight()*SpeedOfLight());
               MatsT scale = C4;
               blas::axpy(npq, scale, rsERI.pointer(), 1, MOTPI + iMat * npq, 1);
 
@@ -2511,7 +2511,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
             auto topUpdate = tick();
 #endif
 
-              MatsT C2 = 2./(4*SpeedOfLight*SpeedOfLight);
+              MatsT C2 = 2./(4*SpeedOfLight()*SpeedOfLight());
               // if gauge is requested scale the gaunt term by 1/2
               MatsT scale = (HOp.Gauge) ? C2 / 2. : C2;
               
@@ -3075,7 +3075,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
             auto topUpdate = tick();
 #endif
 
-              MatsT C2 = 2./(4*SpeedOfLight*SpeedOfLight);
+              MatsT C2 = 2./(4*SpeedOfLight()*SpeedOfLight());
               MatsT scale = C2 / 2.;
               
               blas::axpy(npq, scale, rsERI.pointer(), 1, MOTPI + iMat * npq, 1);

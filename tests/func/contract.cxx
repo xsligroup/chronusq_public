@@ -103,16 +103,19 @@ void CONTRACT_TEST(TWOBODY_CONTRACTION_TYPE type, std::string storage) {
 #endif
 
 
-  // Reference File
-  SafeFile refFile(FUNC_REFERENCE "contract.hdf5", exists); 
+  // Reference File. Read-only (unless generating)
+  SafeFile refFile(FUNC_REFERENCE "contract.hdf5", exists, exists);
 
 
   // Input file for the constructions of Basis sets and Molecules
   CQInputFile input(FUNC_INPUT "contract_ref.inp");
   input.parse();
-  
+
   // Memory
-  CQMiscOptions(std::cout,input); 
+  CQMiscOptions(std::cout,input);
+
+  // Need to set Physical constants
+  CQPhysConSetOptions(std::cout,input);
   // Dummy scrName since READGEOM=INPUTFILE
   std::string scrName;
   

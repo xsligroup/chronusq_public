@@ -40,3 +40,6 @@ basis = sto-3g
 
 [MISC]
 NSMP=1
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -37,3 +37,6 @@ basis = cc-PVTZ
 nsmp = 2
 mem = 100MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

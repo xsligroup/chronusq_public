@@ -45,17 +45,17 @@ static void CQDYNAMICSTEST(std::string in, std::string ref,
   double tol = 1e-8,
   bool readBin = false ){
   MPI_Barrier(MPI_COMM_WORLD);
-  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",CQTestOut(in,".bin"),"",readBin);
   MPI_Barrier(MPI_COMM_WORLD);
 
   if(MPIRank(MPI_COMM_WORLD) != 0) return;
 
   // print the reference file path
   std::cout << "Reference file: " << DYNAMICS_TEST_REF + ref << std::endl;
-  std::cout << "Result file: " << TEST_OUT + in + ".bin" << std::endl;
+  std::cout << "Result file: " << CQTestOut(in,".bin") << std::endl;
 
-  SafeFile refFile(DYNAMICS_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(DYNAMICS_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
 
   std::vector<double> xDummy, yDummy;
 
@@ -124,7 +124,7 @@ static void CQDYNAMICSRESTARTTEST( std::string midr, std::string in, std::string
   MPI_Barrier(MPI_COMM_WORLD);
   if( MPIRank(MPI_COMM_WORLD) == 0 ) {
     std::ifstream oldFile( DYNAMICS_TEST_REF + midr, std::ios::binary );
-    std::ofstream newFile( TEST_OUT + in + ".bin" );
+    std::ofstream newFile( CQTestOut(in,".bin") );
     newFile << oldFile.rdbuf();
     newFile.flush();
   }

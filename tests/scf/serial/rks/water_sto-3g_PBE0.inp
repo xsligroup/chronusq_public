@@ -26,3 +26,6 @@ basis = sto-3g
 nsmp = 1
 mem = 4GB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

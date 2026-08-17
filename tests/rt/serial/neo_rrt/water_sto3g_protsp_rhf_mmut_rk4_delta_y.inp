@@ -51,3 +51,6 @@ ALG = INCORE
 [MISC]
 nsmp = 1
 mem = 100 mb
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

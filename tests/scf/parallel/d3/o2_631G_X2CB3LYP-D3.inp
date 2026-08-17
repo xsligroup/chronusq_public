@@ -31,3 +31,6 @@ alg=incore
 [BASIS]
 basis = 6-31g
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

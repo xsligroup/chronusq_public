@@ -27,7 +27,7 @@ set(SCF_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/scf" )
 
 
 # Set up compilation of SCF test exe
-add_executable(scftest ../ut.cxx
+add_library(scftest_objs OBJECT ../ut.cxx
 	rhf.cxx uhf.cxx ghf.cxx rohf.cxx x2chf.cxx fourcomphf.cxx
         rhf_giao.cxx uhf_giao.cxx rohf_giao.cxx ghf_giao.cxx x2c_giao.cxx
 	rks.cxx uks.cxx x2cks.cxx ks.cxx gks_giao.cxx x2cks_giao.cxx
@@ -36,10 +36,13 @@ add_executable(scftest ../ut.cxx
         misc.cxx ri.cxx cediis.cxx qn.cxx d3.cxx
 )
 
-target_include_directories(scftest PUBLIC ${SCF_TEST_SOURCE_ROOT}
+target_include_directories(scftest_objs PUBLIC ${SCF_TEST_SOURCE_ROOT}
   ${TEST_BINARY_ROOT})
-target_link_libraries(scftest PUBLIC cq)
-target_link_libraries(scftest PUBLIC gtest)
+target_link_libraries(scftest_objs PUBLIC cq)
+target_link_libraries(scftest_objs PUBLIC gtest)
+
+add_executable(scftest $<TARGET_OBJECTS:scftest_objs>)
+target_link_libraries(scftest PUBLIC scftest_objs)
 
 # Generate directories
 file(MAKE_DIRECTORY ${SCF_TEST_BINARY_ROOT}/serial/rhf)
@@ -158,6 +161,9 @@ endif()
 
 
 if( CQ_ENABLE_MPI )
+  add_executable(scftest_mpi $<TARGET_OBJECTS:scftest_objs>)
+  target_link_libraries(scftest_mpi PUBLIC scftest_objs)
+
   add_cq_mpi_test( RHF_SCF_MPI      2   scftest "RHF.*"   )
   add_cq_mpi_test( UHF_SCF_MPI      2   scftest "UHF.*"   )
   add_cq_mpi_test( ROHF_SCF_MPI      2   scftest "ROHF.*" )

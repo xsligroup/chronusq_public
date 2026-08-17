@@ -22,6 +22,7 @@
  *  
  */
 #include <cxxapi/boilerplate.hpp>
+#include <physcon.hpp>
 // Workaround to intel compiler bug that breaks libint ERIs
 #if !LIBINT2_CONSTEXPR_STATICS
   #include <libint2/statics_definition.h>
@@ -35,6 +36,30 @@
   #include <func.hpp>
 #endif
 
+namespace ChronusQ::CQExclusivelyDuringTesting {
+
+  /**
+   *  \brief Return every physical constant to its unset state.
+   */
+  void clearAllPhysicalConstants() {
+
+    for( auto *constant : PersistentConstant::registry() ) constant->clear();
+
+  };
+
+}
+
+/**
+ *  \brief Unset the physical constants before each test.
+ */
+struct PhysicalConstantsReset : public ::testing::EmptyTestEventListener {
+
+  void OnTestStart(const ::testing::TestInfo &) override {
+    ChronusQ::CQExclusivelyDuringTesting::clearAllPhysicalConstants();
+  }
+
+};
+
 int main(int argc, char **argv) {
 
   // Call CQ::initialize only once
@@ -46,10 +71,14 @@ int main(int argc, char **argv) {
      ::testing::AddGlobalTestEnvironment(new ChronusQ::ContractEnvironment);
 #endif
 
-#ifdef CQ_ENABLE_MPI
-  // Only get print from root
   ::testing::TestEventListeners& listeners =
       ::testing::UnitTest::GetInstance()->listeners();
+
+  // Each test brings its own physical constants
+  listeners.Append(new PhysicalConstantsReset);
+
+#ifdef CQ_ENABLE_MPI
+  // Only get print from root
   if(ChronusQ::MPIRank(MPI_COMM_WORLD) != 0) {
       delete listeners.Release(listeners.default_result_printer());
   }

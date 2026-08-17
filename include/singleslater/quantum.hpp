@@ -605,9 +605,9 @@ template <typename MatsT, typename IntsT>
     } else if(this->nC == 4) {
       std::fill_n(S.pointer(),NB*NB,MatsT(0.0));
       SetMat('N',NB/4,NB/4,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/4, S.pointer(),NB);
-      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB/4+NB/4,NB);
+      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight()*SpeedOfLight())),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB/4+NB/4,NB);
       SetMat('N',NB/4,NB/4,MatsT(1.),this->aoints_->overlap->matrix().pointer(), NB/4, S.pointer()+NB*NB/2+NB/2,NB);
-      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight*SpeedOfLight)),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB*3/4+NB*3/4,NB);
+      SetMat('N',NB/4,NB/4,MatsT(1./(2*SpeedOfLight()*SpeedOfLight())),this->aoints_->kinetic->matrix().pointer(), NB/4, S.pointer()+NB*NB*3/4+NB*3/4,NB);
     } else{
       CErr("nC invalid in OrbitalModifierNew<singleSlaterT,MatsT,IntsT>::computeMODensity!");
     }

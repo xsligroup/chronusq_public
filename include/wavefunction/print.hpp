@@ -548,7 +548,7 @@ namespace ChronusQ {
 
     if( this->nC == 4 ) {
       IntsT* ssOverlap = CQMemManager::get().malloc<IntsT>(NB*NB);
-      SetMat('N',NB,NB,1./(2*SpeedOfLight*SpeedOfLight),this->aoints_->kinetic->pointer(),
+      SetMat('N',NB,NB,1./(2*SpeedOfLight()*SpeedOfLight()),this->aoints_->kinetic->pointer(),
                 NB,ssOverlap,NB);
       out << "\n\nCanonical Molecular Orbital based Mulliken Population Analysis (Alpha) for Small component";
       analyzeMOPrint(out, NB, NOrb, NO, ssOverlap, this->mo[0].pointer() + NB,

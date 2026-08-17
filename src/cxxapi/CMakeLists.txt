@@ -30,8 +30,10 @@ set(OPT_SRC input/molopts.cxx input/basisopts.cxx
     input/cubeopts.cxx 
     input/saverefs.cxx input/perturbopts.cxx input/mpopts.cxx
     input/mrptopts.cxx input/posthfopts.cxx input/configinteractionopts.cxx
-    input/gauxcopts.cxx procedural.cxx output.cxx options.cxx
+    input/gauxcopts.cxx input/physconopts.cxx 
+    procedural.cxx output.cxx options.cxx
     quantumsubsystems.cxx)
+
 
 target_sources(cq PRIVATE ${INPUT_SRC} ${OPT_SRC})
 

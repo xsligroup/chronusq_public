@@ -48,23 +48,31 @@ namespace cqmatrix {
   
     std::string fName_;
     bool        exists_;
-  
+    bool        readOnly_;
+
     public:
 
       // Defaulted ctors
       SafeFile(const SafeFile &) = default;
 
-      // String ctor
-      SafeFile( const std::string &fName = "", 
-        bool exists = false ) :
-        fName_(fName), exists_(exists) { }
-  
+      // String ctor.
+      SafeFile( const std::string &fName = "",
+        bool exists = false, bool readOnly = false ) :
+        fName_(fName), exists_(exists), readOnly_(readOnly) { }
+
 
       // Member functions
 
       inline bool exists() const { return exists_; }
+      inline bool readOnly() const { return readOnly_; }
       inline std::string fName() const{ return fName_; }
       inline void setFile(const std::string &name) { fName_ = name; }
+
+      // Open for reading. Writers always open read/write.
+      inline HighFive::File openForRead() const {
+        return HighFive::File(fName_, readOnly_ ? HighFive::File::ReadOnly
+                                                : HighFive::File::OpenOrCreate);
+      }
 
       inline void createFile() {
         HighFive::File file(fName_, HighFive::File::OpenOrCreate);
@@ -81,7 +89,7 @@ namespace cqmatrix {
       }
 
       bool exists(const std::string &dataSet) {
-        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        HighFive::File file = openForRead();
         return file.exist(dataSet);
       };
 
@@ -148,7 +156,7 @@ namespace cqmatrix {
 
       template <typename T>
       void readData(const std::string &dataSet, T* data) {
-        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        HighFive::File file = openForRead();
         if (file.exist(dataSet)){
           auto datasetObj = file.getDataSet(dataSet);
           datasetObj.read<T>(data);
@@ -173,7 +181,7 @@ namespace cqmatrix {
                     std::shared_ptr<cqmatrix::NDArray<dcomplex>>,
                     std::shared_ptr<cqmatrix::NDArray<int>> >
       readNDArray(const std::string &dataSet) {
-        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        HighFive::File file = openForRead();
         H5T_class_t type;
         if (file.exist(dataSet)){
           auto datasetObj = file.getDataSet(dataSet);
@@ -205,7 +213,7 @@ namespace cqmatrix {
                            const std::vector<size_t> &start, const std::vector<size_t> &dims,
                            const std::vector<size_t> &memStart = {},
                            const std::vector<size_t> &memDims = {} ) {
-          HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+          HighFive::File file = openForRead();
           if (file.exist(dataSet)){
             HighFive::DataSet dataset = file.getDataSet(dataSet);
             dataset.select(start, dims).read(data);
@@ -290,7 +298,7 @@ namespace cqmatrix {
       };
 
       std::vector<size_t> getDims(const std::string &dataSet) {
-        HighFive::File file(fName_, HighFive::File::OpenOrCreate);
+        HighFive::File file = openForRead();
         std::vector<size_t> dims;
         if (file.exist(dataSet)){
           auto dataset = file.getDataSet(dataSet);

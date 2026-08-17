@@ -31,3 +31,6 @@ ri = auxbasis
 nsmp = 1
 mem = 100 MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -109,3 +109,6 @@ P    1   1.00
 nsmp = 1
 mem = 100 MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

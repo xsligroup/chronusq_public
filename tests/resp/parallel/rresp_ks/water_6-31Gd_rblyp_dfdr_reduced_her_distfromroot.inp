@@ -32,3 +32,6 @@ AOPS  = HEROPS
 basis = 6-31G(D)
 [MISC]
 nsmp=2
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

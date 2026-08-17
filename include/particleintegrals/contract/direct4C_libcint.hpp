@@ -431,7 +431,7 @@ namespace ChronusQ {
       #pragma omp parallel
       {
   
-        double C2 = 1./(4*SpeedOfLight*SpeedOfLight);
+        double C2 = 1./(4*SpeedOfLight()*SpeedOfLight());
         size_t thread_id = GetThreadID();
         size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
@@ -2909,7 +2909,7 @@ namespace ChronusQ {
       #pragma omp parallel
       {
   
-        double C1 = 1./(2*SpeedOfLight);
+        double C1 = 1./(2*SpeedOfLight());
         size_t thread_id = GetThreadID();
         size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;
@@ -3994,7 +3994,7 @@ namespace ChronusQ {
       #pragma omp parallel
       {
   
-        double C1 = 1./(2*SpeedOfLight);
+        double C1 = 1./(2*SpeedOfLight());
         size_t thread_id = GetThreadID();
         size_t mpi_thread_id = mpiRank * nThreads + thread_id;
         size_t n1,n2;

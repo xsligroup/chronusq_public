@@ -21,7 +21,7 @@
 #   E-Mail: xsli@uw.edu
 #
 
-cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 
 project(ChronusQ
     VERSION 0.6.0

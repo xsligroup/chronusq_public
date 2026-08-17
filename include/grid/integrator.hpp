@@ -1230,7 +1230,7 @@ namespace ChronusQ {
         // for hydrogen is pre scaled by 2 to prevent scaling).
         // Procedure according J. Chem. Phys. 88, 2547(1988). pg 2550 
           
-        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr();
         SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
 
       } // loop over atoms
@@ -1392,7 +1392,7 @@ namespace ChronusQ {
                         molecule_.atoms[iAtm].coord[1],
                         molecule_.atoms[iAtm].coord[2]};
 
-        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr();
         SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
 
       } // loop over atoms
@@ -1530,7 +1530,7 @@ namespace ChronusQ {
                         molecule_.atoms[iAtm].coord[1],
                         molecule_.atoms[iAtm].coord[2]};
 
-        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr();
         SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
 
       } // loop over atoms
@@ -1985,7 +1985,7 @@ namespace ChronusQ {
         // for hydrogen is pre scaled by 2 to prevent scaling).
         // Procedure according J. Chem. Phys. 88, 2547(1988). pg 2550 
           
-        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr;
+        this->Scale = 0.5*molecule_.atoms[iAtm].slaterRadius/AngPerBohr();
         SphereIntegrator<_QTyp1>::template integrate<T>(1.,res,g,args...);
 
       } // loop over atoms

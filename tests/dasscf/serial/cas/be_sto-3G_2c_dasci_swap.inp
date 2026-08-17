@@ -29,3 +29,6 @@ swapmo:
 9 10
 NRoots = 1
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

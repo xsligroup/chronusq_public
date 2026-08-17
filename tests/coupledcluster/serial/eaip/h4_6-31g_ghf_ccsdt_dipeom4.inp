@@ -48,3 +48,6 @@ davidsonevalconv = 1.0e-10
 mem = 1000 mb
 nsmp = 1
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

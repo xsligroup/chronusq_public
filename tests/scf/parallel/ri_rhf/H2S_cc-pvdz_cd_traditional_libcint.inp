@@ -33,3 +33,6 @@ mem = 100 MB
 [BASIS]
 basis = cc-pvdz 
 forcecart = false
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

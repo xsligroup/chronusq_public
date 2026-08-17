@@ -236,7 +236,7 @@ namespace ChronusQ {
       for(auto iO = 0; iO < nRoots; iO++) {
 
         out << "   " << "n = " << std::setw(5) << std::left << iO + 1;
-        printRec(Rotatory_CGS_Length * resObs.rotatory_len_RM[iO]);
+        printRec(Rotatory_CGS_Length() * resObs.rotatory_len_RM[iO]);
         out << "\n";
 
       };

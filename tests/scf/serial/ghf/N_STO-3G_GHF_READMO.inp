@@ -23,3 +23,6 @@ alg=skip
 mem = 200 MB 
 nsmp = 1 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

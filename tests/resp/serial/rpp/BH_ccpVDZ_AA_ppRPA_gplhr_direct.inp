@@ -19,3 +19,6 @@ FULLMAT    = FALSE
 basis = cc-pVDZ
 forcecart = TRUE
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

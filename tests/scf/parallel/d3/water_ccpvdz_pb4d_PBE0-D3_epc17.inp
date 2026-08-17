@@ -40,3 +40,6 @@ guess = classical
 nsmp = 2
 mem = 300MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

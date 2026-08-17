@@ -68,3 +68,6 @@ basis = prot-sp
 basistype = GIAO
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

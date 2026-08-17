@@ -23,50 +23,117 @@
  */
 #pragma once
 
+#include <cerr.hpp>
 #include <cmath>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ChronusQ {
 
-  // Physical Constants 
-  // XXX: Could use some citations / more accurate values here
-  constexpr double AngPerBohr    = 0.52917721092;
-  constexpr double KgPerAMU      = 1.66053906892e-27;
-  constexpr double KgPerE        = 9.1093837139e-31;
-  constexpr double CouPerEl      = 1.602176565e-19;
-  constexpr double PlanckConst   = 6.62606957e-34;
-  constexpr double AvogConst     = 6.02214129e+23;
-  constexpr double EBohrPerDebye = 0.393430307;
-  constexpr double EVPerHartree  = 27.211396132;
-  constexpr double NMPerHartree  = 45.56335;
-  constexpr double SpeedOfLight  = 137.035999074;
-  //constexpr double SpeedOfLight  = 137.03599967994; // PySCF
-  constexpr double FSPerAUTime   = 2.4188843265857e-2;
-  constexpr double JPerHartree   = 4.35974434e-18;
-  constexpr double ProtMassPerE  = 1836.152673426;
-  constexpr double DeutMassPerE  = 3670.482967655;
-  constexpr double TritMassPerE  = 5496.92153551;
-  //constexpr double AUPerAMU      = 1822.888486217313;
-  constexpr double AUPerAMU      = KgPerAMU/KgPerE;
-  constexpr double BoltzmannConst= 3.166811563e-6;
+  /**
+   *  Physical constants can only be set once 
+   *  During testing we need either legacy or new constants so we need a way to reset these
+   *  this should only be exposed to testing so its declared but no implementation exists except in testing 
+   */
+  namespace CQExclusivelyDuringTesting {
 
-  // Things in odd unit systems / derived
-  constexpr double SpeedOfLight_CM = 2.99792458e+10; 
-  constexpr double CouPerEl_ESU = 
-    CouPerEl * SpeedOfLight_CM / 10.;
-  constexpr double MassEl_KG = 
-    1e4 * JPerHartree / SpeedOfLight_CM / SpeedOfLight_CM *
-    SpeedOfLight * SpeedOfLight;
-  constexpr double HBar = PlanckConst / 2. / M_PI;
+    void clearAllPhysicalConstants();
+
+  }
+
+  class PersistentConstant {
+  public:
+    explicit PersistentConstant(std::string name) : name_(std::move(name)) {
+      registry().push_back(this);
+    }
+
+    PersistentConstant(const PersistentConstant &) = delete;
+    PersistentConstant &operator=(const PersistentConstant &) = delete;
+
+    double operator()(double input) {
+      if (value_)
+        CErr(std::string("Physical constant ") + name_ +
+          " can only be set once.");
+      value_ = input;
+      return *value_;
+    }
+
+    double operator()() const {
+      if (not value_)
+        CErr(std::string("Physical constant ") + name_ +
+          " was used before it was set.");
+      return *value_;
+    }
+
+  private:
+    // Every constant enrols itself here, so that a reset cannot quietly miss
+    // one that was added after the reset was written.
+    static std::vector<PersistentConstant *> &registry() {
+      static std::vector<PersistentConstant *> constants;
+      return constants;
+    }
+
+    void clear() { value_.reset(); }
+
+    friend void CQExclusivelyDuringTesting::clearAllPhysicalConstants();
+
+    std::string name_;
+    std::optional<double> value_;
+  };
 
 
-  // Unit conversions
-  constexpr double Rotatory_CGS_Length = 
-    1e40 * CouPerEl_ESU * CouPerEl_ESU * HBar * AngPerBohr *
-    1e7 * 1e-8 / (1e3 * MassEl_KG * SpeedOfLight_CM);   
+  // Base physical constants (CODATA, via SciPy 1.18.0).
+  // Regenerate with bin/gen_physcon_defaults.py
+  inline constexpr double SpeedOfLight_SIDefault   = 299792458.;
+  inline constexpr double SpeedOfLightDefault      = 137.03599917700001;
+  inline constexpr double KgPerAMUDefault          = 1.6605390689199999e-27;
+  inline constexpr double KgPerEDefault            = 9.1093837138999998e-31;
+  inline constexpr double CouPerElDefault          = 1.6021766339999999e-19;
+  inline constexpr double PlanckConstDefault       = 6.6260701499999998e-34;
+  inline constexpr double AvogConstDefault         = 6.0221407599999999e+23;
+  inline constexpr double BoltzmannConst_SIDefault = 1.3806490000000001e-23;
+  inline constexpr double ProtMassPerEDefault      = 1836.1526734260001;
+  inline constexpr double DeutMassPerEDefault      = 3670.4829676549998;
+  inline constexpr double TritMassPerEDefault      = 5496.9215355099996;
 
-  constexpr double Rotatory_CGS_Vel = 
-    1e40 * CouPerEl_ESU * CouPerEl_ESU * HBar*HBar*HBar * 
-    1e21 / ( MassEl_KG * MassEl_KG * SpeedOfLight_CM * 
-        AngPerBohr * JPerHartree * 1e5 );
-};
+  inline constexpr double VacElPermityDefault  = CouPerElDefault * CouPerElDefault * SpeedOfLightDefault / (2. * PlanckConstDefault * SpeedOfLight_SIDefault);
 
+  // Persistent physical constants. Each starts empty and accepts one value.
+  inline PersistentConstant SpeedOfLight("SpeedOfLight");
+  inline PersistentConstant KgPerAMU("KgPerAMU");
+  inline PersistentConstant KgPerE("KgPerE");
+  inline PersistentConstant CouPerEl("CouPerEl");
+  inline PersistentConstant PlanckConst("PlanckConst");
+  inline PersistentConstant AvogConst("AvogConst");
+  inline PersistentConstant ProtMassPerE("ProtMassPerE");
+  inline PersistentConstant DeutMassPerE("DeutMassPerE");
+  inline PersistentConstant TritMassPerE("TritMassPerE");
+  inline PersistentConstant BoltzmannConst("BoltzmannConst");
+
+  // Derived constants. These are initialized after the base constants and
+  // cannot be set directly from the input file.
+  inline PersistentConstant SpeedOfLight_CM("SpeedOfLight_CM");
+  inline PersistentConstant AUPerAMU("AUPerAMU");
+  inline PersistentConstant CouPerEl_ESU("CouPerEl_ESU");
+  inline PersistentConstant MassEl_KG("MassEl_KG");
+  inline PersistentConstant HBar("HBar");
+  inline PersistentConstant Rotatory_CGS_Length("Rotatory_CGS_Length");
+  inline PersistentConstant Rotatory_CGS_Vel("Rotatory_CGS_Vel");
+
+  inline PersistentConstant AngPerBohr("AngPerBohr");
+  inline PersistentConstant EBohrPerDebye("EBohrPerDebye");
+  inline PersistentConstant EVPerHartree("EVPerHartree");
+  inline PersistentConstant NMPerHartree("NMPerHartree");
+  inline PersistentConstant FSPerAUTime("FSPerAUTime");
+  inline PersistentConstant JPerHartree("JPerHartree");
+  inline PersistentConstant VacElPermity("VacElPermity");
+
+  inline PersistentConstant HBar_SI("HBar_SI");
+  inline PersistentConstant BohrRadius_SI("BohrRadius_SI");
+  inline PersistentConstant BoltzmannConst_SI("BoltzmannConst_SI");
+  inline PersistentConstant SpeedOfLight_SI("SpeedOfLight_SI");
+
+
+}; // namespace ChronusQ

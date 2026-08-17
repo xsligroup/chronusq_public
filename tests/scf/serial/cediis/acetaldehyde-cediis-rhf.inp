@@ -36,3 +36,6 @@ damp=false
 nsmp = 1
 mem = 1GB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -42,3 +42,6 @@ dc=true
 mem = 1 GB
 nsmp = 1 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

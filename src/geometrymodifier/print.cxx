@@ -98,7 +98,7 @@ namespace ChronusQ {
     }
 
     std::cout << std::setprecision(8);
-    std::cout << std::endl<<"Time (fs): "<< std::right<<std::setw(16)<<curState.time*FSPerAUTime
+    std::cout << std::endl<<"Time (fs): "<< std::right<<std::setw(16)<<curState.time*FSPerAUTime()
               << "  Time (au): "<<std::right<< std::setw(16)<<curState.time<<std::endl;
 
     std::cout << std::setprecision(16);

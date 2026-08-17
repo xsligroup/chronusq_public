@@ -272,7 +272,7 @@ namespace ChronusQ {
 
       out << std::setw(15) << std::right << "W(eV) = " 
           << std::setprecision(8) << std::fixed 
-          << W_print[iRt]*EVPerHartree;
+          << W_print[iRt]*EVPerHartree();
 
       out << "\n";
 

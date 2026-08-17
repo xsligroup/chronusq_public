@@ -20,3 +20,6 @@ guess=sad
 
  
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

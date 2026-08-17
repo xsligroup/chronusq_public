@@ -21,3 +21,6 @@ forcecart = TRUE
 
 [MISC]
 NSMP = 2
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -31,3 +31,6 @@ alg = direct
 
 [BASIS]
 basis = sto-3g
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

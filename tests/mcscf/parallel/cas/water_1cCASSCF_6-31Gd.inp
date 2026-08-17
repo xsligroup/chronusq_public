@@ -36,3 +36,6 @@ printmult=true
 
 [INTS]
 alg = direct 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

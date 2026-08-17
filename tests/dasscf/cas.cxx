@@ -107,17 +107,24 @@ TEST(MCSCF_FIELD, Ethylene_MCSCF_W_FIELD) {
 }
 */
 
-TEST(DASCI_DAVIDSON, Al_631G ) {
+// CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_1c_dasci_davidson",     "al_6-31G_1c_dasci.bin.ref", true);
+TEST(DASCI_DAVIDSON, Al_631G_x2c ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasci_davidson",       "al_6-31G_x2c_dasci.bin.ref" ); };
 
-  // CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_1c_dasci_davidson",     "al_6-31G_1c_dasci.bin.ref", true);
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasci_davidson",       "al_6-31G_x2c_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_bc_dasci_davidson",     "al_6-31G_4c_bc_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dc_dasci_davidson",     "al_6-31G_4c_dc_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcssss_dasci_davidson", "al_6-31G_4c_dcssss_dasci.bin.ref");
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcg_dasci_davidson",    "al_6-31G_4c_dcg_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcb_dasci_davidson",    "al_6-31G_4c_dcb_dasci.bin.ref" );
+TEST(DASCI_DAVIDSON, Al_631G_4c_bc ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_bc_dasci_davidson",     "al_6-31G_4c_bc_dasci.bin.ref" ); };
 
-};
+TEST(DASCI_DAVIDSON, Al_631G_4c_dc ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dc_dasci_davidson",     "al_6-31G_4c_dc_dasci.bin.ref" ); };
+
+TEST(DASCI_DAVIDSON, Al_631G_4c_dcssss ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcssss_dasci_davidson", "al_6-31G_4c_dcssss_dasci.bin.ref"); };
+
+TEST(DASCI_DAVIDSON, Al_631G_4c_dcg ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcg_dasci_davidson",    "al_6-31G_4c_dcg_dasci.bin.ref" ); };
+
+TEST(DASCI_DAVIDSON, Al_631G_4c_dcb ) {
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_4c_dcb_dasci_davidson",    "al_6-31G_4c_dcb_dasci.bin.ref" ); };
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
@@ -131,16 +138,23 @@ TEST(X2C_DASSCF_FULLMATRIX, PAR_Al_631G ) {
 
 };
 
-TEST(DASCI_DAVIDSON, PAR_Al_631G ) {
+TEST(DASCI_DAVIDSON, PAR_Al_631G_x2c ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_x2c_dasci_davidson",       "al_6-31G_x2c_dasci.bin.ref" ); };
 
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_x2c_dasci_davidson",       "al_6-31G_x2c_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_bc_dasci_davidson",     "al_6-31G_4c_bc_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dc_dasci_davidson",     "al_6-31G_4c_dc_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcssss_dasci_davidson", "al_6-31G_4c_dcssss_dasci.bin.ref");
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcg_dasci_davidson",    "al_6-31G_4c_dcg_dasci.bin.ref" );
-  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcb_dasci_davidson",    "al_6-31G_4c_dcb_dasci.bin.ref" );
+TEST(DASCI_DAVIDSON, PAR_Al_631G_4c_bc ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_bc_dasci_davidson",     "al_6-31G_4c_bc_dasci.bin.ref" ); };
 
-};
+TEST(DASCI_DAVIDSON, PAR_Al_631G_4c_dc ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dc_dasci_davidson",     "al_6-31G_4c_dc_dasci.bin.ref" ); };
+
+TEST(DASCI_DAVIDSON, PAR_Al_631G_4c_dcssss ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcssss_dasci_davidson", "al_6-31G_4c_dcssss_dasci.bin.ref"); };
+
+TEST(DASCI_DAVIDSON, PAR_Al_631G_4c_dcg ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcg_dasci_davidson",    "al_6-31G_4c_dcg_dasci.bin.ref" ); };
+
+TEST(DASCI_DAVIDSON, PAR_Al_631G_4c_dcb ) {
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_4c_dcb_dasci_davidson",    "al_6-31G_4c_dcb_dasci.bin.ref" ); };
 
 TEST(TwoC_DAS_SWAP, PAR_Be_2c_SWAP_sto3G ) {
 

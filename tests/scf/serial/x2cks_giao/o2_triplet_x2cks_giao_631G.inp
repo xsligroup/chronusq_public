@@ -33,3 +33,6 @@ alg=incore
 basis = 6-31g
 basistype = GIAO
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -312,9 +312,9 @@ namespace ChronusQ {
       if(atom.quantum && !NEODynamicsOpts.includeQProtKE) continue;
       if(mdOptions.onlyMoveH && atom.atomicNumber != 1) continue;
 
-      nuclearKineticEnergy += 0.5*velocity[i  ]*velocity[i  ]*atom.atomicMass*AUPerAMU;
-      nuclearKineticEnergy += 0.5*velocity[i+1]*velocity[i+1]*atom.atomicMass*AUPerAMU;
-      nuclearKineticEnergy += 0.5*velocity[i+2]*velocity[i+2]*atom.atomicMass*AUPerAMU;
+      nuclearKineticEnergy += 0.5*velocity[i  ]*velocity[i  ]*atom.atomicMass*AUPerAMU();
+      nuclearKineticEnergy += 0.5*velocity[i+1]*velocity[i+1]*atom.atomicMass*AUPerAMU();
+      nuclearKineticEnergy += 0.5*velocity[i+2]*velocity[i+2]*atom.atomicMass*AUPerAMU();
       
     }
 

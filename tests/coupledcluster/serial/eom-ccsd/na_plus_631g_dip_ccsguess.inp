@@ -44,3 +44,6 @@ nsmp = 1
 ALG = INCORE
 Libcint = false
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

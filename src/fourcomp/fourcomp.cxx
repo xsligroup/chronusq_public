@@ -45,7 +45,7 @@ namespace ChronusQ {
     size_t NB = this->aoints_.overlap->nBasis();
 
     // Form 1/(4c^2)*W-T
-    cqmatrix::Matrix<MatsT> W_spinBlock(1./(4. * SpeedOfLight * SpeedOfLight)
+    cqmatrix::Matrix<MatsT> W_spinBlock(1./(4. * SpeedOfLight() * SpeedOfLight())
         * std::dynamic_pointer_cast<OnePRelInts<IntsT>>(
               this->aoints_.potential)->template formW<MatsT>()
         - this->aoints_.kinetic->matrix()

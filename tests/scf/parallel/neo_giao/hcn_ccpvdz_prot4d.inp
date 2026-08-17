@@ -50,3 +50,6 @@ ALG = incore
 
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

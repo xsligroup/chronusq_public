@@ -42,3 +42,6 @@ basis = sto-3g
 basistype = GIAO
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

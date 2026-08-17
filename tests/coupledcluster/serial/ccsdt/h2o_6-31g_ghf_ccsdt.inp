@@ -35,3 +35,6 @@ nsmp = 1
 [INTS]
 alg = incore
 libcint = true
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

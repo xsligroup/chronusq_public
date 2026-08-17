@@ -702,7 +702,7 @@ namespace ChronusQ {
             }
 
             HamiltonianOptions temp_opt;
-            temp_opt.particle = {1., ProtMassPerE};
+            temp_opt.particle = {1., ProtMassPerE()};
             cd_aux2->computeAOInts(basisSet2, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
 
@@ -1065,7 +1065,7 @@ namespace ChronusQ {
             }
 
             HamiltonianOptions temp_opt;
-            temp_opt.particle = {1., ProtMassPerE};
+            temp_opt.particle = {1., ProtMassPerE()};
             cd_aux2->computeAOInts(basisSet2, mol, emPert, ELECTRON_REPULSION, temp_opt);
           }
 

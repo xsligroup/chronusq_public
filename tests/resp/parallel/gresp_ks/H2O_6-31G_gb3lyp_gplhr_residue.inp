@@ -24,3 +24,6 @@ basis = 6-31g
 
 [MISC]
 NSMP = 2
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

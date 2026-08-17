@@ -38,3 +38,6 @@ NROOTS = 12
 basis = 6-31g
 basistype = GIAO
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

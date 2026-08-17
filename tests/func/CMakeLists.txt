@@ -26,13 +26,16 @@ set(FUNC_TEST_SOURCE_ROOT "${TEST_ROOT}/func" )
 set(FUNC_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/func" )
 
 # Set up compilation of Functionality test exe
-add_executable(functest ../ut.cxx contract.cxx ordqz.cxx gplhr.cxx davidson.cxx)
+add_library(functest_objs OBJECT ../ut.cxx contract.cxx ordqz.cxx gplhr.cxx davidson.cxx)
 
-target_compile_definitions(functest PUBLIC CQ_FUNC_TEST)
-target_include_directories(functest PUBLIC ${FUNC_TEST_SOURCE_ROOT} 
+target_compile_definitions(functest_objs PUBLIC CQ_FUNC_TEST)
+target_include_directories(functest_objs PUBLIC ${FUNC_TEST_SOURCE_ROOT}
   ${TEST_BINARY_ROOT})
-target_link_libraries(functest PUBLIC cq)
-target_link_libraries(functest PUBLIC gtest)
+target_link_libraries(functest_objs PUBLIC cq)
+target_link_libraries(functest_objs PUBLIC gtest)
+
+add_executable(functest $<TARGET_OBJECTS:functest_objs>)
+target_link_libraries(functest PUBLIC functest_objs)
 
 include( CQTestGeneration )
 
@@ -43,6 +46,9 @@ add_cq_test( DAVIDSON           functest "DAVIDSON.*" )
 add_cq_test( CQMEMMANAGER       functest "CQMEM.*" )
 
 if( CQ_ENABLE_MPI )
+  add_executable(functest_mpi $<TARGET_OBJECTS:functest_objs>)
+  target_link_libraries(functest_mpi PUBLIC functest_objs)
+
   add_cq_mpi_test( GPLHR_MPI 2 functest "GPLHR.*" )
   add_cq_mpi_test( DAVIDSON_MPI 2 functest "DAVIDSON.*" )
 endif()

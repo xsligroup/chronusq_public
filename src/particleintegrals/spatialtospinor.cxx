@@ -135,8 +135,8 @@ namespace ChronusQ {
     size_t NB    = this->nBasis();
     size_t twoNB  = NB*2;
     size_t twoNB2 = twoNB*twoNB;
-    dcomplex scale = 1./(4*SpeedOfLight*SpeedOfLight);
-    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight*SpeedOfLight));
+    dcomplex scale = 1./(4*SpeedOfLight()*SpeedOfLight());
+    dcomplex iscale = dcomplex(0.0, 1./(4*SpeedOfLight()*SpeedOfLight()));
 
     if (not DC_ and not gaunt_ and not SSSS_ and not gauge_)   nSpinorRelComp = 0; // direct Coulomb  (LL|LL)
     else if (DC_ and not gaunt_ and not SSSS_ and not gauge_)  nSpinorRelComp = 1; // + Dirac Coulomb (LL|SS)

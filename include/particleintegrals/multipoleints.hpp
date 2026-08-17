@@ -326,7 +326,7 @@ namespace ChronusQ {
 
           // SS
           cqmatrix::PauliSpinorMatrices<dcomplex> W_spinor = onePRelInt->SZYX();
-          W_spinor *= 1./(4. * SpeedOfLight * SpeedOfLight);
+          W_spinor *= 1./(4. * SpeedOfLight() * SpeedOfLight());
 
           // LL Scalar 
           SetMat('N',NB,NB,dcomplex(1.),onePRelInt->pointer(), NB,dipole_ixyz.S().pointer(),           2*NB);

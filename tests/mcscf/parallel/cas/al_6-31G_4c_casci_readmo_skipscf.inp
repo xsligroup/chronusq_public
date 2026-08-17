@@ -43,3 +43,6 @@ Gaunt = true
 Gauge = true
 libcint = true
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

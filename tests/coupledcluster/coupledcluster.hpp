@@ -50,7 +50,7 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
   bool rstExist = false;
   if ( ! restart_bin.empty() ) {
     std::ifstream  src(CC_TEST_REF + restart_bin, std::ios::binary);
-    std::ofstream  dst(TEST_OUT + in + ".bin", std::ios::binary);
+    std::ofstream  dst(CQTestOut(in,".bin"), std::ios::binary);
     dst << src.rdbuf();
     dst.flush();
     rstExist = true;
@@ -59,18 +59,18 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
 #ifdef _CQ_GENERATE_TESTS
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    CC_TEST_REF + ref, TEST_OUT + in + ".scr", rstExist);
+    CC_TEST_REF + ref, CQTestOut(in,".scr"), rstExist);
 
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin",TEST_OUT + in + ".scr", rstExist);
+    CQTestOut(in,".bin"),CQTestOut(in,".scr"), rstExist);
 
   if(MPIRank(MPI_COMM_WORLD) != 0) return;
 
           
-  SafeFile refFile(CC_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(CC_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
 
   dcomplex testE, refE;
   std::cout << " * PERFORMING CC ENERGY CHECK " << std::endl;

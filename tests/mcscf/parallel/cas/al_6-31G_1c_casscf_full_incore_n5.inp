@@ -38,3 +38,6 @@ CIDIAGALG=FULLMATRIX
 alg = incore
 tpitransalg = N5
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

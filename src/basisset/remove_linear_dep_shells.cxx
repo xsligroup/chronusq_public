@@ -229,7 +229,7 @@ namespace ChronusQ {
         if (is4C) {
           remove_linearly_dependent_shells(
               originalBasis, *kineticMatrix, centerShellsKept,
-              2.0 * SpeedOfLight * SpeedOfLight * linearDependencyThreshold);
+              2.0 * SpeedOfLight() * SpeedOfLight() * linearDependencyThreshold);
         }
         // Append to keptShells
         keptShells.insert(keptShells.end(), centerShellsKept.begin(), centerShellsKept.end());
@@ -271,7 +271,7 @@ namespace ChronusQ {
     if (is4C) {
       remove_linearly_dependent_shells(
           originalBasis, *kineticMatrix, keptShells,
-          2.0 * SpeedOfLight * SpeedOfLight * linearDependencyThreshold);
+          2.0 * SpeedOfLight() * SpeedOfLight() * linearDependencyThreshold);
     }
 
     return keptShells;

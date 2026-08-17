@@ -586,13 +586,13 @@ namespace ChronusQ {
       // oscillator strength f = 2/3 (E2 - E1) eD.
       f =  (2./ 3.) * (1 / (StateEnergy[s2] - StateEnergy[s1])) * std::real(eD);
       // Magnetic dipole contri. to oscillator strength f = 1/6 * alpha^2 * (E2 - E1) * eM.  
-      f += (1./6.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD);
+      f += (1./6.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD);
       // Electric quadpole contri. to oscillator strength f = 1/20 * alpha^2 * (E2 - E1) * eQ.
-      f += (1./20.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ);
+      f += (1./20.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ);
       // Magnetic quadpole contri. to oscillator strength f = 1/9 * alpha^2 * (E2 - E1) * mQ.
-      f += (1./9.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ);
+      f += (1./9.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ);
       // Electric Octupole contri. to oscillator strength f = (-2/45) * alpha^2 * (E2 - E1) * eO
-      f -= (2./45.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO);
+      f -= (2./45.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO);
 
       // output
       std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
@@ -614,10 +614,10 @@ namespace ChronusQ {
       std::cout << bannerTop << std::endl; 
       std::cout << std::fixed << std::setprecision(10)
                 << std::setw(12) << std::fixed << std::setprecision(8) << (2./ 3.) * (1/ (StateEnergy[s2] - StateEnergy[s1])) * std::real(eD)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./6.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./20.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./9.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (-2./45.) * std::pow(1/SpeedOfLight, 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO)
+                << std::setw(20) << std::fixed << std::setprecision(10) << (1./6.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD)
+                << std::setw(20) << std::fixed << std::setprecision(10) << (1./20.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ)
+                << std::setw(20) << std::fixed << std::setprecision(10) << (1./9.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ)
+                << std::setw(20) << std::fixed << std::setprecision(10) << (-2./45.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO)
                 << "\n" << std::endl;                                    
     }                                                                     
     MPIBCast(f, 0, this->comm);                                           

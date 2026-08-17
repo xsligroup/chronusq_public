@@ -39,3 +39,6 @@ SSSS = false
 libcint = true
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

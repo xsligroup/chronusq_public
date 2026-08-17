@@ -29,3 +29,6 @@ mem = 1300 MB
 
 [BASIS]
 basis = sapporo-dkh3-dzp-2012-no
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

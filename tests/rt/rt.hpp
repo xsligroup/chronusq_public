@@ -133,10 +133,10 @@ static void CQRTTEST(std::string in, std::string ref,
    double tol = 1e-8,
    bool readBin = false ){ 
   
-  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",CQTestOut(in,".bin"),"",readBin);
   
-  SafeFile refFile(RT_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(RT_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
   \
   std::vector<double> xDummy, yDummy;\
   \
@@ -175,10 +175,10 @@ static void CQRTCITEST(std::string in, std::string ref,
    double tol = 1e-8,
    bool readBin = false ){ 
   
-  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",TEST_OUT + in + ".bin","",readBin);
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",CQTestOut(in,".bin"),"",readBin);
   
-  SafeFile refFile(RT_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(RT_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
   \
   std::vector<double> xDummy, yDummy;\
   \
@@ -220,7 +220,7 @@ static void CQRTCITEST(std::string in, std::string ref,
 static void CQRTRESTARTTEST( std::string midr, std::string in, std::string ref, double tol = 1e-8 ) {
 
   std::ifstream oldFile( RT_TEST_REF + midr, std::ios::binary );\
-  std::ofstream newFile( TEST_OUT + in + ".bin" );\
+  std::ofstream newFile( CQTestOut(in,".bin") );\
   newFile << oldFile.rdbuf();
   newFile.flush();
 

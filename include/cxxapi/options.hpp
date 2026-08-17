@@ -41,6 +41,7 @@
 #include <newperturb.hpp>
 #include <mp.hpp>
 #include <memory>
+#include <physcon.hpp>
 
 // Preprocessor directive to aid the digestion of optional 
 // input arguments
@@ -391,6 +392,10 @@ namespace ChronusQ {
   std::set<std::string> CQORBPROP_VALID(const std::map<std::string, std::string>& inputSection);
 
   std::set<std::string> CQGAUXC_VALID(const std::map<std::string, std::string>& inputSection);
+
+  void CQPHYSCON_VALID(std::ostream&, CQInputFile &);
+
+  void CQPhysConSetOptions(std::ostream &out, CQInputFile &input );
 
   void printInvalidKeys(const std::set<std::string> &invalidKeywords,
                         const std::string &prefix);

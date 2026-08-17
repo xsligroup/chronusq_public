@@ -33,3 +33,6 @@ NRoots = 6
 alg = incore
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

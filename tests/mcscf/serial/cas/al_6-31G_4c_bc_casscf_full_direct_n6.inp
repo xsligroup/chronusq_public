@@ -36,3 +36,6 @@ tpitransalg = N6
 DC = false
 libcint = true
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

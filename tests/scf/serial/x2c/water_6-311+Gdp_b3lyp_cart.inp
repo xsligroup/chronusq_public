@@ -27,3 +27,6 @@ forcecart = TRUE
 nsmp = 1
 mem = 200 MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -194,9 +194,9 @@ namespace ChronusQ {
 
       // Update atom with geometry specification
       // Convert to Bohr
-      atoms.back().coord[0] = std::stod(tokens[1]) / AngPerBohr;
-      atoms.back().coord[1] = std::stod(tokens[2]) / AngPerBohr;
-      atoms.back().coord[2] = std::stod(tokens[3]) / AngPerBohr;
+      atoms.back().coord[0] = std::stod(tokens[1]) / AngPerBohr();
+      atoms.back().coord[1] = std::stod(tokens[2]) / AngPerBohr();
+      atoms.back().coord[2] = std::stod(tokens[3]) / AngPerBohr();
 
       // quantum nuclei
       if (tokens.size() == 5) {

@@ -19,3 +19,6 @@ job = SCF
 [BASIS]
 basis = STO-3G
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

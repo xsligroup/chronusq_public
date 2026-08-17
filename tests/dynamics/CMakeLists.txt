@@ -26,12 +26,15 @@ set(DYNAMICS_TEST_SOURCE_ROOT "${TEST_ROOT}/dynamics" )
 set(DYNAMICS_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/dynamics" )
   
 # Set up compilation of DYNAMICS test exe
-add_executable(dynamicstest ../ut.cxx bomd.cxx ehrenfest.cxx bort-ehrenfest.cxx d3.cxx bomd_giao.cxx ehrenfest_giao.cxx)
+add_library(dynamicstest_objs OBJECT ../ut.cxx bomd.cxx ehrenfest.cxx bort-ehrenfest.cxx d3.cxx bomd_giao.cxx ehrenfest_giao.cxx)
 
-target_include_directories(dynamicstest PUBLIC ${DYNAMICS_TEST_SOURCE_ROOT} 
+target_include_directories(dynamicstest_objs PUBLIC ${DYNAMICS_TEST_SOURCE_ROOT}
   ${TEST_BINARY_ROOT})
-target_link_libraries(dynamicstest PUBLIC cq)
-target_link_libraries(dynamicstest PUBLIC gtest)
+target_link_libraries(dynamicstest_objs PUBLIC cq)
+target_link_libraries(dynamicstest_objs PUBLIC gtest)
+
+add_executable(dynamicstest $<TARGET_OBJECTS:dynamicstest_objs>)
+target_link_libraries(dynamicstest PUBLIC dynamicstest_objs)
 
 # Generate directories
 file(MAKE_DIRECTORY ${DYNAMICS_TEST_BINARY_ROOT}/serial/ehrenfest)
@@ -63,6 +66,9 @@ endif()
 
 
 if( CQ_ENABLE_MPI )
+  add_executable(dynamicstest_mpi $<TARGET_OBJECTS:dynamicstest_objs>)
+  target_link_libraries(dynamicstest_mpi PUBLIC dynamicstest_objs)
+
   add_cq_mpi_test( BOMD_MPI      2   dynamicstest "BOMD.*"   )
   add_cq_mpi_test( EHRENFEST_DYNAMICS_MPI      2   dynamicstest "EHRENFEST_DYNAMICS.*"   )
   add_cq_mpi_test( BORT_DYNAMICS_MPI      2   dynamicstest "BORT_DYNAMICS.*"   )

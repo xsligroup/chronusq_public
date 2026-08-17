@@ -31,3 +31,6 @@ basis = def2-svp
 nsmp = 2
 mem = 200MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -478,7 +478,7 @@ namespace ChronusQ {
     cqmatrix::Matrix<MatsT> Wp(potential->template formW<MatsT>());
 
     // Subtract out 2mc^2 from W diagonals
-    const double WFact = 2. * SpeedOfLight * SpeedOfLight;
+    const double WFact = 2. * SpeedOfLight() * SpeedOfLight();
     for(auto j = 0ul; j < 2*NPU; j++) Wp(j,j) -= WFact;
 
     // Copy W into the 4C CH storage
@@ -502,10 +502,10 @@ namespace ChronusQ {
     MatsT *CP22 = CP21 + 4*NPU*NPU + NPU;
 
     for(auto j = 0; j < NPU; j++) {
-      CP11[j + 4*NPU*j] = SpeedOfLight * SS[j];
-      CP12[j + 4*NPU*j] = SpeedOfLight * SS[j];
-      CP21[j + 4*NPU*j] = SpeedOfLight * SS[j];
-      CP22[j + 4*NPU*j] = SpeedOfLight * SS[j];
+      CP11[j + 4*NPU*j] = SpeedOfLight() * SS[j];
+      CP12[j + 4*NPU*j] = SpeedOfLight() * SS[j];
+      CP21[j + 4*NPU*j] = SpeedOfLight() * SS[j];
+      CP22[j + 4*NPU*j] = SpeedOfLight() * SS[j];
     }
 
     // Diagonalize the 4C CH
@@ -563,8 +563,8 @@ namespace ChronusQ {
     // SCR1 = cp * X
     for(auto j = 0; j < 2*NPU; j++)
     for(auto i = 0; i < NPU; i++) {
-      CSCR1[i + 2*NPU*j] = SpeedOfLight * SS[i] * (*X)(i,j);
-      CSCR1[i + NPU + 2*NPU*j] = SpeedOfLight * SS[i] * (*X)(i + NPU, j);
+      CSCR1[i + 2*NPU*j] = SpeedOfLight() * SS[i] * (*X)(i,j);
+      CSCR1[i + NPU + 2*NPU*j] = SpeedOfLight() * SS[i] * (*X)(i + NPU, j);
     }
 
     // 2C CH += SCR1 + SCR1**H
@@ -1106,7 +1106,7 @@ namespace ChronusQ {
 #endif
 
     // Subtract out 2mc^2 from W diagonals
-    const dcomplex WFact = 2. * SpeedOfLight * SpeedOfLight;
+    const dcomplex WFact = 2. * SpeedOfLight() * SpeedOfLight();
     for(auto j = 0ul; j < 2*NP; j++) Wp[j + LDW*j] -= WFact;
 
 #ifdef DebugX2Cprint
@@ -1141,8 +1141,8 @@ namespace ChronusQ {
     dcomplex *CP21 = CH4C + 2*NP;
    
     for(auto j = 0; j < 2*NP; j++) {
-      CP11[j + 4*NP*j] = SpeedOfLight * SS[j];
-      CP21[j + 4*NP*j] = SpeedOfLight * SS[j];
+      CP11[j + 4*NP*j] = SpeedOfLight() * SS[j];
+      CP21[j + 4*NP*j] = SpeedOfLight() * SS[j];
     }
 
 #ifdef DebugX2Cprint
@@ -1218,7 +1218,7 @@ namespace ChronusQ {
     // SCR1 = cp * X
     for(auto j = 0; j < 2*NP; j++)
     for(auto i = 0; i < 2*NP; i++) {
-      CSCR1[i + 2*NP*j] = SpeedOfLight * SS[i] * X[i + 4*NP*j];
+      CSCR1[i + 2*NP*j] = SpeedOfLight() * SS[i] * X[i + 4*NP*j];
     }
 
     // 2C CH += SCR1 + SCR1**H
@@ -1366,7 +1366,7 @@ namespace ChronusQ {
     // SCR1 = cp * X
     for(auto j = 0; j < 2*NP; j++)
     for(auto i = 0; i < 2*NP; i++) {
-      CSCR1[i + 2*NP*j] = SpeedOfLight * SS[i] * (*X)(i,j);
+      CSCR1[i + 2*NP*j] = SpeedOfLight() * SS[i] * (*X)(i,j);
     }
 
     // 2C CH += SCR1 + SCR1**H
@@ -1490,7 +1490,7 @@ namespace ChronusQ {
                Y->pointer(),Y->nRows(),MatsT(0.),RT,2*NB);
 
     // 3. Xp = 2 c p^-1 X
-    double twoC = 2 * SpeedOfLight;
+    double twoC = 2 * SpeedOfLight();
     double *twoCPinv = CQMemManager::get().malloc<double>(NPU);
     for(size_t i = 0; i < NPU; i++) twoCPinv[i] = twoC/p[i];
     MatsT *twoCPinvX = CQMemManager::get().malloc<MatsT>(4*NPU*NPU);
@@ -1558,7 +1558,7 @@ namespace ChronusQ {
 
     // 3. Xp = 2 c p^-1 X
     // Mind that p is reverted by the end of computeOneEX2C 
-    double twoC = 2 * SpeedOfLight;
+    double twoC = 2 * SpeedOfLight();
     double *twoCPinv = CQMemManager::get().malloc<double>(2*NP);
     for(size_t i = 0; i < 2*NP; i++) twoCPinv[i] = twoC/p[i];
     dcomplex *twoCPinvX = CQMemManager::get().malloc<dcomplex>(4*NP*NP);
@@ -1638,7 +1638,7 @@ namespace ChronusQ {
       SCR,2*NP,MatsT(1.),Hx2c.pointer(),2*NB);
     // Hx2c += 1/(4*C**2) US^H * W * US
     blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*NP,2*NB,2*NP,
-      MatsT(0.25/SpeedOfLight/SpeedOfLight),W->pointer(),2*NP,
+      MatsT(0.25/SpeedOfLight()/SpeedOfLight()),W->pointer(),2*NP,
       US,2*NP,MatsT(0.),SCR,2*NP);
     blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*NB,2*NB,2*NP,MatsT(1.),US,2*NP,
       SCR,2*NP,MatsT(1.),Hx2c.pointer(),2*NB);
@@ -1888,7 +1888,7 @@ namespace ChronusQ {
                 SinvHalf.pointer(), SinvHalf.nRows());
 
     // S + 1/2c^2 X^H T X
-    const double TFact = 0.5 / (SpeedOfLight * SpeedOfLight);
+    const double TFact = 0.5 / (SpeedOfLight() * SpeedOfLight());
     Y = std::make_shared<cqmatrix::Matrix<MatsT>>(S2c + TFact * T2c.transform('N', X->pointer(), X->nRows(), X->nRows()));
 
     // S^-1/2 (S + 1/2c^2 X^H T X) S^-1/2
@@ -2170,4 +2170,3 @@ namespace ChronusQ {
   template void X2C<double,double>::saveX2C();
 
 }; // namespace ChronusQ
-

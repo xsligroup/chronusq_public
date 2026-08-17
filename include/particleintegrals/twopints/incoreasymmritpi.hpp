@@ -382,7 +382,7 @@ class InCoreAsymmRITPI :
           blas::gemm(blas::Layout::ColMajor,blas::Op::Trans,blas::Op::NoTrans,NB2*NB2,NB2*NB2,NBRI,IntsT(1.),pointer(),NBRI,
             pointer(),NBRI,IntsT(0.),SCR,NB2*NB2);
           std::cout<< "       - Error of (pp|pp) for debugging" << std::endl;        
-          calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, SCR, NB2*NB2*NB2*NB2);
+          calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE()}, ELECTRON_REPULSION, SCR, NB2*NB2*NB2*NB2);
           CQMemManager::get().free(SCR);
         }
         std::cout << std::endl; 
@@ -392,7 +392,7 @@ class InCoreAsymmRITPI :
         std::cout<< "     * Error from the approximation of (pp|pp) Integrals" << std::endl;
         size_t lenTPI = NB2*NB2*NB2*NB2;
         std::cout<< "       - Error of (pp|pp)" << std::endl;        
-        calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE}, ELECTRON_REPULSION, 
+        calculateDifferece(basisSet2, basisSet2, mol, emPert, {1., ProtMassPerE()}, ELECTRON_REPULSION,
             aux2_->to4indexERI().pointer(), lenTPI);
 
         if(partialTPI_ and debug){
@@ -409,7 +409,7 @@ class InCoreAsymmRITPI :
       
       std::cout<< "     * Error from the approximation of (ee|pp) Integrals" << std::endl;
       size_t lenTPI = NB1*NB1*NB2*NB2;
-      calculateDifferece(basisSet1, basisSet2, mol, emPert, {1., ProtMassPerE}, EP_ATTRACTION, 
+      calculateDifferece(basisSet1, basisSet2, mol, emPert, {1., ProtMassPerE()}, EP_ATTRACTION,
           to4indexERI().pointer(), lenTPI);
  
       std::cout << bannerEnd <<  std::endl;

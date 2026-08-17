@@ -62,7 +62,7 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::printRTHeader() {
   RTMSFormattedLine(std::cout, "Simulation Time:", intScheme.tMax, AUTime);
   RTMSFormattedLine(std::cout, "Number of Steps:", nSteps);
   RTMSFormattedLine(std::cout, "Step Size:", intScheme.deltaT, AUTime);
-  RTMSFormattedLine(std::cout, " ", intScheme.deltaT * FSPerAUTime, " fs");
+  RTMSFormattedLine(std::cout, " ", intScheme.deltaT * FSPerAUTime(), " fs");
 
   std::cout << std::endl;
   RTMSFormattedLine(std::cout, "* Integration Parameters:");
@@ -176,13 +176,13 @@ void RealTimeMultiSlaterBase<MatsT, IntsT>::printStepDetail() {
   std::cout << "Step: " << std::setw(7) << curState.iStep << '\n';
   std::cout << std::setprecision(5) << "Time: ";
   std::cout << std::setw(11) << curState.xTime << " (au) | ";
-  std::cout << std::setw(11) << curState.xTime * FSPerAUTime << " (fs)\n";
+  std::cout << std::setw(11) << curState.xTime * FSPerAUTime() << " (fs)\n";
   std::cout << std::setprecision(12) << "Energy: ";
   std::cout << std::setw(24) << this->totalEnergy() << " (Hartree)\n";
   std::cout << std::setprecision(8) << "Dipole: ";
-  std::cout << std::setw(16) << Dipole[0] / EBohrPerDebye << " ";
-  std::cout << std::setw(16) << Dipole[1] / EBohrPerDebye << " ";
-  std::cout << std::setw(16) << Dipole[2] / EBohrPerDebye << " (Debye)";
+  std::cout << std::setw(16) << Dipole[0] / EBohrPerDebye() << " ";
+  std::cout << std::setw(16) << Dipole[1] / EBohrPerDebye() << " ";
+  std::cout << std::setw(16) << Dipole[2] / EBohrPerDebye() << " (Debye)";
   std::cout << std::endl;
 };
 

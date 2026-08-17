@@ -317,13 +317,13 @@ namespace ChronusQ {
     double mass = 0.0;
   
     if(massAMU == atomicReference["H-1"].atomicMass)
-      mass = ProtMassPerE;
+      mass = ProtMassPerE();
     else if(massAMU == atomicReference["H-2"].atomicMass)
-      mass = DeutMassPerE;
+      mass = DeutMassPerE();
     else if(massAMU == atomicReference["H-3"].atomicMass)
-      mass = TritMassPerE;
+      mass = TritMassPerE();
     else
-      mass = massAMU * AUPerAMU - charge;
+      mass = massAMU * AUPerAMU() - charge;
   
     p = Particle{charge, mass};
     

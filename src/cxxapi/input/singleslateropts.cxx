@@ -1891,21 +1891,21 @@ namespace ChronusQ {
     // HardCoded masses for H/D/T based on NIST standards:
     if(massAMU == atomicReference["H-1"].atomicMass)
     {
-      mass = ProtMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mpsme
+      mass = ProtMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mpsme
     }
     else if(massAMU == atomicReference["H-2"].atomicMass)
     {
-      mass = DeutMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mdsme
+      mass = DeutMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mdsme
     }
     else if(massAMU == atomicReference["H-3"].atomicMass)
     {
-      mass = TritMassPerE; // https://physics.nist.gov/cgi-bin/cuu/Value?mtsme
+      mass = TritMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mtsme
     }
     else
     {
       // Atomic masses are mass of nuclei + mass of associated electrons, so we need
       // to subtract out the electron mass to just get the nuclear mass
-      mass = massAMU * AUPerAMU - nelec;
+      mass = massAMU * AUPerAMU() - nelec;
     }
    
     SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, {1., mass}, "PROTQM");

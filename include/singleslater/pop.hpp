@@ -67,24 +67,24 @@ namespace ChronusQ {
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->S().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR,NB);
       blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
-           this->onePDM->S().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR,NB);
+           this->onePDM->S().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight()*SpeedOfLight())),SCR,NB);
 
       if( this->onePDM->hasZ() ){
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->Z().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
-           this->onePDM->Z().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
+           this->onePDM->Z().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight()*SpeedOfLight())),SCR+DENSITY_TYPE::MZ*NB*NB,NB);
       }
 
       if( this->onePDM->hasXY() ){
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->Y().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MY*NB*NB,NB);
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
-           this->onePDM->Y().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MY*NB*NB,NB);
+           this->onePDM->Y().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight()*SpeedOfLight())),SCR+DENSITY_TYPE::MY*NB*NB,NB);
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->kinetic->pointer(),NB,
            this->onePDM->X().pointer()+2*NB*NB+NB,2*NB,MatsT(0.),SCR+DENSITY_TYPE::MX*NB*NB,NB);
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,NB,NB,MatsT(1.),this->aoints_->overlap->pointer(),NB,
-           this->onePDM->X().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight*SpeedOfLight)),SCR+DENSITY_TYPE::MX*NB*NB,NB);
+           this->onePDM->X().pointer(),2*NB,MatsT(1./(2.*SpeedOfLight()*SpeedOfLight())),SCR+DENSITY_TYPE::MX*NB*NB,NB);
       }
 
     }

@@ -36,3 +36,6 @@ libcint = true
 
 [BASIS]
 basis = 6-31G(D)
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

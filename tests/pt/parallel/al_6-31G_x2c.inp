@@ -38,3 +38,6 @@ MAXITER = 8
 Libcint = true
 alg = incore
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

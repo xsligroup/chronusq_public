@@ -52,3 +52,6 @@ SSSS  = true
 Gaunt = true
 Gauge = true
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

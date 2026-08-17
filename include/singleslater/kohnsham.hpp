@@ -35,6 +35,8 @@
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/twopints/impl.hpp>
 
+#include <physcon.hpp>
+
 // KS_DEBUG_LEVEL == 1 - Timing
 #ifndef KS_DEBUG_LEVEL
 #  define KS_DEBUG_LEVEL 0

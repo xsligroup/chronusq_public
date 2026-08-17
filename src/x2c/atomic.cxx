@@ -273,7 +273,7 @@ namespace ChronusQ {
           atoms_[I].UL,2*atomINP,SCR,2*atomINP,MatsT(1.),Hx2c,2*atomINB);
         // Hx2c += 1/(4*C**2) US^H * W * US
         blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,2*atomINP,2*atomJNB,2*atomJNP,
-          MatsT(0.25/SpeedOfLight/SpeedOfLight),
+          MatsT(0.25/SpeedOfLight()/SpeedOfLight()),
           W2c,2*atomINP,atoms_[J].US,2*atomJNP,MatsT(0.),SCR,2*atomINP);
         blas::gemm(blas::Layout::ColMajor,blas::Op::ConjTrans,blas::Op::NoTrans,2*atomINB,2*atomJNB,2*atomINP,MatsT(1.),
           atoms_[I].US,2*atomINP,SCR,2*atomINP,MatsT(1.),Hx2c,2*atomINB);

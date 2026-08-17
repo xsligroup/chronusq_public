@@ -41,3 +41,6 @@ nsmp = 4
 Libcint = true
 ALG = DIRECT
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

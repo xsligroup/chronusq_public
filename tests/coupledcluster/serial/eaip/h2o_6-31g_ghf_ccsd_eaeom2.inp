@@ -35,3 +35,6 @@ tablksize = 8
 mem = 100 mb
 nsmp = 1
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

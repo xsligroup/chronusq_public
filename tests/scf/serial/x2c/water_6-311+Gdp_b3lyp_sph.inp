@@ -31,3 +31,6 @@ basis = 6-311+G(d,p)
 [MISC]
 nsmp = 1
 mem = 200 MB
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

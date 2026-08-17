@@ -50,7 +50,7 @@ static void CQRESPTEST( std::string in, std::string ref ) {
 #else
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin","", false);
+    CQTestOut(in,".bin"),"", false);
 
 #endif
 
@@ -71,12 +71,12 @@ static void CQRESPREFTEST( std::string in, std::string ref ) {
 #else
 
   std::ifstream  src(RESP_TEST_REF + ref, std::ios::binary);
-  std::ofstream  dst(TEST_OUT + in + ".bin", std::ios::binary);
+  std::ofstream  dst(CQTestOut(in,".bin"), std::ios::binary);
   dst << src.rdbuf();
   dst.flush();
 
   RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin","", true);
+    CQTestOut(in,".bin"),"", true);
 
 #endif
 
@@ -94,8 +94,16 @@ static void CQRESPSCRTEST( std::string in, std::string ref, std::string scr ) {
 
 #else
 
-  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT", 
-    TEST_OUT + in + ".bin", RESP_TEST_REF + scr, false);
+  // Run off a private copy of the reference scratch file: the job
+  // writes to its scratch file, and tests run side by side.
+  std::ifstream  scrSrc(RESP_TEST_REF + scr, std::ios::binary);
+  std::ofstream  scrDst(CQTestOut(in,".scr.bin"), std::ios::binary);
+  scrDst << scrSrc.rdbuf();
+  scrDst.flush();
+
+  RunChronusQ(TEST_ROOT + in + ".inp","STDOUT",
+    CQTestOut(in,".bin"),
+    CQTestOut(in,".scr.bin"), false);
 
 #endif
 
@@ -111,8 +119,8 @@ static void CQRESTEST( bool checkProp, std::string in, std::string ref,
 
 #ifndef _CQ_GENERATE_TESTS
 
-  SafeFile refFile(RESP_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(RESP_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
    
   std::vector<double> xDummy, yDummy; 
 
@@ -486,8 +494,8 @@ static void CQFDRTEST( bool checkLHerOps, bool checkLAntiHerOps,
 
 #ifndef _CQ_GENERATE_TESTS
 
-  SafeFile refFile(RESP_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(RESP_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
    
   std::vector<double> xDummy, yDummy; 
   std::vector<T> txDummy, tyDummy; 
@@ -754,8 +762,8 @@ static void CQCRESTEST( bool checkProp, std::string in, std::string ref,
 
 #ifndef _CQ_GENERATE_TESTS
 
-  SafeFile refFile(RESP_TEST_REF + ref,true);
-  SafeFile resFile(TEST_OUT + in + ".bin",true);
+  SafeFile refFile(RESP_TEST_REF + ref,true,true);
+  SafeFile resFile(CQTestOut(in,".bin"),true);
    
   std::vector<double> xDummy, yDummy; 
 

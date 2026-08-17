@@ -267,7 +267,7 @@ namespace ChronusQ {
         double tMagDipoleZ = std::abs(tMagDipole[2]);
 
 
-        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 6.) * (1. / (SpeedOfLight * SpeedOfLight)) 
+        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 6.) * (1. / (SpeedOfLight() * SpeedOfLight()))
         * ((tMagDipoleX * tMagDipoleX) + (tMagDipoleY * tMagDipoleY) + (tMagDipoleZ * tMagDipoleZ));
 
       }
@@ -291,7 +291,7 @@ namespace ChronusQ {
         double tElecQuadpoleYZ = std::abs(tElecQuadpole[4]);
         double tElecQuadpoleZZ = std::abs(tElecQuadpole[5]);
 
-        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 20.) * (1. / (SpeedOfLight * SpeedOfLight)) 
+        resObs.multipoleOscStrength[iO] += 1. * (W[iO] / 20.) * (1. / (SpeedOfLight() * SpeedOfLight()))
         * ((tElecQuadpoleXX * tElecQuadpoleXX) + (2 * tElecQuadpoleXY * tElecQuadpoleXY) + 
          (2 * tElecQuadpoleXZ * tElecQuadpoleXZ) + (2 * tElecQuadpoleYZ * tElecQuadpoleYZ) +
          (tElecQuadpoleYY * tElecQuadpoleYY) + (tElecQuadpoleZZ * tElecQuadpoleZZ) - 
@@ -329,7 +329,7 @@ namespace ChronusQ {
         double tElecOctupoleYZZ = std::abs(tElecOctupole[8]);
         double tElecOctupoleZZZ = std::abs(tElecOctupole[9]);
 
-        resObs.multipoleOscStrength[iO] -= 2. * (W[iO] / 45.) * (1. / (SpeedOfLight * SpeedOfLight))
+        resObs.multipoleOscStrength[iO] -= 2. * (W[iO] / 45.) * (1. / (SpeedOfLight() * SpeedOfLight()))
         * (tElecDipoleX * tElecOctupoleXXX + tElecDipoleX * tElecOctupoleXYY + 
          tElecDipoleX * tElecOctupoleXZZ + tElecDipoleY * tElecOctupoleYYY +
          tElecDipoleY * tElecOctupoleXXY + tElecDipoleY * tElecOctupoleYZZ +
@@ -610,7 +610,7 @@ namespace ChronusQ {
 
         fdObs.edStrength[iOmega]   = std::imag( trace );
 
-        fdObs.opaCross_eda[iOmega] = 4. * M_PI / SpeedOfLight *
+        fdObs.opaCross_eda[iOmega] = 4. * M_PI / SpeedOfLight() *
           omega * fdObs.edStrength[iOmega];
 
       }
@@ -627,4 +627,3 @@ namespace ChronusQ {
 
 
 }; // namespace ChronusQ
-

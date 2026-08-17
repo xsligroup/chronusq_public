@@ -202,7 +202,7 @@ namespace ChronusQ {
         0.836 * std::pow(atom.massNumber,1.0/3.0) + 0.570; // fm
 
       varience *= 1e-5; // Ang
-      varience /= AngPerBohr; // Bohr
+      varience /= AngPerBohr(); // Bohr
 
       varience *= varience;
 

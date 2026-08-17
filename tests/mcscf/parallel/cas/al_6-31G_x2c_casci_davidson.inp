@@ -34,3 +34,6 @@ CIDiagAlg = Davidson
 alg = incore
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

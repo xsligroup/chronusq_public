@@ -63,3 +63,6 @@ basistype = GIAO
 
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

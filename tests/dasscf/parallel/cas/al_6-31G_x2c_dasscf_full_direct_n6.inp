@@ -36,3 +36,6 @@ NRoots = 6
 alg = direct 
 tpitransalg = N6
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

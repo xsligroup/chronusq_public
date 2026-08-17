@@ -31,3 +31,6 @@ mem = 500 MB
 
 [BASIS]
 basis = 3-21g
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

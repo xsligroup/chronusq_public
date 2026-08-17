@@ -58,3 +58,6 @@ RI = ELEC_AND_PROT_AUX
 [MISC]
 nsmp = 1
 mem  = 100 mb
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

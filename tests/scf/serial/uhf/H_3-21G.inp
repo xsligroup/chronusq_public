@@ -19,3 +19,6 @@ alg=skip
 
  
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

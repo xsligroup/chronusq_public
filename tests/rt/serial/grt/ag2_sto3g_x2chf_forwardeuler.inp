@@ -32,3 +32,6 @@ guess = core
 
 [INTS]
 Libcint = true
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

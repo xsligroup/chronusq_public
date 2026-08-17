@@ -38,3 +38,6 @@ SSSS = true
 Gaunt = true
 libcint = true
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

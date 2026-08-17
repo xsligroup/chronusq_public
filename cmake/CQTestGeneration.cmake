@@ -29,10 +29,11 @@ function( add_cq_test _test_name _test_exe _filter )
 endfunction()
 
 
-# Add an MPI test
+# Add an MPI test.
 function( add_cq_mpi_test _test_name _np _test_exe _filter )
 
   add_test( NAME ${_test_name} COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${_np}
-    ${MPIEXEC_PREFLAGS} "./${_test_exe}" ${MPIEXEC_POSTFLAGS} "--gtest_filter=${_filter}" )
+    ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${_test_exe}_mpi> ${MPIEXEC_POSTFLAGS}
+    "--gtest_filter=${_filter}" )
 
 endfunction()

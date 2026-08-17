@@ -31,6 +31,28 @@
 #define TEST_ROOT "@PROJECT_SOURCE_DIR@/tests/"
 #define TEST_OUT "@PROJECT_BINARY_DIR@/tests/"
 
+#include <string>
+
+/**
+ *  \brief Path of a file written by the currently running test.
+ *
+ *  Folding in the test name keeps every test on its own file (so they dont try to write to the same bin)
+ *
+ *  \param [in] in   Input stem, relative to the test root
+ *  \param [in] ext  Extension to append, leading dot included
+ */
+inline std::string CQTestOut( const std::string &in, const std::string &ext ) {
+
+  const ::testing::TestInfo *info =
+    ::testing::UnitTest::GetInstance()->current_test_info();
+
+  std::string tag = info ?
+    "." + std::string(info->test_suite_name()) + "." + info->name() : "";
+
+  return TEST_OUT + in + tag + ext;
+
+};
+
 //#define _CQ_GENERATE_TESTS
 #define _CQ_NTHREADS_PARTEST 2
 

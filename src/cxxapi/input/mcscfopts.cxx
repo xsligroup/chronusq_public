@@ -147,8 +147,8 @@ namespace ChronusQ {
       auto const regexNM = std::regex("nm|nanometer",std::regex_constants::icase);
       double unit = 1.;
       if ( std::regex_search(nRTokens[0], regexAU) ) unit = 1.;
-      else if ( std::regex_search(nRTokens[0], regexEV) ) unit = EVPerHartree;
-      else if ( std::regex_search(nRTokens[0], regexNM) ) unit = NMPerHartree;
+      else if ( std::regex_search(nRTokens[0], regexEV) ) unit = EVPerHartree();
+      else if ( std::regex_search(nRTokens[0], regexNM) ) unit = NMPerHartree();
 
       energyRefs.emplace_back(Ethres / unit, std::stoul(nRTokens[1]));
       nRoots += std::stoul(nRTokens[1]);

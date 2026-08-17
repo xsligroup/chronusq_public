@@ -61,7 +61,7 @@ namespace ChronusQ {
     MDOptions(double tmax, double deltat)
     {
       timeStepAU = deltat;
-      timeStepFS = deltat*FSPerAUTime;
+      timeStepFS = deltat*FSPerAUTime();
 
       nNuclearSteps = size_t(ceil(tmax/deltat));
     }

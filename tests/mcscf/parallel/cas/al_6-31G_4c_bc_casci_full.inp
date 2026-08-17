@@ -34,3 +34,6 @@ alg = incore
 DC = false
 libcint = true
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

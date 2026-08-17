@@ -44,3 +44,6 @@ BasisDef:
   P 1 1.00
   15.0       1.0
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

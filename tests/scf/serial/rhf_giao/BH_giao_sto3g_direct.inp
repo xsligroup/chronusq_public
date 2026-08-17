@@ -38,3 +38,6 @@ Field = Magnetic 0.0 0.0 0.02
 nsmp = 1
 
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

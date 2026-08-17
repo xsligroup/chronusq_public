@@ -62,3 +62,6 @@ basis = sto-3g
 
 [PBASIS]
 basis = prot-sp
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

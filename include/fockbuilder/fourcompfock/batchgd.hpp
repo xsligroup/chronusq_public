@@ -215,7 +215,7 @@ namespace ChronusQ {
     auto dummy_pauli = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(0, false, false);
     
     // Compute 1/(2mc)^2
-    MatsT C2 = 1./(4*SpeedOfLight*SpeedOfLight);
+    MatsT C2 = 1./(4*SpeedOfLight()*SpeedOfLight());
     
     // make SCRs
     auto onePDMLLSCR = std::make_shared<cqmatrix::PauliSpinorMatrices<MatsT>>(NB1C, false, false);
@@ -445,7 +445,7 @@ namespace ChronusQ {
 
     if(this->hamiltonianOptions_.DiracCoulombSSSS) { // SSSS
 
-      MatsT C4 = 1./(16*SpeedOfLight*SpeedOfLight*SpeedOfLight*SpeedOfLight);
+      MatsT C4 = 1./(16*SpeedOfLight()*SpeedOfLight()*SpeedOfLight()*SpeedOfLight());
   
       /*++++++++++++++++++++++++++++++++++++++++++++*/
       /* Start of Dirac-Coulomb (SS|SS) Contraction */

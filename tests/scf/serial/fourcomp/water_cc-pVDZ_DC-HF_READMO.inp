@@ -75,3 +75,6 @@ mem = 200 MB
 
 [INTS]
 libcint=true
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

@@ -313,7 +313,7 @@ namespace ChronusQ {
       SetMatRE('N',NB/2,NB/2,1.,
                reinterpret_cast<double*>(this->aoints_->overlap->pointer()),NB/2,
                overlapSpinor.pointer(),NB);
-      SetMatRE('N',NB/2,NB/2,1./(2*SpeedOfLight*SpeedOfLight),
+      SetMatRE('N',NB/2,NB/2,1./(2*SpeedOfLight()*SpeedOfLight()),
                reinterpret_cast<double*>(this->aoints_->kinetic->pointer()),NB/2,
                overlapSpinor.pointer()+NB*NB/2+NB/2,NB);
       //prettyPrintSmart(std::cout,"S Metric Spinor",overlapSpinor.pointer(),NB,NB,NB);

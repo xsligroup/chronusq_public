@@ -26,85 +26,99 @@
 
 
 // Al 6-31G(d) test
-TEST(OneC_CASSCF_FULLMATRIX, Al_631G ) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casscf_full_incore_n6", "al_6-31G_1c_casscf.bin.ref",true);
+TEST(OneC_CASSCF_FULLMATRIX, Al_631G_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casscf_full_incore_n6", "al_6-31G_1c_casscf.bin.ref",true); };
 
 #ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casscf_full_direct_n6", "al_6-31G_1c_casscf.bin.ref",true);
+TEST(OneC_CASSCF_FULLMATRIX, Al_631G_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casscf_full_direct_n6", "al_6-31G_1c_casscf.bin.ref",true); };
 #endif
 
-};
+TEST(X2C_CASSCF_FULLMATRIX, Al_631G_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_incore_n6", "al_6-31G_x2c_casscf.bin.ref"); };
 
-TEST(X2C_CASSCF_FULLMATRIX, Al_631G ) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_incore_n6", "al_6-31G_x2c_casscf.bin.ref");
- 
 #ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_incore_n5", "al_6-31G_x2c_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_direct_n6", "al_6-31G_x2c_casscf.bin.ref"); //,1e-7);
+TEST(X2C_CASSCF_FULLMATRIX, Al_631G_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_incore_n5", "al_6-31G_x2c_casscf.bin.ref"); };
+
+TEST(X2C_CASSCF_FULLMATRIX, Al_631G_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casscf_full_direct_n6", "al_6-31G_x2c_casscf.bin.ref"); }; //,1e-7);
 #endif
-};
 
 // GIAO + CASSCF
 TEST(X2C_CASSCF_GIAO, NO_631G ) {
   CQMCSCFTEST( "mcscf/serial/cas/nox2chf_sacas", "nox2chf_sacas.bin.ref");
-
-#ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/nox2chf_sacas", "nox2chf_sacas.bin.ref");
-#endif 
 };
 
 
-TEST(FourC_CASSCF_FULLMATRIX, Al_631G ) {
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_bc_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n6", "al_6-31G_4c_bc_casscf.bin.ref"); };
 
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n6", "al_6-31G_4c_bc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_incore_n6", "al_6-31G_4c_dc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casscf_full_incore_n6", "al_6-31G_4c_dcssss_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casscf_full_incore_n6", "al_6-31G_4c_dcg_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_incore_n6", "al_6-31G_4c_dcb_casscf.bin.ref");
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dc_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_incore_n6", "al_6-31G_4c_dc_casscf.bin.ref"); };
 
-#ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n5", "al_6-31G_4c_bc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_incore_n5", "al_6-31G_4c_dc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_direct_n6", "al_6-31G_4c_bc_casscf.bin.ref"); // ,1e-7);
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_direct_n6", "al_6-31G_4c_dc_casscf.bin.ref"); //,1e-7);
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casscf_full_direct_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); //, 1e-7);
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casscf_full_direct_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); //, 1e-7);
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_direct_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); //, 1e-7);
-#endif
- 
-};
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcssss_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casscf_full_incore_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); };
 
-TEST(FourC_CASSCF_FULLMATRIX, U91_plus ) {
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcg_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casscf_full_incore_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); };
 
-  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci", "U91+_DCB_fci.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci_no_nagetive_rotation", "U91+_DCB_fci_no_nagetive_rotation.bin.ref");
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcb_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_incore_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); };
 
 #ifndef _CQ_GENERATE_TESTS
-#endif
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_bc_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_incore_n5", "al_6-31G_4c_bc_casscf.bin.ref"); };
 
-};
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dc_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_incore_n5", "al_6-31G_4c_dc_casscf.bin.ref"); };
 
-TEST(FourC_CASSCF_FULLMATRIX, U90_plus ) {
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_bc_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casscf_full_direct_n6", "al_6-31G_4c_bc_casscf.bin.ref"); }; // ,1e-7);
 
-  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref");
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dc_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casscf_full_direct_n6", "al_6-31G_4c_dc_casscf.bin.ref"); }; //,1e-7);
 
-#ifndef _CQ_GENERATE_TESTS
-    CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref");
-    CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref");
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcssss_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casscf_full_direct_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); }; //, 1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcg_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casscf_full_direct_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); }; //, 1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, Al_631G_dcb_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casscf_full_direct_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); }; //, 1e-7);
 #endif
 
-};
+TEST(FourC_CASSCF_FULLMATRIX, U91_plus_DCB_fci ) {
+  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci", "U91+_DCB_fci.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, U91_plus_DCB_fci_no_negative_rotation ) {
+  CQMCSCFTEST( "mcscf/serial/cas/U91+_DCB_fci_no_nagetive_rotation", "U91+_DCB_fci_no_nagetive_rotation.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, U90_plus_srDC_direct ) {
+  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, U90_plus_srDCB_direct ) {
+  CQMCSCFTEST( "mcscf/serial/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref"); };
+
+#ifndef _CQ_GENERATE_TESTS
+TEST(FourC_CASSCF_FULLMATRIX, PAR_U90_plus_srDC_direct ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDC_direct", "U90+_srDC_direct.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_U90_plus_srDCB_direct ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/U90+_srDCB_direct", "U90+_srDCB_direct.bin.ref"); };
+#endif
 
 #ifndef _CQ_GENERATE_TESTS
 // Al readmo tests
-TEST(CASCI_READMO_SKIPSCF, Al_631G) {
-  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref", true);
-  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref", true);
-  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref", true);
-}
+TEST(CASCI_READMO_SKIPSCF, Al_631G_1c) {
+  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref", true); }
+
+TEST(CASCI_READMO_SKIPSCF, Al_631G_2c) {
+  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref", true); }
+
+TEST(CASCI_READMO_SKIPSCF, Al_631G_4c) {
+  CQMCSCFTEST("mcscf/serial/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref", true); }
 #endif
 
 // Be swap test
@@ -128,58 +142,81 @@ TEST(GHF_CAS_OSC, Al_GHF_OSC_STR) {
 
 }
 
-TEST(MCSCF_FIELD, Ethylene_MCSCF_W_FIELD) {
-  // 1 DET
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield",                          "ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true);
+// 1 DET
+TEST(MCSCF_FIELD, Ethylene_OneC_nr_1Det_useSCFfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield",                          "ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield.bin.ref", true); }
 
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield",                          "ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true);
+TEST(MCSCF_FIELD, Ethylene_OneC_nr_1Det_SCFwofieldMCSCFwfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true); }
 
-  // 2 electron 2 orbital CASSCF
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield",    "ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield.bin.ref", true);
-}
+TEST(MCSCF_FIELD, Ethylene_OneC_nr_1Det_SCFwfieldMCSCFwofield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_OneC_nr_1Det_SCFwfieldMCSCFwfield_dontusescffield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_OneC_nr_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_x2c_1Det_useSCFfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield",                          "ethylene_TwoC_x2c_1DetMCSCF_wfield_useSCFfield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_x2c_1Det_SCFwofieldMCSCFwfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwofieldMCSCFwfield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_x2c_1Det_SCFwfieldMCSCFwofield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield",                "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwofield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_x2c_1Det_SCFwfieldMCSCFwfield_dontusescffield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield", "ethylene_TwoC_x2c_1DetMCSCF_wfield_SCFwfieldMCSCFwfield_dontusescffield.bin.ref", true); }
+
+// 2 electron 2 orbital CASSCF
+TEST(MCSCF_FIELD, Ethylene_OneC_nr_2e2oCASSCF_xyzfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_OneC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_nr_2e2oCASSCF_xyzfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield", "ethylene_TwoC_nr_2e2oCASSCF_wfield_xyzfield.bin.ref", true); }
+
+TEST(MCSCF_FIELD, Ethylene_TwoC_x2c_2e2oCASSCF_xyzfield) {
+  CQMCSCFTEST( "mcscf/serial/cas/ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield",    "ethylene_TwoC_x2c_2e2oCASSCF_wfield_xyzfield.bin.ref", true); }
 
 // H2O 6-31G(d) test (for multipole properties)
 TEST(OneC_CASSCF_FULLMATRIX, Water_631Gd ) {
 
   CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,false,true,true,false,true);
 
-#ifndef _CQ_GENERATE_TESTS
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_6-31Gd", "water_1cCASSCF_6-31Gd.bin.ref",false,"",1e-6,false,true,true,false,true);
-#endif
-
 };
 
-TEST(CASCI_DAVIDSON, Al_631G ) {
+TEST(CASCI_DAVIDSON, Al_631G_1c ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casci_davidson",     "al_6-31G_1c_casci.bin.ref", true); };
 
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_1c_casci_davidson",     "al_6-31G_1c_casci.bin.ref", true);
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casci_davidson",       "al_6-31G_x2c_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casci_davidson",     "al_6-31G_4c_bc_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casci_davidson",     "al_6-31G_4c_dc_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casci_davidson", "al_6-31G_4c_dcssss_casci.bin.ref");
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casci_davidson",    "al_6-31G_4c_dcg_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casci_davidson",    "al_6-31G_4c_dcb_casci.bin.ref" );
- 
-};
+TEST(CASCI_DAVIDSON, Al_631G_x2c ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_x2c_casci_davidson",       "al_6-31G_x2c_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, Al_631G_4c_bc ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_bc_casci_davidson",     "al_6-31G_4c_bc_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, Al_631G_4c_dc ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dc_casci_davidson",     "al_6-31G_4c_dc_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, Al_631G_4c_dcssss ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcssss_casci_davidson", "al_6-31G_4c_dcssss_casci.bin.ref"); };
+
+TEST(CASCI_DAVIDSON, Al_631G_4c_dcg ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcg_casci_davidson",    "al_6-31G_4c_dcg_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, Al_631G_4c_dcb ) {
+  CQMCSCFTEST( "mcscf/serial/cas/al_6-31G_4c_dcb_casci_davidson",    "al_6-31G_4c_dcb_casci.bin.ref" ); };
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
 
 // SMP Al 6-31G(d) test
-TEST(OneC_CASSCF_FULLMATRIX, PAR_Al_631G ) {
+TEST(OneC_CASSCF_FULLMATRIX, PAR_Al_631G_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_incore_n6", "al_6-31G_1c_casscf.bin.ref", true); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_incore_n6", "al_6-31G_1c_casscf.bin.ref", true);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_incore_n5", "al_6-31G_1c_casscf.bin.ref", true);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_direct_n6", "al_6-31G_1c_casscf.bin.ref", true);
+TEST(OneC_CASSCF_FULLMATRIX, PAR_Al_631G_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_incore_n5", "al_6-31G_1c_casscf.bin.ref", true); };
 
-};
+TEST(OneC_CASSCF_FULLMATRIX, PAR_Al_631G_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casscf_full_direct_n6", "al_6-31G_1c_casscf.bin.ref", true); };
 
 TEST(OneC_CASSCF_FULLMATRIX, PAR_Water_631Gd ) {
 
@@ -187,49 +224,81 @@ TEST(OneC_CASSCF_FULLMATRIX, PAR_Water_631Gd ) {
 
 };
 
-TEST(X2C_CASSCF_FULLMATRIX, PAR_Al_631G ) {
+TEST(X2C_CASSCF_FULLMATRIX, PAR_Al_631G_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_incore_n6", "al_6-31G_x2c_casscf.bin.ref"); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_incore_n6", "al_6-31G_x2c_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_incore_n5", "al_6-31G_x2c_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_direct_n6", "al_6-31G_x2c_casscf.bin.ref"); //,1e-7);
- 
-};
+TEST(X2C_CASSCF_FULLMATRIX, PAR_Al_631G_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_incore_n5", "al_6-31G_x2c_casscf.bin.ref"); };
 
-TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G ) {
+TEST(X2C_CASSCF_FULLMATRIX, PAR_Al_631G_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casscf_full_direct_n6", "al_6-31G_x2c_casscf.bin.ref"); }; //,1e-7);
 
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_incore_n6", "al_6-31G_4c_bc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_incore_n6", "al_6-31G_4c_dc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casscf_full_incore_n6", "al_6-31G_4c_dcssss_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casscf_full_incore_n6", "al_6-31G_4c_dcg_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casscf_full_incore_n6", "al_6-31G_4c_dcb_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_incore_n5", "al_6-31G_4c_bc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_incore_n5", "al_6-31G_4c_dc_casscf.bin.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_direct_n6", "al_6-31G_4c_bc_casscf.bin.ref"); //,1e-7);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_direct_n6", "al_6-31G_4c_dc_casscf.bin.ref"); //,1e-7);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casscf_full_direct_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); //,1e-7);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casscf_full_direct_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); //,1e-7);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casscf_full_direct_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); //,1e-7);
- 
-};
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_bc_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_incore_n6", "al_6-31G_4c_bc_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dc_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_incore_n6", "al_6-31G_4c_dc_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcssss_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casscf_full_incore_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcg_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casscf_full_incore_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcb_incore_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casscf_full_incore_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_bc_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_incore_n5", "al_6-31G_4c_bc_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dc_incore_n5 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_incore_n5", "al_6-31G_4c_dc_casscf.bin.ref"); };
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_bc_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casscf_full_direct_n6", "al_6-31G_4c_bc_casscf.bin.ref"); }; //,1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dc_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casscf_full_direct_n6", "al_6-31G_4c_dc_casscf.bin.ref"); }; //,1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcssss_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casscf_full_direct_n6", "al_6-31G_4c_dcssss_casscf.bin.ref"); }; //,1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcg_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casscf_full_direct_n6", "al_6-31G_4c_dcg_casscf.bin.ref"); }; //,1e-7);
+
+TEST(FourC_CASSCF_FULLMATRIX, PAR_Al_631G_dcb_direct_n6 ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casscf_full_direct_n6", "al_6-31G_4c_dcb_casscf.bin.ref"); }; //,1e-7);
 
 // Al readmo tests
-TEST(CASCI_READMO_SKIPSCF, PAR_Al_631G) {
-  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref", true);
-  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref", true);
-  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref", true);
-}
+TEST(CASCI_READMO_SKIPSCF, PAR_Al_631G_1c) {
+  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_1c_casci_readmo_skipscf", "al_6-31G_1c_casscf.bin.ref", true); }
 
-TEST(CASCI_DAVIDSON, PAR_Al_631G) {
+TEST(CASCI_READMO_SKIPSCF, PAR_Al_631G_2c) {
+  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_2c_casci_readmo_skipscf", "al_6-31G_x2c_casscf.bin.ref", true); }
 
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casci_davidson", "al_6-31G_1c_casci.bin.ref", true);
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casci_davidson",  "al_6-31G_x2c_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casci_davidson",  "al_6-31G_4c_bc_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casci_davidson",  "al_6-31G_4c_dc_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casci_davidson",  "al_6-31G_4c_dcssss_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casci_davidson",     "al_6-31G_4c_dcg_casci.bin.ref" );
-  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casci_davidson",     "al_6-31G_4c_dcb_casci.bin.ref" );
- 
-};
+TEST(CASCI_READMO_SKIPSCF, PAR_Al_631G_4c) {
+  CQMCSCFTEST("mcscf/parallel/cas/al_6-31G_4c_casci_readmo_skipscf", "al_6-31G_4c_dcb_casscf.bin.ref", true); }
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_1c) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_1c_casci_davidson", "al_6-31G_1c_casci.bin.ref", true); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_x2c) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_x2c_casci_davidson",  "al_6-31G_x2c_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_4c_bc) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_bc_casci_davidson",  "al_6-31G_4c_bc_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_4c_dc) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dc_casci_davidson",  "al_6-31G_4c_dc_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_4c_dcssss) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcssss_casci_davidson",  "al_6-31G_4c_dcssss_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_4c_dcg) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcg_casci_davidson",     "al_6-31G_4c_dcg_casci.bin.ref" ); };
+
+TEST(CASCI_DAVIDSON, PAR_Al_631G_4c_dcb) {
+  CQMCSCFTEST( "mcscf/parallel/cas/al_6-31G_4c_dcb_casci_davidson",     "al_6-31G_4c_dcb_casci.bin.ref" ); };
 
 #endif
 #endif
@@ -237,93 +306,87 @@ TEST(CASCI_DAVIDSON, PAR_Al_631G) {
 
 // 1-component H2O sto-3g for testing READCI (from restart file)
 TEST(OneC_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true);
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true); };
 
 #ifndef _CQ_GENERATE_TESTS
+// CI from restart file and MOs from scratch file
+TEST(OneC_CASSCF_READCI, Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci_binscr", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref"); };
 
-  // CI from restart file and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref");
-  // CI and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",false,"water_1cCASSCF_sto-3g.scr.ref");
-
+// CI and MOs from scratch file
+TEST(OneC_CASSCF_READCI, Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_1cCASSCF_sto-3g_readci_scr", "water_1cCASSCF_sto-3g.bin.ref",false,"water_1cCASSCF_sto-3g.scr.ref"); };
 #endif
-
-};
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
 
 TEST(OneC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true);
+TEST(OneC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci_binscr", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref"); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",true,"water_1cCASSCF_sto-3g.scr.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci", "water_1cCASSCF_sto-3g.bin.ref",false,"water_1cCASSCF_sto-3g.scr.ref");
-
-};
+TEST(OneC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_1cCASSCF_sto-3g_readci_scr", "water_1cCASSCF_sto-3g.bin.ref",false,"water_1cCASSCF_sto-3g.scr.ref"); };
 
 #endif
 #endif
 
 // X2C H2O sto-3g for testing READCI (from restart file)
 TEST(X2C_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true);
+  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true); };
 
 #ifndef _CQ_GENERATE_TESTS
+// CI from restart file and MOs from scratch file
+TEST(X2C_CASSCF_READCI, Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci_binscr", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref"); };
 
-  // CI from restart file and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref");
-  // CI and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",false,"water_x2cCASSCF_sto-3g.scr.ref");
-
+// CI and MOs from scratch file
+TEST(X2C_CASSCF_READCI, Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_x2cCASSCF_sto-3g_readci_scr", "water_x2cCASSCF_sto-3g.bin.ref",false,"water_x2cCASSCF_sto-3g.scr.ref"); };
 #endif
-
-};
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
 
 TEST(X2C_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true);
+TEST(X2C_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci_binscr", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref"); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",true,"water_x2cCASSCF_sto-3g.scr.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci", "water_x2cCASSCF_sto-3g.bin.ref",false,"water_x2cCASSCF_sto-3g.scr.ref");
-
-};
+TEST(X2C_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_x2cCASSCF_sto-3g_readci_scr", "water_x2cCASSCF_sto-3g.bin.ref",false,"water_x2cCASSCF_sto-3g.scr.ref"); };
 
 #endif
 #endif
 
 // DC H2O sto-3g for testing READCI (from restart file)
 TEST(FourC_CASSCF_READCI, Water_STO3G_READCI_RESTART ) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true);
+  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true); };
 
 #ifndef _CQ_GENERATE_TESTS
+// CI from restart file and MOs from scratch file
+TEST(FourC_CASSCF_READCI, Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci_binscr", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref"); };
 
-  // CI from restart file and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref");
-  // CI and MOs from scratch file
-  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",false,"water_4cCASSCF_sto-3g.scr.ref");
-
+// CI and MOs from scratch file
+TEST(FourC_CASSCF_READCI, Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/serial/cas/water_4cCASSCF_sto-3g_readci_scr", "water_4cCASSCF_sto-3g.bin.ref",false,"water_4cCASSCF_sto-3g.scr.ref"); };
 #endif
-
-};
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
 
 TEST(FourC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true);
+TEST(FourC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_BINSCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci_binscr", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref"); };
 
-  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",true,"water_4cCASSCF_sto-3g.scr.ref");
-  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci", "water_4cCASSCF_sto-3g.bin.ref",false,"water_4cCASSCF_sto-3g.scr.ref");
-
-};
+TEST(FourC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_SCR ) {
+  CQMCSCFTEST( "mcscf/parallel/cas/water_4cCASSCF_sto-3g_readci_scr", "water_4cCASSCF_sto-3g.bin.ref",false,"water_4cCASSCF_sto-3g.scr.ref"); };
 
 #endif
 #endif

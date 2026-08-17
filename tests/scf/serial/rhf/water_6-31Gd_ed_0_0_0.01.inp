@@ -28,3 +28,6 @@ FIELD = Electric 0. 0. 0.01
 nsmp = 1
 mem = 100 MB
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

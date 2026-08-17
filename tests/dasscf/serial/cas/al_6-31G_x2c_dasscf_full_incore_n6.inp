@@ -35,3 +35,6 @@ NRoots = 6
 [INTS]
 alg = incore
 tpitransalg = N6
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

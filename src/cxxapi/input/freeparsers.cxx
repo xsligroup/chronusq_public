@@ -493,8 +493,8 @@ namespace ChronusQ {
         auto const freeCQInputStepsize = std::regex("(STEPSIZE|TIMESTEP)\\s*=\\s*(\\d+(\\.\\d+)?)\\s*((as)|(attosecond)|(fs)|(femtosecond)|(au))\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputStepsize) ) {
           tdSCFControls.deltaT = std::stod(RTmatch.str(2));
-          if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.deltaT/=(FSPerAUTime*1.e3);
-          else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.deltaT/=FSPerAUTime;
+          if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.deltaT/=(FSPerAUTime()*1.e3);
+          else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.deltaT/=FSPerAUTime();
           std::cout<<"xsli test read in timestep = "<<tdSCFControls.deltaT<<" au"<<std::endl;
           addData("RT/DELTAT", doubleToString(tdSCFControls.deltaT));
           addData("RT/UNITS", "AU");
@@ -516,8 +516,8 @@ namespace ChronusQ {
         auto const freeCQInputMaxTime = std::regex("(MAXTIME)\\s*=\\s*(\\d+(\\.\\d+)?)\\s*((as)|(attosecond)|(fs)|(femtosecond)|(au))\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputMaxTime) ) {
           tdSCFControls.tMax = std::stod(RTmatch.str(2));
-          if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.tMax/=(FSPerAUTime*1.e3);
-          else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.tMax/=FSPerAUTime;
+          if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.tMax/=(FSPerAUTime()*1.e3);
+          else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.tMax/=FSPerAUTime();
           tdSCFControls.maxSteps = (tdSCFControls.tMax + tdSCFControls.deltaT / 4) / tdSCFControls.deltaT;
           std::cout<<"xsli test read in maxTime = "<<tdSCFControls.tMax<<std::endl;
           addData("RT/TMAX", doubleToString(tdSCFControls.tMax));
@@ -748,8 +748,8 @@ namespace ChronusQ {
             starttime = std::stod(Fieldmatch.str(4));
             if (starttime < 0) starttime = -1.0;
             else {
-              if (!Fieldmatch.str(7).empty() or !Fieldmatch.str(8).empty()) starttime /= (FSPerAUTime * 1.e3);
-              else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) starttime /= FSPerAUTime;
+              if (!Fieldmatch.str(7).empty() or !Fieldmatch.str(8).empty()) starttime /= (FSPerAUTime() * 1.e3);
+              else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) starttime /= FSPerAUTime();
             }
           }
           std::cout<<"xsli test read in tOn = "<<starttime<<" au"<<std::endl;
@@ -765,8 +765,8 @@ namespace ChronusQ {
             endtime = std::stod(Fieldmatch.str(4));
             if(endtime<0) endtime = -1.0;
             else {
-              if(!Fieldmatch.str(7).empty() or !Fieldmatch.str(8).empty()) endtime/=(FSPerAUTime*1.e3);
-              else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) endtime/=FSPerAUTime;
+              if(!Fieldmatch.str(7).empty() or !Fieldmatch.str(8).empty()) endtime/=(FSPerAUTime()*1.e3);
+              else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) endtime/=FSPerAUTime();
             }
           }
           std::cout<<"xsli test read in tOff = "<<endtime<<" au"<<std::endl;
@@ -779,8 +779,8 @@ namespace ChronusQ {
         if ( std::regex_search(FieldInputOptions, Fieldmatch, freeCQInputFieldAmp) ) {
           double amp;
           amp = std::stod(Fieldmatch.str(2));
-          if(!Fieldmatch.str(5).empty()) amp/=EVPerHartree;
-          else if (!Fieldmatch.str(6).empty()) amp/=(EVPerHartree*1.e3);
+          if(!Fieldmatch.str(5).empty()) amp/=EVPerHartree();
+          else if (!Fieldmatch.str(6).empty()) amp/=(EVPerHartree()*1.e3);
           std::cout<<"xsli test read in amp = "<<amp<<" au"<<std::endl;
           FieldInputOptions = std::regex_replace(FieldInputOptions, freeCQInputFieldAmp, "");
         }

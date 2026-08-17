@@ -40,3 +40,6 @@ basisdef :
        0.1688554040D+00       1.0
  ****
 
+
+[PHYSCON]
+LEGACY_CONSTANTS = TRUE

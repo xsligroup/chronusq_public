@@ -574,10 +574,10 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printRunHeader(EMPerturbation& pert
 
   //int nSteps = tdSCFOptions.tMax / tdSCFOptions.deltaT;
   RTFormattedLineNew(std::cout, "Simulation Time:", tdSCFOptions.tMax, AUTime);
-  RTFormattedLineNew(std::cout, " ", tdSCFOptions.tMax * FSPerAUTime, " fs");
+  RTFormattedLineNew(std::cout, " ", tdSCFOptions.tMax * FSPerAUTime(), " fs");
   RTFormattedLineNew(std::cout, "Number of Steps:", tdSCFOptions.maxSteps);
   RTFormattedLineNew(std::cout, "Step Size:", tdSCFOptions.deltaT, AUTime);
-  RTFormattedLineNew(std::cout, " ", tdSCFOptions.deltaT * FSPerAUTime , " fs");
+  RTFormattedLineNew(std::cout, " ", tdSCFOptions.deltaT * FSPerAUTime() , " fs");
 
   std::cout << std::endl;
   RTFormattedLineNew(std::cout,"* Integration Parameters:");
@@ -714,15 +714,15 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printStepDetail() {
 
   std::cout << std::setprecision(5) << "Time: ";
   std::cout << std::setw(11) << integrationProgress.currentTime << " (au) | ";
-  std::cout << std::setw(11) << integrationProgress.currentTime * FSPerAUTime << " (fs)\n";
+  std::cout << std::setw(11) << integrationProgress.currentTime * FSPerAUTime() << " (fs)\n";
 
   std::cout << std::setprecision(12) << "Energy: ";
   std::cout << std::setw(24) << this->singleSlaterSystem.totalEnergy << " (Hartree)\n";
 
   std::cout << std::setprecision(8) << "Dipole: ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[0] / EBohrPerDebye << " ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[1] / EBohrPerDebye << " ";
-  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[2] / EBohrPerDebye << " (Debye)";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[0] / EBohrPerDebye() << " ";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[1] / EBohrPerDebye() << " ";
+  std::cout << std::setw(16) << this->singleSlaterSystem.elecDipole[2] / EBohrPerDebye() << " (Debye)";
   std::cout << std::endl;
 };
 
