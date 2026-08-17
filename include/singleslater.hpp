@@ -394,6 +394,15 @@ namespace ChronusQ {
     virtual void runSCF(EMPerturbation&) override;
     virtual std::vector<NRRotOptions> buildRotOpt();
 
+    // Converts 1C SSbase into 2C GHF SSbase
+    std::shared_ptr<SingleSlaterBase> convert1CSSToGHFSS(
+    SingleSlaterOptions &ssOptions,
+    std::ostream &output,
+    CQInputFile &input,
+    EMPerturbation &emPert) override;
+    void MOSpinBlockBySpace(size_t nActEA, size_t nActOA, 
+      size_t nActEB, size_t nActOB) override;
+
     // Misc procedural
     void diagOrthoFock();
     void diagAOFock();

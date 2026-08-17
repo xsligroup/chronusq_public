@@ -42,6 +42,11 @@ namespace ChronusQ {
       "NROOTS",
       "NACTORB",
       "NACTELEC",
+      // For 1C reference
+      "NACTORBA",
+      "NACTELECA",      
+      "NACTORBB",
+      "NACTELECB",
       "OCCRESTRICTIONS",
       "REFERENCEOCC",
       "MAXINTERSPACEEX",
@@ -145,10 +150,6 @@ namespace ChronusQ {
     } catch(...) {
       CErr("A specific job Type is needed for CI job");
     }
-   
-    if((input.containsData("CI/DAS")) && (ss->nC == 1)){
-      CErr("DASCI not implemented for 1C references");
-    }
 
     //trim spaces
     trim(jobType);
@@ -221,17 +222,31 @@ namespace ChronusQ {
     // parse space partition
     std::string sActO;
     std::vector<size_t> nActOs;
-	  size_t nActE;
+	  size_t nActE, nActEA, nActEB, nActOsA, nActOsB;
 
-	  try {
-      sActO = input.getData<std::string>("CI/NACTORB");
-    } catch(...) {
-      CErr("Must specify CI/NActO for # active orbitals");
-    }
-    try {
-      nActE = input.getData<int>("CI/NACTELEC");
-    } catch(...) {
-      CErr("Must specify CI/NActE for # active electrons");
+    // The other keywords are checked in procedural
+    if (not input.containsData("CI/NACTELECA")) {
+      try {
+        sActO = input.getData<std::string>("CI/NACTORB");
+      } catch(...) {
+        CErr("Must specify CI/NActO for # active orbitals");
+      }
+      try {
+        nActE = input.getData<int>("CI/NACTELEC");
+      } catch(...) {
+        CErr("Must specify CI/NActE for # active electrons");
+      }
+    } else {
+      if (input.containsData("CI/NACTELEC") or input.containsData("CI/NACTORB")) 
+      CErr("Cannot specify CI/NActE and CI/NActO for restricted DAS");
+      nActEA = input.getData<int>("CI/NACTELECA");
+      nActEB = input.getData<int>("CI/NACTELECB");
+      nActOsA = input.getData<int>("CI/NACTORBA");
+      nActOsB = input.getData<int>("CI/NACTORBB");
+
+      nActE = nActEA + nActEB;
+      sActO = std::to_string(nActOsA + nActOsB);
+
     }
 
     // XSLI: obsolete old code that defines the number of orbitals in ea active space
@@ -243,6 +258,7 @@ namespace ChronusQ {
     std::shared_ptr<PostHartreeFockBase> ci = nullptr;
     CISettings * ciSettings;   
     
+
     // Construct CI object
     #define CONSTRUCT_CI_OBJ(_MT,_IT)             \
     if( not found ) try { \
@@ -527,6 +543,11 @@ namespace ChronusQ {
    // MO swapping
    // Should occur after active orbital selection
    HandlePostHFOrbitalSwaps(out, input, ss, ci, "CI");
+
+  //  For 1C das spin block the active space after the swaps
+  if (input.containsData("CI/NACTELECA"))
+  ss->MOSpinBlockBySpace(nActEA, nActOsA, nActEB, nActOsB);
+
 
    if( cube ){
 

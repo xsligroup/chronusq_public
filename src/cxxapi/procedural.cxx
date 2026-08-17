@@ -691,6 +691,15 @@ namespace ChronusQ {
           }
 
           if (input.containsSection("CI")) {
+            if (ssOptions.refOptions.nC == 1) {
+              ss = ss->convert1CSSToGHFSS(ssOptions, output, input, emPert);
+            } else {
+              if (input.containsData("CI/NACTELECA") or 
+                  input.containsData("CI/NACTELECB") or
+                  input.containsData("CI/NACTORBA") or
+                  input.containsData("CI/NACTORBB"))
+                  CErr("Cannot specify CI/NActOA, CI/NActOB, CI/NActEA or CI/NActEB for unrestricted DAS");
+            }
             auto ci = CQCIOptions(output,input,ss,emPert,cube);
             ci->savFile = rstFile;
             ci->run(additionalPert);

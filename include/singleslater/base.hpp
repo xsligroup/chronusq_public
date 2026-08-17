@@ -128,7 +128,15 @@ namespace ChronusQ {
       WaveFunctionBase(c,mol,basis,_nC,iCS,p), QuantumBase(c,_nC,iCS,p),
       printLevel((MPIRank(c) == 0) ? 2 : 0) { };
       
+    // converting 1C ref to a GHF ref for postHF
+    virtual std::shared_ptr<SingleSlaterBase> convert1CSSToGHFSS(
+    SingleSlaterOptions &ssOptions,
+    std::ostream &output,
+    CQInputFile &input,
+    EMPerturbation &emPert) = 0;
 
+    virtual void MOSpinBlockBySpace(
+    size_t nActEA, size_t nActOA, size_t nActEB, size_t nActOB) = 0;
 
     // Procedural Functions to be defined in all derived classes
     virtual void initializeSCF() = 0;

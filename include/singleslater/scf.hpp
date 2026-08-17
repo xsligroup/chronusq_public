@@ -884,6 +884,120 @@ void SingleSlater<MatsT, IntsT>::printProperties() {
   printMiscProperties(std::cout);
 }
 
+/*
+ *     Brief: Function that returens a GHF (2C) SSbase converted from a 1C SSbase.
+ *     The MOs are spin blocked.
+ *
+ */
+template <typename MatsT, typename IntsT>
+std::shared_ptr<SingleSlaterBase>
+SingleSlater<MatsT,IntsT>::convert1CSSToGHFSS(
+    SingleSlaterOptions &ssOptions,
+    std::ostream &output,
+    CQInputFile &input,
+    EMPerturbation &emPert) {
+
+  if (not (input.containsData("CI/NACTELECA") or 
+  input.containsData("CI/NACTELECB") or
+  input.containsData("CI/NACTORBA") or
+  input.containsData("CI/NACTORBB"))) 
+  CErr("Must specify CI/NActOA, CI/NActOB, CI/NActEA and CI/NActEB for restricted DAS");
+
+  std::cout << "Converting 1C reference into 2C GHF reference for use with DAS" << std::endl;
+  std::cout << "The MOs are spin blocked" << std::endl;
+  std::cout << "No automatic spin flip exitation restrictions!" << std::endl;
+
+  SingleSlaterOptions GHFssOpt(ssOptions);
+  GHFssOpt.refOptions.refType     = isTwoCRef;
+  GHFssOpt.refOptions.nC          = 2;
+  GHFssOpt.refOptions.iCS         = false;
+  GHFssOpt.scfControls.energyOnly = true;
+
+  auto GHFssBase = GHFssOpt.buildSingleSlater(
+    output, this->molecule_, this->basisSet_, this->aoints_);
+
+  auto ptr = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(GHFssBase);
+  SingleSlater<MatsT,IntsT> &GHFss = *ptr;
+
+  size_t nb  = this->nAlphaOrbital();
+  size_t nb2 = 2 * nb;
+  cqmatrix::Matrix<MatsT> motmp(nb2);
+  motmp.clear();
+  
+  if (GHFssOpt.refOptions.refType == isURef) {
+    SetMat('N', nb, nb, 1., this->mo[0].pointer(), nb, motmp.pointer(), nb2);
+    SetMat('N', nb, nb, 1., this->mo[1].pointer(), nb, motmp.pointer() + nb + nb*nb2, nb2);
+  } else SetMatDiag(nb, nb, this->mo[0].pointer(), nb, motmp.pointer(), nb2);
+
+
+  GHFss.mo[0] = motmp;
+  GHFss.formCoreH(emPert, true);
+  // GHFss.buildOrbitalModifierOptions();
+  // GHFss.runSCF(emPert);
+
+  return ptr;
+}
+
+template <typename MatsT, typename IntsT>
+void SingleSlater<MatsT,IntsT>::MOSpinBlockBySpace(size_t nActEA, size_t nActOA, 
+  size_t nActEB, size_t nActOB) {
+
+  if (nActEA > this->nOA) CErr("More active alpha electrons given than the total alpha electrons");
+  if (nActEB > this->nOB) CErr("More active beta electrons given than the total beta electrons");
+
+  size_t nb  = this->nAlphaOrbital();
+  size_t nb2 = 2 * nb;
+  cqmatrix::Matrix<MatsT> motmp(nb2);
+  motmp.clear();
+
+  size_t nFzcA = this->nOA - nActEA;
+  size_t nFzcB = this->nOB - nActEB;
+  size_t nFzvA = nb - nFzcA - nActOA;
+  size_t nFzvB = nb - nFzcB - nActOB;
+
+  MatsT* src = this->mo[0].pointer();
+
+  size_t col = 0;
+
+  // Spin block per space. Frozen core, active space and forzen virtuals
+  // This will give an incorect SCF energy but is needed for the DAS space partitioning 
+  // Frozen core
+  if (nFzcA) {
+    SetMat('N', nb2, nFzcA, MatsT(1.), src, nb2,
+          motmp.pointer() + col*nb2, nb2);
+    col += nFzcA;
+  }
+  if (nFzcB) {
+    SetMat('N', nb2, nFzcB, MatsT(1.), src + nb*nb2, nb2,
+          motmp.pointer() + col*nb2, nb2);
+    col += nFzcB;
+  }
+
+  // Active space
+  SetMat('N', nb2, nActOA, MatsT(1.), src + nFzcA*nb2, nb2,
+        motmp.pointer() + col*nb2, nb2);
+  col += nActOA;
+  
+  SetMat('N', nb2, nActOB, MatsT(1.), src + (nb+nFzcB)*nb2, nb2,
+        motmp.pointer() + col*nb2, nb2);
+  col += nActOB;
+
+  // Frozen virtual
+  if (nFzvA) {
+    SetMat('N', nb2, nFzvA, MatsT(1.), src + (nFzcA+nActOA)*nb2, nb2,
+          motmp.pointer() + col*nb2, nb2);
+    col += nFzvA;
+  }
+  if (nFzvB) {
+    SetMat('N', nb2, nFzvB, MatsT(1.), src + (nb+nFzcB+nActOB)*nb2, nb2,
+          motmp.pointer() + col*nb2, nb2);
+    col += nFzvB;
+  }
+
+  this->mo[0] = motmp;
+}
+
+
 #ifdef TEST_MOINTSTRANSFORMER
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::MOIntsTransformationTest(EMPerturbation &pert) {
