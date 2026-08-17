@@ -28,6 +28,7 @@
 #include <atom.hpp>
 #include <cerr.hpp>
 #include <geometrymodifier.hpp>
+#include <util/files.hpp>
 
 #include <libint2/shell.h>
 
@@ -300,6 +301,7 @@ namespace ChronusQ {
       return count;
     }
 
+    void save(SafeFile savfile);
 
     private:
 

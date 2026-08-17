@@ -25,13 +25,14 @@
 
 #include <chronusq_sys.hpp>
 #include <util/typedefs.hpp>
-
 #include <libint2/shell.h>
-
 #include <unordered_map>
 
 namespace ChronusQ {
 
+  // Forward declaration to avoid circular include with util/files.hpp
+  class SafeFile;
+  
   struct Molecule;
 
   enum BASIS_FUNCTION_TYPE {
@@ -217,6 +218,7 @@ namespace ChronusQ {
     // Update BasisSet object member data (nBasis, etc).
     // See src/basisset/basisset.cxx for documentation
     void update(bool computeShellPairs = true);
+    void save(SafeFile savfile, const Molecule& mol);
 
     void updateNuclearCoordinates(const Molecule &mol);
 

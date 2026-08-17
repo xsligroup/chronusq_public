@@ -342,5 +342,42 @@ namespace ChronusQ {
 
   }; // Molecule::operator<<
 
+  void Molecule::save(SafeFile savfile) {
+    std::string prefix = "MOLECULE/";
+
+    // Save single value object
+    savfile.safeWriteData(prefix + "NATOMS", &nAtoms, {1});
+    savfile.safeWriteData(prefix + "NELECTRONS", &nTotalE, {1});
+    savfile.safeWriteData(prefix + "CHARGE", &charge, {1});
+    savfile.safeWriteData(prefix + "MULTIPLICITY", &multip, {1});
+    savfile.safeWriteData(prefix + "NUCREPENERGY", &nucRepEnergy, {1});
+
+    // Create all the temp storage for saving the mol object
+    auto atomNums = cqmatrix::NDArray<size_t>({nAtoms});
+    auto nucCharges = cqmatrix::NDArray<size_t>({nAtoms});
+    auto massNums = cqmatrix::NDArray<size_t>({nAtoms});
+    auto atomMass = cqmatrix::NDArray<size_t>({nAtoms});
+    auto slatRads = cqmatrix::NDArray<size_t>({nAtoms});
+    auto atomCords = cqmatrix::NDArray<size_t>({nAtoms, 3});
+
+    for (size_t i = 0ul; i < nAtoms; i++) {
+      atomNums(i) = atoms[i].atomicNumber;
+      nucCharges(i) = atoms[i].nucCharge;
+      massNums(i) = atoms[i].massNumber;
+      atomMass(i) = atoms[i].atomicMass;
+      slatRads(i) = atoms[i].slaterRadius;
+      for (size_t xyz = 0ul; xyz < 3; xyz++) atomCords(i, xyz) = atoms[i].coord[xyz];
+    }
+
+    savfile.safeWriteData(prefix + "ATOMICNUMBERS", atomNums.pointer(), {nAtoms});
+    savfile.safeWriteData(prefix + "NUCLEARCHARGES", nucCharges.pointer(), {nAtoms});
+    savfile.safeWriteData(prefix + "MASSNUMBERS", massNums.pointer(), {nAtoms});
+    savfile.safeWriteData(prefix + "ATOMICMASS", atomMass.pointer(), {nAtoms});
+    savfile.safeWriteData(prefix + "SLATERRADIUS", slatRads.pointer(), {nAtoms});
+    savfile.safeWriteData(prefix + "COORDINATES", atomCords.pointer(), {nAtoms, 3});
+
+  }
+  
+
 }; // namespace ChronusQ
 

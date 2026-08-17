@@ -387,6 +387,10 @@ namespace ChronusQ {
 
     SafeFile rstFile(rstFileName, true);
 
+    // Save mol and basis data to bin
+    mol.save(rstFile);
+    basis->save(rstFile, mol);
+
     if( rank == 0 ) {
       ss->savFile     = rstFile;
       // Attach savFile to every subsystem's SingleSlater and its integrals

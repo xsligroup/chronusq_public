@@ -25,9 +25,7 @@
 #include <basisset/basisset_def.hpp>
 #include <basisset/reference.hpp>
 #include <cxxapi/output.hpp>
-
 #include <libcint.hpp>
-
 #include <util/matout.hpp>
 #include <cqlinalg/blas1.hpp>
 #include <cqlinalg/blas3.hpp>
@@ -344,6 +342,56 @@ namespace ChronusQ {
     }
 
   }; // BasisSet::uncontractShells
+
+
+  void BasisSet::save(SafeFile savfile, const Molecule& mol) {
+    std::string prefix = "BASIS/";
+
+    // Bool to int as highfive doesnt suport bools yet 
+    int forceCartInt = forceCart ? 1 : 0;
+    savfile.safeWriteData(prefix + "FORCECART", &forceCartInt, {1});
+
+    size_t nAtoms = mol.atoms.size();
+
+    auto atomZ = cqmatrix::NDArray<size_t>({nAtoms});
+
+    size_t shellCursor = 0ul;
+
+    for (size_t atomIdx = 0ul; atomIdx < nAtoms; atomIdx++) {
+      std::string atomPrefix = prefix + "ATOM_" + std::to_string(atomIdx) + "/";
+      atomZ(atomIdx) = mol.atoms[atomIdx].atomicNumber;
+      size_t nShells = shells.size();
+
+      // Count how many consecutive shells (starting at shellCursor) belong to this atom
+      size_t nShellAtom = 0ul;
+      while (shellCursor + nShellAtom < nShells and
+        mapSh2Cen[shellCursor + nShellAtom] == atomIdx) nShellAtom++;
+
+      auto shellL     = cqmatrix::NDArray<size_t>({nShellAtom});
+      auto shellNPrim = cqmatrix::NDArray<size_t>({nShellAtom});
+
+      std::vector<double> alphaFlat;
+      std::vector<double> coeffFlat;
+
+      for (size_t i = 0ul; i < nShellAtom; i++) {
+        auto &sh = shells[shellCursor + i];
+        shellL(i)     = sh.contr[0].l;
+        shellNPrim(i) = sh.alpha.size();
+
+        alphaFlat.insert(alphaFlat.end(), sh.alpha.begin(), sh.alpha.end());
+        coeffFlat.insert(coeffFlat.end(),
+          unNormCont[shellCursor + i].begin(), unNormCont[shellCursor + i].end());
+      }
+
+      savfile.safeWriteData(atomPrefix + "NSHELL", &nShellAtom, {1});
+      savfile.safeWriteData(atomPrefix + "SHELL_L", shellL.pointer(), {nShellAtom});
+      savfile.safeWriteData(atomPrefix + "SHELL_NPRIM", shellNPrim.pointer(), {nShellAtom});
+      savfile.safeWriteData(atomPrefix + "ALPHA", alphaFlat.data(), {alphaFlat.size()});
+      savfile.safeWriteData(atomPrefix + "COEFF", coeffFlat.data(), {coeffFlat.size()});
+
+      shellCursor += nShellAtom;
+    }
+  } //BasisSet::save
 
 
   /**
