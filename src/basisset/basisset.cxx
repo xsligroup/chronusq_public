@@ -345,6 +345,8 @@ namespace ChronusQ {
 
 
   void BasisSet::save(SafeFile savfile, const Molecule& mol) {
+    if (MPIRank() != 0) return;
+
     std::string prefix = "BASIS/";
 
     // Bool to int as highfive doesnt suport bools yet 

@@ -343,6 +343,8 @@ namespace ChronusQ {
   }; // Molecule::operator<<
 
   void Molecule::save(SafeFile savfile) {
+    if (MPIRank() != 0) return;
+
     std::string prefix = "MOLECULE/";
 
     // Save single value object
