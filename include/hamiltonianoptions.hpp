@@ -23,6 +23,8 @@
  */
 #pragma once
 
+#include <optional>
+
 namespace ChronusQ {
 
   enum KineticBalance {RKBPauli, RKBSpinor, UKBScalar};
