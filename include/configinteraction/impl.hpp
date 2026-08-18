@@ -76,7 +76,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
 
   // Initial 1RDM construction
   this->computeOneRDM();
-
+  
   // SCF Cycles 
   if(this->ciSettings.doSCF) {
 
@@ -213,10 +213,16 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
       PostHartreeFock<MatsT,IntsT>::spinAnalysis();
   }   
 
+  // Compute excited state transtition dipole moments:
+  ProgramTimer::tick("Property Eval");
+  if (this->printTransDipole) {
+    this->printAllTransitionDipoleMom(); }
+
+  if (this->printDipole) {
+    this->printAllStateSpecificDipoleMom(); }
+
   // oscillator strength
   if (this->osc_str) {
-    
-    ProgramTimer::tick("Property Eval");
     
     auto &ref = *this->reference();
     this->osc_str_array.reserve(this->NosS1*this->NStates);
@@ -243,9 +249,8 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
     if (this->NStates > 1) PostHartreeFock<MatsT,IntsT>::OneRDMDiff();
 #endif
 
-    ProgramTimer::tock("Property Eval");
   }
-
+  ProgramTimer::tock("Property Eval");
   saveCurrentStates();
 
   ProgramTimer::tock("Configuration Interaction Total");

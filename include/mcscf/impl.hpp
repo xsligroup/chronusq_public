@@ -236,10 +236,9 @@ namespace ChronusQ {
       mcwfn_->osc_str.resize(this->settings.NosS1*this->NStates);
       for (size_t s1 = 0ul; s1 < this->settings.NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
-//        if (s2 < this->NosS1) this->osc_str[s2+s1*this->NStates] = 0.;
         if (s2 <= s1) mcwfn_->osc_str[s2+s1*this->NStates] = 0.;
-        else mcwfn_->osc_str[s2+s1*this->NStates] = 
-                this->oscillator_strength(s2,s1);
+        else {mcwfn_->osc_str[s2+s1*this->NStates] = 
+          this->oscillator_strength(s2,s1);}
       }
 
     }

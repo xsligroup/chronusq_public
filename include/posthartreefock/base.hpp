@@ -65,6 +65,8 @@ public:
   size_t NosS1 = 1; // number of initial states s1 for oscillator strength
   std::vector<double> osc_str_array; // matrix to save oscillator strength
 
+  bool printTransDipole = false;
+  bool printDipole = false;
   bool saveOnePDMS = false;
   std::vector<size_t> saveOnePDM_states;
 

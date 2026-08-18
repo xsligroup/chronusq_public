@@ -126,8 +126,12 @@ public:
   void populationAnalysis();
   void compute4CAODipole();
   double oscillator_strength(size_t, size_t s1 = 0);
-  double oscillator_strength4C(size_t, size_t s1 = 0);
   double secondorder_oscillator_strength(size_t, size_t s1 = 0);
+  std::vector<MatsT> computeStateSpecificDipoleMom(size_t);
+  void printAllStateSpecificDipoleMom();
+  std::vector<MatsT> computeTransitionDipoleMom(size_t, size_t);
+  void printAllTransitionDipoleMom();
+  double oscillator_strength4C(size_t, size_t s1 = 0);
   void OneRDMDiff(); 
   std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
   std::vector<cqmatrix::Matrix<MatsT>> spinOverlap();

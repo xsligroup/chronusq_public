@@ -38,6 +38,10 @@ namespace ChronusQ {
     // Spin analysis
     OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + "/PRINTSPIN"); )
 
+    // Transtion and state-specific dipole moments
+    OPTOPT( postHF->printTransDipole = input.getData<bool>(postHFSection + "/PRINTTRANSDIPOLE"); )
+    OPTOPT( postHF->printDipole = input.getData<bool>(postHFSection + "/PRINTDIPOLE"); )
+
     // Oscillator strength
     OPTOPT( postHF->osc_str = input.getData<bool>(postHFSection + "/OSCISTREN"); )
     if ( postHF->osc_str ){

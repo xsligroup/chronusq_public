@@ -236,6 +236,7 @@ namespace ChronusQ {
 
   } // MCWaveFunction::oscillator_strength
 
+
  /*
   * \brief  Compute the overlaps of an arbitrary CI vector with the CI vectors.
   *         C_target: an arbitrary CI vector to evaluate overlaps with

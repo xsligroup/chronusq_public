@@ -639,6 +639,7 @@ namespace ChronusQ {
   }
 
   /*
+  *
   * brief: Compute Oscillator Strength in the MO basis
   * Arguments: Ground state s1, target state s2
   * Prints out Osc strength
@@ -704,13 +705,200 @@ namespace ChronusQ {
     MPIBCast(f, 0, this->comm);
     
     return f;
+  } //PostHartreeFock:Full 2nd-Order Osc Strength
 
-  } // PostHartreeFock::4Coscillator_strength
-                       
-  /*
-   * Adding Difference RDM analysis 
-   *
-   */
+  template <typename MatsT, typename IntsT>
+  std::vector<MatsT> PostHartreeFock<MatsT,IntsT>::computeStateSpecificDipoleMom(size_t i) {
+  
+    size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
+    size_t nCorrO = corrSpace.nCorrO;
+    auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    auto tmpAOTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
+   
+    if (MPIRank(this->comm) == 0) {
+      computeTDM(i, i, tmpTDM1);
+      rdm2pdm(*tmpTDM1, 1., true);
+      const std::array<std::string,3> dipoleList =
+        { "X","Y","Z" };
+      std::vector<MatsT> SSDipole(3);
+      
+      if (ref_->nC == 1) { 
+        *tmpAOTDM1 = (ref_->onePDM->S());
+        VectorInts<IntsT> AOdipole(nAO, 1, true);
+        for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+          AOdipole[iXYZ] = (*ref_->aoints_->lenElectric)[dipoleList[iXYZ]];
+          SSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AOdipole[iXYZ]->pointer(),1);
+        }
+      }
+
+      else if (ref_->nC == 2 ) { 
+        ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM1);
+        VectorInts<IntsT> AOdipole(nAO, 1, true);
+        for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+          AOdipole[iXYZ] = std::make_shared<OnePInts<IntsT>>((*ref_->aoints_->lenElectric)[dipoleList[iXYZ]]
+                           ->template spatialToSpinBlock<IntsT>());
+          SSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AOdipole[iXYZ]->pointer(),1);
+        }
+      }
+
+      else if (ref_->nC == 4 ) {
+        if constexpr (std::is_same_v<MatsT, dcomplex>) {
+          ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM1);
+          for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+            auto AOdipole = (*AODipole4C_)[iXYZ].template spinGather<MatsT>();
+            SSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(), 1, AOdipole.pointer(), 1);
+          }
+        } 
+        else {
+          CErr("4C requires complex MatsT");
+          return {};
+        }
+      }
+      
+      else {
+        CErr("Wrong Number of Components!!");
+        return {};
+      }
+
+      return SSDipole;
+    }
+
+
+  } // PostHartreeFock<MatsT,IntsT>::computeStateSpecificDipoleMom(size_t i)
+
+
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::printAllStateSpecificDipoleMom() {
+
+    size_t NStates = this->NStates;
+    if (MPIRank(this->comm) == 0) {
+      
+      std::cout << "\n State Specific Dipole Moments (Length Gauge): \n" << std::endl;
+      auto tdmTensor = std::make_shared<cqmatrix::Matrix<MatsT>>(3, NStates);
+      for (size_t i = 0ul; i < NStates; ++i) {
+      
+      // fED2 ---> Elec Dipole: Calculate sum(<0|D_ab|n>^2) in AO basis:
+      auto DipMoment = computeStateSpecificDipoleMom(i);
+      for (size_t iXYZ = 0; iXYZ < 3; ++iXYZ) {
+        (*tdmTensor)(iXYZ, i) = DipMoment[iXYZ]; }
+      std::cout << "State: " << i << std::endl;
+      std::cout << "ED(x) | ED(y) | ED(z)   \n" << DipMoment[0] << " | " << 
+        DipMoment[1] << " | " << DipMoment[2] <<  "\n" << BannerTop << std::endl;
+      } 
+
+      if (savFile.exists()) {
+        savFile.safeWriteData("POSTHF/STATESPECIFIC_DIPOLEMOMENTS", tdmTensor->pointer(), {NStates, 3});
+      }
+
+    }
+
+  } //PostHartreeFock<MatsT,IntsT>::printAllStateSpecificDipoleMom()
+
+
+
+  template <typename MatsT, typename IntsT>
+  std::vector<MatsT> PostHartreeFock<MatsT,IntsT>::computeTransitionDipoleMom(size_t i, size_t j) {
+
+    size_t nAO = ref_->nAlphaOrbital() * ref_->nC;
+    size_t nCorrO = corrSpace.nCorrO;
+    
+    // compute transition density matrix for specific state
+    auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    auto tmpAOTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
+   
+    if (MPIRank(this->comm) == 0) {
+    
+      computeTDM(i, j, tmpTDM1);
+      rdm2pdm(*tmpTDM1, 1., true);
+      const std::array<std::string,3> dipoleList =
+        { "X","Y","Z" };
+      std::vector<MatsT> TSDipole(3);
+      
+      if (ref_->nC == 1) { 
+        *tmpAOTDM1 = (ref_->onePDM->S());
+        VectorInts<IntsT> AOdipole(nAO, 1, true);
+        for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+          AOdipole[iXYZ] = (*ref_->aoints_->lenElectric)[dipoleList[iXYZ]];
+          TSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AOdipole[iXYZ]->pointer(),1);
+        }
+      }
+
+      else if (ref_->nC == 2 ) { 
+        ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM1);
+        VectorInts<IntsT> AOdipole(nAO, 1, true);
+        for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+          AOdipole[iXYZ] = std::make_shared<OnePInts<IntsT>>((*ref_->aoints_->lenElectric)[dipoleList[iXYZ]]
+                           ->template spatialToSpinBlock<IntsT>());
+          TSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AOdipole[iXYZ]->pointer(),1);
+        }
+      }
+
+      else if (ref_->nC == 4 ) {
+        if constexpr (std::is_same_v<MatsT, dcomplex>) {
+          ref_->onePDM-> template spinGather<MatsT>(*tmpAOTDM1);
+          for(auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+            auto AOdipole = (*AODipole4C_)[iXYZ].template spinGather<MatsT>();
+            TSDipole[iXYZ] = blas::dotu(nAO*nAO, tmpAOTDM1->pointer(), 1, AOdipole.pointer(), 1);
+          }
+        } 
+        else {
+          CErr("4C requires complex MatsT");
+          return {};
+        }
+      }
+      
+      else {
+        CErr("Wrong Number of Components!!");
+        return {};
+      }
+
+      return TSDipole;
+    }
+
+  } // PostHartreeFock<MatsT,IntsT>::computeTransitionDipoleMom
+
+
+  template <typename MatsT, typename IntsT>
+  void PostHartreeFock<MatsT,IntsT>::printAllTransitionDipoleMom() {
+
+    size_t NStates = this->NStates;
+    size_t n = (NStates * (NStates - 1)) / 2;
+    if (n == 0) { 
+      CErr("Only one electronic state from CI! Please check calculation."); 
+    }
+   
+    if (MPIRank(this->comm) == 0) {
+      std::cout << "\n Transition Dipole Moments between states (Length Gauge) \n" << std::endl; 
+      auto tdmTensor = std::make_shared<cqmatrix::Matrix<MatsT>>(3, n);
+      for (size_t i = 0ul; i < NStates; ++i) {
+        for (size_t j = 0ul; j < i; ++j) {
+          
+          size_t compIdx = (( i * (i - 1)) / 2) + j;
+          auto tDipMoment = computeTransitionDipoleMom(i, j);
+          for (size_t iXYZ = 0; iXYZ < 3; ++iXYZ) {
+            (*tdmTensor)(iXYZ, compIdx) = tDipMoment[iXYZ]; }
+          
+          std::cout << "States: " << i << " | " << j << std::endl;
+          std::cout << std::fixed << std::setprecision(14);
+          std::cout << "Excitation Energy (in au): " << StateEnergy[i] - StateEnergy[j] << std::endl; 
+          std::cout << "ED(x) | ED(y) | ED(z) \n " << tDipMoment[0] << " | " << 
+            tDipMoment[1] << " | " << tDipMoment[2] << "\n" << BannerTop << std::endl;
+        }
+      }
+
+      if (savFile.exists()) {
+        savFile.safeWriteData("POSTHF/TRANSITION_DIPOLEMOMENTS", tdmTensor->pointer(), {n, 3});
+      }
+
+    }    
+
+  } // PostHartreeFock<MatsT,IntsT>::printAllTransitionDipoleMom
+
+
+/*
+ * Adding Difference RDM analysis 
+ *
+ */
   template <typename MatsT, typename IntsT>
   void PostHartreeFock<MatsT,IntsT>::OneRDMDiff() {
 
@@ -752,6 +940,7 @@ namespace ChronusQ {
     tmpRDM2.reset();
     diagRDMDiff.reset();
 
-  }  
+  }
+                       
 
 }; // namespace ChronusQ
