@@ -50,7 +50,7 @@ FetchContent_Declare(
   gauxc
   # GauXC master + general multiparticle host DFT + 4C-DKS
   GIT_REPOSITORY https://github.com/aodongliu/GauXC.git
-  GIT_TAG 346ebf358c8dcabda92076e3a18acb7e7a93cb5d
+  GIT_TAG e09a564543a5928c25d7048fe74c67b4e782ffd3
 )
 #CMAKE_ARGS "-DGAUXC_ENABLE_MPI=${CQ_ENABLE_MPI} -DGAUXC_ENABLE_CUDA=${CQ_ENABLE_CUDA}"
 

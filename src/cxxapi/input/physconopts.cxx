@@ -25,6 +25,7 @@
 #include <util/mpi.hpp>
 #include <cerr.hpp>
 #include <physcon.hpp>
+#include <gauxc/physcon.hpp>
 
 namespace ChronusQ {
   /**
@@ -140,6 +141,10 @@ namespace ChronusQ {
       HBar() * HBar() * 1e21 /
       (MassEl_KG() * MassEl_KG() * SpeedOfLight_CM() * AngPerBohr() *
        JPerHartree() * 1e5));
+
+    // Set external physical constants (dependencies, i.e. GauXC)
+    GauXC::SpeedOfLight = SpeedOfLight();
+    GauXC::RKB_factor = 1./(4.*SpeedOfLight()*SpeedOfLight());
 
     // Physical constant printing
     size_t width = 40;
