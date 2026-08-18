@@ -114,7 +114,7 @@ namespace ChronusQ {
 
     )
 
-    OPTOPT(blkSize = input.getData<size_t>("MISC.MEMBLK");)
+    OPTOPT(blkSize = input.getData<size_t>("MISC/MEMBLK");)
 
     std::string memTypeStr = "DEFAULT";
     OPTOPT(

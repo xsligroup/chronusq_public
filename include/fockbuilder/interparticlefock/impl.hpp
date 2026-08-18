@@ -110,7 +110,7 @@ namespace ChronusQ {
       std::vector<double> traceCoef = { 0.25 * prefactor };
 
       std::vector<double> gradient;
-      contract->gradTwoBodyTraceContract(MPI_COMM_WORLD, true, twoBodyContraction,
+      contract->gradTwoBodyTraceContract(ss.comm, true, twoBodyContraction,
                                          traceDens, traceCoef, gradient, pert);
 
       return gradient;
@@ -137,18 +137,22 @@ namespace ChronusQ {
     }
 
     // Contract to J/K
-    contract->gradTwoBodyContract(MPI_COMM_WORLD, true, cList, pert);
+    contract->gradTwoBodyContract(ss.comm, true, cList, pert);
 
     // Contract to gradient
-    std::vector<double> gradient;
-    cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(NB, false, false);
-    for(size_t iGrad = 0; iGrad < nGrad; iGrad++) {
-      twoEGrad.S() = prefactor * JList[iGrad];
-      double gradVal = ss.template computeOBProperty<SCALAR>(
-        twoEGrad.S().pointer()
-      );
-      gradient.push_back(0.25*gradVal);
+    std::vector<double> gradient(nGrad, 0.);
+    if(MPIRank(ss.comm) == 0) {
+      cqmatrix::PauliSpinorMatrices<MatsT> twoEGrad(NB, false, false);
+      for(size_t iGrad = 0; iGrad < nGrad; iGrad++) {
+        twoEGrad.S() = prefactor * JList[iGrad];
+        double gradVal = ss.template computeOBProperty<SCALAR>(twoEGrad.S().pointer());
+        gradient[iGrad] = 0.25*gradVal;
+      }
     }
+#ifdef CQ_ENABLE_MPI
+    if(MPISize(ss.comm) > 1)
+      MPIBCast(gradient.data(), gradient.size(), 0, ss.comm);
+#endif
 
     return gradient;
 

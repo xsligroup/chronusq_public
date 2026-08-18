@@ -265,7 +265,7 @@ namespace ChronusQ {
         }
         if (ccSettings.rebuildFock) {
           std::string X = "DEFAULT";
-          OPTOPT( X = input.getData<std::string>("QM.X2CTYPE")  );
+          OPTOPT( X = input.getData<std::string>("QM/X2CTYPE")  );
           trim(X);
           if (not X.compare("FOCK")) {
             CErr("CC/REBUILDFOCK should not be used with MMF-X2C");

@@ -23,6 +23,7 @@
 target_sources(cq PRIVATE
 transform.cxx
 spatialtospinor.cxx
+batched_direct_interparticle.cxx
 aointegrals/aointegrals_onee_drivers.cxx
 aointegrals/aointegrals_onee_inhouse.cxx
 aointegrals/aointegrals_twoe_libint.cxx

@@ -32,6 +32,7 @@
 #include <particleintegrals/twopints.hpp>
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
+#include <particleintegrals/contract/batched_direct_interparticle.hpp>
 
 
 namespace ChronusQ {
@@ -135,8 +136,29 @@ namespace ChronusQ {
       // Storage for full chain of FockBuilders (determines lifetime) for each subsystem
       LabeledMap<std::vector<std::shared_ptr<FockBuilder<MatsT,IntsT>>>> fockBuilders;
 
-      // Direct access to specific inter-particle FockBuilders
+      // Direct access to specific inter-particle FockBuilders.
+      // Note direct builders are registered here. They are handled by BatchedDirectInterparticleJContraction
       LabeledMap<LabeledMap<std::shared_ptr<InterParticleFockBuilder<MatsT,IntsT>>>> interFockBuilders;
+
+      // Batched AO-direct contraction for inter-particle interactions
+      struct BatchedDirectPair {
+        std::string firstSubsystemLabel;
+        std::string secondSubsystemLabel;
+        std::shared_ptr<DirectTPI<IntsT>> integrals;
+        // Whether the (first, second) subsystem order matches the (basisSet(), basisSet2()) order of the shared DirectTPI.
+        bool subsystemOrderMatchesIntegralOrder = true;
+      };
+      std::vector<BatchedDirectPair> batchedDirectPairs;
+      LabeledMap<cqmatrix::Matrix<MatsT>> batchedDirectCoulombMatrices;
+      BatchedDirectInterparticleJContraction<MatsT,IntsT> batchedDirectInterparticleJContraction;
+
+      void formBatchedDirectInterparticleCoulomb(const std::vector<std::string>& targets, bool increment);
+
+      // True when this (unordered) subsystem pair is handled by the batched
+      //   direct interparticle contraction instead of a recursive FockBuilder
+      //   chain node. Such pairs have no entry in interFockBuilders.
+      bool isBatchedPair(const std::string& first, const std::string& second) const;
+
       LabeledMap<SingleSlaterOptions> subsystemGuessOptions;
 
       // Storage for subsystem dipoles (bare particle dipoles moments, not including classical nuclear contributions)
@@ -357,6 +379,8 @@ namespace ChronusQ {
         //   FockBuilder chain, plus its own intra-particle VXC if it is a KohnSham
         //   object with doVXC_ enabled and it's an active XC target)
         applyToEach([&](SubSSPtr& ss){ ss->formFock(emPert, increment, xHFX); }, targets);
+
+        formBatchedDirectInterparticleCoulomb(targets, increment);
 
         if( !hasInterXC() ) return;
         // Form XC on the shared grid in a single pass for target subsystems (default=all subsystems)

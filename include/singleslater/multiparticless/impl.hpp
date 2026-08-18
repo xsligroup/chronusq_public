@@ -25,6 +25,8 @@
 
 #include <singleslater/multiparticless.hpp>
 #include <cerr.hpp>
+#include <util/timer.hpp>
+#include <iostream>
 #include <unordered_set>
 
 namespace ChronusQ {
@@ -76,9 +78,11 @@ namespace ChronusQ {
     auto& ss2 = subsystems.at(label2);
     std::shared_ptr<TPIContractions<MatsT,IntsT>> contraction1;
     std::shared_ptr<TPIContractions<MatsT,IntsT>> contraction2;
+    std::shared_ptr<DirectTPI<IntsT>> directIntegrals;
     
     // Create contractions for each subsystem
     if(auto direct = std::dynamic_pointer_cast<DirectTPI<IntsT>>(ints)) {
+      directIntegrals = direct;
       contraction1 = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(direct);
       contraction2 = std::make_shared<GTODirectTPIContraction<MatsT,IntsT>>(direct);
     } else if(auto incore = std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(ints)) {
@@ -100,38 +104,153 @@ namespace ChronusQ {
     contraction1->isCross = true;
     contraction2->isCross = true;
 
-    // Generate the output coulomb matrix for each subsystem
-    auto matrix1 = interCoulomb.at(label1).emplace(label2, cqmatrix::Matrix<MatsT>(ss1->basisSet().nBasis));
-    auto matrix2 = interCoulomb.at(label2).emplace(label1, cqmatrix::Matrix<MatsT>(ss2->basisSet().nBasis));
-
     // Generate InterParticleFockBuilder for each subsystem
     auto fock1 = std::make_shared<InterParticleFockBuilder<MatsT,IntsT>>(ss1->aoints_->options_);
     auto fock2 = std::make_shared<InterParticleFockBuilder<MatsT,IntsT>>(ss2->aoints_->options_);
 
     fock1->setAux(ss2.get());
-    fock1->setOutput(&matrix1.first->second);
     fock1->setContraction(contraction1);
-    fock1->setUpstream(fockBuilders[label1].back().get());
-
     fock2->setAux(ss1.get());
-    fock2->setOutput(&matrix2.first->second);
     fock2->setContraction(contraction2);
-    fock2->setUpstream(fockBuilders[label2].back().get());
 
-    // Store the interparticle integrals and fockBuilders 
+    const bool useBatchedDirect = directIntegrals and
+                                  ss1->basisSet().basisType == REAL_GTO and
+                                  ss2->basisSet().basisType == REAL_GTO;
+
+    if(useBatchedDirect) {
+      // Direct contractions done in a batched way to avoid overhead when number of subsystems get large
+      const bool subsystemOrderMatchesIntegralOrder = not contractSecond;
+      BasisSet& firstIntegralBasis = subsystemOrderMatchesIntegralOrder ?
+        directIntegrals->basisSet() : directIntegrals->basisSet2();
+      BasisSet& secondIntegralBasis = subsystemOrderMatchesIntegralOrder ?
+        directIntegrals->basisSet2() : directIntegrals->basisSet();
+
+      if(&firstIntegralBasis != &ss1->basisSet() or
+         &secondIntegralBasis != &ss2->basisSet())
+        CErr("Direct interparticle integral basis order is inconsistent for " +
+          label1 + "-" + label2);
+
+      // Each subsystem accumulates its batched Coulomb contribution into one persistent matrix
+      auto setupBatchedCoulombMatrix = [&](const std::string& label, size_t nBasis) {
+        auto [matrix, created] = batchedDirectCoulombMatrices.try_emplace(label, cqmatrix::Matrix<MatsT>(nBasis));
+        if(created) matrix->second.clear();
+      };
+
+      setupBatchedCoulombMatrix(label1, ss1->basisSet().nBasis);
+      setupBatchedCoulombMatrix(label2, ss2->basisSet().nBasis);
+      batchedDirectPairs.push_back({label1, label2, directIntegrals, subsystemOrderMatchesIntegralOrder});
+    } else {
+      // In-core and RI fockbuilders are setup in a recursive chain.
+      auto matrix1 = interCoulomb.at(label1).emplace(label2,
+        cqmatrix::Matrix<MatsT>(ss1->basisSet().nBasis));
+      auto matrix2 = interCoulomb.at(label2).emplace(label1,
+        cqmatrix::Matrix<MatsT>(ss2->basisSet().nBasis));
+
+      fock1->setOutput(&matrix1.first->second);
+      fock1->setUpstream(fockBuilders.at(label1).back().get());
+      fock2->setOutput(&matrix2.first->second);
+      fock2->setUpstream(fockBuilders.at(label2).back().get());
+
+      fockBuilders.at(label1).push_back(fock1);
+      fockBuilders.at(label2).push_back(fock2);
+      ss1->fockBuilder = fockBuilders.at(label1).back();
+      ss2->fockBuilder = fockBuilders.at(label2).back();
+
+      // Store in maps for look-up
+      // Note that the direct pairs are not in these maps. They are in stored in batchedDirectPairs 
+      interFockBuilders.at(label1).emplace(label2, fock1);
+      interFockBuilders.at(label2).emplace(label1, fock2);
+    }
+
+    // Store the interparticle integrals
     interIntegrals.at(label1).emplace(label2, std::make_pair(contractSecond, ints));
     interIntegrals.at(label2).emplace(label1, std::make_pair(!contractSecond, ints));
-    interFockBuilders.at(label1).emplace(label2, fock1);
-    interFockBuilders.at(label2).emplace(label1, fock2);
 
-    // Add the newly created interParticleFockBuilders to the list of fockBuilders for each subsystem
-    fockBuilders.at(label1).push_back(fock1);
-    fockBuilders.at(label2).push_back(fock2);
+  }
 
-    // Set the fockBuilder for each subsystem to the newly created interParticleFockBuilders
-    ss1->fockBuilder = fockBuilders[label1].back();
-    ss2->fockBuilder = fockBuilders[label2].back();
 
+  template <typename MatsT, typename IntsT>
+  bool MultiParticleSS<MatsT,IntsT>::isBatchedPair(const std::string& first,
+    const std::string& second) const {
+
+    for(const auto& interaction : batchedDirectPairs)
+      if((interaction.firstSubsystemLabel == first and interaction.secondSubsystemLabel == second) or
+         (interaction.firstSubsystemLabel == second and interaction.secondSubsystemLabel == first))
+        return true;
+    return false;
+
+  }
+
+
+  template <typename MatsT, typename IntsT>
+  void MultiParticleSS<MatsT,IntsT>::formBatchedDirectInterparticleCoulomb(
+    const std::vector<std::string>& targets, bool increment) {
+
+    if(batchedDirectPairs.empty()) return;
+
+    if(increment)
+      CErr("Incremental Fock build is not supported by the batched direct interparticle contraction.");
+
+    // An empty target list means forming Interparticle Coulomb Fock for every subsystem Fock.
+    const auto& labels = targets.empty() ? order_ : targets;
+    const std::unordered_set<std::string> requested(labels.begin(), labels.end());
+
+    std::unordered_set<std::string> formed;
+    std::vector<DirectInterparticleJContraction<MatsT,IntsT>> directInterparticleJContractions;
+    directInterparticleJContractions.reserve(batchedDirectPairs.size());
+
+    for(const auto& pair : batchedDirectPairs) {
+      const bool formFirstCoulomb  = requested.count(pair.firstSubsystemLabel);
+      const bool formSecondCoulomb = requested.count(pair.secondSubsystemLabel);
+      // Skip if not requested
+      if(not formFirstCoulomb and not formSecondCoulomb) continue;
+
+      auto& firstSubsystem  = subsystems.at(pair.firstSubsystemLabel);
+      auto& secondSubsystem = subsystems.at(pair.secondSubsystemLabel);
+
+      if(formFirstCoulomb)    formed.insert(pair.firstSubsystemLabel);
+      if(formSecondCoulomb)   formed.insert(pair.secondSubsystemLabel);
+      MatsT* firstCoulomb = formFirstCoulomb ?
+        batchedDirectCoulombMatrices.at(pair.firstSubsystemLabel).pointer() : nullptr;
+      MatsT* secondCoulomb = formSecondCoulomb ?
+        batchedDirectCoulombMatrices.at(pair.secondSubsystemLabel).pointer() : nullptr;
+      const double scale = 2. * firstSubsystem->particle.charge * secondSubsystem->particle.charge;
+
+      directInterparticleJContractions.push_back({
+        pair.integrals,
+        pair.subsystemOrderMatchesIntegralOrder,
+        firstSubsystem->onePDM->S().pointer(),
+        secondSubsystem->onePDM->S().pointer(),
+        firstCoulomb,
+        secondCoulomb,
+        scale,
+        formFirstCoulomb,
+        formSecondCoulomb
+      });
+    }
+
+    for(const auto& label : formed)
+      batchedDirectCoulombMatrices.at(label).clear();
+
+    if(directInterparticleJContractions.empty()) return;
+
+    time_point directStart;
+    if(this->scfControls.printContractionTiming) directStart = tick();
+    batchedDirectInterparticleJContraction.JContract(this->comm, directInterparticleJContractions);
+    const double directSeconds = this->scfControls.printContractionTiming ? tock(directStart) : 0.;
+
+    if(MPIRank(this->comm) != 0) return;
+    for(const auto& label : formed) {
+      auto& subsystem = subsystems.at(label);
+      auto& coulomb = batchedDirectCoulombMatrices.at(label);
+      *subsystem->twoeH += coulomb;
+      *subsystem->fockMatrix += coulomb;
+    }
+
+    if(this->scfControls.printContractionTiming) {
+      std::cout << "        Batched-Direct-Interparticle duration = "
+                << directSeconds << " s\n";
+    }
   }
 
 
@@ -142,6 +261,11 @@ namespace ChronusQ {
 
     if(!ints)
       CErr("Cannot add null gradient integrals for " + label1 + "-" + label2);
+
+    // Batched-direct pairs evaluate their derivative integrals inside BatchedDirectInterparticleJContraction::GradJContract, 
+    // The setup below is InterParticleFockBuilder is not needed
+    if(isBatchedPair(label1,label2)) return;
+
     if(!interFockBuilders.at(label1).count(label2))
       CErr("Cannot add gradient integrals before adding interaction " + label1 + "-" + label2);
     if(gradInterInts.at(label1).count(label2))
@@ -168,12 +292,14 @@ namespace ChronusQ {
     for(size_t iGrad = 0; iGrad < nGrad; iGrad++)
       gradient[iGrad] = this->molecule().nucRepForce[iGrad/3][iGrad%3];
 
-    // Form derivative integrals for each unique inter-particle interaction.
+    // Form derivative integrals for each unique inter-particle interaction
+    // (skipped entirely on the batched-direct path).
     for(size_t i = 0; i < order_.size(); i++) {
       for(size_t j = i + 1; j < order_.size(); j++) {
         const auto& first = order_[i];
         const auto& second = order_[j];
 
+        if(isBatchedPair(first, second)) continue;
         if(!gradInterInts.at(first).count(second))
           CErr("Missing gradient integrals for " + first + "-" + second);
 
@@ -239,6 +365,29 @@ namespace ChronusQ {
           this->molecule().nucRepForce[iGrad/3][iGrad%3];
     });
 
+    std::vector<DirectInterparticleGradJContraction<MatsT,IntsT>> directInterparticleGradJContractions;
+    directInterparticleGradJContractions.reserve(batchedDirectPairs.size());
+
+    for(const auto& pair : batchedDirectPairs) {
+      auto& firstSubsystem  = subsystems.at(pair.firstSubsystemLabel);
+      auto& secondSubsystem = subsystems.at(pair.secondSubsystemLabel);
+
+      directInterparticleGradJContractions.push_back({
+        pair.integrals,
+        pair.subsystemOrderMatchesIntegralOrder,
+        firstSubsystem->onePDM->S().pointer(),
+        secondSubsystem->onePDM->S().pointer(),
+        2. * firstSubsystem->particle.charge * secondSubsystem->particle.charge});
+    }
+
+    std::vector<double> batchedGradContribution(nGrad, 0.);
+    if(not directInterparticleGradJContractions.empty())
+      batchedGradContribution = batchedDirectInterparticleJContraction.GradJContract(
+        this->comm, nGrad, directInterparticleGradJContractions);
+
+    for(size_t iGrad = 0; iGrad < nGrad; iGrad++)
+      gradient[iGrad] += batchedGradContribution[iGrad];
+
     // All inter-XC terms and unified intra-XC terms share one grid pass.
     if(not xcTerms.subsystems.empty()) {
       auto xcGradient = formXCGradient(pert,xcTerms);
@@ -285,9 +434,23 @@ namespace ChronusQ {
     if(order_.size() != subsystems.size())
       CErr("MultiParticleSS ordering does not match subsystem storage.");
 
+    auto findBatchedPair = [&](const std::string& first,
+                               const std::string& second)
+      -> const BatchedDirectPair* {
+      for(const auto& interaction : batchedDirectPairs) {
+        const bool sameOrder = interaction.firstSubsystemLabel == first and
+          interaction.secondSubsystemLabel == second;
+        const bool reverseOrder = interaction.firstSubsystemLabel == second and
+          interaction.secondSubsystemLabel == first;
+        if(sameOrder or reverseOrder) return &interaction;
+      }
+      return nullptr;
+    };
+
     std::unordered_set<std::string> seen;
-    size_t nDirectedInteractions = 0;
-    size_t nTotalFockBuilders = 0;
+    size_t nDirectedChainBuilders = 0;
+    size_t nDirectedBatchedPartners = 0;
+    size_t nFockBuilderChainNodes = 0;
 
     out << "\n";
     out << "============================================================\n";
@@ -316,8 +479,35 @@ namespace ChronusQ {
       if(chain.empty())
         CErr("Empty FockBuilder chain for subsystem: " + label);
 
+      // Batched-direct partners of this subsystem, in registration order.
+      std::vector<std::string> batchedPartners;
+      for(const auto& interaction : batchedDirectPairs) {
+        if(interaction.firstSubsystemLabel == label)
+          batchedPartners.push_back(interaction.secondSubsystemLabel);
+        else if(interaction.secondSubsystemLabel == label)
+          batchedPartners.push_back(interaction.firstSubsystemLabel);
+      }
+      const size_t batchedCount = batchedPartners.size();
+
+      // Check the size of chain builders (for incore/RI interactions)
       if(chain.size() != interactions.size() + 1)
         CErr("Incorrect FockBuilder chain length for subsystem: " + label);
+
+      // Check that every registered partner without a chain builder MUST be a batched-direct pair, 
+      // and the number of such partners must match batchedDirectPairs. 
+      size_t batchedFromRegistry = 0;
+      for(const auto& registered : interIntegrals.at(label)) {
+        if(interactions.count(registered.first)) continue;
+        if(!findBatchedPair(label, registered.first))
+          CErr("Interaction " + label + "-" + registered.first +" has neither an InterParticleFockBuilder nor a batched direct pair");
+        ++batchedFromRegistry;
+      }
+
+      if(batchedFromRegistry != batchedCount)
+        CErr("Batched direct partner count does not match the registered interactions for subsystem: " + label);
+
+      if(batchedCount and not batchedDirectCoulombMatrices.count(label))
+        CErr("Missing batched direct Coulomb matrix for subsystem: " + label);
 
       if(ss->fockBuilder.get() != chain.back().get())
         CErr("Subsystem does not point to the end of its FockBuilder chain: " +
@@ -343,8 +533,10 @@ namespace ChronusQ {
       out << "   Particle charge: "
           << ss->particle.charge << "\n";
       out << "   Interactions: "
-          << interactions.size() << "\n";
-      out << "   FockBuilder chain: base";
+          << interIntegrals.at(label).size()
+          << " (recursive chain: " << interactions.size()
+          << ", batched direct: " << batchedCount << ")\n";
+      out << "   Recursive FockBuilder chain: base";
 
       for(size_t i = 1; i < chain.size(); ++i) {
 
@@ -360,13 +552,24 @@ namespace ChronusQ {
         out << " -> " << partner;
       }
 
+      out << "\n";
+
+      out << "   Batched direct partners: ";
+      if(batchedPartners.empty())
+        out << "none";
+      else
+        for(size_t i = 0; i < batchedPartners.size(); ++i)
+          out << (i ? ", " : "") << label << " <-> " << batchedPartners[i];
+
       out << "\n\n";
 
-      nDirectedInteractions += interactions.size();
-      nTotalFockBuilders += chain.size();
+      nDirectedChainBuilders += interactions.size();
+      nDirectedBatchedPartners += batchedCount;
+      nFockBuilderChainNodes += chain.size();
     }
 
     size_t nPairInteractions = 0;
+    size_t nBatchedPairs = 0;
 
     out << " Pair interactions\n";
 
@@ -403,27 +606,45 @@ namespace ChronusQ {
           CErr("Directional contractSecond flags are inconsistent for " +
               label1 + "-" + label2);
 
-        if(!interCoulomb.at(label1).count(label2) ||
-          !interCoulomb.at(label2).count(label1))
+        const auto* batchedPair = findBatchedPair(label1, label2);
+        if(batchedPair) {
+          if(interCoulomb.at(label1).count(label2) or
+             interCoulomb.at(label2).count(label1))
+            CErr("Batched direct interaction has pair-local Coulomb matrices for " + label1 + "-" + label2);
+          if(batchedPair->integrals != interaction12.second)
+            CErr("Batched direct interaction does not share the registered integrals for " + label1 + "-" + label2);
+          ++nBatchedPairs;
+        } else if(!interCoulomb.at(label1).count(label2) or !interCoulomb.at(label2).count(label1)) {
           CErr("Missing Coulomb matrix for " + label1 + "-" + label2);
+        }
 
-        if(!interFockBuilders.at(label1).count(label2) ||
-          !interFockBuilders.at(label2).count(label1))
-          CErr("Missing InterParticleFockBuilder for " +
-              label1 + "-" + label2);
+        if(batchedPair) {
+          if(interFockBuilders.at(label1).count(label2) || interFockBuilders.at(label2).count(label1))
+            CErr("Batched direct interaction has a registered InterParticleFockBuilder for " +
+                label1 + "-" + label2);
+        } else if(!interFockBuilders.at(label1).count(label2) || !interFockBuilders.at(label2).count(label1)) {
+          CErr("Missing InterParticleFockBuilder for " + label1 + "-" + label2);
+        }
 
         out << "   " << label1 << " <-> " << label2
             << "   contractSecond(" << label1 << ") = "
             << std::boolalpha << interaction12.first
             << ", contractSecond(" << label2 << ") = "
-            << interaction21.first << "\n";
+            << interaction21.first << ", executor = "
+            << (batchedPair ? "batched-direct" : "pair-chain") << "\n";
 
         ++nPairInteractions;
       }
     }
 
-    if(nDirectedInteractions != 2 * nPairInteractions)
-      CErr("Directional interaction count does not match pair count.");
+    const size_t nChainPairs = nPairInteractions - nBatchedPairs;
+
+    if(nDirectedChainBuilders != 2 * nChainPairs)
+      CErr("Directional interaction count does not match chain pair count.");
+    if(nDirectedBatchedPartners != 2 * nBatchedPairs)
+      CErr("Directional batched partner count does not match batched pair count.");
+    if(nBatchedPairs != batchedDirectPairs.size())
+      CErr("Batched direct interaction count does not match pair count.");
 
     const size_t nPossiblePairs =
       order_.size() * (order_.size() - 1) / 2;
@@ -433,11 +654,20 @@ namespace ChronusQ {
         << nPairInteractions << " / "
         << nPossiblePairs << " possible\n";
 
-    out << " Directional interparticle builders: "
-        << nDirectedInteractions << "\n";
+    out << " Recursive-chain interparticle pairs: "
+        << nChainPairs << "\n";
 
-    out << " Total FockBuilders: "
-        << nTotalFockBuilders << "\n";
+    out << " Batched direct interparticle pairs: "
+        << nBatchedPairs << "\n";
+
+    out << " Directional interparticle builders: "
+        << nDirectedChainBuilders << "\n";
+
+    out << " Recursive FockBuilder chain nodes: "
+        << nFockBuilderChainNodes << "\n";
+
+    out << " Total FockBuilder objects: "
+        << subsystems.size() + nDirectedChainBuilders << "\n";
 
     out << " Setup validation: PASSED\n";
     out << "============================================================\n\n";

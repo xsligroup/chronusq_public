@@ -51,6 +51,28 @@ TEST( NEO_RHF, water_sto3g_protsp_distinguishable_readden ) {
 
 };
 
+TEST( NEO_RHF, water_sto3g_protsp_distinguishable_readden_direct ) {
+
+  // Compare direct E--QP0, E--QP1, and QP0--QP1 contractions against the established incore reference.
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf_distinguishable_readden_direct",
+    "water_sto-3g_prot-sp_rhf_distinguishable.bin.ref", 1e-6,
+    true, true, true, true, false,
+    "water_sto-3g_prot-sp_rhf_distinguishable.scr.bin", false, true,
+    {"E", "QP0", "QP1"} );
+
+};
+
+TEST( NEO_RHF, water_sto3g_protsp_distinguishable_readden_mixed_interactions ) {
+
+  // E--P uses direct contraction while P--P remains in the established in-core chain.
+  CQNEOSCFTEST( "scf/serial/neo_rhf/water_sto-3g_prot-sp_rhf_distinguishable_readden_mixed_interactions",
+    "water_sto-3g_prot-sp_rhf_distinguishable.bin.ref", 1e-6,
+    true, true, true, true, false,
+    "water_sto-3g_prot-sp_rhf_distinguishable.scr.bin", false, true,
+    {"E", "QP0", "QP1"} );
+
+};
+
 TEST( NEO_RHF, coh2_ccpvdz_pb4d ) {
 
   CQNEOSCFTEST( "scf/serial/neo_rhf/coh2_ccpvdz_pb4d", "coh2_ccpvdz_pb4d.bin.ref", 1e-6, 

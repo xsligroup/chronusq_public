@@ -67,10 +67,10 @@ namespace ChronusQ {
 
 /*
     // No GIAO + RESPONSE
-    if( input.containsData("BASIS.BASISTYPE") ) {
+    if( input.containsData("BASIS/BASISTYPE") ) {
 
       std::string btype = 
-        input.getData<std::string>("BASIS.BASISTYPE");
+        input.getData<std::string>("BASIS/BASISTYPE");
 
       if( not btype.compare("GIAO") )
         CErr("GIAO + RESPONSE not allowed");

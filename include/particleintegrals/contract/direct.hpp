@@ -1904,7 +1904,9 @@ namespace ChronusQ {
             for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++) { 
               // Cache i,j variables
               b1 = bf1 + nBasis*bf2; 
-              X1 = *reinterpret_cast<double*>(matList[iMat].X  + b1);
+              // X is stored in basisSet2_, so b1 is valid only for the same-basis reverse digest below.
+              X1 = 0.;
+              if(&basisSet_ == &basisSet2_) X1 = *reinterpret_cast<double*>(matList[iMat].X + b1);
               Xp1 = reinterpret_cast<double*>(AX_loc[iMat] + b1);
             for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++) 
             for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++) { 
@@ -2884,7 +2886,9 @@ namespace ChronusQ {
             for(auto j = 0ul, bf2 = bf2_s; j < n2; j++, bf2++) {
               // Cache i,j variables
               b1 = bf1 + nBasis*bf2;
-              X1 = w * (*reinterpret_cast<double*>(gradList[iMat].X  + b1));
+              // X is stored in basisSet2_, so b1 is valid only for the same-basis reverse digest below.
+              X1 = 0.;
+              if(&basisSet_ == &basisSet2_) X1 = w * (*reinterpret_cast<double*>(gradList[iMat].X + b1));
               Xp1 = reinterpret_cast<double*>(AX_Grad_loc[iMat] + b1);
             for(auto k = 0ul, bf3 = bf3_s; k < n3; k++, bf3++)
             for(auto l = 0ul, bf4 = bf4_s; l < n4; l++, bf4++, ijkl++) {
