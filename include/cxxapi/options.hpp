@@ -306,13 +306,14 @@ namespace ChronusQ {
   // Parse MCSCF options
   struct MCSCFJobType;
   std::shared_ptr<MCWaveFunctionBase> CQBuildMCWaveFunction(std::ostream &,
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, std::string &,
-     std::shared_ptr<MCSCFJobType>&);
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, const std::string &,
+     std::shared_ptr<MCSCFJobType>&,std::shared_ptr<MCSCFSettings>);
   std::shared_ptr<MCSCFBase> CQMCSCFOptions(std::ostream &,
-     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, bool isNEO);
+     CQInputFile &, std::shared_ptr<SingleSlaterBase> &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, bool isNEO, std::vector<QuantumSubsystem>, std::vector<QuantumPairInteraction>);
+  std::shared_ptr<MCSCFSettings> CQGetMCSCFSettings(std::ostream &out, CQInputFile &input, std::shared_ptr<MCSCFJobType> &mcscfjobtype, std::string prefix = "");
   std::shared_ptr<MCSCFBase> CQBuildMCSCFOptions(std::ostream &,
      CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &, EMPerturbation &, std::shared_ptr<CubeGen>, std::string &,
-     std::shared_ptr<MCSCFJobType>&mcscfjob);
+     std::shared_ptr<MCSCFJobType>&mcscfjob,std::shared_ptr<MCSCFSettings>&);
 
   std::set<std::string> CQMCSCF_VALID(const std::map<std::string, std::string>& inputSection);
   

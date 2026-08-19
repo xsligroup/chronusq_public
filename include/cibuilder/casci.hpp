@@ -77,7 +77,7 @@ namespace ChronusQ {
                                std::shared_ptr<const ExcitationList>,
                                std::shared_ptr<const ExcitationList>,
                                const std::string,
-                               bool attractive = false);
+                               const double chargeproduct = 1.0);
 
     template<typename ... MatsArgs>
     void transposeVectors(size_t nVec,
@@ -85,6 +85,16 @@ namespace ChronusQ {
                           size_t,
                           MatsArgs...);
 
+    void addBlockToMatrixBlockDiagonal(size_t,
+                                       size_t,
+                                       MatsT,
+                                       MatsT *,
+                                       MatsT *);
+    void addVecToBlockedVector(size_t,
+                               size_t,
+                               MatsT,
+                               MatsT*,
+                               MatsT*);
     //void oneRDM(){};
     //void TwoRDM(){};
     void computeTDM(MCWaveFunction<MatsT,IntsT>&,

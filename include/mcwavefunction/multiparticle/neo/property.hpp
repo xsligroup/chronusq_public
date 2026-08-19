@@ -62,7 +62,7 @@ namespace ChronusQ {
     void NEOMCWaveFunction<MatsT,IntsT>::computeMultipole(size_t s1)
     {
         // Grab a reference to the NEOSS object
-        NEOSS<MatsT,IntsT> * neo_ss = &neoref_;
+        NEOSS<MatsT,IntsT> * neo_ss = neoref_.get();
 
         this->ewfn_->rdm2pdm(this->ewfn_->oneRDM[s1]);
         this->pwfn_->rdm2pdm(this->pwfn_->oneRDM[s1]);

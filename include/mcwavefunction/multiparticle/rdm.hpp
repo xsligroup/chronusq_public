@@ -3,7 +3,7 @@
  *  
  *  Copyright (C) 2014-2022 Li Research Group (University of Washington)
  *  
- *  This program is free software; you ca redistribute it and/or modify
+ *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
@@ -21,15 +21,37 @@
  *    E-Mail: xsli@uw.edu
  *  
  */
+
 #pragma once
 
+#include <mcscf.hpp>
 #include <mcwavefunction.hpp>
-#include <quantum/preprocessor.hpp>
-#include <util/preprocessor.hpp>
-#include <util/print.hpp>
- 
+
 namespace ChronusQ {
 
-}; // namespace ChronusQ
+  template <typename MatsT, typename IntsT>
+  void MultiParticleMCWaveFunction<MatsT,IntsT>::computeOneRDM(size_t i)
+  {
+    // Build the vector of reference wrappers for the RDMs
+    std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> rdmRefs;
+    ApplyToEach([&rdmRefs,i](SubMCWfnPtr & mcwfn){rdmRefs.emplace_back(mcwfn->oneRDM[i]);});
 
-#include <mcwavefunction/multicomponent/neo/impl.hpp>
+    multiparticleciBuilder->computeOneRDM(*this,this->CIVecs[i],rdmRefs);
+  }
+
+  template <typename MatsT, typename IntsT>
+  void MultiParticleMCWaveFunction<MatsT,IntsT>::computeOneRDM()
+  {
+    for(size_t i = 0; i < this->NStates; i++)
+    {
+        computeOneRDM(i);
+    }
+  }
+
+  template <typename MatsT, typename IntsT>
+  void MultiParticleMCWaveFunction<MatsT,IntsT>::computeTDMs()
+  {
+    CErr("TDMs for MultiParticleMCWaveFunction NYI!");    
+  }
+
+}; // namespace ChronusQ

@@ -155,11 +155,12 @@ namespace ChronusQ {
         std::cout << "Transforming integrals..." << std::endl;
 
         // Make the cross term transformer
-        auto epTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>
-            (*neoref_->template getSubsystem<SingleSlater>(std::string("Electronic")),
-             *neoref_->template getSubsystem<SingleSlater>(std::string("Protonic")),
-             neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second,
-             neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first);
+        std::shared_ptr<MixedMOIntsTransformer<MatsT,IntsT>> epTF = nullptr;
+        //auto epTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>
+        //    (*neoref_->template getSubsystem<SingleSlater>(std::string("Electronic")),
+        //     *neoref_->template getSubsystem<SingleSlater>(std::string("Protonic")),
+        //     neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second,
+        //     neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first);
 
         // Necessary components from each subsystem
         size_t index1 = std::max(nocc[0],nvir[0]);

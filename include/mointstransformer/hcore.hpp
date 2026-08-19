@@ -238,4 +238,83 @@ namespace ChronusQ {
   
   }; // MOIntsTransformer::subsetTransformAOGD 
 
+  template <typename MatsT, typename IntsT>
+  double MixedMOIntsTransformer<MatsT,IntsT>::handleCrossCoreInts(std::string label1, 
+                                                                  std::string label2,
+                                                                  std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p1tf,
+                                                                  std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p2tf,
+                                                                  std::shared_ptr<IntegralsCollection> intscache)
+  {
+    auto interfockp1p2 = mpss_->getInterFockBuilder(label1,label2);
+    auto interfockp2p1 = mpss_->getInterFockBuilder(label2,label1);
+
+    auto hasCore = [&](std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> tf)
+    {
+      std::vector<std::pair<size_t,size_t>> off_sizes = tf->parseMOType("ijkl");
+      bool hasCore = false;
+      for(auto os : off_sizes)
+        if(os.second) hasCore = true;
+      return hasCore;
+    };
+    bool label1_hasCore = hasCore(p1tf);
+    bool label2_hasCore = hasCore(p2tf);
+
+    auto getnCorrO = [&](std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> tf)
+    {
+      std::vector<std::pair<size_t,size_t>> off_sizes = tf->parseMOType("t");
+      return off_sizes[0].second - off_sizes[0].first;
+    };
+
+    // All field perturbations are taken care of by the substituent transformers, 
+    // so just need a dummy perturbation here
+    EMPerturbation pert;
+
+    // At this point we assume that all SingleSlater objects have appropriately had their
+    // internal densities overwritten to contain the core densities
+    if(label1_hasCore)
+    {
+      // Build the J matrix using the core density from particle 2
+      interfockp2p1->formInterParticleCoulomb(*p2_,false);
+      // The outmat is the raw P_i,j (i,j|K,L) -> J_K,L contraction with no additional factors of charge
+      auto mat = interfockp2p1->getOutMat();
+      OnePInts<MatsT> AOCrossCore(mat->nRows());
+      AOCrossCore.matrix() = *mat;
+      
+      // Preparing to transform J_K,L into the MO basis
+      size_t p2nCorrO = getnCorrO(p2tf);
+      OnePInts<MatsT> CrossCoreInts(p2nCorrO);
+      // Do the transformation
+      p2tf->subsetTransformOPI(p2tf->parseMOType("tu"),AOCrossCore,CrossCoreInts.pointer(),false);
+
+      // CrossCoreInts now contains the appropriately sized matrix in the MO basis
+      // Grab the respective MOInts from the moints cache
+      std::string existingMOIntsString = label2 + "hCoreP_Correlated_Space";
+      std::shared_ptr<OnePInts<MatsT>> existingMOInts = intscache->template getIntegral<OnePInts, MatsT>(existingMOIntsString);
+      if(!existingMOInts) CErr("Error in grabbing the proper integrals for handling cross core particles!");
+
+      double factor = p1_->particle.charge * p2_->particle.charge;
+      existingMOInts->matrix() += factor * CrossCoreInts.matrix();
+      intscache->addIntegral(existingMOIntsString,existingMOInts);
+
+    }
+
+    if(label2_hasCore)
+    {
+      CErr("Currently we assume only core electrons, which will always be label1!");
+      // SMG 08/17/26
+      // This logic can directly follow the above logic, in fact it probably should
+      // be extracted to a lambda or something of the sort to handle both cases
+    }
+
+    double coreEnergy = 0.0;
+    // If they both have core integrals, we need to add that energy to the inactive
+    // energy total (which is what this function ultimately returns)
+    if(label1_hasCore && label2_hasCore)
+    {
+      CErr("Currently multiple core particles not supported!");      
+    }
+    return coreEnergy;
+
+  }
+
 }; // namespace ChronusQ

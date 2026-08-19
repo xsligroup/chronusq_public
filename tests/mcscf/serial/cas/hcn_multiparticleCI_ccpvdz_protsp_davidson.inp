@@ -4,13 +4,13 @@ mult = 1
 geom: 
  C 0.0 0.0 -0.5026771429
  N 0.0 0.0 0.6555628571
- H 0.0 0.0 -1.5728771429 Q
+ H 0.0 0.0 -1.5728771429 QP
 
 [QM]
 reference = RHF
 job = MCSCF
 
-[PROTQM]
+[QPQM]
 reference = UHF
 
 [SCF]
@@ -31,30 +31,26 @@ CASORBITAL = 4,5,8,11
 CIDIAGALG = DAVIDSON
 PRINTMULT = TRUE
 CICONV = 1E-10
-OSCISTREN = 1
 
-[PROTMCSCF]
+[QPMCSCF]
 NACTO = 4
 NACTP = 1
 
 [BASIS]
 basis = cc-pvdz
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
-
-[MISC]
-nsmp = 4
-mem = 1 GB
 
 [INTS]
 ALG = INCORE
 
-[EPINTS]
+[QPINTS]
 ALG = INCORE
 
-[PINTS]
+[EQPINTS]
 ALG = INCORE
 
-[PHYSCON]
-LEGACY_CONSTANTS = TRUE
+[MISC]
+nsmp = 1
+mem = 1 GB

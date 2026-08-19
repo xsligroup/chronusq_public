@@ -27,6 +27,8 @@
 #include <mcwavefunction/base.hpp>
 #include <mcscf.hpp>
 #include <fockbuilder/rofock.hpp>
+#include <quantumsubsystems.hpp>
+#include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
 
@@ -424,7 +426,14 @@ namespace ChronusQ {
    */
 
   std::shared_ptr<MCSCFBase> CQMCSCFOptions(std::ostream &out, 
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> &ss, std::shared_ptr<MCWaveFunctionBase> & mcwfn, EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube, bool doNEO ) 
+                                            CQInputFile &input, 
+                                            std::shared_ptr<SingleSlaterBase> &ss, 
+                                            std::shared_ptr<MCWaveFunctionBase> & mcwfn, 
+                                            EMPerturbation& scfPert, 
+                                            std::shared_ptr<CubeGen> cube, 
+                                            bool doNEO,
+                                            std::vector<QuantumSubsystem> quantumSubsystems,
+                                            std::vector<QuantumPairInteraction> quantumPairInteraction ) 
   {
 
     std::cout << std::endl << std::endl << std::endl << std::endl;
@@ -436,14 +445,80 @@ namespace ChronusQ {
     std::cout << "           *********************************************************" << std::endl;      
     
     std::cout << std::endl << BannerTop << std::endl;
- 
 
+    std::shared_ptr<MCSCFJobType> mcscfjobtype;
+    std::shared_ptr<MCSCFSettings> mcscfsettings = CQGetMCSCFSettings(out,input,mcscfjobtype);
     std::string prefix = "";
+    if(!doNEO)
+    {
+      // Always build the electronic mcwfn
+      mcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjobtype,mcscfsettings);
+    }
+    else
+    {
+      std::shared_ptr<MultiParticleSSBase> multipssbase;
+      std::shared_ptr<MCWaveFunctionBase> auxmcwfn;
+      std::shared_ptr<MultiParticleMCWaveFunctionBase> mpmcwfn;
+      size_t NS = mcscfsettings->NStates;
+
+      #define GETMULTISSBASE(_MT,_IT)             \
+      if( not found ) try {                          \
+        multipssbase = std::dynamic_pointer_cast<MultiParticleSSBase>( \
+            std::dynamic_pointer_cast<MultiParticleSS<_MT,_IT>>(ss)); \
+        found = true;                 \
+      } catch(...) { }
+
+      bool found = false;
+      GETMULTISSBASE(double,double);
+      GETMULTISSBASE(dcomplex,double);
+      GETMULTISSBASE(dcomplex,dcomplex);
+
+      #define MAKEMULTIPARTICLEMCWFN(_MT,_IT) \
+      if(not found) try { \
+       mpmcwfn = std::dynamic_pointer_cast<MultiParticleMCWaveFunctionBase>( \
+              std::make_shared<MultiParticleMCWaveFunction<_MT,_IT>>( \
+                std::dynamic_pointer_cast<MultiParticleSS<_MT,_IT>>(ss),NS)); \
+       mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>(\
+              std::dynamic_pointer_cast<MultiParticleMCWaveFunction<_MT,_IT>>(mpmcwfn));\
+       found = true; \
+       } catch(...) { }      
+       
+       //mpmcwfn = std::dynamic_pointer_cast<MultiParticleMCWaveFunctionBase>( \
+       // std::dynamic_pointer_cast<MultiParticleMCWaveFunction<_MT,_IT>>(mcwfn));\
+
+      found = false;
+      MAKEMULTIPARTICLEMCWFN(double,double);
+      MAKEMULTIPARTICLEMCWFN(dcomplex,double);
+      MAKEMULTIPARTICLEMCWFN(dcomplex,dcomplex);
+
+      for(const auto & sys : quantumSubsystems)
+      {
+        ss = multipssbase->getSubSSBase(sys.label);
+        if(sys.label==std::string("E"))
+          auxmcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjobtype,mcscfsettings);
+        else
+          auxmcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,sys.label,mcscfjobtype,mcscfsettings);
+        
+        mpmcwfn->addMCWaveFunction(sys.label,auxmcwfn);
+        if(auxmcwfn) std::cout << "Added mcwfn: " << sys.label << std::endl;
+        else CErr("Error attempting to build " + sys.label + " MCWaveFunction!");
+
+      }
+
+      for(const auto & interaction : quantumPairInteraction)
+      {
+        mpmcwfn->addInteraction(interaction.labelA,interaction.labelB,interaction.integrals);
+      }
+
+    }
+
+    return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjobtype,mcscfsettings);
+
     std::shared_ptr<MCWaveFunctionBase> auxmcwfn;
     std::shared_ptr<MCSCFJobType> mcscfjob = nullptr;
     if(!doNEO)
     {
-      mcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjob);
+      mcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
     }
     else
     {
@@ -463,13 +538,13 @@ namespace ChronusQ {
       GETNEOBASE(dcomplex,dcomplex);
 
       tempss = neobase->getSubSSBase("Electronic");
-      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob);
+      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
 
       #define MAKENEOMCWFN(_MT,_IT) \
       if(not found) try { \
        mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
               std::make_shared<NEOMCWaveFunction<_MT,_IT>>( \
-                dynamic_cast<NEOSS<_MT,_IT>&>(*ss),auxmcwfn->NStates)); \
+                std::dynamic_pointer_cast<NEOSS<_MT,_IT>>(ss),auxmcwfn->NStates)); \
        found = true; \
        } catch(...) { }
 
@@ -482,13 +557,13 @@ namespace ChronusQ {
 
       prefix = "PROT";
       tempss = neobase->getSubSSBase("Protonic");
-      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob);
+      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
       mcwfn->addMCWaveFunction(auxmcwfn,"Protonic");
       prefix="";
 
     }
 
-    return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjob);
+    return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjob,mcscfsettings);
   }
 
 
@@ -558,65 +633,47 @@ namespace ChronusQ {
     };
   };
 
-  // Builds the MCSCF options
-  // Takes a MCWaveFunctionBase object, which may be of type MCWaveFunction or MultiComponentMCWaveFunction
-  std::shared_ptr<MCSCFBase> CQBuildMCSCFOptions(std::ostream &out,
-    CQInputFile &input, std::shared_ptr<MCWaveFunctionBase> &mcwfn,  EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube, std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob) {
 
-    if( not input.containsSection(prefix+"MCSCF") )
+  // Builds the MCSCF settings options prior to building any MCWavefunction or MCSCF object
+  std::shared_ptr<MCSCFSettings> CQGetMCSCFSettings(std::ostream &out, CQInputFile &input, std::shared_ptr<MCSCFJobType>& mcscfjobtype, std::string prefix)
+  {
+    if( not input.containsSection("MCSCF"))
       CErr("MCSCF section must be specified for MCSCF job",out);
 
-    if(!mcscfjob)
-    {
-      mcscfjob = std::make_shared<MCSCFJobType>();
-      mcscfjob->parseMCSCFJobType(out,input,prefix);
-    }
+    mcscfjobtype = std::make_shared<MCSCFJobType>();
+    mcscfjobtype->parseMCSCFJobType(out,input,prefix);
+    
+    std::shared_ptr<MCSCFSettings> mcscfSettings = std::make_shared<MCSCFSettings>();
 
-    // construct object
-    std::shared_ptr<MCSCFBase> mcscf;
-    MCSCFSettings * mcscfSettings;   
-    bool found = false;    
-    #define CONSTRUCT_MCSCF(_MT,_IT)             \
-    if( not found ) try {                          \
-      if(std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn)){ \
-      mcscf = std::dynamic_pointer_cast<MCSCFBase>( \
-          std::make_shared<MCSCF<_MT,_IT>>( \
-            std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn))); \
-      found = true;}                \
-  	} catch(...) { }
-
-    CONSTRUCT_MCSCF(double,double);
-    CONSTRUCT_MCSCF(dcomplex,double);
-    CONSTRUCT_MCSCF(dcomplex,dcomplex);
-
-    mcscfSettings = &mcscf->settings;
-
+    // Number of roots 
     std::string nRoots;
-    size_t nR;
+    size_t nR = 1;
     std::vector<std::pair<double, size_t>> EnergyRefs;
     OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF/NROOTS");)
     if ( not nRoots.empty() ) {
       nR = HandleNRootsInput(nRoots, EnergyRefs);
     }
+    mcscfSettings->NStates = nR;
 
-    if( mcwfn->readCI and nR > 1 ) CErr("READCI not implemented for more than 1 state");
- 
     // Parse CI Options
-    if (mcscfjob->isCI or mcscfjob->isSCF) {
+    if (mcscfjobtype->isCI or mcscfjobtype->isSCF) {
 
-      // Check if number of roots is valid
-      if( nR > mcscf->NDet ) CErr("# roots > # determinants");
-
-      // Change default based on # determinants
-      std::string ciALG;
-      if( mcscf->NDet<750 ) ciALG = "FULLMATRIX";
-      else ciALG = "DAVIDSON";
-      OPTOPT( ciALG = input.getData<std::string>(prefix+"MCSCF/CIDIAGALG");)
+      std::string ciALG = "DAVIDSON";
+      std::string userAlg;
+      OPTOPT( userAlg = input.getData<std::string>(prefix+"MCSCF/CIDIAGALG");)
+      if(!userAlg.empty())
+      {
+        mcscfSettings->ciAlgUserSet = true;
+        ciALG = userAlg;
+      }
       trim(ciALG);
 
-      if( not ciALG.compare("FULLMATRIX") ) {
+      if( not ciALG.compare("FULLMATRIX") ) 
+      {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
-      } else if( not ciALG.compare("DAVIDSON") ) {
+      } 
+      else if( not ciALG.compare("DAVIDSON") ) 
+      {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
         OPTOPT( mcscfSettings->maxCIIter = 
                   input.getData<size_t>(prefix+"MCSCF/MAXCIITER"); )
@@ -627,35 +684,21 @@ namespace ChronusQ {
         OPTOPT( mcscfSettings->nDavidsonGuess = 
                   input.getData<size_t>(prefix+"MCSCF/NDAVIDSONGUESS");)
         if (!EnergyRefs.empty()) mcscfSettings->energyRefs = EnergyRefs;
-      } else if( not ciALG.compare("SKIP") )
+      }
+      else if( not ciALG.compare("SKIP") )
       {
         mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::SKIP;
       } 
       else CErr(ciALG + "is not a valid MCSCF/CIDIAGALG",out);
       
     } // CI Options
-    
-    // Parse Orbital Rotation Options
-    if (mcscfjob->isSCF) {
+
+    if (mcscfjobtype->isSCF) {
       
       mcscfSettings->doSCF = true;
       
-      if (mcwfn->getnC() == 4) {
-        // default as true
-        mcscfSettings->ORSettings.rotate_negative_positive = true;
-        OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
-          = input.getData<bool>(prefix+"MCSCF/ROTATENEGORBS"); )
-      }
-
       OPTOPT(mcscfSettings->doIVOs = input.getData<bool>(prefix+"MCSCF/GENIVO"); )
 
-      bool StateAverage = (nR > 1);
-      OPTOPT( StateAverage = input.getData<bool>(prefix+"MCSCF/STATEAVERAGE");)
-      if(StateAverage) {
-        std::vector<double> SAWeights = HandleSAWeightsInput(input, nR);
-        mcscf->turnOnStateAverage(SAWeights);
-      }
-      
       size_t maxSCFIter = 128; // default
       OPTOPT( maxSCFIter = input.getData<size_t>(prefix+"MCSCF/MAXSCFITER"); )
       mcscfSettings->maxSCFIter = maxSCFIter;
@@ -689,6 +732,8 @@ namespace ChronusQ {
      
    } // SCF Options
 
+   // Other Misc Options
+
    // Natural orbitals
    OPTOPT( mcscfSettings->NatOrbs = input.getData<int>(prefix+"MCSCF/NATORB"); )
    OPTOPT( mcscfSettings->NatOrbRediag = input.getData<bool>(prefix+"MCSCF/NATORBREDIAG"); )
@@ -705,6 +750,65 @@ namespace ChronusQ {
    // Multipole moments
    OPTOPT( mcscfSettings->multipoleMoment = input.getData<bool>(prefix+"MCSCF/PRINTMULT"); )
 
+   return mcscfSettings;
+    
+  }
+
+  // Builds the MCSCF options
+  // Takes a MCWaveFunctionBase object, which may be of type MCWaveFunction or MultiComponentMCWaveFunction
+  std::shared_ptr<MCSCFBase> CQBuildMCSCFOptions(std::ostream &out,
+    CQInputFile &input, std::shared_ptr<MCWaveFunctionBase> &mcwfn,  EMPerturbation& scfPert, std::shared_ptr<CubeGen> cube, std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob,std::shared_ptr<MCSCFSettings>&mcscfSettings) {
+
+    // construct object
+    std::shared_ptr<MCSCFBase> mcscf;
+    bool found = false;    
+    #define CONSTRUCT_MCSCF(_MT,_IT)             \
+    if( not found ) try {                          \
+      if(std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn)){ \
+      mcscf = std::dynamic_pointer_cast<MCSCFBase>( \
+          std::make_shared<MCSCF<_MT,_IT>>( \
+            std::dynamic_pointer_cast<MCWaveFunction<_MT,_IT>>(mcwfn))); \
+      found = true;}                \
+  	} catch(...) { }
+
+    CONSTRUCT_MCSCF(double,double);
+    CONSTRUCT_MCSCF(dcomplex,double);
+    CONSTRUCT_MCSCF(dcomplex,dcomplex);
+
+    mcscf->settings = mcscfSettings;
+
+    if( mcwfn->readCI and mcscfSettings->NStates > 1 ) CErr("READCI not implemented for more than 1 state");
+ 
+    // Parse CI Options now that we have the underlying wavefunction
+    if (mcscfjob->isCI or mcscfjob->isSCF) {
+
+      // Check if number of roots is valid
+      if( mcscfSettings->NStates > mcscf->NDet ) CErr("# roots > # determinants");
+
+      // Change default based on # determinants
+      if( mcscf->NDet<750 && !mcscfSettings->ciAlgUserSet) 
+        mcscfSettings->ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
+     
+    } // CI Options
+    
+    // Parse Orbital Rotation Options
+    if (mcscfjob->isSCF) {
+
+      bool StateAverage = (mcscfSettings->NStates > 1);
+      OPTOPT( StateAverage = input.getData<bool>("MCSCF/STATEAVERAGE");)
+      if(StateAverage) {
+        std::vector<double> SAWeights = HandleSAWeightsInput(input, mcscfSettings->NStates);
+        mcscf->turnOnStateAverage(SAWeights);
+      }
+
+      if (mcwfn->getnC() == 4) {
+        // default as true
+        mcscfSettings->ORSettings.rotate_negative_positive = true;
+        OPTOPT(mcscfSettings->ORSettings.rotate_negative_positive
+          = input.getData<bool>(prefix+"MCSCF/ROTATENEGORBS"); )
+      }
+    }
+ 
    // MCSCF Field
    std::string fieldStr;
    OPTOPT( fieldStr = input.getData<std::string>(prefix+"MCSCF/FIELD");)
@@ -738,39 +842,28 @@ namespace ChronusQ {
    *
    */ 
   std::shared_ptr<MCWaveFunctionBase> CQBuildMCWaveFunction(std::ostream & out,
-    CQInputFile &input, std::shared_ptr<SingleSlaterBase> & ss, EMPerturbation & scfPert, std::shared_ptr<CubeGen> cube, std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob)
+    CQInputFile &input, std::shared_ptr<SingleSlaterBase> & ss, EMPerturbation & scfPert, std::shared_ptr<CubeGen> cube, const std::string & prefix,std::shared_ptr<MCSCFJobType>& mcscfjob,std::shared_ptr<MCSCFSettings> mcscfsettings)
   {
     // construct object
     std::shared_ptr<MCWaveFunctionBase> mcwfn;
-     
-    // parse number of roots
-    size_t nR = 1;
-    std::string nRoots;
-    std::vector<std::pair<double, size_t>> EnergyRefs;
-    OPTOPT(nRoots = input.getData<std::string>(prefix+"MCSCF/NROOTS");)
-    if ( not nRoots.empty() ) {
-      nR = HandleNRootsInput(nRoots, EnergyRefs);
-    }
+
+    size_t nR = mcscfsettings->NStates;    
 
     // Construct the MCWaveFuction object
     #define CONSTRUCT_MCWFN(_MT,_IT)             \
     if( not found ) try {                          \
+      auto mc = std::dynamic_pointer_cast<SingleSlater<_MT,_IT>>(ss); \
+      if(mc) \
       mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
           std::make_shared<MCWaveFunction<_MT,_IT>>( \
-            dynamic_cast<SingleSlater<_MT,_IT>& >(*ss), nR)); \
-      found = true;                 \
+            std::dynamic_pointer_cast<SingleSlater<_MT,_IT>>(ss), nR)); \
+      if(mc) found = true;                 \
     } catch(...) { }
 
     bool found = false;
     CONSTRUCT_MCWFN( double,   double   );
     CONSTRUCT_MCWFN( dcomplex, double   );
     CONSTRUCT_MCWFN( dcomplex, dcomplex );
-
-    if(!mcscfjob)
-    {
-      mcscfjob = std::make_shared<MCSCFJobType>();
-      mcscfjob->parseMCSCFJobType(out,input,prefix);
-    }
 
    // 1c+RAS NYI
     if( ss->nC==1 and mcscfjob->isRASJob )
@@ -837,8 +930,7 @@ namespace ChronusQ {
         CErr("Must specify MCSCF/RAS3MAXELEC for a RAS Job");
       }
     }   
-
-    mcwfn->partitionMOSpace(nActO,ss->particle.charge < 0 ? nActE : nActP);
+    mcwfn->partitionMOSpace(nActO,ss->particle.charge < 0 ? nActE : nActP,ss->particle.charge > 0);
 
     // MO Selections or Swaps
     std::string casMOStrings, fcMOStrings, fvMOStrings;

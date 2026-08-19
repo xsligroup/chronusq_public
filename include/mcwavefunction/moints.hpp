@@ -45,7 +45,7 @@ namespace ChronusQ {
   }; // MCWaveFunction::setMORanges
 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::transformInts(EMPerturbation & pert) {
+  void MCWaveFunction<MatsT,IntsT>::transformInts(EMPerturbation & pert, std::string prefixlabel) {
 
     // Precompute the field - nuclear moment contributions
     precompute_NucEField(pert);
@@ -102,12 +102,13 @@ namespace ChronusQ {
     mointsTF->transformHCore(pert, hCore_tu.pointer(), "tu", false, 'i');
     
     // For RT, the ERI don't need retransformed
-    std::shared_ptr<InCore4indexTPI<MatsT>> ERI_tuvw = this->moints->template getIntegral<InCore4indexTPI,MatsT>("ERI_Correlated_Space");
+    std::string erilabel = prefixlabel + "ERI_Correlated_Space";
+    std::shared_ptr<InCore4indexTPI<MatsT>> ERI_tuvw = this->moints->template getIntegral<InCore4indexTPI,MatsT>(erilabel);
     if(!ERI_tuvw)
     {
       ERI_tuvw = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
       mointsTF->transformTPI(pert, ERI_tuvw->pointer(), "tuvw", this->cacheHalfTransTPI_);
-      this->moints->addIntegral("ERI_Correlated_Space",ERI_tuvw);
+      this->moints->addIntegral(erilabel,ERI_tuvw);
     }
     
     /*
@@ -155,9 +156,11 @@ namespace ChronusQ {
       }
     }
 
-    this->moints->addIntegral("hCore_Correlated_Space", 
+    std::string hcorelabel = prefixlabel + "hCore_Correlated_Space";
+    std::string hcorePlabel = prefixlabel + "hCoreP_Correlated_Space";
+    this->moints->addIntegral(hcorelabel, 
       std::make_shared<OnePInts<MatsT>>(hCore_tu));
-    this->moints->addIntegral("hCoreP_Correlated_Space", 
+    this->moints->addIntegral(hcorePlabel, 
       std::make_shared<OnePInts<MatsT>>(hCoreP_tu));
 
   }; // MCWaveFunction::transformInts

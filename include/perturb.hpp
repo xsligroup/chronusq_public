@@ -102,7 +102,7 @@ namespace ChronusQ {
      *
      */
     PERTURB(std::shared_ptr<MCWaveFunction<MatsT,IntsT>> refMCwfn, std::vector<size_t> SoI) : 
-        MCWaveFunction<MatsT,IntsT>(refMCwfn->reference(), SoI.size()), 
+        MCWaveFunction<MatsT,IntsT>(refMCwfn->ptr_reference(), SoI.size()), 
         SoI_(SoI), refMCwfn(refMCwfn) { 
 
       // MRPT with 1C reference not implemented

@@ -22,7 +22,7 @@
  *  
  */
 #include <mcwavefunction/impl.hpp>
-#include <mcwavefunction/multicomponent/impl.hpp>
+#include <mcwavefunction/multiparticle/impl.hpp>
 #include <cibuilder/impl.hpp>
 
 namespace ChronusQ {
@@ -31,9 +31,9 @@ namespace ChronusQ {
   template class MCWaveFunction<dcomplex,double>;
   template class MCWaveFunction<dcomplex,dcomplex>;
 
-  template class MultiComponentMCWaveFunction<double,double>;
-  template class MultiComponentMCWaveFunction<dcomplex,double>;
-  template class MultiComponentMCWaveFunction<dcomplex,dcomplex>;
+  template class MultiParticleMCWaveFunction<double,double>;
+  template class MultiParticleMCWaveFunction<dcomplex,double>;
+  template class MultiParticleMCWaveFunction<dcomplex,dcomplex>;
 
   template class NEOMCWaveFunction<double,double>;
   template class NEOMCWaveFunction<dcomplex,double>;
@@ -59,12 +59,17 @@ namespace ChronusQ {
   template class NEOCASCI<dcomplex,double>;
   template class NEOCASCI<dcomplex,dcomplex>;
 
+  template class MultiParticleCASCI<double,double>;
+  template class MultiParticleCASCI<dcomplex,double>;
+  template class MultiParticleCASCI<dcomplex,dcomplex>;
 
+  // SMG 07/28/26
+  // These are unused??
   // Instantiate copy constructors
-  template MCWaveFunction<dcomplex,double>::MCWaveFunction(const MCWaveFunction<double,double> &, int);
-  template MCWaveFunction<dcomplex,dcomplex>::MCWaveFunction(const MCWaveFunction<dcomplex,dcomplex> &, int);
+  //template MCWaveFunction<dcomplex,double>::MCWaveFunction(const MCWaveFunction<double,double> &, int);
+  //template MCWaveFunction<dcomplex,dcomplex>::MCWaveFunction(const MCWaveFunction<dcomplex,dcomplex> &, int);
 
   // Instantiate move ctors
-  template MCWaveFunction<dcomplex,double>::MCWaveFunction(MCWaveFunction<double,double> &&, int);
+  //template MCWaveFunction<dcomplex,double>::MCWaveFunction(MCWaveFunction<double,double> &&, int);
 
 }; // namespace ChronusQ

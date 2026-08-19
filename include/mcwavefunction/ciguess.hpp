@@ -50,12 +50,12 @@ namespace ChronusQ {
     std::cout << "    * Reading in guess CI vectors from file(s): ";
 
 
-    if ( ref_.scrBinFileName.empty() ) {
+    if ( ref_->scrBinFileName.empty() ) {
       binNames = {this->savFile.fName()};
       std::cout << this->savFile.fName() << std::endl;
     } else {
-      binNames = {ref_.scrBinFileName};
-      std::cout << ref_.scrBinFileName << std::endl;
+      binNames = {ref_->scrBinFileName};
+      std::cout << ref_->scrBinFileName << std::endl;
     }
 
     std::cout << "    * Please make sure the space partitions are the same!" << std::endl;

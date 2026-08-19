@@ -328,15 +328,13 @@ namespace ChronusQ {
                                                      std::shared_ptr<const ExcitationList> exList_a,
                                                      std::shared_ptr<const ExcitationList> exList_b,
                                                      const std::string TwoBodyIntsString,
-                                                     const bool attractive)
+                                                     const double chargeproduct)
   {
     size_t nStr_a = exList_a->nString();
     size_t nNZa = exList_a->nNonZero();
     size_t nStr_b = exList_b->nString();
     size_t nNZb = exList_b->nNonZero();
     size_t NDet = nStr_a*nStr_b;
-
-    double interactionSign = attractive ? -1. : 1.;
 
     auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString));
 
@@ -372,7 +370,7 @@ namespace ChronusQ {
 
               UNPACK_EXCITATIONLIST_4(exList_Ka, j, i, La, signij);
 
-              tmpH  = interactionSign * signij * signkl * moERI(i, j, k, l);
+              tmpH  = chargeproduct * signij * signkl * moERI(i, j, k, l);
 	  
               if (std::abs(tmpH) > small_number) {
                 HC    = Sigma;
@@ -450,6 +448,37 @@ namespace ChronusQ {
         IMatCopy('T',dimA,dimB,MatsT(1.0),vec,dimA,dimB);
     }(Vecs), ...);
   } // CASHelper::transposeVectors
+
+  template <typename MatsT, typename IntsT>
+  void CASHelper<MatsT,IntsT>::addBlockToMatrixBlockDiagonal(size_t NDetToAdd,
+                                                             size_t NDetFull,
+                                                             MatsT scale,
+                                                             MatsT * SubBlock,
+                                                             MatsT * FullMat)
+  {
+    size_t NAuxDet = NDetFull / NDetToAdd;
+    MatsT * tmp = FullMat;
+    for(size_t nAux = 0; nAux < NAuxDet; nAux++, tmp += NDetFull*NDetToAdd + NDetToAdd)
+    {
+      MatAdd('N','N',NDetToAdd,NDetToAdd,scale,SubBlock,NDetToAdd,MatsT(1.0),tmp,NDetFull,tmp,NDetFull);
+    }
+  }
+
+  template <typename MatsT, typename IntsT>
+  void CASHelper<MatsT,IntsT>::addVecToBlockedVector(size_t NDetToAdd,
+                                                     size_t NDetFull,
+                                                     MatsT scale,
+                                                     MatsT * VecToAdd,
+                                                     MatsT * FullVec)
+  {
+    size_t NAuxDet = NDetFull / NDetToAdd;
+    MatsT * tmp = FullVec;
+    for(size_t nAux = 0; nAux < NAuxDet; nAux++, tmp += NDetToAdd)
+    {
+      blas::axpy(NDetToAdd,scale,VecToAdd,1,tmp,1);
+    }
+
+  }
 
 }; // namespace ChronusQ
 

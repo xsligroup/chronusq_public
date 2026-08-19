@@ -26,6 +26,7 @@
 #include <particleintegrals/twopints/incoreritpi.hpp>
 #include <fields.hpp>
 #include <singleslater.hpp>
+#include <singleslater/multiparticless.hpp>
 #include <matrix.hpp>
 #include <mcwavefunction/base.hpp>
 #include <posthartreefock/base.hpp>
@@ -225,8 +226,9 @@ public:
 
       // References to the two single slater objects of
       // particle type p1 and p2
-      SingleSlater<MatsT, IntsT> & p1_;
-      SingleSlater<MatsT, IntsT> & p2_;
+      std::shared_ptr<MultiParticleSS<MatsT,IntsT>> mpss_;
+      std::shared_ptr<SingleSlater<MatsT, IntsT>> p1_;
+      std::shared_ptr<SingleSlater<MatsT, IntsT>> p2_;
 
       // Things just inhereted from the MOIntsTransformer
 
@@ -252,16 +254,18 @@ public:
      *                      As of 11/8/23, this REQUIRES INCORE_N5 for the
      *                      transformation
      */                      
-    MixedMOIntsTransformer(SingleSlater<MatsT,IntsT> & p1,
-                           SingleSlater<MatsT,IntsT> & p2,
+    MixedMOIntsTransformer(std::shared_ptr<MultiParticleSS<MatsT,IntsT>> mpss,
+                           std::shared_ptr<SingleSlater<MatsT,IntsT>> p1,
+                           std::shared_ptr<SingleSlater<MatsT,IntsT>> p2,
                            std::shared_ptr<TwoPInts<IntsT>> epaoints,
                            bool contractfirst,
                            TPI_TRANSFORMATION_ALG alg = INCORE_N5): 
+                           mpss_(mpss),
                            p1_(p1),
                            p2_(p2),
                            epaoints_(epaoints),
                            contractfirst_(contractfirst),
-                           MOIntsTransformer<MatsT,IntsT>(p1,alg)
+                           MOIntsTransformer<MatsT,IntsT>(*p1,alg)
     {
       // TODO:
       // Need 2 sets of MORanges to be able to define both electronic and protonic
@@ -283,6 +287,14 @@ public:
                                          MatsT * MOPTPI,
                                          bool cacheIntermediates,
                                          TPI_TRANS_DELTA_TYPE delta);
+    // Returns the inactive energy associated with the core particles from the two
+    // sets of particles
+    double handleCrossCoreInts(std::string p1label,
+                               std::string p2label,
+                               std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p1tf,
+                               std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> p2tf,
+                               std::shared_ptr<IntegralsCollection> intscache);
+
 
   }; // class MixedMOIntsTransformer
 

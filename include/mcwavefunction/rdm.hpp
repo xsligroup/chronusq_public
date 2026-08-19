@@ -73,6 +73,12 @@ namespace ChronusQ {
 
   } // MCWaveFunction::computeTDMs
 
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::rdm2pdm(size_t state, double scale, bool isTDM)
+  {
+    this->rdm2pdm(this->oneRDM[state],scale,isTDM);
+  }
+
   /*
    * \brief transform oneRDM(MO) to onePDM(AO)
    *

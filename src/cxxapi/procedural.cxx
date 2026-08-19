@@ -669,9 +669,6 @@ namespace ChronusQ {
 
         if ( elecJob == JobType::MR or elecJob == JobType::PT ) {
 
-          if( doNEO )
-            CErr("NEO/multicomponent post-Hartree-Fock (MCSCF/CASCI/CASPT2) is not yet implemented.");
-
           EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
 
           if (input.containsSection("MCSCF") && input.containsSection("CI")){
@@ -684,7 +681,7 @@ namespace ChronusQ {
             CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
             
           if (input.containsSection("MCSCF")) {
-            std::shared_ptr<MCSCFBase> mcscf= CQMCSCFOptions(output,input,ss,mcwfn,emPert,cube,doNEO);
+            std::shared_ptr<MCSCFBase> mcscf= CQMCSCFOptions(output,input,ss,mcwfn,emPert,cube,doNEO,quantumSubsystems,quantumPairInteractions);
             mcscf->savFile = rstFile;
             mcscf->run(additionalPert);
             ParseCubeSubsection(output,input,"MCSCF",mcwfn->cubeOptsMC,cube);

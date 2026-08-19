@@ -45,9 +45,13 @@ namespace ChronusQ {
      
      // CISettings
      CIDiagonalizationAlgorithm ciAlg = CI_FULL_MATRIX; 
+     bool ciAlgUserSet = false;
+
+     // Number of roots solved for in MCSCF
+     size_t NStates = 1;
      
      // for davidson and gplhr
-	 size_t maxCIIter        = 128;        
+     size_t maxCIIter        = 128;
      double ciVectorConv     = 1.0e-6;    
      size_t maxDavidsonSpace = 50;
      size_t nDavidsonGuess   = 3;
@@ -97,7 +101,7 @@ namespace ChronusQ {
 
   public:
 
-    MCSCFSettings settings;
+    std::shared_ptr<MCSCFSettings> settings;
 
     SafeFile savFile;    ///< Data File, for restart
     MPI_Comm comm;
@@ -106,6 +110,7 @@ namespace ChronusQ {
     // for convenience through the calculation
     size_t NDet;         ///  < Number of Determinants
     size_t NStates = 1;  ///  < Number of States
+    std::shared_ptr<std::vector<double>> StateEnergy;
 
     // Specifics of the SCF in MCSCF calculation
     bool StateAverage    = false;

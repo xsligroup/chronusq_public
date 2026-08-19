@@ -59,6 +59,8 @@ namespace ChronusQ {
       upstream = up;
     }
 
+    cqmatrix::Matrix<MatsT> * getOutMat(){return outMat;}
+
     // Getters
     FockBuilder<MatsT,IntsT>* getUpstream(){ return upstream; }
   };

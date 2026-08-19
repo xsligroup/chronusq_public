@@ -78,5 +78,6 @@ namespace ChronusQ {
 #include <cibuilder/casci.hpp>
 #include <cibuilder/rasci.hpp>
 #include <cibuilder/neo.hpp>
+#include <cibuilder/multiparticle.hpp>
 
 

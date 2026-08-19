@@ -62,7 +62,7 @@ namespace ChronusQ {
     ProgramTimer::tick("Solve CI");
     
     ProgramTimer::tick("Integral Trans");
-    if (!mcwfn_->readCI or this->settings.doSCF)
+    if (!mcwfn_->readCI or this->settings->doSCF)
       this->transformInts(pert);
     ProgramTimer::tock("Integral Trans");
     
@@ -80,7 +80,7 @@ namespace ChronusQ {
     this->computeOneRDM();
     // MCSCF Cycles 
     
-    if(this->settings.doSCF) {
+    if(this->settings->doSCF) {
 
       this->printStateEnergy();
       
@@ -89,7 +89,7 @@ namespace ChronusQ {
       double EDiff      = 0.;
       bool   converged  = false;
       
-      for (auto iter = 0ul; iter < settings.maxSCFIter; iter++) {
+      for (auto iter = 0ul; iter < settings->maxSCFIter; iter++) {
         
         ProgramTimer::tick("Orbital Rotation");
         // Exam Energy
@@ -108,7 +108,7 @@ namespace ChronusQ {
         
         std::cout << "  (Maximum) Energy Difference = " << std::setw(18) 
                   <<  std::right << EDiff << std::left << std::endl; 
-        if(std::abs(EDiff) <= settings.scfEnergyConv) converged = true; 
+        if(std::abs(EDiff) <= settings->scfEnergyConv) converged = true; 
         
         // compute RDMs
         if (this->StateAverage) {
@@ -129,7 +129,7 @@ namespace ChronusQ {
         std::cout << "  Orbital Gradient Residue   = " << std::setw(18) 
                   << std::right << orbitalGradientNorm << std::left << std::endl;
         
-        if(converged and orbitalGradientNorm < settings.scfGradientConv) break; 
+        if(converged and orbitalGradientNorm < settings->scfGradientConv) break; 
           
         converged = false;
         
@@ -174,7 +174,7 @@ namespace ChronusQ {
       ROOT_ONLY(this->comm);
 
       if(not converged) 
-        CErr("\n MCSCF failed to converged in " + std::to_string(settings.maxSCFIter) + " cycles !");
+        CErr("\n MCSCF failed to converged in " + std::to_string(settings->maxSCFIter) + " cycles !");
     
       // compute 1RDMs
       if (this->StateAverage) this->computeOneRDM(); 
@@ -182,7 +182,7 @@ namespace ChronusQ {
       
       // generate IVOs as needed
       ProgramTimer::tick("Gen IVOs");
-      if (this->settings.doIVOs) moRotator->generateIVOs(pert, *oneRDMSOI);   
+      if (this->settings->doIVOs) moRotator->generateIVOs(pert, *oneRDMSOI);   
       ProgramTimer::tock("Gen IVOs");
 
     } // doSCF
@@ -191,10 +191,10 @@ namespace ChronusQ {
     std::cout << "\n\nMCSCF Complete!" << std::endl;
     std::cout << bannerEnd << std::endl;
 
-    if(this->settings.NatOrbs)
+    if(this->settings->NatOrbs)
     {
       this->formNaturalOrbitals();
-      if(this->settings.NatOrbRediag)
+      if(this->settings->NatOrbRediag)
       {
         // Clear previous transformed integrals
         mcwfn_->moints->clear();      
@@ -215,26 +215,26 @@ namespace ChronusQ {
     ProgramTimer::tick("Property Eval");
 
     // dipole moment
-    if( this->settings.multipoleMoment )
+    if( this->settings->multipoleMoment )
       this->computeMultipole();
 
     // mulliken analysis
-    if (this->settings.PopulationAnalysis) {
+    if (this->settings->PopulationAnalysis) {
       std::cout<<"\n\nPopulation analysis in mcscf."<<std::endl;
       this->populationAnalysis();
     }
 
-    if (mcwfn_->printRDMs==0 && this->settings.SpinAnalysis) {
+    if (mcwfn_->printRDMs==0 && this->settings->SpinAnalysis) {
       std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
       this->spinAnalysis();
     }    
 
     // oscillator strength
-    if (this->settings.NosS1) {
+    if (this->settings->NosS1) {
 
 
-      mcwfn_->osc_str.resize(this->settings.NosS1*this->NStates);
-      for (size_t s1 = 0ul; s1 < this->settings.NosS1; s1++)
+      mcwfn_->osc_str.resize(this->settings->NosS1*this->NStates);
+      for (size_t s1 = 0ul; s1 < this->settings->NosS1; s1++)
       for (size_t s2 = 0ul; s2 < this->NStates; s2++){
         if (s2 <= s1) mcwfn_->osc_str[s2+s1*this->NStates] = 0.;
         else {mcwfn_->osc_str[s2+s1*this->NStates] = 
@@ -259,7 +259,7 @@ namespace ChronusQ {
     mcwfn_->saveCurrentStates(saveProp);
     
     // only save MO when doing orbital rotation
-    if (settings.doSCF and this->savFile.exists()) {
+    if (settings->doSCF and this->savFile.exists()) {
       auto mo_dim = mcwfn_->reference().mo[0].nRows();
       this->savFile.safeWriteData("SCF/MO1", mcwfn_->reference().mo[0].pointer(), {mo_dim, mo_dim});
     }
@@ -274,12 +274,12 @@ namespace ChronusQ {
     mcwfn_->alloc();
     if(mcwfn_->readCI) mcwfn_->ReadGuessCIVector();
     
-    ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(settings.ciAlg, 
-      settings.maxCIIter, settings.ciVectorConv,
-      settings.maxDavidsonSpace, settings.nDavidsonGuess,
-      settings.energyRefs);
+    ciSolver = std::make_shared<CISolver<MatsT,IntsT>>(settings->ciAlg, 
+      settings->maxCIIter, settings->ciVectorConv,
+      settings->maxDavidsonSpace, settings->nDavidsonGuess,
+      settings->energyRefs);
     
-    if (this->settings.doSCF) {
+    if (this->settings->doSCF) {
       
       mcwfn_->cacheHalfTransTPI_ = true;
       
@@ -299,7 +299,7 @@ namespace ChronusQ {
         mcwfn_->SAWeight = this->SAWeight;
       }
       
-      moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(*mcwfn_,settings.ORSettings);
+      moRotator = std::make_shared<OrbitalRotation<MatsT, IntsT>>(*mcwfn_,settings->ORSettings);
     }
   }
 
@@ -344,7 +344,7 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void MCSCF<MatsT,IntsT>::formNaturalOrbitals() 
   {
-    mcwfn_->formNaturalOrbs(this->settings.NatOrbs-1);
+    mcwfn_->formNaturalOrbs(this->settings->NatOrbs-1);
   }
 
   template <typename MatsT, typename IntsT>

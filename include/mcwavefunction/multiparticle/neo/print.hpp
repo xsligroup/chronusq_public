@@ -33,7 +33,7 @@
 namespace ChronusQ {
 
     template <typename MatsT, typename IntsT>
-    void NEOMCWaveFunction<MatsT,IntsT>::printMOSpacePartition()
+    void NEOMCWaveFunction<MatsT,IntsT>::printMOSpacePartition(std::string)
     {
         std::cout << "Electronic space paritioning: " << std::endl;
         this->ewfn_->printMOSpacePartition();

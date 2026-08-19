@@ -257,7 +257,7 @@ namespace ChronusQ {
     if(this->getnC() != 1) CErr("Natural orbitals for >1C untested");
     cqmatrix::Matrix<MatsT> OneRDM = this->oneRDM[root];
     size_t nCorrO = this->MOPartition.nCorrO;
-    size_t NB = this->ref_.nAlphaOrbital();
+    size_t NB = this->ref_->nAlphaOrbital();
     double * NOOccs = CQMemManager::get().template malloc<double>(nCorrO);
     HermitianEigen('V','U',nCorrO,OneRDM.pointer(),nCorrO,NOOccs);
 
@@ -274,9 +274,9 @@ namespace ChronusQ {
     //prettyPrintSmart(std::cout,"Unitary",Unitary.pointer(),nCorrO,nCorrO,nCorrO);
     MatsT * newMOs = CQMemManager::get().template malloc<MatsT>(NB*nCorrO);
 
-    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,nCorrO,nCorrO,MatsT(1.0),this->ref_.mo[0].pointer()+nInact*NB,NB,Unitary.pointer(),nCorrO,MatsT(0.0),newMOs,NB);
+    blas::gemm(blas::Layout::ColMajor,blas::Op::NoTrans,blas::Op::NoTrans,NB,nCorrO,nCorrO,MatsT(1.0),this->ref_->mo[0].pointer()+nInact*NB,NB,Unitary.pointer(),nCorrO,MatsT(0.0),newMOs,NB);
 
-    std::copy_n(newMOs,NB*nCorrO,this->ref_.mo[0].pointer()+NB*nInact);
+    std::copy_n(newMOs,NB*nCorrO,this->ref_->mo[0].pointer()+NB*nInact);
 
     CQMemManager::get().free(NOOccs,newMOs);
 

@@ -48,12 +48,12 @@ namespace ChronusQ {
       this->NDet *= pwfn_->NDet;
     }
     // Grab the crossed integrals between the two 
-    interIntegrals = neoref_.getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second;
-    contractfirst = neoref_.getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first;
-    ePTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>(*(neoref_.getSubSS(std::string("Electronic"))),
-                                                                *(neoref_.getSubSS(std::string("Protonic"))),
-                                                                interIntegrals,
-                                                                contractfirst); 
+    interIntegrals = neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second;
+    contractfirst = neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first;
+    //ePTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>(*(neoref_->getSubSS(std::string("Electronic"))),
+    //                                                            *(neoref_->getSubSS(std::string("Protonic"))),
+    //                                                            interIntegrals,
+    //                                                            contractfirst); 
 
     this->printMOCoeffs = ewfn_->printMOCoeffs;
     this->printRDMs = ewfn_->printRDMs;
@@ -309,7 +309,7 @@ namespace ChronusQ {
 
   
   template<typename MatsT, typename IntsT>
-  void NEOMCWaveFunction<MatsT,IntsT>::alloc()
+  void NEOMCWaveFunction<MatsT,IntsT>::alloc(bool)
   {
     // Instead of letting MCWavefunction do the allocation, we'll just do it all here
     //MCWaveFunction<MatsT,IntsT>::alloc();
@@ -374,7 +374,7 @@ namespace ChronusQ {
 
 }; // namespace ChronusQ
 
-#include <mcwavefunction/multicomponent/neo/print.hpp>
-#include <mcwavefunction/multicomponent/neo/rdm.hpp>
-#include <mcwavefunction/multicomponent/neo/property.hpp>
-#include <mcwavefunction/multicomponent/neo/cube.hpp>
+#include <mcwavefunction/multiparticle/neo/print.hpp>
+#include <mcwavefunction/multiparticle/neo/rdm.hpp>
+#include <mcwavefunction/multiparticle/neo/property.hpp>
+#include <mcwavefunction/multiparticle/neo/cube.hpp>

@@ -31,7 +31,7 @@
 namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::printMOSpacePartition() {
+  void MCWaveFunction<MatsT,IntsT>::printMOSpacePartition(std::string label) {
       
     auto & mopart = this->MOPartition;
     auto & ref = this->reference();
@@ -39,7 +39,8 @@ namespace ChronusQ {
     std::string particletype = this->reference().particle.charge < 0 ? "Electron" : "Proton";
   
     std::cout << std::left << std::endl;
-    FormattedLine(std::cout,"* MO Space Partition:");
+    std::string id = label.size() ? " For Quantum Subsystem " + label : "";
+    FormattedLine(std::cout,"* MO Space Partition:" + id);
     FormattedLine(std::cout,"  Number of " + particletype + "ic MOs:", mopart.nElecMO);
     if (ref.nC == 4)
       FormattedLine(std::cout,"  Number of Negative MOs:", mopart.nNegMO);

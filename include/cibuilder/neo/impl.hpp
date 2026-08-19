@@ -267,7 +267,7 @@ void NEOCASCI<MatsT,IntsT>::buildDiagH(MCWaveFunction<MatsT,IntsT>&mcwfn, MatsT 
         CASHelper<MatsT,IntsT>::transposeVectors(nVec,nStr_b,nStr_ap,C,Sigma);
 
         // Do the Alpha-Proton block
-        CASHelper<MatsT,IntsT>::buildSigmaTwoParticle(mcwfn,C,Sigma,nVec,nStr_b,exList_a,exList_p,"eP_Correlated_Space",true);
+        CASHelper<MatsT,IntsT>::buildSigmaTwoParticle(mcwfn,C,Sigma,nVec,nStr_b,exList_a,exList_p,"eP_Correlated_Space",-1.0);
 
         // Transpose |a,p,b> -> |b,a,p>
         CASHelper<MatsT,IntsT>::transposeVectors(nVec,nStr_ap,nStr_b,C,Sigma);
@@ -282,7 +282,7 @@ void NEOCASCI<MatsT,IntsT>::buildDiagH(MCWaveFunction<MatsT,IntsT>&mcwfn, MatsT 
         CASHelper<MatsT,IntsT>::transposeVectors(nVec*nStr_a,nStr_p,nStr_b,C,Sigma);
 
         // Do the Beta-Proton block
-        CASHelper<MatsT,IntsT>::buildSigmaTwoParticle(mcwfn,C,Sigma,nVec,nStr_a,exList_b,exList_p,"eP_Correlated_Space",true);
+        CASHelper<MatsT,IntsT>::buildSigmaTwoParticle(mcwfn,C,Sigma,nVec,nStr_a,exList_b,exList_p,"eP_Correlated_Space",-1.0);
 
         // Transpose |b,p,a> -> |a,b,p>
         CASHelper<MatsT,IntsT>::transposeVectors(nVec,nStr_bp,nStr_a,C,Sigma);

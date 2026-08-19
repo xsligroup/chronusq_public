@@ -100,7 +100,8 @@ namespace ChronusQ {
         this->NDet = Comb(nCorrO, mopart.nCorrEA) *
                      Comb(nCorrO, mopart.nCorrEB);
         this->detStr = CONSTRUCT_CASSTRINGMANAGER(nCorrO, mopart.nCorrEA);
-      
+
+        if(!HighSpin)
         this->detStrBeta = (wfn.iCS) ? detStr:
           CONSTRUCT_CASSTRINGMANAGER(nCorrO, mopart.nCorrEB);
       } else {

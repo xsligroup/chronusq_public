@@ -105,7 +105,7 @@ namespace ChronusQ {
 
     MOSpacePartition MOPartition;
 
-    size_t NDet;         ///  < Number of Determinants
+    size_t NDet = 1;         ///  < Number of Determinants
     size_t NStates = 1;  ///  < Number of States
     bool FourCompNoPair = true; /// default as true if 4C
 
@@ -113,7 +113,7 @@ namespace ChronusQ {
     std::shared_ptr<DetStringManager> detStr     = nullptr;
     std::shared_ptr<DetStringManager> detStrBeta = nullptr; // only for 1C
 
-    double InactEnergy;
+    double InactEnergy = 0.0;
     std::shared_ptr<std::vector<double>> StateEnergy;
     // Storage for Field-Nuclear dipole interactions
     // This is additive to the diagonal in CI theory, so it can be 
@@ -189,6 +189,7 @@ namespace ChronusQ {
     void setActiveSpaceAndReOrder();
     virtual size_t getnC() const = 0;
     virtual BASIS_FUNCTION_TYPE getBasisType() const = 0;
+    virtual double getParticleCharge() const = 0;
 
     // Post-processing functions
     virtual void runCube(std::vector<std::shared_ptr<CubeGen>>) = 0;

@@ -245,10 +245,11 @@ namespace ChronusQ {
         }
 
 
-        std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, iMicro + 1 + iDo*this->mSS_);
+        //std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, iMicro + 1 + iDo*this->mSS_);
 
         // Determine next projector
         if( iMicro < maxMicroIter - 1 ) {
+        std::shared_ptr<SolverVectors < _F>> curU = std::make_shared<SolverVectorsView < _F>>(*U_, iMicro + 1 + iDo*this->mSS_);
 
           curHHR->set_data(0, 1, *curV, 0);
           for (size_t i = 0; i < iMicro+1; i++)

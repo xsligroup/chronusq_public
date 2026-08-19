@@ -392,25 +392,27 @@ TEST(FourC_CASSCF_READCI, PAR_Water_STO3G_READCI_RESTART_SCR ) {
 #endif
 
 // NEO Tests
-TEST(NEO_CASCI, HCN_NEO_HCN_FULLMATRIX) {
-
-  CQMCSCFTEST( "mcscf/serial/cas/hcn_neo_ccpvdz_protsp_full", "hcn_neo_ccpvdz_protsp.bin.ref", false, "", 1e-6);
-
+TEST(NEO_CASCI, HCN_NEO_FULLMATRIX) {
+  CQMCSCFTEST( "mcscf/serial/cas/hcn_multiparticleCI_ccpvdz_protsp_fullmatrix", "hcn_multiparticleCI_ccpvdz_protsp.bin.ref", false, "", 1e-6);
 };
 
-TEST(NEO_CASCI, HCN_NEO_HCN_DAVIDSON) {
+TEST(NEO_CASCI, HCN_NEO_DAVIDSON) {
+  CQMCSCFTEST( "mcscf/serial/cas/hcn_multiparticleCI_ccpvdz_protsp_davidson", "hcn_multiparticleCI_ccpvdz_protsp.bin.ref", false, "", 1e-6);
+};
 
-  CQMCSCFTEST( "mcscf/serial/cas/hcn_neo_ccpvdz_protsp_davidson", "hcn_neo_ccpvdz_protsp.bin.ref", false, "", 1e-6);
+TEST(NEO_CASCI, COHH_NEO_DISTINGUISHABLE_DAVIDSON) {
+  CQMCSCFTEST( "mcscf/serial/cas/cohh_multiparticleCI_davidson", "cohh_multiparticleCI_distinguishable.bin.ref", false, "", 1e-6);
+};
 
+TEST(NEO_CASCI, COHH_NEO_SLATERDET_DAVIDSON) {
+  CQMCSCFTEST( "mcscf/serial/cas/cohh_multiparticleCI_davidson_slaterdet", "cohh_multiparticleCI_indistinguishable.bin.ref", false, "", 1e-6);
 };
 
 #ifndef _CQ_GENERATE_TESTS
 #ifdef _CQ_DO_PARTESTS
 
-TEST(NEO_CASCI, PAR_NEO_HCN_DAVIDSON) {
-
-  CQMCSCFTEST( "mcscf/parallel/cas/hcn_neo_ccpvdz_protsp_davidson", "hcn_neo_ccpvdz_protsp.bin.ref", false, "", 1e-6);
-
+TEST(NEO_CASCI, PAR_COHH_NEO_DISTINGUISHABLE_DAVIDSON) {
+  CQMCSCFTEST( "mcscf/parallel/cas/cohh_multiparticleCI_davidson", "cohh_multiparticleCI_distinguishable.bin.ref", false, "", 1e-6);
 };
 
 #endif

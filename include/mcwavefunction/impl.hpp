@@ -52,16 +52,16 @@ namespace ChronusQ {
   MCWaveFunction<MatsT,IntsT>::MCWaveFunction(const MCWaveFunction<MatsU,IntsT> &other,int dummy) :
     moints(other.moints),
     ciBuilder(CIBuilder<MatsU,IntsT>::template convert<MatsT>(other.ciBuilder)),
-    MCWaveFunctionBase(dynamic_cast<const MCWaveFunctionBase &>(other)),
-    ref_(dynamic_cast<SingleSlater<MatsT,IntsT>&>(other.reference())) { 
-
+    MCWaveFunctionBase(dynamic_cast<const MCWaveFunctionBase &>(other))
+  {
+    ref_ = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(std::dynamic_pointer_cast<HartreeFock<MatsU,IntsT>>(other.ptr_reference()));
 #ifdef DEBUG_MULTISTATEWFN_IMPL
     std::cout << "MCWaveFunction<T>::MCWaveFunction(const MCWaveFunction<U>&) "
               << "(this = " << this << ", other = " << &other << ")" 
               << std::endl;
 #endif
-    
-    mointsTF = ref_.generateMOIntsTransformer();
+
+    mointsTF = ref_->generateMOIntsTransformer();
 
     oneRDM.reserve(NStates);
     for (const cqmatrix::Matrix<MatsU> &mat : other.oneRDM) 
@@ -81,13 +81,17 @@ namespace ChronusQ {
    *  \param [in] dummy Dummy argument to fix calling signature for delegation 
    *    to move constructor
    */ 
+  /*
   template <typename MatsT, typename IntsT>
   template <typename MatsU> 
   MCWaveFunction<MatsT,IntsT>::MCWaveFunction(MCWaveFunction<MatsU,IntsT> &&other, int dummy) : 
     moints(other.moints), 
     ciBuilder(CIBuilder<MatsU,IntsT>::template convert<MatsT>(other.ciBuilder)),
-    MCWaveFunctionBase(dynamic_cast<MCWaveFunctionBase &&>(std::move(other))),
-    ref_(dynamic_cast<SingleSlater<MatsT,IntsT>&>(other.reference())) {
+    MCWaveFunctionBase(dynamic_cast<MCWaveFunctionBase &&>(std::move(other)))
+    //ref_(std::move(other.ptr_reference()))
+    //ref_(std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(std::dynamic_pointer_cast<HartreeFock<MatsU,IntsT>>(other.ptr_reference())))
+  {
+    ref_ = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(std::dynamic_pointer_cast<HartreeFock<MatsU,IntsT>>(other.ptr_reference()));
 
 #ifdef DEBUG_MULTISTATEWFN_IMPL
     std::cout << "MCWaveFunction<T>::MCWaveFunction(MCWaveFunction<U>&&) "
@@ -95,7 +99,7 @@ namespace ChronusQ {
               << std::endl;
 #endif
     
-    mointsTF = ref_.generateMOIntsTransformer();
+    mointsTF = ref_->generateMOIntsTransformer();
     this->setMORanges();
     
     oneRDM.reserve(NStates);
@@ -105,20 +109,21 @@ namespace ChronusQ {
     MCWaveFunction_COLLECTIVE_OP(MOVE_OTHER_MEMBER_OP, MOVE_OTHER_MEMBER_VEC_OP);
 
   }; // MCWaveFunction<T>::MCWaveFunction(MCWaveFunction<U> &&)
+  */
 
   // Delagate the copy constructor to the conversion constructors
-  template <typename MatsT, typename IntsT>
-  MCWaveFunction<MatsT,IntsT>::MCWaveFunction(const MCWaveFunction<MatsT, IntsT> &other) : 
-    MCWaveFunction(other,0){ };
-  template <typename MatsT, typename IntsT>
-  MCWaveFunction<MatsT,IntsT>::MCWaveFunction(MCWaveFunction<MatsT, IntsT> &&other) : 
-    MCWaveFunction(std::move(other),0){ };
+  //template <typename MatsT, typename IntsT>
+  //MCWaveFunction<MatsT,IntsT>::MCWaveFunction(const MCWaveFunction<MatsT, IntsT> &other) : 
+  //  MCWaveFunction(other,0){ };
+  //template <typename MatsT, typename IntsT>
+  //MCWaveFunction<MatsT,IntsT>::MCWaveFunction(MCWaveFunction<MatsT, IntsT> &&other) : 
+  //  MCWaveFunction(std::move(other),0){ };
 
   /**
    *  Allocates the internal memory a MCWaveFunction object
    */ 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::alloc() {
+  void MCWaveFunction<MatsT,IntsT>::alloc(bool owner) {
 
 #ifdef DEBUG_MULTISTATEWFN_IMPL
     std::cout << "MCWaveFunction::alloc (this = " << this << ")" << std::endl;
@@ -131,20 +136,25 @@ namespace ChronusQ {
     size_t NDet   = this->NDet;
     size_t nCorrO = this->MOPartition.nCorrO;
 
-    CIVecs = std::vector<MatsT*>(NS);
-    oneRDM.reserve(NS);
+    if(owner)
+    {
+      CIVecs = std::vector<MatsT*>(NS);
 
-    if (MOPartition.scheme == CAS) {
-      ciBuilder = std::make_shared<CASCI<MatsT,IntsT>>();
-    } else if (MOPartition.scheme == RAS) {
-      ciBuilder = std::make_shared<RASCI<MatsT,IntsT>>();
-    } else {
-      CErr();
+      if (MOPartition.scheme == CAS) {
+        ciBuilder = std::make_shared<CASCI<MatsT,IntsT>>();
+      } else if (MOPartition.scheme == RAS) {
+        ciBuilder = std::make_shared<RASCI<MatsT,IntsT>>();
+      } else {
+        CErr("Unrecognized CI Builder type!");
+      }
     }
+
+    oneRDM.reserve(NS);
 
     try {
       for (auto i = 0ul; i < NS; i++) {
-        CIVecs[i] = CQMemManager::get().malloc<MatsT>(NDet);
+        if(owner)
+          CIVecs[i] = CQMemManager::get().malloc<MatsT>(NDet);
         oneRDM.emplace_back(cqmatrix::Matrix<MatsT>(nCorrO)); 
       }
     } catch (...) {
@@ -158,7 +168,7 @@ namespace ChronusQ {
     if (detStrBeta) detStrBeta->computeList();  
     std::cout << std::endl;
 
-    if (this->readCI) ReadGuessCIVector();
+    if (owner && this->readCI) ReadGuessCIVector();
  
   }; // MCWaveFunction<T>::alloc
 

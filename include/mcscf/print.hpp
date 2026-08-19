@@ -92,7 +92,7 @@ namespace ChronusQ {
     } else {
       CErr("Other than CAS has not been implemented yet "); 
     }
-    if (this->settings.doSCF) {
+    if (this->settings->doSCF) {
       job_title += "SCF";
     } else {
       job_title += "CI";
@@ -107,10 +107,10 @@ namespace ChronusQ {
     std::cout << std::endl;
     mcwfn_->printMOSpacePartition();
 
-    settings.print(ref.nC == 4, this->NStates);
+    settings->print(ref.nC == 4, this->NStates);
  
     std::cout << std::endl;
-    if(this->settings.doSCF and this->StateAverage) {
+    if(this->settings->doSCF and this->StateAverage) {
       FormattedLine(std::cout,"  State Average is ON, with weights:");
       auto & weights = this->SAWeight;
       for (auto i = 0ul; i < this->NStates; i ++)

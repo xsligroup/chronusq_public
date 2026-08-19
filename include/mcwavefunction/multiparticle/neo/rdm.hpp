@@ -43,8 +43,8 @@ namespace ChronusQ {
         // Get the orbital offsets for the state
         size_t nInact = this->ewfn_->MOPartition.nInact;
         size_t nCorrO = this->ewfn_->MOPartition.nCorrO;
-        size_t nAO = this->ewfn_->ref_.mo[0].nRows();
-        MatsT* MO = this->ewfn_->ref_.mo[0].pointer() + nAO * nInact;
+        size_t nAO = this->ewfn_->ref_->mo[0].nRows();
+        MatsT* MO = this->ewfn_->ref_->mo[0].pointer() + nAO * nInact;
 
         std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> PDMs;
         PDMs.reserve(this->NStates);
@@ -67,8 +67,8 @@ namespace ChronusQ {
         // Get the orbital offsets for the state
         size_t nInact = this->pwfn_->MOPartition.nInact;
         size_t nCorrO = this->pwfn_->MOPartition.nCorrO;
-        size_t nAO = this->pwfn_->ref_.mo[0].nRows();
-        MatsT * MO = this->pwfn_->ref_.mo[0].pointer() + nAO * nInact;
+        size_t nAO = this->pwfn_->ref_->mo[0].nRows();
+        MatsT * MO = this->pwfn_->ref_->mo[0].pointer() + nAO * nInact;
 
         std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> PDMs;
         PDMs.reserve(this->NStates);

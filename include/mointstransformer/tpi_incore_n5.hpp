@@ -193,12 +193,12 @@ namespace ChronusQ {
     std::shared_ptr<InCore4indexTPI<MatsT>> AOTPI = std::make_shared<InCore4indexTPI<MatsT>>(*std::dynamic_pointer_cast<InCore4indexTPI<IntsT>>(epaoints_));
 
     // Grab the number of atomic orbitals
-    size_t nAO_p1 = p1_.mo[0].nRows();
-    size_t nAO_p2 = p2_.mo[0].nRows();
+    size_t nAO_p1 = p1_->mo[0].nRows();
+    size_t nAO_p2 = p2_->mo[0].nRows();
     
     // Grab the pointer to the MO objects
-    auto MO_p1 = p1_.mo[0].pointer();
-    auto MO_p2 = p2_.mo[0].pointer();
+    auto MO_p1 = p1_->mo[0].pointer();
+    auto MO_p2 = p2_->mo[0].pointer();
 
     // Memory in which the result will be stored
     MatsT * SCR = nullptr;

@@ -149,7 +149,7 @@ inline void CQMCSCFTEST( std::string in, std::string ref,
   SafeFile resFile(CQTestOut(in,".bin"),true);
   
   double xNS, yNS;
-  std::cout << " * PERFORMING MSWFN ENERGY CHECK " << std::endl;
+  std::cout << " * PERFORMING MCWFN ENERGY CHECK " << std::endl;
   std::cout << "MCSCF_TEST_REF=" << MCSCF_TEST_REF <<std::endl;
   
   refFile.readData("MCWFN/NSTATES", &xNS);

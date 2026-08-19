@@ -1,0 +1,57 @@
+[Molecule]
+charge = 0
+mult = 1
+geom:
+ C                 -0.02448790    0.13966480    0.00000000
+ H                  0.50867585   -0.78804012    0.00000000 QP
+ H                 -1.19448790    0.13966480    0.00000000 QP
+ O                  0.60255253    1.23071515    0.00000000
+
+[QM]
+reference = Real RHF
+job = MCSCF
+
+[SCF]
+NEO = TRUE
+GUESS = CLASSICAL
+PRINTMOS = 9
+EXTRAP = TRUE
+MAXITER = 512
+
+[BASIS]
+basis = cc-pvdz
+
+[MCSCF]
+JOBTYPE = CASCI
+NACTO = 4
+NACTE = 4
+NROOTS = 4
+CIDIAGALG = DAVIDSON
+CICONV = 1E-12
+PRINTMULT = TRUE
+#NATORB = 1
+
+[QPQM]
+reference = Real UHF
+
+[QPBASIS]
+basis = prot-pb4-d
+
+[QPMCSCF]
+NACTO = 46
+NACTP = 2
+
+[QPINTS]
+Alg = INCORE
+
+[EQPINTS]
+Alg = INCORE
+
+[INTS]
+Alg = incore
+
+[MISC]
+nsmp = 1
+mem = 4 GB
+
+

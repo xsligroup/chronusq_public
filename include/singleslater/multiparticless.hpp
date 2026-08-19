@@ -27,6 +27,8 @@
 #include <singleslater.hpp>
 #include <matrix.hpp>
 
+#include <dft.hpp>
+#include <singleslater/kohnsham.hpp>
 #include <fockbuilder/neofock.hpp>
 #include <fockbuilder/interparticlefock.hpp>
 #include <particleintegrals/twopints.hpp>
@@ -308,6 +310,10 @@ namespace ChronusQ {
         return subsystemDipole;
       }
 
+      std::shared_ptr<InterParticleFockBuilder<MatsT,IntsT>> getInterFockBuilder(std::string label1, std::string label2) const {
+        return interFockBuilders.at(label1).at(label2);
+      }
+
       void saveSubsystemReferenceTypes(std::string prefix) {
         ROOT_ONLY(this->comm);
         if( !this->savFile.exists() ) return;
@@ -502,7 +508,7 @@ namespace ChronusQ {
       }
     
       void computeMultipole(EMPerturbation& emPert,
-        const std::vector<PROPERTY>& properties) {
+        const std::vector<PROPERTY>& properties = {}) {
     
         // Zero the aggregate molecular multipoles
         for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
