@@ -69,7 +69,7 @@ namespace ChronusQ {
      // Post MCSCF Analysis options (control flow is handled by MCSCF, 
      // the actual calculation is handled by MCWaveFunction)
      bool PopulationAnalysis = false; // default is do not do Mulliken analysis
-     bool SpinAnalysis = false; // default is do not do Spin analysis
+     bool SpinAndAngularAnalysis = false; // default is do not do Spin analysis
      size_t NosS1 = 0; // number of initial states s1 for oscillator strength
      bool multipoleMoment = false; // default is do not compute multipole moments
 

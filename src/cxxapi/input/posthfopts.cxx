@@ -35,8 +35,15 @@ namespace ChronusQ {
     // Mulliken charge analysis
     OPTOPT( postHF->PopulationAnalysis = input.getData<bool>(postHFSection + "/POPULATION"); )
  
-    // Spin analysis
-    OPTOPT( postHF->SpinAnalysis = input.getData<bool>(postHFSection + "/PRINTSPIN"); )
+    // Spin and angular analysis
+    if (input.containsData(postHFSection + "/PRINTSPINANDANGULAR")) {
+      OPTOPT( postHF->SpinAndAngularAnalysis =
+          input.getData<bool>(postHFSection + "/PRINTSPINANDANGULAR"); )
+    } else {
+      // Backward-compatible keyword
+      OPTOPT( postHF->SpinAndAngularAnalysis =
+          input.getData<bool>(postHFSection + "/PRINTSPIN"); )
+    }
 
     // Transtion and state-specific dipole moments
     OPTOPT( postHF->printTransDipole = input.getData<bool>(postHFSection + "/PRINTTRANSDIPOLE"); )

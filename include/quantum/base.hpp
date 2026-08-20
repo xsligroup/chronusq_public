@@ -88,6 +88,22 @@ namespace ChronusQ {
     // Spin expectation values
     cart_t SExpect; ///< Expectation values of Sx, Sy and Sz
     double    SSq;  ///< Expectation value of S^2
+    double    SQuantNum;  ///< spin quantum number(S) from (S(S+1))
+    cart_t SExpectLL; ///< 4C-only: LL contribution to Sx, Sy and Sz
+    cart_t SExpectSS; ///< 4C-only: SS contribution to Sx, Sy and Sz
+    double SSqLL;     ///< 4C-only: LL contribution to S^2
+    double SSqSS;     ///< 4C-only: SS contribution to S^2
+    double SSqCross;  ///< 4C-only: LL-SS cross contribution to S^2
+
+    // Angular momentum expectation values
+    cart_t LExpect; ///< Expectation values of Lx, Ly and Lz
+    double    LSq;  ///< Expectation value of L^2
+    double    LQuantNum;  ///< orbital angular momentum quantum number(L) from (L(L+1))
+    cart_t JExpect; ///< Expectation values of Jx, Jy and Jz
+    double    JSq;  ///< Expectation value of J^2
+    double    JQuantNum;  ///< total angular momentum quantum number(J) from (J(J+1))
+    double    SL; ///< Expectation value of S·L
+    double    LS; ///< Expectation value of L·S
 
     // Energy expectation values
     double OBEnergy;   ///< 1-Body operator contribution to the energy
@@ -125,8 +141,11 @@ namespace ChronusQ {
           {{{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}}},
           {{{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}}},
           {{{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}}}
-        }}, SExpect({0.,0.,0.}), SSq(0.), OBEnergy(0.), MBEnergy(0.),
-      totalEnergy(0.) { }; // Quantum::Quantum
+        }}, SExpect({0.,0.,0.}), SSq(0.),
+      SExpectLL({0.,0.,0.}), SExpectSS({0.,0.,0.}), SSqLL(0.), SSqSS(0.), SSqCross(0.),
+      LExpect({0.,0.,0.}), LSq(0.), JExpect({0.,0.,0.}), JSq(0.),
+      SL(0.), LS(0.),
+      OBEnergy(0.), MBEnergy(0.), totalEnergy(0.) { }; // Quantum::Quantum
 
 
 
@@ -186,10 +205,12 @@ namespace ChronusQ {
    
     virtual void computeMultipole(EMPerturbation &, const std::vector<PROPERTY> &properties = {}) = 0;
     virtual void computeSpin() = 0;
+    virtual void computeSpinAndAngularProperties() = 0;
     virtual void methodSpecificProperties() = 0;
     virtual void computeOrbitalProps() = 0;
     virtual void computeOrbitalRDFs() = 0;
     virtual void printOrbitalEnergies() = 0;
+    virtual void printAngularProperties(std::ostream&, bool withBanner = true) = 0;
 
 
     inline void computeProperties(EMPerturbation &pert, const std::vector<PROPERTY> &properties = {}) {
@@ -214,9 +235,13 @@ namespace ChronusQ {
       if (multipoleProps.size() > 0)
         computeMultipole(pert, multipoleProps);
 
-      // Compute spin information
-      if(hasProperty(SPIN) and nC != 4) 
+      // Compute spin information for all component spaces, including 4C.
+      // 4C angular-property evaluation uses SSq from computeSpin().
+      if(hasProperty(SPIN)) 
         computeSpin();
+
+      // Compute angular momentum properties
+      computeSpinAndAngularProperties();
 
       // Compute method specific properties (currently only include Mulliken population analysis)
       if(hasProperty(METHOD_SPECIFIC)) 
@@ -231,8 +256,8 @@ namespace ChronusQ {
 
     // Print functions
     virtual void print1PDM(std::ostream&) = 0;
-    void printMultipoles(std::ostream&);
-    void printSpin(std::ostream&);
+    virtual void printMultipoles(std::ostream&);
+    virtual void printSpin(std::ostream&, bool withBanner = true);
     virtual void printMiscProperties(std::ostream&) = 0;
   }; // class QuantumBase
 

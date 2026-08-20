@@ -198,10 +198,24 @@ void Orthogonalization<MatsT>::computeOrtho() {
   template<typename MatsT>
   cqmatrix::Matrix<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::Matrix<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( forwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in nonortho2ortho");
+    if( forwardTrans->nRows() == mat.nRows() ) {
+      size_t NB = forwardTrans->nRows();
+      return mat.transform('N', forwardTrans->pointer(), NB, NB);
+    }
 
-    size_t NB = forwardTrans->nRows();
-    return mat.transform('N', forwardTrans->pointer(), NB, NB);
+    // 4C fallback: allow transforming a reduced block matrix with a full spinor
+    // transform by using the corresponding upper-left block.
+    if( forwardTrans->nRows() == 2 * mat.nRows() ) {
+      const size_t NB = mat.nRows();
+      cqmatrix::Matrix<MatsT> reducedForward(NB, NB);
+      for (size_t j = 0; j < NB; ++j)
+        for (size_t i = 0; i < NB; ++i)
+          reducedForward(i, j) = (*forwardTrans)(i, j);
+      return mat.transform('N', reducedForward.pointer(), NB, NB);
+    }
+
+    CErr("Matrices are not the same dimension in nonortho2ortho");
+    return mat;
   }
 
   template<typename MatsT>
@@ -219,10 +233,23 @@ void Orthogonalization<MatsT>::computeOrtho() {
   template<typename MatsT>
   cqmatrix::PauliSpinorMatrices<MatsT> Orthogonalization<MatsT>::nonortho2ortho(cqmatrix::PauliSpinorMatrices<MatsT> & mat) const {
     if( not overlap ) CErr("Overlap has not been initialized and computed");
-    if( forwardTrans->nRows() != mat.nRows() ) CErr("Matrices are not the same dimension in nonortho2ortho");
+    if( forwardTrans->nRows() == mat.nRows() ) {
+      size_t NB = forwardTrans->nRows();
+      return mat.transform('N', forwardTrans->pointer(), NB, NB);
+    }
 
-    size_t NB = forwardTrans->nRows();
-    return mat.transform('N', forwardTrans->pointer(), NB, NB);
+    // 4C fallback for reduced Pauli blocks.
+    if( forwardTrans->nRows() == 2 * mat.nRows() ) {
+      const size_t NB = mat.nRows();
+      cqmatrix::Matrix<MatsT> reducedForward(NB, NB);
+      for (size_t j = 0; j < NB; ++j)
+        for (size_t i = 0; i < NB; ++i)
+          reducedForward(i, j) = (*forwardTrans)(i, j);
+      return mat.transform('N', reducedForward.pointer(), NB, NB);
+    }
+
+    CErr("Matrices are not the same dimension in nonortho2ortho");
+    return mat;
   }
 
   template<typename MatsT>

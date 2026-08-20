@@ -88,9 +88,8 @@ TEST(TwoC_DAS_SWAP, Be_2c_SWAP_sto3G ) {
 
 // oscillator strength test
 TEST(GHF_DAS_OSC, Al_GHF_OSC_STR) {
-
   CQDASSCFTEST( "dasscf/serial/cas/al_ghf_6-31g_dasci_osc_str",
-        "al_ghf_6-31g_dasci_osc_str.bin.ref", false, "", 1e-8, false, false, false, true );
+        "al_ghf_6-31g_dasci_osc_str.bin.ref", false, "", 1e-8, false, false, false, true, true, true, true, true, true, true, true );
 
 }
 

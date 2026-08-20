@@ -48,6 +48,7 @@ namespace ChronusQ {
       "TPITRANSALG",  // N5 or N6
       "SCHWARZ",      // double
       "GRADSCHWARZ",  // double
+      "PRINTANGULAR", // True or False, print angular momentum properties
 
       // RI Options
       "RI",           // String, determines which algorithm to use for RI/CD

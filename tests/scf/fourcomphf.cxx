@@ -148,6 +148,17 @@ TEST( FOURCHF, CuH3_321g_DCG ) {
 
 };
 
+// Distorted CuH3 3-21g spin and angular momentum property test (4c NYI)
+// TEST( FOURCHF, CuH3_321g_DCG_SpinAngular ) {
+
+//   CQSCFTEST( "scf/serial/fourcomp/CuH3_321g_DCG",
+//     "CuH3_321g_DCG.bin.ref",1e-8,
+//     true, true, false, false, false, true,
+//     false, "no", false,
+//     true, true, true, true, true);
+
+// };
+
 // Ag Neutral doublet Dirac-Coulomb-Gaunt
 TEST( FOURCHF, Ag_sapporoDZ_DCG ) {
 

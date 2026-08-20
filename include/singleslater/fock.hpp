@@ -115,6 +115,14 @@ namespace ChronusQ {
     // ADL implemeting 4c dipole
     if (nC == 4) ops = {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}, {LEN_ELECTRIC_MULTIPOLE,1}};
 
+    // Add angular momentum integrals if requested
+    if (hamiltonianOptions.printAngularProperties) {
+      ops.push_back({SPIN_VECTOR, 3});
+      ops.push_back({ANGULAR_MOMENTUM_VECTOR, 3});
+      ops.push_back({SPIN_DOT_ANGULAR, 0});
+      ops.push_back({TOTAL_ANGULAR_MOMENTUM_VECTOR, 3});
+    }
+
 
     // In case of X2C coreHBuilder, here we only compute
     // non-relativistic one electron integrals for contracted basis functions.

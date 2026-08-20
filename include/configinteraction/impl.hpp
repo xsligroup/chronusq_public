@@ -208,9 +208,9 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
   }
 
   // Spin analysis
-  if (this->printRDMs==0 && this->SpinAnalysis) {
+  if (this->printRDMs==0 && this->SpinAndAngularAnalysis) {
       std::cout<<"\n\nSpin analysis in ConfigInt."<<std::endl;
-      PostHartreeFock<MatsT,IntsT>::spinAnalysis();
+        PostHartreeFock<MatsT,IntsT>::spinAndAngularAnalysis();
   }   
 
   // Compute excited state transtition dipole moments:

@@ -65,31 +65,52 @@ namespace ChronusQ {
   }; // MCWaveFunction::populationAnalysis
 
  /*
-  * \brief Spin analysis for each state
+  * \brief Spin and angular analysis for each state
   *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
-  *         2. SingleSlater->populationAnalysis()
+  *         2. Compute and print spin + angular properties
   *
   */
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::spinAnalysis(size_t i) {
+  void MCWaveFunction<MatsT,IntsT>::spinAndAngularAnalysis(size_t i) {
 
-    std::cout << std::endl << "Spin Analysis for State " << i+1 << ": " << std::endl;
+    std::cout << std::endl << "Spin and Angular Analysis for State " << i+1 << ": " << std::endl;
     SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
 
     // transform oneRDM to AO basis
     rdm2pdm(this->oneRDM[i]);
 
-    ss_ptr->computeSpin();
-    ss_ptr->printSpin(std::cout);
+    bool used2RDM = false;
+    if (this->ciBuilder && i < this->CIVecs.size()) {
+      auto twoRDM = this->computeFull2RDM(i);
+      const size_t activeEndOff = this->MOPartition.nNegMO + this->MOPartition.nFCore
+        + this->MOPartition.nInact + this->MOPartition.nCorrO;
 
-  }; // MCWaveFunction::spinAnalysis
+      ss_ptr->computeSpinAndAngularProperties(twoRDM.get(), activeEndOff);
+      used2RDM = true;
+    }
+
+    if (not used2RDM)
+      ss_ptr->computeSpinAndAngularProperties();
+
+    this->SExpectState[i] = ss_ptr->SExpect;
+    this->SSqState[i] = ss_ptr->SSq;
+    this->LExpectState[i] = ss_ptr->LExpect;
+    this->LSqState[i] = ss_ptr->LSq;
+    this->JExpectState[i] = ss_ptr->JExpect;
+    this->JSqState[i] = ss_ptr->JSq;
+    this->SLState[i] = ss_ptr->SL;
+
+    ss_ptr->printSpin(std::cout, false);
+    ss_ptr->printAngularProperties(std::cout, false);
+
+  }; // MCWaveFunction::spinAndAngularAnalysis
 
   template <typename MatsT, typename IntsT>
-  void MCWaveFunction<MatsT,IntsT>::spinAnalysis() {
+  void MCWaveFunction<MatsT,IntsT>::spinAndAngularAnalysis() {
 
     for (auto i = 0ul; i < this->NStates; i++) {
 
-      MCWaveFunction::spinAnalysis(i);
+      MCWaveFunction::spinAndAngularAnalysis(i);
 
     }
 

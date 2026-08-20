@@ -32,6 +32,15 @@ TEST( UHF, O2_631Gd ) {
 
 };
 
+// O2 6-31G(d) spin and angular momentum property test
+TEST( UHF, O2_631Gd_SpinAngular ) {
+
+  CQSCFTEST( "scf/serial/uhf/oxygen_6-31Gd", "oxygen_6-31Gd.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true,
+      true, true, true, true, true );
+
+};
+
 // MnHe sto-3g test
 TEST( UHF, MnHe_sto3G ) {
 

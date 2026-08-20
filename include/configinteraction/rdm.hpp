@@ -64,6 +64,74 @@ void ConfigurationInteraction<MatsT, IntsT>::compute2TDM(
 
 
 template <typename MatsT, typename IntsT>
+void ConfigurationInteraction<MatsT, IntsT>::compute2RDM(
+  size_t s1, size_t s2, std::shared_ptr<InCore4indexTPI<MatsT>> twoRDM) {
+  
+  const size_t nCorrO = this->corrSpace.nCorrO;
+
+  auto oneRDM = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+  oneRDM->clear();
+  twoRDM->clear();
+
+  if(!ciSettings.SparseDavidson) {
+      std::shared_ptr<DistributedVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedVectors<MatsT>>(CIVectors);
+  
+      ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2}, 
+        oneRDM, true, 1.0, twoRDM, true, 1.0
+     #ifdef CQ_ENABLE_MPI 
+        , true, true
+     #endif    
+        );
+    }
+    else {
+
+    #ifdef CQ_ENABLE_SPARSE
+      std::shared_ptr<DistributedSparseVectors<MatsT>> CIVectorsCast = std::dynamic_pointer_cast<DistributedSparseVectors<MatsT>>(CIVectors);
+
+      ciBuilder->buildTDM(*CIVectorsCast, *CIVectorsCast, {s1, s2},
+        oneRDM, true, 1.0, twoRDM, true, 1.0
+        , true, true
+        );
+    #endif
+   }
+    
+
+  auto & RDM2 = *twoRDM;
+  auto & RDM1 = *oneRDM;
+  // RDM2.output(std::cout, "2RDM before ", true);
+
+  
+  #pragma omp parallel for schedule(static) default(shared)
+  for (auto q = 0ul; q < nCorrO; q++) {
+
+    //find which DAS orbital q belongs to
+    size_t orbitalRangeStart = 0;
+    size_t orbitalRangeEnd = 0;
+    for(const auto& activeSpace : ciSettings.activeSpaces) {
+      orbitalRangeStart = orbitalRangeEnd;
+      orbitalRangeEnd += activeSpace.nOrbitals;
+
+      if(q >= orbitalRangeStart and q < orbitalRangeEnd) {
+	      break;
+      }
+    }
+
+    for (auto p = 0ul; p < nCorrO; p++) {
+      if(p >= orbitalRangeStart and p < orbitalRangeEnd) {
+        for (auto s = 0ul; s < nCorrO; s++) {
+          if(s >= orbitalRangeStart and s < orbitalRangeEnd) {
+                  RDM2(p, q, q, s) -= RDM1(p, s);
+          }
+        }
+      }
+    }  
+  }
+  // RDM2.output(std::cout, "2RDM after", true);
+
+} // ConfigInteraction::compute2RDM
+
+
+template <typename MatsT, typename IntsT>
 void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
   
   const auto& weights = this->SAWeight;
@@ -124,14 +192,16 @@ void ConfigurationInteraction<MatsT, IntsT>::computeRDMsForOrbitalRotations() {
     for (auto p = 0ul; p < nCorrO; p++) {
       if(p >= orbitalRangeStart and p < orbitalRangeEnd) {
         for (auto s = 0ul; s < nCorrO; s++) {
-	  if(s >= orbitalRangeStart and s < orbitalRangeEnd) {
-            RDM2(p, q, q, s) -= RDM1(p, s);
-	  }
+          if(s >= orbitalRangeStart and s < orbitalRangeEnd) {
+                  RDM2(p, q, q, s) -= RDM1(p, s);
+          }
         }
       }
     }  
   }
   
 } // ConfigInteraction::computeRDMsOfInterests
+
+
   
 } // namespace ChronusQ

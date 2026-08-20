@@ -115,6 +115,15 @@ namespace ChronusQ {
 
     double InactEnergy = 0.0;
     std::shared_ptr<std::vector<double>> StateEnergy;
+
+    std::vector<cart_t> SExpectState;
+    std::vector<double> SSqState;
+    std::vector<cart_t> LExpectState;
+    std::vector<double> LSqState;
+    std::vector<cart_t> JExpectState;
+    std::vector<double> JSqState;
+    std::vector<double> SLState;
+
     // Storage for Field-Nuclear dipole interactions
     // This is additive to the diagonal in CI theory, so it can be 
     // simply added to the total state energies on convergence
@@ -198,6 +207,21 @@ namespace ChronusQ {
       this->StateEnergy = std::make_shared<std::vector<double>>();
       this->StateEnergy->clear();
       this->StateEnergy->resize(this->NStates, 0.);
+
+      this->SExpectState.clear();
+      this->SExpectState.resize(this->NStates, {0., 0., 0.});
+      this->SSqState.clear();
+      this->SSqState.resize(this->NStates, 0.);
+      this->LExpectState.clear();
+      this->LExpectState.resize(this->NStates, {0., 0., 0.});
+      this->LSqState.clear();
+      this->LSqState.resize(this->NStates, 0.);
+      this->JExpectState.clear();
+      this->JExpectState.resize(this->NStates, {0., 0., 0.});
+      this->JSqState.clear();
+      this->JSqState.resize(this->NStates, 0.);
+      this->SLState.clear();
+      this->SLState.resize(this->NStates, 0.);
     }
 
     void dealloc () { }

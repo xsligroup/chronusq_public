@@ -100,9 +100,11 @@ public:
   virtual void run(EMPerturbation &)      = 0;  // From PostHartreeFockBase
   virtual void computeTDM(size_t, size_t, std::shared_ptr<cqmatrix::Matrix<MatsT>>) = 0;
   virtual void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>) = 0;  
+  virtual void compute2RDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>) = 0;
 
   void computeOneRDM(size_t i) { computeTDM(i, i, oneRDM[i]);};    
   void computeOneRDM();
+  std::shared_ptr<InCore4indexTPI<MatsT>> computeFull2RDM(size_t i);
   void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
   void pdm2rdm(cqmatrix::Matrix<MatsT> &);  
 
@@ -133,10 +135,10 @@ public:
   void printAllTransitionDipoleMom();
   double oscillator_strength4C(size_t, size_t s1 = 0);
   void OneRDMDiff(); 
-  std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
-  std::vector<cqmatrix::Matrix<MatsT>> spinOverlap();
-  void spinAnalysis(size_t, std::vector<cqmatrix::Matrix<MatsT>>*);
-  void spinAnalysis();
+  std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> spin_overlap;
+  void populateSpinOverlap();
+  void spinAndAngularAnalysis(size_t);
+  void spinAndAngularAnalysis();
   void saveOnePDMs(size_t);
   void saveOnePDMs();
 

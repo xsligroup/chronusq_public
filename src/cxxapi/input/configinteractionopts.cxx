@@ -79,6 +79,7 @@ namespace ChronusQ {
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
       "PRINTSPIN",
+      "PRINTSPINANDANGULAR",
       "PRINTTRANSDIPOLE",
       "PRINTDIPOLE",
       "CUBE",

@@ -140,7 +140,7 @@ namespace ChronusQ {
       virtual void transformInts(EMPerturbation & pert);
       virtual void computeMultipole();
       virtual void populationAnalysis();
-      virtual void spinAnalysis();
+      virtual void spinAndAngularAnalysis();
       virtual double oscillator_strength(size_t, size_t);
       virtual void formNaturalOrbitals();
 

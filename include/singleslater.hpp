@@ -272,6 +272,32 @@ namespace ChronusQ {
     void compute4CDipole(EMPerturbation &);
     void computeFockX2CDipole(EMPerturbation &);
     void computeSpin() override;
+    void computeSpinAndAngularProperties() override;
+    void computeSpinAndAngularProperties(const InCore4indexTPI<MatsT>* twoRDM);
+    void computeSpinAndAngularProperties(const InCore4indexTPI<MatsT>* twoRDM, size_t activeEndOff);
+    void printAngularProperties(std::ostream&, bool withBanner = true) override;
+
+    // Types and helpers for angular orbital expectation evaluation
+    struct AngularOrbitalRow {
+      double energy;
+      double occupation;
+      double sz;
+      double lz;
+      double jz;
+      double s2;
+      double l2;
+      double j2;
+    };
+
+    struct AngularResults {
+      std::vector<AngularOrbitalRow> rows;
+      double operatorBuildTime = 0.0;
+      double expectationTime = 0.0;
+      double totalTime = 0.0;
+    };
+
+    // Compute orbital-level angular expectation rows and timing metrics
+    AngularResults computeAngularOrbitalRows(bool includeBeta = true);
     void computeOrbitalProps() override;
     void computeOrbitalRDFs() override;
     void printOrbitalEnergies() override;

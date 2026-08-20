@@ -122,6 +122,129 @@ namespace ChronusQ {
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::printMiscProperties(std::ostream &out) {
 
+    auto printOrbitalExpectationSection = [&](const std::string &sectionName,
+        const cqmatrix::Matrix<MatsT> &coeff, const double *eps,
+        const cqmatrix::Matrix<MatsT> *betaCoeff = nullptr,
+        const double *betaEps = nullptr) {
+
+      if (this->aoints_->angmom == nullptr || this->aoints_->overlap == nullptr)
+        return;
+
+      auto quadraticForm = [&](auto const *op, const MatsT *vec, size_t nBas) -> double {
+        double value = 0.0;
+        for (size_t i = 0; i < nBas; ++i) {
+          MatsT accum = MatsT(0.0);
+          for (size_t j = 0; j < nBas; ++j)
+            accum += op[i + j*nBas] * vec[j];
+          if constexpr (std::is_same<MatsT, dcomplex>::value)
+            value += std::real(std::conj(vec[i]) * accum);
+          else
+            value += vec[i] * accum;
+        }
+        return value;
+      };
+
+      auto printRow = [&](size_t moIndex, double eVal, double occ, double sz, double lz, double jz) {
+        out << std::setw(6) << moIndex + 1
+            << std::setw(16) << std::setprecision(8) << std::fixed << eVal
+        << std::setw(16) << std::setprecision(8) << std::fixed << occ
+            << std::setw(16) << std::setprecision(8) << std::fixed << sz
+            << std::setw(16) << std::setprecision(8) << std::fixed << lz
+            << std::setw(16) << std::setprecision(8) << std::fixed << jz
+            << std::endl;
+      };
+
+      const IntsT *lzOp = (*this->aoints_->angmom)[2]->pointer();
+      const IntsT *sOp = this->aoints_->overlap->pointer();
+      const size_t nBas = coeff.nRows();
+      const size_t nOrb = coeff.nColumns();
+      const size_t negEShift = (this->nC == 4) ? (nOrb / 2) : 0;
+
+      auto explicitOccupancy = [&](size_t moIndex, bool betaBlock = false) -> double {
+        if (this->nC == 1 && not this->iCS) {
+          return betaBlock ? (moIndex < this->nOB ? 1.0 : 0.0)
+                           : (moIndex < this->nOA ? 1.0 : 0.0);
+        }
+
+        if (this->nC == 1 && this->iCS) {
+          return moIndex < this->nOA ? 1.0 : 0.0;
+        }
+
+        return moIndex < this->nO ? 1.0 : 0.0;
+      };
+
+      out << "\n\n" << sectionName << std::endl;
+      out << bannerTop << std::endl << std::endl;
+      out << std::setw(6) << "MO"
+          << std::setw(16) << "E / Eh"
+          << std::setw(16) << "Occ"
+          << std::setw(16) << "<Sz>"
+          << std::setw(16) << "<Lz>"
+          << std::setw(16) << "<Jz>" << std::endl;
+      out << bannerMid << std::endl;
+
+      for (size_t iOrb = negEShift; iOrb < nOrb; ++iOrb) {
+        const MatsT *c = coeff.pointer() + iOrb * nBas;
+        double lz = quadraticForm(lzOp, c, nBas);
+        double sz = 0.0;
+
+        if (betaCoeff != nullptr) {
+          const MatsT *cb = betaCoeff->pointer() + iOrb * betaCoeff->nRows();
+          lz += quadraticForm(lzOp, cb, betaCoeff->nRows());
+          sz = 0.5 * (quadraticForm(sOp, c, nBas) - quadraticForm(sOp, cb, betaCoeff->nRows()));
+        } else if (this->nC == 1 && this->iCS) {
+          sz = 0.0;
+        } else {
+          const size_t half = nBas / 2;
+          if (half > 0 && (2 * half) == nBas) {
+            sz = 0.5 * (quadraticForm(sOp, c, half) -
+                        quadraticForm(sOp, c + half, half));
+          }
+        }
+
+        const double occ = explicitOccupancy(iOrb, false);
+
+        const double eVal = (eps != nullptr) ? eps[iOrb] : 0.0;
+        printRow(iOrb, eVal, occ, sz, lz, lz + sz);
+      }
+
+      if (betaCoeff != nullptr) {
+        out << std::endl << bannerEnd << std::endl;
+        out << "\n\n" << sectionName << " (Beta)" << std::endl;
+        out << bannerTop << std::endl << std::endl;
+        out << std::setw(6) << "MO"
+            << std::setw(16) << "E / Eh"
+          << std::setw(16) << "Occ"
+            << std::setw(16) << "<Sz>"
+            << std::setw(16) << "<Lz>"
+            << std::setw(16) << "<Jz>" << std::endl;
+        out << bannerMid << std::endl;
+
+        for (size_t iOrb = negEShift; iOrb < nOrb; ++iOrb) {
+          const MatsT *cb = betaCoeff->pointer() + iOrb * betaCoeff->nRows();
+          const double lz = quadraticForm(lzOp, cb, betaCoeff->nRows());
+          double sz = -0.5 * quadraticForm(sOp, cb, betaCoeff->nRows());
+
+          const double occB = explicitOccupancy(iOrb, true);
+
+          const double eVal = (betaEps != nullptr) ? betaEps[iOrb] : 0.0;
+          printRow(iOrb, eVal, occB, sz, lz, lz + sz);
+        }
+      }
+
+      out << std::endl << bannerEnd << std::endl;
+    };
+
+    // if (this->nC == 1 && not this->iCS) {
+    //   printOrbitalExpectationSection(
+    //     "Molecular Orbital Expectation Values",
+    //     this->mo[0], this->eps1, &this->mo[1], this->eps2);
+    // } else {
+    //   printOrbitalExpectationSection(
+    //     "Molecular Orbital Expectation Values",
+    //     this->mo[0], this->eps1);
+    // }
+
     out << std::endl << "Mulliken Charge Analysis:" << std::endl << bannerTop << std::endl;
 
     out << std::setw(15) << std::left << "  Atom";

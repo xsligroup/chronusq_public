@@ -32,6 +32,7 @@ DAS = 2
 NRoots = 56
 CIDIAGALG = FullMatrix
 OSCISTREN = true
+printspin = true
 # OSCISTREN_ORDER = 0 default
 # OSCISTREN_INITSTATES = 1 default
 

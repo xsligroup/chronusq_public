@@ -372,7 +372,7 @@ inline void DeterminantFactory::output(std::ostream & out, const std::string & s
   
   out << "* Excitation Lists Needed: " << std::endl;
   
-  double totalExListStorage; 
+  double totalExListStorage = 0;
   size_t count = 0;
   for (auto & l: exLists_) {
     out << " # " << std::setw(5) << count << ", "; 

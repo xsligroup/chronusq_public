@@ -217,6 +217,44 @@ namespace ChronusQ {
       // Save properties after SCF
       if( sProp ){
 
+        if( this->SExpectState.size() != NS || this->LExpectState.size() != NS || this->JExpectState.size() != NS ) {
+          auto & ref = this->reference();
+          this->SExpectState.assign(NS, {0., 0., 0.});
+          this->SSqState.assign(NS, 0.);
+          this->LExpectState.assign(NS, {0., 0., 0.});
+          this->LSqState.assign(NS, 0.);
+          this->JExpectState.assign(NS, {0., 0., 0.});
+          this->JSqState.assign(NS, 0.);
+          this->SLState.assign(NS, 0.);
+
+          for (auto i = 0ul; i < NS; ++i) {
+            this->computeOneRDM(i);
+            this->rdm2pdm(this->oneRDM[i]);
+
+            auto twoRDM = this->computeFull2RDM(i);
+            const size_t activeEndOff = this->MOPartition.nNegMO + this->MOPartition.nFCore
+              + this->MOPartition.nInact + this->MOPartition.nCorrO;
+
+            ref.computeSpinAndAngularProperties(twoRDM.get(), activeEndOff);
+
+            this->SExpectState[i] = ref.SExpect;
+            this->SSqState[i] = ref.SSq;
+            this->LExpectState[i] = ref.LExpect;
+            this->LSqState[i] = ref.LSq;
+            this->JExpectState[i] = ref.JExpect;
+            this->JSqState[i] = ref.JSq;
+            this->SLState[i] = ref.SL;
+          }
+        }
+
+        savFile.safeWriteData(prefix + "S_EXPECT", &this->SExpectState[0][0], {NS, 3});
+        savFile.safeWriteData(prefix + "S_SQUARED", this->SSqState.data(), {NS});
+        savFile.safeWriteData(prefix + "L_EXPECT", &this->LExpectState[0][0], {NS, 3});
+        savFile.safeWriteData(prefix + "L_SQUARED", this->LSqState.data(), {NS});
+        savFile.safeWriteData(prefix + "SL", this->SLState.data(), {NS});
+        savFile.safeWriteData(prefix + "J_EXPECT", &this->JExpectState[0][0], {NS, 3});
+        savFile.safeWriteData(prefix + "J_SQUARED", this->JSqState.data(), {NS});
+
         // Save oscillator strength
         if(osc_str.size()) {
           size_t NosS1 = osc_str.size()/NS;

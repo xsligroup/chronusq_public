@@ -123,6 +123,7 @@ namespace ChronusQ {
 
       // Dummy implementation for PostHartreeFock Base
       void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){}; 
+      void compute2RDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){};
 
       // Memory concerns
       // Frees the memory associated with the moERI and T2 intermediates
@@ -184,6 +185,7 @@ namespace ChronusQ {
 
       // Dummy implementation for PostHartreeFock Base
       void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){}; 
+      void compute2RDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){};
 
   };
 

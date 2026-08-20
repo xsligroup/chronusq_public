@@ -22,7 +22,6 @@
  *  
  */
 #pragma once
-
 #include <optional>
 
 namespace ChronusQ {
@@ -135,6 +134,9 @@ namespace ChronusQ {
 
     // Dirac-Kohn-Sham (4C-DFT) Options
     DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS
+
+    // Angular Properties Options
+    bool printAngularProperties = false; // Default False. If true, compute and print angular momentum properties
 
     std::string savFilePrefix = ""; // prefix for saving the integrals and SCF data in HDF5
     std::optional<size_t> nParticleOverride = std::nullopt; // number of particles to override in this quantum subsystem

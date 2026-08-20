@@ -55,10 +55,18 @@ public:
   double coreEnergy;
   std::vector<double> StateEnergy;
 
+  std::vector<cart_t> SExpectState;
+  std::vector<double> SSqState;
+  std::vector<cart_t> LExpectState;
+  std::vector<double> LSqState;
+  std::vector<cart_t> JExpectState;
+  std::vector<double> JSqState;
+  std::vector<double> SLState;
+
   bool StateAverage    = false;
   std::vector<double> SAWeight;
 
-  bool SpinAnalysis = false; // default is do not do Spin analysis
+  bool SpinAndAngularAnalysis = false; // default is do not do spin/angular analysis
   bool PopulationAnalysis = false; // default is do not do Mulliken analysis
   bool osc_str = false; //default is do not do any oscillator strength
   size_t osc_str_order = 0; //default is to do oscillator strengths within dipole approximation
@@ -113,6 +121,21 @@ public:
   void alloc() {
     this->StateEnergy.clear();
     this->StateEnergy.resize(this->NStates, 0.);
+
+    this->SExpectState.clear();
+    this->SExpectState.resize(this->NStates, {0., 0., 0.});
+    this->SSqState.clear();
+    this->SSqState.resize(this->NStates, 0.);
+    this->LExpectState.clear();
+    this->LExpectState.resize(this->NStates, {0., 0., 0.});
+    this->LSqState.clear();
+    this->LSqState.resize(this->NStates, 0.);
+    this->JExpectState.clear();
+    this->JExpectState.resize(this->NStates, {0., 0., 0.});
+    this->JSqState.clear();
+    this->JSqState.resize(this->NStates, 0.);
+    this->SLState.clear();
+    this->SLState.resize(this->NStates, 0.);
   }
 
   void dealloc () { }

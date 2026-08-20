@@ -54,6 +54,93 @@ namespace ChronusQ {
   } // MCWaveFunction::computeOneRDM
 
   /*
+   * \brief Compute state-specific 2RDM over correlated space.
+   */
+  template <typename MatsT, typename IntsT>
+  void MCWaveFunction<MatsT,IntsT>::computeTwoRDM(
+      size_t i, InCore4indexTPI<MatsT> &twoRDM) {
+
+    ciBuilder->computeTwoRDM(*this, CIVecs[i], twoRDM);
+
+    // For this determinant scheme, builder returns <E E>; subtract delta term.
+    if (this->detStr && this->detStr->scheme() == PRECOMPUTED_CONFIGURATION_DRIVEN_LIST) {
+      const size_t nCorrO = this->MOPartition.nCorrO;
+      auto & RDM1 = this->oneRDM[i];
+#pragma omp parallel for schedule(static) default(shared)
+      for (auto w = 0ul; w < nCorrO; w++)
+      for (auto u = 0ul; u < nCorrO; u++)
+      for (auto t = 0ul; t < nCorrO; t++)
+        twoRDM(t, u, u, w) -= RDM1(t, w);
+    }
+
+  } // MCWaveFunction::computeTwoRDM
+
+  /*
+   * 
+   * Compute the 2-RDM(MO basis) in the full space:
+   * Contains all blocks
+   *
+   */
+  template <typename MatsT, typename IntsT>
+  std::shared_ptr<InCore4indexTPI<MatsT>> MCWaveFunction<MatsT,IntsT>::computeFull2RDM(size_t i) {
+
+    size_t nMO    = MOPartition.nMO;
+    size_t nCorrO = MOPartition.nCorrO;
+    size_t nNegMO = MOPartition.nNegMO;
+    size_t nFCore = MOPartition.nFCore;
+    size_t nInact = MOPartition.nInact;
+
+    // Occupied core = frozen-core + inactive (fully occupied, uncorrelated).
+    size_t coreStart = nNegMO;
+    size_t nCore     = nFCore + nInact;
+    size_t actOff    = nNegMO + nFCore + nInact;
+    size_t occEnd    = actOff + nCorrO;
+
+    // Compute the one- and two-RDMs in the correlated space.
+    computeOneRDM(i);
+    auto twoRDM = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
+    twoRDM->clear();
+    computeTwoRDM(i, *twoRDM);
+
+    auto & RDM1 = oneRDM[i];
+    auto full2RDM = std::make_shared<InCore4indexTPI<MatsT>>(nMO);
+    full2RDM->clear();
+
+    // Full-space 1-RDM lookup for core and active subspaces.
+    auto gamma = [&](size_t p, size_t q) -> MatsT {
+      bool pC = (p >= coreStart and p < coreStart + nCore);
+      bool qC = (q >= coreStart and q < coreStart + nCore);
+      if (pC and qC) return (p == q) ? MatsT(1.0) : MatsT(0.0);
+      bool pA = (p >= actOff and p < occEnd);
+      bool qA = (q >= actOff and q < occEnd);
+      if (pA and qA) return RDM1(p - actOff, q - actOff);
+      return MatsT(0.0);
+    };
+
+    // Fill all but the active-active-active-active block via antisymmetrized products.
+#pragma omp parallel for schedule(static) default(shared) collapse(2)
+    for (size_t s = coreStart; s < occEnd; ++s)
+    for (size_t r = coreStart; r < occEnd; ++r)
+    for (size_t q = coreStart; q < occEnd; ++q)
+    for (size_t p = coreStart; p < occEnd; ++p) {
+      if (p >= actOff and q >= actOff and r >= actOff and s >= actOff) continue;
+      (*full2RDM)(p, q, r, s) = gamma(p, q) * gamma(r, s) - gamma(p, s) * gamma(r, q);
+    }
+
+    // Copy the fully correlated active block directly from the CI 2-RDM.
+#pragma omp parallel for schedule(static) default(shared) collapse(2)
+    for (size_t s = 0; s < nCorrO; ++s)
+    for (size_t r = 0; r < nCorrO; ++r)
+      SetMat('N', nCorrO, nCorrO, MatsT(1.0),
+          twoRDM->pointer() + (r + s * nCorrO) * (nCorrO * nCorrO), nCorrO,
+          full2RDM->pointer() + actOff + actOff * nMO
+            + (r + actOff) * (nMO * nMO) + (s + actOff) * (nMO * nMO * nMO), nMO);
+
+    return full2RDM;
+
+  } // MCWaveFunction::computeFull2RDM
+
+  /*
    * \brief Compute TDM
    *
    */

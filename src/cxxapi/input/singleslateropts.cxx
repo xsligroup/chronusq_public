@@ -1161,6 +1161,9 @@ namespace ChronusQ {
     // For RI J/K contraction with 3-index ERI
     OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + "/ONECENTERK"));
 
+    // For angular momentum properties
+    OPTOPT(hamiltonianOptions.printAngularProperties = input.getData<bool>("INTS/PRINTANGULAR"));
+
   }
 
   /**

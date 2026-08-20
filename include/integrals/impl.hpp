@@ -194,6 +194,181 @@ namespace ChronusQ {
         }
         break;
 
+      case SPIN_VECTOR:
+        // For 4-component relativistic, build spinor angular momentum operators
+        if (options.OneEScalarRelativity) {
+          S_4C = std::make_shared<std::vector<cqmatrix::Matrix<dcomplex>>>();
+          S_4C_LL = std::make_shared<std::vector<cqmatrix::Matrix<dcomplex>>>();
+          S_4C_SS = std::make_shared<std::vector<cqmatrix::Matrix<dcomplex>>>();
+          build4CSpinVectorOperatorsFull(basis, mol, options,
+              *S_4C, *S_4C_LL, *S_4C_SS);
+
+          // 4C spin operator from libcint kernels:
+          // LL from overlap, SS from int1e_spsigmasp_sph
+          // LS/SL terms are not yet represented in this storage path.
+          auto s4c = build4CSpinVectorOperator(basis, mol, options);
+          S_pauli = std::make_shared<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>>();
+          S_pauli->reserve(s4c.size());
+
+          for (const auto& src : s4c) {
+            cqmatrix::PauliSpinorMatrices<IntsT> dst(src.nRows(), src.nColumns(), true, true);
+            if constexpr (std::is_same<IntsT, dcomplex>::value) {
+              dst.S() = src.S();
+              dst.X() = src.X();
+              dst.Y() = src.Y();
+              dst.Z() = src.Z();
+            } else {
+              dst.S() = cqmatrix::Matrix<dcomplex>(src.S()).real_part();
+              dst.X() = cqmatrix::Matrix<dcomplex>(src.X()).real_part();
+              dst.Y() = cqmatrix::Matrix<dcomplex>(src.Y()).real_part();
+              dst.Z() = cqmatrix::Matrix<dcomplex>(src.Z()).real_part();
+            }
+            S_pauli->emplace_back(std::move(dst));
+          }
+        } else {
+          // Non-relativistic: standard spatial spin vector
+          spin = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+          spin->computeAOInts(basis, mol, emPert, SPIN_VECTOR, options);
+          if( savFile.exists() ) {
+            for(auto i = 0; i < 3; i++)
+              savFile.safeWriteData(prefix + "SPIN_" + dipoleList[i], (*spin)[i]->pointer(), {NB,NB} );
+          }
+        }
+        break;
+
+      case ANGULAR_MOMENTUM_VECTOR:
+        // For 4-component relativistic, build spinor angular momentum operators
+        if (options.OneEScalarRelativity) {
+          // Ensure spatial angular momentum integrals are available first.
+          if (angmom == nullptr) {
+            angmom = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+            angmom->computeAOInts(basis, mol, emPert, ANGULAR_MOMENTUM_VECTOR, options);
+          }
+
+          // 4C spinor orbital angular momentum - LL only (proven and implemented)
+          // LS/SL/SS gated: require kernel mappings not yet verified in derivations
+          // Ref: derivations.tex lines 1180-1210 (Orbital operator forms)
+          L_pauli = std::make_shared<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>>();
+          L_pauli->reserve(3);
+          
+          // Extract spatial L components (LL = r × p in AO basis)
+          auto Lx_spatial = (*angmom)["X"]->matrix();
+          auto Ly_spatial = (*angmom)["Y"]->matrix();
+          auto Lz_spatial = (*angmom)["Z"]->matrix();
+          
+          const std::array<cqmatrix::Matrix<IntsT>*, 3> L_components = {
+            &Lx_spatial, &Ly_spatial, &Lz_spatial
+          };
+          
+          for (size_t i = 0; i < 3; ++i) {
+            cqmatrix::PauliSpinorMatrices<IntsT> P(NB, true, true);
+            
+            // S() component = LL (orbital angular momentum, proven)
+            P.S() = *L_components[i];
+            
+            // X/Y/Z() components = LS/SL/SS (small-small kinetic parts)
+            // These require unproven kernel mappings - gate with error in computeSpinAndAngularProperties
+            // For now: leave as zeros (will warn user when computing properties)
+            
+            L_pauli->emplace_back(std::move(P));
+          }
+        } else {
+          // Non-relativistic: standard spatial angular momentum vector
+          angmom = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+          angmom->computeAOInts(basis, mol, emPert, ANGULAR_MOMENTUM_VECTOR, options);
+          if( savFile.exists() ) {
+            for(auto i = 0; i < 3; i++)
+              savFile.safeWriteData(prefix + "L_" + dipoleList[i], (*angmom)[i]->pointer(), {NB,NB} );
+          }
+        }
+        break;
+
+      case ANGULAR_MOMENTUM_SQUARED:
+        L2 = std::make_shared<OnePInts<IntsT>>(NB);
+        L2->computeAOInts(basis, mol, emPert, ANGULAR_MOMENTUM_SQUARED, options);
+        if( savFile.exists() )
+          savFile.safeWriteData(prefix + "L2", L2->pointer(), {NB,NB});
+        break;
+
+      case SPIN_DOT_ANGULAR:
+        SL = std::make_shared<OnePInts<IntsT>>(NB);
+        SL->computeAOInts(basis, mol, emPert, SPIN_DOT_ANGULAR, options);
+        if( savFile.exists() )
+          savFile.safeWriteData(prefix + "S_DOT_L", SL->pointer(), {NB,NB});
+        break;
+
+      case TOTAL_ANGULAR_MOMENTUM_VECTOR:
+        // Ensure components exist
+        if(angmom == nullptr) {
+          angmom = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+          angmom->computeAOInts(basis, mol, emPert, ANGULAR_MOMENTUM_VECTOR, options);
+        }
+        if(spin == nullptr) {
+          spin = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+          spin->computeAOInts(basis, mol, emPert, SPIN_VECTOR, options);
+        }
+        J = std::make_shared<VectorInts<IntsT>>(NB, 1, false);
+        for(size_t i = 0; i < 3; i++){
+          *(*J)[i] = (*angmom)[i]->matrix();
+          (*J)[i]->matrix() += (*spin)[i]->matrix();
+        }
+          // Also construct Pauli-spinor form of J: S component = L, Pauli components = spin spatial matrices
+          J_pauli = std::make_shared<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>>();
+          J_pauli->reserve(3);
+          // Build Pauli form for J: S = L, matching Pauli component = overlap.
+          // spinGather() applies the 1/2 factor internally when assembling the spinor operator.
+          for (size_t i = 0; i < 3; ++i) {
+            cqmatrix::PauliSpinorMatrices<IntsT> P(NB, true, true);
+            // S component = orbital angular momentum (L_i)
+            P.S() = (*angmom)[i]->matrix();
+            // Use raw overlap for the Pauli spin component.
+            if (overlap) {
+              auto ov = overlap->matrix();
+              if (i == 0) P.X() = ov;
+              if (i == 1) P.Y() = ov;
+              if (i == 2) P.Z() = ov;
+            }
+            J_pauli->emplace_back(std::move(P));
+          }
+        if( savFile.exists() ) {
+          for(auto i = 0; i < 3; i++)
+            savFile.safeWriteData(prefix + "J_" + dipoleList[i], (*J)[i]->pointer(), {NB,NB} );
+        }
+        break;
+
+      case TOTAL_ANGULAR_MOMENTUM_SQUARED:
+        // J^2 = L^2 + S^2 + 2 S·L ; for one-electron spin-1/2, S^2 = 3/4 * I
+        if(L2 == nullptr) {
+          L2 = std::make_shared<OnePInts<IntsT>>(NB);
+          L2->computeAOInts(basis, mol, emPert, ANGULAR_MOMENTUM_SQUARED, options);
+        }
+        if(SL == nullptr) {
+          SL = std::make_shared<OnePInts<IntsT>>(NB);
+          SL->computeAOInts(basis, mol, emPert, SPIN_DOT_ANGULAR, options);
+        }
+        if(overlap == nullptr) {
+          overlap = std::make_shared<OnePInts<IntsT>>(NB);
+          overlap->computeAOInts(basis, mol, emPert, OVERLAP, options);
+        }
+        J2 = std::make_shared<OnePInts<IntsT>>(NB);
+        // Copy L2 into J2
+        J2->matrix() = L2->matrix();
+        // Add S^2 = 3/4 * overlap
+        {
+          auto tmp = overlap->matrix();
+          tmp *= static_cast<IntsT>(3.0/4.0);
+          J2->matrix() += tmp;
+        }
+        // Add 2 * S·L
+        {
+          auto tmp2 = SL->matrix();
+          tmp2 *= static_cast<IntsT>(2.0);
+          J2->matrix() += tmp2;
+        }
+        if( savFile.exists() )
+          savFile.safeWriteData(prefix + "J2", J2->pointer(), {NB,NB});
+        break;
+
       // Calculate additional integrals, if using GIAO + X2C
       case MAGNETIC_4COMP_rVr:
         if (options.x2cType==X2C_TYPE::ONEE and options.basisType==ChronusQ::COMPLEX_GIAO) {

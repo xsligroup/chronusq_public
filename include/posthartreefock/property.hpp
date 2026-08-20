@@ -69,6 +69,9 @@ namespace ChronusQ {
 
   }; // PostHartreeFock::populationAnalysis
 
+
+
+
  /*
   * \brief Store the AO representation of the PDM in bin
   *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
@@ -118,47 +121,46 @@ namespace ChronusQ {
 
   */
   template <typename MatsT, typename IntsT>
-  std::vector<cqmatrix::Matrix<MatsT>> PostHartreeFock<MatsT,IntsT>::spinOverlap() {
+  void PostHartreeFock<MatsT,IntsT>::populateSpinOverlap() {
 
     size_t nC = ref_->nC;
     size_t NBasis = ref_->nAlphaOrbital();
     size_t nCorrO = this->corrSpace.nCorrO;
     size_t nInact = this->corrSpace.nInact;
 
-    std::vector<cqmatrix::Matrix<MatsT>> spin_overlap;
-
-    cqmatrix::Matrix<MatsT> S = ref_->aoints_->overlap->matrix();
-    cqmatrix::Matrix<MatsT> CMOa(NBasis, nCorrO);
-    cqmatrix::Matrix<MatsT> CMOb(NBasis, nCorrO);
-    cqmatrix::Matrix<MatsT> scratch(nCorrO, NBasis);
-   
-    if(nC == 1) {
-      SetMat('N', NBasis, NBasis, MatsT(1.0), ref_->moCoefficients[0].get().pointer()+NBasis*nInact, NBasis, CMOa.pointer(), NBasis);
-      SetMat('N', NBasis, NBasis, MatsT(1.0), ref_->moCoefficients[1].get().pointer()+NBasis*nInact, NBasis, CMOb.pointer(), NBasis);
-    }
-
-    else if(nC == 2) {
-      SetMat('N', NBasis*nC, NBasis*nC, MatsT(1.0), ref_->moCoefficients[0].get().pointer()+NBasis*nC*nInact, NBasis*nC, CMOa.pointer(), NBasis);
-      SetMat('N', NBasis*nC, NBasis*nC, MatsT(1.0), ref_->moCoefficients[0].get().pointer()+NBasis*nC*nInact+NBasis, NBasis*nC, CMOb.pointer(), NBasis);
-    }
-
-    else {
-      CErr("4-Component spin expectation values NYI - Instance 1");
-    }
-
     if (nC == 1 || nC == 2) {
-      spin_overlap = std::vector<cqmatrix::Matrix<MatsT>>(4, cqmatrix::Matrix<MatsT>(nCorrO));
-
+      cqmatrix::Matrix<MatsT> CMOa(NBasis, nCorrO);
+      cqmatrix::Matrix<MatsT> CMOb(NBasis, nCorrO);
+      cqmatrix::Matrix<MatsT> scratch(nCorrO, NBasis);
+      if(nC == 1) {
+        for (auto i = 0; i < NBasis; i++) {
+          for (auto j = 0; j < nCorrO; j++) {
+            CMOa(i,j) = (ref_->moCoefficients[0].get())(i,j+nInact);
+            CMOb(i,j) = (ref_->moCoefficients[1].get())(i,j+nInact);
+          }
+        }
+      } else if(nC == 2) {
+        for (auto i = 0; i < NBasis; i++) {
+          for (auto j = 0; j < nCorrO; j++) {
+            CMOa(i,j) = (ref_->moCoefficients[0].get())(i,j+nInact);
+            CMOb(i,j) = (ref_->moCoefficients[0].get())(i+NBasis,j+nInact);
+          }
+        }
+      }
+      this->spin_overlap.clear();
+      this->spin_overlap.reserve(4);
+      for (auto i = 0ul; i < 4; i++) {
+        this->spin_overlap.emplace_back(std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO)); 
+      }
       // Computing aa/ab overlaps
       // Ca^\dagger * S
        blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
                  nCorrO, NBasis, NBasis, 
                  MatsT(1.0), 
                  CMOa.pointer(), NBasis, 
-                 S.pointer(), NBasis, 
+                 ref_->aoints_->overlap->matrix().pointer(), NBasis,
                  MatsT(0.0), 
                  scratch.pointer(), nCorrO);
-
       // Saa = Ca^\dagger S * Ca
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
                  nCorrO, nCorrO, NBasis, 
@@ -166,8 +168,7 @@ namespace ChronusQ {
                  scratch.pointer(), nCorrO, 
                  CMOa.pointer(), NBasis, 
                  MatsT(0.0), 
-                 spin_overlap[0].pointer(), nCorrO);
-
+                 this->spin_overlap[0]->pointer(), nCorrO);
       // Sab = Ca^\dagger S * Cb
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
                  nCorrO, nCorrO, NBasis, 
@@ -175,18 +176,16 @@ namespace ChronusQ {
                  scratch.pointer(), nCorrO, 
                  CMOb.pointer(), NBasis, 
                  MatsT(0.0), 
-                 spin_overlap[1].pointer(), nCorrO);
-
+                 this->spin_overlap[1]->pointer(), nCorrO);
       // Computing bb/ba overlaps
       // Cb^\dagger * S
       blas::gemm(blas::Layout::ColMajor, blas::Op::ConjTrans, blas::Op::NoTrans, 
                  nCorrO, NBasis, NBasis, 
                  MatsT(1.0), 
                  CMOb.pointer(), NBasis, 
-                 S.pointer(), NBasis, 
+                 ref_->aoints_->overlap->matrix().pointer(), NBasis,
                  MatsT(0.0), 
                  scratch.pointer(), nCorrO);
-
       // Sba = Cb\dagger S * Ca
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
                  nCorrO, nCorrO, NBasis, 
@@ -194,8 +193,7 @@ namespace ChronusQ {
                  scratch.pointer(), nCorrO, 
                  CMOa.pointer(), NBasis, 
                  MatsT(0.0), 
-                 spin_overlap[2].pointer(), nCorrO);
-
+                 this->spin_overlap[2]->pointer(), nCorrO);
       // Sbb = Cb\dagger S * Cb
       blas::gemm(blas::Layout::ColMajor, blas::Op::NoTrans, blas::Op::NoTrans, 
                  nCorrO, nCorrO, NBasis, 
@@ -203,108 +201,57 @@ namespace ChronusQ {
                  scratch.pointer(), nCorrO, 
                  CMOb.pointer(), NBasis, 
                  MatsT(0.0), 
-                 spin_overlap[3].pointer(), nCorrO);
-    }
-
-    else {
+                 this->spin_overlap[3]->pointer(), nCorrO);
+    } else {
       CErr("4-Component spin expectation values NYI - Instance 2");
     }
-
-    return spin_overlap;
 
   };
 
 
-
   /*
-  * \brief Spin analysis for each state
+  * \brief Spin and angular analysis for each state
   *         1. Transform 1RDM back to AO basis, copy to SS->onePDM
-  *         2. SingleSlater->populationAnalysis()
+  *         2. Compute spin/angular properties with 2RDM and print
   *
   */
   template <typename MatsT, typename IntsT>
-  void PostHartreeFock<MatsT,IntsT>::spinAnalysis(size_t i, std::vector<cqmatrix::Matrix<MatsT>>* spin_overlap) {
-
-    MatsT ssq;
-    MatsT sz = MatsT(0.0);
-    MatsT ssq0 = MatsT(0.0);
-    MatsT ssqx = MatsT(0.0);
-    MatsT ssqy = MatsT(0.0);
-    MatsT ssqz = MatsT(0.0);
+  void PostHartreeFock<MatsT,IntsT>::spinAndAngularAnalysis(size_t i) {
     size_t nCorrO = this->corrSpace.nCorrO;   
-    std::shared_ptr<InCore4indexTPI<MatsT>> twoRDMSOI = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
+    size_t nCoreO = this->corrSpace.nFCore + this->corrSpace.nInact;
+    auto tempOneRDM = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
+    std::shared_ptr<InCore4indexTPI<MatsT>> twoRDM = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
 
-    twoRDMSOI->clear(); 
+    twoRDM->clear(); 
+    // make a different 2rdm object later
     
-    std::cout << std::endl << "Spin Analysis for State " << i+1 << ": " << std::endl;
+    std::cout << std::endl << "Spin and Angular Analysis for State " << i+1 << ": " << std::endl;
 
-    ConfigurationInteraction<MatsT,IntsT>* ci = dynamic_cast<ConfigurationInteraction<MatsT,IntsT>*>(this);
-    if (ci == nullptr) {
-      CErr("Dyanmic cast from PostHartreeFock to ConfigurationInteraction failed.");
-    }
+    computeTDM(i, i, tempOneRDM);
+    // tempOneRDM->output(std::cout, "1RDM in MO basis for state " + std::to_string(i+1), true);
+    rdm2pdm(*tempOneRDM);
+    
+    twoRDM = computeFull2RDM(i); // Compute 2RDM for the selected state in MO basis
+    // twoRDM->output(std::cout, "2RDM in MO basis for state " + std::to_string(i+1), true);
+    //print out the active space
+    
+    const size_t activeEndOff = this->corrSpace.nNegMO + this->corrSpace.nFCore
+      + this->corrSpace.nInact + this->corrSpace.nCorrO;
+    // std::cout << "Active space end offset: " << activeEndOff << std::endl;
 
-    ci->compute2TDM(i, i, twoRDMSOI);
+    // Transform the selected state 1RDM back to AO space bc computeSpinAndAngularProperties expects AO basis
+    ref_->computeSpinAndAngularProperties(twoRDM.get(), activeEndOff); 
+    ref_->printSpin(std::cout, false);
+    ref_->printAngularProperties(std::cout, false);
 
-    #pragma omp declare reduction (+ : std::complex<double> : omp_out += omp_in) initializer(omp_priv = std::complex<double>(0, 0))
-    #pragma omp parallel for collapse(4) schedule(static) default(shared) reduction(+:ssq0, sz, ssqx, ssqy, ssqz)
-    for (auto p = 0ul; p < nCorrO; p++) {
-      for (auto q = 0ul; q < nCorrO; q++) {
-        for (auto r = 0ul; r < nCorrO; r++) {
-          for (auto s = 0ul; s < nCorrO; s++) {
-          
-            MatsT actual2RDM;
-
-            if (r == 0 and s == 0) {
-              // sum_k <S_k^2> = (3/4) sum_pq ( gamma_pq (Saa+Sbb)_pq )
-              ssq0 += (*this->oneRDM[i])(p,q) * (((*spin_overlap)[0])(p,q) + ((*spin_overlap)[3])(p,q));
-   
-              // <Sz> = (1/2) sum_pq ( gamma_pq (Saa-Sbb)_pq )
-              sz += (*this->oneRDM[i])(p,q) * (((*spin_overlap)[0])(p,q) - ((*spin_overlap)[3])(p,q));
-            }
-
-            if (q == r) {
-              actual2RDM = (*twoRDMSOI)(p,q,r,s) - (*this->oneRDM[i])(p,s);
-            }
-
-            else {
-              actual2RDM = (*twoRDMSOI)(p,q,r,s);
-            }
-
-            // <S_k(1)S_k(2)> = sgn(k) (1/4) sum_pqrs ( Gamma_pqrs S_pq S_rs )
-            ssqx += (((*spin_overlap)[1])(p,q) + ((*spin_overlap)[2])(p,q)) * actual2RDM * (((*spin_overlap)[1])(r,s) + ((*spin_overlap)[2])(r,s));
-            ssqy += (((*spin_overlap)[1])(p,q) - ((*spin_overlap)[2])(p,q)) * actual2RDM * (((*spin_overlap)[1])(r,s) - ((*spin_overlap)[2])(r,s));
-            ssqz += (((*spin_overlap)[0])(p,q) - ((*spin_overlap)[3])(p,q)) * actual2RDM * (((*spin_overlap)[0])(r,s) - ((*spin_overlap)[3])(r,s));
-
-          }
-        }
-      }
-    }
-
-    ssq = MatsT(0.25)*ssqx + MatsT(0.25)*ssqz - MatsT(0.25)*ssqy + MatsT(0.75)*ssq0;
-
-    std::cout << "<Sz> : " << MatsT(0.5)*sz << std::endl;
-    std::cout << "<S^2> : " << ssq << std::endl << std::endl; 
-
-    // for debugging
-    #if 0 
-    std::cout << "State : " << i+1 << "   Sx^2 : " << MatsT(0.25)*ssqx << std::endl;
-    std::cout << "State : " << i+1 << "   Sy^2 : " << MatsT(-0.25)*ssqy << std::endl;
-    std::cout << "State : " << i+1 << "   Sz^2 : " << MatsT(0.25)*ssqz << std::endl;
-    std::cout << "State : " << i+1 << "   S0^2 : " << MatsT(0.75)*ssq0 << std::endl;
-    #endif
-
-
-
-  }; // PostHartreeFock::spinAnalysis
+  }; // PostHartreeFock::spinAndAngularAnalysis
 
   template <typename MatsT, typename IntsT>
-  void PostHartreeFock<MatsT,IntsT>::spinAnalysis() {
-
-    spin_overlap = spinOverlap();
+  void PostHartreeFock<MatsT,IntsT>::spinAndAngularAnalysis() {
 
     for (auto i = 0ul; i < this->NStates; i++) {
 
-      PostHartreeFock::spinAnalysis(i, &spin_overlap);
+      PostHartreeFock::spinAndAngularAnalysis(i);
 
     }
 

@@ -33,6 +33,16 @@ TEST( GHF, KCaKr_sto3G ) {
 
 };
 
+// KCaKr sto-3g spin and angular momentum property test
+TEST( GHF, KCaKr_sto3G_SpinAngular ) {
+
+  CQSCFTEST( "scf/serial/ghf/KCaKr_sto-3G", "KCaKr_sto-3G.bin.ref", 2e-8,
+      true, true, true, true, true, true,
+      false, "KCaKr_sto-3G.fchk", false,
+      true, true, true, true, true );
+
+};
+
 // B sto-3g test for MO swapping
 TEST( GHF, B_swap_GHF_sto3G ) {
 

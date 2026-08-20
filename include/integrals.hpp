@@ -35,6 +35,18 @@
 #include <particleintegrals/twopints/distributedritpi.hpp>
 namespace ChronusQ {
 
+  // Build 4C spin-vector operators using available libcint kernels.
+  // Returns x/y/z operator components in Pauli matrix form.
+  std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>
+  build4CSpinVectorOperator(const BasisSet& basis, const Molecule& mol,
+                            const HamiltonianOptions& options);
+
+  void build4CSpinVectorOperatorsFull(const BasisSet& basis,
+      const Molecule& mol, const HamiltonianOptions& options,
+      std::vector<cqmatrix::Matrix<dcomplex>>& total,
+      std::vector<cqmatrix::Matrix<dcomplex>>& llOnly,
+      std::vector<cqmatrix::Matrix<dcomplex>>& ssOnly);
+
   enum TPI_TRANSFORMATION_ALG {
       INCORE_N6 = 0, // hack thru ss.formfock
       DIRECT_N6 = 1, // hack thru ss.formfock
@@ -177,6 +189,20 @@ namespace ChronusQ {
     std::shared_ptr<MultipoleInts<IntsT>> lenElectric = nullptr;
     std::shared_ptr<MultipoleInts<IntsT>> velElectric = nullptr;
     std::shared_ptr<MultipoleInts<IntsT>> magnetic = nullptr;
+    // Angular-momentum / spin integrals
+    std::shared_ptr<VectorInts<IntsT>> spin = nullptr;   ///< Electron spin vector (Sx,Sy,Sz)
+    std::shared_ptr<VectorInts<IntsT>> angmom = nullptr;  ///< Orbital angular momentum vector (Lx,Ly,Lz)
+    std::shared_ptr<VectorInts<IntsT>> J = nullptr;      ///< Total angular momentum vector (Jx,Jy,Jz)
+    // Pauli-spinor representation of one-electron operators (S, X, Y, Z components)
+    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>> J_pauli = nullptr; ///< Total angular momentum in Pauli form
+    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>> S_pauli = nullptr; ///< Spin angular momentum in Pauli form (4C)
+    std::shared_ptr<std::vector<cqmatrix::PauliSpinorMatrices<IntsT>>> L_pauli = nullptr; ///< Orbital angular momentum in Pauli form (4C)
+    std::shared_ptr<std::vector<cqmatrix::Matrix<dcomplex>>> S_4C = nullptr; ///< Full 4C spin operators (x,y,z)
+    std::shared_ptr<std::vector<cqmatrix::Matrix<dcomplex>>> S_4C_LL = nullptr; ///< Full 4C LL-only spin operators (x,y,z)
+    std::shared_ptr<std::vector<cqmatrix::Matrix<dcomplex>>> S_4C_SS = nullptr; ///< Full 4C SS-only spin operators (x,y,z)
+    std::shared_ptr<OnePInts<IntsT>> L2 = nullptr;       ///< L^2 scalar
+    std::shared_ptr<OnePInts<IntsT>> SL = nullptr;       ///< S·L scalar
+    std::shared_ptr<OnePInts<IntsT>> J2 = nullptr;       ///< J^2 scalar
     
     std::shared_ptr<VectorInts<IntsT>> breitpauli_onee = nullptr;
 

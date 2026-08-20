@@ -33,6 +33,15 @@ TEST( RHF, Water_631Gd ) {
  
 };
 
+// Water 6-31G(d) spin and angular momentum property test
+TEST( RHF, Water_631Gd_SpinAngular ) {
+
+  CQSCFTEST( "scf/serial/rhf/water_6-31Gd", "water_6-31Gd.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true,
+      true, true, true, true, true );
+
+};
+
 // NeHe sto-3g (specifying atoms by atomic number) test
 TEST( RHF, NeHe_RHF_STO3G_ATNUM ) {
 

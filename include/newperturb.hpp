@@ -153,6 +153,8 @@ namespace ChronusQ {
       override {};
     void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>) 
       override {};
+    void compute2RDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>) 
+      override {};
 
     // Memory functions
     void alloc();

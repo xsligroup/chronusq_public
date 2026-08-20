@@ -136,7 +136,14 @@ inline void CQDASSCFTEST( std::string in, std::string ref,
   bool checkQuadLen = false,
   bool checkDipLen  = false,
   bool checkOsc     = false,
-  bool checkEne     = true ) {
+  bool checkEne     = true,
+  bool checkSEXP    = false,
+  bool checkSSq     = false,
+  bool checkLExp    = false,
+  bool checkLSq     = false,
+  bool checkSL      = false,
+  bool checkJExp    = false,
+  bool checkJSq     = false ) {
 
   if( !readBin and scr=="" ) CQNORMALDASSCF(in,ref);
   else if( readBin and scr=="" ) CQBINDASSCF(in,ref);
@@ -244,28 +251,98 @@ inline void CQDASSCFTEST( std::string in, std::string ref,
   }
 
 //  /* Check Spin */
-//
-//  if( checkSEXP ) {
-//
-//    std::cout << " * PERFORMING SCF <S> CHECK " << std::endl;
-//
-//    refFile.readData("SCF/S_EXPECT",&xDummy3[0]);
-//    resFile.readData("SCF/S_EXPECT",&yDummy3[0]);
-//    for(auto i = 0; i < 3; i++)
-//      EXPECT_NEAR(yDummy3[i], xDummy3[i], tol ) << 
-//        "<S> TEST FAILED IXYZ = " << i; 
-//
-//  }
-//  
-//  if( checkSSq ) {
-//
-//    std::cout << " * PERFORMING SCF <S^2> CHECK " << std::endl;
-//
-//    refFile.readData("SCF/S_SQUARED",&xDummy);
-//    resFile.readData("SCF/S_SQUARED",&yDummy);
-//    EXPECT_NEAR(yDummy,  xDummy, tol) << "<S^2> TEST FAILED " ;
-//
-//  }
+
+  if( checkSEXP ) {
+
+    std::cout << " * PERFORMING POSTHF <S> CHECK " << std::endl;
+
+    std::vector<std::array<double,3>> xSExpect(xNS), ySExpect(yNS);
+    refFile.readData("POSTHF/S_EXPECT", &xSExpect[0][0]);
+    resFile.readData("POSTHF/S_EXPECT", &ySExpect[0][0]);
+    for(size_t iState = 0; iState < xNS; iState++)
+      for(auto i = 0; i < 3; i++)
+        EXPECT_NEAR(ySExpect[iState][i], xSExpect[iState][i], tol )
+          << "<S> TEST FAILED STATE = " << iState << " IXYZ = " << i;
+
+  }
+
+  if( checkSSq ) {
+
+    std::cout << " * PERFORMING POSTHF <S^2> CHECK " << std::endl;
+
+    std::vector<double> xSSq(xNS), ySSq(yNS);
+    refFile.readData("POSTHF/S_SQUARED", xSSq.data());
+    resFile.readData("POSTHF/S_SQUARED", ySSq.data());
+    for(size_t iState = 0; iState < xNS; iState++)
+      EXPECT_NEAR(ySSq[iState], xSSq[iState], tol) << "<S^2> TEST FAILED STATE = " << iState;
+
+  }
+
+  /* Check Angular Momentum */
+
+  if( checkLExp ) {
+
+    std::cout << " * PERFORMING POSTHF <L> CHECK " << std::endl;
+
+    std::vector<std::array<double,3>> xLExpect(xNS), yLExpect(yNS);
+    refFile.readData("POSTHF/L_EXPECT", &xLExpect[0][0]);
+    resFile.readData("POSTHF/L_EXPECT", &yLExpect[0][0]);
+    for(size_t iState = 0; iState < xNS; iState++)
+      for(auto i = 0; i < 3; i++)
+        EXPECT_NEAR(yLExpect[iState][i], xLExpect[iState][i], tol )
+          << "<L> TEST FAILED STATE = " << iState << " IXYZ = " << i;
+
+  }
+
+  if( checkLSq ) {
+
+    std::cout << " * PERFORMING POSTHF <L^2> CHECK " << std::endl;
+
+    std::vector<double> xLSq(xNS), yLSq(yNS);
+    refFile.readData("POSTHF/L_SQUARED", xLSq.data());
+    resFile.readData("POSTHF/L_SQUARED", yLSq.data());
+    for(size_t iState = 0; iState < xNS; iState++)
+      EXPECT_NEAR(yLSq[iState], xLSq[iState], tol) << "<L^2> TEST FAILED STATE = " << iState;
+
+  }
+
+  if( checkSL ) {
+
+    std::cout << " * PERFORMING POSTHF <SL> CHECK " << std::endl;
+
+    std::vector<double> xSL(xNS), ySL(yNS);
+    refFile.readData("POSTHF/SL", xSL.data());
+    resFile.readData("POSTHF/SL", ySL.data());
+    for(size_t iState = 0; iState < xNS; iState++)
+      EXPECT_NEAR(ySL[iState], xSL[iState], tol) << "<S.L> TEST FAILED STATE = " << iState;
+
+  }
+
+  if( checkJExp ) {
+
+    std::cout << " * PERFORMING POSTHF <J> CHECK " << std::endl;
+
+    std::vector<std::array<double,3>> xJExpect(xNS), yJExpect(yNS);
+    refFile.readData("POSTHF/J_EXPECT", &xJExpect[0][0]);
+    resFile.readData("POSTHF/J_EXPECT", &yJExpect[0][0]);
+    for(size_t iState = 0; iState < xNS; iState++)
+      for(auto i = 0; i < 3; i++)
+        EXPECT_NEAR(yJExpect[iState][i], xJExpect[iState][i], tol )
+          << "<J> TEST FAILED STATE = " << iState << " IXYZ = " << i;
+
+  }
+
+  if( checkJSq ) {
+
+    std::cout << " * PERFORMING POSTHF <J^2> CHECK " << std::endl;
+
+    std::vector<double> xJSq(xNS), yJSq(yNS);
+    refFile.readData("POSTHF/J_SQUARED", xJSq.data());
+    resFile.readData("POSTHF/J_SQUARED", yJSq.data());
+    for(size_t iState = 0; iState < xNS; iState++)
+      EXPECT_NEAR(yJSq[iState], xJSq[iState], tol) << "<J^2> TEST FAILED STATE = " << iState;
+
+  }
 
 #endif
 

@@ -34,6 +34,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Core>
+#include <iomanip>
 
 #include <integrals/impl.hpp>
 #include <libcint.hpp>
@@ -665,6 +666,92 @@ namespace ChronusQ {
 
   }; // OnePInts::OnePDriverLibcint
 
+  // Evaluate Cartesian components of (r x p) using Libcint.
+  // Returned components follow the same real-valued convention used by computeAngularL.
+  static void OnePDriverLibcintAngularL(const Molecule &molecule_,
+      const BasisSet &originalBasisSet, const HamiltonianOptions &options,
+      std::vector<double*> mats, size_t NB) {
+
+    if (mats.size() != 3)
+      CErr("OnePDriverLibcintAngularL requires 3 output matrices.");
+
+    if (originalBasisSet.forceCart)
+      CErr("Libcint + cartesian GTO NYI.");
+
+    BasisSet basisSet_ = originalBasisSet.groupGeneralContractionBasis();
+
+    size_t buffSize = std::max_element(basisSet_.shells.begin(),
+                                       basisSet_.shells.end(),
+                                       [](libint2::Shell &a, libint2::Shell &b) {
+                                         return a.size() < b.size();
+                                       })->size();
+    buffSize *= buffSize * 3;
+
+    int nAtoms = molecule_.nAtoms;
+    int nShells = basisSet_.nShell;
+
+    int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+    int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+    double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(molecule_));
+
+    basisSet_.setLibcintEnv(molecule_, atm, bas, env, options.finiteWidthNuc);
+
+    int nthreads = GetNumThreads();
+    double *buffAll = CQMemManager::get().template malloc<double>(buffSize*nthreads);
+
+    std::vector<
+      Eigen::Map<
+        Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>
+      >
+    > matMaps;
+    for (auto i = 0; i < mats.size(); i++) {
+      std::fill_n(mats[i], NB*NB, 0.0);
+      matMaps.emplace_back(mats[i], NB, NB);
+    }
+
+    #pragma omp parallel
+    {
+      int thread_id = GetThreadID();
+      size_t n1,n2;
+      int shls[2];
+      double *buff = buffAll + buffSize * thread_id;
+
+      for (size_t s1(0), bf1_s(0), s12(0); s1 < basisSet_.nShell; bf1_s += n1, s1++) {
+        n1 = basisSet_.shells[s1].size();
+        for (size_t s2(0), bf2_s(0); s2 <= s1; bf2_s += n2, s2++, s12++) {
+          n2 = basisSet_.shells[s2].size();
+
+          #ifdef _OPENMP
+          if (s12 % nthreads != thread_id) continue;
+          #endif
+
+          shls[0] = int(s2);
+          shls[1] = int(s1);
+
+          if (cint1e_cg_irxp_sph(buff, shls, atm, nAtoms, bas, nShells, env) == 0)
+            continue;
+
+          for (size_t iXYZ = 0; iXYZ < 3; iXYZ++) {
+            Eigen::Map<
+              const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>
+            > bufMat(buff + iXYZ*n1*n2, n1, n2);
+            matMaps[iXYZ].block(bf1_s,bf2_s,n1,n2) = bufMat;
+          }
+        }
+      }
+    }
+
+    CQMemManager::get().free(buffAll, env, bas, atm);
+
+    for (auto iXYZ = 0; iXYZ < 3; iXYZ++) {
+      for (auto i = 0ul; i < NB; i++) {
+        matMaps[iXYZ](i,i) = 0.0;
+        for (auto j = i + 1; j < NB; j++)
+          matMaps[iXYZ](i,j) = -matMaps[iXYZ](j,i);
+      }
+    }
+  }
+
 
   /**
    *  \brief Computes relativistic nuclear potential integrals,
@@ -945,11 +1032,21 @@ namespace ChronusQ {
 
 
     if (options.Libcint) {
+      bool useLocalAngularImpl = false;
       switch (op) {
       case OVERLAP:
       case KINETIC:
       case NUCLEAR_POTENTIAL:
         OnePDriverLibcint(op, mol, basis, options);
+        return;
+      case SPIN_DOT_ANGULAR:
+      case SPIN_VECTOR:
+        // These operators are currently evaluated by local/libint-based routines.
+        useLocalAngularImpl = true;
+        break;
+      case ANGULAR_MOMENTUM_SQUARED:
+      case TOTAL_ANGULAR_MOMENTUM_SQUARED:
+        CErr("Squared angular one-electron operators are deprecated; use non-squared operators and expectation-value contractions.", std::cout);
         break;
       case ELECTRON_REPULSION:
         CErr("Electron repulsion integrals are not implemented in OnePInts,"
@@ -965,7 +1062,7 @@ namespace ChronusQ {
         CErr("Requested operator is not implemented in OneEInts.");
         break;
       }
-      return;
+      if (!useLocalAngularImpl) return;
     }
 
     std::vector<double*> tmp(1, pointer());
@@ -999,6 +1096,70 @@ namespace ChronusQ {
       CErr("Electron repulsion integrals are not implemented in OnePInts,"
            " they are implemented in TwoEInts",std::cout);
       break;
+    case ANGULAR_MOMENTUM_SQUARED:
+      CErr("ANGULAR_MOMENTUM_SQUARED AO integral build disabled: use non-squared operators and expectation-value contractions.", std::cout);
+      break;
+    case SPIN_DOT_ANGULAR: {
+      // Build S·L properly: SL = Sx*Lx + Sy*Ly + Sz*Lz
+      // Spatial S components = overlap * 1/2
+      size_t NB = this->nBasis();
+      double *Lx = nullptr; double *Ly = nullptr; double *Lz = nullptr;
+      double *Sx = nullptr; double *Sy = nullptr; double *Sz = nullptr;
+      try {
+        Lx = CQMemManager::get().malloc<double>(NB*NB);
+        Ly = CQMemManager::get().malloc<double>(NB*NB);
+        Lz = CQMemManager::get().malloc<double>(NB*NB);
+        Sx = CQMemManager::get().malloc<double>(NB*NB);
+        Sy = CQMemManager::get().malloc<double>(NB*NB);
+        Sz = CQMemManager::get().malloc<double>(NB*NB);
+      } catch(...) { CErr("Insufficient memory for SPIN_DOT_ANGULAR temporary", std::cout); }
+
+      std::vector<double*> tmpL = {Lx,Ly,Lz};
+      if (options.Libcint)
+        OnePDriverLibcintAngularL(mol, basis, options, tmpL, NB);
+      else
+        OnePInts<double>::OnePDriverLocal<3,false>(
+            std::bind(&RealGTOIntEngine::computeAngularL,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3), basis.shells, tmpL);
+
+      std::vector<double*> tmpS = {Sx,Sy,Sz};
+      // Use the libint-based computeSL implementation to build S·L components
+      // Pass an empty nuclear shell vector (non-finite-width case)
+      std::vector<libint2::Shell> empty_chargeDist;
+      OnePInts<double>::OnePDriverLocal<3,false>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, libint2::Shell& sh2){
+            return RealGTOIntEngine::computeSL(empty_chargeDist, pair, sh1, sh2, mol);
+          }, basis.shells, tmpS);
+
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> LxM(Lx,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> LyM(Ly,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> LzM(Lz,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SxM(Sx,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SyM(Sy,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SzM(Sz,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> outM(pointer(),NB,NB);
+
+      // Sum libint-computed SL components into the scalar S·L AO matrix
+      outM = SxM + SyM + SzM;
+
+      CQMemManager::get().free(Lx,Ly,Lz,Sx,Sy,Sz);
+    }
+      break;
+    case SPIN_VECTOR:
+      // Spin operator acts only in spin space; spatial part is overlap scaled by 1/2
+      OnePDriverLocal<3,true>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, libint2::Shell& sh2){
+            auto ov = RealGTOIntEngine::computeOverlapS(pair, sh1, sh2);
+            std::vector<std::vector<double>> out(3);
+            out[0].resize(ov[0].size()); out[1].resize(ov[0].size()); out[2].resize(ov[0].size());
+            for(size_t i=0;i<ov[0].size();++i){ out[0][i]=ov[0][i]*0.5; out[1][i]=ov[0][i]*0.5; out[2][i]=ov[0][i]*0.5; }
+            return out;
+          }, basis.shells, tmp);
+      break;
+    case TOTAL_ANGULAR_MOMENTUM_SQUARED:
+      CErr("TOTAL_ANGULAR_MOMENTUM_SQUARED AO integral build disabled: use non-squared operators and expectation-value contractions.", std::cout);
+      break;
     case LEN_ELECTRIC_MULTIPOLE:
     case VEL_ELECTRIC_MULTIPOLE:
     case MAGNETIC_MULTIPOLE:
@@ -1017,7 +1178,10 @@ namespace ChronusQ {
       EMPerturbation&, OPERATOR op, const HamiltonianOptions &options) {
     if (options.basisType != REAL_GTO)
       CErr("Only Real GTOs are allowed in VectorInts<double>",std::cout);
-    if (options.OneEScalarRelativity or options.OneESpinOrbit)
+    if ((options.OneEScalarRelativity or options.OneESpinOrbit) and
+        op != SPIN_VECTOR and
+        op != ANGULAR_MOMENTUM_VECTOR and
+        op != TOTAL_ANGULAR_MOMENTUM_VECTOR)
       CErr("Relativistic multipole integrals are implemented in OnePRelInts",std::cout);
 
     switch (op) {
@@ -1083,6 +1247,76 @@ namespace ChronusQ {
         CErr("Requested operator is NYI in VectorInts.",std::cout);
         break;
       }
+      break;
+    case SPIN_VECTOR:
+      OnePInts<double>::OnePDriverLocal<3,false>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, libint2::Shell& sh2) {
+            auto ov = RealGTOIntEngine::computeOverlapS(pair, sh1, sh2);
+            std::vector<std::vector<double>> out(3, ov[0]);
+            for (auto &comp : out)
+              for (auto &val : comp)
+                val *= 0.5;
+            return out;
+          }, basis.shells, pointers());
+      break;
+    case ANGULAR_MOMENTUM_VECTOR:
+      if (options.Libcint) {
+        OnePDriverLibcintAngularL(mol, basis, options, pointers(), nBasis());
+      } else {
+        OnePInts<double>::OnePDriverLocal<3,false>(
+            std::bind(&RealGTOIntEngine::computeAngularL,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3),
+            basis.shells, pointers());
+      }
+      break;
+    case TOTAL_ANGULAR_MOMENTUM_VECTOR: {
+      // J = L + S where S (spatial part) = overlap * 1/2
+      // First compute L into the output pointers
+      if (options.Libcint) {
+        OnePDriverLibcintAngularL(mol, basis, options, pointers(), NB);
+      } else {
+        OnePInts<double>::OnePDriverLocal<3,false>(
+            std::bind(&RealGTOIntEngine::computeAngularL,
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3),
+            basis.shells, pointers());
+      }
+
+      // Now compute spatial S components (overlap scaled by 1/2) into temps and add
+      size_t NB = this->nBasis();
+      double *Sx = nullptr; double *Sy = nullptr; double *Sz = nullptr;
+      try {
+        Sx = CQMemManager::get().malloc<double>(NB*NB);
+        Sy = CQMemManager::get().malloc<double>(NB*NB);
+        Sz = CQMemManager::get().malloc<double>(NB*NB);
+      } catch(...) { CErr("Insufficient memory for TOTAL_ANGULAR_MOMENTUM_VECTOR temporary", std::cout); }
+
+      std::vector<double*> tmpS = {Sx,Sy,Sz};
+      OnePInts<double>::OnePDriverLocal<3,false>(
+          [&](libint2::ShellPair& pair, libint2::Shell& sh1, libint2::Shell& sh2){
+            auto ov = RealGTOIntEngine::computeOverlapS(pair, sh1, sh2);
+            std::vector<std::vector<double>> out(3);
+            out[0].resize(ov[0].size()); out[1].resize(ov[0].size()); out[2].resize(ov[0].size());
+            for(size_t i=0;i<ov[0].size();++i){ out[0][i]=ov[0][i]*0.5; out[1][i]=ov[0][i]*0.5; out[2][i]=ov[0][i]*0.5; }
+            return out;
+          }, basis.shells, tmpS);
+
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SxM(Sx,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SyM(Sy,NB,NB);
+      Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>> SzM(Sz,NB,NB);
+
+      // Add S components into existing pointers (which currently hold L)
+      for (size_t comp = 0; comp < 3; ++comp) {
+        Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor>>
+          outM(pointers()[comp], NB, NB);
+        if (comp == 0) outM += SxM;
+        if (comp == 1) outM += SyM;
+        if (comp == 2) outM += SzM;
+      }
+
+      CQMemManager::get().free(Sx,Sy,Sz);
+    }
       break;
     default:
       CErr("Requested operator is not implemented in VectorInts.");
@@ -1367,6 +1601,417 @@ namespace ChronusQ {
     }
 
   };
+
+  /**
+   *  \brief Build 4-component spinor angular momentum operators for Spin
+   *
+  *  Computes 4C spin components with LL and SS contributions only
+   *  following derivations.tex equations 1115-1173 (Spin Pauli spinor representation)
+   *
+   *  Returns vector of 3 PauliSpinorMatrices (x, y, z components)
+  *  with structure: S() = 0
+  *                  X/Y/Z() = Pauli-channel coefficients for each Cartesian
+  *                            spin component.
+  *  
+  *  Scaling: in Pauli storage, LL uses the full overlap in the matching
+  *           Pauli channel because spinGather contributes the final 1/2 block
+  *           prefactor. SS uses 1/2*(1/2mc)^2 = 1/(8 m^2 c^2).
+   *  
+   *  Ref: derivations.tex lines 1115-1173 (Spin operator simplifications)
+   */
+  std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>>
+  build4CSpinVectorOperator(const BasisSet& basis, const Molecule& mol,
+                            const HamiltonianOptions&) {
+      BasisSet basisSet_ = basis.groupGeneralContractionBasis();
+      size_t NB = basisSet_.nBasis;
+      const double fineStructureConstant = 137.035999084;
+      const double alphaInv = fineStructureConstant;
+      const double factor_1_2mc = 1.0 / (2.0 * alphaInv); // 1/(2mc) in atomic units
+      const double factor_1_8mc2 = 0.5 * factor_1_2mc * factor_1_2mc; // 1/2*(1/2mc)^2
+
+      std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>> result;
+      result.reserve(3);
+
+      // SS from int1e_spsigmasp_sph: <SIGMA·P i|SIGMA|SIGMA·P j>
+      // For each Cartesian spin component i = x,y,z, store Pauli coefficients X,Y,Z.
+      double *SS[3][3];
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p) {
+          SS[i][p] = CQMemManager::get().malloc<double>(NB*NB);
+          std::fill_n(SS[i][p], NB*NB, 0.0);
+        }
+
+      // LL component stored in Pauli form. This uses the full overlap because
+      // spinGather applies the final 1/2 factor when forming spin blocks.
+      double *LL = CQMemManager::get().malloc<double>(NB*NB);
+      std::fill_n(LL, NB*NB, 0.0);
+
+      int nAtoms = static_cast<int>(basisSet_.centers.size());
+      int nShells = static_cast<int>(basisSet_.nShell);
+
+      int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+      int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+      double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(mol));
+      basisSet_.setLibcintEnv(mol, atm, bas, env, false);
+
+      // Compute LL and SS components via libcint kernels.
+      // LL from overlap, SS from int1e_spsigmasp_sph (12-component sigma-resolved output).
+
+      // Allocate work buffers for libcint
+      size_t cache_size = 0;
+      for (int i = 0; i < nShells; i++) {
+        size_t n;
+        int shls[2]{i, i};
+        n = int1e_ovlp_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+        cache_size = std::max(cache_size, n);
+        n = int1e_spsigmasp_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+        cache_size = std::max(cache_size, n);
+      }
+
+      size_t buffSize = 12 * NB * NB;
+      int nthreads = 1;
+      #ifdef _OPENMP
+      nthreads = GetNumThreads();
+      #endif
+
+      double* buffAll = CQMemManager::get().malloc<double>(buffSize * nthreads);
+      double* cacheAll = CQMemManager::get().malloc<double>(cache_size * nthreads);
+
+      #pragma omp parallel
+      {
+        int thread_id = 0;
+        #ifdef _OPENMP
+        thread_id = GetThreadID();
+        #endif
+        
+        FINT shls[2];
+        double* buff = buffAll + buffSize * thread_id;
+        double* cache = cacheAll + cache_size * thread_id;
+
+        // Loop over unique shell pairs
+        for(size_t s1(0), bf1_s(0), s12(0); s1 < basisSet_.nShell; bf1_s += basisSet_.shells[s1].size(), s1++){
+          size_t n1 = basisSet_.shells[s1].size();
+          for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s += basisSet_.shells[s2].size(), s2++, s12++) {
+            size_t n2 = basisSet_.shells[s2].size();
+
+            // Round-robin work distribution
+            #ifdef _OPENMP
+            if(s12 % nthreads != thread_id) continue;
+            #endif
+
+            // Setup shell pair (libcint uses row-major ordering)
+            shls[0] = s2;
+            shls[1] = s1;
+
+            if (int1e_ovlp_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+              Eigen::Map<const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>> bufMat(buff, n1, n2);
+              Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::ColMajor>> LL_mat(LL, NB, NB);
+              LL_mat.block(bf1_s, bf2_s, n1, n2) = bufMat.template cast<double>();
+              LL_mat.block(bf2_s, bf1_s, n2, n1) = bufMat.transpose().template cast<double>();
+            }
+
+            // Compute int1e_spsigmasp_sph: 12 components per basis pair.
+            // Layout per pair n: [xx,xy,xz,0, yx,yy,yz,0, zx,zy,zz,0]
+            if (int1e_spsigmasp_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+              size_t n1n2 = n1 * n2;
+
+              const int mapIdx[3][3] = {
+                {0, 1, 2},
+                {4, 5, 6},
+                {8, 9, 10}
+              };
+
+              for (int iCart = 0; iCart < 3; ++iCart) {
+                for (int pCart = 0; pCart < 3; ++pCart) {
+                  const int iBuf = mapIdx[iCart][pCart];
+                  Eigen::Map<const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                    Eigen::RowMajor>> bufMat(buff + iBuf * n1n2, n1, n2);
+                  Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                    Eigen::ColMajor>> targetMat(SS[iCart][pCart], NB, NB);
+
+                  targetMat.block(bf1_s, bf2_s, n1, n2) = bufMat.template cast<double>();
+                  if (s1 != s2)
+                    targetMat.block(bf2_s, bf1_s, n2, n1) = bufMat.transpose().template cast<double>();
+                }
+              }
+            }
+          } // s2 <= s1
+        } // s1
+      } // omp parallel
+
+      CQMemManager::get().free(cacheAll, buffAll);
+
+      // Scale SS by 1/2*(1/(2mc))^2 for relativistic correction
+      // This matches S_i^SS = (1/8m^2c^2) * (sigma·p sigma_i sigma·p).
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p)
+          blas::scal(NB*NB, factor_1_8mc2, SS[i][p], 1);
+
+      // Debug dump for small systems: inspect raw 4C spin-integral blocks.
+      // This keeps output manageable while making H/STO-3G type cases transparent.
+      // if (NB <= 4) {
+      //   auto print_real_block = [&](const std::string &label, const double *ptr) {
+      //     std::cout << "\n  [4C spin integral debug] " << label << "\n";
+      //     std::cout << std::scientific << std::setprecision(12);
+      //     for (size_t r = 0; r < NB; ++r) {
+      //       std::cout << "    ";
+      //       for (size_t c = 0; c < NB; ++c)
+      //         std::cout << std::setw(20) << ptr[r + c * NB];
+      //       std::cout << '\n';
+      //     }
+      //   };
+
+      //   print_real_block("LL (overlap Pauli coefficient)", LL);
+      //   for (int i = 0; i < 3; ++i) {
+      //     for (int p = 0; p < 3; ++p) {
+      //       std::string lbl = "SS[" + std::to_string(i) + "][" + std::to_string(p) + "] (scaled)";
+      //       print_real_block(lbl, SS[i][p]);
+      //     }
+      //   }
+      //   std::cout << std::flush;
+      // }
+
+      // Assemble 3 PauliSpinorMatrices (x, y, z components)
+      // Each represents one Cartesian component of the spin operator
+      for (size_t i = 0; i < 3; ++i) {
+        cqmatrix::PauliSpinorMatrices<dcomplex> P(NB, true, true);
+
+        // Start from zero scalar component. Cartesian spin operators are carried
+        // by the matching Pauli channel (X/Y/Z), not by a common scalar part.
+        Eigen::Map<Eigen::Matrix<dcomplex, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          P_S(P.S().pointer(), NB, NB);
+        P_S.setZero();
+
+        // Pauli components for S_i. LL contributes to the matching channel,
+        // and SS contributes as a small relativistic correction.
+        Eigen::Map<Eigen::Matrix<dcomplex, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          P_X(P.X().pointer(), NB, NB);
+        Eigen::Map<Eigen::Matrix<dcomplex, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          P_Y(P.Y().pointer(), NB, NB);
+        Eigen::Map<Eigen::Matrix<dcomplex, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          P_Z(P.Z().pointer(), NB, NB);
+
+        P_X.setZero();
+        P_Y.setZero();
+        P_Z.setZero();
+
+        Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          LL_map(LL, NB, NB);
+
+        Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          SS_X_map(SS[i][0], NB, NB);
+        Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          SS_Y_map(SS[i][1], NB, NB);
+        Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>
+          SS_Z_map(SS[i][2], NB, NB);
+
+        // Keep the full sigma-channel structure from SS, and place LL only
+        // in the matching Cartesian Pauli channel (Sx->sigma_x, etc.).
+        P_X = SS_X_map.template cast<dcomplex>();
+        P_Y = SS_Y_map.template cast<dcomplex>();
+        P_Z = SS_Z_map.template cast<dcomplex>();
+
+        if (i == 0) P_X += LL_map.template cast<dcomplex>();
+        if (i == 1) P_Y += LL_map.template cast<dcomplex>();
+        if (i == 2) P_Z += LL_map.template cast<dcomplex>();
+
+        result.emplace_back(std::move(P));
+      }
+
+      // Clean up temporary storage
+      CQMemManager::get().free(LL);
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p)
+          CQMemManager::get().free(SS[i][p]);
+      CQMemManager::get().free(env, bas, atm);
+
+      return result;
+  }
+
+  void build4CSpinVectorOperatorsFull(const BasisSet& basis,
+      const Molecule& mol, const HamiltonianOptions& options,
+      std::vector<cqmatrix::Matrix<dcomplex>>& total,
+      std::vector<cqmatrix::Matrix<dcomplex>>& llOnly,
+      std::vector<cqmatrix::Matrix<dcomplex>>& ssOnly) {
+
+      (void)options;
+      const size_t nComp = 3;
+
+      total.clear();
+      llOnly.clear();
+      ssOnly.clear();
+      total.reserve(nComp);
+      llOnly.reserve(nComp);
+      ssOnly.reserve(nComp);
+
+      // Build LL/SS directly from raw kernels so the 4C block decomposition
+      // is unambiguous: LL from overlap, SS from int1e_spsigmasp_sph.
+      BasisSet basisSet_ = basis.groupGeneralContractionBasis();
+      const size_t NB = basisSet_.nBasis;
+      const double alphaInv = 137.035999084;
+      const double factor_1_2mc = 1.0 / (2.0 * alphaInv);
+      const double factor_1_8mc2 = 0.5 * factor_1_2mc * factor_1_2mc;
+
+      double *LL = CQMemManager::get().malloc<double>(NB * NB);
+      std::fill_n(LL, NB * NB, 0.0);
+
+      double *SS[3][3];
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p) {
+          SS[i][p] = CQMemManager::get().malloc<double>(NB * NB);
+          std::fill_n(SS[i][p], NB * NB, 0.0);
+        }
+
+      int nAtoms = static_cast<int>(basisSet_.centers.size());
+      int nShells = static_cast<int>(basisSet_.nShell);
+      int *atm = CQMemManager::get().template malloc<int>(nAtoms * ATM_SLOTS);
+      int *bas = CQMemManager::get().template malloc<int>(nShells * BAS_SLOTS);
+      double *env = CQMemManager::get().template malloc<double>(basisSet_.getLibcintEnvLength(mol));
+      basisSet_.setLibcintEnv(mol, atm, bas, env, false);
+
+      size_t cache_size = 0;
+      for (int i = 0; i < nShells; i++) {
+        int shls[2]{i, i};
+        size_t n = int1e_ovlp_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+        cache_size = std::max(cache_size, n);
+        n = int1e_spsigmasp_sph(nullptr, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, nullptr);
+        cache_size = std::max(cache_size, n);
+      }
+
+      size_t buffSize = 12 * NB * NB;
+      int nthreads = 1;
+      #ifdef _OPENMP
+      nthreads = GetNumThreads();
+      #endif
+
+      double* buffAll = CQMemManager::get().malloc<double>(buffSize * nthreads);
+      double* cacheAll = CQMemManager::get().malloc<double>(cache_size * nthreads);
+
+      #pragma omp parallel
+      {
+        int thread_id = 0;
+        #ifdef _OPENMP
+        thread_id = GetThreadID();
+        #endif
+
+        FINT shls[2];
+        double* buff = buffAll + buffSize * thread_id;
+        double* cache = cacheAll + cache_size * thread_id;
+
+        for(size_t s1(0), bf1_s(0), s12(0); s1 < basisSet_.nShell; bf1_s += basisSet_.shells[s1].size(), s1++){
+          size_t n1 = basisSet_.shells[s1].size();
+          for(size_t s2(0), bf2_s(0); s2 <= s1; bf2_s += basisSet_.shells[s2].size(), s2++, s12++) {
+            size_t n2 = basisSet_.shells[s2].size();
+
+            #ifdef _OPENMP
+            if(s12 % nthreads != thread_id) continue;
+            #endif
+
+            shls[0] = s2;
+            shls[1] = s1;
+
+            if (int1e_ovlp_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+              Eigen::Map<const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::RowMajor>> bufMat(buff, n1, n2);
+              Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                Eigen::ColMajor>> LL_mat(LL, NB, NB);
+
+              LL_mat.block(bf1_s, bf2_s, n1, n2) = bufMat.template cast<double>();
+              if (s1 != s2)
+                LL_mat.block(bf2_s, bf1_s, n2, n1) = bufMat.transpose().template cast<double>();
+            }
+
+            if (int1e_spsigmasp_sph(buff, nullptr, shls, atm, nAtoms, bas, nShells, env, nullptr, cache)) {
+              size_t n1n2 = n1 * n2;
+              const int mapIdx[3][3] = {
+                {0, 1, 2},
+                {4, 5, 6},
+                {8, 9, 10}
+              };
+
+              for (int iCart = 0; iCart < 3; ++iCart) {
+                for (int pCart = 0; pCart < 3; ++pCart) {
+                  const int iBuf = mapIdx[iCart][pCart];
+                  Eigen::Map<const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                    Eigen::RowMajor>> bufMat(buff + iBuf * n1n2, n1, n2);
+                  Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,
+                    Eigen::ColMajor>> targetMat(SS[iCart][pCart], NB, NB);
+
+                  targetMat.block(bf1_s, bf2_s, n1, n2) = bufMat.template cast<double>();
+                  if (s1 != s2)
+                    targetMat.block(bf2_s, bf1_s, n2, n1) = bufMat.transpose().template cast<double>();
+                }
+              }
+            }
+          }
+        }
+      }
+
+      CQMemManager::get().free(cacheAll, buffAll);
+      CQMemManager::get().free(env, bas, atm);
+
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p)
+          blas::scal(NB * NB, factor_1_8mc2, SS[i][p], 1);
+
+      for (size_t iComp = 0; iComp < nComp; ++iComp) {
+        const size_t NBp = NB;
+
+        cqmatrix::PauliSpinorMatrices<dcomplex> pll(NBp, true, true);
+        pll.S().clear();
+        pll.X().clear();
+        pll.Y().clear();
+        pll.Z().clear();
+
+        cqmatrix::PauliSpinorMatrices<dcomplex> pss(NBp, true, true);
+        pss.S().clear();
+        pss.X().clear();
+        pss.Y().clear();
+        pss.Z().clear();
+
+        cqmatrix::Matrix<dcomplex> LLc(NBp);
+        for (size_t r = 0; r < NBp; ++r)
+          for (size_t c = 0; c < NBp; ++c)
+            LLc(r, c) = dcomplex(LL[r + c * NBp], 0.0);
+
+        if (iComp == 0) pll.X() = LLc;
+        if (iComp == 1) pll.Y() = LLc;
+        if (iComp == 2) pll.Z() = LLc;
+
+        for (size_t r = 0; r < NBp; ++r)
+          for (size_t c = 0; c < NBp; ++c) {
+            pss.X()(r, c) = dcomplex(SS[iComp][0][r + c * NBp], 0.0);
+            pss.Y()(r, c) = dcomplex(SS[iComp][1][r + c * NBp], 0.0);
+            pss.Z()(r, c) = dcomplex(SS[iComp][2][r + c * NBp], 0.0);
+          }
+
+        auto llSpin = pll.template spinGather<dcomplex>();
+        auto ssSpin = pss.template spinGather<dcomplex>();
+
+        cqmatrix::Matrix<dcomplex> zeroBlock(llSpin.nRows(), llSpin.nColumns());
+        zeroBlock.clear();
+
+        cqmatrix::Matrix<dcomplex> fullLL(2 * llSpin.nRows(), 2 * llSpin.nColumns());
+        fullLL.componentGather(llSpin, zeroBlock, zeroBlock, zeroBlock, false);
+
+        cqmatrix::Matrix<dcomplex> fullSS(2 * llSpin.nRows(), 2 * llSpin.nColumns());
+        fullSS.componentGather(zeroBlock, zeroBlock, zeroBlock, ssSpin, false);
+
+        cqmatrix::Matrix<dcomplex> fullTotal(fullLL);
+        fullTotal += fullSS;
+
+        total.emplace_back(std::move(fullTotal));
+        llOnly.emplace_back(std::move(fullLL));
+        ssOnly.emplace_back(std::move(fullSS));
+      }
+
+      CQMemManager::get().free(LL);
+      for (int i = 0; i < 3; ++i)
+        for (int p = 0; p < 3; ++p)
+          CQMemManager::get().free(SS[i][p]);
+  }
 
   template<>
   void GradInts<OnePInts,double>::computeAOInts(BasisSet& basis,

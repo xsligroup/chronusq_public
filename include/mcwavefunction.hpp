@@ -162,6 +162,8 @@ namespace ChronusQ {
     void computeOverlaps(oper_t, std::vector<MatsT>&); // Calculate the overlaps of an arbitrary CI vector with the CI vectors.
     virtual void computeOneRDM(size_t);    
     virtual void computeOneRDM();
+    virtual void computeTwoRDM(size_t, InCore4indexTPI<MatsT> &);
+    std::shared_ptr<InCore4indexTPI<MatsT>> computeFull2RDM(size_t);
     virtual void computeTDMs(); // compute TDMs
     void rdm2pdm(cqmatrix::Matrix<MatsT> &, double scale = 1., bool isTDM = false);
     void rdm2pdm(size_t index, double scale = 1., bool isTDM = false);
@@ -193,8 +195,8 @@ namespace ChronusQ {
     virtual void computeMultipole(size_t);
     virtual void computeMultipole();
     virtual void formNaturalOrbs(size_t);
-    virtual void spinAnalysis(size_t);
-    virtual void spinAnalysis();
+    virtual void spinAndAngularAnalysis(size_t);
+    virtual void spinAndAngularAnalysis();
 
     // For dealing with electric fields
     void precompute_NucEField(EMPerturbation &);

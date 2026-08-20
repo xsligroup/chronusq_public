@@ -224,9 +224,9 @@ namespace ChronusQ {
       this->populationAnalysis();
     }
 
-    if (mcwfn_->printRDMs==0 && this->settings->SpinAnalysis) {
-      std::cout<<"\n\nSpin analysis in mcscf."<<std::endl;
-      this->spinAnalysis();
+    if (mcwfn_->printRDMs==0 && this->settings->SpinAndAngularAnalysis) {
+      std::cout<<"\n\nSpin and Angular analysis in mcscf."<<std::endl;
+      this->spinAndAngularAnalysis();
     }    
 
     // oscillator strength
@@ -330,9 +330,9 @@ namespace ChronusQ {
   }
 
   template <typename MatsT, typename IntsT>
-  void MCSCF<MatsT,IntsT>::spinAnalysis() 
+  void MCSCF<MatsT,IntsT>::spinAndAngularAnalysis() 
   {
-    mcwfn_->spinAnalysis();
+    mcwfn_->spinAndAngularAnalysis();
   }
 
   template <typename MatsT, typename IntsT>

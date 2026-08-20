@@ -102,6 +102,13 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO, std::string prefi
     // Save Spin
     savFile.safeWriteData(prefix + "S_EXPECT", &this->SExpect[0], {3});
     savFile.safeWriteData(prefix + "S_SQUARED", &this->SSq, {1});
+
+    // Save Angular Momentum
+    savFile.safeWriteData(prefix + "L_EXPECT", &this->LExpect[0], {3});
+    savFile.safeWriteData(prefix + "L_SQUARED", &this->LSq, {1});
+    savFile.safeWriteData(prefix + "SL", &this->SL, {1});
+    savFile.safeWriteData(prefix + "J_EXPECT", &this->JExpect[0], {3});
+    savFile.safeWriteData(prefix + "J_SQUARED", &this->JSq, {1});
   }
 
 };   // SingleSlater<MatsT>::saveCurrentState()
@@ -877,11 +884,12 @@ std::vector<std::shared_ptr<Orthogonalization<MatsT>>> SingleSlater<MatsT, IntsT
 
 template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::printProperties() {
-  printMOInfo(std::cout);
-  //if( this->nC != 4 ) this->printMultipoles(std::cout);
-  this->printMultipoles(std::cout);
-  if( this->nC != 4 ) this->printSpin(std::cout);
-  printMiscProperties(std::cout);
+  std::ostream &out = std::cout;
+  printMOInfo(out);
+  this->printMultipoles(out);
+  this->printSpin(out);
+  if( this->aoints_->options_.printAngularProperties ) this->printAngularProperties(out);
+  printMiscProperties(out);
 }
 
 /*

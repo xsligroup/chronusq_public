@@ -51,6 +51,16 @@ TEST( X2CHF, Water_6311pGdp_sph ) {
  
 };
 
+// Water 6-311+G(d,p) (Spherical) spin and angular momentum property test
+TEST( X2CHF, Water_6311pGdp_sph_SpinAngular ) {
+
+  CQSCFTEST( "scf/serial/x2c/water_6-311+Gdp_sph",
+    "water_6-311+Gdp_sph_x2c.bin.ref", 1e-6,
+      true, true, true, true, true, true, false, "no", true,
+      true, true, true, true, true);
+
+};
+
 // Water 6-311+G(d,p) (Cartesian) test
 TEST( X2CHF, Water_6311pGdp_cart ) {
 

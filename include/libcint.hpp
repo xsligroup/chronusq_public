@@ -368,6 +368,7 @@ CQ_CINT_OPT_WRAPPER(int1e_spsigmasp_optimizer);
 CQ_CINT_INT1E_WRAPPER(int1e_spsigmasp_cart);
 CQ_CINT_INT1E_WRAPPER(int1e_spsigmasp_sph);
 CQ_CINT_INT1E_WRAPPER(int1e_spsigmasp_spinor);
+CQ_INT_WRAPPER(int1e_spsigmasp_sph);
 
 /* <SIGMA DOT R i|OVLP |SIGMA DOT R j> */
 CQ_CINT_OPT_WRAPPER(int1e_srsr_optimizer);

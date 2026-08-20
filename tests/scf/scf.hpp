@@ -111,7 +111,12 @@ static void CQSCFTEST( std::string in, std::string ref,
   bool checkEne     = true,
   bool readBin      = false,
   std::string scr  = "no",
-  bool looserPropretyThreshold = false ) {
+  bool looserPropretyThreshold = false,
+  bool checkLExp    = false,
+  bool checkLSq     = false,
+  bool checkSL      = false,
+  bool checkJExp    = false,
+  bool checkJSq     = false ) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -214,6 +219,62 @@ static void CQSCFTEST( std::string in, std::string ref,
     refFile.readData("SCF/S_SQUARED",&xDummy);
     resFile.readData("SCF/S_SQUARED",&yDummy);
     EXPECT_NEAR(yDummy,  xDummy, property_tol) << "<S^2> TEST FAILED " ;
+
+  }
+
+  /* Check Angular Momentum */
+
+  if( checkLExp ) {
+
+    std::cout << " * PERFORMING SCF <L> CHECK " << std::endl;
+
+    refFile.readData("SCF/L_EXPECT",&xDummy3[0]);
+    resFile.readData("SCF/L_EXPECT",&yDummy3[0]);
+    for(auto i = 0; i < 3; i++)
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol ) <<
+        "<L> TEST FAILED IXYZ = " << i;
+
+  }
+
+  if( checkLSq ) {
+
+    std::cout << " * PERFORMING SCF <L^2> CHECK " << std::endl;
+
+    refFile.readData("SCF/L_SQUARED",&xDummy);
+    resFile.readData("SCF/L_SQUARED",&yDummy);
+    EXPECT_NEAR(yDummy,  xDummy, property_tol) << "<L^2> TEST FAILED " ;
+
+  }
+
+  if( checkSL ) {
+
+    std::cout << " * PERFORMING SCF <S.L> CHECK " << std::endl;
+
+    refFile.readData("SCF/SL",&xDummy);
+    resFile.readData("SCF/SL",&yDummy);
+    EXPECT_NEAR(yDummy,  xDummy, property_tol) << "<S.L> TEST FAILED " ;
+
+  }
+
+  if( checkJExp ) {
+
+    std::cout << " * PERFORMING SCF <J> CHECK " << std::endl;
+
+    refFile.readData("SCF/J_EXPECT",&xDummy3[0]);
+    resFile.readData("SCF/J_EXPECT",&yDummy3[0]);
+    for(auto i = 0; i < 3; i++)
+      EXPECT_NEAR(yDummy3[i], xDummy3[i], property_tol ) <<
+        "<J> TEST FAILED IXYZ = " << i;
+
+  }
+
+  if( checkJSq ) {
+
+    std::cout << " * PERFORMING SCF <J^2> CHECK " << std::endl;
+
+    refFile.readData("SCF/J_SQUARED",&xDummy);
+    resFile.readData("SCF/J_SQUARED",&yDummy);
+    EXPECT_NEAR(yDummy,  xDummy, property_tol) << "<J^2> TEST FAILED " ;
 
   }
 

@@ -20,5 +20,8 @@
 # Contact the Developers:
 #   E-Mail: xsli@uw.edu
 #
-target_sources(cq PRIVATE impl.cxx)
+target_sources(cq PRIVATE 
+    impl.cxx
+    print_angular.cxx
+)
 
