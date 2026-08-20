@@ -25,17 +25,18 @@
 #include "dasscf.hpp"
 
 
-// Al 6-31G(d) test
-TEST(X2C_DASSCF_FULLMATRIX, Al_631G ) {
+// Al 6-31G(d) tests
+TEST(X2C_DASSCF_FULLMATRIX, Al_631G_direct_n6 ) {
 
   CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasscf_full_direct_n6", "al_6-31G_x2c_dasscf.bin.ref"); //,1e-7);
+};
 
 #ifndef _CQ_GENERATE_TESTS
-  // incore n5/n6 segfault fixed in following PR
-  // CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasscf_full_incore_n5", "al_6-31G_x2c_dasscf.bin.ref");
-  // CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasscf_full_incore_n6", "al_6-31G_x2c_dasscf.bin.ref");
-#endif
+TEST(X2C_DASSCF_FULLMATRIX, Al_631G_incore_n6 ) {
+
+  CQDASSCFTEST( "dasscf/serial/cas/al_6-31G_x2c_dasscf_full_incore_n6", "al_6-31G_x2c_dasscf.bin.ref");
 };
+#endif
 
 // GIAO + DASSCF
 // TEST(X2C_DASSCF_GIAO, NO_631G ) {
@@ -131,10 +132,15 @@ TEST(DASCI_DAVIDSON, Al_631G_4c_dcb ) {
 
 // SMP Al 6-31G(d) test
 
-TEST(X2C_DASSCF_FULLMATRIX, PAR_Al_631G ) {
+TEST(X2C_DASSCF_FULLMATRIX, PAR_Al_631G_incore_n6 ) {
+
+  CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_x2c_dasscf_full_incore_n6", "al_6-31G_x2c_dasscf.bin.ref");
+
+};
+
+TEST(X2C_DASSCF_FULLMATRIX, PAR_Al_631G_direct_n6 ) {
 
   CQDASSCFTEST( "dasscf/parallel/cas/al_6-31G_x2c_dasscf_full_direct_n6", "al_6-31G_x2c_dasscf.bin.ref"); //,1e-7);
-  // incore n5/n6 segfault fixed in following PR
 
 };
 
@@ -203,4 +209,3 @@ TEST(GHF_DAS_OSC, PAR_Al_GHF_OSC_STR) {
 // #endif
 //
 // };
-

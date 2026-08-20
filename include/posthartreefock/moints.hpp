@@ -116,10 +116,13 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
 
 
   ProgramTimer::tick("MOINTSTRANSFORM TPI TRANS");
-  // MO: This is for the TPI_direct_full which is prob the goal
-  mointsTF->directTransformTPI(pert, ERI_tuvw.pointer(), "tuvw");
-  // MO: This uses the old TPI_SSFOCK same as MCSCF
-  // mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", false);
+  // With in-core AO integrals, use in-core SSFock-N6 transform (same path as the old
+  // MCSCF code)
+  if (std::dynamic_pointer_cast<InCoreTPI<IntsT>>(
+        this->reference()->aoints_->TPI))
+    mointsTF->transformTPI(pert, ERI_tuvw.pointer(), "tuvw", false);
+  else
+    mointsTF->directTransformTPI(pert, ERI_tuvw.pointer(), "tuvw");
   ProgramTimer::tock("MOINTSTRANSFORM TPI TRANS");
 
   // ERI_tuvw.output(std::cout, "TPI", true);
