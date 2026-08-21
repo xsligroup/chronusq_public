@@ -149,7 +149,7 @@ namespace ChronusQ {
           // Length Gauge electric octupole
           if(op.second >= 3)
             for(auto i = 0; i < 10; i++)
-              savFile.safeWriteData(prefix + "/ELEC_OCTUPOLE_LEN_" +
+              savFile.safeWriteData(prefix + "ELEC_OCTUPOLE_LEN_" +
                 octupoleList[i], (*lenElectric)[octupoleList[i]]->pointer(), {NB,NB} );
         }
         break;
