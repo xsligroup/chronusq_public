@@ -147,7 +147,7 @@ namespace ChronusQ {
     size_t width = 40;
     out << std::endl << "Physical Constants";
     out << ":" << std::endl << BannerTop << std::endl << std::endl;
-    out << std::left << std::setprecision(10);
+    out << std::left << std::scientific << std::setprecision(10);
     out << "  " << std::setw(width) << "Speed of Light (a.u.): "
         << std::setw(width) << SpeedOfLight() << std::endl;
     out << "  " << std::setw(width) << "Speed of Light (m/s): "
