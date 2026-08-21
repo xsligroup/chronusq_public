@@ -46,9 +46,10 @@ namespace ChronusQ {
 
     size_t nStr = exList->nString();
     size_t nNZ = exList->nNonZero();
+    bool onlyOneParticleCorrelated = mcwfn.MOPartition.nCorrE == 1;
 
     auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>(OneBodyIntsString));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString));
+    auto moERI  = mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString);
 
     // Allocate SCR
     size_t nThreads = GetNumThreads();
@@ -77,13 +78,16 @@ namespace ChronusQ {
           
           UNPACK_EXCITATIONLIST_4(exList_La, k, l, Ka, signkl);
 	      SCR_ith[Ka] += signkl * hCoreP(k, l);
-         
-          const int * exList_Ka = exList->pointerAtDet(Ka);
-	      for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_Ka+=4) {
-             
-            UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
-	        SCR_ith[Ja] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	      }
+
+        if(!onlyOneParticleCorrelated)
+        {
+            const int * exList_Ka = exList->pointerAtDet(Ka);
+          for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_Ka+=4) {
+               
+              UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
+            SCR_ith[Ja] += 0.5 * signij * signkl * (*moERI)(i, j, k, l); 
+          }
+        }
         }
         
         // passive screening and updating CHCol
@@ -162,9 +166,10 @@ namespace ChronusQ {
   {
     size_t nStr = exList->nString();
     size_t nNZ = exList->nNonZero();
+    bool onlyOneParticleCorrelated = mcwfn.MOPartition.nCorrE == 1;
 
     auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>(OneBodyIntsString));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString));
+    auto moERI  = mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString);
 
     int i, j, k, l, La, Ka, Kb, Ja;
     double signij, signkl;
@@ -182,12 +187,15 @@ namespace ChronusQ {
         UNPACK_EXCITATIONLIST_4(exList_La, k, l, Ka, signkl);
 	    if(Ka == La) SCR += signkl * hCoreP(k, l);
 
-        const int * exList_Ka = exList->pointerAtDet(Ka);
-	    for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_Ka+=4) {
-            
-          UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
-	      if(Ja == La) SCR += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	    }
+      if(!onlyOneParticleCorrelated)
+      {
+          const int * exList_Ka = exList->pointerAtDet(Ka);
+        for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_Ka+=4) {
+              
+            UNPACK_EXCITATIONLIST_4(exList_Ka, i, j, Ja, signij);
+          if(Ja == La) SCR += 0.5 * signij * signkl * (*moERI)(i, j, k, l); 
+        }
+      }
        }
       
       // update diagH
@@ -260,9 +268,10 @@ namespace ChronusQ {
   {
     size_t nStr = exList->nString();
     size_t nNZ = exList->nNonZero();
+    bool onlyOneParticleCorrelated = mcwfn.MOPartition.nCorrE == 1;
 
     auto & hCoreP = *(mcwfn.moints->template getIntegral<OnePInts, MatsT>(OneBodyIntsString));
-    auto & moERI  = *(mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString));
+    auto moERI  = mcwfn.moints->template getIntegral<InCore4indexTPI, MatsT>(TwoBodyIntsString);
 
     int i, j, k, l, La, Ka, Ja, Kb;
     double signij, signkl;
@@ -286,13 +295,15 @@ namespace ChronusQ {
         
           UNPACK_EXCITATIONLIST_4(exList_Ka, l, k, La, signkl);
 	      SCR_ith[La] += signkl * hCoreP(k, l);
-       
-          const int * exList_La = exList->pointerAtDet(La);
-	      for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_La+=4) {
-            
-            UNPACK_EXCITATIONLIST_4(exList_La, j, i, Ja, signij);
-	        SCR_ith[Ja] += 0.5 * signij * signkl * moERI(i, j, k, l); 
-	      }
+        if(!onlyOneParticleCorrelated) 
+        {
+            const int * exList_La = exList->pointerAtDet(La);
+          for (auto Eij = 0ul; Eij < nNZ; Eij++, exList_La+=4) {
+              
+              UNPACK_EXCITATIONLIST_4(exList_La, j, i, Ja, signij);
+            SCR_ith[Ja] += 0.5 * signij * signkl * (*moERI)(i, j, k, l); 
+          }
+        }
         }
         
         // passive screening 

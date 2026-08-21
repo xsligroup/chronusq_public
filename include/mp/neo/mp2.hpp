@@ -257,7 +257,8 @@ namespace ChronusQ {
       // Because we know this is NEO, we need to get one of the subsystem fockBuilders
       // (either works since the hamiltonianOptions are the same) 
       auto ppss = this->neoref_->template getSubsystem<SingleSlater>("Protonic");
-      bool ignorevpp = ppss->fockBuilder->hamiltonianOptions_.ignoreProtonTwoBody;
+      //bool ignorevpp = ppss->fockBuilder->hamiltonianOptions_.ignoreProtonTwoBody;
+      bool ignorevpp = false;
       summarizeNEOMP2(refs[0]->eos, refs[0]->ess, ep, refs[1]->ess, this->ref_->totalEnergy,ignorevpp);
 
       MP2Footer();

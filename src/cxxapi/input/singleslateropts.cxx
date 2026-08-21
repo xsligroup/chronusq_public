@@ -119,7 +119,6 @@ namespace ChronusQ {
     // Allowed keywords
     std::set<std::string> allowedKeywords = {
       "REFERENCE",
-      "IGNOREPROTONTWOBODY",
       "ONECENTERK",
       "ERFOMEGA",
       "DISTINGUISHABLE"
@@ -136,7 +135,6 @@ namespace ChronusQ {
       "DISTINGUISHABLE",
       "PARTICLECHARGE",
       "PARTICLEMASS",
-      "IGNOREPROTONTWOBODY"
     };
   
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -1155,9 +1153,6 @@ namespace ChronusQ {
 	CErr(X + " not a valid " + section + "/DKSTYPE",out);
     } //DKS
 
-    // For NEO (and in particular post-NEO-HF methods)
-    OPTOPT(hamiltonianOptions.ignoreProtonTwoBody = input.getData<bool>(section + "/IGNOREPROTONTWOBODY"));
-
     // For RI J/K contraction with 3-index ERI
     OPTOPT(hamiltonianOptions.oneCenterK = input.getData<bool>(section + "/ONECENTERK"));
 
@@ -1296,12 +1291,6 @@ namespace ChronusQ {
 
     // Parse hamiltonianOptions
     parseHamiltonianOptions(out,input,basis,options.refOptions,options.hamiltonianOptions,section);
-
-    // Error checking here to have access to the particle set
-    if(mol.nTotalP > 1 && options.hamiltonianOptions.ignoreProtonTwoBody)
-    {
-      //CErr("Requested turning of Proton Two Body Interaction with >1 Quantum Proton is illegal!");
-    }
 
     options.hamiltonianOptions.particle = p;
     options.hamiltonianOptions.particle2 = p;

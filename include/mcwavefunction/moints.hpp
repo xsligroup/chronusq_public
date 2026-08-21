@@ -70,6 +70,7 @@ namespace ChronusQ {
     size_t nTOrb  = this->MOPartition.nMO;
     size_t nCorrO = this->MOPartition.nCorrO;
     size_t nInact = this->MOPartition.nInact;
+    size_t nCorrE = this->MOPartition.nCorrE;
     size_t nInact2 = nInact * nInact;
     
     /*
@@ -104,7 +105,7 @@ namespace ChronusQ {
     // For RT, the ERI don't need retransformed
     std::string erilabel = prefixlabel + "ERI_Correlated_Space";
     std::shared_ptr<InCore4indexTPI<MatsT>> ERI_tuvw = this->moints->template getIntegral<InCore4indexTPI,MatsT>(erilabel);
-    if(!ERI_tuvw)
+    if(!ERI_tuvw && nCorrE > 1)
     {
       ERI_tuvw = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
       mointsTF->transformTPI(pert, ERI_tuvw->pointer(), "tuvw", this->cacheHalfTransTPI_);
@@ -144,15 +145,22 @@ namespace ChronusQ {
       }
     } else {
 
+      if(nCorrE > 1)
+      {
 #pragma omp parallel for schedule(static) collapse(2) default(shared)       
-      for (auto u = 0ul; u < nCorrO; u++) 
-      for (auto t = 0ul; t < nCorrO; t++) {
+        for (auto u = 0ul; u < nCorrO; u++) 
+        for (auto t = 0ul; t < nCorrO; t++) {
 
-        MatsT tmp = 0.;
-        for (auto v = 0ul; v < nCorrO; v++)
-          tmp += 0.5 * (*ERI_tuvw)(t, v, v, u);
+          MatsT tmp = 0.;
+          for (auto v = 0ul; v < nCorrO; v++)
+            tmp += 0.5 * (*ERI_tuvw)(t, v, v, u);
 
-        hCoreP_tu(t, u) = hCore_tu(t, u) - tmp;
+          hCoreP_tu(t, u) = hCore_tu(t, u) - tmp;
+        }
+      }
+      else
+      {
+          hCoreP_tu = hCore_tu;
       }
     }
 
