@@ -180,9 +180,28 @@ namespace ChronusQ {
       invalidKeywords = CQCI_VALID(input.getSection("CI"));
       printInvalidKeys(invalidKeywords, "CI");
     }
+    if (input.containsSection("MRPT")) {
+      invalidKeywords = CQMRPT_VALID(input.getSection("MRPT"));
+      printInvalidKeys(invalidKeywords, "MRPT");
+
+      // No GIAO + MRPT
+      if( input.containsData("BASIS/BASISTYPE") ) {
+
+        std::string btype =
+            input.getData<std::string>("BASIS/BASISTYPE");
+
+        if( not btype.compare("GIAO") )
+          CErr("GIAO + MRPT not allowed");
+
+      }
+    }
     if (input.containsSection("GAUXC")) {
       invalidKeywords = CQGAUXC_VALID(input.getSection("GAUXC"));
       printInvalidKeys(invalidKeywords, "GAUXC");
+    }
+    if (input.containsSection("PHYSCON")) {
+      invalidKeywords = CQPHYSCON_VALID(input.getSection("PHYSCON"));
+      printInvalidKeys(invalidKeywords, "PHYSCON");
     }
 
   }

@@ -359,7 +359,7 @@ namespace ChronusQ {
   // NewPerturb Options
   std::shared_ptr<PostHartreeFockBase> CQMRPTSettings(std::ostream &,
             CQInputFile &, std::shared_ptr<PostHartreeFockBase> &);
-  void CQMRPT_VALID(std::ostream &, CQInputFile &);
+  std::set<std::string> CQMRPT_VALID(const std::map<std::string, std::string>& inputSection);
   // Parse Perturb options
   std::shared_ptr<MCWaveFunctionBase> CQPerturbOptions(std::ostream &,
             CQInputFile &, std::shared_ptr<MCWaveFunctionBase> &);
@@ -394,7 +394,7 @@ namespace ChronusQ {
 
   std::set<std::string> CQGAUXC_VALID(const std::map<std::string, std::string>& inputSection);
 
-  void CQPHYSCON_VALID(std::ostream&, CQInputFile &);
+  std::set<std::string> CQPHYSCON_VALID(const std::map<std::string, std::string>& inputSection);
 
   void CQPhysConSetOptions(std::ostream &out, CQInputFile &input );
 

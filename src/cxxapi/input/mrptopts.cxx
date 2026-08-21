@@ -31,12 +31,10 @@ namespace ChronusQ {
    *  Check valid keywords in the section.
    *
    */
-  void CQMRPT_VALID( std::ostream &out, CQInputFile &input ) {
-
-    if( not input.containsSection("MRPT") ) return;
+  std::set<std::string> CQMRPT_VALID(const std::map<std::string, std::string>& inputSection) {
 
     // Allowed keywords
-    std::vector<std::string> allowedKeywords = {
+    std::set<std::string> allowedKeywords = {
       "STATEAVERAGE",
       "GVVPT",
       "ENPT",
@@ -51,28 +49,7 @@ namespace ChronusQ {
       "SOI"
     };
 
-    // Specified keywords
-    std::set<std::string> keywordSet = input.getDataInSection("MRPT");
-    std::vector<std::string> perturbKeywords(keywordSet.begin(), keywordSet.end());
-
-    // Make sure all of the basis keywords in allowed keywords
-    for( auto &keyword : perturbKeywords ) {
-      auto ipos = std::find(allowedKeywords.begin(),allowedKeywords.end(),keyword);
-      if( ipos == allowedKeywords.end() )
-      CErr("Keyword MRPT/" + keyword + " is not recognized",std::cout);// Error
-    }
-
-    // Check for disallowed combinations (if any)
-    // No GIAO + PERTURB
-    if( input.containsData("BASIS/BASISTYPE") ) {
-      std::string btype =
-        input.getData<std::string>("BASIS/BASISTYPE");
-      if( not btype.compare("GIAO") )
-        CErr("GIAO + MRPT not allowed");
-
-    }
-
-
+    return CQInvalidKeywords(allowedKeywords, inputSection);
   } // CQMRPT_VALID
 
   /**

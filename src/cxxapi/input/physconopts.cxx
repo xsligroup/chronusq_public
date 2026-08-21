@@ -31,8 +31,8 @@ namespace ChronusQ {
   /**
    *  Check valid keywords in the section.
    */
-  void CQPHYSCON_VALID(std::ostream &out, CQInputFile &input) {
-    const std::vector<std::string> allowedKeywords = {
+  std::set<std::string> CQPHYSCON_VALID(const std::map<std::string, std::string>& inputSection) {
+    const std::set<std::string> allowedKeywords = {
       "SPEEDOFLIGHT",
       "KGPERAMU",
       "KGPERE",
@@ -46,11 +46,8 @@ namespace ChronusQ {
       "LEGACY_CONSTANTS"
     };
 
-    for (const auto &keyword : input.getDataInSection("PHYSCON"))
-      if (std::find(allowedKeywords.begin(), allowedKeywords.end(), keyword) ==
-          allowedKeywords.end())
-        CErr("Keyword PHYSCON." + keyword + " is not recognized", out);
-  }
+    return CQInvalidKeywords(allowedKeywords, inputSection);
+  } // CQPHYSCON_VALID
 
   /**
    *  Initialize physical constants from input, legacy values, or defaults.
@@ -66,8 +63,8 @@ namespace ChronusQ {
     if (legacyConstants) {
       for (const auto &keyword : input.getDataInSection("PHYSCON"))
         if (keyword != "LEGACY_CONSTANTS")
-          CErr("Cannot set PHYSCON." + keyword +
-            " when PHYSCON.LEGACY_CONSTANTS is true", out);
+          CErr("Cannot set PHYSCON/" + keyword +
+            " when PHYSCON/LEGACY_CONSTANTS is true", out);
 
       // Frozen pre-CODATA-update values.
       SpeedOfLight(137.035999074);
