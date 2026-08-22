@@ -1624,9 +1624,8 @@ namespace ChronusQ {
                             const HamiltonianOptions&) {
       BasisSet basisSet_ = basis.groupGeneralContractionBasis();
       size_t NB = basisSet_.nBasis;
-      const double fineStructureConstant = 137.035999084;
-      const double alphaInv = fineStructureConstant;
-      const double factor_1_2mc = 1.0 / (2.0 * alphaInv); // 1/(2mc) in atomic units
+
+      const double factor_1_2mc = 1.0 / (2.0 * SpeedOfLight()); // 1/(2mc) in atomic units
       const double factor_1_8mc2 = 0.5 * factor_1_2mc * factor_1_2mc; // 1/2*(1/2mc)^2
 
       std::vector<cqmatrix::PauliSpinorMatrices<dcomplex>> result;
@@ -1850,8 +1849,8 @@ namespace ChronusQ {
       // is unambiguous: LL from overlap, SS from int1e_spsigmasp_sph.
       BasisSet basisSet_ = basis.groupGeneralContractionBasis();
       const size_t NB = basisSet_.nBasis;
-      const double alphaInv = 137.035999084;
-      const double factor_1_2mc = 1.0 / (2.0 * alphaInv);
+ 
+      const double factor_1_2mc = 1.0 / (2.0 * SpeedOfLight());
       const double factor_1_8mc2 = 0.5 * factor_1_2mc * factor_1_2mc;
 
       double *LL = CQMemManager::get().malloc<double>(NB * NB);

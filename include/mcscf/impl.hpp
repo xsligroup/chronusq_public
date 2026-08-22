@@ -224,7 +224,7 @@ namespace ChronusQ {
       this->populationAnalysis();
     }
 
-    if (mcwfn_->printRDMs==0 && this->settings->SpinAndAngularAnalysis) {
+    if (mcwfn_->printRDMs==0 && this->settings->SpinAndAngularAnalysis && mcwfn_->reference().nC != 4) {
       std::cout<<"\n\nSpin and Angular analysis in mcscf."<<std::endl;
       this->spinAndAngularAnalysis();
     }    

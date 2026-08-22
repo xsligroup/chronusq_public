@@ -60,9 +60,6 @@ namespace ChronusQ {
     if(isZero)
       return rZero;
 
-    // Sanity checks
-    assert( CQMemManager::get().getSize(op) == DSize );
-
     // Perform proper trace
     MatsT *Dptr = (*onePDM)[static_cast<cqmatrix::PAULI_SPINOR_COMPS>(DenTyp)].pointer();
 

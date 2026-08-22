@@ -240,8 +240,10 @@ namespace ChronusQ {
       if(hasProperty(SPIN)) 
         computeSpin();
 
+
       // Compute angular momentum properties
-      computeSpinAndAngularProperties();
+      if (nC != 4)
+        computeSpinAndAngularProperties();
 
       // Compute method specific properties (currently only include Mulliken population analysis)
       if(hasProperty(METHOD_SPECIFIC)) 

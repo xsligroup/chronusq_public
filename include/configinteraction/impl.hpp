@@ -208,7 +208,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
   }
 
   // Spin analysis
-  if (this->printRDMs==0 && this->SpinAndAngularAnalysis) {
+  if (this->printRDMs==0 && this->SpinAndAngularAnalysis && (*this->reference()).nC != 4) {
       std::cout<<"\n\nSpin analysis in ConfigInt."<<std::endl;
         PostHartreeFock<MatsT,IntsT>::spinAndAngularAnalysis();
   }   
