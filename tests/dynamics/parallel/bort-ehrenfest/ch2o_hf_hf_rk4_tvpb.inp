@@ -9,21 +9,21 @@ mult = 1
 geom:
 C    5.986925753483207E-01   0.000000000000000E+00   0.000000000000000E+00
 O   -6.004928773842924E-01   0.000000000000000E+00   0.000000000000000E+00
-H    1.200868267672706E+00   9.585555972872630E-01   0.000000000000000E+00  Q
-H    1.200868267672706E+00  -9.585555972872630E-01   0.000000000000000E+00  Q
+H    1.200868267672706E+00   9.585555972872630E-01   0.000000000000000E+00  QP
+H    1.200868267672706E+00  -9.585555972872630E-01   0.000000000000000E+00  QP
 
 
 [QM]
 reference = Complex HF
 job = Ehrenfest
 
-[PROTQM]
+[QPQM]
 reference = Complex UHF
 
 [SCF]
 NEO = TRUE
 guess = classical
-prot_guess = tight
+qp_guess = tight
 MAXITER = 50000
 DIISALG = CDIIS
 accuracy = 1e-12
@@ -42,7 +42,7 @@ H    0.000000              0.0000000             0.0000000
 
 [RT]                                                                            
 INTALG = BORT 
-PROT_INTALG = RK4                                                                  
+QP_INTALG = RK4                                                                  
 PRINTLEVEL = 1
 BORTPRINTLEVEL = 1
 BORTACCURACY = 1E-10  
@@ -50,10 +50,10 @@ BORTACCURACY = 1E-10
 [INTS]
 ALG = INCORE
 
-[PINTS]
+[QPINTS]
 ALG = INCORE
 
-[EPINTS]
+[EQPINTS]
 ALG = INCORE
 
 [MISC]
@@ -63,7 +63,7 @@ mem = os
 [BASIS]
 basis = sto-3g
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 [PHYSCON]

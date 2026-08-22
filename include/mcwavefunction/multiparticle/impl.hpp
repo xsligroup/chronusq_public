@@ -293,7 +293,6 @@ namespace ChronusQ {
 
 }; // namespace ChronusQ
 
-#include <mcwavefunction/multiparticle/neo/impl.hpp>
 #include <mcwavefunction/multiparticle/print.hpp>
 #include <mcwavefunction/multiparticle/rdm.hpp>
 #include <mcwavefunction/multiparticle/property.hpp>

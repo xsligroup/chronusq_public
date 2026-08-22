@@ -59,8 +59,6 @@ namespace ChronusQ {
 
   template class RealTimeMultiSlaterBase<double, double >; 
   template class RealTimeMultiSlaterBase<dcomplex, double>; 
-  template class RealTimeCI<double, double >; 
-  template class RealTimeCI<dcomplex, double>; 
-  template class RealTimeNEOCI<double, double >; 
-  template class RealTimeNEOCI<dcomplex, double>; 
+  template class RealTimeCI<double, double >;
+  template class RealTimeCI<dcomplex, double>;
 }; // namespace ChronusQ

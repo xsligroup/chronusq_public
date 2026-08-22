@@ -32,4 +32,3 @@ namespace ChronusQ {
 
 // Implementation files
 #include <mp/mp2.hpp>
-#include <mp/neo/mp2.hpp>

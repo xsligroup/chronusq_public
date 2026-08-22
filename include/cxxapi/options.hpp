@@ -156,15 +156,6 @@ namespace ChronusQ {
   SingleSlaterOptions CQSingleSlaterOptions(
       std::ostream &, CQInputFile &, Molecule &, BasisSet &);
 
-  // Parse the options relating to NEOSS
-  std::tuple<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions, SingleSlaterOptions> CQNEOSSOptions(
-      std::ostream &, CQInputFile &, Molecule &mol,
-      BasisSet &ebasis, BasisSet &pbasis,
-      std::shared_ptr<IntegralsBase> eaoints,
-      std::shared_ptr<IntegralsBase> paoints,
-      std::shared_ptr<IntegralsBase> epaoints,
-      SCFControls scfControls);
-
   template <typename MatsT, typename IntsT>
   std::shared_ptr<SingleSlaterBase> buildMultiParticleSS(
     std::ostream& out,
@@ -186,7 +177,6 @@ namespace ChronusQ {
   void resolveSubsystemGuessOptions(std::vector<QuantumSubsystem>& quantumSubsystems, const SCFControls& scfControls);
 
   std::set<std::string> CQQM_VALID(const std::map<std::string, std::string>& inputSection);
-  std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQQUANTUMSUBSYSTEMQM_VALID(const std::map<std::string, std::string>& inputSection);
   std::set<std::string> CQDFTINT_VALID(const std::map<std::string, std::string>& inputSection);
 

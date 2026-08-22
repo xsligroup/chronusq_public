@@ -55,13 +55,6 @@ namespace ChronusQ {
         CErr("MP2 only implemented and tested for real MatsT & IntsT");
       }
 
-      // Attempt to make a NEO-MP2 object
-      if(std::dynamic_pointer_cast<NEOSS<double,double>>(ss))
-      {
-        std::cout << "Running NEOMP2" << std::endl;
-        mp = std::make_shared<NEOMP2<double,double>>(std::dynamic_pointer_cast<NEOSS<double,double>>(ss));
-      }
-
       OPTOPT(mp->makeMP2NOs=input.getData<bool>("MP2/NOS"));
 
       return mp;

@@ -28,7 +28,6 @@
 //#define _DEBUG_4C_ANGULAR
 
 #include <singleslater.hpp>
-#include <singleslater/neoss.hpp>
 #include <singleslater/multiparticless.hpp>
 #include <cqlinalg/blasext.hpp>
 #include <cqlinalg/blasutil.hpp>

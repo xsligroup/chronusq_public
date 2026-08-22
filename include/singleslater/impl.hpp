@@ -206,9 +206,6 @@ namespace ChronusQ {
 
   }; // SingleSlater<MatsT>::dealloc
 
-  template <typename MatsT, typename IntsT>
-  class NEOSS;
-
   /**
    *  \brief The pointer convertor. This static function converts
    *  the underlying polymorphism correctly to hold a different
@@ -223,11 +220,7 @@ namespace ChronusQ {
 
     const std::type_info &tID(typeid(*ss));
 
-    if (tID == typeid(NEOSS<MatsT,IntsT>)) {
-      return std::make_shared<NEOSS<MatsU,IntsT>>(
-          *std::dynamic_pointer_cast<NEOSS<MatsT,IntsT>>(ss));
-
-    } else if (tID == typeid(HartreeFock<MatsT,IntsT>)) {
+    if (tID == typeid(HartreeFock<MatsT,IntsT>)) {
       return std::make_shared<HartreeFock<MatsU,IntsT>>(
           *std::dynamic_pointer_cast<HartreeFock<MatsT,IntsT>>(ss));
 

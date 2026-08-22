@@ -34,7 +34,6 @@
 #include <response/polarization/singleslater.hpp>
 #include <response/polarization/hartreefock.hpp>
 #include <response/polarization/kohnsham.hpp>
-#include <response/polarization/neoss.hpp>
 
 #include <response/particleparticle/singleslater.hpp>
 #include <response/particleparticle/hartreefock.hpp>

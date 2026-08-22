@@ -9,7 +9,7 @@ mult = 1
 geom: 
  N               0             0               0
  C               1.15824       0               0
- H               2.22844       0               0 Q
+ H               2.22844       0               0 QP
 
 # 
 #  Job Specification
@@ -18,13 +18,13 @@ geom:
 reference = RHF
 job = RT
 
-[PROTQM]
+[QPQM]
 reference = UHF
 
 [SCF]
 NEO = TRUE
 guess = core
-prot_guess = tight
+qp_guess = tight
 
 [RT]
 TMAX   = 1.
@@ -38,7 +38,7 @@ FIELD:
 basis = sto-3g
 
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 [INTS]
@@ -46,12 +46,12 @@ ALG = INCORE
 ri  = dynamiceri
 RITHRESHOLD = 1e-4
 
-[PINTS]
+[QPINTS]
 ALG = INCORE
 ri  = dynamiceri
 RITHRESHOLD = 1e-4
 
-[EPINTS]
+[EQPINTS]
 ALG = INCORE
 RI = ELEC_AND_PROT_AUX
 

@@ -25,7 +25,6 @@
 #include <corehbuilder/impl.hpp>
 #include <fockbuilder/impl.hpp>
 #include <mointstransformer/impl.hpp>
-#include <singleslater/neoss/impl.hpp>
 
 namespace ChronusQ {
 
@@ -77,15 +76,6 @@ namespace ChronusQ {
   template void KohnSham<double,double>::formFXC(MPI_Comm,std::vector<TwoBodyContraction<dcomplex>> &, EMPerturbation&);
 
   template void KohnSham<dcomplex,double>::formFXC(MPI_Comm,std::vector<TwoBodyContraction<dcomplex>> &, EMPerturbation&);
-
-  template class NEOSS<double,double>;
-  template class NEOSS<dcomplex,double>;
-  template class NEOSS<dcomplex,dcomplex>;
-  template NEOSS<dcomplex,double>::NEOSS(const NEOSS<double, double>&, int);
-  template NEOSS<dcomplex,double>::NEOSS(const NEOSS<dcomplex, double>&, int);
-  template NEOSS<dcomplex,dcomplex>::NEOSS(const NEOSS<dcomplex, dcomplex>&, int);
-  
-  template NEOSS<dcomplex,double>::NEOSS(NEOSS<double, double>&&, int);
 
   template std::shared_ptr<SingleSlater<double,double>>
   SingleSlater<double,double>::convert(const std::shared_ptr<SingleSlater<double,double>>& ss);

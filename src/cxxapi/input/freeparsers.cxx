@@ -419,11 +419,11 @@ namespace ChronusQ {
 //          if(!Guessmatch.str(3).empty()) ssGuessOptions.nuclearGuess = ReadBin;
 //          if(!Guessmatch.str(4).empty()) ssGuessOptions.nuclearGuess = ReadGaussFCHK;
 //          if(!Guessmatch.str(5).empty()) ssGuessOptions.nuclearGuess = ClassicalGuess;
-          if(!Guessmatch.str(1).empty()) addData("SCF/PROT_GUESS", "SAD");
-          if(!Guessmatch.str(2).empty()) addData("SCF/PROT_GUESS", "CORE");
-          if(!Guessmatch.str(3).empty()) addData("SCF/PROT_GUESS", "READMO");
-          if(!Guessmatch.str(4).empty()) addData("SCF/PROT_GUESS", "FCHKMO");
-          if(!Guessmatch.str(5).empty()) addData("SCF/PROT_GUESS", "CLASSICAL");
+          if(!Guessmatch.str(1).empty()) addData("SCF/QP_GUESS", "SAD");
+          if(!Guessmatch.str(2).empty()) addData("SCF/QP_GUESS", "CORE");
+          if(!Guessmatch.str(3).empty()) addData("SCF/QP_GUESS", "READMO");
+          if(!Guessmatch.str(4).empty()) addData("SCF/QP_GUESS", "FCHKMO");
+          if(!Guessmatch.str(5).empty()) addData("SCF/QP_GUESS", "CLASSICAL");
         }
         GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputNEOGuessType, "");
 
@@ -460,14 +460,14 @@ namespace ChronusQ {
       else if (dict.at("GUESS") == "FCHKMO") electronicGuess = ReadGaussFCHK;
       else if (dict.at("GUESS") == "CLASSICAL") electronicGuess = ClassicalGuess;
     }
-    if (dict.count("PROT_GUESS")) {
-      if (dict.at("PROT_GUESS") == "CORE") nuclearGuess = CoreGuess;
-      else if (dict.at("PROT_GUESS") == "SAD") nuclearGuess = SADGuess;
-      else if (dict.at("PROT_GUESS") == "TIGHT") nuclearGuess = TightGuess;
-      else if (dict.at("PROT_GUESS") == "RANDOM") nuclearGuess = RandomGuess;
-      else if (dict.at("PROT_GUESS") == "READMO") nuclearGuess = ReadBin;
-      else if (dict.at("PROT_GUESS") == "FCHKMO") nuclearGuess = ReadGaussFCHK;
-      else if (dict.at("PROT_GUESS") == "CLASSICAL") nuclearGuess = ClassicalGuess;
+    if (dict.count("QP_GUESS")) {
+      if (dict.at("QP_GUESS") == "CORE") nuclearGuess = CoreGuess;
+      else if (dict.at("QP_GUESS") == "SAD") nuclearGuess = SADGuess;
+      else if (dict.at("QP_GUESS") == "TIGHT") nuclearGuess = TightGuess;
+      else if (dict.at("QP_GUESS") == "RANDOM") nuclearGuess = RandomGuess;
+      else if (dict.at("QP_GUESS") == "READMO") nuclearGuess = ReadBin;
+      else if (dict.at("QP_GUESS") == "FCHKMO") nuclearGuess = ReadGaussFCHK;
+      else if (dict.at("QP_GUESS") == "CLASSICAL") nuclearGuess = ClassicalGuess;
     }
 
   }
@@ -548,7 +548,6 @@ namespace ChronusQ {
           std::string label = RTmatch.str(1);
           std::transform(label.begin(), label.end(), label.begin(),
             [](unsigned char c) { return std::toupper(c); });
-          if(label == "PROT") label = "QP";
           addData("RT/" + label + "_INTALG",
             canonicalRealTimeAlgorithm(RTmatch.str(2)));
           RTInputOptions = RTmatch.prefix().str() + RTmatch.suffix().str();
@@ -692,7 +691,6 @@ namespace ChronusQ {
       if(key.size() <= suffix.size() or key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0)
         continue;
       auto label = key.substr(0, key.size() - suffix.size());
-      if(label == "PROT") label = "QP"; // Support Legacy NEO-RT input
       subsystemIntegrationAlgorithms[label] = parseRealTimeAlgorithm(value);
     }
     if (dict.count("BORTPRINTLEVEL")) BORTPrintLevel = std::stoi(dict.at("BORTPRINTLEVEL"));

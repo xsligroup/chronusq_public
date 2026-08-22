@@ -4,20 +4,20 @@ charge = 0
 mult = 1
 geom:
  O     0.0     -0.076    0.0
- H     0.867    0.601    0.0  Q
- H    -0.867    0.601    0.0  Q
+ H     0.867    0.601    0.0  QP
+ H    -0.867    0.601    0.0  QP
 
 [QM]
 reference = Real RHSE06
 job = SCF
 
-[PROTQM]
+[QPQM]
 reference = Real UEPC17
 
 [SCF]
 neo = true
 guess = classical
-prot_guess = tight
+qp_guess = tight
 accuracy = 1e-10
 maxiter = 512
 
@@ -35,16 +35,16 @@ xcweightalg = becke
 [BASIS]
 basis = cc-pvdz
 
-[PBASIS]
+[QPBASIS]
 basis = prot-pb4-d
 
 [INTS]
 alg = incore
 
-[PINTS]
+[QPINTS]
 alg = incore
 
-[EPINTS]
+[EQPINTS]
 alg = incore
 
 [MISC]

@@ -7,14 +7,14 @@ charge = 0
 mult = 1
 geom:
  O   0.000000   -0.073354    0.000000
- H   0.771088    0.600217    0.000000 Q
- H  -0.771088    0.600217    0.000000 Q
+ H   0.771088    0.600217    0.000000 QP
+ H  -0.771088    0.600217    0.000000 QP
 
 [QM]
 reference = complex RB3LYP
 job = Ehrenfest
 
-[PROTQM]
+[QPQM]
 reference = complex UEPC17
 
 [DFTINT]
@@ -26,7 +26,7 @@ nmacro = 9
 [SCF]
 NEO = TRUE
 GUESS = Classical
-PROT_GUESS = TIGHT
+QP_GUESS = TIGHT
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 5000
@@ -52,16 +52,16 @@ mem = os
 [INTS]
 ALG = direct
 
-[PINTS]
+[QPINTS]
 ALG = direct
 
-[EPINTS]
+[EQPINTS]
 ALG = direct
 
 [BASIS]
 basis = sto-3g
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 

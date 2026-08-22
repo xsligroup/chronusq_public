@@ -35,9 +35,6 @@ namespace ChronusQ {
   template class PolarizationPropagator<KohnSham<double,double>>;
   template class PolarizationPropagator<KohnSham<dcomplex,double>>;
   template class PolarizationPropagator<KohnSham<dcomplex,dcomplex>>;
-  template class PolarizationPropagator<NEOSS<double,double>>;
-  template class PolarizationPropagator<NEOSS<dcomplex,double>>;
-  template class PolarizationPropagator<NEOSS<dcomplex,dcomplex>>;
 
   template class ParticleParticlePropagator<HartreeFock<double,double>>;
   template class ParticleParticlePropagator<HartreeFock<dcomplex,double>>;
@@ -123,32 +120,6 @@ namespace ChronusQ {
     SINGLESLATER_POLAR_COPT,
     bool
   );
-  template void PolarizationPropagator<NEOSS<double,double>>::formLinearTrans_direct_impl(
-    MPI_Comm,
-    std::vector<RESPONSE_CONTRACTION<double>>,
-    SINGLESLATER_POLAR_COPT,
-    bool
-  );
-  template void PolarizationPropagator<NEOSS<double,double>>::formLinearTrans_direct_impl(
-    MPI_Comm,
-    std::vector<RESPONSE_CONTRACTION<dcomplex>>,
-    SINGLESLATER_POLAR_COPT,
-    bool
-  );
-
-  template void PolarizationPropagator<NEOSS<dcomplex,double>>::formLinearTrans_direct_impl(
-    MPI_Comm,
-    std::vector<RESPONSE_CONTRACTION<dcomplex>>,
-    SINGLESLATER_POLAR_COPT,
-    bool
-  );
-  template void PolarizationPropagator<NEOSS<dcomplex,dcomplex>>::formLinearTrans_direct_impl(
-    MPI_Comm,
-    std::vector<RESPONSE_CONTRACTION<dcomplex>>,
-    SINGLESLATER_POLAR_COPT,
-    bool
-  );
-
   template void ParticleParticlePropagator<SingleSlater<double,double>>::formLinearTrans_incore_impl(
     std::vector<RESPONSE_CONTRACTION<double>>
   );

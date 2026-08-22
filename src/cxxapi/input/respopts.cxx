@@ -60,7 +60,6 @@ namespace ChronusQ {
       "AOPS",
       "BOPS",
       "BFREQ",
-      "NEO",
     };
 
     std::set<std::string> invalidKeywords = CQInvalidKeywords(allowedKeywords, inputSection);
@@ -208,7 +207,6 @@ namespace ChronusQ {
     ResponseType jobTyp = RESIDUE;
     bool doMOR = false;
     bool doPP  = false;
-    bool doNEO = false;
 
     std::string jt = "RESIDUE";
 
@@ -218,8 +216,6 @@ namespace ChronusQ {
     else if( not jt.compare("FDR") )  jobTyp = FDR;
     else if( not jt.compare("MOR") )  doMOR = true;
     else CErr(jt + " NOT RECOGNIZED RESPONSE/TYPE");
-
-		if ( input.containsData("RESPONSE/NEO") ) doNEO = input.getData<bool>("RESPONSE/NEO");
 
     // Determine propagator
     try {
@@ -247,13 +243,6 @@ namespace ChronusQ {
 
     if( doMOR and doPP )
       CErr("MOR + ParticleParticlePropagator not valid!",out);
-
-
-		if (doNEO and doPP )
-			CErr("NEO + ParticleParticlePropagator NYI!",out);
-
-		if (doNEO and doMOR )
-			CErr("NEO + MOR NYI!",out);
 
 
     bool found = false;
@@ -309,9 +298,6 @@ namespace ChronusQ {
     using KS_dd = KohnSham<double  ,double>;
     using KS_cd = KohnSham<dcomplex,double>;
     using KS_cc = KohnSham<dcomplex,dcomplex>;
-    using NEO_dd = NEOSS<double  ,double>;
-    using NEO_cd = NEOSS<dcomplex,double>;
-    using NEO_cc = NEOSS<dcomplex,dcomplex>;
 
 
     if( doMOR ) {
@@ -340,12 +326,6 @@ namespace ChronusQ {
       CONSTRUCT_PH_RESP( KS_dd );
       CONSTRUCT_PH_RESP( KS_cd );
       CONSTRUCT_PH_RESP( KS_cc );
-    if(doNEO){
-				CONSTRUCT_PH_RESP( NEO_dd );
-      	CONSTRUCT_PH_RESP( NEO_cd );
-      	CONSTRUCT_PH_RESP( NEO_cc );
-			}
-   
     }
 
     // Copy over SCF Perturbation

@@ -25,7 +25,6 @@
 
 #include <chronusq_sys.hpp>
 #include <singleslater.hpp>
-#include <singleslater/neoss.hpp>
 #include <detfactory.hpp>
 #include <integrals.hpp>
 #include <posthartreefock/base.hpp>

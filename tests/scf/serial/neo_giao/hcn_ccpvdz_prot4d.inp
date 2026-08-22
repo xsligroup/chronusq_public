@@ -4,20 +4,20 @@ mult = 1
 geom:
  C 0. 0. -0.54325
  N 0. 0. 0.58087
- H -0.79377 0. -1.6003 Q
+ H -0.79377 0. -1.6003 QP
 
 [QM]
 reference = Complex RHF
 job = SCF
 
-[PROTQM]
+[QPQM]
 reference = Complex UHF
 
 [SCF]
 #accuracy = 1e-9
 NEO = TRUE
 GUESS = CORE
-PROT_GUESS = tight
+QP_GUESS = tight
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 6000
@@ -30,7 +30,7 @@ forcecart = true
 basis = cc-pvdz
 basistype = GIAO
 
-[PBASIS]
+[QPBASIS]
 forcecart = true
 basis = PROT-PB4-D
 basistype = GIAO
@@ -42,10 +42,10 @@ mem = 4 GB
 [INTS]
 ALG = incore
 
-[PINTS]
+[QPINTS]
 ALG = incore
 
-[EPINTS]
+[EQPINTS]
 ALG = incore
 
 

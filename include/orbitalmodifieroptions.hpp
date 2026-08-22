@@ -176,7 +176,6 @@ namespace ChronusQ {
 
     // Guess Settings
     SS_GUESS guess = SAD;
-    SS_GUESS prot_guess = NEOTightParticle;
     std::unordered_map<std::string, SS_GUESS> subsystemGuesses;
     std::shared_ptr<BasisSet> guessBasis;      ///< Optional guess basis set to project from
     std::string scfGuessOutFile;            ///< Optional guess save file name for SCF guess

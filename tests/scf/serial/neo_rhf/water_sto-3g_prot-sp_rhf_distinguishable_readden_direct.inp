@@ -10,7 +10,7 @@ geom:
 reference = Real RHF
 job = SCF
 
-[PROTQM]
+[QPQM]
 reference = Real UHF
 DISTINGUISHABLE = TRUE
 
@@ -25,7 +25,7 @@ MAXITER = 512
 [BASIS]
 basis = sto-3g
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 [MISC]
@@ -35,10 +35,10 @@ mem = 100 MB
 [INTS]
 ALG = INCORE
 
-[PINTS]
+[QPINTS]
 ALG = INCORE
 
-[EPINTS]
+[EQPINTS]
 ALG = DIRECT
 
 [QPQPINTS]

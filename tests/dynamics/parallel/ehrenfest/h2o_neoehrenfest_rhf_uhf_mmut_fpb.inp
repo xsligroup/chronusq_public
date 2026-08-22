@@ -7,20 +7,20 @@ charge = 0
 mult = 1
 geom:
  O   0.000000   -0.030189    0.000000
- H   0.740102    0.578634    0.000000 Q
- H  -0.740102    0.578634    0.000000 Q 
+ H   0.740102    0.578634    0.000000 QP
+ H  -0.740102    0.578634    0.000000 QP 
 
 [QM]
 reference = complex RHF
 job = Ehrenfest
 
-[PROTQM]
+[QPQM]
 reference = complex UHF
 
 [SCF]
 NEO = TRUE
 GUESS = Classical
-PROT_GUESS = TIGHT
+QP_GUESS = TIGHT
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 5000
@@ -46,16 +46,16 @@ mem = os
 [INTS]
 ALG = direct
 
-[PINTS]
+[QPINTS]
 ALG = direct
 
-[EPINTS]
+[EQPINTS]
 ALG = direct
 
 [BASIS]
 basis = sto-3g
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 

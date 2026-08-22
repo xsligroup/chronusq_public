@@ -27,7 +27,7 @@ set(MP_TEST_BINARY_ROOT "${TEST_BINARY_ROOT}/mp" )
   
 
 # Set up compilation of MCSCF test exe
-add_executable(mptest ../ut.cxx mp2.cxx neo_mp2.cxx)
+add_executable(mptest ../ut.cxx mp2.cxx)
 
 target_include_directories(mptest PUBLIC ${MP_TEST_SOURCE_ROOT} 
   ${TEST_BINARY_ROOT})
@@ -36,17 +36,13 @@ target_link_libraries(mptest PUBLIC gtest)
 
 # Generate directories
 file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/serial/mp2)
-file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/serial/neo_mp2)
 
 file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/parallel/mp2)
-file(MAKE_DIRECTORY ${MP_TEST_BINARY_ROOT}/parallel/neo_mp2)
 
 include( CQTestGeneration )
 
 # MP2 test
 add_cq_test(MP2 mptest "MP2.*")
-# NEO-MP2 currently disabled
-#add_cq_test(NEO_MP2 mptest "NEO_MP2.*")
 
 if( CQ_ENABLE_MPI )
 

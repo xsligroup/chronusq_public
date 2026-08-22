@@ -206,9 +206,6 @@ namespace ChronusQ {
         std::string quantumLabel = tokens[4];
         std::transform(quantumLabel.begin(), quantumLabel.end(), quantumLabel.begin(), [](char c){ return std::toupper(c); });
 
-        // Backward compatibility for old NEO input
-        if (quantumLabel == "Q") quantumLabel = "QP";
-        
         validateQuantumSystemLabel(quantumLabel);
         
         atoms.back().quantum = true;

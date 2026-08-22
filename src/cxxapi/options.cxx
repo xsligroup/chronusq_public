@@ -71,21 +71,9 @@ namespace ChronusQ {
       invalidKeywords = CQINTS_VALID(input.getSection("INTS"));
       printInvalidKeys(invalidKeywords, "INTS");
     }
-    if (input.containsSection("PINTS")) {
-      invalidKeywords = CQINTS_VALID(input.getSection("PINTS"));
-      printInvalidKeys(invalidKeywords, "PINTS");
-    }
-    if (input.containsSection("EPINTS")) {
-      invalidKeywords = CQINTS_VALID(input.getSection("EPINTS"));
-      printInvalidKeys(invalidKeywords, "EPINTS");
-    }
     if (input.containsSection("QM")) {
       invalidKeywords = CQQM_VALID(input.getSection("QM"));
       printInvalidKeys(invalidKeywords, "QM");
-    }
-    if (input.containsSection("PROTQM")) {
-      invalidKeywords = CQPROTQM_VALID(input.getSection("PROTQM"));
-      printInvalidKeys(invalidKeywords, "PROTQM");
     }
     if (input.containsSection("DFTINT")) {
       invalidKeywords = CQDFTINT_VALID(input.getSection("DFTINT"));

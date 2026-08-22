@@ -3,20 +3,20 @@ charge = 0
 mult = 1
 geom:
  O     0.0     -0.076    0.0                                                     
- H     0.867    0.601    0.0  Q                                                  
- H    -0.867    0.601    0.0  Q
+ H     0.867    0.601    0.0  QP                                                  
+ H    -0.867    0.601    0.0  QP
 
 [QM]
 reference = Real RHF
 job = SCF
 
-[PROTQM]
+[QPQM]
 reference = Real UHF
 
 [SCF]
 NEO = TRUE
 GUESS = CLASSICAL
-PROT_GUESS = TIGHT
+QP_GUESS = TIGHT
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 512
@@ -24,7 +24,7 @@ MAXITER = 512
 [BASIS]
 basis = cc-pvdz
 
-[PBASIS]
+[QPBASIS]
 basis = prot-pb4-d
 
 [MISC]
@@ -34,10 +34,10 @@ mem = 100 MB
 [INTS]
 ALG = INCORE
 
-[PINTS]
+[QPINTS]
 ALG = INCORE
 
-[EPINTS]
+[EQPINTS]
 ALG = INCORE
 
 [PHYSCON]

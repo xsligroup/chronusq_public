@@ -69,29 +69,14 @@ namespace ChronusQ {
     std::vector<libint2::Engine> engines(nthreads);
 
     // Initialize the first engine for the integral evaluation
-    if(op == EP_ATTRACTION && options.erfOmega)
-    {
-      engines[0] = libint2::Engine(libint2::Operator::erf_coulomb,
-        std::max(basis.maxPrim, basis2.maxPrim),
-        std::max(basis.maxL, basis2.maxL), deriv);
-      engines[0].set_precision(0.);
-      engines[0].set_params(options.erfOmega);
-    }
-    else
-    {
-      engines[0] = libint2::Engine(libint2::Operator::coulomb,
-        std::max(basis.maxPrim, basis2.maxPrim),
-        std::max(basis.maxL, basis2.maxL), deriv);
-      engines[0].set_precision(0.);
-    }
+    engines[0] = libint2::Engine(libint2::Operator::coulomb,
+      std::max(basis.maxPrim, basis2.maxPrim),
+      std::max(basis.maxL, basis2.maxL), deriv);
+    engines[0].set_precision(0.);
 
     // Copy over the engines to other threads if need be
     for(size_t i = 1; i < nthreads; i++)
-    {
       engines[i] = engines[0];
-      if(options.erfOmega)
-        engines[i].set_params(options.erfOmega);
-    }
 
     // Get useful constants
     bool sameBasis = (&basis == &basis2);
@@ -206,26 +191,13 @@ namespace ChronusQ {
                                libint2::Engine& engine) {
 
 #ifndef __IN_HOUSE_INT__
-      if(options.erfOmega && op == EP_ATTRACTION)
-      {
-        engine.compute2<
-          libint2::Operator::erf_coulomb, libint2::BraKet::xx_xx, 0>(
-          basisSet.shells[sh1],
-          basisSet.shells[sh2],
-          basisSet2.shells[sh3],
-          basisSet2.shells[sh4]
-        );
-      }
-      else
-      {
-        engine.compute2<
-          libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
-          basisSet.shells[sh1],
-          basisSet.shells[sh2],
-          basisSet2.shells[sh3],
-          basisSet2.shells[sh4]
-        );
-      }
+      engine.compute2<
+        libint2::Operator::coulomb, libint2::BraKet::xx_xx, 0>(
+        basisSet.shells[sh1],
+        basisSet.shells[sh2],
+        basisSet2.shells[sh3],
+        basisSet2.shells[sh4]
+      );
 
       const double* results =  engine.results()[0] ;
       // Libint internal screening

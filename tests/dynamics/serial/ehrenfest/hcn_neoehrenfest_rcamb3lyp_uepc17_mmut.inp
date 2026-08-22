@@ -4,19 +4,19 @@ mult = 1
 geom:
  N  0.00000  0.000000  0.000000
  C  1.15824  0.000000  0.000000
- H  2.22844  0.000000  0.000100 Q
+ H  2.22844  0.000000  0.000100 QP
 
 [QM]
 reference = Complex RCAMB3LYP
 job = Ehrenfest
 
-[PROTQM]
+[QPQM]
 reference = Complex UEPC17
 
 [SCF]
 neo = true
 guess = classical
-prot_guess = tight
+qp_guess = tight
 accuracy = 1e-11
 maxiter = 512
 
@@ -44,18 +44,18 @@ xcweightalg = becke
 [BASIS]
 basis = cc-pvdz
 
-[PBASIS]
+[QPBASIS]
 basis = prot-pb4-d
 
 [INTS]
 alg = direct
 gradalg = direct
 
-[PINTS]
+[QPINTS]
 alg = incore
 gradalg = direct
 
-[EPINTS]
+[EQPINTS]
 alg = incore
 gradalg = direct
 

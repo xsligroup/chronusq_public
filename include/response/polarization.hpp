@@ -26,7 +26,6 @@
 #include <singleslater.hpp>
 #include <singleslater/hartreefock.hpp>
 #include <singleslater/kohnsham.hpp>
-#include <singleslater/neoss.hpp>
 
 #include <response/tbase.hpp>
 
@@ -370,90 +369,6 @@ namespace ChronusQ {
       };
 
   };
-
-
- 
-  //Class specialization to deal with NEOSS Objects
-  template <typename MatsT, typename IntsT>
-  class PolarizationPropagator< NEOSS<MatsT, IntsT> > :
-    public PolarizationPropagator< SingleSlater<MatsT, IntsT> >{
-
-      template<typename U>
-      using RC_coll = std::vector<RESPONSE_CONTRACTION<U>>;
-
-      std::vector<MatsT> diagonals;
-
-    public:
-
-      PolarizationPropagator( MPI_Comm c, ResponseType job,
-        std::shared_ptr<NEOSS<MatsT, IntsT>> ref, MatsT* fullMatrix = nullptr ) :
-        PolarizationPropagator<SingleSlater<MatsT, IntsT>>(c,job,
-          std::dynamic_pointer_cast<SingleSlater<MatsT, IntsT>>(ref),fullMatrix) {
-        this->PC_ = [&](size_t nVec, MatsT shift, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
-          neoPreConditioner(nVec,shift,V,AV);
-        };
-        this->nSPC_ = [&](size_t nVec, SolverVectors<MatsT> &V, SolverVectors<MatsT> &AV) {
-          neoPreConditioner(nVec,MatsT(0.),V,AV);
-        };
-        this->cmplxPC_ = [&](size_t nVec, dcomplex shift, SolverVectors<dcomplex> &V, SolverVectors<dcomplex> &AV) {
-          neoPreConditioner(nVec,shift,V,AV);
-        };
-      }
-
-      PolarizationPropagator( const PolarizationPropagator &other ) :
-        PolarizationPropagator<SingleSlater<MatsT, IntsT>>(
-          dynamic_cast<const PolarizationPropagator<SingleSlater<MatsT, IntsT>>&>(other)
-        ){ }
-
-      // Inherit the ResponseTBase exposures from 
-      // PolarizationPropagator<SingleSlater>
-      using PolarizationPropagator<SingleSlater<MatsT, IntsT>>::formLinearTrans;
-
-      template <typename U>
-      void formLinearTrans_direct_impl(MPI_Comm, RC_coll<U> x,
-          SINGLESLATER_POLAR_COPT op, bool noTrans);
-
-      virtual size_t getNSingleDim(const bool);
-
-      size_t getNSingleSSDim(SingleSlater<MatsT,IntsT>& , const bool);
-
-      std::pair<size_t,MatsT*> formPropGrad( ResponseOperator );
-
-      template <typename U>
-      void neoPreConditioner(size_t nVec, U shift, SolverVectors<U> &V, SolverVectors<U> &AV);
-
-      template <typename U>
-      std::vector< std::pair< std::pair<int,int>, U > >
-        getMOContributions(U *V, double tol);
-
-      template <typename U>
-      void printResMO_impl( std::ostream &out, size_t nRoots, double *W_print,
-      std::vector<std::pair<std::string,double *>> data,U* VL, U* VR);
-
-      void resGuess(size_t, MatsT*, size_t);
-
-      // Interface to PolarizationPropagator<SingleSlater> double exposure
-      void formLinearTrans_direct(MPI_Comm c, RC_coll<double> x,
-          SINGLESLATER_POLAR_COPT op, bool noTrans = false); 
-      // Interface to PolarizationPropagator<SingleSlater> dcomplex exposure
-      void formLinearTrans_direct(MPI_Comm c, RC_coll<dcomplex> x,
-          SINGLESLATER_POLAR_COPT op, bool noTrans = false){ 
-      
-        formLinearTrans_direct_impl(c,x,op,noTrans);
-
-      };
-        
-      virtual void printResMO(std::ostream &out, size_t nRoots, double *W, 
-        std::vector<std::pair<std::string,double *>> data, double* VL, double* VR) {
-          printResMO_impl(out,nRoots,W,data,VL,VR);
-      };
-      virtual void printResMO(std::ostream &out, size_t nRoots, double *W, 
-        std::vector<std::pair<std::string,double *>> data, dcomplex* VL, dcomplex* VR) {
-          printResMO_impl(out,nRoots,W,data,VL,VR);
-      };
- 
-  };
-
 
 
 };

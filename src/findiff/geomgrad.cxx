@@ -48,9 +48,9 @@ namespace ChronusQ {
       if((mol.atoms[iAtm].atomicNumber == 1 and mol.atoms[iAtm].quantum) or
          mol.atoms[iAtm].atomicNumber == 0)
         protBasisAtomIndices.push_back(iAtm);
-    prot_basis = CQBasisSetOptions(std::cout,input_,mol,"PBASIS",protBasisAtomIndices);
+    prot_basis = CQBasisSetOptions(std::cout,input_,mol,"QPBASIS",protBasisAtomIndices);
 
-    aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EPINTS");
+    aoints = CQIntsOptions(std::cout,input_,mol,basis,nullptr,prot_basis,"EQPINTS");
     auto ssOptions = CQSingleSlaterOptions(std::cout,input_,mol,*basis);
 
     SCFControls scfControls = CQSCFOptions(std::cout,input_,emPert);

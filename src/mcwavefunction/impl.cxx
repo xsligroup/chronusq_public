@@ -35,10 +35,6 @@ namespace ChronusQ {
   template class MultiParticleMCWaveFunction<dcomplex,double>;
   template class MultiParticleMCWaveFunction<dcomplex,dcomplex>;
 
-  template class NEOMCWaveFunction<double,double>;
-  template class NEOMCWaveFunction<dcomplex,double>;
-  template class NEOMCWaveFunction<dcomplex,dcomplex>;
-
   template class CIBuilder<double,double>;
   template class CIBuilder<dcomplex,double>;
   template class CIBuilder<dcomplex,dcomplex>;
@@ -54,10 +50,6 @@ namespace ChronusQ {
   template class RASCI<double,double>;
   template class RASCI<dcomplex,double>;
   template class RASCI<dcomplex,dcomplex>;
-
-  template class NEOCASCI<double,double>;
-  template class NEOCASCI<dcomplex,double>;
-  template class NEOCASCI<dcomplex,dcomplex>;
 
   template class MultiParticleCASCI<double,double>;
   template class MultiParticleCASCI<dcomplex,double>;

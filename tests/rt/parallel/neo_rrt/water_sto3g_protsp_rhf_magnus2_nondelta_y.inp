@@ -9,8 +9,8 @@ charge = 0
 mult = 1
 geom: 
  O               0  -0.07579184359               0
- H     0.866811829    0.6014357793               0 Q
- H    -0.866811829    0.6014357793               0 Q
+ H     0.866811829    0.6014357793               0 QP
+ H    -0.866811829    0.6014357793               0 QP
 
 # 
 #  Job Specification
@@ -19,13 +19,13 @@ geom:
 reference =complex RHF
 job = RT
 
-[PROTQM]
+[QPQM]
 reference =complex UHF
 
 [SCF]
 NEO = TRUE
 guess = classical
-prot_guess = tight
+qp_guess = tight
 
 [RT]
 FIELD:
@@ -36,7 +36,7 @@ FIELD:
 basis = sto-3g
 
 
-[PBASIS]
+[QPBASIS]
 basis = prot-sp
 
 
@@ -44,11 +44,11 @@ basis = prot-sp
 ALG = INCORE
 
 
-[PINTS]
+[QPINTS]
 ALG = INCORE
 
 
-[EPINTS]
+[EQPINTS]
 ALG = INCORE
 
 

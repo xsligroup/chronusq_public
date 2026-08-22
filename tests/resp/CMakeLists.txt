@@ -31,7 +31,7 @@ add_executable(resptest ../ut.cxx rres.cxx rfdr.cxx rmor.cxx
   ures_hf.cxx ures_lsda.cxx ures_gga.cxx ures_hgga.cxx 
   gres_hf.cxx gres_lsda.cxx gres_gga.cxx gres_hgga.cxx 
   x2cres_hf.cxx x2cres_lsda.cxx x2cres_gga.cxx x2cres_hgga.cxx
-  neohf_res.cxx rres_giao.cxx x2cres_giao.cxx 
+  rres_giao.cxx x2cres_giao.cxx
   misc.cxx)
 
 target_include_directories(resptest PUBLIC ${RESP_TEST_SOURCE_ROOT} 
@@ -49,7 +49,6 @@ file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/gresp_ks)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/x2cresp_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/x2cresp_giao_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/x2cresp_ks)
-file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/neoresp_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/rresp_giao)
 
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/rresp)
@@ -61,7 +60,6 @@ file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/gresp_ks)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/x2cresp_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/x2cresp_giao_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/x2cresp_ks)
-file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/neoresp_hf)
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/parallel/rresp_giao)
 
 file(MAKE_DIRECTORY ${RESP_TEST_BINARY_ROOT}/serial/rmor)
@@ -102,8 +100,7 @@ add_cq_test( RHF_FDR           resptest "RHF_FDR.*"          )
 add_cq_test( RHF_DFDR          resptest "RHF_DFDR.*"         )
 add_cq_test( RHF_MOR           resptest "RHF_MOR.*"          )
 add_cq_test( MISC_RESP         resptest "MISC_RESP.*"        )
-#add_cq_test( NEOHF_RESIDUE     resptest "NEOHF_RESIDUE.*"    )
-add_cq_test( RHF_GIAO_RESIDUE  resptest "RHF_GIAO_RESIDUE.*" ) 
+add_cq_test( RHF_GIAO_RESIDUE  resptest "RHF_GIAO_RESIDUE.*" )
 add_cq_test( X2CHF_GIAO_RESIDUE     resptest "X2CHF_GIAO_RESIDUE.*"    )
 
 if( CQ_ENABLE_MPI )

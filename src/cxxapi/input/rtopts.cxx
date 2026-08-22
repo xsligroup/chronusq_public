@@ -208,23 +208,6 @@ namespace ChronusQ {
       // no magnetic fields... yet.
       //CONSTRUCT_RT_MR( MCWaveFunction, dcomplex, dcomplex );
     }
-    else if(mcwfn && isNEO)
-    {
-      #define CONSTRUCT_RT_MRNEO(_REF,_MT,_IT,_RTALG,_MRWFN)             \
-      if( not found ) try {                          \
-        if (std::dynamic_pointer_cast<_REF<_MT, _IT> >(_MRWFN)){ \
-        rt =     std::make_shared< RealTimeNEOCI<_MT, _IT> >(  \
-                std::dynamic_pointer_cast<_REF<_MT, _IT> >(mcwfn), vecManager, _RTALG); \
-        found = true;                                \
-        } \
-      } catch(...) {  }
-
-      if (inputRTAlg == RealTimeAlgorithm::RTSymplecticSplitOperator ) {
-          CONSTRUCT_RT_MRNEO( NEOMCWaveFunction, double, double, RealTimeAlgorithm::RTSymplecticSplitOperator, mcwfn);
-      }
-      CONSTRUCT_RT_MRNEO( NEOMCWaveFunction, dcomplex, double, RealTimeAlgorithm::RTRungeKuttaOrderFour,mcwfn);
-
-    }
 
     // Are we doing a nonhermitian problem
     rt->intScheme.nonhermitian_propagation = nonhermitian_prop;

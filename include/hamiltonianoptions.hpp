@@ -128,7 +128,6 @@ namespace ChronusQ {
     bool includeTau = false;
     
     bool oneCenterK = false;       // Default False. If true, use one-center approximation for K contraction
-    double erfOmega = 0.0;
 
     // Dirac-Kohn-Sham (4C-DFT) Options
     DKS_TYPE dksType = DKS_TYPE::OFF; //Type of DKS

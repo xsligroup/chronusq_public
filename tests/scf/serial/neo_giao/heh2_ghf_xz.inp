@@ -2,15 +2,15 @@
 charge = 2
 mult = 1
 geom:
- H -0.42426406871 0. -0.42426406871 Q
+ H -0.42426406871 0. -0.42426406871 QP
 He  0.  0. 0.
- H  0.42426406871 0. 0.42426406871 Q
+ H  0.42426406871 0. 0.42426406871 QP
 
 [QM]
 reference = Complex GHF
 job = SCF
 
-[PROTQM]
+[QPQM]
 reference = Complex GHF
 
 [SCF]
@@ -18,8 +18,8 @@ reference = Complex GHF
 #accuracy = 1e-9
 NEO = TRUE
 GUESS = Classical
-PROT_GUESS = TIGHT
-#PROT_GUESS = Classical
+QP_GUESS = TIGHT
+#QP_GUESS = Classical
 PRINTMOS = 0
 EXTRAP = TRUE
 MAXITER = 6666
@@ -32,7 +32,7 @@ forcecart = true
 basis = cc-pvdz
 basistype = GIAO
 
-[PBASIS]
+[QPBASIS]
 forcecart = true
 basis = prot-sp
 basistype = GIAO
@@ -44,10 +44,10 @@ mem = 4 GB
 [INTS]
 ALG = incore
 
-[PINTS]
+[QPINTS]
 ALG = incore
 
-[EPINTS]
+[EQPINTS]
 ALG = incore
 
 

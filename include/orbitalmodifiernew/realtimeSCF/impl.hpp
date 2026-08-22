@@ -484,31 +484,7 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube() {
     std::cout << tdSCFOptions.iCube << std::endl;
     std::cout << "  *** Saving density of step #"<<integrationProgress.currentStep<<"( t = "<<integrationProgress.currentTime<<" au) in cube ***" << std::endl;
 
-    // NEO
-    if (std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value) {
-
-      auto ss_all = dynamic_cast<NEOSS<MatsT,IntsT>*>(&this->singleSlaterSystem);
-      SingleSlater<MatsT, IntsT>& ess = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(ss_all->getSubSSBase(std::string("Electronic")))));
-      SingleSlater<MatsT, IntsT>& pss = dynamic_cast<SingleSlater<MatsT, IntsT>&>((*(ss_all->getSubSSBase(std::string("Protonic")))));
-      auto cube = tdSCFOptions.rtcubes[PAR_TYPE::ELECTRONIC];
-      auto pcube = tdSCFOptions.rtcubes[PAR_TYPE::PROTONIC];
-      std::string cube_name,pcube_name;
-      if(tdSCFOptions.cubeOptsRT.cubeFileName.empty()) {
-        pcube_name = "RT_P_" + std::to_string(integrationProgress.currentStep);
-        cube_name  = "RT_"   + std::to_string(integrationProgress.currentStep);
-      } else {
-        cube_name = tdSCFOptions.cubeOptsRT.cubeFileName;
-        pcube_name = cube_name + "_RT_P_" + std::to_string(integrationProgress.currentStep);
-        cube_name  = cube_name + "_RT_"   + std::to_string(integrationProgress.currentStep);
-      }
-
-      // density cube 
-      if (tdSCFOptions.cubeOptsRT.denCube) {
-        cube->evalDenCube(cube_name,ess.onePDM,true);
-        pcube->evalDenCube(pcube_name,pss.onePDM,true);
-      }
-
-    } else {
+    {
 
       auto ss = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->singleSlaterSystem);
       auto cube = tdSCFOptions.rtcubes[PAR_TYPE::ELECTRONIC];
@@ -728,43 +704,3 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::printStepDetail() {
 
 }; // namespace ChronusQ
 
-#if 0
-// set the density matrix to use the current orthonormalized density matrix
-  if( std::is_same<NEOSS<MatsT,IntsT>,singleSlaterT<MatsT,IntsT>>::value ) {
-    auto neoSingleSlaterSystem = dynamic_cast<NEOSS<MatsT,IntsT>*>(&this->singleSlaterSystem);
-    auto neoMap = neoSingleSlaterSystem->getSubsystemMap();
-    auto neoSubsystemOrder = neoSingleSlaterSystem->getOrder();
-    assert( !neoMap.empty() );
-    // Loop over all subsystems
-    size_t i = 0;
-    for( auto& neoSubsystemLabel: neoSubsystemOrder ) {
-      auto &neoSubsystem = neoMap[neoSubsystemLabel];
-      if(neoSubsystem.get()->nC == 1) {
-        if(neoSubsystem.get()->iCS) {
-          *neoSubsystem.get()->onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
-        } else {
-          *neoSubsystem.get()->onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
-          i++;
-        }
-      } else {
-        *neoSubsystem.get()->onePDMOrtho = this->onePDMSquareOrtho[i].template spinScatter<MatsT>();
-      }
-      // XSLI TODO: move ortho2aoDen to OribtalModifier
-      neoSubsystem.get()->ortho2aoDen();
-      i++;
-    }
-  } else for( size_t i = 0; i < this->onePDMSquareOrtho.size(); i++ ) {
-    if(this->singleSlaterSystem.nC == 1) {
-      if(this->singleSlaterSystem.iCS) {
-        *this->singleSlaterSystem.onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i]);
-      } else {
-        *this->singleSlaterSystem.onePDMOrtho = cqmatrix::PauliSpinorMatrices<MatsT>::spinBlockScatterBuild(this->onePDMSquareOrtho[i],this->onePDMSquareOrtho[i+1]);
-        i++;
-      }
-    } else {
-      *this->singleSlaterSystem.onePDMOrtho = this->onePDMSquareOrtho[i].template spinScatter<MatsT>();
-    }
-    // XSLI TODO: move ortho2aoDen to OribtalModifier
-    this->singleSlaterSystem.ortho2aoDen();
-  }
-#endif

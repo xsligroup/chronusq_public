@@ -25,7 +25,6 @@
 
 #include <singleslater.hpp>
 #include <singleslater/base.hpp>
-#include <singleslater/neoss.hpp>
 #include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
@@ -207,18 +206,5 @@ namespace ChronusQ {
       }
 
   }
-
-  template<typename MatsT,typename IntsT>
-  void NEOSS<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, std::string prefix, std::shared_ptr<Molecule> mol) {
-
-      applyToEach([&](SubSSPtr & ss){
-        auto SS = std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(ss);
-        // Copy the SingleSlater options
-        SS->cubeOptsSS = this->cubeOptsSS;
-        SS->runCube(cubes,prefix,mol);
-      });
-      return;
-  }
-
 
 }; // namespace ChronusQ

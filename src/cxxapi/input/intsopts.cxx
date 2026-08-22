@@ -52,8 +52,8 @@ namespace ChronusQ {
 
       // RI Options
       "RI",           // String, determines which algorithm to use for RI/CD
-                      // For INTS/PINTS section: "AUXBASIS" or "TRADITIONAL" or "DYNAMICALL" or "SPANFACTOR" or "DYNAMICERI" or "CHOLESKY" or "SPANFACTOREUSE"
-                      // For EPINTS section:     "INT1_AUX" (="ELEC_AUX") or "INT2_AUX" (="PROT_AUX")) or "CONNECTOR" (="ELEC_AND_PROT_AUX") or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
+                      // For INTS/QPINTS section (and per-label variants, e.g. QP0INTS): "AUXBASIS" or "TRADITIONAL" or "DYNAMICALL" or "SPANFACTOR" or "DYNAMICERI" or "CHOLESKY" or "SPANFACTOREUSE"
+                      // For EQPINTS section (and per-label-pair variants, e.g. EQP0INTS): "INT1_AUX" (="ELEC_AUX") or "INT2_AUX" (="PROT_AUX")) or "CONNECTOR" (="ELEC_AND_PROT_AUX") or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
       "RIDISTRIBUTE", // True or False, whether to distribute the 3-index ERI across MPI processes
       "RIREDISTRIBUTE", // True or False, whether to redistribute the 3-index ERI across MPI processes 
       "RITHRESHOLD",  // double
@@ -62,7 +62,7 @@ namespace ChronusQ {
       "RIMAXQUAL",    // size_t
       "RIGENCONTR",   // True or False
       "RIBUILD4INDEX",// True or False
-      "RIREPORTERROR",// True of False, keyword only for EPINTS Section and only applies if the user chooses to approximate (ee|pp)
+      "RIREPORTERROR",// True of False, keyword only for EQPINTS Section and only applies if the user chooses to approximate (ee|pp)
                       // Determines whether to explicitly build exact (ee|pp) and calculate RMSD against approximate (ee|pp)
       "RICOMBINEBASISTRUNCATE", // String, determines for combineAuxBasis algorithm whether to remove linear deps using some threshold
                                 // True or False, if set True, then default is sqrt{tau_e * tau_p}                
@@ -104,9 +104,6 @@ namespace ChronusQ {
       std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
       std::shared_ptr<BasisSet> basis2, std::string int_sec, bool isAsymmetric){
 
-    // check the validity of the integral option section 
-    if (not int_sec.compare("INTS") and not int_sec.compare("PINTS") and not int_sec.compare("EPINTS"))
-      CErr("Found invalid integral section");
 
     
     out << "  *** Parsing " << int_sec << ".REFERENCE options ***\n\n";
@@ -153,7 +150,7 @@ namespace ChronusQ {
     if(options.basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::INCORE and 
         RI.compare("FALSE")) {
 
-      // RI Keyword for asymmetric integrals will be decoded differently than INTS/PINTS
+      // RI Keyword for asymmetric integrals will be decoded differently than symmetric integrals
       if(isAsymmetric){
         // Decode RI keywrod for asymmetric integrals sections
         if (not RI.compare("AUTO")){
@@ -188,7 +185,7 @@ namespace ChronusQ {
         OPTOPT( options.cdriintsoptions.CDRI_asymmRedistribute = input.getData<bool>(int_sec+"/RIREDISTRIBUTE"); )
 
       } else{
-        // Decode RI keywrod for INTS / PINTS sections
+        // Decode RI keywrod for symmetric integral sections
           if(not RI.compare("AUXBASIS") ) {
             if (dfbasis->nBasis < 1)
               CErr("Keyword "+ int_sec + "/RI requires a non-empty DFbasis->",std::cout);
@@ -360,15 +357,15 @@ namespace ChronusQ {
 
         std::shared_ptr<Integrals<double>> epaoint = std::make_shared<Integrals<double>>();
 
-        // If nothing is set for EPINTS, by default (ee|pp) integrals will be evaluated on the fly using direct algorithm
+        // If nothing is set for EQPINTS, by default (ee|pp) integrals will be evaluated on the fly using direct algorithm
         if(basicintsoptions.contrAlg == CONTRACTION_ALGORITHM::DIRECT) {
           epaoint->TPI = std::make_shared<DirectTPI<double>>(*basis,*basis2,mol,basicintsoptions.threshSchwarz);
         } else {
-          // If user set EPINTS.RI to be FALSE, incore algorithm uses 4-index for (ee|pp)
+          // If user set EQPINTS.RI to be FALSE, incore algorithm uses 4-index for (ee|pp)
           if(not basicintsoptions.RI.compare("FALSE")){
             epaoint->TPI = std::make_shared<InCore4indexTPI<double>>(basis->nBasis,basis2->nBasis);
           } else{
-            // The default EPINTS.RI option is "AUTO", where we dynamically detect what aux basis is avalibale and use corresponding aux basis for asymm approximation 
+            // The default EQPINTS.RI option is "AUTO", where we dynamically detect what aux basis is avalibale and use corresponding aux basis for asymm approximation 
             // If the user specified an algorithm for NEO CD, then need to create corresponding IncoreAsymmRITPI object 
             
             // First detect if there are aux basis available:
@@ -580,9 +577,6 @@ namespace ChronusQ {
       std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
       std::shared_ptr<BasisSet> basis2, std::string int_sec) {
 
-    // check the validity of the integral option section 
-    if (not int_sec.compare("INTS") and not int_sec.compare("PINTS") and not int_sec.compare("EPINTS"))
-      CErr("Found invalue integral section");
 
     // Parse integral algorithm
     std::string ALG = "DIRECT";

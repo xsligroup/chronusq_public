@@ -136,59 +136,6 @@ namespace ChronusQ {
 
   };
 
-  template <typename MatsT, typename IntsT>
-  class NEOMP2: public MP2Base, public PostHartreeFock<MatsT,IntsT>
-  {
-    protected:
-      std::shared_ptr<NEOSS<MatsT,IntsT>> neoref_;
-      std::vector<std::shared_ptr<MP2Base>> subsystems;
-
-      std::shared_ptr<InCore4indexTPI<MatsT>> epERI;
-      std::shared_ptr<InCore4indexTPI<MatsT>> MixedT2;
-
-      // Quantities for convenience (and potential future generalization)
-      std::vector<std::shared_ptr<MP2<MatsT,IntsT>>> refs;
-      std::vector<size_t> NB;
-      std::vector<size_t> nocc;
-      std::vector<size_t> nvir;
-
-    public:
-
-      // NEO electron-proton and proton-proton
-      double ep = 0.0;
-
-      template <typename MatsU>
-      NEOMP2(std::shared_ptr<NEOSS<MatsU,IntsT>> ref):
-        neoref_(ref),
-        PostHartreeFock<MatsT,IntsT>(std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(ref),0) 
-        {
-          // For saving to bin
-          this->savFile = this->ref_->savFile;
-          // Make subsystem MP2 objects
-          subsystems.push_back(std::make_shared<MP2<MatsT,IntsT>>(neoref_->template getSubsystem<SingleSlater>(std::string("Electronic"))));
-          subsystems.push_back(std::make_shared<MP2<MatsT,IntsT>>(neoref_->template getSubsystem<SingleSlater>(std::string("Protonic"))));
-        };
-      // Functions that are purely virtual in PostHartreeFock
-      void run(EMPerturbation &)
-      {
-        CErr("Doesn't make sense to call PostHartreeFock virtual run from NEOMP2!  The MP2 interface is runMP2()");
-      };
-      void computeTDM(size_t, size_t, std::shared_ptr<cqmatrix::Matrix<MatsT>>)
-      {
-        CErr("Doesn't make sense to call PostHartreeFock virtual compute TDM from NEOMP2!");
-      };
-
-      // MP2 functionality 
-      void runMP2(EMPerturbation &);
-      void saveState();
-      void addepto1RDM();
-
-      // Dummy implementation for PostHartreeFock Base
-      void compute2TDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){}; 
-      void compute2RDM(size_t, size_t, std::shared_ptr<InCore4indexTPI<MatsT>>){};
-
-  };
-
 
 
 }; // namespace ChronusQ

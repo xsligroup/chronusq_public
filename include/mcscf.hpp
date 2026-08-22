@@ -26,7 +26,6 @@
 #include <chronusq_sys.hpp>
 #include <cerr.hpp>
 #include <singleslater.hpp>
-#include <singleslater/neoss.hpp>
 #include <mcscf/base.hpp>
 #include <mcwavefunction.hpp>
 #include <orbitalrotation.hpp>

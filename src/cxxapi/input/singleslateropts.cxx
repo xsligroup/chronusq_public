@@ -42,7 +42,6 @@
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
 
-#include <singleslater/neoss.hpp>
 #include <singleslater/multiparticless.hpp>
 
 namespace ChronusQ {
@@ -101,27 +100,8 @@ namespace ChronusQ {
       "SPINORBITSCALING",
       "ATOMICX2C",
       "SNSOTYPE",
-      "IGNOREVPP",
       "DKSTYPE",
       "ONECENTERK"
-    };
-
-    return CQInvalidKeywords(allowedKeywords, inputSection);
-  }
-
-  /**
-   *
-   *  Check valid keywords in the Proton QM section.
-   *
-  */
-  std::set<std::string> CQPROTQM_VALID(const std::map<std::string, std::string>& inputSection) {
-
-    // Allowed keywords
-    std::set<std::string> allowedKeywords = {
-      "REFERENCE",
-      "ONECENTERK",
-      "ERFOMEGA",
-      "DISTINGUISHABLE"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -1848,156 +1828,6 @@ namespace ChronusQ {
 
   }
 
-
-  // NEO SingleSlater wrapper
-  std::tuple<std::shared_ptr<SingleSlaterBase>, SingleSlaterOptions, SingleSlaterOptions> CQNEOSSOptions(
-    std::ostream &out, CQInputFile &input,
-    Molecule &mol,
-    BasisSet &ebasis, BasisSet &pbasis,
-    std::shared_ptr<IntegralsBase> eaoints, 
-    std::shared_ptr<IntegralsBase> paoints,
-    std::shared_ptr<IntegralsBase> epaoints,
-    SCFControls scfControls) {
-
-    Particle p{-1., 1.};
-#define NEO_LIST(T) \
-    MPI_COMM_WORLD,mol,ebasis,std::dynamic_pointer_cast<Integrals<T>>(epaoints),1,false,p
-
-    SingleSlaterOptions essopt = getSingleSlaterOptions(out, input, mol, ebasis, {-1., 1.}, "QM");
-
-    // If doing a NEO calculation with different Deuterium, scale the mass here
-    // Note this also checks that all quantum particles are the same mass, as right now
-    // this is the only options with how NEOSS is constructed
-    double massAMU, mass;
-    size_t nelec;
-    if(mol.atomsQ.size())
-    {
-      massAMU = mol.atoms[mol.atomsQ[0]].atomicMass;
-      nelec = mol.atoms[mol.atomsQ[0]].atomicNumber;
-      for(const auto & atomQIndex : mol.atomsQ)
-      {
-        if(mol.atoms[atomQIndex].atomicMass != massAMU)
-          CErr("All particles for a NEO calculation must have the same mass!");
-      }
-    }
-    // HardCoded masses for H/D/T based on NIST standards:
-    if(massAMU == atomicReference["H-1"].atomicMass)
-    {
-      mass = ProtMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mpsme
-    }
-    else if(massAMU == atomicReference["H-2"].atomicMass)
-    {
-      mass = DeutMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mdsme
-    }
-    else if(massAMU == atomicReference["H-3"].atomicMass)
-    {
-      mass = TritMassPerE(); // https://physics.nist.gov/cgi-bin/cuu/Value?mtsme
-    }
-    else
-    {
-      // Atomic masses are mass of nuclei + mass of associated electrons, so we need
-      // to subtract out the electron mass to just get the nuclear mass
-      mass = massAMU * AUPerAMU() - nelec;
-    }
-   
-    SingleSlaterOptions pssopt = getSingleSlaterOptions(out, input, mol, pbasis, {1., mass}, "PROTQM");
-
-    std::shared_ptr<SingleSlaterBase> ess = essopt.buildSingleSlater(out,  mol, ebasis, eaoints);
-    std::shared_ptr<SingleSlaterBase> pss = pssopt.buildSingleSlater(out,  mol, pbasis, paoints);
-
-    std::shared_ptr<SingleSlaterBase> neoss;
-
-    if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(ess)) {
-      if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<double,double>>(pss)) {
-        
-        if(scfControls.printContractionTiming){
-          ess_t->TPI->printContractionTiming = true;
-          pss_t->TPI->printContractionTiming = true;
-        }
-        
-        auto neoss_t = std::make_shared<NEOSS<double,double>>(NEO_LIST(double));
-        auto epaoints_t = std::dynamic_pointer_cast<Integrals<double>>(epaoints);
-        neoss_t->addSubsystem("Electronic", ess_t, {});
-        neoss_t->addSubsystem("Protonic", pss_t, {{"Electronic", {true, epaoints_t->TPI}}});
-        neoss_t->setOrder({"Protonic", "Electronic"});
-        neoss = std::dynamic_pointer_cast<SingleSlaterBase>(neoss_t);
-
-        // Handle the fact that VXC will be formed by the NEOKohnShamBuilder
-        if( pssopt.refOptions.isEPCRef ) {
-          auto pks_t = std::dynamic_pointer_cast<KohnSham<double,double>>(pss_t);
-          pks_t->doVXC_ = false;
-          if( auto eks_t = std::dynamic_pointer_cast<KohnSham<double,double>>(ess_t) ) {
-            eks_t->doVXC_ = false;
-          }
-        }
-      }
-      else
-        CErr("Electrons and protons must use the same field (real/real) or (complex/complex)");
-    }
-    else if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(ess)) {
-      if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,double>>(pss)) {
-        
-        if(scfControls.printContractionTiming){
-          ess_t->TPI->printContractionTiming = true;
-          pss_t->TPI->printContractionTiming = true;
-        }
-        
-        auto neoss_t = std::make_shared<NEOSS<dcomplex,double>>(NEO_LIST(double));
-        auto epaoints_t = std::dynamic_pointer_cast<Integrals<double>>(epaoints);
-        neoss_t->addSubsystem("Electronic", ess_t, {});
-        neoss_t->addSubsystem("Protonic", pss_t, {{"Electronic", {true, epaoints_t->TPI}}});
-        neoss_t->setOrder({"Protonic", "Electronic"});
-        neoss = std::dynamic_pointer_cast<SingleSlaterBase>(neoss_t);
-
-        // Handle the fact that VXC will be formed by the NEOKohnShamBuilder
-        if( pssopt.refOptions.isEPCRef ) {
-          auto pks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,double>>(pss_t);
-          pks_t->doVXC_ = false;
-          if( auto eks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,double>>(ess_t) ) {
-            eks_t->doVXC_ = false;
-          }
-        }
-      }
-      else
-        CErr("Electrons and protons must use the same field (real/real) or (complex/complex)");
-    }
-    else if(auto ess_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(ess)) {
-      if(auto pss_t = std::dynamic_pointer_cast<SingleSlater<dcomplex,dcomplex>>(pss)) {
-
-        if(scfControls.printContractionTiming){
-          ess_t->TPI->printContractionTiming = true;
-          pss_t->TPI->printContractionTiming = true;
-        }
-
-        auto neoss_t = std::make_shared<NEOSS<dcomplex,dcomplex>>(NEO_LIST(dcomplex));
-        auto epaoints_t = std::dynamic_pointer_cast<Integrals<dcomplex>>(epaoints);
-        neoss_t->addSubsystem("Electronic", ess_t, {});
-        neoss_t->addSubsystem("Protonic", pss_t, {{"Electronic", {true, epaoints_t->TPI}}});
-        neoss_t->setOrder({"Protonic", "Electronic"});
-        neoss = std::dynamic_pointer_cast<SingleSlaterBase>(neoss_t);
-
-        // Handle the fact that VXC will be formed by the NEOKohnShamBuilder
-        if( pssopt.refOptions.isEPCRef ) {
-          auto pks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,dcomplex>>(pss_t);
-          pks_t->doVXC_ = false;
-          if( auto eks_t = std::dynamic_pointer_cast<KohnSham<dcomplex,dcomplex>>(ess_t) ) {
-            eks_t->doVXC_ = false;
-          }
-        }
-      }
-      else
-        CErr("Electrons and protons must use the same field (real/real) or (complex/complex)");
-    }
-    else {
-      CErr("NEO w/ mixed GTO/GIAO NYI, \nor Unreconized MatsT/IntsT combination in CQNEOSSOptions");
-    }
-
-    // Need to copy this over 
-    epaoints->options_.erfOmega=pssopt.hamiltonianOptions.erfOmega;
-    
-    return {neoss, essopt, pssopt};
-
-  }
 
   std::shared_ptr<SingleSlaterBase> CQMultiParticleSSOptions(
     std::ostream& out,

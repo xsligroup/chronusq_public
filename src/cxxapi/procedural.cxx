@@ -536,10 +536,6 @@ namespace ChronusQ {
           CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, double   );
           CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, dcomplex );
 
-          CONSTRUCT_NEWSCF( NEOSS, double, double     );
-          CONSTRUCT_NEWSCF( NEOSS, dcomplex, double   );
-          CONSTRUCT_NEWSCF( NEOSS, dcomplex, dcomplex );
-
           CONSTRUCT_NEWSCF( HartreeFock, double, double     );
           CONSTRUCT_NEWSCF( HartreeFock, dcomplex, double   );
           CONSTRUCT_NEWSCF( HartreeFock, dcomplex, dcomplex );

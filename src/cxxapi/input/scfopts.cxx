@@ -67,9 +67,7 @@ namespace ChronusQ {
       "FIELD",
       "PRINTMOS",
       "NEO",
-      "PROT_GUESS",
       "SWAPMO",
-      "PROT_SWAPMO",
       "SWITCH",
       "NRAPPROX",
       "NRTRUST",
@@ -238,20 +236,11 @@ namespace ChronusQ {
     scfControls.guess = parseSCFGuess(guessString, "SCF/GUESS");
     
 
-    // Proton Guess For Legacy NEO Calculations
-    const bool hasProtGuess = input.containsData("SCF/PROT_GUESS");
-    SS_GUESS protGuess = TIGHT;
-    if(hasProtGuess) {
-      std::string protGuessString = input.getData<std::string>("SCF/PROT_GUESS");
-      trim(protGuessString);
-      protGuess = parseSCFGuess(protGuessString, "SCF/PROT_GUESS");
-    }
-
     // Get all LABEL_GUESS keywords specified by the user under SCF section
     // And record them in subsystemGuesses
     const std::string guessSuffix = "_GUESS";
     for(const auto& [key, value] : input.getSection("SCF")) {
-      if(key == "GUESS" or key == "PROT_GUESS" or
+      if(key == "GUESS" or
          key.size() <= guessSuffix.size() or
          key.compare(key.size() - guessSuffix.size(), guessSuffix.size(), guessSuffix) != 0)
         continue;
@@ -262,14 +251,6 @@ namespace ChronusQ {
       scfControls.subsystemGuesses[label] = parseSCFGuess(selection, "SCF/" + key);
     }
 
-    // Handle legacy NEO input keyword PROT_GUESS (Transfer to QP_GUESS)
-    if(hasProtGuess) {
-      if(scfControls.subsystemGuesses.count("QP"))
-        CErr("Cannot set both SCF/PROT_GUESS and SCF/QP_GUESS");
-      scfControls.subsystemGuesses["QP"] = protGuess;
-      scfControls.prot_guess = protGuess == TIGHT ? NEOTightParticle : protGuess;
-    }
-    
     std::string neoonlyoptstring;
     OPTOPT( neoonlyoptstring = input.getData<std::string>("SCF/NEOOPTIMIZEONLY"); )
     trim(neoonlyoptstring);
@@ -376,7 +357,9 @@ namespace ChronusQ {
     }
     else if(!protrdmbuilderstr.compare("MOM"))
     {
-      if(scfControls.prot_guess != READMO) CErr("Proton MOM requires a guess set of orbitals using READMO");
+      auto qpGuess = scfControls.subsystemGuesses.find("QP");
+      if(qpGuess == scfControls.subsystemGuesses.end() or qpGuess->second != READMO)
+        CErr("Proton MOM requires a guess set of orbitals using QP_GUESS = READMO");
       scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::MOM;
     }
     else if(!protrdmbuilderstr.compare("NEOFINITETEMP"))

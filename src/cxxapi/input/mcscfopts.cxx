@@ -514,57 +514,6 @@ namespace ChronusQ {
     }
 
     return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjobtype,mcscfsettings);
-
-    std::shared_ptr<MCWaveFunctionBase> auxmcwfn;
-    std::shared_ptr<MCSCFJobType> mcscfjob = nullptr;
-    if(!doNEO)
-    {
-      mcwfn = CQBuildMCWaveFunction(out,input,ss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
-    }
-    else
-    {
-      std::shared_ptr<NEOBase> neobase;
-      std::shared_ptr<SingleSlaterBase> tempss;
-
-      #define GETNEOBASE(_MT,_IT)             \
-      if( not found ) try {                          \
-        neobase = std::dynamic_pointer_cast<NEOBase>( \
-            std::dynamic_pointer_cast<NEOSS<_MT,_IT>>(ss)); \
-        found = true;                 \
-      } catch(...) { }
-
-      bool found = false;
-      GETNEOBASE(double,double);
-      GETNEOBASE(dcomplex,double);
-      GETNEOBASE(dcomplex,dcomplex);
-
-      tempss = neobase->getSubSSBase("Electronic");
-      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
-
-      #define MAKENEOMCWFN(_MT,_IT) \
-      if(not found) try { \
-       mcwfn = std::dynamic_pointer_cast<MCWaveFunctionBase>( \
-              std::make_shared<NEOMCWaveFunction<_MT,_IT>>( \
-                std::dynamic_pointer_cast<NEOSS<_MT,_IT>>(ss),auxmcwfn->NStates)); \
-       found = true; \
-       } catch(...) { }
-
-      found = false;
-      MAKENEOMCWFN(double,double);
-      MAKENEOMCWFN(dcomplex,double);
-      MAKENEOMCWFN(dcomplex,dcomplex);
-
-      mcwfn->addMCWaveFunction(auxmcwfn,"Electronic");
-
-      prefix = "PROT";
-      tempss = neobase->getSubSSBase("Protonic");
-      auxmcwfn = CQBuildMCWaveFunction(out,input,tempss,scfPert,cube,prefix,mcscfjob,mcscfsettings);
-      mcwfn->addMCWaveFunction(auxmcwfn,"Protonic");
-      prefix="";
-
-    }
-
-    return CQBuildMCSCFOptions(out,input,mcwfn,scfPert,cube,prefix,mcscfjob,mcscfsettings);
   }
 
 

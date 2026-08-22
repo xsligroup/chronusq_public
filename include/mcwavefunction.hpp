@@ -25,7 +25,6 @@
 
 #include <chronusq_sys.hpp>
 #include <singleslater.hpp>
-#include <singleslater/neoss.hpp>
 #include <singleslater/multiparticless.hpp>
 #include <integrals.hpp>
 #include <mcwavefunction/base.hpp>
@@ -44,9 +43,6 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   class MultiParticleCASCI;
-
-  template <typename MatsT, typename IntsT>
-  class NEOCASCI;
 
   // Forward declaration of MCSCF class
   template <typename MatsT, typename IntsT>
@@ -234,9 +230,9 @@ namespace ChronusQ {
    *  \brief The MultiParticleMCWaveFunction class. 
    * 
    *  \todo The goal is to eventually run MCSCF & other Multiconfigurational calculations
-   *        exclusively through a class which looks like MultiParticleMCWaveFunction, 
+   *        exclusively through a class which looks like MultiParticleMCWaveFunction,
    *        i.e. a container which holds a vector of underlying particle wavefunctions,
-   *        and function calls typically follow the ApplyToEach construct of NEOSS
+   *        and function calls typically follow the ApplyToEach construct
    *
    */
 
@@ -313,7 +309,7 @@ namespace ChronusQ {
       std::shared_ptr<MultiParticleSS<MatsT,IntsT>> mcSSref_;
       std::shared_ptr<MultiParticleCASCI<MatsT,IntsT>> multiparticleciBuilder;
 
-      // Akin to NEOSS main storage
+      // Akin to MultiParticleSS main storage
       std::unordered_map<std::string,std::shared_ptr<MCWaveFunction<MatsT,IntsT>>> subsystems;
       std::vector<std::string> order_;
       std::vector<std::string> ciBuilderorder_;
@@ -352,14 +348,6 @@ namespace ChronusQ {
       {
         
       };
-      MultiParticleMCWaveFunction(std::shared_ptr<NEOSS<MatsT,IntsT>> ref, size_t NS)
-      : mcSSref_(nullptr),
-        MCWaveFunction<MatsT,IntsT>(std::dynamic_pointer_cast<SingleSlater<MatsT,IntsT>>(ref),NS),
-        MultiParticleMCWaveFunctionBase()
-      {
-        CErr("");        
-      };
-       
 
       std::vector<std::string> getOrder()const{return order_;};
       std::vector<std::string> getCIOrder()const{return ciBuilderorder_;};
@@ -393,116 +381,6 @@ namespace ChronusQ {
       void computeMultipole(size_t) override;
 
       void runCube(std::vector<std::shared_ptr<CubeGen>>) override {CErr("CubeGen NYI for MultiParticleCI!");};
-  };
-
-  /**
-   *  \brief The NEOMCWaveFunction class for NEO-CI calculations
-   * 
-   *  \todo For now this is a specialization of the MultiParticleMCWaveFunction class, but eventually
-   *        that class will be generalized and this class can likely be removed
-   * 
-   *
-   */
- 
-  template <typename MatsT, typename IntsT>
-  class NEOMCWaveFunction : public MultiParticleMCWaveFunction<MatsT,IntsT>, 
-    public std::enable_shared_from_this<NEOMCWaveFunction<MatsT,IntsT>> {
-
-    private:
-
-    protected:
-    
-    public:
-
-      // NEO-MCWaveFunction Data Members
-
-      // Reference to the NEOSS object so that we can access any NEO funcationality as needed
-      std::shared_ptr<NEOSS<MatsT,IntsT>> neoref_;
-
-      // Transformed integrals for the correlating space
-      // Storing for now just three separate sets of integrals for the
-      // (ee|ee), (PP|PP), and (ee|PP) sets of integrals
-      std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> eeTF;
-      std::shared_ptr<MOIntsTransformer<MatsT,IntsT>> PPTF;
-      std::shared_ptr<MixedMOIntsTransformer<MatsT,IntsT>> ePTF;
-
-      // For convenience (for now), store individual pointers to the electronic
-      // and nuclear wavefunctions in the underlying MultiParticleMCWaveFunction
-      // storage vector
-      std::shared_ptr<MCWaveFunction<MatsT,IntsT>> ewfn_;
-      std::shared_ptr<MCWaveFunction<MatsT,IntsT>> pwfn_;
-
-      // An additional pointer to the base ciBuilder but which now holds onto
-      // the specific NEOCIBuilder
-      // This normally belongs to MCSCF but we'll stash a copy here for convenience (For now)
-      std::shared_ptr<NEOCASCI<MatsT,IntsT>> NEOCIBuilder;
-
-      // Explicit storage for the cross two electron integral terms
-      std::shared_ptr<TwoPInts<IntsT>> interIntegrals;
-      bool contractfirst;
-
-      // Constructors
-      NEOMCWaveFunction(std::shared_ptr<NEOSS<MatsT,IntsT>> neoref, size_t NS):
-      neoref_(neoref),
-      MultiParticleMCWaveFunction<MatsT,IntsT>(neoref,NS)
-      {
-
-        // Grab the crossed integrals between the two 
-        interIntegrals = neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).second;
-        contractfirst = neoref_->getCrossTPIs(std::string("Electronic"),std::string("Protonic")).first;
-        ePTF = nullptr;
-//        ePTF = std::make_shared<MixedMOIntsTransformer<MatsT,IntsT>>(*(neoref_->getSubSS(std::string("Electronic"))),
-//                                                                    *(neoref_->getSubSS(std::string("Protonic"))),
-//                                                                    interIntegrals,
-//                                                                    contractfirst); 
-//
-      };
-      // Might actually be some cleaning up to do I'm missing....
-      ~NEOMCWaveFunction(){};
-      
-      void addMCWaveFunction(std::shared_ptr<MCWaveFunctionBase>,std::string label) override;
-
-      // Integral transform
-      void transformInts(EMPerturbation & pert, std::string) override
-        {transformMultipleInts(pert);}; 
-      void transformMultipleInts(EMPerturbation &);
-
-      // Printing Functionality
-      void printMOSpacePartition(std::string label) override;
-      void printMCState(std::ostream&,size_t,double,MatsT*,std::vector<size_t>&,size_t,const size_t n_item_per_row = 5)override;
-      void printNEOMCState(std::ostream & out, size_t i, double energy, MatsT * C, std::vector<size_t> & sorted_CAddr, size_t N);
-      void printDetOrder(std::ostream&,std::shared_ptr<DetStringManager>&);
-      void printMOInfo(std::ostream &,size_t);
-      
-      void formNaturalOrbs(size_t) override;
-      
-      // Function call which creates the CI solver and allocates requried memory
-      void alloc(bool owner) override;
-
-      // RDM functionality
-      void computeOneRDM(size_t) override;
-      void computeOneRDM() override;
-
-      // Functionality for properties of 1 proton systems
-      void ProtonExpectationValue(size_t);
-      void ProtonVariance(size_t);
-      void ProtonKE(size_t);
-      std::array<double,3> ProtonExpectationValue(cqmatrix::Matrix<MatsT>);
-      std::array<double,3> ProtonVariance(cqmatrix::Matrix<MatsT>);
-      double ProtonKE(cqmatrix::Matrix<MatsT>);
-
-      // Moment calculator
-      void computeMultipole() override;
-      void computeMultipole(size_t) override;
-
-      // Overwrite MCWaveFunction cubegen functionality
-      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM();
-      std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getPOnePDM();
-      void runCube(std::vector<std::shared_ptr<CubeGen>>) override;
-
-      // Get oscillator strengths for the
-      double oscillator_strength(size_t, size_t s1 = 0) override;
- 
   };
 
 

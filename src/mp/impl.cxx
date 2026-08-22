@@ -29,8 +29,4 @@ namespace ChronusQ {
   template class MP2<dcomplex,double>;
   template class MP2<dcomplex,dcomplex>;
 
-  template class NEOMP2<double,double>;
-  template class NEOMP2<dcomplex,double>;
-  template class NEOMP2<dcomplex,dcomplex>;
-  
 }; // namespace ChronusQ

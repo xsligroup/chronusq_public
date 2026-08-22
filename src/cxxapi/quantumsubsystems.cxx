@@ -33,19 +33,17 @@ namespace ChronusQ {
     // Resolve an input section in following order: 
     //    exact per-particle label        (inputLabel + suffix)
     //    the shared base label           (inputLabel's base label + suffix)
-    //    legacy label                    ("PROT"/"P" + suffix)
-    // For example, for inputLabel QP0 and we are looking for section "BASIS"
-    //    we will first look for "QP0BASIS", then "QPBASIS", then "PBASIS"
-    auto resolveSection = [&](const std::string& suffix, const std::string& legacy) -> std::string {
+    // For example, for inputLabel QP0 and we are looking for section suffix "BASIS"
+    //    we will first look for "QP0BASIS", then "QPBASIS"
+    auto resolveSection = [&](const std::string& suffix) -> std::string {
       const std::string exact = inputLabel + suffix;   // e.g. "QP0BASIS"
       if(input.containsSection(exact)) return exact;
       const std::string shared = base + suffix;        // e.g. "QPBASIS"
       if(base != inputLabel and input.containsSection(shared)) return shared;
-      if(base == "QP" and input.containsSection(legacy)) return legacy;  // e.g. "PBASIS"
       return exact;  // default; a required-but-missing section errors downstream
     };
 
-    const std::string qmSection = resolveSection("QM","PROTQM");
+    const std::string qmSection = resolveSection("QM");
 
     if(not input.containsSection(qmSection))
       CErr("Missing quantum subsystem section [" + qmSection + "]");
@@ -115,10 +113,10 @@ namespace ChronusQ {
       sys.nQuantumParticles = autoExpand ? 1 : nPart;
 
       sys.qmSection = qmSection;
-      sys.basisSection = resolveSection("BASIS","PBASIS");
-      sys.dfbasisSection = resolveSection("DFBASIS","PDFBASIS");
-      sys.guessBasisSection = resolveSection("GUESSBASIS","PGUESSBASIS");
-      sys.intsSection = resolveSection("INTS","PINTS");
+      sys.basisSection = resolveSection("BASIS");
+      sys.dfbasisSection = resolveSection("DFBASIS");
+      sys.guessBasisSection = resolveSection("GUESSBASIS");
+      sys.intsSection = resolveSection("INTS");
   
       if(not input.containsSection(sys.basisSection))
         CErr("Missing quantum subsystem basis section [" + sys.basisSection + "]");
@@ -165,7 +163,7 @@ namespace ChronusQ {
 
     // Resolve the pair-integral section, trying the exact labels then the shared
     //   base labels (either order), so one [EQPINTS]/[QPQPINTS] covers every
-    //   expanded pair (E-QP0, E-QP1, QP0-QP1, ...). Legacy [EPINTS] still honored.
+    //   expanded pair (E-QP0, E-QP1, QP0-QP1, ...).
     const std::vector<std::string> candidates = {
       pair.inputLabelA + pair.inputLabelB + "INTS",   // e.g. "EQP0INTS"
       pair.inputLabelB + pair.inputLabelA + "INTS",
@@ -173,13 +171,8 @@ namespace ChronusQ {
       baseB + baseA + "INTS",
     };
     pair.intsSection = candidates.front();
-    bool resolved = false;
     for(const auto& sec : candidates)
-      if(input.containsSection(sec)) { pair.intsSection = sec; resolved = true; break; }
-    if(not resolved and
-       ((baseA == "E" and baseB == "QP") or (baseA == "QP" and baseB == "E")) and
-       input.containsSection("EPINTS"))
-      pair.intsSection = "EPINTS";
+      if(input.containsSection(sec)) { pair.intsSection = sec; break; }
 
     pair.integralOptions = getIntegralOptions(out,input,nullptr,nullptr,nullptr,pair.intsSection, true);
 
