@@ -689,7 +689,7 @@ namespace ChronusQ {
     void setEigForT(dcomplex * _Eig) {
 
       if( CQMemManager::get().getSize(_Eig) < this->nGuess_ )
-        CErr("Davison EigForT requires a memory block with size at least nGuess ",std::cout);
+        CErr("Davidson EigForT requires a memory block with size at least nGuess ",std::cout);
 
       EigForT = _Eig;
     }

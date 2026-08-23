@@ -385,7 +385,7 @@ namespace ChronusQ {
               if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT1_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
-                out << "   Will use " << self1 << " to approxiamate " << cross << std::endl;
+                out << "   Will use " << self1 << " to approximate " << cross << std::endl;
                 if(aux1 and (aux1->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
                   out << "     * Found existing aux basis from " << self1 << "!" << std::endl;
                   aux1_ref = nullptr;
@@ -413,7 +413,7 @@ namespace ChronusQ {
               if(cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::INT2_AUX or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::CONNECTOR
                   or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEAUXBASIS or cdriintsoptions.CDRI_asymmCDalg == ASYMM_CD_ALG::COMBINEMATRIX){
                 out << bannerMid << std::endl;
-                std::cout << "   Will use " << self2 << " to approxiamate " << cross << std::endl;
+                std::cout << "   Will use " << self2 << " to approximate " << cross << std::endl;
                 if(aux2 and (aux2->isDistributed() == cdriintsoptions.CDRI_asymmDistributed)){
                   out << "     * Found existing aux basis from " << self2 << "!" << std::endl;
                   aux2_ref = nullptr;

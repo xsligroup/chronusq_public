@@ -37,7 +37,7 @@
 // VXC_DEBUG_LEVEL == 1 - Timing
 // VXC_DEBUG_LEVEL == 2 - VXC/rho/gamma + Timing
 // VXC_DEBUG_LEVEL == 3 - Debug 2 + Overlap + no screening
-// VXC_DEBUG_LEVEL  > 3 - Debug 3 + print everthing
+// VXC_DEBUG_LEVEL  > 3 - Debug 3 + print everything
 #ifndef VXC_DEBUG_LEVEL
 #  define VXC_DEBUG_LEVEL 0
 #endif
@@ -45,7 +45,7 @@
 namespace ChronusQ {
   
   /**
-   *  \brief assemble the VXC for all density componet over batch
+   *  \brief assemble the VXC for all density component over batch
    *  of points. 
    *
    *  It handles submatrix of the VXC (for a given 
@@ -823,7 +823,7 @@ namespace ChronusQ {
 
     } // Valid intComm
 
-    MPI_Barrier(this->comm); // Syncronize the MPI processes
+    MPI_Barrier(this->comm); // Synchronize the MPI processes
 
     ProgramTimer::tock("Form VXC");
 
@@ -1684,7 +1684,7 @@ namespace ChronusQ {
 
     } // Valid intComm
 
-    MPI_Barrier(this->comm); // Syncronize the MPI processes
+    MPI_Barrier(this->comm); // Synchronize the MPI processes
 
     ProgramTimer::tock("Form VXC");
 

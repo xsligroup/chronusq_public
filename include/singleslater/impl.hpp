@@ -124,7 +124,7 @@ namespace ChronusQ {
   }; // SingleSlater<MatsT>::SingleSlater(SingleSlater<U> &&)
 
 
-  // Delagate the copy constructor to the conversion constructors
+  // Delegate the copy constructor to the conversion constructors
   template <typename MatsT, typename IntsT>
   SingleSlater<MatsT,IntsT>::SingleSlater(const SingleSlater<MatsT,IntsT> &other) : 
     SingleSlater(other,0){ };
@@ -207,7 +207,7 @@ namespace ChronusQ {
   }; // SingleSlater<MatsT>::dealloc
 
   /**
-   *  \brief The pointer convertor. This static function converts
+   *  \brief The pointer converter. This static function converts
    *  the underlying polymorphism correctly to hold a different
    *  type of matrices.
    */

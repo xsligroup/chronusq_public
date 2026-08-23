@@ -39,7 +39,7 @@ template PostHartreeFock<dcomplex,double>::PostHartreeFock(PostHartreeFock<doubl
 template <>
 void MOIntsTransformer<dcomplex,dcomplex>::directTransformTPIBatch(EMPerturbation & pert,
   dcomplex* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const {
-  CErr("Complex integral is is an invalid option",std::cout);
+  CErr("Complex integral is an invalid option",std::cout);
 }
 
 template

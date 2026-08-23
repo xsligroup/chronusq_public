@@ -254,7 +254,7 @@ namespace ChronusQ {
       atShells.push_back(iSh);
     }
 
-    // Shells in descending order of tightest primative
+    // Shells in descending order of tightest primitive
     // XXX: This is not necessarily the "tightest" basis function;
     //      We should also account for the coefficients for generalized contractions
     std::stable_sort(atShells.begin(), atShells.end(), 
@@ -615,7 +615,7 @@ namespace ChronusQ {
       // Copy over the Core Hamiltonian
       *fockMatrix = *coreH;
 
-      // Randomize the Fock matricies
+      // Randomize the Fock matrices
       for(auto F : this->fockMatrix->SZYXPointers()) {
         for(auto k = 0ul; k < NB*NB; k++) F[k] += dis(gen);
         HerMat('L',NB,F,NB);
@@ -1196,7 +1196,7 @@ namespace ChronusQ {
       if( MO1dims[0] != NB or MO1dims[1] != NB ) {
 
         std::cout << "    * Incompatible " << prefix << "MO1:";
-        std::cout << "  Recieved (" << MO1dims[0] << "," << MO1dims[1] << ")"
+        std::cout << "  Received (" << MO1dims[0] << "," << MO1dims[1] << ")"
           << " :";
         std::cout << "  Expected (" << NB << "," << NB << ")";
         CErr("Wrong number of MO coefficients!",std::cout);

@@ -909,7 +909,7 @@ namespace ChronusQ{
   void EOMCCSD<MatsT>::fillGuess(MatsT *guess_vec, size_t n_vec) const{
     
     if (n_vec > nOVshift_) {
-      CErr("EOMCCSD: asking for more roots than the single excitatin space dimension.");
+      CErr("EOMCCSD: asking for more roots than the single excitation space dimension.");
     } 
 
   

@@ -98,7 +98,7 @@ namespace ChronusQ {
     MatsT * locMO = this->mo[0].pointer();
     size_t negEShift = (this->nC == 4) ? (2*NB) : 0; //Skip past neg-E solutions when 4c
     std::cout << "Starting at orbital: " << negEShift+1 << std::endl;
-    size_t upperOrb = (numMOs == 0) ? NOrb : negEShift+numMOs; // User can define numeber of MOs
+    size_t upperOrb = (numMOs == 0) ? NOrb : negEShift+numMOs; // User can define number of MOs
 
     for( size_t iOrb = negEShift; iOrb < upperOrb; iOrb++){
       std::vector<double> BASIS(numRadPts*NB);
@@ -131,7 +131,7 @@ namespace ChronusQ {
           if( this->nC>1 ) val_beta = blas::dot(NB,thisMO+skipToBeta,1,&BASIS[iRad*NB],1);
 
           // For 4c, this is just large component contribution
-          return std::norm(val_alpha) + std::norm(val_beta); // Return wave function sqaured (will be zero for p orbital if not)
+          return std::norm(val_alpha) + std::norm(val_beta); // Return wave function squared (will be zero for p orbital if not)
 
         };
 

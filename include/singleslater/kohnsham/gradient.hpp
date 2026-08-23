@@ -37,7 +37,7 @@
 // VXC_DEBUG_LEVEL == 1 - Timing
 // VXC_DEBUG_LEVEL == 2 - VXC/rho/gamma + Timing
 // VXC_DEBUG_LEVEL == 3 - Debug 2 + Overlap + no screening
-// VXC_DEBUG_LEVEL  > 3 - Debug 3 + print everthing
+// VXC_DEBUG_LEVEL  > 3 - Debug 3 + print everything
 #ifndef VXC_DEBUG_LEVEL
 #  define VXC_DEBUG_LEVEL 0
 #endif
@@ -480,7 +480,7 @@ namespace ChronusQ {
         double * U_gamma_loc   = U_gamma   + 3*TIDNPPB;
         double * dVU_gamma_loc = dVU_gamma + 3*TIDNPPB;
 
-        // local U gradient ponter
+        // local U gradient pointer
         std::vector<double*> GradU_nX_loc, GradU_nY_loc, GradU_nZ_loc;
         std::vector<double*> GradU_gamma_X_loc, GradU_gamma_Y_loc, GradU_gamma_Z_loc;
         for(size_t ic = 0; ic < nAtoms; ic++) {
@@ -844,7 +844,7 @@ namespace ChronusQ {
 
     } // Valid intComm
 
-    MPI_Barrier(this->comm); // Syncronize the MPI processes
+    MPI_Barrier(this->comm); // Synchronize the MPI processes
 
     ProgramTimer::tock("Form EXC Gradient");
 
@@ -853,7 +853,7 @@ namespace ChronusQ {
 
   // TangDD: FormVXC for GIAO
   /**
-   *  \brief assemble the nuclear gradient of EXC for all density componet over batch
+   *  \brief assemble the nuclear gradient of EXC for all density component over batch
    *  of points. 
    *
    *
@@ -1220,7 +1220,7 @@ namespace ChronusQ {
         double * U_gamma_loc   = U_gamma   + 3*TIDNPPB;
         double * dVU_gamma_loc = dVU_gamma + 3*TIDNPPB;
 
-        // local U gradient ponter
+        // local U gradient pointer
         std::vector<double*> GradU_nX_loc, GradU_nY_loc, GradU_nZ_loc;
         std::vector<double*> GradU_gamma_X_loc, GradU_gamma_Y_loc, GradU_gamma_Z_loc;
         for(size_t ic = 0; ic < nAtoms; ic++) {
@@ -1583,7 +1583,7 @@ namespace ChronusQ {
 
     } // Valid intComm
 
-    MPI_Barrier(this->comm); // Syncronize the MPI processes
+    MPI_Barrier(this->comm); // Synchronize the MPI processes
 
     ProgramTimer::tock("Form EXC Gradient");
 

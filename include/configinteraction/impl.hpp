@@ -154,7 +154,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
       ProgramTimer::tick("NEW Solve CI");
       
       // Re-transform intgrals and solve new CI
-      FormattedLine(std::cout, "Redo AO to MO Intergral Transformation ...");
+      FormattedLine(std::cout, "Redo AO to MO Integral Transformation ...");
       ProgramTimer::tick("Integral Trans");
       this->prepareMOIntegrals(pert, *detFactory, true, false);
       ProgramTimer::tock("Integral Trans");

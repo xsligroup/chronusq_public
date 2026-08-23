@@ -55,7 +55,7 @@ namespace ChronusQ {
    *  \param [in] increment Whether or not the Fock matrix is being 
    *  incremented using a previous density
    *
-   *  Populates / overwrites fock strorage
+   *  Populates / overwrites fock storage
    */ 
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::formFock(
@@ -112,7 +112,7 @@ namespace ChronusQ {
 
     // Multipole integrals NYI for 4C
     // if (nC == 4) ops.resize(3);
-    // ADL implemeting 4c dipole
+    // ADL implementing 4c dipole
     if (nC == 4) ops = {{OVERLAP,0}, {KINETIC,0}, {NUCLEAR_POTENTIAL,0}, {LEN_ELECTRIC_MULTIPOLE,1}};
 
     // Add angular momentum integrals if requested
@@ -140,7 +140,7 @@ namespace ChronusQ {
     coreHBuilder->computeCoreH(emPert,coreH);
 
 
-    // Compute Orthonormalization trasformations
+    // Compute Orthonormalization transformations
     computeOrtho();
 
     std::string prefix = this->particle.charge < 0 ? "INTS/" : "PINTS/";
@@ -293,10 +293,10 @@ namespace ChronusQ {
 
 
   /**
-   *  \brief Allocate, compute and store the orthonormalization matricies 
+   *  \brief Allocate, compute and store the orthonormalization matrices 
    *  over the CGTO basis.
    *
-   *  Computes either the Lowdin or Cholesky transformation matricies based
+   *  Computes either the Lowdin or Cholesky transformation matrices based
    *  on orthoType
    */ 
   template <typename MatsT, typename IntsT> 

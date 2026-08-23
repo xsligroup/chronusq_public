@@ -61,7 +61,7 @@ void CISettings::print(bool fourComp) {
     }
     FormattedLine(std::cout,"  CI Sigma 2e Contraction Algorithm:",  ciSigma2eContAlgPrintStr);
     
-    FormattedLine(std::cout,"  CI Maxmium Number of Iteration:",  maxCIIter);
+    FormattedLine(std::cout,"  CI Maximum Number of Iteration:",  maxCIIter);
     FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
     FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
     FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
@@ -76,7 +76,7 @@ void CISettings::print(bool fourComp) {
     ORSettings.print(fourComp);
     
     std::cout << std::endl;
-    FormattedLine(std::cout,"  SCF Maxmium Number of Iteration:",    maxSCFIter);
+    FormattedLine(std::cout,"  SCF Maximum Number of Iteration:",    maxSCFIter);
     FormattedLine(std::cout,"  SCF Energy Convergence Threshold:",   scfEnergyConv);
     FormattedLine(std::cout,"  SCF Gradient Convergence Threshold:", scfGradientConv);
   }
@@ -138,7 +138,7 @@ void ConfigurationInteraction<MatsT, IntsT>::printCIHeader() {
       << std::endl;
   }
   
-  detFactory->ketCategoricalSpace()->output(std::cout, "Categories Genererated in Configuration Interaction"); 
+  detFactory->ketCategoricalSpace()->output(std::cout, "Categories Generated in Configuration Interaction"); 
   
   ciSettings.print(ref.nC == 4);
    if (!this->ciSettings.energyRefs.empty()) {

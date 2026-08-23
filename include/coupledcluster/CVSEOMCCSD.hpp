@@ -146,7 +146,7 @@ namespace ChronusQ{
     nCVSVActive_ = nV;
     nCVSVContinuum_ = this->eomSettings.external_virtual.size();
     if (nCVSVContinuum_ != nCVSVActive_) {
-      CErr("CVSEOMCCSD: CVS does not support virtual valance space.");
+      CErr("CVSEOMCCSD: CVS does not support virtual valence space.");
     }
 
     nOVshift_ = nCVSOCore_ * nCVSVContinuum_;
@@ -923,7 +923,7 @@ namespace ChronusQ{
   void CVSEOMCCSD<MatsT>::fillGuess(MatsT *guess_vec, size_t n_vec) const{
  
     if (n_vec > nOVshift_) {
-      CErr("CVSEOMCCSD: asking for more roots than the single excitatin space dimension.");
+      CErr("CVSEOMCCSD: asking for more roots than the single excitation space dimension.");
     } 
 
     TAManager &TAmanager = TAManager::get();

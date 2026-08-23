@@ -110,7 +110,7 @@ namespace ChronusQ {
     typedef std::vector<oper_t>       oper_t_coll;
     typedef std::vector<oper_t_coll>  oper_t_coll2;
 
-    //BasisSet &basisSet_; ///< BasisSet for the GTO basis defintion
+    //BasisSet &basisSet_; ///< BasisSet for the GTO basis definition
 
   private:
   public:
@@ -126,29 +126,29 @@ namespace ChronusQ {
     //ORTHO_TYPE            orthoType; ///< Orthogonalization scheme
 
     // Operator storage
-    std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matricies
+    std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moCoefficients; ///< List of populated MO coefficient matrices
     std::vector<double*> moEigenvalues; ///< List of populated MO eigenvalues
     virtual void initializeSCF() override; ///< Initialize SCF, populate MO coefficients and eigenvalues
 
     // AO Fock Matrix
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrix; ///< List of populated AO Fock matrices
     std::vector<cqmatrix::Matrix<MatsT>> fockMO;     ///< Fock matrix in the MO basis
 
     // Orthonormal Fock
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrixOrtho; ///< List of populated orthonormal Fock matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> fockMatrixOrtho; ///< List of populated orthonormal Fock matrices
 
     // Coulomb (J[D])
     std::shared_ptr<cqmatrix::Matrix<MatsT>> coulombMatrix; ///< scalar Coulomb Matrix
 
     // Exchange (K[D])
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> exchangeMatrix; ///< List of populated exact (HF) exchange matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> exchangeMatrix; ///< List of populated exact (HF) exchange matrices
 
     // Two-electron Hamiltonian (G[D])
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> twoeH; ///< List of populated HF perturbation tensors
 
     // Orthonormal density
-    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDMOrtho; ///< List of populated orthonormal 1PDM matricies
-    std::vector<cqmatrix::Matrix<MatsT>> onePDMAlphaBetaOrtho; ///< List of populated orthonormal 1PDM matricies
+    std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> onePDMOrtho; ///< List of populated orthonormal 1PDM matrices
+    std::vector<cqmatrix::Matrix<MatsT>> onePDMAlphaBetaOrtho; ///< List of populated orthonormal 1PDM matrices
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> deltaOnePDM; ///< Change in density for incremental Fock Build
 
     std::shared_ptr<cqmatrix::PauliSpinorMatrices<MatsT>> coreH; ///< Core Hamiltonian (scalar and magnetization)
@@ -165,7 +165,7 @@ namespace ChronusQ {
     std::shared_ptr<cqmatrix::Matrix<MatsT>> tau;      ///< tau matrix for traveling proton basis
     std::shared_ptr<cqmatrix::Matrix<MatsT>> tauOrtho; ///< orthonormal tau matrix for traveling proton basis
 
-    // Method specific propery storage
+    // Method specific property storage
     std::vector<popAtom> mullikenCharges;
     std::vector<popAtom> lowdinCharges;
 
@@ -198,7 +198,7 @@ namespace ChronusQ {
     /**
      *  SingleSlater Constructor. Constructs a SingleSlater object
      *
-     *  \param [in] aoi  AOIntegrals object (which handels the BasisSet, etc)
+     *  \param [in] aoi  AOIntegrals object (which handles the BasisSet, etc)
      *  \param [in] args Parameter pack for the remaining parameters of the
      *                   WaveFunction constructor. See include/wavefunction.hpp
      *                   for details. 
@@ -476,7 +476,7 @@ namespace ChronusQ {
     // Print the occupation of orbitals based on MO density 
     void printOrbitalPopulation(std::ostream&);
 
-    // Pointer convertor
+    // Pointer converter
     template <typename MatsU>
     static std::shared_ptr<SingleSlater<MatsU,IntsT>>
     convert(const std::shared_ptr<SingleSlater<MatsT,IntsT>>&);

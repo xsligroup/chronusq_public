@@ -1938,7 +1938,7 @@ namespace ChronusQ {
 
 
 
-    // Allocation of V Vairables
+    // Allocation of V Variables
     double *DenS(nullptr),  *DenZ(nullptr),  *DenY(nullptr),  *DenX(nullptr);
     double *GDenS(nullptr), *GDenZ(nullptr), *GDenY(nullptr), *GDenX(nullptr);
 
@@ -2635,7 +2635,7 @@ namespace ChronusQ {
 
 
 
-    // Allocation of V Vairables
+    // Allocation of V Variables
     double *DenS(nullptr),  *DenZ(nullptr),  *DenY(nullptr),  *DenX(nullptr);
     double *GDenS(nullptr), *GDenZ(nullptr), *GDenY(nullptr), *GDenX(nullptr);
 

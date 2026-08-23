@@ -86,7 +86,7 @@ namespace ChronusQ {
     PERTURBFormattedLine(std::cout,"* Parameters:");
     PERTURBFormattedLine(std::cout,"  Number of Roots Requested:",this->NStates);
     PERTURBFormattedLine(std::cout,"  Number of Determinants in external space:",   SDsize);
-    PERTURBFormattedLine(std::cout,"  GMRES Maxmium Number of Iteration:", PTopts.maxIter);
+    PERTURBFormattedLine(std::cout,"  GMRES Maximum Number of Iteration:", PTopts.maxIter);
     PERTURBFormattedLine(std::cout,"  GMRES Convergence Threshold:", PTopts.convCrit);
 
     std::cout << std::endl;

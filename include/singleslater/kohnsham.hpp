@@ -531,7 +531,7 @@ namespace ChronusQ {
         else {
             auto VXC_zero = Eigen::MatrixXd::Zero(NB,NB);
 
-          // Call corresonding epc evaluation functions 
+          // Call corresponding epc evaluation functions 
           Ps = Eigen::Map<Eigen::Matrix<double, -1, -1>>(this->onePDM->real_part().S().pointer(), NB, NB); 
           if (is_rks) {                                        
             Ps /= 2.0; // Need to scale by 0.5 due to GauXC's RKS logic

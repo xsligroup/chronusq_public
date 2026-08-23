@@ -388,7 +388,7 @@ template <typename MatsT, typename IntsT>
     onePDMOrtho->output(std::cout, "P(t+1)", true);
 #endif
 
-    // Normalize progagated density
+    // Normalize propagated density
     computeNaturalOrbitals();
     formDensity();
   }
@@ -434,7 +434,7 @@ void SingleSlater<MatsT, IntsT>::unitaryPropagation(bool includeTau, double dt,
 
     // Gather AO fock matrices from S/Z to A/B blocks
     fock_k = getFock();
-    // Gather tranformation matrices
+    // Gather transformation matrices
     ortho = getOrtho();
     // Convert AO fock matrices to orthonormal basis (in A/B blocks)
     for( size_t i = 0; i < fock_k.size(); i++ ) {

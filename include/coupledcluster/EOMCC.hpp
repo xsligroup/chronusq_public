@@ -1101,7 +1101,7 @@ namespace ChronusQ{
         ii = maxIndex[l] / nCVSVContinuum;
             std::cout << " i = " << ii << " th in core; a = " << aa << " th in continuum"<<std::endl;
       } else {
-            std::cout << " Double excitated state!" << std::endl;
+            std::cout << " Double excited state!" << std::endl;
       }
     }
     std::cout << std::endl;

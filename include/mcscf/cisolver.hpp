@@ -62,7 +62,7 @@ namespace ChronusQ {
 
     if (alg_ == CI_FULL_MATRIX) {
       
-      std::cout << "  Diagonalize CI Full Hamitonian Matrix ... \n" << std::endl;
+      std::cout << "  Diagonalize CI Full Hamiltonian Matrix ... \n" << std::endl;
       dcomplex * Energy = CQMemManager::get().malloc<dcomplex>(NDet);
       MatsT * fullH     = CQMemManager::get().malloc<MatsT>(NDet*NDet); 
       MatsT * EigVec    = CQMemManager::get().malloc<MatsT>(NDet*NDet);

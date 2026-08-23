@@ -82,7 +82,7 @@ namespace ChronusQ {
     this->mointsTF->printMORangesSummary();
 #ifdef _DEBUG_PTCATBUILD
     std::cout << std::endl << bannerTop << std::endl << std::endl;
-    PTFactory_->braCategoricalSpace()->output(std::cout, "Categories Genererated in Outer Space");
+    PTFactory_->braCategoricalSpace()->output(std::cout, "Categories Generated in Outer Space");
     std::cout << std::endl << bannerTop << std::endl << std::endl;
 #endif
 

@@ -101,7 +101,7 @@ namespace ChronusQ {
 
   }; // WaveFunction<T>::WaveFunction(WaveFunction<U> &&)
 
-  // Delagate the copy constructor to the conversion constructors
+  // Delegate the copy constructor to the conversion constructors
   template <typename MatsT, typename IntsT>
   WaveFunction<MatsT,IntsT>::WaveFunction(const WaveFunction<MatsT,IntsT> &other) : 
     WaveFunction(other,0){ };

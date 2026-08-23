@@ -162,7 +162,7 @@ namespace ChronusQ {
     //   Save the current state of the wave function
     virtual void saveCurrentState(bool saveMO = true, std::string prefix = "") = 0;
 
-    //   Print various matricies
+    //   Print various matrices
     virtual void printFock(std::ostream& )     = 0;
     virtual void print1PDMOrtho(std::ostream&) = 0;
     virtual void printGD(std::ostream&)        = 0;

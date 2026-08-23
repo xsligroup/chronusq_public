@@ -58,7 +58,7 @@ namespace ChronusQ {
     const size_t tNB = toBasis.nBasis;
     const size_t fNB  = fromBasis.nBasis;
 
-    // Generate overlap matrix between fromBasis and and toBasis
+    // Generate overlap matrix between fromBasis and toBasis
     // IntsT = dcomplex NYI
     auto overlapSTF = cqmatrix::Matrix<double>(tNB, fNB);
     std::vector<double*> MatVecS21;
@@ -221,7 +221,7 @@ namespace ChronusQ {
     // Allocate return and temporary matrices
     const size_t tNB = projMat[0]->nRows();
     const size_t fNB = projMat[0]->nColumns();
-    const size_t fNBC = fromMatrix->nColumns(); // only creats fNBC MOs in toMatrix
+    const size_t fNBC = fromMatrix->nColumns(); // only creates fNBC MOs in toMatrix
     const size_t tNBC = tNB * this->nC;
     auto toMatrix = std::make_shared<cqmatrix::Matrix<MatsT>>(tNBC, tNBC);
     std::fill(toMatrix->pointer(),toMatrix->pointer()+tNBC*tNBC,MatsT(0.0));
@@ -370,7 +370,7 @@ namespace ChronusQ {
       if( guessBasisSet ){
         std::cout << "    * GUESSBASIS section specified, projecting basis set " <<
          guessBasisSet->basisName << " -> " << this->basisSet().basisName << std::endl;
-        std::cout << "      WARNING: If not projecting for intitial guess," << std::endl;
+        std::cout << "      WARNING: If not projecting for initial guess," << std::endl;
         std::cout << "               check agreement between READMO and READDEN." << std::endl;
       }
 
@@ -513,7 +513,7 @@ namespace ChronusQ {
       std::cout << "    * GUESSBASIS section specified, projecting basis set " <<
         guessBasisSet->basisName << " -> " << this->basisSet().basisName << std::endl;
       if( refMap[scrRefType] != refMap[binRefType] ) CErr("Change of reference type and change of basis set at the same time NYI. Do one at a time.");
-      std::cout << "      WARNING: If not projecting for intitial guess," << std::endl;
+      std::cout << "      WARNING: If not projecting for initial guess," << std::endl;
       std::cout << "               check agreement between READMO and READDEN." << std::endl;
     }
 

@@ -75,7 +75,7 @@ namespace ChronusQ {
 
   }; // Quantum<T>::Quantum(Quantum<U> &&)
 
-  // Delagate the copy constructor to the conversion constructors
+  // Delegate the copy constructor to the conversion constructors
   template <typename MatsT>
   Quantum<MatsT>::Quantum(const Quantum<MatsT> &other) : Quantum(other,0){ };
   template <typename MatsT>
@@ -87,7 +87,7 @@ namespace ChronusQ {
   /**
    *  Allocates the internal memory a Quantum object
    *
-   *  \param [in] N Dimension of density matricies
+   *  \param [in] N Dimension of density matrices
    */ 
   template <typename MatsT>
   void Quantum<MatsT>::alloc(size_t N) {

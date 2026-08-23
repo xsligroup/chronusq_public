@@ -142,10 +142,10 @@ namespace ChronusQ {
            << std::endl;
 
     out << std::setprecision(6) << std::scientific;
-    out << std::setw(38) << std::left << "  Density Convergence Tolerence:" 
+    out << std::setw(38) << std::left << "  Density Convergence Tolerance:" 
            <<  scfControls.denConvTol << std::endl;
 
-    out << std::setw(38) << std::left << "  Energy Convergence Tolerence:" 
+    out << std::setw(38) << std::left << "  Energy Convergence Tolerance:" 
            <<  scfControls.eneConvTol << std::endl;
 
     out << std::setw(38) << std::left << "  Maximum Number of SCF Cycles:" 

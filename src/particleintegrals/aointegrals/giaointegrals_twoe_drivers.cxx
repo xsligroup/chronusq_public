@@ -524,12 +524,12 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
             // 4-fold symmetry for GIAO
             // 4-fold symmetry only if left basis is the same as right basis
 
-            //std::cout << "d(ERI)[" <<bf1<<bf2<<bf3<<bf4<< "]/d["<<ac[iC]<< iXYZ<< " assigned as caled " << itot << std::endl; 
-            //std::cout << "d(ERI)[" <<bf2<<bf1<<bf3<<bf4<< "]/d["<<ac[iC]<< iXYZ<< " assigned as caled conj " << itot << std::endl; 
+            //std::cout << "d(ERI)[" <<bf1<<bf2<<bf3<<bf4<< "]/d["<<ac[iC]<< iXYZ<< " assigned as called " << itot << std::endl; 
+            //std::cout << "d(ERI)[" <<bf2<<bf1<<bf3<<bf4<< "]/d["<<ac[iC]<< iXYZ<< " assigned as called conj " << itot << std::endl; 
 
             // (12 | 34)
             #ifdef _DEBUGGIAOERI
-            std::cout << "d(ERI)[" <<bf1<<bf2<<bf3<<bf4<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled " << itot << " for cart index " << i<<j<<k<<l << std::endl;
+            std::cout << "d(ERI)[" <<bf1<<bf2<<bf3<<bf4<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called " << itot << " for cart index " << i<<j<<k<<l << std::endl;
             std::cout << eris[3*ac[iC]+iXYZ][bf1 + bf2*NB + bf3*NB2 + bf4*NB3] << " += " << two2buff[itot][ijkl] << std::endl; 
             #endif
             eris[3*ac[iC]+iXYZ][bf1 + bf2*NB + bf3*NB2 + bf4*NB3] += two2buff[itot][ijkl];
@@ -537,7 +537,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
             if ( s3 != s4 ) {
               // (12 | 43)
               #ifdef _DEBUGGIAOERI
-              std::cout << "d(ERI)[" <<bf1<<bf2<<bf4<<bf3<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
+              std::cout << "d(ERI)[" <<bf1<<bf2<<bf4<<bf3<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
               std::cout << eris[3*ac[iC]+iXYZ][bf1 + bf2*NB + bf4*NB2 + bf3*NB3] << " += " << std::conj(two2buff_switch[indx_switch[itot]][jikl]) << std::endl;
               #endif   
               eris[3*ac[iC]+iXYZ][bf1 + bf2*NB + bf4*NB2 + bf3*NB3] += std::conj(two2buff_switch[indx_switch[itot]][jikl]);
@@ -546,14 +546,14 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
             if ( s1 != s2 ) {
               // (21 | 34)
               #ifdef _DEBUGGIAOERI
-              std::cout << "d(ERI)[" <<bf2<<bf1<<bf3<<bf4<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
+              std::cout << "d(ERI)[" <<bf2<<bf1<<bf3<<bf4<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
               std::cout << eris[3*ac[iC]+iXYZ][bf2 + bf1*NB + bf3*NB2 + bf4*NB3] << " += " << two2buff_switch[indx_switch[itot]][jikl] << std::endl; 
               #endif
               eris[3*ac[iC]+iXYZ][bf2 + bf1*NB + bf3*NB2 + bf4*NB3] += two2buff_switch[indx_switch[itot]][jikl];
               if ( s3 != s4 ) {
                 // (21 | 43)
                 #ifdef _DEBUGGIAOERI
-                std::cout << "d(ERI)[" <<bf2<<bf1<<bf4<<bf3<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled " << itot << " for cart index " << i<<j<<k<<l << std::endl;
+                std::cout << "d(ERI)[" <<bf2<<bf1<<bf4<<bf3<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called " << itot << " for cart index " << i<<j<<k<<l << std::endl;
                 std::cout << eris[3*ac[iC]+iXYZ][bf2 + bf1*NB + bf4*NB2 + bf3*NB3] << " += " << std::conj(two2buff[itot][ijkl]) << std::endl;  
                 #endif
                 eris[3*ac[iC]+iXYZ][bf2 + bf1*NB + bf4*NB2 + bf3*NB3] += std::conj(two2buff[itot][ijkl]);
@@ -564,7 +564,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
               if ( s1 != s3 || s2 != s4 ) {
                 // (34 | 12)
                 #ifdef _DEBUGGIAOERI
-                std::cout << "d(ERI)[" <<bf3<<bf4<<bf1<<bf2<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled " << itot << " for cart index " << i<<j<<k<<l << std::endl;
+                std::cout << "d(ERI)[" <<bf3<<bf4<<bf1<<bf2<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called " << itot << " for cart index " << i<<j<<k<<l << std::endl;
                 std::cout << eris[3*ac[iC]+iXYZ][bf3 + bf4*NB + bf1*NB2 + bf2*NB3] << " += " << two2buff[itot][ijkl] << std::endl;  
                 #endif
                 eris[3*ac[iC]+iXYZ][bf3 + bf4*NB + bf1*NB2 + bf2*NB3] += two2buff[itot][ijkl];
@@ -572,7 +572,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
                 if ( s3 != s4 ) {
                   // (43 | 12)
                   #ifdef _DEBUGGIAOERI
-                  std::cout << "d(ERI)[" <<bf4<<bf3<<bf1<<bf2<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
+                  std::cout << "d(ERI)[" <<bf4<<bf3<<bf1<<bf2<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
                   std::cout << eris[3*ac[iC]+iXYZ][bf4 + bf3*NB + bf1*NB2 + bf2*NB3] << " += " << std::conj(two2buff_switch[indx_switch[itot]][jikl]) << std::endl; 
                   #endif 
                   eris[3*ac[iC]+iXYZ][bf4 + bf3*NB + bf1*NB2 + bf2*NB3] += std::conj(two2buff_switch[indx_switch[itot]][jikl]);
@@ -581,7 +581,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
                 if ( s1 != s2 ) {
                   // (34 | 21)
                   #ifdef _DEBUGGIAOERI
-                  std::cout << "d(ERI)[" <<bf3<<bf4<<bf2<<bf1<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
+                  std::cout << "d(ERI)[" <<bf3<<bf4<<bf2<<bf1<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called switch " << indx_switch[itot] << " for cart index " << j<<i<<k<<l << std::endl;
                   std::cout << eris[3*ac[iC]+iXYZ][bf3 + bf4*NB + bf2*NB2 + bf1*NB3] << " += " << two2buff_switch[indx_switch[itot]][jikl] << std::endl;  
                   #endif
                   eris[3*ac[iC]+iXYZ][bf3 + bf4*NB + bf2*NB2 + bf1*NB3] += two2buff_switch[indx_switch[itot]][jikl];
@@ -589,7 +589,7 @@ std::cout<<" s1 "<<s1<<" s2 "<<s2<<" s3 "<<s3<<" s4 "<<s4<<std::endl;
                   if ( s3 != s4 ) {
                     // (43 | 21)
                     #ifdef _DEBUGGIAOERI
-                    std::cout << "d(ERI)[" <<bf4<<bf3<<bf2<<bf1<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as caled " << itot << " for cart index " << i<<j<<k<<l << std::endl;
+                    std::cout << "d(ERI)[" <<bf4<<bf3<<bf2<<bf1<< "]/d["<<ac[iC]<< "] at xyz [" << iXYZ<< "] assigned as called " << itot << " for cart index " << i<<j<<k<<l << std::endl;
                     std::cout << eris[3*ac[iC]+iXYZ][bf4 + bf3*NB + bf2*NB2 + bf1*NB3] << " += " << std::conj(two2buff[itot][ijkl]) << std::endl;  
                     #endif
                     eris[3*ac[iC]+iXYZ][bf4 + bf3*NB + bf2*NB2 + bf1*NB3] += std::conj(two2buff[itot][ijkl]);

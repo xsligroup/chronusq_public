@@ -39,7 +39,7 @@ namespace ChronusQ {
       FormattedLine(std::cout,"  CI Algorithm:",  "Full Matrix");
     } else if (ciAlg == CIDiagonalizationAlgorithm::CI_DAVIDSON) {
       FormattedLine(std::cout,"  CI Algorithm:",  "Davidson");
-      FormattedLine(std::cout,"  CI Maxmium Number of Iteration:",  maxCIIter);
+      FormattedLine(std::cout,"  CI Maximum Number of Iteration:",  maxCIIter);
       FormattedLine(std::cout,"  CI Vector Convergence Threshold:", ciVectorConv);
       FormattedLine(std::cout,"  Max Len of Davidson Subspace (x NRoots):", maxDavidsonSpace);
       FormattedLine(std::cout,"  Number of Davidson Guess(x NRoots):", nDavidsonGuess);
@@ -61,7 +61,7 @@ namespace ChronusQ {
       ORSettings.print(fourComp);
       
       std::cout << std::endl;
-      FormattedLine(std::cout,"  SCF Maxmium Number of Iteration:",    maxSCFIter);
+      FormattedLine(std::cout,"  SCF Maximum Number of Iteration:",    maxSCFIter);
       FormattedLine(std::cout,"  SCF Energy Convergence Threshold:",   scfEnergyConv);
       FormattedLine(std::cout,"  SCF Gradient Convergence Threshold:", scfGradientConv);
     }

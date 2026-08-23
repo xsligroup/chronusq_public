@@ -50,7 +50,7 @@ namespace ChronusQ {
     // Member data
 
     Molecule &molecule_; ///< A reference of the Molecule
-    BasisSet &basisSet_; ///< BasisSet for the GTO basis defintion
+    BasisSet &basisSet_; ///< BasisSet for the GTO basis definition
 
     size_t nO;  ///< Total number of occupied orbitals
     size_t nV;  ///< Total number of virtual orbitals
@@ -72,7 +72,7 @@ namespace ChronusQ {
     /**
      *  WaveFunctionBase Constructor. Constructs a WaveFunctionBase object
      *
-     *  \param [in] aoi  AOIntegrals object (which handels the BasisSet, etc)
+     *  \param [in] aoi  AOIntegrals object (which handles the BasisSet, etc)
      *  \param [in] _nC  Number of spin components (1 and 2 are supported)
      *  \param [in] iCS  Whether or not to treat as closed shell
      */ 

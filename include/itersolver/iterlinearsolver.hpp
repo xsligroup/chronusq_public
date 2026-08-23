@@ -61,7 +61,7 @@ namespace ChronusQ {
           RHS_->norm2F(iRHS, 1)
       );
 
-    std::cout << "\n  * IterLinearSolver has recieved " << nRHS 
+    std::cout << "\n  * IterLinearSolver has received " << nRHS 
               << " Right Hand Sides with norms:\n";
 
     for(auto iRHS = 0; iRHS < nRHS; iRHS++)
@@ -78,7 +78,7 @@ namespace ChronusQ {
     // NO MPI
 //    ROOT_ONLY(this->comm_);
 
-    std::cout << "\n  * IterLinearSolver has recieved " << nShift
+    std::cout << "\n  * IterLinearSolver has received " << nShift
               << "  shifts:\n";
 
     std::copy_n(shifts, nShift, std::back_inserter(shifts_) );

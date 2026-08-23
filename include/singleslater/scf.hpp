@@ -158,7 +158,7 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO, std::string prefi
     }      
 
     // FIXME: need to generalize MatExp to take non-hermetian and real
-    // matricies
+    // matrices
     //MatExp('D',NBC,T(-1.),ROT,NBC,EXPROT,NBC);
 
     // Taylor
@@ -913,7 +913,7 @@ SingleSlater<MatsT,IntsT>::convert1CSSToGHFSS(
 
   std::cout << "Converting 1C reference into 2C GHF reference for use with DAS" << std::endl;
   std::cout << "The MOs are spin blocked" << std::endl;
-  std::cout << "No automatic spin flip exitation restrictions!" << std::endl;
+  std::cout << "No automatic spin flip excitation restrictions!" << std::endl;
 
   SingleSlaterOptions GHFssOpt(ssOptions);
   GHFssOpt.refOptions.refType     = isTwoCRef;
@@ -968,7 +968,7 @@ void SingleSlater<MatsT,IntsT>::MOSpinBlockBySpace(size_t nActEA, size_t nActOA,
   size_t col = 0;
 
   // Spin block per space. Frozen core, active space and forzen virtuals
-  // This will give an incorect SCF energy but is needed for the DAS space partitioning 
+  // This will give an incorrect SCF energy but is needed for the DAS space partitioning 
   // Frozen core
   if (nFzcA) {
     SetMat('N', nb2, nFzcA, MatsT(1.), src, nb2,
@@ -1010,7 +1010,7 @@ void SingleSlater<MatsT,IntsT>::MOSpinBlockBySpace(size_t nActEA, size_t nActOA,
   template <typename MatsT, typename IntsT>
   void SingleSlater<MatsT,IntsT>::MOIntsTransformationTest(EMPerturbation &pert) {
    
-    // test on MO integral transfromations
+    // test on MO integral transformations
     // MOIntsTransformer<MatsT, IntsT> N5TF(*this, INCORE_N5);
     MOIntsTransformer<MatsT, IntsT> N6TF(*this, INCORE_N6);  
 

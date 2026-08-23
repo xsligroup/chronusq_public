@@ -205,7 +205,7 @@ namespace ChronusQ {
         }
       }
 
-      // Read in Alpha MO coeffients
+      // Read in Alpha MO coefficients
       if ( readAlpha ){
         for(int i=0; i<tokens.size(); i++){
           dptr[mo1Counter]=std::stod(tokens[i]);
@@ -213,7 +213,7 @@ namespace ChronusQ {
         }
       }
 
-      // Read in Beta MO coeffients
+      // Read in Beta MO coefficients
       if ( readBeta ){
         for(int i=0; i<tokens.size(); i++){
           this->mo[1].pointer()[mo2Counter]=std::stod(tokens[i]);

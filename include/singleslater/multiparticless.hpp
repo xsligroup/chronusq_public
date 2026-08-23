@@ -177,7 +177,7 @@ namespace ChronusQ {
       std::vector<InterXCFunctional> interFunctionals;
 
       // Update all XC energy contributions from all functionals
-      //    Flag needed for when we want to evaluate VXC of some target subsystem and update the relavant XC energy,
+      //    Flag needed for when we want to evaluate VXC of some target subsystem and update the relevant XC energy,
       //    but not touch the energies of other unaffected subsystems
       bool needsFullXCEnergyUpdate = true;
 

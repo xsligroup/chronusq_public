@@ -57,7 +57,7 @@ namespace ChronusQ {
     
     // MCSCF Intial CI solution
     std::cout << "Cycle 0:\n" << std::endl;
-    FormattedLine(std::cout, "AO to MO Intergral Transformation ...");
+    FormattedLine(std::cout, "AO to MO Integral Transformation ...");
     
     ProgramTimer::tick("Solve CI");
     
@@ -152,7 +152,7 @@ namespace ChronusQ {
         ProgramTimer::tick("Solve CI");
         
         // Re-transform intgrals and solve new CI
-        FormattedLine(std::cout, "Redo AO to MO Intergral Transformation ...");
+        FormattedLine(std::cout, "Redo AO to MO Integral Transformation ...");
         ProgramTimer::tick("Integral Trans");
         this->transformInts(pert);
         ProgramTimer::tock("Integral Trans");
