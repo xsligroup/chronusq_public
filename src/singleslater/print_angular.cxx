@@ -6,11 +6,6 @@ namespace ChronusQ {
     void SingleSlater<MatsT, IntsT>::printAngularProperties(std::ostream& out, bool withBanner) {
         QuantumBase::printAngularProperties(out, withBanner);
 
-        // If the reference itself is X2C, note that there is a picture change error.
-        if (this->nC == 2 && this->aoints_ != nullptr && this->aoints_->options_.x2cType != X2C_TYPE::OFF) {
-            out << "  NOTE: X2C picture change error" << std::endl;
-        }
-
         if (this->nC == 4) {
             out << "  NOTE: Angular momentum expectation values are not computed for 4C." << std::endl;
             return;

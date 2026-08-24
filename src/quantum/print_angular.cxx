@@ -10,9 +10,12 @@ namespace ChronusQ {
 
     out << std::fixed << std::setprecision(12);
 
+    if (isX2CReference())
+      out << "  NOTE: X2C picture change error" << std::endl;
+
     if (this->nC == 4) {
         out << "  NOTE: Angular momentum expectation values are not computed for 4C." << std::endl;
-        return;
+      return;
     }
 
     // Orbital angular momentum expectation values

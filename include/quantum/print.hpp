@@ -57,6 +57,9 @@ namespace ChronusQ {
       out << bannerTop << std::endl << std::endl;
     }
 
+    if (isX2CReference())
+      out << "  NOTE: X2C picture change error" << std::endl;
+
     if (this->nC == 4) {
         out << "  NOTE: Spin expectation values are not computed for 4C." << std::endl;
         return;

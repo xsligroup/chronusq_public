@@ -211,6 +211,7 @@ namespace ChronusQ {
     virtual void computeOrbitalRDFs() = 0;
     virtual void printOrbitalEnergies() = 0;
     virtual void printAngularProperties(std::ostream&, bool withBanner = true) = 0;
+    virtual bool isX2CReference() const { return false; }
 
 
     inline void computeProperties(EMPerturbation &pert, const std::vector<PROPERTY> &properties = {}) {

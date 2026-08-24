@@ -1099,9 +1099,9 @@ template <typename MatsT, typename IntsT>
     }
 
 
-    Lx *= dcomplex(0.0, 1.0);
-    Ly *= dcomplex(0.0, 1.0);
-    Lz *= dcomplex(0.0, 1.0);
+    Lx *= dcomplex(0.0, -1.0);
+    Ly *= dcomplex(0.0, -1.0);
+    Lz *= dcomplex(0.0, -1.0);
 
     // Build spin operators from AO overlap blocks, then transform to MO.
     const size_t NB = mo_density.nRows() / 2;
@@ -1204,9 +1204,66 @@ template <typename MatsT, typename IntsT>
     auto JQuantNum = (-1.0 + std::sqrt(1.0 + 4.0 * this->JSq)) / 2.0;
     this->JQuantNum = JQuantNum;
 
+    // Tests for consistency for commutation and and J^2
     // std::cout << "  J^2 consistency check:  J^2 = " << this->JSq
     //       << "  vs.  L^2 + S^2 + <S.L> + <L.S> = " << temp_JSq
     //       << std::endl;
+
+
+    // auto commutator = [&](const auto& A, const auto& B) {
+    //   return matrix_product(A, B) - matrix_product(B, A);
+    // };
+
+    // auto check_commutator = [](const std::string& name,
+    //                           const auto& lhs,
+    //                           const auto& rhs) {
+
+    //   auto diff = lhs - rhs;
+    //   auto diffMatrix = diff.template spinGather<dcomplex>();
+    //   double maxError = 0.0;
+    //   for (size_t i = 0; i < diffMatrix.nRows(); ++i)
+    //     for (size_t j = 0; j < diffMatrix.nColumns(); ++j)
+    //       maxError = std::max(maxError, std::abs(diffMatrix(i, j)));
+
+    //   std::cout << name
+    //             << " max error = "
+    //             << maxError
+    //             << std::endl;
+    // };
+
+    // L commutators
+    // check_commutator(
+    //     "[Lx,Ly] - iLz",
+    //     commutator(Lx, Ly),
+    //     std::complex<double>(0.0, 1.0) * Lz);
+
+    // check_commutator(
+    //     "[Ly,Lz] - iLx",
+    //     commutator(Ly, Lz),
+    //     std::complex<double>(0.0, 1.0) * Lx);
+
+    // check_commutator(
+    //     "[Lz,Lx] - iLy",
+    //     commutator(Lz, Lx),
+    //     std::complex<double>(0.0, 1.0) * Ly);
+
+
+    // // S commutators
+    // check_commutator(
+    //     "[Sx,Sy] - iSz",
+    //     commutator(Sx, Sy),
+    //     std::complex<double>(0.0, 1.0) * Sz);
+
+    // check_commutator(
+    //     "[Sy,Sz] - iSx",
+    //     commutator(Sy, Sz),
+    //     std::complex<double>(0.0, 1.0) * Sx);
+
+    // check_commutator(
+    //     "[Sz,Sx] - iSy",
+    //     commutator(Sz, Sx),
+    //     std::complex<double>(0.0, 1.0) * Sy);
+    
     
     // Clamp tiny values to zero to clean up numerical noise in the outputs.
     for (auto &component : this->LExpect) clampTiny(component);
@@ -1216,7 +1273,6 @@ template <typename MatsT, typename IntsT>
     clampTiny(this->SL);
     clampTiny(this->LS);
     clampTiny(this->SSq);
-
   };
 
 

@@ -118,6 +118,11 @@ namespace ChronusQ {
     typedef MatsT value_type;
     typedef IntsT ints_type;
 
+    bool isX2CReference() const override {
+      return this->nC == 2 && this->aoints_ != nullptr &&
+             this->aoints_->options_.x2cType != X2C_TYPE::OFF;
+    }
+
     //ORTHO_TYPE            orthoType; ///< Orthogonalization scheme
 
     // Operator storage
