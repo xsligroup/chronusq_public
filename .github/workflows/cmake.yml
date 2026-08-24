@@ -3,14 +3,18 @@ on:
   push:
     branches: dev
   pull_request:
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-   cmake-build:
+  cmake-build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     timeout-minutes: 200
+    env:
+      BUILD_JOBS: 8
+      MPI_TEST_JOBS: 5
+      NON_MPI_TEST_JOBS: 12
     strategy:
       fail-fast: false
       matrix:
@@ -21,9 +25,7 @@ jobs:
             enable_mpi: OFF,
             c_compiler: gcc,
             cxx_compiler: g++,
-            fortran_compiler: gfortran,
-            para_build_jobs: 7,
-            para_test_jobs: 7
+            fortran_compiler: gfortran
           }
           - {
             name: "GCC-MPI",
@@ -31,33 +33,25 @@ jobs:
             enable_mpi: ON,
             c_compiler: mpicc,
             cxx_compiler: mpicxx,
-            fortran_compiler: mpifort,
-            para_build_jobs: 7,
-            para_test_jobs: 4
-          }           
+            fortran_compiler: mpifort
+          }
     steps:
-      - name: Checkout Current CQ Branch
-        uses: actions/checkout@v3
-     
+      - name: Checkout current CQ branch
+        uses: actions/checkout@v7
+
       # Set Environment
       - name: Set up environment
         run: |
           env
           mkdir -p build
+          mkdir -p "/home/runners/ccache/${{ matrix.config.enable_mpi }}-${{ runner.name }}"
 
-      # Restore ccache
-      - name: Cache ccache
-        uses: actions/cache@v3
-        with:
-          path: ~/.ccache
-          key: ${{ runner.os }}-ccache-${{ runner.name }}-${{ matrix.config.enable_mpi }}-${{ hashFiles('**/CMakeLists.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-ccache-${{ runner.name }}-${{ matrix.config.enable_mpi }}-
-
+      # CCache
       - name: Install and configure ccache
         shell: bash
         run: |
           nix develop /home/runners/nix-env --command bash -c '
+            export CCACHE_DIR=/home/runners/ccache/${{ matrix.config.enable_mpi }}-${{ runner.name }}
             if ! command -v ccache &> /dev/null; then
               echo "ccache not found in nix flake shell."
               exit 1
@@ -72,18 +66,23 @@ jobs:
         working-directory: build
         run: |
           nix develop /home/runners/nix-env --command bash -c '
+            export CCACHE_DIR=/home/runners/ccache/${{ matrix.config.enable_mpi }}-${{ runner.name }}
             export OMPI_ALLOW_RUN_AS_ROOT=1
             export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
             cmake .. \
               -DCQ_ENABLE_MPI=${{ matrix.config.enable_mpi }} \
+              -DCQ_ENABLE_SPARSE=${{ matrix.config.enable_mpi }} \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=${{ matrix.config.c_compiler }} \
               -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx_compiler }} \
               -DCMAKE_Fortran_COMPILER=${{ matrix.config.fortran_compiler }} \
+              -DLibint2_ROOT=/home/runners/libint-cq_2.7.0_b6/install \
               -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
               -DCMAKE_COLOR_DIAGNOSTICS=On \
+              -DCMAKE_LINKER_TYPE=MOLD \
+              -G Ninja \
               -S .. -B .
           '
 
@@ -92,25 +91,36 @@ jobs:
         shell: bash
         working-directory: build
         run: |
-          echo "Building with ${{ matrix.config.para_build_jobs }} threads"
+          echo "Building with $BUILD_JOBS threads"
           nix develop /home/runners/nix-env --command bash -c '
-            cmake --build . --config Release --parallel ${{ matrix.config.para_build_jobs }}
+            export CCACHE_DIR=/home/runners/ccache/${{ matrix.config.enable_mpi }}-${{ runner.name }}
+            cmake --build . --config Release --parallel "$BUILD_JOBS"
           '
 
       # Show ccache stats
       - name: Show ccache stats
         run: |
-          nix develop /home/runners/nix-env --command ccache --show-stats
+          nix develop /home/runners/nix-env --command bash -c '
+            export CCACHE_DIR=/home/runners/ccache/${{ matrix.config.enable_mpi }}-${{ runner.name }}
+            ccache --show-stats
+          '
 
       # Test
       - name: Test
         shell: bash
         working-directory: build
         run: |
-          echo "Testing with ${{ matrix.config.para_test_jobs }} threads"
           nix develop /home/runners/nix-env --command bash -c '
             export OMPI_ALLOW_RUN_AS_ROOT=1
             export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-            ctest -E "GPLHR" --output-on-failure --parallel ${{ matrix.config.para_test_jobs }}
-            ctest -R "GPLHR" --output-on-failure
+            export UCX_TLS=sm,self
+            export OMP_NUM_THREADS=1
+            rc=0
+            echo "--- MPI tests ($MPI_TEST_JOBS threads) ---"
+            ctest -R "_MPI" -E "GPLHR" --output-on-failure --parallel "$MPI_TEST_JOBS" || rc=1
+            echo "--- Non-MPI tests ($NON_MPI_TEST_JOBS threads) ---"
+            ctest -E "_MPI|GPLHR" --output-on-failure --parallel "$NON_MPI_TEST_JOBS" || rc=1
+            echo "--- GPLHR tests (serial) ---"
+            ctest -R "GPLHR" --output-on-failure || rc=1
+            exit $rc
           '
