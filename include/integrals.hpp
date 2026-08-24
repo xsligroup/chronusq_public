@@ -339,11 +339,6 @@ namespace ChronusQ {
     std::shared_ptr<IntegralsBase> buildAsymmIntegral(std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  
         std::shared_ptr<BasisSet> dfbasis, std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, 
         std::shared_ptr<IntegralsBase> aoi, std::shared_ptr<IntegralsBase> paoi, const std::string &labelA, const std::string &labelB) const;
-    
-    // Build all (ee|ee), (pp|pp), (ee|pp) objects (if needed), and return them in a tuple
-    static std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> buildAllIntegrals(
-        std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
-        std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, IntegralOptions epopts);
   };
 
 

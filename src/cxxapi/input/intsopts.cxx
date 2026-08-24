@@ -531,40 +531,6 @@ namespace ChronusQ {
   }
 
   /**
-   *  \brief Construct all IntegralBase pointers from the IntegralOptions.
-   *
-   *  \param [in] out    Output device for data / error output.
-   *  \param [in] aoints AOIntegrals object for SingleSlater
-   *                     construction
-   *
-   *  \returns All (ee|ee), (pp|pp), (ee|pp) IntegralBase objects (last two can be nullptrs if not needed), 
-   * organized in a stuple of shared pointers. 
-   *
-   */  
-    std::tuple<std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>, std::shared_ptr<IntegralsBase>> 
-    IntegralOptions::buildAllIntegrals(
-        std::ostream &out, Molecule &mol, std::shared_ptr<BasisSet> basis,  std::shared_ptr<BasisSet> dfbasis, 
-        std::shared_ptr<BasisSet> basis2, IntegralOptions eopts, IntegralOptions popts, IntegralOptions epopts){
-
-      out << BannerTop << std::endl;
-      out << std::endl;
-
-      // Build Electronic Integrals (ee|ee):
-      std::shared_ptr<IntegralsBase> aoi = eopts.buildSymmIntegral(out, mol, basis, dfbasis, "electronic");
-
-      // Build Protonic Integrals (pp|pp) if we have protonic basis:
-      std::shared_ptr<IntegralsBase> paoi = basis2 ? popts.buildSymmIntegral(out, mol, basis2, dfbasis, "protonic") : nullptr;
-
-      // Build Electron/Proton Coulumb Integrals (ee|pp) if we have protonic basis:
-      std::shared_ptr<IntegralsBase> epaoi = basis2 ? epopts.buildAsymmIntegral(out, mol, basis, dfbasis,basis2, eopts, popts, aoi, paoi,"electronic","protonic") : nullptr;
-
-      return  std::make_tuple(aoi, paoi, epaoi);
-    }
-
-
-
-
-  /**
    *  \brief Optionally set the control parameters for an
    *  AOIntegrals object
    *
