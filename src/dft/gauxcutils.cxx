@@ -187,6 +187,11 @@ GauXC::BasisSet<double> GauXCUtils::make_gbasis(const BasisSet& basis) {
   GauXC::Shell<double>::cart_array gauxc_cart_arr;
 
   for(const auto& shell : basis.shells) {
+    if(shell.nprim() > GauXC::detail::shell_nprim_max)
+      CErr("Shell has " + std::to_string(shell.nprim())
+        + " primitives but the shell datatype in GauXC is limited to "
+        + std::to_string(GauXC::detail::shell_nprim_max)
+        + "!\nTo work around this issue, segment your basis set!\n");
     for (auto a1 = 0; a1 < shell.nprim(); a1++) {
       gauxc_alpha_arr[a1] = shell.alpha[a1];
       gauxc_coeff_arr[a1] = shell.contr[0].coeff[a1];
