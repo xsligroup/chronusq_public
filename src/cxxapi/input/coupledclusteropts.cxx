@@ -111,7 +111,8 @@ namespace ChronusQ {
         "SKIPR",
         "SAVEL",
         "SAVER",
-        "SINGLETONLY"
+        "SINGLETONLY",
+        "ENERGYIMAGTOL"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -531,6 +532,9 @@ namespace ChronusQ {
     }
     if(input.containsData("EOMCC/SINGLETONLY")){
       OPTOPT(eomSettings.singlet_only = input.getData<bool>("EOMCC/SINGLETONLY");)
+    }
+    if(input.containsData("EOMCC/ENERGYIMAGTOL")){
+      OPTOPT(eomSettings.energy_imag_tol = input.getData<double>("EOMCC/ENERGYIMAGTOL");)
     }
 
     //if (eomSettings.doCVS() && eomSettings.eom_type != EOM_TYPE::DIP) {

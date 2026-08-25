@@ -27,77 +27,77 @@
 
 TEST( CCSDT, H2O_631G_GHF_PT_CR_IJK) {
   CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_ghf_ccsdpt_crcc23_loopijk",
-           "h2o_6-31g_ghf_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_ghf_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, H2O_631G_GHF_PT_CR_ABC) {
   CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_ghf_ccsdpt_crcc23_loopabc",
-           "h2o_6-31g_ghf_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_ghf_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, H2O_631G_X2C_PT_CR_IJK) {
   CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopijk",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, H2O_631G_X2C_PT_CR_IJK_DENOMSHIFT) {
   CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopijk_withdenomshift",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, H2O_631G_X2C_PT_CR_ABC) {
   CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopabc",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, false, true, false);
 }
 
 // Stephen: EAIP contains DIP-EOMCCSDT for H4/6-31G, which is checked against CCPy.
-//TEST( CCSDT, H2O_631G_GHF_CCSDT) {
-//  CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_ghf_ccsdt",
-//           "h2o_6-31g_ghf_ccsdt.bin.ref", "", false, false, false, false);
-//}
-//
-//TEST( CCSDT, H2O_631G_X2C_CCSDT) {
-//  CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_x2c_ccsdt",
-//           "h2o_6-31g_x2c_ccsdt.bin.ref", "", false, false, false, false);
-//}
+TEST( CCSDT, H2O_631G_GHF_CCSDT) {
+  CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_ghf_ccsdt",
+           "h2o_6-31g_ghf_ccsdt.bin.ref", "", false, false, false, false, false, false);
+}
+
+TEST( CCSDT, H2O_631G_X2C_CCSDT) {
+  CQCCTEST("coupledcluster/serial/ccsdt/h2o_6-31g_x2c_ccsdt",
+           "h2o_6-31g_x2c_ccsdt.bin.ref", "", false, false, false, false, false, false);
+}
 
 #ifdef _CQ_DO_PARTESTS
 
 TEST( CCSDT, PAR_H2O_631G_GHF_PT_CR_IJK) {
   CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_ghf_ccsdpt_crcc23_loopijk",
-           "h2o_6-31g_ghf_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_ghf_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, PAR_H2O_631G_GHF_PT_CR_ABC) {
   CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_ghf_ccsdpt_crcc23_loopabc",
-           "h2o_6-31g_ghf_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_ghf_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, PAR_H2O_631G_X2C_PT_CR_IJK) {
   CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopijk",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, PAR_H2O_631G_X2C_PT_CR_IJK_DENOMSHIFT) {
   CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopijk_withdenomshift",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopijk.bin.ref", "", false, false, false, false, true, false);
 }
 
 TEST( CCSDT, PAR_H2O_631G_X2C_PT_CR_ABC) {
   CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_x2c_ccsdpt_crcc23_loopabc",
-           "h2o_6-31g_x2c_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, true);
+           "h2o_6-31g_x2c_ccsdpt_crcc23_loopabc.bin.ref", "", false, false, false, false, true, false);
 }
 
 // Stephen: EAIP contains DIP-EOMCCSDT for H4/6-31G, which is checked against CCPy.
-//TEST( CCSDT, PAR_H2O_631G_GHF_CCSDT) {
-//  CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_ghf_ccsdt",
-//           "h2o_6-31g_ghf_ccsdt.bin.ref", "", false, false, false, false);
-//}
-//
-//TEST( CCSDT, PAR_H2O_631G_X2C_CCSDT) {
-//  CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_x2c_ccsdt",
-//           "h2o_6-31g_x2c_ccsdt.bin.ref", "", false, false, false, false);
-//}
+TEST( CCSDT, PAR_H2O_631G_GHF_CCSDT) {
+  CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_ghf_ccsdt",
+           "h2o_6-31g_ghf_ccsdt.bin.ref", "", false, false, false, false, false, false);
+}
+
+TEST( CCSDT, PAR_H2O_631G_X2C_CCSDT) {
+  CQCCTEST("coupledcluster/parallel/ccsdt/h2o_6-31g_x2c_ccsdt",
+           "h2o_6-31g_x2c_ccsdt.bin.ref", "", false, false, false, false, false, false);
+}
 
 #endif
 

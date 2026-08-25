@@ -26,84 +26,84 @@
 
 TEST( DF_EOMCC, H2O_631G_X2C_4IDX_DFCC_DIPEOM3) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_dipeom3",
-           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_4IDX_DFCC_EAEOM2) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_eaeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_4IDX_DFCC_IPEOM2) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_ipeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_4IDX_DFEOMCCSD) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_4index_dfeomccsd",
-           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false);
+           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_3IDX_DFCC_DIPEOM3) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_dipeom3",
-           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_3IDX_DFCC_EAEOM2) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_eaeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_3IDX_DFCC_IPEOM2) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_ipeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, H2O_631G_X2C_3IDX_DFEOMCCSD) {
   CQCCTEST("coupledcluster/serial/df-eomcc/h2o_6-31g_x2c_3index_dfeomccsd",
-           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false);
+           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false, false, false);
 }
 
 #ifdef _CQ_DO_PARTESTS
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_4IDX_DFCC_DIPEOM3) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_dipeom3",
-           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_4IDX_DFCC_EAEOM2) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_eaeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_4IDX_DFCC_IPEOM2) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_4index_dfccsd_ipeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_4IDX_DFEOMCCSD) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_4index_dfeomccsd",
-           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false, 2e-7);
+           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_3IDX_DFCC_DIPEOM3) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_dipeom3",
-           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_dipeom3.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_3IDX_DFCC_EAEOM2) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_eaeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_eaeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_3IDX_DFCC_IPEOM2) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_3index_dfccsd_ipeom2",
-           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false);
+           "h2o_6-31g_x2c_4index_dfccsd_ipeom2.bin.ref", "", true, true, false, false, false, false);
 }
 
 TEST( DF_EOMCC, PAR_H2O_631G_X2C_3IDX_DFEOMCCSD) {
   CQCCTEST("coupledcluster/parallel/df-eomcc/h2o_6-31g_x2c_3index_dfeomccsd",
-           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false);
+           "h2o_6-31g_x2c_4index_dfeomccsd.bin.ref", "", true, true, true, false, false, false);
 }
 
 #endif

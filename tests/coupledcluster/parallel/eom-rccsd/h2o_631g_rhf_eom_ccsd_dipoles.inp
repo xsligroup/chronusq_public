@@ -11,20 +11,21 @@ geom:
 #  Job Specification
 #
 [QM]
-reference = X2CHF
-x2cType = OneE
-snsoType = Row_dep_DCB
-job = CC
+reference = RHF
+job = EOMCC
 
 [CC]
 TYPE = CCSD
-FROZENOCCUPIED = 1-2
-RebuildFock = true
-Etol = 1e-8
-Ttol = 1e-8
+DIPOLE = True
+
+[EOMCC]
+NROOTS = 12
+OSCILLATORSTRENGTH = True
+SINGLETONLY = True
+ALLEXCITEDSTATEDIPOLE = True
 
 [MISC]
-MEMTYPE = OS
+MEM = 256 MB
 nsmp = 4
 
 [INTS]
@@ -34,6 +35,3 @@ libcint = true
 [BASIS]
 basis = 6-31g
  
-
-[PHYSCON]
-LEGACY_CONSTANTS = TRUE

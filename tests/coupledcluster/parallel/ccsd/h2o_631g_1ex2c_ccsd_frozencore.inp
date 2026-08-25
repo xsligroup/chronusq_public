@@ -19,7 +19,6 @@ job = CC
 [CC]
 TYPE = CCSD
 FROZENOCCUPIED = 1-2
-RebuildFock = true
 Etol = 1e-8
 Ttol = 1e-8
 
@@ -34,6 +33,3 @@ libcint = true
 [BASIS]
 basis = 6-31g
  
-
-[PHYSCON]
-LEGACY_CONSTANTS = TRUE

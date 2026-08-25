@@ -130,6 +130,7 @@ namespace ChronusQ {
     bool restart_r = false;
     bool restart_l = false;
     bool singlet_only = false;
+    double energy_imag_tol = 1e-12; // threshold for imaginary component of excitation energy to trigger error
 
     EOMSettings() {
       find_eom_implementation();

@@ -20,8 +20,8 @@ job = CC
 TYPE = CCSD
 FROZENOCCUPIED = 1-2
 RebuildFock = true
-Etol = 1e-1
-Ttol = 1e-1
+Etol = 1e-8
+Ttol = 1e-8
 
 [MISC]
 MEMTYPE = OS

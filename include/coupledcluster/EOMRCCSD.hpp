@@ -312,6 +312,13 @@ namespace ChronusQ{
 
   template <typename MatsT>
   void EOMRCCSD<MatsT>::buildRightZeroBody(size_t nVec) {
+    // first of all, check if the imaginary component of excitation energies are under the threshold
+    for (size_t i=0; i<nVec; i++) {
+      if (abs(std::imag(this->theta[i])) > this->eomSettings.energy_imag_tol) {
+        CErr("EOM-RCCSD: Imaginary component of at least one VEE is greater than tolerance (default: 1.0e-12).");
+      }
+    }
+
     // Assumes MBExpansionSet R_ type
 
     std::shared_ptr<MBExpansionSet<MatsT>> VR = std::dynamic_pointer_cast<MBExpansionSet<MatsT>>(this->R_);

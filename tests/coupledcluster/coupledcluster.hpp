@@ -25,6 +25,7 @@
 #pragma once
 
 #include <ut.hpp>
+#include <string>
 
 #include <cxxapi/procedural.hpp>
 #include <util/files.hpp>
@@ -40,7 +41,9 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
                       bool checkReferenceEnergy = false,
                       bool checkExcitedEnergy = false,
                       bool checkOsc = false,
+                      bool checkDipoles = false,
                       bool checkTriplesCorrection = false,
+                      bool ifRHF = false,
                       double etol = 1e-7,
                       double osctol = 1e-5
                     ) {
@@ -72,26 +75,42 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
   SafeFile refFile(CC_TEST_REF + ref,true,true);
   SafeFile resFile(CQTestOut(in,".bin"),true);
 
+
+  // CC ENERGY CHECK
   dcomplex testE, refE;
   std::cout << " * PERFORMING CC ENERGY CHECK " << std::endl;
   std::cout << "CC_TEST_REF=" << CC_TEST_REF+ref <<std::endl;
 
-  resFile.readData("/CC/CORRELATION_ENERGY", &testE);
-  refFile.readData("/CC/CORRELATION_ENERGY", &refE);
+  // handle double vs dcomplex values
+  double testEReal = 0.0, refEReal = 0.0;
+  if (ifRHF) {
+    resFile.readData("/CC/CORRELATION_ENERGY", &testEReal);
+    refFile.readData("/CC/CORRELATION_ENERGY", &refEReal);
+  } else {
+    resFile.readData("/CC/CORRELATION_ENERGY", &testE);
+    testEReal = testE.real();
+    refFile.readData("/CC/CORRELATION_ENERGY", &refE);
+    refEReal = refE.real();
+  }
 
-  EXPECT_NEAR( testE.real(), refE.real(), etol ) << "CC CORRELATION ENERGY TEST FAILED";
-  EXPECT_NEAR( testE.imag(), refE.imag(), etol ) << "CC CORRELATION ENERGY TEST FAILED";
+  EXPECT_NEAR( testEReal, refEReal, etol ) << "CC CORRELATION ENERGY TEST FAILED";
+  if (not ifRHF) {
+    EXPECT_NEAR( testE.imag(), refE.imag(), etol ) << "CC CORRELATION ENERGY TEST FAILED";
+  }
 
+
+  // REFERENCE ENERGY CHECK
   if (checkReferenceEnergy){
-    double testE, refE;
     // Check reference energy values
     std::cout << " * PERFORMING REFERENCE ENERGY TEST\n";
 
-    resFile.readData("/CC/REFERENCE_ENERGY",&testE);
-    refFile.readData("/CC/REFERENCE_ENERGY",&refE);
+    resFile.readData("/CC/REFERENCE_ENERGY",&testEReal);
+    refFile.readData("/CC/REFERENCE_ENERGY",&refEReal);
 
-    EXPECT_NEAR(testE, refE, etol) << "CC REFERENCE ENERGY TEST FAILED";
+    EXPECT_NEAR(testEReal, refEReal, etol) << "CC REFERENCE ENERGY TEST FAILED";
   }
+
+  // EXCITATION ENERGY CHECK
   std::vector<dcomplex> xDummy, yDummy;
   if (checkExcitedEnergy){
     // Check eigenvalues
@@ -113,6 +132,7 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
     }
   }
 
+  // OSCILLATOR STRENGTH CHECK
   if (checkOsc){
     // Check Osc Strength
     std::cout << "PERFORMING OSC STRENGTH TEST\n";
@@ -130,6 +150,156 @@ static void CQCCTEST( std::string in, std::string ref, std::string restart_bin =
       EXPECT_NEAR(xDummy[i].real(), yDummy[i].real(), osctol) << "OSC STRENGTH TEST FAILED IN STATE = " << i;
       EXPECT_NEAR(xDummy[i].imag(), yDummy[i].imag(), osctol) << "OSC STRENGTH TEST FAILED IN STATE = " << i;
     }
+  }
+
+  // GS, ES-GS/GS-ES, AND ES-ES DIPOLES CHECK
+  if (checkDipoles) {
+    // Check GS dipole
+    std::cout << "PERFORMING GS DIPOLE TEST\n";
+
+    auto dipDim     = resFile.getDims("CC/GROUND_STATE_DIPOLE");
+    auto dipDim_ref = refFile.getDims("CC/GROUND_STATE_DIPOLE");
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(dipDim[0]); yDummy.resize(dipDim_ref[0]);
+
+    std::vector<double> xDummyReal, yDummyReal;
+    xDummyReal.clear(); yDummyReal.clear();
+    xDummyReal.resize(dipDim[0]); yDummyReal.resize(dipDim_ref[0]);
+
+    if (ifRHF) {
+      resFile.readData("CC/GROUND_STATE_DIPOLE",&xDummyReal[0]);
+      refFile.readData("CC/GROUND_STATE_DIPOLE",&yDummyReal[0]);
+    } else {
+      resFile.readData("CC/GROUND_STATE_DIPOLE",&xDummy[0]);
+      refFile.readData("CC/GROUND_STATE_DIPOLE",&yDummy[0]);
+      for (auto i = 0; i < dipDim_ref[0]; i++) {
+        xDummyReal[i] = xDummy[i].real();
+        yDummyReal[i] = yDummy[i].real();
+      }
+    }
+
+    for(auto i = 0; i < dipDim_ref[0]; i++) {
+      EXPECT_NEAR(xDummyReal[i], yDummyReal[i], osctol) << "GS DIPOLE TEST FAILED IN COMPONENT = " << static_cast<char>('X' + i);
+      EXPECT_NEAR(xDummy[i].imag(), yDummy[i].imag(), osctol) << "GS DIPOLE TEST FAILED IN COMPONENT = " << static_cast<char>('X' + i);
+    }
+
+    // Check GS-ES dipole
+    std::cout << "PERFORMING GS-ES DIPOLE TEST\n";
+
+    dipDim.clear(); dipDim_ref.clear();
+    dipDim     = resFile.getDims("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE");
+    dipDim_ref = refFile.getDims("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE");
+    ASSERT_EQ(dipDim.size(), 2);
+    auto totDim = dipDim[0] * dipDim[1];
+    ASSERT_EQ(totDim, dipDim_ref[0] * dipDim_ref[1]);
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(totDim); yDummy.resize(totDim);
+
+    xDummyReal.clear(); yDummyReal.clear();
+    xDummyReal.resize(totDim); yDummyReal.resize(totDim);
+
+    if (ifRHF) {
+      resFile.readData("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE",&xDummyReal[0]);
+      refFile.readData("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE",&yDummyReal[0]);
+    } else {
+      resFile.readData("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE",&xDummy[0]);
+      refFile.readData("CC/GROUND_TO_EXCITED_TRANSITION_DIPOLE",&yDummy[0]);
+      for (auto i = 0; i < totDim; i++) {
+        xDummyReal[i] = xDummy[i].real();
+        yDummyReal[i] = yDummy[i].real();
+      }
+    }
+
+    for(auto i = 0; i < dipDim_ref[0]; i++) { //cartesian
+      for (auto j = 0; j < dipDim_ref[1]; j++) { //state
+        auto idx = i * dipDim_ref[1] + j;
+        EXPECT_NEAR(abs(xDummyReal[idx]), abs(yDummyReal[idx]), osctol)
+        << "GS-ES DIPOLE TEST FAILED IN STATE = " << j << " AND COMPONENT = " << static_cast<char>('X'+i);
+        EXPECT_NEAR(abs(xDummy[idx].imag()), abs(yDummy[idx].imag()), osctol)
+        << "GS-ES DIPOLE TEST FAILED IN STATE = " << j << " AND COMPONENT = " << static_cast<char>('X'+i);
+      }
+    }
+
+    // Check ES-GS dipole
+    std::cout << "PERFORMING ES-GS DIPOLE TEST\n";
+
+    dipDim.clear(); dipDim_ref.clear();
+    dipDim     = resFile.getDims("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE");
+    dipDim_ref = refFile.getDims("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE");
+    ASSERT_EQ(dipDim.size(), 2);
+    totDim = dipDim[0] * dipDim[1];
+    ASSERT_EQ(totDim, dipDim_ref[0] * dipDim_ref[1]);
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(totDim); yDummy.resize(totDim);
+
+    xDummyReal.clear(); yDummyReal.clear();
+    xDummyReal.resize(totDim); yDummyReal.resize(totDim);
+
+    if (ifRHF) {
+      resFile.readData("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE",&xDummyReal[0]);
+      refFile.readData("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE",&yDummyReal[0]);
+    } else {
+      resFile.readData("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE",&xDummy[0]);
+      refFile.readData("CC/EXCITED_TO_GROUND_TRANSITION_DIPOLE",&yDummy[0]);
+      for (auto i = 0; i < totDim; i++) {
+        xDummyReal[i] = xDummy[i].real();
+        yDummyReal[i] = yDummy[i].real();
+      }
+    }
+
+    for(auto i = 0; i < dipDim_ref[0]; i++) { //cartesian
+      for (auto j = 0; j < dipDim_ref[1]; j++) { //state
+        auto idx = i * dipDim_ref[1] + j;
+        EXPECT_NEAR(abs(xDummyReal[idx]), abs(yDummyReal[idx]), osctol)
+        << "ES-GS DIPOLE TEST FAILED IN STATE = " << j << " AND COMPONENT = " << static_cast<char>('X'+i);
+        EXPECT_NEAR(abs(xDummy[idx].imag()), abs(yDummy[idx].imag()), osctol)
+        << "ES-GS DIPOLE TEST FAILED IN STATE = " << j << " AND COMPONENT = " << static_cast<char>('X'+i);
+      }
+    }
+
+    // Check ES-ES dipole
+    std::cout << "PERFORMING ES-ES DIPOLE TEST\n";
+
+    dipDim.clear(); dipDim_ref.clear();
+    dipDim     = resFile.getDims("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE");
+    dipDim_ref = refFile.getDims("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE");
+    ASSERT_EQ(dipDim.size(), 3);
+    totDim = dipDim[0] * dipDim[1] * dipDim[2];
+    ASSERT_EQ(totDim, dipDim_ref[0] * dipDim_ref[1] * dipDim_ref[2]);
+
+    xDummy.clear(); yDummy.clear();
+    xDummy.resize(totDim); yDummy.resize(totDim);
+
+    xDummyReal.clear(); yDummyReal.clear();
+    xDummyReal.resize(totDim); yDummyReal.resize(totDim);
+
+    if (ifRHF) {
+      resFile.readData("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE",&xDummyReal[0]);
+      refFile.readData("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE",&yDummyReal[0]);
+    } else {
+      resFile.readData("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE",&xDummy[0]);
+      refFile.readData("CC/EXCITED_TO_EXCITED_TRANSITION_DIPOLE",&yDummy[0]);
+      for (auto i = 0; i < totDim; i++) {
+        xDummyReal[i] = xDummy[i].real();
+        yDummyReal[i] = yDummy[i].real();
+      }
+    }
+
+    for(auto i = 0; i < dipDim_ref[0]; i++) { //cartesian
+      for (auto j = 0; j < dipDim_ref[1]; j++) { //bra state
+        for (auto k = 0; k < dipDim_ref[2]; k++) { //ket state
+          auto idx = (i * dipDim_ref[1] + j) * dipDim_ref[2] + k;
+          EXPECT_NEAR(abs(xDummyReal[idx]), abs(yDummyReal[idx]), osctol)
+          << "ES-ES DIPOLE TEST FAILED IN STATE PAIR = " << j << "," << k << " AND COMPONENT = " << static_cast<char>('X'+i);
+          EXPECT_NEAR(abs(xDummy[idx].imag()), abs(yDummy[idx].imag()), osctol)
+          << "ES-ES DIPOLE TEST FAILED IN STATE PAIR = " << j << "," << k << " AND COMPONENT = " << static_cast<char>('X'+i);
+        }
+      }
+    }
+
   }
 
   if (checkTriplesCorrection){
