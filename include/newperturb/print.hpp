@@ -53,27 +53,31 @@ namespace ChronusQ {
   void DasPerturb<MatsT,IntsT>::printMRPTHeader() {
 
 //    auto & ref = dynamic_cast<MCSCF<MatsT,IntsT>&>(*refMCwfn);
-    auto &ptMOSpace = this->corrSpace;
-
+    auto& ptMOSpace = this->corrSpace; 
     std::cout << bannerTop << std::endl;
-    std::cout << "MRPT Settings:"  << std::endl << std::endl;
-
-    std::cout << std::left << std::setprecision(3) << std::scientific;
+    std::cout << "*** MRPT Settings ***"  << std::endl;
+    std::cout << std::left << std::setprecision(12) << std::scientific;
     std::cout << std::endl;
-    DasPerturbFormattedLine(std::cout,"* PT Space Partition:");
-    DasPerturbFormattedLine(std::cout,"  Number of Frozen Core Orbitals:",     ptMOSpace.nFCore);
-    DasPerturbFormattedLine(std::cout,"  Number of Frozen Virtual Orbitals:",  ptMOSpace.nFVirt);
-    DasPerturbFormattedLine(std::cout,"  Number of Correlated Orbitals:",      ptMOSpace.nCorrO);
-    DasPerturbFormattedLine(std::cout,"  Number of Correlated Electrons:",     ptMOSpace.nCorrE);
-    DasPerturbFormattedLine(std::cout,"  External Space Dimension:",  PTFactory_->
+    DasPerturbFormattedLine(std::cout,"ENPT2: ", PTopts.ENPT ? "True" : "False");
+    DasPerturbFormattedLine(std::cout,"GVVPT2: ", PTopts.GVVPT ? "True" : "False");
+    DasPerturbFormattedLine(std::cout,"Virtual Orbitals Selected: ", PTopts.SELECTVIRTUAL);
+    DasPerturbFormattedLine(std::cout,"Level shift applied: ", PTopts.LEVELSHIFT);
+    DasPerturbFormattedLine(std::cout,"State-Averaged PT2 enable: ", PTopts.STATEAVERAGE ? "True":"False");
+    if (PTopts.GVVPT)
+      DasPerturbFormattedLine(std::cout,"Secondary States included: ", PTopts.SECONDARYROOTS);
+#ifdef CQ_ENABLE_SPARSE
+    DasPerturbFormattedLine(std::cout,"Sparse Threshold: ", PTopts.EPS);
+#endif
+    DasPerturbFormattedLine(std::cout,"External Space Dimension:",  PTFactory_->
       braCategoricalSpace()->nDeterminants());
-
-    std::cout << std::endl;
-    DasPerturbFormattedLine(std::cout,"* Parameters:");
-    DasPerturbFormattedLine(std::cout,"  Number of Roots Requested:",this->Target_States_.size());
-
-    std::cout << std::endl;
-    std::cout << std::endl << bannerTop << std::endl << std::endl;
+    DasPerturbFormattedLine(std::cout,"Number of Roots Requested:",this->Target_States_.size());
+    std::cout << BannerTop << std::endl;
+    DasPerturbFormattedLine(std::cout,"*** PT Space Partition ***");
+    DasPerturbFormattedLine(std::cout,"Number of Frozen Core Orbitals:",     ptMOSpace.nFCore);
+    DasPerturbFormattedLine(std::cout,"Number of Frozen Virtual Orbitals:",  ptMOSpace.nFVirt);
+    DasPerturbFormattedLine(std::cout,"Number of Correlated Orbitals:",      ptMOSpace.nCorrO);
+    DasPerturbFormattedLine(std::cout,"Number of Correlated Electrons:",     ptMOSpace.nCorrE);
+    std::cout << std::endl << bannerTop << std::endl;
 
     this->mointsTF->printMORangesSummary();
 #ifdef _DEBUG_PTCATBUILD

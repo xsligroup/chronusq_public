@@ -158,7 +158,7 @@ class LibcintEngine {
     }
   } // allocate_int2eScalar cache
 
-  // define computing interfaces
+// define computing interfaces
 #define DEFINE_CQ_LibcintEngine_INT2E_FUNC(function_name)                                    \
   size_t compute_##function_name(double *out, int *shells) const {                           \
     if (out == nullptr) {                                                                    \

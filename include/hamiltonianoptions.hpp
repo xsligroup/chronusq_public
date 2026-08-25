@@ -108,7 +108,7 @@ namespace ChronusQ {
     bool DiracCoulombSSSS = true; // SSSS to Dirac-Coulomb
     bool Gaunt = false; // Gaunt
     bool Gauge = false; // Gauge
-
+    bool SpinFree = false; // Spin-Free Option that requires all 2e-Interactions to be SF
     double GauntScale = 1.0; // Gaunt Exchange Scaling for 4CDFT
     double GaugeScale = 1.0; // Gauge Exchange Scaling for 4CDFT
 

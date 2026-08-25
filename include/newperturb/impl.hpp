@@ -46,6 +46,10 @@ namespace ChronusQ {
 
     // Perform AO -> MO Integral transforms:
     ProgramTimer::tick("Integral Trans");
+    if (PTopts.SPINFREE) {
+      auto& HOp = RefMCWfn_->reference()->fockBuilder->hamiltonianOptions_;
+      HOp.SpinFree = PTopts.SPINFREE;
+    }
     this->prepareMOIntegrals(pert, *PTFactory_, true, PTopts.ENPT);
     ProgramTimer::tock("Integral Trans");
     

@@ -378,7 +378,9 @@ namespace ChronusQ {
     size_t nAO = ref_->nAlphaOrbital() * ref_->nC;;
     size_t nCorrO = corrSpace.nCorrO;
     size_t nCoreO = corrSpace.nInact + corrSpace.nFCore;
-    
+    double alpha = std::pow(1/SpeedOfLight(), 2);
+    double excEn = StateEnergy[s2] - StateEnergy[s1];
+
     // compute transition density matrix for specific state
     auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
     auto tmpTDM2 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
@@ -530,42 +532,32 @@ namespace ChronusQ {
              * (blas::dotu(nAO*nAO, tmpAOTDM1->pointer(),1,AO_Magnetic_Quadpole[indexMap[eXYZ][1]]->pointer(),1));
       }
 
-      // oscillator strength f = 2/3 (E2 - E1) eD.
-      f =  (2./ 3.) * (1 / (StateEnergy[s2] - StateEnergy[s1])) * std::real(eD);
-      // Magnetic dipole contri. to oscillator strength f = 1/6 * alpha^2 * (E2 - E1) * eM.  
-      f += (1./6.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD);
-      // Electric quadpole contri. to oscillator strength f = 1/20 * alpha^2 * (E2 - E1) * eQ.
-      f += (1./20.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ);
-      // Magnetic quadpole contri. to oscillator strength f = 1/9 * alpha^2 * (E2 - E1) * mQ.
-      f += (1./9.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ);
-      // Electric Octupole contri. to oscillator strength f = (-2/45) * alpha^2 * (E2 - E1) * eO
-      f -= (2./45.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO);
+      const double f0     =  (2.0  / 3.0)  * (1.0 / excEn) * std::real(eD);
+      const double fMD2   =  (1.0  / 6.0)  * alpha * excEn * std::real(mD);
+      const double fEQ2   =  (1.0  / 20.0) * alpha * excEn * std::real(eQ);
+      const double fEDxMQ =  (1.0  / 9.0)  * alpha * excEn * std::real(mQ);
+      const double fEDxEO = -(2.0  / 45.0) * alpha * excEn * std::real(eO);
+      const double f2 = f0 + fMD2 + fEQ2 + fEDxMQ + fEDxEO;
 
-      // output
-      std::cout << "Excited State: " << std::setw(3) << std::right << s2+1
-                << " to state: " << std::setw(3) << std::right << s1+1 << ":";
-      std::cout << std::setw(15) << std::right << "E(Eh) = "
-                << std::setprecision(8) << std::fixed << (StateEnergy[s2] - StateEnergy[s1]);
-      std::cout << std::setw(30) << std::right << "f(2) = "
-                << std::setprecision(15) << std::fixed << f << std::endl;
-
-      //Individual Contribution:
-      std::cout << bannerTop << std::endl; 
-      std::cout << std::setw(12) << "f(0)" << std::setw(8) << "||"
-                << std::setw(10) << "f(MD2)"   << std::setw(8) << "||"
-                << std::setw(10) << "f(EQ2)"   << std::setw(8) << "||"
-                << std::setw(10) << "f(EDxMQ)" << std::setw(8) << "||"
-                << std::setw(10) << "f(EDxEO)" << std::setw(8) << "||"
-                << std::endl;
-     
-      std::cout << bannerTop << std::endl; 
+      std::cout << std::fixed << std::setprecision(8)
+          << "Exc. State: " << (s2 + 1)
+          << " | Ground State: " << (s1 + 1)
+          << " | E(Eh) = " << excEn
+          << std::endl;
+      std::cout << BannerTop << std::endl;
       std::cout << std::fixed << std::setprecision(10)
-                << std::setw(12) << std::fixed << std::setprecision(8) << (2./ 3.) * (1/ (StateEnergy[s2] - StateEnergy[s1])) * std::real(eD)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./6.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mD)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./20.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eQ)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (1./9.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(mQ)
-                << std::setw(20) << std::fixed << std::setprecision(10) << (-2./45.) * std::pow(1/SpeedOfLight(), 2) * (StateEnergy[s2] - StateEnergy[s1]) * std::real(eO)
-                << "\n" << std::endl;                                    
+          << "  f(0) = "   << f0
+          << " |     f(2) = "   << f2
+          << " |    f(EQ) = " << fEQ2
+          << std::endl;
+
+      std::cout << std::fixed << std::setprecision(10)
+          << "f(MD2) = "   << fMD2
+          << " | f(EDxMQ) = " << fEDxMQ
+          << " | f(EDxEO) = " << fEDxEO
+          << std::endl;
+      std::cout << BannerTop << std::endl;
+
     }                                                                     
     MPIBCast(f, 0, this->comm);                                           
                                                                           
@@ -661,13 +653,13 @@ namespace ChronusQ {
     size_t nCorrO = corrSpace.nCorrO;
     auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
     auto tmpAOTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
-   
+    std::vector<MatsT> SSDipole(3);  
+    
     if (MPIRank(this->comm) == 0) {
       computeTDM(i, i, tmpTDM1);
       rdm2pdm(*tmpTDM1, 1., true);
       const std::array<std::string,3> dipoleList =
         { "X","Y","Z" };
-      std::vector<MatsT> SSDipole(3);
       
       if (ref_->nC == 1) { 
         *tmpAOTDM1 = (ref_->onePDM->S());
@@ -707,9 +699,9 @@ namespace ChronusQ {
         return {};
       }
 
-      return SSDipole;
     }
-
+    MPIBCast(SSDipole.data(), 3, 0, this->comm);
+    return SSDipole;
 
   } // PostHartreeFock<MatsT,IntsT>::computeStateSpecificDipoleMom(size_t i)
 
@@ -752,14 +744,13 @@ namespace ChronusQ {
     // compute transition density matrix for specific state
     auto tmpTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nCorrO);
     auto tmpAOTDM1 = std::make_shared<cqmatrix::Matrix<MatsT>>(nAO);
-   
+    std::vector<MatsT> TSDipole(3);  
     if (MPIRank(this->comm) == 0) {
     
       computeTDM(i, j, tmpTDM1);
       rdm2pdm(*tmpTDM1, 1., true);
       const std::array<std::string,3> dipoleList =
         { "X","Y","Z" };
-      std::vector<MatsT> TSDipole(3);
       
       if (ref_->nC == 1) { 
         *tmpAOTDM1 = (ref_->onePDM->S());
@@ -798,9 +789,9 @@ namespace ChronusQ {
         CErr("Wrong Number of Components!!");
         return {};
       }
-
-      return TSDipole;
     }
+    MPIBCast(TSDipole.data(), 3, 0, this->comm);
+    return TSDipole;
 
   } // PostHartreeFock<MatsT,IntsT>::computeTransitionDipoleMom
 

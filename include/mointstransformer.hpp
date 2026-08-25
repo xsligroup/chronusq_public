@@ -171,7 +171,12 @@ public:
   
   void directTransformTPIBatch(EMPerturbation & pert,
     MatsT* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const;
- 
+
+  // MPI-enabled Spin Free direct transform TPI
+  void directTransformScalarTPIBatch(EMPerturbation & pert,
+    MatsT* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const;
+
+
  // Helper function used during transformation 
   std::shared_ptr<OnePInts<MatsT>> formAOHCore(EMPerturbation &, 
     bool cacheAOHCore = true, const char coreIndex = '\0');

@@ -374,7 +374,9 @@ namespace ChronusQ {
       void formNaturalOrbs(size_t);
 
       // Oscillator strength
-      double oscillator_strength(size_t, size_t s1 = 0) override {CErr("Oscillator strengths NYI for MultiParticleCI");};
+      double oscillator_strength(size_t, size_t s1 = 0) override {
+        CErr("Oscillator strengths NYI for MultiParticleCI");
+        return 0.; }
 
       // Mulitpole calculation
       void computeMultipole() override;

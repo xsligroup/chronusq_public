@@ -42,7 +42,7 @@ namespace ChronusQ {
       "FROZENVIRTUAL",
       "SELECTVIRTUAL",
       "LEVELSHIFT",
-      "SCALAR",
+      "SPINFREE",
       "EPS",
       "NROOTS",
       "SECONDARYROOTS",
@@ -110,14 +110,14 @@ namespace ChronusQ {
     CONSTRUCT_MRPT( dcomplex, dcomplex );
 
     // Parse options
-    OPTOPT( PTopts->SCALAR = input.getData<bool>("MRPT/SCALAR");)
+    OPTOPT( PTopts->SPINFREE = input.getData<bool>("MRPT/SPINFREE");)
     OPTOPT( PTopts->EPS = input.getData<double>("MRPT/EPS");)
     OPTOPT( PTopts->ENPT = input.getData<bool>("MRPT/ENPT"); )
     OPTOPT( PTopts->GVVPT = input.getData<bool>("MRPT/GVVPT"); )
 
     if (PTopts->ENPT) {
       PTopts->STATEAVERAGE = false;
-      //OPTOPT( PTopts->SPARSEINT = input.getData<bool>("MRPT/SPARSEINT"); )
+      PTopts->GVVPT = false;
       OPTOPT( PTopts->FROZENCORE = input.getData<size_t>("MRPT/FROZENCORE"); )
       OPTOPT( PTopts->FROZENVIRTUAL = input.getData<size_t>("MRPT/FROZENVIRTUAL"); )
       OPTOPT( PTopts->SELECTVIRTUAL = input.getData<std::string>("MRPT/SELECTVIRTUAL"); )
@@ -125,7 +125,6 @@ namespace ChronusQ {
       size_t svirtual = 0;
       size_t fvirtual = PTopts->FROZENVIRTUAL;
       if (not PTopts->SELECTVIRTUAL.empty()) {
-        std::cout << "Chosen Virtual Orbitals: " << PTopts->SELECTVIRTUAL <<std::endl;
         std::vector<std::string> moTokens;
         split(moTokens, PTopts->SELECTVIRTUAL, ", ");
         for (auto & mo: moTokens) {
@@ -141,37 +140,15 @@ namespace ChronusQ {
         fvirtual = ref->corrSpace.nElecMO - ref->corrSpace.nInact - 
           ref->corrSpace.nCorrO - svirtual;
       }
-      
-      std::cout << "\nPerturbation Type: ENPT-2" <<std::endl;
-      std::cout << "Frozen Core Orbitals: " << PTopts->FROZENCORE << std::endl;
-      std::cout << "Frozen Virtual Orbitals: " << PTopts->FROZENVIRTUAL << std::endl;
-      if ( fvirtual != PTopts->FROZENVIRTUAL ) {
-        std::cout << "Update Frozen Virtual Orbitals based" 
-          << "on input Chosen Virtual Orbitals." << std::endl;
-        PTopts->FROZENVIRTUAL = fvirtual;
-        std::cout <<"Frozen Virtual Orbitals: " << 
-          PTopts->FROZENVIRTUAL << std::endl;
-      }
     }
     else if (PTopts->GVVPT) {
       PTopts->ENPT = false;
       OPTOPT( PTopts->STATEAVERAGE = input.getData<bool>("MRPT/STATEAVERAGE"); )
       OPTOPT( PTopts->FROZENCORE = input.getData<size_t>("MRPT/FROZENCORE"); )
       OPTOPT( PTopts->FROZENVIRTUAL = input.getData<size_t>("MRPT/FROZENVIRTUAL"); )
-      //OPTOPT( PTopts->SPARSEINT = input.getData<bool>("MRPT/SPARSEINT"); )
-      std::cout << "\nPerturbation Type: GVVPT-2" << std::endl;
       OPTOPT( PTopts->SECONDARYROOTS = input.getData<size_t>("MRPT/SECONDARYROOTS"); )
-      std::cout << "Number of Secondary States included: " << PTopts->SECONDARYROOTS <<
-        std::endl;
     }
     else { CErr("Exception: No MRPT2 flavor specified / Incompartible MRPT2 method"); }
-
-
-    // Print Parsed Parameters:
-    std::cout << "Number of Target Electronic States: " << TargetStates.size() << std::endl;
-    std::cout << std::boolalpha << "State-Averaged PT2: " << PTopts->STATEAVERAGE << std::endl;  
-    std::cout <<  std::scientific << std::setprecision(14) <<
-    "MRPT2 Threshold for Sparse treatment: " << PTopts->EPS << std::endl;  
 
     return mrpt;
   }; // CQMRPTSettings

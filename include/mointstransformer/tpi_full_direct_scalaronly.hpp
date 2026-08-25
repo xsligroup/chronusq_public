@@ -25,7 +25,6 @@
 #pragma once
 #include <mointstransformer.hpp>
 #include <mointstransformer/shellblockmo.hpp>
-#include <util/print.hpp>
 #include <libcint/engine.hpp>
 #include <util/timer.hpp>
 #include <fockbuilder/fourcompfock/batchgd.hpp>
@@ -36,22 +35,11 @@
 #include <cqlinalg/blasutil.hpp>
 
 
-// #define _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
+#define _MOINTSTRANSFORMER_TPI_FULL_DIRECT_SCALAR_TIMING
 
 namespace ChronusQ {
 
-namespace {
-
-inline double getMaxShBlkNorm(const cqmatrix::Matrix<double>& shBlkNorm,
-    size_t s1, size_t s2, size_t s3, size_t s4) {
-  double candidates[6]{shBlkNorm(s1, s2), shBlkNorm(s1, s3), shBlkNorm(s1, s4),
-      shBlkNorm(s2, s3), shBlkNorm(s2, s4), shBlkNorm(s3, s4)};
-  return *std::max_element(candidates, candidates + 6); 
-}
-
-} // namespace
-
-class SchwarzIntegrals {
+class SchwarzIntegralsScalar {
  private:
   
   // Schwarz Intgrals
@@ -61,13 +49,13 @@ class SchwarzIntegrals {
   std::shared_ptr<cqmatrix::Matrix<double>> SchwarzGauge = nullptr;
   
  public:
-  SchwarzIntegrals() = delete;
-  SchwarzIntegrals(const SchwarzIntegrals&) = delete;
-  SchwarzIntegrals(SchwarzIntegrals&&) = delete;
-  SchwarzIntegrals(const HamiltonianOptions& HOp, const LibcintEngine& cint) {
+  SchwarzIntegralsScalar() = delete;
+  SchwarzIntegralsScalar(const SchwarzIntegralsScalar&) = delete;
+  SchwarzIntegralsScalar(SchwarzIntegralsScalar&&) = delete;
+  SchwarzIntegralsScalar(const HamiltonianOptions& HOp, const LibcintEngine& cint) {
     computeSchwarzIntegrals(HOp, cint);
   } 
-  ~SchwarzIntegrals() { dealloc(); }
+  ~SchwarzIntegralsScalar() { dealloc(); }
   
   void dealloc() {
     SchwarzERI = nullptr;
@@ -136,7 +124,7 @@ class SchwarzIntegrals {
     } // SchwarzERI
     
     if (HOp.DiracCoulomb or HOp.DiracCoulombSSSS) {
-      size_t nERI = 81;
+      size_t nERI = 1;
       double *buffAll = CQMemManager::get().malloc<double>(nERI * buffN4 * nThreads);
       SchwarzSSSS = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzSSSS->clear(); 
@@ -161,7 +149,7 @@ class SchwarzIntegrals {
             shls[1] = s2;
             shls[2] = s1;
             shls[3] = s2;
-            if (cint.compute_int2e_ipvip1ipvip2_sph(buff, shls) == 0) continue;
+            if (cint.compute_int2e_pp1pp2_sph(buff, shls) == 0) continue;
             auto nQuad = n1 * n2 * n1 * n2;
             double result = C2 * std::sqrt(lapack::lange(lapack::Norm::Max, nQuad, nERI, buff, nQuad));
             SchwarzSSSSMat(s2, s1) = result; 
@@ -173,7 +161,7 @@ class SchwarzIntegrals {
     } // SchwarzSSSS
 
     if (HOp.Gaunt) {
-      size_t nERI = 9;
+      size_t nERI = 1;
       double *buffAll = CQMemManager::get().malloc<double>(nERI * buffN4 * nThreads);
       SchwarzGaunt = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGaunt->clear(); 
@@ -198,7 +186,7 @@ class SchwarzIntegrals {
             shls[1] = s2;
             shls[2] = s1;
             shls[3] = s2;
-            if (cint.compute_int2e_ip1ip2_sph(buff, shls) == 0) continue;
+            if (cint.compute_int2e_gaunt_ps1ps2_sph(buff, shls) == 0) continue;
             auto nQuad = n1 * n2 * n1 * n2;
             SchwarzGauntMat(s1, s2) = C1 * std::sqrt(lapack::lange(lapack::Norm::Max, nQuad, nERI, buff, nQuad)); 
           }
@@ -217,7 +205,7 @@ class SchwarzIntegrals {
     } // SchwarzGaunt
 
     if (HOp.Gauge) {
-      size_t nERI = 16;
+      size_t nERI = 4;
       double *buffAll = CQMemManager::get().malloc<double>(2 * nERI * buffN4 * nThreads);
       SchwarzGauge = std::make_shared<cqmatrix::Matrix<double>>(nShells);
       SchwarzGauge->clear(); 
@@ -243,8 +231,8 @@ class SchwarzIntegrals {
             shls[1] = s2;
             shls[2] = s1;
             shls[3] = s2;
-            auto skip1 = cint.compute_int2e_gauge_r1_ssp1ssp2_sph(buff1, shls);
-            auto skip2 = cint.compute_int2e_gauge_r2_ssp1ssp2_sph(buff2, shls);
+            auto skip1 = cint.compute_int2e_gauge_r1_sp1sp2_sph(buff1, shls);
+            auto skip2 = cint.compute_int2e_gauge_r2_sp1sp2_sph(buff2, shls);
             if (skip1 == 0 and skip2 == 0) continue;
             auto nQuad = n1 * n2 * n1 * n2;
             auto nBuff =  nQuad * nERI;
@@ -270,7 +258,7 @@ class SchwarzIntegrals {
 
 
 template <typename MatsT, typename IntsT>
-void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pert,
+void MOIntsTransformer<MatsT,IntsT>::directTransformScalarTPIBatch(EMPerturbation & pert,
     MatsT* MOTPI, const std::vector<std::pair<size_t,size_t>> & off_sizes) const {
    
   size_t poff = off_sizes[0].first;
@@ -308,6 +296,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   if (nC != 4) {
     HOp.BareCoulomb = true; 
   } 
+  // else {
+  //   HOp.Gaunt = false;
+  //   HOp.Gauge = false;
+  // }
 
   // XSLI: why GeneralContractionBasis is needed here?
   BasisSet basisSet = ss_.basisSet_.groupGeneralContractionBasis(); 
@@ -317,7 +309,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
   // Set up LibcintEngine  
   LibcintEngine cint(basisSet, ss_.molecule_);
-  cint.allocate_int2e_cache(HOp);
+  cint.allocate_int2eScalar_cache(HOp);
   size_t maxShellSize = cint.maxShellSize();
   size_t maxShellSize2 = maxShellSize * maxShellSize;
   size_t maxShellSize4 = maxShellSize2 * maxShellSize2;
@@ -386,7 +378,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /********************************/
   /* Allocate Caches              */
   /********************************/
-  
+
   // MO: for debug multi vectors could be one
   std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> pauliSpinorLLMSSCRs;
   std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> pauliSpinorSSSCRs;
@@ -394,7 +386,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   std::vector<cqmatrix::Matrix<MatsT>> rsERISCRs; 
   for (auto i = 0ul; i < nThreads; ++i) { 
     pauliSpinorLLMSSCRs.emplace_back(maxShellSize, false, false);
-    pauliSpinorSSSCRs.emplace_back(maxShellSize, true, true);
+    pauliSpinorSSSCRs.emplace_back(maxShellSize, false, false);
     pauliSpinorSLSCRs.emplace_back(maxShellSize, true, true);
     rsERISCRs.emplace_back(np, nq);
   }
@@ -402,9 +394,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /***********************************/
   /* Prepare Schwarz Screening       */
   /***********************************/
-  
   // compute Schwarz ERIs      
-  SchwarzIntegrals schwarzInts(HOp, cint);
+  SchwarzIntegralsScalar schwarzInts(HOp, cint);
   auto schwarzThreshold = std::dynamic_pointer_cast<DirectTPI<IntsT>>(ss_.aoints_->TPI)->threshSchwarz();  
 
   #ifdef CQ_ENABLE_MPI
@@ -424,7 +415,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   std::vector<cqmatrix::Matrix<double>> shBlkNormsSymmDenLLMS_rs;
   std::vector<cqmatrix::Matrix<double>> shBlkNormsSymmDenSS_rs;
   std::vector<cqmatrix::Matrix<double>> shBlkNormsSymmDenSL_rs;
-  for (auto i = 0ul; i < rsPairs.size(); ++i) { 
+  for (auto i = 0ul; i < rsPairs.size(); ++i) {
     shBlkNormsSymmDenLLMS_rs.emplace_back(nShell, nShell);
     if (HOp.DiracCoulomb or HOp.DiracCoulombSSSS) {
       shBlkNormsSymmDenSS_rs.emplace_back(nShell, nShell); 
@@ -432,7 +423,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       shBlkNormsSymmDenSL_rs.emplace_back(nShell, nShell); 
     }
   } // rsPair
-
   // :)
   cqmatrix::Matrix<double> maxShBlkNormsSymmDenLLMS_rs(nShell, nShell);
   cqmatrix::Matrix<double> maxShBlkNormsSymmDenSS_rs(nShell, nShell);
@@ -440,7 +430,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
   // BareCoulomb and DiracCoulomb
   maxShBlkNormsSymmDenLLMS_rs = shBlkNormsSymmDenLLMS_rs[0];
-
   #pragma omp parallel for
   for(auto i = shBlkNorm_begin; i < shBlkNorm_end; ++i) {
     const auto& [r, s] = rsPairs[i];
@@ -457,7 +446,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
           shBlkNorm(s1, s2) = result;
         } // (s1, s2)
   } // [r, s]
-
     #ifdef CQ_ENABLE_MPI
     ProgramTimer::tick("MOINTSTRANSFORM TPI TRANS MPI COMM");
     for(auto i = 0ul; i < rsPairs.size(); ++i) {
@@ -468,9 +456,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     }
     ProgramTimer::tock("MOINTSTRANSFORM TPI TRANS MPI COMM");
     #endif
-
-  maxShBlkNormsSymmDenLLMS_rs = shBlkNormsSymmDenLLMS_rs[0];
   
+  maxShBlkNormsSymmDenLLMS_rs = shBlkNormsSymmDenLLMS_rs[0];
   #pragma omp parallel for
   for (auto s1 = 0ul; s1 < nShell; s1++) 
   for (auto s2 = 0ul; s2 <= s1; s2++) {
@@ -481,7 +468,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     maxShBlkNormsSymmDenLLMS_rs(s2, s1) = maxShBlkNormsSymmDenLLMS_rs(s1, s2);
   } // (s1, s2)
 
-  
   if (HOp.DiracCoulomb or HOp.DiracCoulombSSSS) {
     maxShBlkNormsSymmDenSS_rs = shBlkNormsSymmDenSS_rs[0];
 
@@ -493,13 +479,12 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         auto& pauli = pauliSpinorSSSCRs[GetThreadID()];
         for (auto s1 = 0ul; s1 < nShell; s1++)
           for (auto s2 = 0ul; s2 <= s1; s2++) {
-            shBlockMO->genSymmDenSS(r + roff, s + soff, s1, s2, pauli);
+            shBlockMO->genSymmDenSSMS(r + roff, s + soff, s1, s2, pauli);
             double result = pauli.norm(lapack::Norm::Inf);
             shBlkNorm(s2, s1) = result;
             shBlkNorm(s1, s2) = result;
         } // (s1, s2)
     } // [r, s]
-
     #ifdef CQ_ENABLE_MPI
     for(auto i = 0ul; i < rsPairs.size(); ++i) {
       int root = i / shBlkNorm_n;
@@ -508,9 +493,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       MPIBCast(shBlkNorm.pointer(), nShell2, root, comm_);
     }
     #endif
-
-    maxShBlkNormsSymmDenSS_rs = shBlkNormsSymmDenSS_rs[0];
     
+    maxShBlkNormsSymmDenSS_rs = shBlkNormsSymmDenSS_rs[0];
     #pragma omp parallel for
     for (auto s1 = 0ul; s1 < nShell; s1++) 
     for (auto s2 = 0ul; s2 <= s1; s2++) {
@@ -858,8 +842,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
     double totalTime = tock(startTime);
     FormattedLine(std::cout, "Time to Bare-Coulomb Transform(s): ", totalTime); 
+    
   #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-
       auto printTimings = [] (const std::string& section, 
           const std::vector<double> ts) {
           std::cout << std::setw(20) << section  << ": " 
@@ -876,6 +860,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
       #endif
 
+      std::cout << "\nTiming for bare Coulomb fully direct transformation: " << std::endl;
+      std::cout << "Total time: " << totalTime << "s" << std::endl;
       std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
       std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
       printTimings("t(Ints)", tInts_all);
@@ -903,7 +889,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
   // Check if MatsT is dcomplex at compile time aka only compile this blok of code for the dcomplex
   // Needed for comp with nr code
-  if constexpr (std::is_same_v<MatsT, std::complex<double>>) {
+  
   if (HOp.DiracCoulomb) {
     #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
     std::cout << "  Transforming 2e-INTS: DiracCoulomb (LL|LL, LS|LS) ..." << std::endl;
@@ -921,7 +907,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       AzBz
     };
 
-    int nERI = 9;
+    int nERI = 1;
     int nSave = 4;
     size_t NB  = maxShellSize*4;
     size_t NB2 = NB*NB;
@@ -962,9 +948,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     // Allocate memory for density to be contracted with ERI
     MatsT *buffDensityLLMS =  CQMemManager::get().template malloc<MatsT>(nDenSCR/5);
     MatsT *buffDensitySSMS =  CQMemManager::get().template malloc<MatsT>(nDenSCR/5);
-    MatsT *buffDensitySSMX =  CQMemManager::get().template malloc<MatsT>(nDenSCR/5);
-    MatsT *buffDensitySSMY =  CQMemManager::get().template malloc<MatsT>(nDenSCR/5);
-    MatsT *buffDensitySSMZ =  CQMemManager::get().template malloc<MatsT>(nDenSCR/5);
 
     // storage to save shell IDs of s3 and s4 for each thread
     std::vector<std::vector<std::pair<size_t, size_t>>> s34PairsAll;
@@ -972,23 +955,17 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     // storage to save s34 densities of all rs pairs for each thread
     std::vector<std::vector<MatsT*>> s43DenLLMSPtrsAll;
     std::vector<std::vector<MatsT*>> s43DenSSMSPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMXPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMYPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMZPtrsAll;
 
     s34PairsAll.resize(nThreads);
     s43DenLLMSPtrsAll.resize(nThreads);
     s43DenSSMSPtrsAll.resize(nThreads);
-    s43DenSSMXPtrsAll.resize(nThreads);
-    s43DenSSMYPtrsAll.resize(nThreads);
-    s43DenSSMZPtrsAll.resize(nThreads);
 
     std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> s12SpinorLLSCRs;
     std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> s12SpinorSSSCRs;
     for (auto i = 0ul; i < nThreads; ++i) {
       for (auto j = 0ul; j < rsPairs.size(); ++j) {
         s12SpinorLLSCRs.emplace_back(maxShellSize, false, false);
-        s12SpinorSSSCRs.emplace_back(maxShellSize, true, true);
+        s12SpinorSSSCRs.emplace_back(maxShellSize, false, false);
       }
     }
 
@@ -1011,9 +988,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         s34PairsAll[iThread].clear();
         s43DenLLMSPtrsAll[iThread].clear();
         s43DenSSMSPtrsAll[iThread].clear();
-        s43DenSSMXPtrsAll[iThread].clear();
-        s43DenSSMYPtrsAll[iThread].clear();
-        s43DenSSMZPtrsAll[iThread].clear();
       }
 
       size_t nMem = 0ul, nMemOff = 0ul;
@@ -1032,9 +1006,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         s34PairsAll[iThread].push_back({s3, s4});
         s43DenLLMSPtrsAll[iThread].push_back(buffDensityLLMS + nMemOff);
         s43DenSSMSPtrsAll[iThread].push_back(buffDensitySSMS + nMemOff);
-        s43DenSSMXPtrsAll[iThread].push_back(buffDensitySSMX + nMemOff);
-        s43DenSSMYPtrsAll[iThread].push_back(buffDensitySSMY + nMemOff);
-        s43DenSSMZPtrsAll[iThread].push_back(buffDensitySSMZ + nMemOff);
 
         nMemOff += nDen34SCR;
 
@@ -1047,9 +1018,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         const auto& s34Pairs = s34PairsAll[thread_id];
         const auto& s43DenLLMSPtrs = s43DenLLMSPtrsAll[thread_id];
         const auto& s43DenSSMSPtrs = s43DenSSMSPtrsAll[thread_id];
-        const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
-        const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
-        const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
         auto& denLLSCR = s12SpinorLLSCRs[thread_id];
         auto& denSSSCR = s12SpinorSSSCRs[thread_id];
 
@@ -1061,28 +1029,18 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         for (auto s34 = 0ul; s34 < s34Pairs.size(); s34++) {
           MatsT* denPtrLLMS = s43DenLLMSPtrs[s34];
           MatsT* denPtrSSMS = s43DenSSMSPtrs[s34];
-          MatsT* denPtrSSMX = s43DenSSMXPtrs[s34];
-          MatsT* denPtrSSMY = s43DenSSMYPtrs[s34];
-          MatsT* denPtrSSMZ = s43DenSSMZPtrs[s34];
           const auto& [s3, s4] = s34Pairs[s34];
           size_t nsh34 = cint.shellSize(s3) * cint.shellSize(s4);
           for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++, denPtrLLMS+=nsh34,
-                  denPtrSSMS+=nsh34, denPtrSSMX+=nsh34, denPtrSSMY+=nsh34, denPtrSSMZ+=nsh34) {
+                  denPtrSSMS+=nsh34) {
             const auto& [r, s] = rsPairs[iMat];
 
             // S: C_s,s3xC_r,s4^* + C_r,s3^*xC_s,s4, large component, assuming real integrals
             shBlockMO->genSymmDenLLMS(r + roff, s + soff, s3, s4, denLLSCR);
             std::copy_n(denLLSCR.S().pointer(), nsh34, denPtrLLMS);
 
-            shBlockMO->genSymmDenSS(r + roff, s + soff, s3, s4, denSSSCR);
-            // S: C_s,s3xC_r,s4^* + C_r,s3^*xC_s,s4, small component, assuming real integrals
+            shBlockMO->genSymmDenSSMS(r + roff, s + soff, s3, s4, denSSSCR);
             std::copy_n(denSSSCR.S().pointer(), nsh34, denPtrSSMS);
-            // X: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.X().pointer(), nsh34, denPtrSSMX);
-            // Y: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.Y().pointer(), nsh34, denPtrSSMY);
-            // Z: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.Z().pointer(), nsh34, denPtrSSMZ);
 
           } // iMat
         } // s34Pairs
@@ -1117,9 +1075,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
             const auto& s34Pairs = s34PairsAll[thread_id];
             const auto& s43DenLLMSPtrs = s43DenLLMSPtrsAll[thread_id];
             const auto& s43DenSSMSPtrs = s43DenSSMSPtrsAll[thread_id];
-            const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
-            const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
-            const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
+            //const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
+            //const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
+            //const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
 
             double *buff1 = buffERIAll + nERI * maxShellSize4 * thread_id;
             double *buff2 = buffERIAll + nERI * maxShellSize4 * nThreads + nERI * maxShellSize4 * thread_id;
@@ -1172,8 +1130,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
                 auto topInts = tick();
   #endif
 
-              // ∇A∇B(mn|kl)
-              bool skip1 = (cint.compute_int2e_ipvip1_sph(buff1, shls) == 0);
+              // ∇A∙∇B(mn|kl); int2e_pp1 is the spin-free analogue of int2e_ipvip1
+              // (derivatives on the bra pair only). int2e_pp1pp2 would be the SSSS
+              // operator and is wrong here.
+              bool skip1 = (cint.compute_int2e_pp1_sph(buff1, shls) == 0);
               auto nQuad = n1 * n2 * n3 * n4;
               //for(auto i = 0ul; i < nQuad; i++) buff[i] *= s1234_deg;
 
@@ -1185,7 +1145,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
               // MO: done using the same engine by (kl|mn)
               // ∇C∇D(mn|kl)
-              bool skip2 = (cint.compute_int2e_ipvip1_sph(buff2, shls) == 0);
+              // bool skip2 = (cint.compute_int2e_ipvip1_sph(buff2, shls) == 0);
+              bool skip2 = (cint.compute_int2e_pp1_sph(buff2, shls) == 0);
               
               // FIXME: separate both buff builds
               // Only skip if both cint calls are empty
@@ -1200,12 +1161,13 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               for(auto m = 0                                ; m <                  n1; ++m, ++mnkl) {
 
                 /* Dirac-Coulomb */
-                // ∇A∙∇B(mn|kl)
-                auto dAdotdB = buff1[AxBx*nQuad+mnkl] + buff1[AyBy*nQuad+mnkl] + buff1[AzBz*nQuad+mnkl];
+                // ∇A∙∇B(mn|kl): int2e_pp1 returns a single component with the
+                // dot product already contracted inside CINTgout2e_int2e_pp1
+                auto dAdotdB = buff1[mnkl];
                 // ∇Ax∇B(mn|kl)
-                auto dAcrossdB_x =  buff1[AyBz*nQuad+mnkl] - buff1[AzBy*nQuad+mnkl];
-                auto dAcrossdB_y = -buff1[AxBz*nQuad+mnkl] + buff1[AzBx*nQuad+mnkl];
-                auto dAcrossdB_z =  buff1[AxBy*nQuad+mnkl] - buff1[AyBx*nQuad+mnkl];
+                //auto dAcrossdB_x =  buff1[AyBz*nQuad+mnkl] - buff1[AzBy*nQuad+mnkl];
+                //auto dAcrossdB_y = -buff1[AxBz*nQuad+mnkl] + buff1[AzBx*nQuad+mnkl];
+                //auto dAcrossdB_z =  buff1[AxBy*nQuad+mnkl] - buff1[AyBx*nQuad+mnkl];
 
                 auto MNKL = m + n*NB + k*NB2 + l*NB3;
                 auto KLMN = k + l*NB + m*NB2 + n*NB3;
@@ -1213,9 +1175,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
                 // ∇A∙∇B(mn|kl) followed by ∇Ax∇B(mn|kl) X, Y, and Z
                 // (mn|kl)
                 ERIBuffABmn[       MNKL] =  s12_deg*s34_deg*dAdotdB;
-                ERIBuffABmn[   NB4+MNKL] =  s12_deg*s34_deg*dAcrossdB_x;
-                ERIBuffABmn[ NB4_2+MNKL] =  s12_deg*s34_deg*dAcrossdB_y;
-                ERIBuffABmn[ NB4_3+MNKL] =  s12_deg*s34_deg*dAcrossdB_z;
+                //ERIBuffABmn[   NB4+MNKL] =  s12_deg*s34_deg*dAcrossdB_x;
+                //ERIBuffABmn[ NB4_2+MNKL] =  s12_deg*s34_deg*dAcrossdB_y;
+                //ERIBuffABmn[ NB4_3+MNKL] =  s12_deg*s34_deg*dAcrossdB_z;
 
               } // ∇A∇B integral preparation loop
 
@@ -1224,12 +1186,12 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               for(auto l = 3*maxShellSize             ; l < 3*maxShellSize + n4; ++l)
               for(auto k = 2*maxShellSize             ; k < 2*maxShellSize + n3; ++k, ++mnkl) {
                 /* Dirac-Coulomb */
-                // ∇C∙∇D(mn|kl)
-                auto dCdotdD = buff2[AxBx*nQuad+mnkl] + buff2[AyBy*nQuad+mnkl] + buff2[AzBz*nQuad+mnkl];
+                // ∇C∙∇D(mn|kl): single component, dot product already contracted
+                auto dCdotdD = buff2[mnkl];
                 // ∇Cx∇D(mn|kl)
-                auto dCcrossdD_x =  buff2[AyBz*nQuad+mnkl] - buff2[AzBy*nQuad+mnkl];
-                auto dCcrossdD_y = -buff2[AxBz*nQuad+mnkl] + buff2[AzBx*nQuad+mnkl];
-                auto dCcrossdD_z =  buff2[AxBy*nQuad+mnkl] - buff2[AyBx*nQuad+mnkl];
+                //auto dCcrossdD_x =  buff2[AyBz*nQuad+mnkl] - buff2[AzBy*nQuad+mnkl];
+                //auto dCcrossdD_y = -buff2[AxBz*nQuad+mnkl] + buff2[AzBx*nQuad+mnkl];
+                //auto dCcrossdD_z =  buff2[AxBy*nQuad+mnkl] - buff2[AyBx*nQuad+mnkl];
 
                 auto MNKL = m + n*NB + k*NB2 + l*NB3;
                 auto KLMN = k + l*NB + m*NB2 + n*NB3;
@@ -1237,9 +1199,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
                 // ∇C∙∇D(mn|kl) followed by ∇Cx∇D(mn|kl) X, Y, and Z
                 // (mn|kl)
                 ERIBuffCDkl[       MNKL] =  s12_deg*s34_deg*dCdotdD;
-                ERIBuffCDkl[   NB4+MNKL] =  s12_deg*s34_deg*dCcrossdD_x;
-                ERIBuffCDkl[ NB4_2+MNKL] =  s12_deg*s34_deg*dCcrossdD_y;
-                ERIBuffCDkl[ NB4_3+MNKL] =  s12_deg*s34_deg*dCcrossdD_z;
+                //ERIBuffCDkl[   NB4+MNKL] =  s12_deg*s34_deg*dCcrossdD_x;
+                //ERIBuffCDkl[ NB4_2+MNKL] =  s12_deg*s34_deg*dCcrossdD_y;
+                //ERIBuffCDkl[ NB4_3+MNKL] =  s12_deg*s34_deg*dCcrossdD_z;
 
               } // ∇C∇D integral preparation loop
 
@@ -1255,14 +1217,13 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               
               MatsT* symmDLLMS43_ptr = s43DenLLMSPtrs[s34];
               MatsT* symmDSSMS43_ptr = s43DenSSMSPtrs[s34];
-              MatsT* symmDSSMX43_ptr = s43DenSSMXPtrs[s34];
-              MatsT* symmDSSMY43_ptr = s43DenSSMYPtrs[s34];
-              MatsT* symmDSSMZ43_ptr = s43DenSSMZPtrs[s34];
+              //MatsT* symmDSSMX43_ptr = s43DenSSMXPtrs[s34];
+              //MatsT* symmDSSMY43_ptr = s43DenSSMYPtrs[s34];
+              //MatsT* symmDSSMZ43_ptr = s43DenSSMZPtrs[s34];
 
 
               for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++, symmDLLMS43_ptr+=nsh34,
-                      symmDSSMS43_ptr+=nsh34,symmDSSMX43_ptr+=nsh34,symmDSSMY43_ptr+=nsh34,
-                      symmDSSMZ43_ptr+=nsh34) {
+                      symmDSSMS43_ptr+=nsh34) {
 
                 const auto& [r, s] = rsPairs[iMat];
 
@@ -1277,9 +1238,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                 auto& ADSS12 = s12SpinorSSSCRs[AD12_loc_off + iMat];
                 auto& ADSSMS12 = ADSS12.S();
-                auto& ADSSMX12 = ADSS12.X();
-                auto& ADSSMY12 = ADSS12.Y();
-                auto& ADSSMZ12 = ADSS12.Z();
+                //auto& ADSSMX12 = ADSS12.X();
+                //auto& ADSSMY12 = ADSS12.Y();
+                //auto& ADSSMZ12 = ADSS12.Z();
 
                 auto& ADLL12 = s12SpinorLLSCRs[AD12_loc_off + iMat];
                 auto& ADLLMS12 = ADLL12.S();
@@ -1293,19 +1254,19 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
                   auto MNKL = m + n*NB + k*NB2 + l*NB3;
 
                   auto DotPrdMNKL = MNKL;
-                  auto CrossXMNKL = MNKL+NB4;
-                  auto CrossYMNKL = MNKL+NB4_2;
-                  auto CrossZMNKL = MNKL+NB4_3;
+                  //auto CrossXMNKL = MNKL+NB4;
+                  //auto CrossYMNKL = MNKL+NB4_2;
+                  //auto CrossZMNKL = MNKL+NB4_3;
 
                   ADSSMS12(ms,ns) += ERIBuffABmn[DotPrdMNKL]*symmDLLMS43_ptr[ls+ks*n4];
-                  ADSSMX12(ms,ns) += ERIBuffABmn[CrossXMNKL]*symmDLLMS43_ptr[ls+ks*n4];
-                  ADSSMY12(ms,ns) += ERIBuffABmn[CrossYMNKL]*symmDLLMS43_ptr[ls+ks*n4];
-                  ADSSMZ12(ms,ns) += ERIBuffABmn[CrossZMNKL]*symmDLLMS43_ptr[ls+ks*n4];
+                  //ADSSMX12(ms,ns) += ERIBuffABmn[CrossXMNKL]*symmDLLMS43_ptr[ls+ks*n4];
+                  //ADSSMY12(ms,ns) += ERIBuffABmn[CrossYMNKL]*symmDLLMS43_ptr[ls+ks*n4];
+                  //ADSSMZ12(ms,ns) += ERIBuffABmn[CrossZMNKL]*symmDLLMS43_ptr[ls+ks*n4];
         
-                  ADLLMS12(ms,ns) += ERIBuffCDkl[DotPrdMNKL] * symmDSSMS43_ptr[ls+ks*n4]
-                                  + (ERIBuffCDkl[CrossXMNKL] * symmDSSMX43_ptr[ls+ks*n4]
-                                  +  ERIBuffCDkl[CrossYMNKL] * symmDSSMY43_ptr[ls+ks*n4] 
-                                  +  ERIBuffCDkl[CrossZMNKL] * symmDSSMZ43_ptr[ls+ks*n4] ) * dcomplex(0.,1.);
+                  ADLLMS12(ms,ns) += ERIBuffCDkl[DotPrdMNKL] * symmDSSMS43_ptr[ls+ks*n4];
+                                  //+ (ERIBuffCDkl[CrossXMNKL] * symmDSSMX43_ptr[ls+ks*n4]
+                                  //+  ERIBuffCDkl[CrossYMNKL] * symmDSSMY43_ptr[ls+ks*n4] 
+                                  //+  ERIBuffCDkl[CrossZMNKL] * symmDSSMZ43_ptr[ls+ks*n4] ) * dcomplex(0.,1.);
 
                 } // mnkl
               } // iMat
@@ -1346,19 +1307,11 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               // Second half tranformation 
               // TransfromLL. Contraction with the LL density
               shBlockMO->transformLL(ADLL12, s1, s2, rsERI, off_sizes[0], off_sizes[1]);
-              ADLL12.S().inplace_scaleT(dcomplex(1.,0),'T');
+              ADLL12.S().inplace_T();
               shBlockMO->transformLL(ADLL12, s2, s1, rsERI, off_sizes[0], off_sizes[1], true);
 
-              // TransfromSS. Contraction with the SS density
-              // MO: the times i is to keep the inegrals real for the first contraction
-              ADSS12.X()*=dcomplex(0.,1.);
-              ADSS12.Y()*=dcomplex(0.,1.);
-              ADSS12.Z()*=dcomplex(0.,1.);
               shBlockMO->transformSS(ADSS12, s1, s2, rsERI, off_sizes[0], off_sizes[1], true);
-              ADSS12.S().inplace_scaleT(dcomplex(1.,0),'T');
-              ADSS12.X().inplace_scaleT(dcomplex(-1.,0),'T');
-              ADSS12.Y().inplace_scaleT(dcomplex(-1.,0),'T');
-              ADSS12.Z().inplace_scaleT(dcomplex(-1.,0),'T');
+              ADSS12.S().inplace_T();
               shBlockMO->transformSS(ADSS12, s2, s1, rsERI, off_sizes[0], off_sizes[1], true);
 
   #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
@@ -1380,11 +1333,11 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     } // (s3, s4) Density Batching
 
     CQMemManager::get().free(buffERIAll, ERIBuffer, buffDensityLLMS,
-             buffDensitySSMS, buffDensitySSMX, buffDensitySSMY, buffDensitySSMZ);
+             buffDensitySSMS);
+
 
     double totalTime = tock(startTime);
     FormattedLine(std::cout, "Time to DC(LL/LS) Transform(s): ", totalTime);
-
   #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
 
       auto printTimings = [] (const std::string& section,
@@ -1403,6 +1356,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
       #endif
 
+      std::cout << "\nTiming for Dirac Coulomb fully direct transformation: " << std::endl;
+      std::cout << "Total time: " << totalTime << "s" << std::endl;
       std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
       std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
       printTimings("t(Ints)", tInts_all);
@@ -1547,7 +1502,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     std::vector<size_t> nConSkipped(nThreads, 0);
     std::vector<size_t> nIntSkipped(nThreads, 0);
 #endif
-    int nERI = 81;
+    int nERI = 1;
     int nSave = 16;
     // Allocate memory for raw ERI
     double *buffERIAll = CQMemManager::get().template malloc<double>(nERI*maxShellSize4*nThreads);
@@ -1567,29 +1522,29 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
     // Allocate memory for density to be contracted with ERI
     MatsT *buffDensitySSMS =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
-    MatsT *buffDensitySSMX =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
-    MatsT *buffDensitySSMY =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
-    MatsT *buffDensitySSMZ =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
+    //MatsT *buffDensitySSMX =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
+    //MatsT *buffDensitySSMY =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
+    //MatsT *buffDensitySSMZ =  CQMemManager::get().template malloc<MatsT>(nDenSCR/4);
 
     // storage to save shell IDs of s3 and s4 for each thread
     std::vector<std::vector<std::pair<size_t, size_t>>> s34PairsAll;
 
     // storage to save s34 densities of all rs pairs for each thread
     std::vector<std::vector<MatsT*>> s43DenSSMSPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMXPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMYPtrsAll;
-    std::vector<std::vector<MatsT*>> s43DenSSMZPtrsAll;
+    //std::vector<std::vector<MatsT*>> s43DenSSMXPtrsAll;
+    //std::vector<std::vector<MatsT*>> s43DenSSMYPtrsAll;
+    //std::vector<std::vector<MatsT*>> s43DenSSMZPtrsAll;
 
     s34PairsAll.resize(nThreads);
     s43DenSSMSPtrsAll.resize(nThreads);
-    s43DenSSMXPtrsAll.resize(nThreads);
-    s43DenSSMYPtrsAll.resize(nThreads);
-    s43DenSSMZPtrsAll.resize(nThreads);
+    //s43DenSSMXPtrsAll.resize(nThreads);
+    //s43DenSSMYPtrsAll.resize(nThreads);
+    //s43DenSSMZPtrsAll.resize(nThreads);
 
     std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> s12SpinorSSSCRs;
     for (auto i = 0ul; i < nThreads; ++i) {
       for (auto j = 0ul; j < rsPairs.size(); ++j) {
-        s12SpinorSSSCRs.emplace_back(maxShellSize, true, true);
+        s12SpinorSSSCRs.emplace_back(maxShellSize, false, false);
       }
     }
 
@@ -1611,9 +1566,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
       for (auto iThread = 0ul; iThread < nThreads; iThread++) {
         s34PairsAll[iThread].clear();
         s43DenSSMSPtrsAll[iThread].clear();
-        s43DenSSMXPtrsAll[iThread].clear();
-        s43DenSSMYPtrsAll[iThread].clear();
-        s43DenSSMZPtrsAll[iThread].clear();
+        //s43DenSSMXPtrsAll[iThread].clear();
+        //s43DenSSMYPtrsAll[iThread].clear();
+        //s43DenSSMZPtrsAll[iThread].clear();
       }
 
       size_t nMem = 0ul, nMemOff = 0ul;
@@ -1631,9 +1586,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
           s34PairsAll[iThread].push_back({s3, s4});
           s43DenSSMSPtrsAll[iThread].push_back(buffDensitySSMS + nMemOff);
-          s43DenSSMXPtrsAll[iThread].push_back(buffDensitySSMX + nMemOff);
-          s43DenSSMYPtrsAll[iThread].push_back(buffDensitySSMY + nMemOff);
-          s43DenSSMZPtrsAll[iThread].push_back(buffDensitySSMZ + nMemOff);
+          //s43DenSSMXPtrsAll[iThread].push_back(buffDensitySSMX + nMemOff);
+          //s43DenSSMYPtrsAll[iThread].push_back(buffDensitySSMY + nMemOff);
+          //s43DenSSMZPtrsAll[iThread].push_back(buffDensitySSMZ + nMemOff);
 
           nMemOff += nDen34SCR;
 
@@ -1645,9 +1600,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         int thread_id = GetThreadID();
         const auto& s34Pairs = s34PairsAll[thread_id];
         const auto& s43DenSSMSPtrs = s43DenSSMSPtrsAll[thread_id];
-        const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
-        const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
-        const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
+        //const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
+        //const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
+        //const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
         auto& denSSSCR = s12SpinorSSSCRs[thread_id];
 
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
@@ -1657,24 +1612,24 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
         for (auto s34 = 0ul; s34 < s34Pairs.size(); s34++) {
           MatsT* denPtrSSMS = s43DenSSMSPtrs[s34];
-          MatsT* denPtrSSMX = s43DenSSMXPtrs[s34];
-          MatsT* denPtrSSMY = s43DenSSMYPtrs[s34];
-          MatsT* denPtrSSMZ = s43DenSSMZPtrs[s34];
+          //MatsT* denPtrSSMX = s43DenSSMXPtrs[s34];
+          //MatsT* denPtrSSMY = s43DenSSMYPtrs[s34];
+          //MatsT* denPtrSSMZ = s43DenSSMZPtrs[s34];
           const auto& [s3, s4] = s34Pairs[s34];
           size_t nsh34 = cint.shellSize(s3) * cint.shellSize(s4);
           for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++,
-               denPtrSSMS+=nsh34, denPtrSSMX+=nsh34, denPtrSSMY+=nsh34, denPtrSSMZ+=nsh34) {
+               denPtrSSMS+=nsh34) {
             const auto& [r, s] = rsPairs[iMat];
 
-            shBlockMO->genSymmDenSS(r + roff, s + soff, s3, s4, denSSSCR);
+            shBlockMO->genSymmDenSSMS(r + roff, s + soff, s3, s4, denSSSCR);
             // S: C_s,s3xC_r,s4^* + C_r,s3^*xC_s,s4, small component, assuming real integrals
             std::copy_n(denSSSCR.S().pointer(), nsh34, denPtrSSMS);
             // X: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.X().pointer(), nsh34, denPtrSSMX);
+            //std::copy_n(denSSSCR.X().pointer(), nsh34, denPtrSSMX);
             // Y: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.Y().pointer(), nsh34, denPtrSSMY);
+            //std::copy_n(denSSSCR.Y().pointer(), nsh34, denPtrSSMY);
             // Z: C_s,s3xC_r,s4^* - C_r,s3^*xC_s,s4, small component, assuming real integrals
-            std::copy_n(denSSSCR.Z().pointer(), nsh34, denPtrSSMZ);
+            //std::copy_n(denSSSCR.Z().pointer(), nsh34, denPtrSSMZ);
           }
         }
 
@@ -1705,9 +1660,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
             int thread_id = GetThreadID();
             const auto& s34Pairs = s34PairsAll[thread_id];
             const auto& s43DenSSMSPtrs = s43DenSSMSPtrsAll[thread_id];
-            const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
-            const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
-            const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
+            //const auto& s43DenSSMXPtrs = s43DenSSMXPtrsAll[thread_id];
+            //const auto& s43DenSSMYPtrs = s43DenSSMYPtrsAll[thread_id];
+            //const auto& s43DenSSMZPtrs = s43DenSSMZPtrsAll[thread_id];
 
             double *buff = buffERIAll + nERI*maxShellSize4 * thread_id;
             double *ERIBuffABCD   = &ERIBuffer[thread_id*nSave*NB4];
@@ -1750,8 +1705,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               auto topInts = tick();
 #endif
 
-              if (cint.compute_int2e_ipvip1ipvip2_sph(buff, shls) == 0) continue;
-
+              // if (cint.compute_int2e_ipvip1ipvip2_sph(buff, shls) == 0) continue;
+              if (cint.compute_int2e_pp1pp2_sph(buff, shls) == 0) continue;
+              
               n1 = cint.shellSize(s1);
               n2 = cint.shellSize(s2);
               size_t n3 = cint.shellSize(s3);
@@ -1764,84 +1720,83 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               for(auto n =   maxShellSize            ; n <   maxShellSize + n2; ++n)
               for(auto m = 0                         ; m <                  n1; ++m, ++mnkl) {
 
-                // (∇A∙∇B)(∇C∙∇D)(mnkl)
-                auto dAdotdBdCdotdD =  buff[AxBxCxDx*nQuad+mnkl] + buff[AxBxCyDy*nQuad+mnkl] + buff[AxBxCzDz*nQuad+mnkl]
-                                       + buff[AyByCxDx*nQuad+mnkl] + buff[AyByCyDy*nQuad+mnkl] + buff[AyByCzDz*nQuad+mnkl]
-                                       + buff[AzBzCxDx*nQuad+mnkl] + buff[AzBzCyDy*nQuad+mnkl] + buff[AzBzCzDz*nQuad+mnkl];
+                // (∇A∙∇B)(∇C∙∇D)(mnkl): int2e_pp1pp2 returns a single component with
+                // both dot products already contracted inside CINTgout2e_int2e_pp1pp2
+                auto dAdotdBdCdotdD = buff[mnkl];
 
                 // (∇Ax∇B)(∇C∙∇D)(mnkl)
-                auto dAcrossdB_xdCdotdD =  buff[AyBzCxDx*nQuad+mnkl] - buff[AzByCxDx*nQuad+mnkl]
-                                           + buff[AyBzCyDy*nQuad+mnkl] - buff[AzByCyDy*nQuad+mnkl]
-                                           + buff[AyBzCzDz*nQuad+mnkl] - buff[AzByCzDz*nQuad+mnkl];
+                //auto dAcrossdB_xdCdotdD =  buff[AyBzCxDx*nQuad+mnkl] - buff[AzByCxDx*nQuad+mnkl]
+                //                           + buff[AyBzCyDy*nQuad+mnkl] - buff[AzByCyDy*nQuad+mnkl]
+                //                           + buff[AyBzCzDz*nQuad+mnkl] - buff[AzByCzDz*nQuad+mnkl];
 
-                auto dAcrossdB_ydCdotdD = -buff[AxBzCxDx*nQuad+mnkl] + buff[AzBxCxDx*nQuad+mnkl]
-                                          -buff[AxBzCyDy*nQuad+mnkl] + buff[AzBxCyDy*nQuad+mnkl]
-                                          -buff[AxBzCzDz*nQuad+mnkl] + buff[AzBxCzDz*nQuad+mnkl];
+                //auto dAcrossdB_ydCdotdD = -buff[AxBzCxDx*nQuad+mnkl] + buff[AzBxCxDx*nQuad+mnkl]
+                //                          -buff[AxBzCyDy*nQuad+mnkl] + buff[AzBxCyDy*nQuad+mnkl]
+                //                          -buff[AxBzCzDz*nQuad+mnkl] + buff[AzBxCzDz*nQuad+mnkl];
 
-                auto dAcrossdB_zdCdotdD =  buff[AxByCxDx*nQuad+mnkl] - buff[AyBxCxDx*nQuad+mnkl]
-                                           + buff[AxByCyDy*nQuad+mnkl] - buff[AyBxCyDy*nQuad+mnkl]
-                                           + buff[AxByCzDz*nQuad+mnkl] - buff[AyBxCzDz*nQuad+mnkl];
+                //auto dAcrossdB_zdCdotdD =  buff[AxByCxDx*nQuad+mnkl] - buff[AyBxCxDx*nQuad+mnkl]
+                //                           + buff[AxByCyDy*nQuad+mnkl] - buff[AyBxCyDy*nQuad+mnkl]
+                //                           + buff[AxByCzDz*nQuad+mnkl] - buff[AyBxCzDz*nQuad+mnkl];
 
-                // (∇A∙∇B)(∇Cx∇D)(mnkl)
-                auto dAdotdBdCcrossdD_x =  buff[AxBxCyDz*nQuad+mnkl] - buff[AxBxCzDy*nQuad+mnkl]
-                                           + buff[AyByCyDz*nQuad+mnkl] - buff[AyByCzDy*nQuad+mnkl]
-                                           + buff[AzBzCyDz*nQuad+mnkl] - buff[AzBzCzDy*nQuad+mnkl];
+                //// (∇A∙∇B)(∇Cx∇D)(mnkl)
+                //auto dAdotdBdCcrossdD_x =  buff[AxBxCyDz*nQuad+mnkl] - buff[AxBxCzDy*nQuad+mnkl]
+                //                           + buff[AyByCyDz*nQuad+mnkl] - buff[AyByCzDy*nQuad+mnkl]
+                //                           + buff[AzBzCyDz*nQuad+mnkl] - buff[AzBzCzDy*nQuad+mnkl];
 
-                auto dAdotdBdCcrossdD_y = -buff[AxBxCxDz*nQuad+mnkl] + buff[AxBxCzDx*nQuad+mnkl]
-                                          -buff[AyByCxDz*nQuad+mnkl] + buff[AyByCzDx*nQuad+mnkl]
-                                          -buff[AzBzCxDz*nQuad+mnkl] + buff[AzBzCzDx*nQuad+mnkl];
+                //auto dAdotdBdCcrossdD_y = -buff[AxBxCxDz*nQuad+mnkl] + buff[AxBxCzDx*nQuad+mnkl]
+                //                          -buff[AyByCxDz*nQuad+mnkl] + buff[AyByCzDx*nQuad+mnkl]
+                //                          -buff[AzBzCxDz*nQuad+mnkl] + buff[AzBzCzDx*nQuad+mnkl];
 
-                auto dAdotdBdCcrossdD_z =  buff[AxBxCxDy*nQuad+mnkl] - buff[AxBxCyDx*nQuad+mnkl]
-                                           + buff[AyByCxDy*nQuad+mnkl] - buff[AyByCyDx*nQuad+mnkl]
-                                           + buff[AzBzCxDy*nQuad+mnkl] - buff[AzBzCyDx*nQuad+mnkl];
+                //auto dAdotdBdCcrossdD_z =  buff[AxBxCxDy*nQuad+mnkl] - buff[AxBxCyDx*nQuad+mnkl]
+                //                           + buff[AyByCxDy*nQuad+mnkl] - buff[AyByCyDx*nQuad+mnkl]
+                //                           + buff[AzBzCxDy*nQuad+mnkl] - buff[AzBzCyDx*nQuad+mnkl];
 
-                // (∇Ax∇B)(∇Cx∇D)(mnkl)
-                auto dAcrossdB_xdCcrossdD_x =  buff[AyBzCyDz*nQuad+mnkl] - buff[AzByCyDz*nQuad+mnkl]
-                                               - buff[AyBzCzDy*nQuad+mnkl] + buff[AzByCzDy*nQuad+mnkl];
+                //// (∇Ax∇B)(∇Cx∇D)(mnkl)
+                //auto dAcrossdB_xdCcrossdD_x =  buff[AyBzCyDz*nQuad+mnkl] - buff[AzByCyDz*nQuad+mnkl]
+                //                               - buff[AyBzCzDy*nQuad+mnkl] + buff[AzByCzDy*nQuad+mnkl];
 
-                auto dAcrossdB_xdCcrossdD_y =  buff[AyBzCzDx*nQuad+mnkl] - buff[AzByCzDx*nQuad+mnkl]
-                                               - buff[AyBzCxDz*nQuad+mnkl] + buff[AzByCxDz*nQuad+mnkl];
+                //auto dAcrossdB_xdCcrossdD_y =  buff[AyBzCzDx*nQuad+mnkl] - buff[AzByCzDx*nQuad+mnkl]
+                //                               - buff[AyBzCxDz*nQuad+mnkl] + buff[AzByCxDz*nQuad+mnkl];
 
-                auto dAcrossdB_xdCcrossdD_z =  buff[AyBzCxDy*nQuad+mnkl] - buff[AzByCxDy*nQuad+mnkl]
-                                               - buff[AyBzCyDx*nQuad+mnkl] + buff[AzByCyDx*nQuad+mnkl];
+                //auto dAcrossdB_xdCcrossdD_z =  buff[AyBzCxDy*nQuad+mnkl] - buff[AzByCxDy*nQuad+mnkl]
+                //                               - buff[AyBzCyDx*nQuad+mnkl] + buff[AzByCyDx*nQuad+mnkl];
 
-                auto dAcrossdB_ydCcrossdD_x =  buff[AzBxCyDz*nQuad+mnkl] - buff[AxBzCyDz*nQuad+mnkl]
-                                               - buff[AzBxCzDy*nQuad+mnkl] + buff[AxBzCzDy*nQuad+mnkl];
+                //auto dAcrossdB_ydCcrossdD_x =  buff[AzBxCyDz*nQuad+mnkl] - buff[AxBzCyDz*nQuad+mnkl]
+                //                               - buff[AzBxCzDy*nQuad+mnkl] + buff[AxBzCzDy*nQuad+mnkl];
 
-                auto dAcrossdB_ydCcrossdD_y =  buff[AzBxCzDx*nQuad+mnkl] - buff[AxBzCzDx*nQuad+mnkl]
-                                               - buff[AzBxCxDz*nQuad+mnkl] + buff[AxBzCxDz*nQuad+mnkl];
+                //auto dAcrossdB_ydCcrossdD_y =  buff[AzBxCzDx*nQuad+mnkl] - buff[AxBzCzDx*nQuad+mnkl]
+                //                               - buff[AzBxCxDz*nQuad+mnkl] + buff[AxBzCxDz*nQuad+mnkl];
 
-                auto dAcrossdB_ydCcrossdD_z =  buff[AzBxCxDy*nQuad+mnkl] - buff[AxBzCxDy*nQuad+mnkl]
-                                               - buff[AzBxCyDx*nQuad+mnkl] + buff[AxBzCyDx*nQuad+mnkl];
+                //auto dAcrossdB_ydCcrossdD_z =  buff[AzBxCxDy*nQuad+mnkl] - buff[AxBzCxDy*nQuad+mnkl]
+                //                               - buff[AzBxCyDx*nQuad+mnkl] + buff[AxBzCyDx*nQuad+mnkl];
 
-                auto dAcrossdB_zdCcrossdD_x =  buff[AxByCyDz*nQuad+mnkl] - buff[AyBxCyDz*nQuad+mnkl]
-                                               - buff[AxByCzDy*nQuad+mnkl] + buff[AyBxCzDy*nQuad+mnkl];
+                //auto dAcrossdB_zdCcrossdD_x =  buff[AxByCyDz*nQuad+mnkl] - buff[AyBxCyDz*nQuad+mnkl]
+                //                               - buff[AxByCzDy*nQuad+mnkl] + buff[AyBxCzDy*nQuad+mnkl];
 
-                auto dAcrossdB_zdCcrossdD_y =  buff[AxByCzDx*nQuad+mnkl] - buff[AyBxCzDx*nQuad+mnkl]
-                                               - buff[AxByCxDz*nQuad+mnkl] + buff[AyBxCxDz*nQuad+mnkl];
+                //auto dAcrossdB_zdCcrossdD_y =  buff[AxByCzDx*nQuad+mnkl] - buff[AyBxCzDx*nQuad+mnkl]
+                //                               - buff[AxByCxDz*nQuad+mnkl] + buff[AyBxCxDz*nQuad+mnkl];
 
-                auto dAcrossdB_zdCcrossdD_z =  buff[AxByCxDy*nQuad+mnkl] - buff[AyBxCxDy*nQuad+mnkl]
-                                               - buff[AxByCyDx*nQuad+mnkl] + buff[AyBxCyDx*nQuad+mnkl];
+                //auto dAcrossdB_zdCcrossdD_z =  buff[AxByCxDy*nQuad+mnkl] - buff[AyBxCxDy*nQuad+mnkl]
+                //                               - buff[AxByCyDx*nQuad+mnkl] + buff[AyBxCyDx*nQuad+mnkl];
 
                 auto MNKL = m + n*NB + k*NB2 + l*NB3;
 
                 // (mn|kl)
                 ERIBuffABCD[         MNKL] =  dAdotdBdCdotdD;
-                ERIBuffABCD[   NB4 + MNKL] =  dAcrossdB_xdCdotdD;
-                ERIBuffABCD[ NB4_2 + MNKL] =  dAcrossdB_ydCdotdD;
-                ERIBuffABCD[ NB4_3 + MNKL] =  dAcrossdB_zdCdotdD;
-                ERIBuffABCD[ NB4_4 + MNKL] =  dAdotdBdCcrossdD_x;
-                ERIBuffABCD[ NB4_5 + MNKL] =  dAdotdBdCcrossdD_y;
-                ERIBuffABCD[ NB4_6 + MNKL] =  dAdotdBdCcrossdD_z;
-                ERIBuffABCD[ NB4_7 + MNKL] =  dAcrossdB_xdCcrossdD_x;
-                ERIBuffABCD[ NB4_8 + MNKL] =  dAcrossdB_xdCcrossdD_y;
-                ERIBuffABCD[ NB4_9 + MNKL] =  dAcrossdB_xdCcrossdD_z;
-                ERIBuffABCD[NB4_10 + MNKL] =  dAcrossdB_ydCcrossdD_x;
-                ERIBuffABCD[NB4_11 + MNKL] =  dAcrossdB_ydCcrossdD_y;
-                ERIBuffABCD[NB4_12 + MNKL] =  dAcrossdB_ydCcrossdD_z;
-                ERIBuffABCD[NB4_13 + MNKL] =  dAcrossdB_zdCcrossdD_x;
-                ERIBuffABCD[NB4_14 + MNKL] =  dAcrossdB_zdCcrossdD_y;
-                ERIBuffABCD[NB4_15 + MNKL] =  dAcrossdB_zdCcrossdD_z;
+                //ERIBuffABCD[   NB4 + MNKL] =  dAcrossdB_xdCdotdD;
+                //ERIBuffABCD[ NB4_2 + MNKL] =  dAcrossdB_ydCdotdD;
+                //ERIBuffABCD[ NB4_3 + MNKL] =  dAcrossdB_zdCdotdD;
+                //ERIBuffABCD[ NB4_4 + MNKL] =  dAdotdBdCcrossdD_x;
+                //ERIBuffABCD[ NB4_5 + MNKL] =  dAdotdBdCcrossdD_y;
+                //ERIBuffABCD[ NB4_6 + MNKL] =  dAdotdBdCcrossdD_z;
+                //ERIBuffABCD[ NB4_7 + MNKL] =  dAcrossdB_xdCcrossdD_x;
+                //ERIBuffABCD[ NB4_8 + MNKL] =  dAcrossdB_xdCcrossdD_y;
+                //ERIBuffABCD[ NB4_9 + MNKL] =  dAcrossdB_xdCcrossdD_z;
+                //ERIBuffABCD[NB4_10 + MNKL] =  dAcrossdB_ydCcrossdD_x;
+                //ERIBuffABCD[NB4_11 + MNKL] =  dAcrossdB_ydCcrossdD_y;
+                //ERIBuffABCD[NB4_12 + MNKL] =  dAcrossdB_ydCcrossdD_z;
+                //ERIBuffABCD[NB4_13 + MNKL] =  dAcrossdB_zdCcrossdD_x;
+                //ERIBuffABCD[NB4_14 + MNKL] =  dAcrossdB_zdCcrossdD_y;
+                //ERIBuffABCD[NB4_15 + MNKL] =  dAcrossdB_zdCcrossdD_z;
 
               } // ∇A∇B∇C∇D (SSSS) integrals
 
@@ -1851,9 +1806,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 #endif
               //MatsT* symmDLLMS43_ptr = s43DenLLMSPtrs[s34];
               MatsT* symmDSSMS43_ptr = s43DenSSMSPtrs[s34];
-              MatsT* symmDSSMX43_ptr = s43DenSSMXPtrs[s34];
-              MatsT* symmDSSMY43_ptr = s43DenSSMYPtrs[s34];
-              MatsT* symmDSSMZ43_ptr = s43DenSSMZPtrs[s34];
+              //MatsT* symmDSSMX43_ptr = s43DenSSMXPtrs[s34];
+              //MatsT* symmDSSMY43_ptr = s43DenSSMYPtrs[s34];
+              //MatsT* symmDSSMZ43_ptr = s43DenSSMZPtrs[s34];
 
               n1 = cint.shellSize(s1);
               n2 = cint.shellSize(s2);
@@ -1861,8 +1816,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               n4 = cint.shellSize(s4);
 
               for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++,
-                      symmDSSMS43_ptr+=nsh34, symmDSSMX43_ptr+=nsh34,
-                      symmDSSMY43_ptr+=nsh34, symmDSSMZ43_ptr+=nsh34) {
+                      symmDSSMS43_ptr+=nsh34) {
 
                 const auto& [r, s] = rsPairs[iMat];
 
@@ -1877,9 +1831,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                 auto& ADSS12 = s12SpinorSSSCRs[AD12_loc_off + iMat];
                 auto& ADSSMS12 = ADSS12.S();
-                auto& ADSSMX12 = ADSS12.X();
-                auto& ADSSMY12 = ADSS12.Y();
-                auto& ADSSMZ12 = ADSS12.Z();
+                //auto& ADSSMX12 = ADSS12.X();
+                //auto& ADSSMY12 = ADSS12.Y();
+                //auto& ADSSMZ12 = ADSS12.Z();
 
                 for(auto m = 0ul, ms = 0ul; m < n1 and ms < n1; ++m, ++ms)
                 for(auto n =   maxShellSize, ns = 0ul; n <maxShellSize + n2 and ns < n2; ++n, ++ns)
@@ -1890,54 +1844,53 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
                   auto KLMN = k + l*NB + m*NB2 + n*NB3;
 
                   auto MNKLdAdotdBdCdotdD          = ERIBuffABCD[         MNKL];
-                  auto MNKLdAcrossdB_xdCdotdD      = ERIBuffABCD[   NB4 + MNKL];
-                  auto MNKLdAcrossdB_ydCdotdD      = ERIBuffABCD[ NB4_2 + MNKL];
-                  auto MNKLdAcrossdB_zdCdotdD      = ERIBuffABCD[ NB4_3 + MNKL];
-                  auto MNKLdAdotdBdCcrossdD_x      = ERIBuffABCD[ NB4_4 + MNKL];
-                  auto MNKLdAdotdBdCcrossdD_y      = ERIBuffABCD[ NB4_5 + MNKL];
-                  auto MNKLdAdotdBdCcrossdD_z      = ERIBuffABCD[ NB4_6 + MNKL];
-                  auto MNKLdAcrossdB_xdCcrossdD_x  = ERIBuffABCD[ NB4_7 + MNKL];
-                  auto MNKLdAcrossdB_xdCcrossdD_y  = ERIBuffABCD[ NB4_8 + MNKL];
-                  auto MNKLdAcrossdB_xdCcrossdD_z  = ERIBuffABCD[ NB4_9 + MNKL];
-                  auto MNKLdAcrossdB_ydCcrossdD_x  = ERIBuffABCD[NB4_10 + MNKL];
-                  auto MNKLdAcrossdB_ydCcrossdD_y  = ERIBuffABCD[NB4_11 + MNKL];
-                  auto MNKLdAcrossdB_ydCcrossdD_z  = ERIBuffABCD[NB4_12 + MNKL];
-                  auto MNKLdAcrossdB_zdCcrossdD_x  = ERIBuffABCD[NB4_13 + MNKL];
-                  auto MNKLdAcrossdB_zdCcrossdD_y  = ERIBuffABCD[NB4_14 + MNKL];
-                  auto MNKLdAcrossdB_zdCcrossdD_z  = ERIBuffABCD[NB4_15 + MNKL];
+                  //auto MNKLdAcrossdB_xdCdotdD      = ERIBuffABCD[   NB4 + MNKL];
+                  //auto MNKLdAcrossdB_ydCdotdD      = ERIBuffABCD[ NB4_2 + MNKL];
+                  //auto MNKLdAcrossdB_zdCdotdD      = ERIBuffABCD[ NB4_3 + MNKL];
+                  //auto MNKLdAdotdBdCcrossdD_x      = ERIBuffABCD[ NB4_4 + MNKL];
+                  //auto MNKLdAdotdBdCcrossdD_y      = ERIBuffABCD[ NB4_5 + MNKL];
+                  //auto MNKLdAdotdBdCcrossdD_z      = ERIBuffABCD[ NB4_6 + MNKL];
+                  //auto MNKLdAcrossdB_xdCcrossdD_x  = ERIBuffABCD[ NB4_7 + MNKL];
+                  //auto MNKLdAcrossdB_xdCcrossdD_y  = ERIBuffABCD[ NB4_8 + MNKL];
+                  //auto MNKLdAcrossdB_xdCcrossdD_z  = ERIBuffABCD[ NB4_9 + MNKL];
+                  //auto MNKLdAcrossdB_ydCcrossdD_x  = ERIBuffABCD[NB4_10 + MNKL];
+                  //auto MNKLdAcrossdB_ydCcrossdD_y  = ERIBuffABCD[NB4_11 + MNKL];
+                  //auto MNKLdAcrossdB_ydCcrossdD_z  = ERIBuffABCD[NB4_12 + MNKL];
+                  //auto MNKLdAcrossdB_zdCcrossdD_x  = ERIBuffABCD[NB4_13 + MNKL];
+                  //auto MNKLdAcrossdB_zdCcrossdD_y  = ERIBuffABCD[NB4_14 + MNKL];
+                  //auto MNKLdAcrossdB_zdCcrossdD_z  = ERIBuffABCD[NB4_15 + MNKL];
 
                   auto ScaleS3S4 = s3==s4 ? 0.5 : 1.0;
                   auto ScaleF = s1==s2? ScaleS3S4*0.5: ScaleS3S4;
 
                   // First half transform.
                   /* Equation 70 in the paper */
-                  ADSSMS12(ms, ns) +=
-                          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAdotdBdCdotdD
-                                    + (symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_z
-                                    + symmDSSMX43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_x
-                                    + symmDSSMY43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_y) *dcomplex(0., 1.));
+                  ADSSMS12(ms, ns) += ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAdotdBdCdotdD);
+                                   // + (symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_z
+                                   // + symmDSSMX43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_x
+                                   // + symmDSSMY43_ptr[ls + ks * n4] * MNKLdAdotdBdCcrossdD_y) *dcomplex(0., 1.));
 
 
-                  /* Equation 71 in the paper */
-                  ADSSMZ12(ms, ns) +=
-                          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCdotdD * dcomplex(0., 1.)
-                                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_z
-                                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_x
-                                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_y);
+                //  /* Equation 71 in the paper */
+                //  ADSSMZ12(ms, ns) +=
+                //          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCdotdD * dcomplex(0., 1.)
+                //                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_z
+                //                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_x
+                //                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_zdCcrossdD_y);
 
-                  /* Equation 72 in the paper */
-                  ADSSMX12(ms, ns) +=
-                          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCdotdD * dcomplex(0., 1.)
-                                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_z
-                                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_x
-                                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_y);
+                //  /* Equation 72 in the paper */
+                //  ADSSMX12(ms, ns) +=
+                //          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCdotdD * dcomplex(0., 1.)
+                //                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_z
+                //                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_x
+                //                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_xdCcrossdD_y);
 
-                  /* Equation 73 in the paper */
-                  ADSSMY12(ms, ns) +=
-                          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCdotdD * dcomplex(0., 1.)
-                                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_z
-                                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_x
-                                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_y);
+                //  /* Equation 73 in the paper */
+                //  ADSSMY12(ms, ns) +=
+                //          ScaleF * (symmDSSMS43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCdotdD * dcomplex(0., 1.)
+                //                    - symmDSSMZ43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_z
+                //                    - symmDSSMX43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_x
+                //                    - symmDSSMY43_ptr[ls + ks * n4] * MNKLdAcrossdB_ydCcrossdD_y);
 
                   } // mnkl
               } // iMat
@@ -1975,10 +1928,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
               // Second half trnasformation. 
               shBlockMO->transformSS(ADSS12, s1, s2, rsERI, off_sizes[0], off_sizes[1]);
-              ADSS12.S().inplace_scaleT(dcomplex(1., 0), 'T');
-              ADSS12.X().inplace_scaleT(dcomplex(-1., 0), 'T');
-              ADSS12.Y().inplace_scaleT(dcomplex(-1., 0), 'T');
-              ADSS12.Z().inplace_scaleT(dcomplex(-1., 0), 'T');
+              ADSS12.S().inplace_T();
               shBlockMO->transformSS(ADSS12, s2, s1, rsERI, off_sizes[0], off_sizes[1], true);
 
 
@@ -2000,7 +1950,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     } // (s3, s4) Density Batching
 
     CQMemManager::get().free(buffERIAll, ERIBuffer, //buffDensityLLMS,
-             buffDensitySSMS, buffDensitySSMX, buffDensitySSMY, buffDensitySSMZ);
+             buffDensitySSMS);
 
   // std::cout << "After DC + SSSS ERI Norm = " << std::setprecision(16) << 
   // lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
@@ -2024,6 +1974,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
+    std::cout << "\nTiming for DC SSSS fully direct transformation: " << std::endl;
+    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);
@@ -2104,7 +2056,7 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     std::vector<size_t> nIntSkipped(nThreads, 0);
     #endif
     // Allocate memory for raw ERI
-    int nERI = 9;
+    int nERI = 1;
     int nSave = 13;
     double *buffERIAll = CQMemManager::get().template malloc<double>(nERI*maxShellSize4*nThreads);
     // Allocate memory for assembled ERI, i.e., dot product and cross product
@@ -2143,6 +2095,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     s43DenSLMYPtrsAll.resize(nThreads);
     s43DenSLMZPtrsAll.resize(nThreads);
 
+    // the spin-free Gaunt kernel is spin-diagonal: every Pauli component of the
+    // LS-/+SL density contributes with the same integral, so all four are needed
     std::vector<cqmatrix::PauliSpinorMatrices<MatsT>> s12SpinorLSSCRs;
     for (auto i = 0ul; i < nThreads; ++i) {
       for (auto j = 0ul; j < rsPairs.size(); ++j) {
@@ -2227,7 +2181,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
           const auto& [s3, s4] = s34Pairs[s34];
           size_t nsh34 = cint.shellSize(s3) * cint.shellSize(s4);
           for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++,
-               denPtrSLMS+=nsh34, denPtrSLMX+=nsh34, denPtrSLMY+=nsh34, denPtrSLMZ+=nsh34) {
+               denPtrSLMS+=nsh34, denPtrSLMX+=nsh34, denPtrSLMY+=nsh34,
+               denPtrSLMZ+=nsh34) {
             const auto& [r, s] = rsPairs[iMat];
 
             shBlockMO->genDenLSpmDenSL(r + roff, s + soff, s3, s4, denSLSCR);
@@ -2319,8 +2274,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
               // MO: This is done by switching m and n so that the cint gives the right intgrals
               // ∇B∇C(mn|kl)
-              if (cint.compute_int2e_ip1ip2_sph(buff, shls) == 0) continue;
-
+              if (cint.compute_int2e_gaunt_ps1ps2_sph(buff, shls) == 0) continue;
+              
               n1 = cint.shellSize(s1);
               n2 = cint.shellSize(s2);
               size_t n3 = cint.shellSize(s3);
@@ -2334,15 +2289,11 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
               for(auto m = 0                                ; m <                  n1; ++m)
               for(auto n =   maxShellSize            ; n <   maxShellSize + n2; ++n, ++mnkl) {
 
-                /* Gaunt */
-                // ∇A∙∇C(mn|kl)
-                auto dAdotdC = buff[AxCx*nQuad+mnkl] + buff[AyCy*nQuad+mnkl] + buff[AzCz*nQuad+mnkl];
+                auto dAdotdC = -buff[mnkl];
                 // ∇Ax∇C(mn|kl)
-                auto dAcrossdC_x =  buff[AyCz*nQuad+mnkl] - buff[AzCy*nQuad+mnkl];
-                auto dAcrossdC_y = -buff[AxCz*nQuad+mnkl] + buff[AzCx*nQuad+mnkl];
-                auto dAcrossdC_z =  buff[AxCy*nQuad+mnkl] - buff[AyCx*nQuad+mnkl];
-
-
+                //auto dAcrossdC_x =  buff[AyCz*nQuad+mnkl] - buff[AzCy*nQuad+mnkl];
+                //auto dAcrossdC_y = -buff[AxCz*nQuad+mnkl] + buff[AzCx*nQuad+mnkl];
+                //auto dAcrossdC_z =  buff[AxCy*nQuad+mnkl] - buff[AyCx*nQuad+mnkl];
                 // Change the index so that we do ∇B∙∇C(ij|kl) using the ∇B∇C engine
                 auto MNKL = m + n*NB + k*NB2 + l*NB3;
 
@@ -2350,36 +2301,36 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                 // ∇B∙∇C(ij|kl) followed by ∇Bx∇C(ij|kl) X, Y, and Z
                 ERIBuffBC[      MNKL] = dAdotdC;
-                ERIBuffBC[  NB4+MNKL] = dAcrossdC_x;
-                ERIBuffBC[NB4_2+MNKL] = dAcrossdC_y;
-                ERIBuffBC[NB4_3+MNKL] = dAcrossdC_z;
+                //ERIBuffBC[  NB4+MNKL] = dAcrossdC_x;
+                //ERIBuffBC[NB4_2+MNKL] = dAcrossdC_y;
+                //ERIBuffBC[NB4_3+MNKL] = dAcrossdC_z;
 
                 // ∇B_x∇C_x(mn|kl) - ∇B∙∇C(mn|kl)
-                ERIBuffBC[NB4_4+MNKL] = buff[BxCx*nQuad+mnkl] - dAdotdC;
+                //ERIBuffBC[NB4_4+MNKL] = buff[BxCx*nQuad+mnkl] - dAdotdC;
 
                 // ∇B_y∇C_x(mn|kl)
-                ERIBuffBC[NB4_5+MNKL] = buff[ByCx*nQuad+mnkl];
+                //ERIBuffBC[NB4_5+MNKL] = buff[ByCx*nQuad+mnkl];
 
                 // ∇B_z∇C_x(mn|kl)
-                ERIBuffBC[NB4_6+MNKL] = buff[BzCx*nQuad+mnkl];
+                //ERIBuffBC[NB4_6+MNKL] = buff[BzCx*nQuad+mnkl];
 
                 // ∇B_x∇C_y(mn|kl)
-                ERIBuffBC[NB4_7+MNKL] = buff[BxCy*nQuad+mnkl];
+                //ERIBuffBC[NB4_7+MNKL] = buff[BxCy*nQuad+mnkl];
 
                 // ∇B_y∇C_y(mn|kl) - ∇B∙∇C(mn|kl)
-                ERIBuffBC[NB4_8+MNKL] = buff[ByCy*nQuad+mnkl] - dAdotdC;
+                //ERIBuffBC[NB4_8+MNKL] = buff[ByCy*nQuad+mnkl] - dAdotdC;
 
                 // ∇B_z∇C_y(mn|kl)
-                ERIBuffBC[NB4_9+MNKL] = buff[BzCy*nQuad+mnkl];
+                //ERIBuffBC[NB4_9+MNKL] = buff[BzCy*nQuad+mnkl];
 
                 // ∇B_x∇C_z(mn|kl)
-                ERIBuffBC[NB4_10+MNKL] = buff[BxCz*nQuad+mnkl];
+                //ERIBuffBC[NB4_10+MNKL] = buff[BxCz*nQuad+mnkl];
 
                 // ∇B_y∇C_z(mn|kl)
-                ERIBuffBC[NB4_11+MNKL] = buff[ByCz*nQuad+mnkl];
+                //ERIBuffBC[NB4_11+MNKL] = buff[ByCz*nQuad+mnkl];
 
                 // ∇B_z∇C_z(mn|kl) - ∇B∙∇C(mn|kl)
-                ERIBuffBC[NB4_12+MNKL] = buff[BzCz*nQuad+mnkl] - dAdotdC;
+                //ERIBuffBC[NB4_12+MNKL] = buff[BzCz*nQuad+mnkl] - dAdotdC;
 
               } // ∇B∇C integral preparation loop
 
@@ -2440,29 +2391,33 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                   size_t bf43 = ls + ks * n4;
 
+                  // Spin-free reduction of the spinor expressions above. The
+                  // spin-dependent engine contracts
+                  //   MS <- -D_S (∇B∙∇C) + i D_c (∇Bx∇C)_c
+                  //   Mi <- i D_S (∇Bx∇C)_i + D_j (∇B_j∇C_i - δ_ij ∇B∙∇C)
+                  // Spin averaging kills (∇Bx∇C) and replaces the individual
+                  // ∇B_j∇C_i by their isotropic part (1/3) δ_ij (∇B∙∇C), which is
+                  // all the spin-free engine (int2e_gaunt_ps1ps2) provides. Hence
+                  // the scalar component keeps the full kernel while each Pauli
+                  // component keeps (1/3 - 1) = -2/3 of it.
+                  //
+                  // NOTE: the AO Fock engines (direct4C_libcint_spinfree.hpp and
+                  // direct4C_libcint_coulombonly_spinfree.hpp) use -1 for all four
+                  // components; that is what makes the old SSFock CASCI path
+                  // disagree with its own SCF energy for spin-free Gaunt.
+                  const double fcSFVec = 2. / 3.;
+
                   // 91 + 136
-                  ADLSMS12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL]
-                                      + (symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + NB4]
-                                      + symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + NB4_2]
-                                      + symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + NB4_3]) * dcomplex(0., 1.);
+                  ADLSMS12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL];
 
                   // 92 x + 137 x
-                  ADLSMX12(ms, ns) += symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + NB4] * dcomplex(0., 1.)
-                                      + symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + NB4_4]
-                                      + symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + NB4_5]
-                                      + symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + NB4_6];
+                  ADLSMX12(ms, ns) += -fcSFVec * symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL];
 
                   // 92 y + 137 y
-                  ADLSMY12(ms, ns) += symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + NB4_2] * dcomplex(0., 1.)
-                                      + symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + NB4_7]
-                                      + symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + NB4_8]
-                                      + symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + NB4_9];
+                  ADLSMY12(ms, ns) += -fcSFVec * symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL];
 
                   // 92 z +137 z
-                  ADLSMZ12(ms, ns) += symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + NB4_3] * dcomplex(0., 1.)
-                                      + symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + NB4_10]
-                                      + symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + NB4_11]
-                                      + symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + NB4_12];
+                  ADLSMZ12(ms, ns) += -fcSFVec * symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL];
 
                 } // mnkl
               } // iMat
@@ -2499,10 +2454,12 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
               auto& ADLS12 = s12SpinorLSSCRs[iMat];
               shBlockMO->transformLS(ADLS12, s1, s2, rsERI, off_sizes[0], off_sizes[1]);
-              ADLS12.S().inplace_scaleT(dcomplex(-1.,0.),'T');
-              ADLS12.X().inplace_scaleT(dcomplex(1.,0.),'T');
-              ADLS12.Y().inplace_scaleT(dcomplex(1.,0.),'T');
-              ADLS12.Z().inplace_scaleT(dcomplex(1.,0.),'T');
+              // (SL) half from the (LS) half by symmetry:
+              // CSLMS = -[CLSMS]^T, CSLM{X,Y,Z} = [CLSM{X,Y,Z}]^T
+              ADLS12.S().inplace_scaleT(MatsT(-1.), 'T');
+              ADLS12.X().inplace_scaleT(MatsT(1.), 'T');
+              ADLS12.Y().inplace_scaleT(MatsT(1.), 'T');
+              ADLS12.Z().inplace_scaleT(MatsT(1.), 'T');
               shBlockMO->transformSL(ADLS12, s2, s1, rsERI, off_sizes[0], off_sizes[1], true);
 
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
@@ -2524,8 +2481,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         } // (s1, s2)
       } // (s3, s4) Density Batching
 
-    CQMemManager::get().free(buffERIAll, ERIBuffer, //buffDensityLLMS,
-             buffDensitySLMS, buffDensitySLMX, buffDensitySLMY, buffDensitySLMZ);
+    CQMemManager::get().free(buffERIAll, ERIBuffer, buffDensitySLMS,
+             buffDensitySLMX, buffDensitySLMY, buffDensitySLMZ);
 
   //  std::cout << "After Gaunt ERI Norm = " << std::setprecision(16) << 
   //   lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
@@ -2549,6 +2506,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
+    std::cout << "\nTiming for Gaunt fully direct transformation: " << std::endl;
+    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);
@@ -2645,7 +2604,9 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 #endif
 
     // Allocate memory for raw ERI
-    int nERI = 16;
+    // int2e_gauge_r{1,2}_sp1ps2 have ncomp = 4 (3 spin-dependent + 1 spin-free);
+    // nERI must match or libcint writes past each thread's slab of buffERIAll
+    int nERI = 4;
     int nSave = 16;
     double *buffERIAll = CQMemManager::get().template malloc<double>(2*nERI*maxShellSize4*nThreads);
     // Allocate memory for assembled ERI, i.e., dot product and cross product
@@ -2708,10 +2669,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
       for (auto iThread = 0ul; iThread < nThreads; iThread++) {
         s34PairsAll[iThread].clear();
-        s43DenSLMSPtrsAll[iThread].clear();
         s43DenSLMXPtrsAll[iThread].clear();
         s43DenSLMYPtrsAll[iThread].clear();
         s43DenSLMZPtrsAll[iThread].clear();
+        s43DenSLMSPtrsAll[iThread].clear();
       }
 
       size_t nMem = 0ul, nMemOff = 0ul;
@@ -2761,7 +2722,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
           const auto& [s3, s4] = s34Pairs[s34];
           size_t nsh34 = cint.shellSize(s3) * cint.shellSize(s4);
           for (auto iMat = 0ul; iMat < rsPairs.size(); iMat++,
-               denPtrSLMS+=nsh34, denPtrSLMX+=nsh34, denPtrSLMY+=nsh34, denPtrSLMZ+=nsh34) {
+               denPtrSLMS+=nsh34, denPtrSLMX+=nsh34, denPtrSLMY+=nsh34,
+               denPtrSLMZ+=nsh34) {
             const auto& [r, s] = rsPairs[iMat];
 
             shBlockMO->genDenLSpmDenSL(r + roff, s + soff, s3, s4, denSLSCR);
@@ -2853,9 +2815,8 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 #endif
 
               //∇B∇C
-              auto skip1 = cint.compute_int2e_gauge_r1_ssp1sps2_sph(buff1, shls);
-              auto skip2 = cint.compute_int2e_gauge_r2_ssp1sps2_sph(buff2, shls);
-
+              auto skip1 = cint.compute_int2e_gauge_r1_sp1ps2_sph(buff1, shls);
+              auto skip2 = cint.compute_int2e_gauge_r2_sp1ps2_sph(buff2, shls);
               if (skip1 == 0 and skip2 == 0) continue;
 
               n1 = cint.shellSize(s1);
@@ -2910,53 +2871,60 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                 // MNKL
 
-                // (ss)
-                ERIBuffBC[MNKL] = buff1[15*nQuad+mnkl] - buff2[15*nQuad+mnkl];
+                // (ss): the spin-free (I x I) piece is component 3 of the 4-component
+                // sp1ps2 buffer, not component 15 of the 16-component spinor layout
+                ERIBuffBC[MNKL] = buff1[3*nQuad+mnkl] - buff2[3*nQuad+mnkl];
+
+                // (sigma . sigma): components 0, 1, 2 are the spin-free
+                // (sigma_x sigma_x), (sigma_y sigma_y) and (sigma_z sigma_z) pieces
+                ERIBuffBC[NB4+MNKL] = -(buff1[mnkl]           - buff2[mnkl])
+                                      -(buff1[nQuad+mnkl]     - buff2[nQuad+mnkl])
+                                      -(buff1[2*nQuad+mnkl]   - buff2[2*nQuad+mnkl]);
                 
                 // (sσ)_x
-                ERIBuffBC[NB4+MNKL] = buff1[3*nQuad+mnkl] - buff2[3*nQuad+mnkl];
+                // ERIBuffBC[NB4+MNKL] = buff1[3*nQuad+mnkl] - buff2[3*nQuad+mnkl];
                 
                 // (sσ)_y
-                ERIBuffBC[NB4_2+MNKL] = buff1[7*nQuad+mnkl] - buff2[7*nQuad+mnkl];
+                // ERIBuffBC[NB4_2+MNKL] = buff1[7*nQuad+mnkl] - buff2[7*nQuad+mnkl];
                 
                 // (sσ)_z
-                ERIBuffBC[NB4_3+MNKL] = buff1[11*nQuad+mnkl] - buff2[11*nQuad+mnkl];
+                // ERIBuffBC[NB4_3+MNKL] = buff1[11*nQuad+mnkl] - buff2[11*nQuad+mnkl];
                 
                 // (σs)_x
-                ERIBuffBC[NB4_4+MNKL] = buff1[12*nQuad+mnkl] - buff2[12*nQuad+mnkl];
+                // ERIBuffBC[NB4_4+MNKL] = buff1[12*nQuad+mnkl] - buff2[12*nQuad+mnkl];
                 
                 // (σs)_y
-                ERIBuffBC[NB4_5+MNKL] = buff1[13*nQuad+mnkl] - buff2[13*nQuad+mnkl];
+                // ERIBuffBC[NB4_5+MNKL] = buff1[13*nQuad+mnkl] - buff2[13*nQuad+mnkl];
                 
                 // (σs)_z
-                ERIBuffBC[NB4_6+MNKL] = buff1[14*nQuad+mnkl] - buff2[14*nQuad+mnkl];
+                // ERIBuffBC[NB4_6+MNKL] = buff1[14*nQuad+mnkl] - buff2[14*nQuad+mnkl];
                 
                 // σ_x*σ_x
-                ERIBuffBC[NB4_7+MNKL] = -(buff1[mnkl] - buff2[mnkl]);
+                // ERIBuffBC[NB4_7+MNKL] = -(buff1[mnkl] - buff2[mnkl]);
                 
                 // σ_x*σ_y
-                ERIBuffBC[NB4_8+MNKL] = -(buff1[4*nQuad+mnkl] - buff2[4*nQuad+mnkl]);
+                // ERIBuffBC[NB4_8+MNKL] = -(buff1[4*nQuad+mnkl] - buff2[4*nQuad+mnkl]);
                 
                 // σ_x*σ_z
-                ERIBuffBC[NB4_9+MNKL] = -(buff1[8*nQuad+mnkl] - buff2[8*nQuad+mnkl]);
+                // ERIBuffBC[NB4_9+MNKL] = -(buff1[8*nQuad+mnkl] - buff2[8*nQuad+mnkl]);
                 
                 // σ_y*σ_x
-                ERIBuffBC[NB4_10+MNKL] = -(buff1[1*nQuad+mnkl] - buff2[1*nQuad+mnkl]);
+                // ERIBuffBC[NB4_10+MNKL] = -(buff1[1*nQuad+mnkl] - buff2[1*nQuad+mnkl]);
                 
                 // σ_y*σ_y
-                ERIBuffBC[NB4_11+MNKL] = -(buff1[5*nQuad+mnkl] - buff2[5*nQuad+mnkl]);
+                // ERIBuffBC[NB4_11+MNKL] = -(buff1[5*nQuad+mnkl] - buff2[5*nQuad+mnkl]);
                 
                 // σ_y*σ_z
-                ERIBuffBC[NB4_12+MNKL] = -(buff1[9*nQuad+mnkl] - buff2[9*nQuad+mnkl]);
+                // ERIBuffBC[NB4_12+MNKL] = -(buff1[9*nQuad+mnkl] - buff2[9*nQuad+mnkl]);
                 
                 // σ_z*σ_x
-                ERIBuffBC[NB4_13+MNKL] = -(buff1[2*nQuad+mnkl] - buff2[2*nQuad+mnkl]);
+                // ERIBuffBC[NB4_13+MNKL] = -(buff1[2*nQuad+mnkl] - buff2[2*nQuad+mnkl]);
                 
                 // σ_z*σ_y
-                ERIBuffBC[NB4_14+MNKL] = -(buff1[6*nQuad+mnkl] - buff2[6*nQuad+mnkl]);
+                // ERIBuffBC[NB4_14+MNKL] = -(buff1[6*nQuad+mnkl] - buff2[6*nQuad+mnkl]);
                 
                 // σ_z*σ_z
-                ERIBuffBC[NB4_15+MNKL] = -(buff1[10*nQuad+mnkl] - buff2[10*nQuad+mnkl]);
+                //ERIBuffBC[NB4_15+MNKL] = -(buff1[10*nQuad+mnkl] - buff2[10*nQuad+mnkl]);
 
               } // ∇B∇C integral preparation loop
 
@@ -3006,26 +2974,22 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
                   size_t bf43 = ls + ks * n4;
 
+                  // Spin-free reduction of the spinor expressions: the single-sigma
+                  // (sigma s) / (s sigma) kernels are spin-dependent and vanish, and
+                  // sigma_i sigma_j keeps only its isotropic part,
+                  // (1/3) delta_ij (sigma . sigma). The scalar component therefore
+                  // contracts with the (ss) kernel and each Pauli component with
+                  // one third of the (sigma . sigma) kernel.
+                  const double fcSFVec = 1. / 3.;
+
                   // 232 S + 233 S
-                  ADLSMS12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL]
-                                      - (symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + sx]
-                                      + symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + sy]
-                                      + symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + sz]) * dcomplex(0., 1.);
+                  ADLSMS12(ms, ns) += -( symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL] );
                   // 232 x + 233 x
-                  ADLSMX12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + xs] * dcomplex(0., 1.)
-                                      - symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + xx]
-                                      - symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + xy]
-                                      - symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + xz];
+                  ADLSMX12(ms, ns) += -fcSFVec * symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + NB4];
                   // 232 y + 233 y
-                  ADLSMY12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + ys] * dcomplex(0., 1.)
-                                      - symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + yx]
-                                      - symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + yy]
-                                      - symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + yz];
+                  ADLSMY12(ms, ns) += -fcSFVec * symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + NB4];
                   // 232 z + 233 z
-                  ADLSMZ12(ms, ns) += -symmDSLMS43_ptr[bf43] * ERIBuffBC[MNKL + zs] * dcomplex(0., 1.)
-                                      - symmDSLMX43_ptr[bf43] * ERIBuffBC[MNKL + zx]
-                                      - symmDSLMY43_ptr[bf43] * ERIBuffBC[MNKL + zy]
-                                      - symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + zz];
+                  ADLSMZ12(ms, ns) += -fcSFVec * symmDSLMZ43_ptr[bf43] * ERIBuffBC[MNKL + NB4];
 
                 } // mnkl
               } // iMat
@@ -3062,10 +3026,11 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
 
               auto& ADLS12 = s12SpinorLSSCRs[iMat];
               shBlockMO->transformLS(ADLS12, s1, s2, rsERI, off_sizes[0], off_sizes[1]);
-              ADLS12.S().inplace_scaleT(dcomplex(-1.,0),'T');
-              ADLS12.X().inplace_scaleT(dcomplex(1.,0),'T');
-              ADLS12.Y().inplace_scaleT(dcomplex(1.,0),'T');
-              ADLS12.Z().inplace_scaleT(dcomplex(1.,0),'T');
+              // same as Gaunt: CSLMS = -[CLSMS]^T, CSLM{X,Y,Z} = [CLSM{X,Y,Z}]^T
+              ADLS12.S().inplace_scaleT(MatsT(-1.), 'T');
+              ADLS12.X().inplace_scaleT(MatsT(1.), 'T');
+              ADLS12.Y().inplace_scaleT(MatsT(1.), 'T');
+              ADLS12.Z().inplace_scaleT(MatsT(1.), 'T');
               shBlockMO->transformSL(ADLS12, s2, s1, rsERI, off_sizes[0], off_sizes[1], true);
 
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
@@ -3086,17 +3051,15 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
         } // (s1, s2)
       } // (s3, s4) Density Batching
 
-    CQMemManager::get().free(buffERIAll, ERIBuffer, buffDensitySLMS, buffDensitySLMX, buffDensitySLMY, buffDensitySLMZ);
+    CQMemManager::get().free(buffERIAll, ERIBuffer, buffDensitySLMS,
+             buffDensitySLMX, buffDensitySLMY, buffDensitySLMZ);
 
   //  std::cout << "After Gauge ERI Norm = " << std::setprecision(16) << 
   //   lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
 
     double totalTime = tock(startTime);
-    FormattedLine(std::cout, "Time to Gaunt Transform(s): ", totalTime);
-
+    FormattedLine(std::cout, "Time to Gauge Transform(s): ", totalTime);
 #ifdef _MOINTSTRANSFORMER_TPI_FULL_DIRECT_TIMING
-    double totalTime = tock(startTime);
-
     auto printTimings = [] (const std::string& section,
         const std::vector<double> ts) {
         std::cout << std::setw(20) << section  << ": "
@@ -3113,6 +3076,10 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
     MPIAllReduce(&nConSkippedAcc, 1, &nConSkippedAcc, comm_);
     #endif
 
+
+
+    std::cout << "\nTiming for Gauge fully direct transformation: " << std::endl;
+    std::cout << "Total time: " << totalTime << "s" << std::endl;
     std::cout << "Integrals skipped: " << nIntSkippedAcc << std::endl;
     std::cout << "Contractions skipped: " << nConSkippedAcc << std::endl;
     printTimings("t(Ints)", tInts_all);
@@ -3128,11 +3095,15 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   /*   End of Gauge  */
   /*                 */
   /*******************/
-} // Check if MatsT is dcomplex at compile time 
+  // } // Check if MatsT is dcomplex at compile time 
 
   if (nC != 4) {
     HOp.BareCoulomb = false;
   }
+  // else {
+  //   HOp.Gaunt = false;
+  //   HOp.Gauge = false;
+  // }
 
   SetLAThreads(LAThreads);// Turn threads for LA back on
 
@@ -3169,6 +3140,6 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPIBatch(EMPerturbation & pe
   //   lapack::lange(lapack::Norm::Fro, npq, nr * ns, MOTPI, npq) << std::endl;
   
   return;
-} // directTransformTPIBatch
+} // directTransformScalarTPIBatch
 
 } // namespace ChronusQ

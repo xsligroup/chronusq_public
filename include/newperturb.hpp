@@ -51,7 +51,7 @@ namespace ChronusQ {
     std::string SELECTVIRTUAL;
 
     // Use only Scalar two-pints for PT2
-    bool SCALAR = false;
+    bool SPINFREE = false;
 
   };
 

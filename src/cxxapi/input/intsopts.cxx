@@ -73,6 +73,7 @@ namespace ChronusQ {
       "LIBCINT",      // Ture or False
       "BARECOULOMB",  // True or False
       "LLLL",         // True or False
+      "SPINFREE",     // True or False
       "DC",           // True or False, SF, SD, 3C, 2C, 1C, AMF
       "DIRACCOULOMB", // True or False
       "BREIT",        // True or False

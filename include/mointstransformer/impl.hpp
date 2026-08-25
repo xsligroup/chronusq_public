@@ -29,6 +29,7 @@
 #include <mointstransformer/tpi_ssfock.hpp>
 #include <mointstransformer/tpi_incore_n5.hpp>
 #include <mointstransformer/tpi_full_direct.hpp>
+#include <mointstransformer/tpi_full_direct_scalaronly.hpp>
 #include <util/timer.hpp>
 #include <util/print.hpp>
 
@@ -327,16 +328,23 @@ void MOIntsTransformer<MatsT,IntsT>::transformTPI(EMPerturbation & pert,
 template <typename MatsT, typename IntsT>
 void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
     MatsT* MOTPI, const std::string& moType) {
-  
-  const auto& HOp = ss_.fockBuilder->hamiltonianOptions_;
-  auto off_sizes = parseMOType(moType);
+ 
   std::cout << BannerTop << std::endl;
-  FormattedLine(std::cout, "Direct Relativistic AO->MO Transformation Initiated.");
-  FormattedLine(std::cout, "Transformation uses the Coulomb Gauge.");
-  directTransformTPIBatch(pert, MOTPI, off_sizes);
+  const auto& HOp = ss_.fockBuilder->hamiltonianOptions_;
+  bool spinFree = HOp.SpinFree;
+  auto off_sizes = parseMOType(moType);
+  if ( !spinFree ) {
+    std::cout << "  2e-INT type: Spin-Free Relativistic ..." << std::endl;
+    directTransformTPIBatch(pert, MOTPI, off_sizes); 
+  } else {
+    if (HOp.Gaunt or HOp.Gauge) {
+      CErr("Spin-Free Direct AO->MO Transformation for Gaunt or Gauge is unavailable!");}
+    std::cout << "  2e-INT type: Spin-Dependent Relativistic ..." << std::endl;
+    directTransformScalarTPIBatch(pert, MOTPI, off_sizes);
+  }
   std::cout << BannerTop << std::endl;
 
-}
+} //MOIntsTransformer::directTransformTPI
 
 
 template<typename MatsT, typename IntsT>

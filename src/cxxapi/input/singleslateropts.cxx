@@ -742,8 +742,12 @@ namespace ChronusQ {
     hamiltonianOptions.DiracCoulombSSSS = false;
     hamiltonianOptions.Gaunt = false;
     hamiltonianOptions.Gauge = false;
+    hamiltonianOptions.SpinFree = false;
 
     // Parse 4C options
+    OPTOPT( hamiltonianOptions.SpinFree = input.getData<bool>("INTS/SPINFREE") )
+    bool SFOptions = hamiltonianOptions.SpinFree;
+    
     // Dirac-Coulomb
     try { 
       std::string DCOptions = "FALSE";
@@ -797,8 +801,12 @@ namespace ChronusQ {
         hamiltonianOptions.DiracCoulomb = true;
         hamiltonianOptions.DiracCoulombApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
       }
-  
+      
     } catch(...) {}
+    
+    if ( SFOptions and hamiltonianOptions.DiracCoulomb
+        and hamiltonianOptions.DiracCoulombType != TYPE_4C::SpinFree )
+        CErr("Spin-Dependent DC not compatible with SPINFREE=ON!", out);
 
     // by default, DC includes SSSS unless "false" is set upon input
     if(hamiltonianOptions.DiracCoulomb) hamiltonianOptions.DiracCoulombSSSS = true;
@@ -852,8 +860,12 @@ namespace ChronusQ {
         hamiltonianOptions.DiracCoulombSSSS = true;
         hamiltonianOptions.SSSSApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
       }
-  
+
     } catch(...) {}
+
+    if ( SFOptions and hamiltonianOptions.DiracCoulombSSSS
+        and hamiltonianOptions.SSSSType != TYPE_4C::SpinFree )
+        CErr("Spin-Dependent DC(SSSS) not compatible with SPINFREE=ON!", out);
 
     bool hasGauntInput = false;
     // Gaunt
@@ -917,9 +929,12 @@ namespace ChronusQ {
         hamiltonianOptions.Gaunt = true;
         hamiltonianOptions.GauntApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
       }
-  
+
     } catch(...) {}
 
+    if ( SFOptions and hamiltonianOptions.Gaunt
+      and hamiltonianOptions.GauntType != TYPE_4C::SpinFree )
+      CErr("Spin-Dependent Gaunt not compatible with SPINFREE=ON!", out);
 
     bool hasGaugeInput = false;
     // Gauge
@@ -983,8 +998,12 @@ namespace ChronusQ {
         hamiltonianOptions.Gauge = true;
         hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
       }
-  
+
     } catch(...) {}
+
+    if ( SFOptions and hamiltonianOptions.Gauge
+      and hamiltonianOptions.GaugeType != TYPE_4C::SpinFree )
+      CErr("Spin-Dependent Gauge not compatible with SPINFREE=ON!", out);
 
     // Breit = 1/2 Gaunt + gauge
     try { 
@@ -1080,8 +1099,34 @@ namespace ChronusQ {
         hamiltonianOptions.Gauge = true;
         hamiltonianOptions.GaugeApproximationType = APPROXIMATION_TYPE_4C::AtomicMeanField;
       }
-  
+    
     } catch(...) {}
+    
+    if ( SFOptions and hamiltonianOptions.Gaunt
+      and hamiltonianOptions.GauntType != TYPE_4C::SpinFree )
+      CErr("Spin-Dependent Breit not compatible with SPINFREE=ON!", out);
+    if ( SFOptions and hamiltonianOptions.Gauge
+      and hamiltonianOptions.GaugeType != TYPE_4C::SpinFree )
+      CErr("Spin-Dependent Breit not compatible with SPINFREE=ON!", out);
+
+    // Change SpinFree option to True if DC, SSSS, Gaunt and Gauge == True
+    if ( !SFOptions ) {
+      bool tmpbool = true;
+      if (hamiltonianOptions.DiracCoulomb and  
+          hamiltonianOptions.DiracCoulombType != TYPE_4C::SpinFree)
+        tmpbool = false;
+      if (hamiltonianOptions.DiracCoulombSSSS and  
+          hamiltonianOptions.SSSSType != TYPE_4C::SpinFree)
+        tmpbool = false;
+      if (hamiltonianOptions.Gaunt and  
+          hamiltonianOptions.GauntType != TYPE_4C::SpinFree)
+        tmpbool = false;
+      if (hamiltonianOptions.Gauge and  
+          hamiltonianOptions.GaugeType != TYPE_4C::SpinFree)
+        tmpbool = false;
+
+      hamiltonianOptions.SpinFree = tmpbool;
+    }
 
     if (refOptions.refType != isFourCRef
         and hamiltonianOptions.x2cType != X2C_TYPE::FOCK) {
