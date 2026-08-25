@@ -28,7 +28,7 @@ message ( "\n == Libcint ==" )
 FetchContent_Declare (
   Libcint
   GIT_REPOSITORY "https://github.com/sunqm/libcint"
-  GIT_TAG "v6.1.3"
+  GIT_TAG 3d36c4f4e24ca5aaf91be7299f93dd541db0f50b
   PATCH_COMMAND git reset --hard && git clean -f -d && git apply "${PROJECT_SOURCE_DIR}/cmake/libcint_breit_sf.patch"
 )
 
