@@ -172,6 +172,7 @@ namespace ChronusQ {
       "SVWN5",
       "BLYP",
       "PBEXPBEC",
+      "PBE",
       "B3LYP",
       "B3PW91",
       "PBE0",
@@ -184,6 +185,7 @@ namespace ChronusQ {
       "WB97",
       "WB97X",
       "LDA",
+      "PW91",
       //Gets definition of  Custom Functional from [GAUXC] section of input
       "CUSTOM"
     };
@@ -422,7 +424,7 @@ namespace ChronusQ {
 
     }
 
-    if( not funcName.compare("PBEXPBEC") ) {
+    if( not funcName.compare("PBEXPBEC") or not funcName.compare("PBE") ) {
 
       funcList.push_back(
         std::dynamic_pointer_cast<DFTFunctional>(

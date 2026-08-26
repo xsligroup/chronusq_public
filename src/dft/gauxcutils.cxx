@@ -39,6 +39,8 @@ ExchCXX::Functional GauXCUtils::get_functional(std::string fname) {
     return ExchCXX::Functional::B3LYP;
   } else if (!fname.compare("PBEXPBEC")) {
     return ExchCXX::Functional::PBE;
+  } else if (!fname.compare("PBE")) {
+    return ExchCXX::Functional::PBE;
   } else if (!fname.compare("revPBE")) {
     return ExchCXX::Functional::revPBE;
   } else if (!fname.compare("PBE0")) {
@@ -63,6 +65,8 @@ ExchCXX::Functional GauXCUtils::get_functional(std::string fname) {
     return ExchCXX::Functional::wB97;
   } else if (!fname.compare("WB97X")) {
     return ExchCXX::Functional::wB97X;
+  } else if (!fname.compare("PW91")) {
+    return ExchCXX::Functional::PW91;
   } else if (!fname.compare("CUSTOM")) {
     CErr("Custom Requires Functional Definition under GAUXC header.");
   
@@ -136,6 +140,18 @@ ExchCXX::XCKernel GauXCUtils::get_xckernel(std::string kernel, ExchCXX::Spin xcS
     return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::OPTX_X, xcSpin);
   } else if (!kernel.compare("PW91_X")) {
     return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PW91_X, xcSpin);
+  } else if (!kernel.compare("PW91_C")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PW91_C, xcSpin);
+  } else if (!kernel.compare("PW91_LDA")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PW91_LDA, xcSpin);
+  } else if (!kernel.compare("PZ81")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::PZ81, xcSpin);
+  } else if (!kernel.compare("ITYH_X")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::ITYH_X, xcSpin);
+  } else if (!kernel.compare("P86_C")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::P86_C, xcSpin);
+  } else if (!kernel.compare("B97_D")) {
+    return ExchCXX::XCKernel( xcBackend, ExchCXX::Kernel::B97_D, xcSpin);
   } else {
     CErr("Invalid Kernel for Gauxc");
   }

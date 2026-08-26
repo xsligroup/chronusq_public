@@ -61,9 +61,23 @@ namespace ChronusQ {
     dftd3_model     model = dftd3_new_d3_model(err, mol);
     if(dftd3_check_error(err)) CErr("DFTD3 model error: " + d3_error_string(err), std::cout);
 
-    dftd3_param     param = load_param(err, scheme_, ref_, useATM_);
-    if(dftd3_check_error(err) || !param) CErr("DFTD3 param error: " + d3_error_string(err), std::cout);
+    std::string parameterRef = ref_;
+    dftd3_param param = load_param(err, scheme_, parameterRef, useATM_);
 
+    if (dftd3_check_error(err)) {
+      parameterRef = "pbe";
+
+      std::cout << "DFTD3 parameters for '" << ref_
+                << "' were not found; defaulting to PBE parameters.\n";
+
+      param = load_param(err, scheme_, parameterRef, useATM_);
+
+      if (dftd3_check_error(err)) {
+        CErr("DFTD3 PBE parameter error: " + d3_error_string(err),
+            std::cout);
+      }
+    }
+    
     // Pointers for derivative outputs
     double* gradPtr  = nullptr;
     double* sigmaPtr = nullptr;
