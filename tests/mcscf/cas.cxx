@@ -142,6 +142,14 @@ TEST(GHF_CAS_OSC, Al_GHF_OSC_STR) {
 
 }
 
+// Spin and Angular momentum with Spin-orbit test
+TEST(X2C_CAS_ANG_AND_SPIN, B_X2C_CASCI) {
+  CQMCSCFTEST( "mcscf/serial/cas/b_x2c_sto-3G_casci",
+      "b_x2c_sto-3G_casci.bin.ref", false, "", 1e-8, false, false, false, false, true,
+  false, true, false, true, true, false, true, true );
+
+}
+
 // 1 DET
 TEST(MCSCF_FIELD, Ethylene_OneC_nr_1Det_useSCFfield) {
   CQMCSCFTEST( "mcscf/serial/cas/ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield",                          "ethylene_OneC_nr_1DetMCSCF_wfield_useSCFfield.bin.ref", true); }

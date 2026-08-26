@@ -1115,9 +1115,12 @@ namespace ChronusQ {
       } catch(...) { CErr("Insufficient memory for SPIN_DOT_ANGULAR temporary", std::cout); }
 
       std::vector<double*> tmpL = {Lx,Ly,Lz};
-      if (options.Libcint)
+      if (options.Libcint) {
         OnePDriverLibcintAngularL(mol, basis, options, tmpL, NB);
-      else
+        for (auto *component : tmpL)
+          for (size_t i = 0; i < NB * NB; ++i)
+            component[i] *= -1.0;
+      } else
         OnePInts<double>::OnePDriverLocal<3,false>(
             std::bind(&RealGTOIntEngine::computeAngularL,
                       std::placeholders::_1, std::placeholders::_2,
@@ -1260,8 +1263,11 @@ namespace ChronusQ {
           }, basis.shells, pointers());
       break;
     case ANGULAR_MOMENTUM_VECTOR:
-      if (options.Libcint) {
-        OnePDriverLibcintAngularL(mol, basis, options, pointers(), nBasis());
+      if (options.Libcint){
+        OnePDriverLibcintAngularL(mol, basis, options, pointers(), NB);
+        for (auto *component : pointers())
+          for (size_t i = 0; i < NB * NB; ++i)
+            component[i] *= -1.0;
       } else {
         OnePInts<double>::OnePDriverLocal<3,false>(
             std::bind(&RealGTOIntEngine::computeAngularL,
@@ -1273,8 +1279,11 @@ namespace ChronusQ {
     case TOTAL_ANGULAR_MOMENTUM_VECTOR: {
       // J = L + S where S (spatial part) = overlap * 1/2
       // First compute L into the output pointers
-      if (options.Libcint) {
+      if (options.Libcint)  {
         OnePDriverLibcintAngularL(mol, basis, options, pointers(), NB);
+        for (auto *component : pointers())
+          for (size_t i = 0; i < NB * NB; ++i)
+            component[i] *= -1.0;
       } else {
         OnePInts<double>::OnePDriverLocal<3,false>(
             std::bind(&RealGTOIntEngine::computeAngularL,

@@ -523,6 +523,10 @@ namespace ChronusQ {
 
       this->SSq *= 0.25;
 
+      // Compute <S^2> Eigenvalue is S(S+1) or S = (-1 + sqrt(1 + 4<S^2>))/2
+      auto SQuantNum = (-1.0 + std::sqrt(1.0 + 4.0 * this->SSq)) / 2.0;
+      this->SQuantNum = SQuantNum;
+
       for (auto &component : this->SExpect) clampTiny(component);
       clampTiny(this->SSq);
 
@@ -573,8 +577,21 @@ template <typename MatsT, typename IntsT>
       if (std::abs(value) < 1e-12) value = ValueT(0);
     };
 
-    if (this->aoints_->angmom == nullptr)
+    const bool coefficientsReady = !this->moCoefficients.empty() &&
+      (this->nC != 1 || this->iCS || isROHF || this->moCoefficients.size() >= 2) &&
+      this->moCoefficients[0].get().nRows() != 0;
+
+    // SAD Guess will trigger this case, so we need to check for it and skip the angular momentum calculations if the MO coefficients are not ready yet.
+    if (this->aoints_ == nullptr || this->aoints_->overlap == nullptr ||
+        this->aoints_->angmom == nullptr || this->onePDM == nullptr ||
+        !coefficientsReady) {
+      // std::cerr << "[Angular debug] skipped: aoi=" << (this->aoints_ != nullptr)
+      //           << ", overlap=" << (this->aoints_ != nullptr && this->aoints_->overlap != nullptr)
+      //           << ", angmom=" << (this->aoints_ != nullptr && this->aoints_->angmom != nullptr)
+      //           << ", onePDM=" << (this->onePDM != nullptr)
+      //           << ", MO sets=" << this->moCoefficients.size() << ".\n";
       return;
+    }
 
     if (this->nC == 4)
       CErr("4C spin and angular momentum properties have not been implemented yet.", std::cout);
@@ -764,8 +781,8 @@ template <typename MatsT, typename IntsT>
       return cqmatrix::Matrix<dcomplex>(this->moCoefficients[0].get());
     }();
 
-    if (not has2RDM )
-       std::cout << "Warning: 2RDM not provided, using 1RDM to approximate two-body contributions to spin and angular momentum properties. This is exact for a single determinant but approximate for correlated wavefunctions." << std::endl;
+    // if (not has2RDM )
+    //    std::cout << "Warning: 2RDM not provided, using 1RDM to approximate two-body contributions to spin and angular momentum properties. This is exact for a single determinant but approximate for correlated wavefunctions." << std::endl;
     
     // Assemble a single spin-orbital MO density matrix.
     const size_t nMO = mo_coefficients.nRows();
@@ -1194,11 +1211,12 @@ template <typename MatsT, typename IntsT>
     
     // <J^2> = <Jx^2> + <Jy^2> + <Jz^2> = <L^2> + <S^2> + <S.L> + <L.S>
     auto temp_JSq  = this->LSq + this->SSq + SL + LS;
+    this->JSq = temp_JSq;
 
     // Also valid approach to J^2 using the J operators directly
-    this->JSq = pair_expectation(mo_density, Jx, Jx)
-           + pair_expectation(mo_density, Jy, Jy)
-           + pair_expectation(mo_density, Jz, Jz);
+    // this->JSq = pair_expectation(mo_density, Jx, Jx)
+    //        + pair_expectation(mo_density, Jy, Jy)
+    //        + pair_expectation(mo_density, Jz, Jz);
 
     // Compute <J^2> Eigenvalue is J(J+1) or J = (-1 + sqrt(1 + 4<J^2>))/2
     auto JQuantNum = (-1.0 + std::sqrt(1.0 + 4.0 * this->JSq)) / 2.0;

@@ -1,0 +1,38 @@
+[Molecule]
+charge = 0
+mult = 2
+geom:
+B	0.0000	0.0000	0.0000
+
+#
+#  Job Specification
+#
+[QM]
+reference = 2cHF
+X2CTYPE=ONEE
+job = MCSCF
+
+[BASIS]
+basis = sto-3g
+
+[SCF]
+guess=core
+printmos=7
+diisalg = cdiis
+
+[CI]
+JOBTYPE = CASCI
+NACTORB = 10
+NACTELEC = 5
+NRoots = 252
+CIDIAGALG = FULLMATRIX
+printspin = true
+
+[MISC]
+memtype = os
+nsmp = 1
+
+[INTS]
+alg = direct
+Libcint = True
+PRINTANGULAR = true
