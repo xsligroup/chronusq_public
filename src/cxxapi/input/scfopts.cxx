@@ -49,9 +49,6 @@ namespace ChronusQ {
 
     // Allowed keywords
     std::set<std::string> allowedKeywords = {
-      "ENETOL",
-      "DENTOL",
-      "FDCTOL",
       "MAXITER",
       "INCFOCK",
       "NINCFOCK",
@@ -201,19 +198,7 @@ namespace ChronusQ {
       input.getData<double>("SCF/ACCURACY"); )
 
     scfControls.maxdPConvTol = scfControls.rmsdPConvTol*100;
-    scfControls.eneConvTol = scfControls.rmsdPConvTol*100;
-
-    // Energy convergence tolerance
-    //OPTOPT( scfControls.eneConvTol =
-    //          input.getData<double>("SCF/ENETOL"); )
-
-    // Energy convergence tolerance
-    //OPTOPT( scfControls.denConvTol =
-    //          input.getData<double>("SCF/DENTOL"); )
-
-    // Energy Gradient convergence tolerance
-    //OPTOPT( scfControls.FDCConvTol =
-    //          input.getData<double>("SCF/FDCTOL"); )
+    scfControls.eneConvTol = scfControls.rmsdPConvTol;
 
     // Maximum SCF iterations
     OPTOPT( scfControls.maxSCFIter =

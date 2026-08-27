@@ -16,8 +16,7 @@ basis = sto-3g
 printmos=1
 maxiter=2000
 guess=fchkmo
-enetol=1e-14
-dentol=1e-14
+accuracy=1e-14
 
 
 [PHYSCON]

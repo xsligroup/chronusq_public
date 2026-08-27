@@ -28,8 +28,7 @@ basisType = GIAO
 
 [SCF]
 MAXITER = 512
-ENETOL  = 1.0e-10
-DENTOL  = 1.0e-8
+ACCURACY= 1.0e-8
 DIIS    = FALSE
 GUESS=CORE
 Field = Magnetic 0.0 0.0 0.02
