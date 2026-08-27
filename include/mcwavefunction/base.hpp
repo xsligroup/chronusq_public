@@ -157,6 +157,7 @@ namespace ChronusQ {
     std::vector<cartrk3_t> elecOctupoles;   ///< Electric Octupole in the length gauge
 
     bool readCI = false; ///< Read CI vectors and state energies from rstfiles
+    bool saveMOInts = false; ///< Save correlated-space MO integrals to the restart file
 
     // Options for CubeGen
     CubeGenOptions cubeOptsMC;

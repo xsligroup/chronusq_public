@@ -189,6 +189,9 @@ namespace ChronusQ {
     // add other parts of the energy 
      double EOther = mcwfn.reference().molecule().nucRepEnergy + mcwfn.InactEnergy + mcwfn.EFieldNuc;
      for (auto i = 0ul; i < nR; i++) StateEnergy->at(i) += EOther;
+
+     if (mcwfn.saveMOInts and MPIRank(mcwfn.comm) == 0 and mcwfn.savFile.exists())
+       mcwfn.savFile.safeWriteData("MOINTS/INACTENERGY", &EOther, {1});
   
   } // CISolver::solveCI
   

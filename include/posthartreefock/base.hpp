@@ -77,6 +77,7 @@ public:
   bool printDipole = false;
   bool saveOnePDMS = false;
   std::vector<size_t> saveOnePDM_states;
+  bool saveMOInts = false;
 
   // Options for CubeGen
   CubeGenOptions cubeOptsPostHF;

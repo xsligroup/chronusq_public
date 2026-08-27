@@ -144,6 +144,15 @@ void PostHartreeFock<MatsT,IntsT>::transformInts(EMPerturbation & pert,
     std::make_shared<OnePInts<MatsT>>(hCore_tu));
   this->moints->addIntegral("ERI_Correlated_Space",  
     std::make_shared<InCore4indexTPI<MatsT>>(ERI_tuvw));
+
+  if (this->saveMOInts and MPIRank(this->comm) == 0 and this->savFile.exists()) {
+    double inactiveEnergy = this->reference()->molecule().nucRepEnergy + this->coreEnergy;
+    this->savFile.safeWriteData("MOINTS/INACTENERGY", &inactiveEnergy, {1});
+    this->savFile.safeWriteData("MOINTS/ONEELEC", hCore_tu.pointer(), {nCorrO, nCorrO});
+    this->savFile.safeWriteData("MOINTS/ERI", ERI_tuvw.pointer(),
+                                {nCorrO, nCorrO, nCorrO, nCorrO});
+  }
+
   this->moints->addIntegral("hCore_tt",  
     std::make_shared<DASOnePInts<MatsT>>(hCore_tt));
   this->moints->addIntegral("antiSymmetricERI_ttuu",  

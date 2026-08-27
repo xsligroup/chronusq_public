@@ -58,6 +58,9 @@ namespace ChronusQ {
      size_t nDavidsonGuess   = 3;
      std::vector<std::pair<double, size_t>> energyRefs;
 
+     // Save correlated-space MO integrals to the restart file
+     bool saveMOInts = false;
+
      // For Natural Orbitals 
      size_t NatOrbs = 0; // index for which root to for natural orbitals for
                          // Note this is saved as 1 indexed (i.e., NatOrbs=1 will

@@ -80,6 +80,7 @@ namespace ChronusQ {
       "MAXDAVIDSONSPACE",
       "NDAVIDSONGUESS",
       "PRINTMULT",
+      "SAVEMOINTS",
       "CUBE",
       "NDETPRINT",
     };
@@ -594,6 +595,9 @@ namespace ChronusQ {
     mcscfjobtype->parseMCSCFJobType(out,input,prefix);
     
     std::shared_ptr<MCSCFSettings> mcscfSettings = std::make_shared<MCSCFSettings>();
+
+    OPTOPT( mcscfSettings->saveMOInts =
+              input.getData<bool>(prefix+"MCSCF/SAVEMOINTS"); )
 
     // Number of roots 
     std::string nRoots;

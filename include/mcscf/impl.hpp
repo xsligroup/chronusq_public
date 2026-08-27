@@ -271,6 +271,7 @@ namespace ChronusQ {
   void MCSCF<MatsT,IntsT>::alloc() {
     
     mcwfn_->savFile = this->savFile;
+    mcwfn_->saveMOInts = settings->saveMOInts;
     mcwfn_->alloc();
     if(mcwfn_->readCI) mcwfn_->ReadGuessCIVector();
     

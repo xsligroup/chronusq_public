@@ -254,6 +254,7 @@ namespace ChronusQ {
         this->InactEnergy = 0.0;
         // Each subsystem transform it's own integrals
         ApplyToEachLabeled([&](SubMCWfnPtr & mcwfn, std::string label){
+            mcwfn->saveMOInts = this->saveMOInts;
             mcwfn->transformInts(pert,label);
             this->InactEnergy += mcwfn->InactEnergy;});
 
@@ -288,7 +289,50 @@ namespace ChronusQ {
 
           }
         }
-        
+
+        if (this->saveMOInts and MPIRank(this->comm) == 0 and this->savFile.exists()) {
+          const auto dataSetLabel = [](const std::string &label) {
+            return label == "E" ? std::string("e") : label;
+          };
+
+          for (const auto &label : order_) {
+            const auto nCorrO = subsystems.at(label)->MOPartition.nCorrO;
+            const auto binLabel = dataSetLabel(label);
+            auto hCore = this->moints->template getIntegral<OnePInts, MatsT>(
+                label + "hCore_Correlated_Space");
+            auto hCoreP = this->moints->template getIntegral<OnePInts, MatsT>(
+                label + "hCoreP_Correlated_Space");
+            auto eri = this->moints->template getIntegral<InCore4indexTPI, MatsT>(
+                label + "ERI_Correlated_Space");
+
+            if (hCore)
+              this->savFile.safeWriteData("MOINTS/" + binLabel + "_oneelec",
+                                          hCore->pointer(), {nCorrO, nCorrO});
+            if (hCoreP)
+              this->savFile.safeWriteData("MOINTS/" + binLabel + "FOLDED_oneelec",
+                                          hCoreP->pointer(), {nCorrO, nCorrO});
+            if (eri)
+              this->savFile.safeWriteData("MOINTS/" + binLabel + binLabel + "_ERI",
+                                          eri->pointer(),
+                                          {nCorrO, nCorrO, nCorrO, nCorrO});
+          }
+
+          for (size_t i = 0; i < order_.size(); i++) {
+            for (size_t j = i + 1; j < order_.size(); j++) {
+              const auto &label1 = order_[i];
+              const auto &label2 = order_[j];
+              const auto nCorrO1 = subsystems.at(label1)->MOPartition.nCorrO;
+              const auto nCorrO2 = subsystems.at(label2)->MOPartition.nCorrO;
+              auto eri = this->moints->template getIntegral<InCore4indexTPI, MatsT>(
+                  label1 + label2 + "ERI_Correlated_Space");
+              if (eri)
+                this->savFile.safeWriteData(
+                    "MOINTS/" + dataSetLabel(label1) + dataSetLabel(label2) + "_ERI",
+                    eri->pointer(), {nCorrO1, nCorrO1, nCorrO2, nCorrO2});
+            }
+          }
+        }
+
     }
 
 }; // namespace ChronusQ

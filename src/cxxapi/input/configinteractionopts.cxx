@@ -93,7 +93,8 @@ namespace ChronusQ {
       "SPARSEDAVIDSON",
       "EPSSPARSE",
       "DAS",
-      "SAVEONEPDMS"
+      "SAVEONEPDMS",
+      "SAVEMOINTS"
     };
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
@@ -320,6 +321,7 @@ namespace ChronusQ {
     ci->setupCorrelatedMOSpace(std::accumulate(nActOs.begin(), nActOs.end(), 0), nActE, 0, 0);
     size_t corrOOffset = ci->corrSpace.nNegMO + ci->corrSpace.nFCore + ci->corrSpace.nInact;
     OPTOPT( ciSettings->maxInterSpaceEx = input.getData<int>("CI/MAXINTERSPACEEX"); )
+    OPTOPT( ci->saveMOInts = input.getData<bool>("CI/SAVEMOINTS"); )
     ciSettings->nThreads_ = GetNumThreads();
     ConstructActiveSpaces(out, input, nActOs, nActE, corrOOffset, ciSettings->maxInterSpaceEx,
                           ciSettings->activeSpaces, ciSettings->refOcc, "CI");

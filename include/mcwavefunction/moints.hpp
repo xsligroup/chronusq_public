@@ -105,7 +105,7 @@ namespace ChronusQ {
     // For RT, the ERI don't need retransformed
     std::string erilabel = prefixlabel + "ERI_Correlated_Space";
     std::shared_ptr<InCore4indexTPI<MatsT>> ERI_tuvw = this->moints->template getIntegral<InCore4indexTPI,MatsT>(erilabel);
-    if(!ERI_tuvw && nCorrE > 1)
+    if(!ERI_tuvw && (nCorrE > 1 or this->saveMOInts))
     {
       ERI_tuvw = std::make_shared<InCore4indexTPI<MatsT>>(nCorrO);
       mointsTF->transformTPI(pert, ERI_tuvw->pointer(), "tuvw", this->cacheHalfTransTPI_);
@@ -170,6 +170,17 @@ namespace ChronusQ {
       std::make_shared<OnePInts<MatsT>>(hCore_tu));
     this->moints->addIntegral(hcorePlabel, 
       std::make_shared<OnePInts<MatsT>>(hCoreP_tu));
+
+    // Multiparticle calculations save all subsystem and cross-particle
+    // integrals together after their transformations are complete.
+    if (this->saveMOInts and prefixlabel.empty() and
+        MPIRank(this->comm) == 0 and this->savFile.exists()) {
+      this->savFile.safeWriteData("MOINTS/ONEELEC", hCore_tu.pointer(),
+                                  {nCorrO, nCorrO});
+      if (ERI_tuvw)
+        this->savFile.safeWriteData("MOINTS/ERI", ERI_tuvw->pointer(),
+                                    {nCorrO, nCorrO, nCorrO, nCorrO});
+    }
 
   }; // MCWaveFunction::transformInts
 
