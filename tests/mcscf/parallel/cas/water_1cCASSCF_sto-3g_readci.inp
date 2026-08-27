@@ -12,7 +12,7 @@ geom:
 #
 [QM]
 reference = RHF
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = sto-3g 

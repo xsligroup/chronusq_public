@@ -14,7 +14,7 @@ geom:
 #
 [QM]
 reference = ROHF
-job = MCSCF
+job = CI
 
 [SCF]
 guess=readmo

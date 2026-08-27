@@ -43,7 +43,7 @@ namespace ChronusQ {
 
 template <typename MatsT>
 void DASCIBuilder<MatsT>::setSigma2eContractionAlgorithm(std::string alg) {
-  if (alg == "NAIVE" or alg == "NAIVELOOP" or alg == "NL") {
+  if (alg == "NAIVE" or alg == "NAIVELOOP" or alg == "NL" or alg == "SIMPLE") {
     twoEcontAlg_ = DASCISigma2eContAlg::NAIVE;
   } else if (alg == "KNOWLESHANDY" or alg == "KH" ) {
     twoEcontAlg_ = DASCISigma2eContAlg::KNOWLESHANDY;  

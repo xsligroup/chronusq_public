@@ -78,12 +78,12 @@ void SingleSlater<MatsT, IntsT>::saveCurrentState(bool saveMO, std::string prefi
 
     savFile.safeWriteData(prefix + "ORTHO_INV", orthoSpinor->backwardPointer()->pointer(), {NB, NB});
 
+    if (prefix == "SCF/")
+      CQIntermediates::getInstance().addData(prefix + "MO1", std::make_shared<cqmatrix::Matrix<MatsT>>(this->mo[0]));
+
     // Save MOs
     if (saveMO) {
       savFile.safeWriteData(prefix + "MO1", this->mo[0].pointer(), {NBC, NBC});
-//      this->mo[0].output(std::cout, "mo1 write", true);
-      if (prefix == "SCF/")
-        CQIntermediates::getInstance().addData(prefix + "MO1", std::make_shared<cqmatrix::Matrix<MatsT>>(this->mo[0]));
       if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "MO2", this->mo[1].pointer(), {NBC, NBC});
       savFile.safeWriteData(prefix + "EPS1",this->eps1,{NBC});
       if (this->nC == 1 and not this->iCS) savFile.safeWriteData(prefix + "EPS2", this->eps2, {NBC});

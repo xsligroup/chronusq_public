@@ -14,7 +14,7 @@ geom:
 #
 [QM]
 reference = 4CHF
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = sto-3g

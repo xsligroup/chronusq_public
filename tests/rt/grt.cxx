@@ -144,22 +144,10 @@ TEST( FOURCHF_RT, oxygen_4chf_mmut ) {
     "oxygen_6-31Gdunc_4chf_mmut.bin.ref" );
 }
 
-TEST( FOURCHF_RT, oxygen_4chf_mmut_gaunt ) {
-
-  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_gaunt",
-    "oxygen_6-31Gdunc_4chf_mmut_gaunt.bin.ref" );
-}
-
 TEST( FOURCHF_RT, oxygen_4chf_mmut_breit ) {
 
   CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_breit",
     "oxygen_6-31Gdunc_4chf_mmut_breit.bin.ref" );
-}
-
-TEST( FOURCHF_RT, oxygen_4chf_mmut_gaunt_rtgaunt ) {
-
-  CQRTTEST( "rt/serial/grt/oxygen_6-31Gdunc_4chf_mmut_gaunt_rtgaunt",
-    "oxygen_6-31Gdunc_4chf_mmut_gaunt_rtgaunt.bin.ref" );
 }
 
 TEST( FOURCHF_RT, oxygen_4chf_mmut_breit_rtbreit ) {

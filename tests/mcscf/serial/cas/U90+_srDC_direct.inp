@@ -10,7 +10,7 @@ geom:
 #
 [QM]
 reference = 4CHF
-job = MCSCF
+job = CI
 X2CTYPE=SPINFREE
 
 [SCF]

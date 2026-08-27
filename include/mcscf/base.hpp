@@ -34,12 +34,13 @@
 namespace ChronusQ {
 
   enum CIDiagonalizationAlgorithm {
+    CI_DEFAULT,
     CI_FULL_MATRIX,
     CI_DAVIDSON,
     CI_GPLHR,
     SKIP,
   }; // struct CIDiagonalizationAlgorithm
- 
+
   // Settings 
   struct MCSCFSettings {
      

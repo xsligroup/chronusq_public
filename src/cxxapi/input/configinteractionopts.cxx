@@ -438,15 +438,15 @@ namespace ChronusQ {
 
 
     // Parse CI Options
-
-    std::string ciALG;
-    // Change default based on # determinants
-    if( ci->NStates < 750 ) ciALG = "FULLMATRIX";
-    else ciALG = "DAVIDSON";
+    
+    // Default is being set to Fullmatrix or Davidson in /include/configinteraction/impl.hpp
+    std::string ciALG = "DEFAULT";
     OPTOPT( ciALG = input.getData<std::string>("CI/CIDIAGALG");)
     trim(ciALG);
 
-    if( not ciALG.compare("FULLMATRIX") ) {
+    if (not ciALG.compare("DEFAULT")) {
+      ciSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DEFAULT;
+    } else if( not ciALG.compare("FULLMATRIX") ) {
       ciSettings->ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
     } else if( not ciALG.compare("DAVIDSON") ) {
       ciSettings->ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
@@ -470,15 +470,24 @@ namespace ChronusQ {
       OPTOPT( ciSettings->SparseDavidsonEps =
                 input.getData<double>("CI/EPSSPARSE");)
     } else if(not ciALG.empty())
-      CErr(ciALG + "is not a valid CI/CIDIAGALG",out);
+      CErr(ciALG + "is not a valid CI/CIDiagAlg",out);
+
+    if(ciSettings->SparseDavidson and ciALG.compare("FULLMATRIX")) {
+      CErr("Sparse Davidson cannot be used with CI/CIDiagAlg = FullMatrix, only with CI/CIDiagAlg = Davidson");
+    }
     
-    std::string ciSigma2eALG = "NAIVE";
+    std::string ciSigma2eALG;
+    // Default for sparse is naive as this is the only one suported for now
+    if (ciSettings->SparseDavidson) ciSigma2eALG = "SIMPLE";
+    else ciSigma2eALG = "KNOWLESHANDY";
+    
     OPTOPT( ciSigma2eALG = input.getData<std::string>("CI/CISIGMA2EALG");)
     trim(ciSigma2eALG);
     ciSettings->ciSigma2eContAlg = ciSigma2eALG;
 
-    if(ciSettings->SparseDavidson and not (ciSigma2eALG == "NAIVE" or ciSigma2eALG == "DEFAULT" or ciSigma2eALG == "NAIVELOOP" or ciSigma2eALG == "NL")) {
-      CErr("Only ciSigma2eALG = NAIVE supports sparse DAS");
+    if(ciSettings->SparseDavidson and not (ciSigma2eALG == "NAIVE" or ciSigma2eALG == "DEFAULT" 
+      or ciSigma2eALG == "NAIVELOOP" or ciSigma2eALG == "NL" or ciSigma2eALG == "SIMPLE")) {
+      CErr("Sparse DAS only supports CI?ciSigma2eALG = Simple");
     }
 
     // Parse Orbital Rotation Options
@@ -488,7 +497,7 @@ namespace ChronusQ {
       
       if (ss->nC == 4) {
         // default as true
-        ciSettings->ORSettings.rotate_negative_positive = false;
+        ciSettings->ORSettings.rotate_negative_positive = true;
         OPTOPT(ciSettings->ORSettings.rotate_negative_positive
           = input.getData<bool>("CI/ROTATENEGORBS"); )
       }

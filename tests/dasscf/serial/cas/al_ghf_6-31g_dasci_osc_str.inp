@@ -1,5 +1,5 @@
 #
-#  Al/6-31G : MCSCF
+#  Al/6-31G : CI
 #  SERIAL
 #
 #  Molecule Specification 
@@ -14,7 +14,7 @@ geom:
 #
 [QM]
 reference = GHF
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = 6-31g 

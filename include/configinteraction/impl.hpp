@@ -312,10 +312,37 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   // std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
   std::cout << "Total Number of Determinants = "<<newCategoricalSpace->nDeterminants()<<std::endl;
 
+  if (ciSettings.SparseDavidson and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DEFAULT) {
+    ciSettings.ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
+    std::cout << "ciAlg Default Set to Davidson Based on Sparse Davidson Being Set." << std::endl;
+  }
+
+  // Set CI_DEFAULT to CI_FULL_MATRIX if < 1e3 otherwise CI_DAVIDSON
+  if (ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DEFAULT) {
+    if (newCategoricalSpace->nDeterminants() < 1e3) {
+      ciSettings.ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
+      std::cout << "ciAlg Default Set to Full Matrix Based on Number of Determinants." << std::endl;
+    } else {
+      ciSettings.ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
+      std::cout << "ciAlg Default Set to Davidson Based on Number of Determinants." << std::endl;
+    }
+  }
+
+  // Warning for large Fullmatrix or small Davidson 
+  // Fullmatrix and more than 100,000 determinants (80 GB for a double)
+  if (newCategoricalSpace->nDeterminants() > 1e5 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_FULL_MATRIX) {
+    std::cout << "WARNING: Solving a Large CI Problem with FullMatrix Is Memory Intensive, Consider Using Davidson." << std::endl;
+    }
+
+  // Davidson with fewer than 1,000 determinants
+  if (newCategoricalSpace->nDeterminants() < 1e3 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DAVIDSON) {
+    std::cout << "WARNING: Solving a Small CI Problem with Davidson Can Be Slower than Using FullMatrix." << std::endl;
+    }
+
   // Check and modify NStates to Ndets if NStates > Ndets
   if (this->NStates > newCategoricalSpace->nDeterminants()) {
     this->NStates = newCategoricalSpace->nDeterminants();
-    std::cout << "Requested Number of States > NDeterminants :: Modifying NStates to NDeterminants!" 
+    std::cout << "WARNING: Requested Number of States > NDeterminants, Modifying NStates to NDeterminants!" 
       << "\nNew NRoots = " << this->NStates << "\n" << std::endl;
   }
 
@@ -323,7 +350,7 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   size_t nThreads = GetNumThreads();
   if (nThreads > newCategoricalSpace->nDeterminants()) {
     SetNumThreads(newCategoricalSpace->nDeterminants());
-    std::cout << "WARNING: Number of Threads set to -> " << GetNumThreads() <<
+    std::cout << "WARNING: Number of Threads > NDeterminants, Set Threads to -> " << GetNumThreads() <<
       std::endl;
   }
 
@@ -346,7 +373,7 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   auto durationComputExList = tock(computeExList);
   std::cout << "Computing Excitation List Done: " << durationComputExList << " s"<<std::endl;
 
-  std::cout << "DAS initialization done in Determinant Factory!" << std::endl;
+  std::cout << "DAS Initialization Done in Determinant Factory!" << std::endl;
   ProgramTimer::tock("Determinant Factory");
   
   // allocate CI vector
@@ -357,7 +384,7 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
 #ifdef CQ_ENABLE_SPARSE
       CIVectors = newCategoricalSpace->constructDistributedSparseCIVectors<MatsT>(this->comm, NS);
 #else
-      CErr("ENABLE_SPARSE was turned off during compilation! Recompile with CQ_ENABLE_SPARSE");   
+      CErr("WARNING ENABLE_SPARSE was Turned off During Compilation! Recompile with CQ_ENABLE_SPARSE");   
 #endif
   }
   else {

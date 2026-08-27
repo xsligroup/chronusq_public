@@ -72,7 +72,7 @@ namespace ChronusQ {
     RESP,
     CC,
     EOMCC,
-    MR,
+    CI,
     PT,
     MP2,
     BOMD,
@@ -106,8 +106,8 @@ namespace ChronusQ {
     else if( jobStr == "EHRENFEST" ) {
       job = JobType::EHRENFEST;
     }
-    else if( jobStr == "MCSCF" ) {
-      job = JobType::MR;
+    else if( jobStr == "CI" ) {
+      job = JobType::CI;
     }
     else if( jobStr == "PERTURB" ) {
       job = JobType::PT;

@@ -36,8 +36,8 @@ namespace ChronusQ {
   
 struct CISettings {
    
-   CIDiagonalizationAlgorithm ciAlg = CI_FULL_MATRIX; 
-   std::string ciSigma2eContAlg = "DEFAULT";
+   CIDiagonalizationAlgorithm ciAlg = CI_DEFAULT; 
+   std::string ciSigma2eContAlg = "SIMPLE";
 
    // This stores the input from user
    // might be different from what's being used

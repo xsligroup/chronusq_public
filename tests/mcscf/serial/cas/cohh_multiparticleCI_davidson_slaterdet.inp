@@ -9,7 +9,7 @@ geom:
 
 [QM]
 reference = Real RHF
-job = MCSCF
+job = CI
 
 [SCF]
 NEO = TRUE

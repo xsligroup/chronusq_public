@@ -28,6 +28,9 @@ ALG = direct
 [SCF]
 guess = CORE
 
+[MISC]
+NSMP=1
+
 [BASIS]
 definebasis = on
 basisdef = : 
@@ -64,9 +67,3 @@ P    1   1.00
 D    1   1.00
       0.8000000000D+00       1.00000000D+00
 **** 
-
-[MISC]
-NSMP=1
-
-[PHYSCON]
-LEGACY_CONSTANTS = TRUE

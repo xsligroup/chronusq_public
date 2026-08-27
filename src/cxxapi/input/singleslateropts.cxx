@@ -751,6 +751,9 @@ namespace ChronusQ {
     bool SFOptions = hamiltonianOptions.SpinFree;
     
     // Dirac-Coulomb
+    // For 4C default to full DC (including SSSS see below)
+    if (refOptions.refType == isFourCRef) hamiltonianOptions.DiracCoulomb = true;
+
     try { 
       std::string DCOptions = "FALSE";
       try {

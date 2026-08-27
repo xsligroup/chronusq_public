@@ -8,7 +8,7 @@ geom:
 
 [QM]
 reference = RHF
-job = MCSCF
+job = CI
 
 [QPQM]
 reference = UHF

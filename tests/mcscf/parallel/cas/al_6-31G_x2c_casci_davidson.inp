@@ -14,7 +14,7 @@ geom:
 #
 [QM]
 reference = X2CHF
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = 6-31g 

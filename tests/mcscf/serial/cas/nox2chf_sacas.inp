@@ -11,7 +11,7 @@ geom:
 #
 [QM]
 reference = Complex X2CHF 
-job = MCSCF
+job = CI
 
 [SCF]
 field = Magnetic 0.0 0.0 -0.000004254382157328696258 

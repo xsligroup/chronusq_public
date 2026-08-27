@@ -16,7 +16,7 @@ geom:
 #
 [QM]
 reference = Real RHF
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = 6-31G(d) 

@@ -220,7 +220,7 @@ namespace ChronusQ {
     // if RT MR propagation add MR calculation
     if( jobType == JobType::RT ) {
         if( input.containsSection("MCSCF")) {
-            jobs.push_back(JobType::MR);
+            jobs.push_back(JobType::CI);
         }
     }
     jobs.push_back(jobType);
@@ -291,12 +291,6 @@ namespace ChronusQ {
     // cubegen for NEO.
     std::shared_ptr<CubeGen> pcube = nullptr;
     //TODDOAL: add logic to handle multiparticle cube generation
-    
-    
-
-
-
-    
 
     // Create the SingleSlater object
     if (doNEO) {
@@ -572,6 +566,9 @@ namespace ChronusQ {
           // }
           //rt->doPropagation();
 
+          // Gaurd for 4C RT as this is untested code
+          if(ssOptions.refOptions.nC == 4) CErr("Four Component Real Time NYI!");
+
           if (mcwfn){
           rt->intScheme.cubeOptsRTMS = mcwfn->cubeOptsMC;
           rt->intScheme.rtcubes = cubes;
@@ -659,18 +656,22 @@ namespace ChronusQ {
 #endif
         }
 
-        if ( elecJob == JobType::MR or elecJob == JobType::PT ) {
+        if ( elecJob == JobType::CI or elecJob == JobType::PT ) {
 
           EMPerturbation additionalPert; // in other places we might have an additional perturbation to mcscf 
 
-          if (input.containsSection("MCSCF") && input.containsSection("CI")){
+          if (input.containsSection("MCSCF") and input.containsSection("CI")){
             CErr("Sections for the new and old CI codes are specified. Please specify either [MCSCF] or [CI]!");
           }
 
-          if (input.containsSection("PERTURB") && input.containsSection("CI"))
-            CErr("Currently Perturb codes do not work with new CI codes.");
-          if (input.containsSection("PERTURB") && !input.containsSection("MCSCF"))
-            CErr("Perturb calculation is requested. Please specify the corresponding [MCSCF] input.");
+          if (input.containsSection("PERTURB") and input.containsSection("CI"))
+            CErr("[PERTURB] section does not work with the new [CI] section, please use the [MCSCF] section.");
+          if (input.containsSection("MRPT") and input.containsSection("MCSCF"))
+            CErr("[MRPT] section does not work with the old [MCSCF] section, please use the [CI] section.");
+          if (input.containsSection("PERTURB") and !input.containsSection("MCSCF"))
+            CErr("Only [PERTURB] section was specified, please also specify the [MCSCF] section.");
+          if (input.containsSection("MRPT") and !input.containsSection("CI"))
+            CErr("Only [MRPT] section was specified, please also specify the [CI] section.");
             
           if (input.containsSection("MCSCF")) {
             std::shared_ptr<MCSCFBase> mcscf= CQMCSCFOptions(output,input,ss,mcwfn,emPert,cube,doNEO,quantumSubsystems,quantumPairInteractions);
@@ -694,7 +695,7 @@ namespace ChronusQ {
                   input.containsData("CI/NACTELECB") or
                   input.containsData("CI/NACTORBA") or
                   input.containsData("CI/NACTORBB"))
-                  CErr("Cannot specify CI/NActOA, CI/NActOB, CI/NActEA or CI/NActEB for unrestricted DAS");
+                  CErr("Cannot specify CI/NActOA, CI/NActOB, CI/NActEA or CI/NActEB for unrestricted DAS.");
             }
             auto ci = CQCIOptions(output,input,ss,emPert,cube);
             ci->savFile = rstFile;

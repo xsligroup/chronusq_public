@@ -10,7 +10,7 @@ B	0.0000	0.0000	0.0000
 [QM]
 reference = 2cHF
 X2CTYPE=ONEE
-job = MCSCF
+job = CI
 
 [BASIS]
 basis = sto-3g
