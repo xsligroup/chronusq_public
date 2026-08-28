@@ -455,36 +455,6 @@ void SingleSlater<MatsT, IntsT>::ortho2aoMOs() {
 };   // SingleSlater<MatsT>::ortho2aoMOs
 
 template<typename MatsT, typename IntsT>
-std::vector<NRRotOptions> SingleSlater<MatsT,IntsT>::buildRotOpt(){
-
-    // Generate NRRotationOptions
-    std::vector<NRRotOptions> rotOpt;
-    size_t NB = this->nC*this->basisSet().nBasis;
-    if( this->nC == 1 and this->iCS ){
-      rotOpt.emplace_back();
-      rotOpt[0].spaceIndex = 0;
-      rotOpt[0].rotIndices = ssNRRotIndices(this->nOA, NB);
-    } else if( this->nC == 1 ) {
-      rotOpt.emplace_back();
-      rotOpt[0].spaceIndex = 0;
-      rotOpt[0].rotIndices = ssNRRotIndices(this->nOA, NB);
-      rotOpt.emplace_back();
-      rotOpt[1].spaceIndex = 1;
-      rotOpt[1].rotIndices = ssNRRotIndices(this->nOB, NB);
-    } else if( this->nC == 2 ){
-      rotOpt.emplace_back();
-      rotOpt[0].spaceIndex = 0;
-      rotOpt[0].rotIndices = ssNRRotIndices(this->nO, NB);
-    } else if( this->nC == 4 ){
-      size_t N = NB/2;
-      rotOpt.emplace_back();
-      rotOpt[0].spaceIndex = 0;
-      rotOpt[0].rotIndices = ssNRRotIndices(this->nO, N, N); // only rotate the positive energy orbitals
-    }
-    return rotOpt;
-}
-
-template<typename MatsT, typename IntsT>
 void SingleSlater<MatsT, IntsT>::initializeSCF() {
 
   this->moCoefficients.clear();
@@ -524,87 +494,6 @@ void SingleSlater<MatsT, IntsT>::initializeSCF() {
     }
   }
 }
-
-template<typename MatsT, typename IntsT>
-void SingleSlater<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
-
-  auto* fb = this->fockBuilder.get();
-  if (auto* neofb = dynamic_cast<NEOFockBuilder<MatsT, IntsT>*>(fb)) {
-    fb = neofb->getNonNEOUpstream();
-  }
-  bool iRO = (dynamic_cast<ROFock<MatsT, IntsT>*>(fb) != nullptr);
-
-  // Initialize properties
-  //if( not std::dynamic_pointer_cast<SkipSCF<MatsT>>(this->orbitalModifier) ) getNewOrbitals();
-  //this->computeProperties(pert);
-
-  // Setup MO reference vector
-  std::vector<std::reference_wrapper<cqmatrix::Matrix<MatsT>>> moRefs;
-  if( iRO ) {
-    moRefs.emplace_back(this->mo[0]);
-  } else {
-    for( auto& m : this->mo )
-      moRefs.emplace_back(m);
-  }
-
-  // Setup Eigenvalue vector
-  std::vector<double*> epsVec;
-  if( this->nC == 1 and not(iCS or iRO) ) {
-    epsVec = {this->eps1, this->eps2};
-  } else {
-    epsVec = {this->eps1};
-  }
-
-  // Run modify orbitals
-  this->orbitalModifier->runOrbitalModifier(pert, moRefs, epsVec);
-
-  // Orthogonalize MO's for NewtonRaphsonSCF and check Stability
-  if( std::dynamic_pointer_cast<NewtonRaphsonSCF<MatsT>>(this->orbitalModifier) ){
-    this->orthoAOMO();
-    if( this->scfControls.nrAlg == FULL_NR ){
-      bool converged = this->checkStability();
-      if( not converged ) {
-        this->orbitalModifier->runOrbitalModifier(pert, moRefs, epsVec);
-        this->orthoAOMO();
-        converged = this->checkStability();
-        if( not converged ) CErr("Newton-Raphson SCF failed to converge to a minimum");
-      }
-    }
-  }
-
-  this->ao2orthoFock();   // SCF Does not update the fockMatrixOrtho
-  this->MOFOCK();
-  saveCurrentState();
-
-#ifdef CQ_ENABLE_MPI
-
-  // Broadcast the updated MOs to all MPI processes
-  if( MPISize(comm) > 1 ) {
-
-      std::cerr  << "  *** Scattering the AO-MOs ***\n";
-      size_t Nmo = this->mo[0].nRows();
-      MPIBCast(this->mo[0].pointer(),Nmo*Nmo,0,comm);
-      if( nC == 1 and not iCS )
-        MPIBCast(this->mo[1].pointer(),Nmo*Nmo,0,comm);
-
-      std::cerr  << "  *** Scattering EPS ***\n";
-      MPIBCast(this->eps1,Nmo,0,comm);
-      if( nC == 1 and not iCS )
-        MPIBCast(this->eps2,Nmo,0,comm);
-
-      std::cerr  << "  *** Scattering FOCK ***\n";
-      size_t fockDim = fockMatrix->nRows();
-      for(MatsT *mat : fockMatrix->SZYXPointers())
-        MPIBCast(mat,fockDim*fockDim,0,comm);
-
-      std::cerr  << "  *** Scattering the 1PDM ***\n";
-      size_t denDim = this->onePDM->nRows();
-      for(auto p : this->onePDM->SZYXPointers())
-        MPIBCast(p,denDim*denDim,0,comm);
-    }
-
-#endif
-};   // SingleSlater<MatsT,IntsT> :: runOrbitalModifier
 
 /*
  *     Brief: Function to generate shared pointers to Fock Matrix for modify orbitals
@@ -940,8 +829,6 @@ SingleSlater<MatsT,IntsT>::convert1CSSToGHFSS(
 
   GHFss.mo[0] = motmp;
   GHFss.formCoreH(emPert, true);
-  // GHFss.buildOrbitalModifierOptions();
-  // GHFss.runSCF(emPert);
 
   return ptr;
 }

@@ -59,6 +59,13 @@ namespace ChronusQ {
     interFockBuilders.try_emplace(label);
     needsFullXCEnergyUpdate = true;
 
+    // Edit the printout for NEO SCF jobs to be electronic reference + NEO.
+    // For example: "C-GHF + NEO"
+    if (label == "E") {
+      this->refShortName_ = ss->refShortName_ + " + NEO";
+      this->refLongName_  = ss->refLongName_  + " + NEO";
+    }
+
   };
 
   template <typename MatsT, typename IntsT>
@@ -418,15 +425,6 @@ namespace ChronusQ {
     return gradient;
 
   };
-
-  template <typename MatsT, typename IntsT>
-  void MultiParticleSS<MatsT,IntsT>::buildOrbitalModifierOptions() {
-    
-    CErr("buildOrbitalModifierOptions not implemented for MultiParticleSS");
-
-  }
-
-
 
   template <typename MatsT, typename IntsT>
   void MultiParticleSS<MatsT,IntsT>::printSetup(std::ostream& out) {

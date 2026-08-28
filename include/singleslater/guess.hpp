@@ -33,6 +33,7 @@
 #include <wavefunction/base.hpp>
 #include <algorithm>
 #include <corehbuilder/x2c.hpp>
+#include <orbitalmodifiernew.hpp>
 
 namespace ChronusQ {
 
@@ -544,7 +545,6 @@ namespace ChronusQ {
       ss->scfControls.doIncFock = false;
       ss->scfControls.dampError = 1e-4;
       ss->scfControls.nKeep     = 8;
-      ss->buildOrbitalModifierOptions();
 
       ss->formCoreH(pert, false);
       aointsAtom->TPI->computeAOInts(basis, atom, pert,
@@ -552,7 +552,9 @@ namespace ChronusQ {
 
 
       ss->formGuess(pert,ssOptions);
-      ss->runSCF(pert);
+      ss->initializeSCF();
+      auto scf = buildConventionalSCF(ss->scfControls, *ss);
+      scf->run(pert);
 
       size_t NBbasis = basis.nBasis;
 
@@ -999,8 +1001,6 @@ namespace ChronusQ {
     // Use SAD guess for the guess SCF
     // Guessception...
     guessSS->scfControls.guess = SAD;
-    
-    guessSS->buildOrbitalModifierOptions();
     // Do X2C CoreH if needed
     if (guessSSOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF) {
       ChronusQ::compute_X2C_CoreH_Fock( mol, *guessBasis, guessAOInts, pert, guessSS, guessSSOptions);
@@ -1014,7 +1014,9 @@ namespace ChronusQ {
     
     // Let the SCF rip
     guessSS->formGuess(pert,guessSSOptions);
-    guessSS->runSCF(pert);
+    guessSS->initializeSCF();
+    auto scf = buildConventionalSCF(guessSS->scfControls, *guessSS);
+    scf->run(pert);
     
     // Extract 1PDM and project onto our own
     auto& guessDen = guessSS->onePDM;
@@ -1405,7 +1407,6 @@ namespace ChronusQ {
     classicalSS->printLevel = 1;
     classicalSS->scfControls.scfAlg = _CONVENTIONAL_SCF;
     classicalSS->scfControls.diisAlg =   CDIIS;
-    classicalSS->buildOrbitalModifierOptions();
 
     // Build X2C-NEO Classical guess
     if (ssOptions.hamiltonianOptions.x2cType != X2C_TYPE::OFF)
@@ -1423,7 +1424,9 @@ namespace ChronusQ {
     classicalSS->formCoreH(pert, false);
     classicalSS->formGuess(pert, classicalSSOptions);
     classicalSS->formFock(pert, false);
-    classicalSS->runSCF(pert);
+    classicalSS->initializeSCF();
+    auto scf = buildConventionalSCF(classicalSS->scfControls, *classicalSS);
+    scf->run(pert);
 
     std::cout << "\nClassical SCF Calculation Converged!" << std::endl;
     std::cout << "\nWill use this converged density as the guess density\n"  

@@ -467,8 +467,6 @@ namespace ChronusQ {
         applyToEach([&](SubSSPtr& ss){ ss->formEWDM(equil); });
       }
       // Functions for OrbitalModifier
-      virtual void runSCF(EMPerturbation&) override;
-      virtual void buildOrbitalModifierOptions() override;
       void printProperties() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM() override;
       virtual std::vector<cqmatrix::Matrix<MatsT>> getOnePDMOrtho() override;

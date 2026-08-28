@@ -144,10 +144,6 @@ namespace ChronusQ {
     // In essence, all derived classes should be able to:
     //   Form a Fock matrix with the ability to increment
     virtual void formFock(EMPerturbation &, bool increment = false, double xHFX = 1.) = 0;
-    // Function to build the orbitalModifier object which determines which
-    // algorithm is used
-    virtual void buildOrbitalModifierOptions() = 0;
-    virtual void runSCF(EMPerturbation&) = 0;
 
     //   Form an initial Guess (which populates the Fock, Density 
     //   and energy)

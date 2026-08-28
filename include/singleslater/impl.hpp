@@ -259,5 +259,3 @@ namespace ChronusQ {
 #include <singleslater/kohnsham/scf.hpp> // Newton-Raphson functions
 
 #include <singleslater/hartreefock/scf.hpp> // Newton-Raphson Functions
-
-#include <orbitalmodifier/impl.hpp> // OrbitalModifier Implementation headers

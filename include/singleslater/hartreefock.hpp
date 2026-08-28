@@ -116,7 +116,6 @@ namespace ChronusQ {
     //void getNRCoeffs(MatsT*);
     void computeFullNRStep(MatsT*);
     std::pair<double,MatsT*> getStab();
-    void buildOrbitalModifierOptions();
 
 
   }; // class HartreeFock

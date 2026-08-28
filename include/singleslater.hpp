@@ -31,7 +31,7 @@
 #include <matrix.hpp>
 #include <cubegen.hpp>
 #include <orthogonalization.hpp>
-#include <orbitalmodifier.hpp>
+#include <cqlinalg/matfunc.hpp>
 #include <functional>
 
 // Debug print triggered by Wavefunction
@@ -160,7 +160,6 @@ namespace ChronusQ {
     std::shared_ptr<FockBuilder<MatsT,IntsT>> fockBuilder;  ///< Builder for Fock
     std::shared_ptr<Orthogonalization<MatsT>> orthoSpinor;  ///< Orthogonalization functions for spinor basis
     std::shared_ptr<Orthogonalization<MatsT>> orthoAB;      ///< Orthogonalization functions alpha/beta basis
-    std::shared_ptr<OrbitalModifier<MatsT>> orbitalModifier;  ///< SCF/RT Abstraction Object
     
     std::shared_ptr<cqmatrix::Matrix<MatsT>> tau;      ///< tau matrix for traveling proton basis
     std::shared_ptr<cqmatrix::Matrix<MatsT>> tauOrtho; ///< orthonormal tau matrix for traveling proton basis
@@ -422,8 +421,6 @@ namespace ChronusQ {
     virtual void setOnePDMOrtho(cqmatrix::Matrix<MatsT>*);
     virtual void setOnePDMAO(cqmatrix::Matrix<MatsT>*);
     virtual std::vector<std::shared_ptr<Orthogonalization<MatsT>>> getOrtho();
-    virtual void runSCF(EMPerturbation&) override;
-    virtual std::vector<NRRotOptions> buildRotOpt();
 
     // Converts 1C SSbase into 2C GHF SSbase
     std::shared_ptr<SingleSlaterBase> convert1CSSToGHFSS(

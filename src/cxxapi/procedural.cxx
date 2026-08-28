@@ -303,16 +303,6 @@ namespace ChronusQ {
       ss->scfControls = scfControls;
       ssOptions = quantumSubsystems.front().ssOptions;
       
-
-      // TODOAL: in old NEO I think this only setups up the reference name printing, disable for now
-      //ss->buildOrbitalModifierOptions();
-
-      // TODOAL: This is a strange behavior in dev. Probably need a separate fix
-      // Currently printLevel in SCF section has no control over the actual printing,
-      // as the true printing is controlled by "printLevel((MPIRank(c) == 0) ? 2 : 0)" in the SingleSlaterBase constructor. 
-      // This next line is previouly set in buildOrbitalModifierOptions (no reason at all). Here we hackily do it here.
-      ss->scfControls.printLevel = ss->printLevel; 
-
       // TODOAL: handle MO swapping for MultiParticleSS
 
       // TODOAL: handle cube generation for MultiParticleSS
@@ -322,7 +312,6 @@ namespace ChronusQ {
       ssOptions = CQSingleSlaterOptions(output,input,mol,*basis);
       ssOptions.scfControls = scfControls;
       ss = ssOptions.buildSingleSlater(output,mol,*basis, aoints, aoints_options);
-      ss->buildOrbitalModifierOptions();
 
       // MO swapping
       HandleOrbitalSwaps(output, input, *ss, "");
@@ -512,34 +501,10 @@ namespace ChronusQ {
           }
           ss->formCoreH(emPert, true);
           //if(firstStep) ss->formGuess(guessSSOptions);
-          //ss->runSCF(emPert);
 
-          std::shared_ptr<OrbitalModifierNewBase> conventionalSCF = nullptr;
-          bool found = false;
-          #define CONSTRUCT_NEWSCF(_ssT,_MatsT,_IntsT)             \
-          if( not found ) try {                          \
-            conventionalSCF = \
-            std::make_shared<ConventionalSCFNew<_ssT,_MatsT,_IntsT>>(  \
-              ss->scfControls, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
-              ,MPI_COMM_WORLD) ;                                       \
-            found = true;                                \
-          } catch(...) { };
-
-          // Construct SCF object
-          CONSTRUCT_NEWSCF( MultiParticleSS, double, double     );
-          CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, double   );
-          CONSTRUCT_NEWSCF( MultiParticleSS, dcomplex, dcomplex );
-
-          CONSTRUCT_NEWSCF( HartreeFock, double, double     );
-          CONSTRUCT_NEWSCF( HartreeFock, dcomplex, double   );
-          CONSTRUCT_NEWSCF( HartreeFock, dcomplex, dcomplex );
-
-          CONSTRUCT_NEWSCF( KohnSham, double, double     );
-          CONSTRUCT_NEWSCF( KohnSham, dcomplex, double   );
-          CONSTRUCT_NEWSCF( KohnSham, dcomplex, dcomplex );
+          auto conventionalSCF = buildConventionalSCF(ss->scfControls, *ss);
 
           if(conventionalSCF!=nullptr){
-            std::cout<<"xsli test new SCF"<<std::endl;
             ss->formGuess(emPert, guessSSOptions);
             ss->initializeSCF();
             conventionalSCF->run(emPert);
@@ -557,58 +522,30 @@ namespace ChronusQ {
 
         // Run RT job
         if( elecJob == JobType::RT ) {
-          // Initialize core hamiltonian
-          // rt->formCoreH(emPert);
-          // Get correct time length
-          // if( !firstStep ) {
-          //   rt->intScheme.restoreStep = rt->curState.iStep;
-          //   rt->intScheme.tMax = rt->intScheme.tMax + rt->intScheme.nSteps*rt->intScheme.deltaT;
-          // }
-          //rt->doPropagation();
 
-          // Gaurd for 4C RT as this is untested code
+          // Guard for 4C RT as this is untested code
           if(ssOptions.refOptions.nC == 4) CErr("Four Component Real Time NYI!");
 
           if (mcwfn){
-          rt->intScheme.cubeOptsRTMS = mcwfn->cubeOptsMC;
-          rt->intScheme.rtcubes = cubes;
-          rt->run(firstStep, emPert);
+            // Multi-slater (MC) RT still uses the legacy RealTimeCI machinery
+            rt->intScheme.cubeOptsRTMS = mcwfn->cubeOptsMC;
+            rt->intScheme.rtcubes = cubes;
+            rt->run(firstStep, emPert);
           } else {
-          std::cout<<"xsli test new RT"<<std::endl;
+            // Single-slater RT is handled by the RealTimeSCF driver
 
-          std::shared_ptr<OrbitalModifierNewBase> realtimeSCF = nullptr;
-          bool found = false;
+            // Handle RT cube files
+            if (cube) {
+              tdSCFOptions.cubeOptsRT = ss->cubeOptsSS; 
+              tdSCFOptions.rtcubes = cubes;
+            }
 
-          // Handle RT cube files
-          if (cube) {
-            tdSCFOptions.cubeOptsRT = ss->cubeOptsSS; 
-            tdSCFOptions.rtcubes = cubes;
+            auto realtimeSCF = buildRealTimeSCF(tdSCFOptions, *tdPert, *ss);
+            if(realtimeSCF) {
+              realtimeSCF->initialize(0);
+              realtimeSCF->run(emPert);
+            }
           }
-
-          #define CONSTRUCT_NEWRT(_ssT,_MatsT,_IntsT)             \
-          if( not found ) try {                          \
-            realtimeSCF = \
-            std::make_shared<RealTimeSCF<_ssT,_MatsT,_IntsT>>(  \
-            tdSCFOptions, *tdPert, dynamic_cast< _ssT<_MatsT,_IntsT>& >(*ss)    \
-            ,MPI_COMM_WORLD) ;                                       \
-            found = true;                                \
-          } catch(...) { }
-
-          // Construct RT object
-          CONSTRUCT_NEWRT( MultiParticleSS, dcomplex, double   );
-          CONSTRUCT_NEWRT( MultiParticleSS, dcomplex, dcomplex );
-
-          CONSTRUCT_NEWRT( HartreeFock, dcomplex, double   );
-          CONSTRUCT_NEWRT( HartreeFock, dcomplex, dcomplex );
-
-          CONSTRUCT_NEWRT( KohnSham, dcomplex, double   );
-          CONSTRUCT_NEWRT( KohnSham, dcomplex, dcomplex );
-
-          if(realtimeSCF!=nullptr) {
-            realtimeSCF->initialize(0);
-            realtimeSCF->run(emPert);
-          }
-        }
         }
 
 

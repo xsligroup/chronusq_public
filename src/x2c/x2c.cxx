@@ -37,6 +37,7 @@
 #include <cqlinalg/svd.hpp>
 #include <cqlinalg/matfunc.hpp>
 #include <basisset/remove_linear_dep_shells.hpp>
+#include <orbitalmodifiernew.hpp>
 
 // #define DebugX2Cprint
 // #define DebugX2Cprint2 
@@ -1772,8 +1773,9 @@ namespace ChronusQ {
       fourCompSS.aoints_->options_.x2cType = X2C_TYPE::FOCK;
       // For Fock X2C, solve four-component SCF
       fourCompSS.formGuess(emPert, fourCoptions);
-      fourCompSS.buildOrbitalModifierOptions();
-      fourCompSS.runSCF(emPert);
+      fourCompSS.initializeSCF();
+      auto scf = buildConventionalSCF(fourCompSS.scfControls, fourCompSS);
+      scf->run(emPert);
       fourCompSS.saveCurrentState(true, "X2C/");
     }
 

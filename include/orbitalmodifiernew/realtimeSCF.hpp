@@ -32,6 +32,7 @@
  */
 #include <orbitalmodifiernew.hpp>
 #include <singleslater/multiparticless.hpp>
+#include <realtime/realtimesingleslater/fields.hpp>
 
 namespace ChronusQ {
 

@@ -33,6 +33,7 @@
 
 #include <cqlinalg.hpp>
 #include <cqlinalg/svd.hpp>
+#include <cqlinalg/matfunc.hpp>
 #include <cqlinalg/blasutil.hpp>
 #include <util/matout.hpp>
 #include <util/threads.hpp>

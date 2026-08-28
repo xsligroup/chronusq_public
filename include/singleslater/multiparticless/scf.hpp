@@ -238,11 +238,6 @@ namespace ChronusQ {
   };
 
   template<typename MatsT, typename IntsT>
-  void MultiParticleSS<MatsT, IntsT>::runSCF(EMPerturbation& pert) {
-    CErr("runSCF not implemented for MultiParticleSS");
-  };
-
-  template<typename MatsT, typename IntsT>
   bool MultiParticleSS<MatsT, IntsT>::secondSCF() {
     if(!this->scfControls.NEOStepwiseOpt) return false;
 

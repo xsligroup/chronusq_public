@@ -759,7 +759,6 @@ namespace ChronusQ {
 
 
     // SCF Functions
-    void buildOrbitalModifierOptions();
     void computeFullNRStep(MatsT*);
     std::pair<double,MatsT*> getStab();
 

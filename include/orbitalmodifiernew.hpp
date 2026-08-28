@@ -24,6 +24,7 @@
 #pragma once
 
 #include <singleslater.hpp>
+#include <singleslater/multiparticless.hpp>
 
 /*
  *     Brief: This header defines the interface between OrbitalModifier Objects and
@@ -116,3 +117,95 @@ class OrbitalModifierNew: public OrbitalModifierNewBase {
 #include <orbitalmodifiernew/impl.hpp>
 //#include <orbitalmodifiernew/newtonRaphsonSCF.hpp>
 #include <orbitalmodifiernew/realtimeSCF.hpp>
+
+namespace ChronusQ {
+
+/**
+ *  \brief Construct a ConventionalSCFNew driver for the concrete
+ *  single-slater type of \p ss (MultiParticleSS, HartreeFock, or KohnSham).
+ *
+ *  \param [in] sC  SCF controls governing the run
+ *  \param [in] ss  Reference single-slater object
+ *  \returns A shared_ptr to the SCF driver, or nullptr if \p ss is not a
+ *           supported concrete type.
+ */
+template <typename MatsT, typename IntsT>
+std::shared_ptr<OrbitalModifierNewBase> buildConventionalSCF(
+    SCFControls sC, SingleSlater<MatsT, IntsT> &ss) {
+
+  sC.printLevel    = ss.printLevel;
+  sC.refLongName_  = ss.refLongName_;
+  sC.refShortName_ = ss.refShortName_;
+
+  if (auto *p = dynamic_cast<MultiParticleSS<MatsT, IntsT> *>(&ss))
+    return std::make_shared<ConventionalSCFNew<MultiParticleSS, MatsT, IntsT>>(
+        sC, *p, ss.comm);
+  if (auto *p = dynamic_cast<HartreeFock<MatsT, IntsT> *>(&ss))
+    return std::make_shared<ConventionalSCFNew<HartreeFock, MatsT, IntsT>>(
+        sC, *p, ss.comm);
+  if (auto *p = dynamic_cast<KohnSham<MatsT, IntsT> *>(&ss))
+    return std::make_shared<ConventionalSCFNew<KohnSham, MatsT, IntsT>>(
+        sC, *p, ss.comm);
+
+  return nullptr;
+}
+
+/**
+ *  \brief Type-erased overload of buildConventionalSCF that dispatches over
+ *  the supported MatsT/IntsT instantiations.
+ *
+ *  \returns A shared_ptr to the SCF driver, or nullptr if \p ss is not a
+ *           supported concrete type.
+ */
+inline std::shared_ptr<OrbitalModifierNewBase> buildConventionalSCF(
+    SCFControls sC, SingleSlaterBase &ss) {
+
+  if (auto *p = dynamic_cast<SingleSlater<double, double> *>(&ss))
+    return buildConventionalSCF(sC, *p);
+  if (auto *p = dynamic_cast<SingleSlater<dcomplex, double> *>(&ss))
+    return buildConventionalSCF(sC, *p);
+  if (auto *p = dynamic_cast<SingleSlater<dcomplex, dcomplex> *>(&ss))
+    return buildConventionalSCF(sC, *p);
+
+  return nullptr;
+}
+
+/**
+ *  \brief Construct a RealTimeSCF driver for the concrete single-slater
+ *  type of \p ss (MultiParticleSS, HartreeFock, or KohnSham).
+ *
+ *  Real-time propagation evolves a complex density, so only the dcomplex
+ *  MatsT instantiations are supported.
+ *
+ *  \param [in] tdSCOptions  TD-SCF controls governing the run
+ *  \param [in] tdPert       TD field perturbation
+ *  \param [in] ss           Reference single-slater object
+ *  \returns A shared_ptr to the RT driver, or nullptr if \p ss is not a
+ *           supported concrete type.
+ */
+inline std::shared_ptr<OrbitalModifierNewBase> buildRealTimeSCF(
+    TDSCFOptions &tdSCOptions, TDEMPerturbation &tdPert, SingleSlaterBase &ss) {
+
+  if (auto *p = dynamic_cast<MultiParticleSS<dcomplex, double> *>(&ss))
+    return std::make_shared<RealTimeSCF<MultiParticleSS, dcomplex, double>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+  if (auto *p = dynamic_cast<MultiParticleSS<dcomplex, dcomplex> *>(&ss))
+    return std::make_shared<RealTimeSCF<MultiParticleSS, dcomplex, dcomplex>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+  if (auto *p = dynamic_cast<HartreeFock<dcomplex, double> *>(&ss))
+    return std::make_shared<RealTimeSCF<HartreeFock, dcomplex, double>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+  if (auto *p = dynamic_cast<HartreeFock<dcomplex, dcomplex> *>(&ss))
+    return std::make_shared<RealTimeSCF<HartreeFock, dcomplex, dcomplex>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+  if (auto *p = dynamic_cast<KohnSham<dcomplex, double> *>(&ss))
+    return std::make_shared<RealTimeSCF<KohnSham, dcomplex, double>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+  if (auto *p = dynamic_cast<KohnSham<dcomplex, dcomplex> *>(&ss))
+    return std::make_shared<RealTimeSCF<KohnSham, dcomplex, dcomplex>>(
+        tdSCOptions, tdPert, *p, ss.comm);
+
+  return nullptr;
+}
+
+};   // Namespace ChronusQ

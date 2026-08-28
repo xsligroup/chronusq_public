@@ -29,6 +29,7 @@
 #include <grid/integrator.hpp>
 #include <singleslater.hpp>
 #include <particleintegrals/twopints/incore4indextpi.hpp>
+#include <orbitalmodifiernew.hpp>
 
 namespace ChronusQ {
 
@@ -92,7 +93,9 @@ namespace ChronusQ {
     guessSSOptions.hamiltonianOptions.OneESpinOrbit = false;
  
     curr_->formGuess(emPert, guessSSOptions);
-    curr_->runSCF(emPert);
+    curr_->initializeSCF();
+    auto scf = buildConventionalSCF(curr_->scfControls, *curr_);
+    scf->run(emPert);
  
     return curr_->getEnergySummary();
 
