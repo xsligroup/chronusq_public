@@ -76,7 +76,7 @@ namespace ChronusQ {
     out << "  <S^2> = " << std::setw(10) << std::right 
                        << this->SSq << std::endl;
     // Print the eigenvalues of the spin operator S^2 
-    out << "  spin quantum number = " << std::setw(10) << std::right << this->SQuantNum << "\n"<< std::endl;
+    out << "  Spin quantum number = " << std::setw(10) << std::right << this->SQuantNum << "\n"<< std::endl;
 
     if (this->nC == 4) {
       out << "\n  4C Spin Decomposition (LL/SS):" << std::endl;

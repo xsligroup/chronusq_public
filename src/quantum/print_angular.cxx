@@ -23,7 +23,7 @@ namespace ChronusQ {
     out << "  <Ly> = " << std::setw(10) << LExpect[1] << std::endl;
     out << "  <Lz> = " << std::setw(10) << LExpect[2] << std::endl;
     out << "  <L^2> = " << std::setw(10) << LSq << std::endl;
-    out << "  orbital angular momentum quantum number (L) = " << std::setw(10) << LQuantNum << std::endl;
+    out << "  Orbital quantum number = " << std::setw(10) << LQuantNum << std::endl;
     out << std::endl;
 
     out << "  <SL> = " << std::setw(9) << SL << std::endl;
@@ -35,7 +35,7 @@ namespace ChronusQ {
     out << "  <Jy> = " << std::setw(10) << JExpect[1] << std::endl;
     out << "  <Jz> = " << std::setw(10) << JExpect[2] << std::endl;
     out << "  <J^2> = " << std::setw(10) << JSq << std::endl;
-    out << "  total angular momentum quantum number (J) = " << std::setw(10) << JQuantNum << std::endl;
+    out << "  Total angular momentum quantum number = " << std::setw(10) << JQuantNum << std::endl;
     out << std::endl;
 
     if (withBanner)

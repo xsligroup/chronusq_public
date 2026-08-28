@@ -334,12 +334,12 @@ void MOIntsTransformer<MatsT,IntsT>::directTransformTPI(EMPerturbation & pert,
   bool spinFree = HOp.SpinFree;
   auto off_sizes = parseMOType(moType);
   if ( !spinFree ) {
-    std::cout << "  2e-INT type: Spin-Free Relativistic ..." << std::endl;
+    std::cout << "  2e-INT type: Spin-Dependent Relativistic ..." << std::endl;
     directTransformTPIBatch(pert, MOTPI, off_sizes); 
   } else {
     if (HOp.Gaunt or HOp.Gauge) {
       CErr("Spin-Free Direct AO->MO Transformation for Gaunt or Gauge is unavailable!");}
-    std::cout << "  2e-INT type: Spin-Dependent Relativistic ..." << std::endl;
+    std::cout << "  2e-INT type: Spin-Free Relativistic ..." << std::endl;
     directTransformScalarTPIBatch(pert, MOTPI, off_sizes);
   }
   std::cout << BannerTop << std::endl;

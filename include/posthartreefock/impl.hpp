@@ -159,46 +159,16 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
     auto & corrS = this->corrSpace;
     savFile.safeWriteData("POSTHF/ORB_INDEX", & (corrS.orbIndices[0]),{corrS.nMO});
 
-    if (this->SExpectState.size() != NS || this->LExpectState.size() != NS || this->JExpectState.size() != NS) {
-      this->SExpectState.assign(NS, {0., 0., 0.});
-      this->SSqState.assign(NS, 0.);
-      this->LExpectState.assign(NS, {0., 0., 0.});
-      this->LSqState.assign(NS, 0.);
-      this->JExpectState.assign(NS, {0., 0., 0.});
-      this->JSqState.assign(NS, 0.);
-      this->SLState.assign(NS, 0.);
+    // Save Spin and Angular Momentums
+    if ( SpinAndAngularAnalysis) {
+      savFile.safeWriteData("POSTHF/S_EXPECT", &this->SExpectState[0][0], {NS, 3});
+      savFile.safeWriteData("POSTHF/S_SQUARED", this->SSqState.data(), {NS});
+      savFile.safeWriteData("POSTHF/L_EXPECT", &this->LExpectState[0][0], {NS, 3});
+      savFile.safeWriteData("POSTHF/L_SQUARED", this->LSqState.data(), {NS});
+      savFile.safeWriteData("POSTHF/SL", this->SLState.data(), {NS});
+      savFile.safeWriteData("POSTHF/J_EXPECT", &this->JExpectState[0][0], {NS, 3});
+      savFile.safeWriteData("POSTHF/J_SQUARED", this->JSqState.data(), {NS});
     }
-
-    // If the properties were already computed during analysis, reuse the stored values.
-    // Otherwise compute them once and keep them in state storage for later saving.
-    auto & ref = *this->reference();
-    for (auto i = 0ul; i < NS; ++i) {
-      if (this->SExpectState[i] == cart_t{0.,0.,0.} && this->LExpectState[i] == cart_t{0.,0.,0.} && this->JExpectState[i] == cart_t{0.,0.,0.} && this->SSqState[i] == 0. && this->LSqState[i] == 0. && this->JSqState[i] == 0. && this->SLState[i] == 0.) {
-        auto tmpOneRDM = std::make_shared<cqmatrix::Matrix<MatsT>>(corrS.nCorrO);
-        this->computeTDM(i, i, tmpOneRDM);
-        this->rdm2pdm(*tmpOneRDM);
-
-        auto twoRDM = this->computeFull2RDM(i);
-        const size_t activeEndOff = corrS.nNegMO + corrS.nFCore + corrS.nInact + corrS.nCorrO;
-        ref.computeSpinAndAngularProperties(twoRDM.get(), activeEndOff);
-
-        this->SExpectState[i] = ref.SExpect;
-        this->SSqState[i] = ref.SSq;
-        this->LExpectState[i] = ref.LExpect;
-        this->LSqState[i] = ref.LSq;
-        this->JExpectState[i] = ref.JExpect;
-        this->JSqState[i] = ref.JSq;
-        this->SLState[i] = ref.SL;
-      }
-    }
-
-    savFile.safeWriteData("POSTHF/S_EXPECT", &this->SExpectState[0][0], {NS, 3});
-    savFile.safeWriteData("POSTHF/S_SQUARED", this->SSqState.data(), {NS});
-    savFile.safeWriteData("POSTHF/L_EXPECT", &this->LExpectState[0][0], {NS, 3});
-    savFile.safeWriteData("POSTHF/L_SQUARED", this->LSqState.data(), {NS});
-    savFile.safeWriteData("POSTHF/SL", this->SLState.data(), {NS});
-    savFile.safeWriteData("POSTHF/J_EXPECT", &this->JExpectState[0][0], {NS, 3});
-    savFile.safeWriteData("POSTHF/J_SQUARED", this->JSqState.data(), {NS});
 
     // Save oscillator strength
     if(osc_str) {
