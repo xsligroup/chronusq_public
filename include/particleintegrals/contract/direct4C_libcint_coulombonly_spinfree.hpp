@@ -573,7 +573,7 @@ namespace ChronusQ {
     /*                                        */
     /******************************************/
     
-    if( matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLSS ) {
+    if( matList[0].contType == TWOBODY_CONTRACTION_TYPE::LLLL ) {
 
  
 #ifdef _REPORT_INTEGRAL_TIMINGS
