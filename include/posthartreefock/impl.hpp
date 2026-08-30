@@ -159,8 +159,8 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
     auto & corrS = this->corrSpace;
     savFile.safeWriteData("POSTHF/ORB_INDEX", & (corrS.orbIndices[0]),{corrS.nMO});
 
-    // Save Spin and Angular Momentums
-    if ( SpinAndAngularAnalysis) {
+    // Spin/angular expectation values are only allocated if spinAndAngularAnalysis() has run
+    if (this->SExpectState.size() == NS) {
       savFile.safeWriteData("POSTHF/S_EXPECT", &this->SExpectState[0][0], {NS, 3});
       savFile.safeWriteData("POSTHF/S_SQUARED", this->SSqState.data(), {NS});
       savFile.safeWriteData("POSTHF/L_EXPECT", &this->LExpectState[0][0], {NS, 3});
@@ -170,9 +170,8 @@ void PostHartreeFock<MatsT,IntsT>::saveCurrentStates() {
       savFile.safeWriteData("POSTHF/J_SQUARED", this->JSqState.data(), {NS});
     }
 
-    // Save oscillator strength
     if(osc_str) {
-      savFile.safeWriteData("POSTHF/OSC_STRENGTH", osc_str_array.data(), {NosS1, NS}); }
+      savFile.safeWriteData("POSTHF/OSC_STRENGTH", osc_str_array.data(), {NosS1, NS - NosS1}); }
   }  
 
 } // PostHartreeFock<T>::saveCuurentStates

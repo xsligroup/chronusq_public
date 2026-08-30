@@ -228,7 +228,7 @@ void ConfigurationInteraction<MatsT, IntsT>::run(EMPerturbation & pert) {
     "\n" << "     Oscillator Strength Order: " << this->osc_str_order <<
     "\n" << BannerTop << std::endl;
     auto &ref = *this->reference();
-    this->osc_str_array.reserve(this->NosS1*this->NStates);
+    this->osc_str_array.reserve(this->NosS1 * (this->NStates - this->NosS1));
     for (size_t s1 = 0ul; s1 < this->NosS1; s1++)
     for (size_t s2 = this->NosS1; s2 < this->NStates; s2++) {
       if (this->osc_str_order == 0 && ref.nC < 4) {

@@ -122,21 +122,6 @@ public:
   void alloc() {
     this->StateEnergy.clear();
     this->StateEnergy.resize(this->NStates, 0.);
-
-    this->SExpectState.clear();
-    this->SExpectState.resize(this->NStates, {0., 0., 0.});
-    this->SSqState.clear();
-    this->SSqState.resize(this->NStates, 0.);
-    this->LExpectState.clear();
-    this->LExpectState.resize(this->NStates, {0., 0., 0.});
-    this->LSqState.clear();
-    this->LSqState.resize(this->NStates, 0.);
-    this->JExpectState.clear();
-    this->JExpectState.resize(this->NStates, {0., 0., 0.});
-    this->JSqState.clear();
-    this->JSqState.resize(this->NStates, 0.);
-    this->SLState.clear();
-    this->SLState.resize(this->NStates, 0.);
   }
 
   void dealloc () { }

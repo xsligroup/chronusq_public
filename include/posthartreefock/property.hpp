@@ -241,6 +241,15 @@ namespace ChronusQ {
 
     // Transform the selected state 1RDM back to AO space bc computeSpinAndAngularProperties expects AO basis
     ref_->computeSpinAndAngularProperties(twoRDM.get(), activeEndOff); 
+
+    this->SExpectState[i] = ref_->SExpect;
+    this->SSqState[i] = ref_->SSq;
+    this->LExpectState[i] = ref_->LExpect;
+    this->LSqState[i] = ref_->LSq;
+    this->JExpectState[i] = ref_->JExpect;
+    this->JSqState[i] = ref_->JSq;
+    this->SLState[i] = ref_->SL;
+
     ref_->printSpin(std::cout, false);
     ref_->printAngularProperties(std::cout, false);
 
@@ -248,9 +257,23 @@ namespace ChronusQ {
 
   template <typename MatsT, typename IntsT>
   void PostHartreeFock<MatsT,IntsT>::spinAndAngularAnalysis() {
+  
+    this->SExpectState.clear();
+    this->SExpectState.resize(this->NStates, {0., 0., 0.});
+    this->SSqState.clear();
+    this->SSqState.resize(this->NStates, 0.);
+    this->LExpectState.clear();
+    this->LExpectState.resize(this->NStates, {0., 0., 0.});
+    this->LSqState.clear();
+    this->LSqState.resize(this->NStates, 0.);
+    this->JExpectState.clear();
+    this->JExpectState.resize(this->NStates, {0., 0., 0.});
+    this->JSqState.clear();
+    this->JSqState.resize(this->NStates, 0.);
+    this->SLState.clear();
+    this->SLState.resize(this->NStates, 0.);
 
     for (auto i = 0ul; i < this->NStates; i++) {
-
       PostHartreeFock::spinAndAngularAnalysis(i);
 
     }
