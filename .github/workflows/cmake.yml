@@ -115,6 +115,8 @@ jobs:
             export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
             export UCX_TLS=sm,self
             export OMP_NUM_THREADS=1
+            export PRTE_MCA_rmaps_default_mapping_policy="package:PE=2"
+            export PRTE_MCA_hwloc_default_binding_policy="core"
             rc=0
             echo "--- MPI tests ($MPI_TEST_JOBS threads) ---"
             ctest -R "_MPI" -E "GPLHR" --output-on-failure --parallel "$MPI_TEST_JOBS" || rc=1
