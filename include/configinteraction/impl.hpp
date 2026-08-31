@@ -310,7 +310,8 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
   auto durationBuildCat = tock(buildCat);
   // std::cout << "Construct Categorical Space Done: " << durationBuildCat << " s"<<std::endl;
   // std::cout << "Total Number of Categories = "<<newCategoricalSpace->nCategories()<<std::endl;
-  std::cout << "Total Number of Determinants = "<<newCategoricalSpace->nDeterminants()<<std::endl;
+  size_t nDets = newCategoricalSpace->nDeterminants();
+  std::cout << "Total Number of Determinants = " << nDets <<std::endl;
 
   if (ciSettings.SparseDavidson and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DEFAULT) {
     ciSettings.ciAlg = CIDiagonalizationAlgorithm::CI_DAVIDSON;
@@ -319,7 +320,7 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
 
   // Set CI_DEFAULT to CI_FULL_MATRIX if < 1e3 otherwise CI_DAVIDSON
   if (ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DEFAULT) {
-    if (newCategoricalSpace->nDeterminants() < 1e3) {
+    if (nDets < 1e3) {
       ciSettings.ciAlg = CIDiagonalizationAlgorithm::CI_FULL_MATRIX;
       std::cout << "ciAlg Default Set to Full Matrix Based on Number of Determinants." << std::endl;
     } else {
@@ -330,26 +331,32 @@ void ConfigurationInteraction<MatsT, IntsT>::initialization() {
 
   // Warning for large Fullmatrix or small Davidson 
   // Fullmatrix and more than 100,000 determinants (80 GB for a double)
-  if (newCategoricalSpace->nDeterminants() > 1e5 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_FULL_MATRIX) {
+  if (nDets > 1e5 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_FULL_MATRIX) {
     std::cout << "WARNING: Solving a Large CI Problem with FullMatrix Is Memory Intensive, Consider Using Davidson." << std::endl;
     }
 
   // Davidson with fewer than 1,000 determinants
-  if (newCategoricalSpace->nDeterminants() < 1e3 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DAVIDSON) {
-    std::cout << "WARNING: Solving a Small CI Problem with Davidson Can Be Slower than Using FullMatrix." << std::endl;
+  if (nDets < 1e3 and ciSettings.ciAlg == CIDiagonalizationAlgorithm::CI_DAVIDSON) {
+    std::cout << "WARNING: Solving a Small CI Problem with Davidson Can Be Slower than Using FullMatrix. Please consider using FullMatrix instead!" << 
+      std::endl;
+    if ( ciSettings.nDavidsonGuess * this->NStates > nDets ) {
+      ciSettings.nDavidsonGuess = ( nDets / this->NStates );
+      std::cout << "WARNING: Changing Number of Davidson Guess Vectors per roots to: " << ciSettings.nDavidsonGuess << 
+        std::endl;
     }
+  }
 
   // Check and modify NStates to Ndets if NStates > Ndets
-  if (this->NStates > newCategoricalSpace->nDeterminants()) {
-    this->NStates = newCategoricalSpace->nDeterminants();
+  if (this->NStates > nDets) {
+    this->NStates = nDets;
     std::cout << "WARNING: Requested Number of States > NDeterminants, Modifying NStates to NDeterminants!" 
       << "\nNew NRoots = " << this->NStates << "\n" << std::endl;
   }
 
   // Check Number of Threads:
   size_t nThreads = GetNumThreads();
-  if (nThreads > newCategoricalSpace->nDeterminants()) {
-    SetNumThreads(newCategoricalSpace->nDeterminants());
+  if (nThreads > nDets) {
+    SetNumThreads(nDets);
     std::cout << "WARNING: Number of Threads > NDeterminants, Set Threads to -> " << GetNumThreads() <<
       std::endl;
   }
