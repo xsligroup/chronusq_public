@@ -23,8 +23,6 @@
  */
 #pragma once
 
-#include <fockbuilder/neofock.hpp>
-
 #include <particleintegrals/twopints/incore4indextpi.hpp>
 #include <particleintegrals/twopints/gtodirecttpi.hpp>
 #include <particleintegrals/gradints/direct.hpp>

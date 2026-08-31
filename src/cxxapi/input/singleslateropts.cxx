@@ -41,6 +41,7 @@
 #include <particleintegrals/twopints/impl.hpp>
 #include <particleintegrals/twopints/incore4indexreleri.hpp>
 #include <particleintegrals/twopints/gtodirectreleri.hpp>
+#include <ksrefs.hpp>
 
 #include <singleslater/multiparticless.hpp>
 
@@ -142,6 +143,42 @@ namespace ChronusQ {
     return CQInvalidKeywords(allowedKeywords, inputSection);
   }
 
+  // Kohn-Sham Keywords
+  const std::vector<std::string> KSRefs {
+    "SLATER",
+    "B88",
+    "LSDA",
+    "SVWN5",
+    "BLYP",
+    "PBEXPBEC",
+    "PBE",
+    "B3LYP",
+    "B3PW91",
+    "PBE0",
+    "BHANDHLYP",
+    "BHANDH",
+    "CAMB3LYP",
+    "HSE06",
+    "LRCWPBE",
+    "LCWPBE",
+    "WB97",
+    "WB97X",
+    "LDA",
+    "PW91",
+    //Gets definition of  Custom Functional from [GAUXC] section of input
+    "CUSTOM"
+  };
+
+  const std::vector<std::string> EPCRefs {
+    // CQ allowed EPC functional
+    "EPC17",
+    "EPC19",
+    // Gauxc allowed EPC functional
+    "EPC17_1",
+    "EPC17_2",
+    "EPC18_1",
+    "EPC18_2"
+  };
   /**
    * \brief Parse the SingleSlater Referece information using
    * the input file.
@@ -163,48 +200,9 @@ namespace ChronusQ {
     else if( tokens.size() == 2 ) ref.RCflag = tokens[0];
     else CErr("QM.REFERENCE Field not valid",out);
 
-
-    // Kohn-Sham Keywords
-    std::vector<std::string> KSRefs {
-      "SLATER", 
-      "B88",
-      "LSDA",
-      "SVWN5",
-      "BLYP",
-      "PBEXPBEC",
-      "PBE",
-      "B3LYP",
-      "B3PW91",
-      "PBE0",
-      "BHANDHLYP",
-      "BHANDH",
-      "CAMB3LYP",
-      "HSE06",
-      "LRCWPBE",
-      "LCWPBE",
-      "WB97",
-      "WB97X",
-      "LDA",
-      "PW91",
-      //Gets definition of  Custom Functional from [GAUXC] section of input
-      "CUSTOM"
-    };
-
-    std::vector<std::string> EPCRefs {
-      // CQ allowed EPC functional
-      "EPC17",
-      "EPC19",
-      // Gauxc allowed EPC functional
-      "EPC17_1",
-      "EPC17_2",
-      "EPC18_1",
-      "EPC18_2"
-    };
-
-    KSRefs.insert(KSRefs.begin(), EPCRefs.begin(), EPCRefs.end());
-
     // All reference keywords
     std::vector<std::string> rawRefs(KSRefs);
+    rawRefs.insert(rawRefs.begin(), EPCRefs.begin(), EPCRefs.end());
     rawRefs.insert(rawRefs.begin(),"HF");
 
     // Construct R/U/RO/G/X2C/4C reference keywords
@@ -270,7 +268,7 @@ namespace ChronusQ {
     }
     // Handle KS related queries
     ref.isKSRef = 
-      std::find(KSRefs.begin(),KSRefs.end(),refString) != KSRefs.end();
+      std::find(rawRefs.begin(),rawRefs.end(),refString) != rawRefs.end() and refString != "HF";
 
     if( ref.isKSRef )
       ref.funcName = refString;

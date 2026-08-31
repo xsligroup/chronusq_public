@@ -24,6 +24,7 @@
 #pragma once
 
 #include <chronusq_sys.hpp>
+#include <regex>
 
 namespace ChronusQ {
 
@@ -87,14 +88,20 @@ namespace ChronusQ {
     InputMap dict_;
     ///< Input data fields partitioned by section headings
 
+    //Required Job Input:
+    bool parseFreeCQInputJob(std::string&);
+    bool parseFreeCQInputRef(std::string&);
+    bool parseFreeCQInputBas(std::string&);
+    //Additional input options:
     void parseFreeCQInput(std::string&);
     void parseFreeCQInputNEO(std::string&);
-    void parseFreeCQInputElectron(std::string&);
+    //void parseFreeCQInputElectron(std::string&);
     void parseFreeCQInputSCF(std::string&);
-    void parseFreeCQInputRT(std::string&);
+    void parseFreeCQInputRT(std::string&, const std::regex &freeCQInputRT);
     void parseFreeCQInputField(std::string&);
     void parseFreeCQInputSSGuess(std::string&);
-    void parseFreeCQInputCI(std::string&);
+    void parseFreeCQInputCI(std::string&, const std::regex &freeCQInputCI);
+    void parseFreeCQInputCC(std::string&, const std::regex &freeCQInputCC);
 
 
 

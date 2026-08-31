@@ -23,10 +23,13 @@
  */
 #include <cxxapi/input.hpp>
 #include <cerr.hpp>
+#include <cmath>
 #include <algorithm>
 #include <cctype>
 #include <regex>
+#include <string>
 #include <orbitalmodifieroptions.hpp>
+#include <ksrefs.hpp>
 
 namespace ChronusQ {
 
@@ -67,29 +70,56 @@ namespace ChronusQ {
     return out.str();
   }
 
+  std::string escapeRegEx(const std::string &s) {                                 
+    static const std::regex metacharacters(R"([\.\^\$\+\(\)\[\]\{\}\|\?\*])");       
+    return std::regex_replace(s, metacharacters, "\\$&");                         
+  }
+  
+  std::string expandSciNote(std::string value) {
+    std::regex del("D|E");
+    std::sregex_token_iterator it(value.begin(), value.end(), del, -1);
+    std::sregex_token_iterator end;
+    
+    std::vector<std::string> arr = {"0","0"};
+    int count =0;
+    while (it != end){
+      if (count > 1) CErr("Sci. Notation " + value + " NOT converted properly.");
+      arr[count] = std::string(*it);
+      ++it;
+      ++count;
+    }
+
+    double number = std::stod(arr[0]) * std::pow(10,std::stod(arr[1]));
+    
+    return doubleToString(number);
+  }//expandSciNote
 
   void CQInputFile::parseFreeCQInput (std::string &line){
 
-    /********************************************************************************/
-    /* CQ Free Format Input                                                         */
-    /* example, CQ= HF/STO-3G NEO(EPC17/PROT-BP4-D) SCF(accuracy=1.e-6)             */
-    /* example, ChronuQ: X2C-HF/CD-6-31G RT(time=10fs, stepsize = 1as)              */
-    /* example, ChronuQ= 4C-HF/ano-rcc hamiltonian(DCB, scalar, atomic)             */
-    /********************************************************************************/
-//    auto const freeCQInput = std::regex("CQ[[:blank:]]*=|CQ[[:blank:]]*:|CHRONUSQ[[:blank:]]*=|CHRONUSQ[[:blank:]]*:",std::regex_constants::icase);
-//    if(!std::regex_search(line, freeCQInput)) return;
-//    std::cout<<"xsli test CQ Input"<<std::endl;
-//    line = std::regex_replace(line, freeCQInput, "");
-
-    // Parse NEO Section
-    parseFreeCQInputNEO(line);
-    parseFreeCQInputElectron(line);
+    ////////////////////////////////////////////////////////////////////////
+    // CQ Free Format Input                                               //
+    // example, CQ= HF/STO-3G SCF(accuracy=1.e-6)                         //
+    // example, ChronuQ: X2C-HF/CD-6-31G RT(time=10fs, stepsize = 1as)    //
+    // example, ChronuQ= 4C-HF/ano-rcc hamiltonian(DCB, scalar, atomic)   //
+    ////////////////////////////////////////////////////////////////////////
+    //Double check identifier is not used (should be done already in parser.cxx but...
+    auto const freeCQInput = std::regex("^\\?|CQ[[:blank:]]*=|CQ[[:blank:]]*:|CHRONUSQ[[:blank:]]*=|CHRONUSQ[[:blank:]]*:",std::regex_constants::icase);
+    line = std::regex_replace(line, freeCQInput, "");
+      
+    //Exxtra Options:
     parseFreeCQInputSCF(line);
     parseFreeCQInputSSGuess(line);
-    parseFreeCQInputRT(line);
     parseFreeCQInputField(line);
-    parseFreeCQInputCI(line);
-
+    parseFreeCQInputNEO(line);
+    //parseFreeCQInputMisc(line);
+    
+    //Requirements for basic Job:
+    if ( not parseFreeCQInputJob(line) ) addData("QM/JOB", "SCF");
+    if ( not parseFreeCQInputRef(line) ) addData("QM/REFERENCE", "HF");
+    if ( not parseFreeCQInputBas(line) ){
+      std::cout << "WARNING, we did not find a valid basis, setting to STO-3G" << std::endl;
+      addData("BASIS/BASIS", "STO-3G");
+    }
 
     auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
     line = std::regex_replace(line, freeDividers, " ");
@@ -99,12 +129,7 @@ namespace ChronusQ {
 
   }; // Free Format Input Parser
 
-
-
   void CQInputFile::parseFreeCQInputNEO (std::string &line){
-
-    auto const freeCQInputHF    = std::regex("((2C)|(X2C)|(4C)|(G)-?)?HF/?",std::regex_constants::icase);
-    auto const freeCQInputCCSD  = std::regex("((2C)|(X2C)|(4C)|(G)-?)?CCSD((T)|(\\(T\\)))?/?",std::regex_constants::icase);
 
     /*************************************/
     /* NEO Input                         */
@@ -112,166 +137,261 @@ namespace ChronusQ {
     /* example, NEO(EPC19/CD-prot-pb6-g) */
     /* example, NEO(EPC19/ri-prot-pb6-g) */
     /*************************************/
-    auto const freeCQInputEPC17 = std::regex("EPC17",std::regex_constants::icase);
-    auto const freeCQInputEPC19 = std::regex("EPC19",std::regex_constants::icase);
-
-    auto const freeCQInputPROTSP    = std::regex("((CD)|(RI)-?)?PROT-SP",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4D  = std::regex("((CD)|(RI)-?)?PROT-PB4-D",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4F1 = std::regex("((CD)|(RI)-?)?PROT-PB4-F1",std::regex_constants::icase);
-    auto const freeCQInputPROTPB4F2 = std::regex("((CD)|(RI)-?)?PROT-PB4-F2",std::regex_constants::icase);
-    auto const freeCQInputPROTPB5F  = std::regex("((CD)|(RI)-?)?PROT-PB5-F",std::regex_constants::icase);
-    auto const freeCQInputPROTPB5G  = std::regex("((CD)|(RI)-?)?PROT-PB5-G",std::regex_constants::icase);
-    auto const freeCQInputPROTPB6G  = std::regex("((CD)|(RI)-?)?PROT-PB6-G",std::regex_constants::icase);
+    
+    //TODO ability to specify real/cmoplex:
+    auto const freeCQInputNEOMETH = std::regex("((2C)|(X2C)|(4C)|(G)|(U)|(R))?(-)?((HF)|(EPC17)|(EPC19))");
+    auto const freeCQInputNEOBASIS= std::regex("(CD|RI)?-?(PROT-SP|PROT-PB4-D|PROT-PB4-F1|PROT-PB4-F2|PROT-PB5-F|PROT-PB5-G|PROT-PB6-G)");
 
     auto const freeCQInputNEO = std::regex("NEO(\\((.*?)\\))?",std::regex_constants::icase);
     std::smatch NEOmatch;
 
     if( std::regex_search(line, NEOmatch, freeCQInputNEO) ){
+      addData("SCF/NEO", "TRUE");
       // str(2) captures what is inside NEO()
       if(NEOmatch.str(2).size()>0) {
         // Parse user-defined input
-        std::cout<<"xsli test NEO Section "<<std::endl;
+        // std::cout<<"xsli test NEO Section "<<std::endl;
         std::string NEOInputOptions = NEOmatch.str(2);
 
         // Methods
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputHF) ) {
-          std::cout<<"xsli test NEO HF"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputEPC17) ) {
-          std::cout<<"xsli test NEO EPC17"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputEPC19) ) {
-          std::cout<<"xsli test NEO EPC19"<<std::endl;
+        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputNEOMETH) ) {
+          addData("PROTQM/REFERENCE",NEOmatch.str(0));
         }
 
         // Basis Sets
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTSP) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PORT-SP"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PORT-SP"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PORT-SP"<<std::endl;
+        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputNEOBASIS) ) {
+          if ( ! NEOmatch.str(1).empty()) {
+            addData("INTS/ALG","INCORE");
+            addData("INTS/RI","DYNAMICERI");
+            addData("EPINTS/ALG","INCORE");
+            addData("EPINTS/RI","COMBINEAUXBASIS");
+          }//CD/RI
+          addData("PBASIS/BASIS",NEOmatch.str(2));
         }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4D) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-D"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4F1) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-F1"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-F1"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-F1"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB4F2) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-F2"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-F2"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-F2"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB5F) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB5-F"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB5-F"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB5-F"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB5G) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB4-D"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB4-D"<<std::endl;
-        }
-        else if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputPROTPB6G) ) {
-          if( NEOmatch.str(1).size()==0 ) std::cout<<"xsli test NEO PROT-PB5-G"<<std::endl;
-          else if( NEOmatch.str(2).size()>0 ) std::cout<<"xsli test NEO CD-PROT-PB5-G"<<std::endl;
-          else if( NEOmatch.str(3).size()>0 ) std::cout<<"xsli test NEO RI-PROT-PB5-G"<<std::endl;
-        }
-
-      } else {
-        // Choose default parameters
+      } else{
+        //use defaults
+        std::cout<<" WARNING: no NEO specifications given, using defaults" << std::endl;
+        addData("PROTQM/REFERENCE","UHF");
+        addData("PBASIS/BASIS","PROT-SP");
       }
+
       // We need to delete the NEO section so that we can parse the electronic section properly
       line = std::regex_replace(line, freeCQInputNEO, "");
     } // NEO Input
 
   };
 
+  bool CQInputFile::parseFreeCQInputJob (std::string &line){
+    std::smatch methodMatchCC;
+    std::smatch methodMatchLR;
+    std::smatch methodMatchCI;
+    std::smatch methodMatchRT;
+    //Method Choices TODO
+    auto const freeCQInputCC  = std::regex("CCSD(T|\\(T\\))?/?",std::regex_constants::icase);
+    bool isCC = std::regex_search(line, methodMatchCC, freeCQInputCC);
+    auto const freeCQInputLR = std::regex("(LR)(\\((.*?)\\))?", std::regex_constants::icase);
+    bool isLR = std::regex_search(line, methodMatchLR, freeCQInputLR);
+    auto const freeCQInputCI = std::regex("((2C)|(X2C)|(4C)|(G))?(-)?((CASSCF)|(DASSCF)|(CASCI)|(DASCI)|(CI))\\((([^()]*(\\([^()]*\\))?[^()]*)*)\\)", std::regex_constants::icase);
+    bool isCI = std::regex_search(line, methodMatchCI, freeCQInputCI);
+    auto const freeCQInputRT = std::regex("(RT|REALTIME)(\\((.*?)\\))?", std::regex_constants::icase);
+    bool isRT = std::regex_search(line, methodMatchRT, freeCQInputRT);
+    
+    //Verify one job type:
+    if ( isCC + isLR + isCI + isRT > 1 ){
+      CErr("Multiple job types detected, please only choose one");
+    }
 
-
-  void CQInputFile::parseFreeCQInputElectron (std::string &line){
-
-    auto const freeCQInputHF    = std::regex("((2C)|(X2C)|(4C)|(G)-?)?HF/?",std::regex_constants::icase);
-    // Match strings                             1  2      3       4     5         6 7      8
-    auto const freeCQInputCCSD  = std::regex("((2C)|(X2C)|(4C)|(G)-?)?CCSD((T)|(\\(T\\)))?/?",std::regex_constants::icase);
-
-    /****************************/
-    /* Electronic Input         */
-    /* example, B3LYP/6-31G     */
-    /* example, 4C-B3LYP/6-31G  */
-    /* example, X2C-B3LYP/6-31G */
-    /* example, B3LYP/RI-6-31G  */
-    /* example, B3LYP/CD-6-31G  */
-    /****************************/
-
-    auto const freeCQInputB3LYP = std::regex("((2C)|(X2C)|(4C)|(G)-?)?B3LYP/?",std::regex_constants::icase);
-    auto const freeCQInputPBE   = std::regex("((2C)|(X2C)|(4C)|(G)-?)?PBE/?",std::regex_constants::icase);
-
+    if ( isCC ) {
+      //CC job
+      addData("QM/JOB", "CC");
+      std::cout<< "Coupled Cluster JOB IDENTIFIED: " << methodMatchCC[0].str() << std::endl;
+      parseFreeCQInputCC(line, freeCQInputCI);
+      line = std::regex_replace(line, freeCQInputCC, "");
+      return true;
+    }//CC Match
+    else if ( isLR ) {
+      std::smatch lrMatch;
+      std::string lrInputOptions = methodMatchLR.str(3);
+      //LR job
+      addData("QM/JOB", "RESP");
+      addData("RESPONSE/TYPE", "RESIDUE");
+      std::cout<< "RESPONSE JOB IDENTIFIED: " << methodMatchLR[0].str() << std::endl;
+      //LR opts:
+      
+      // Is the default but in here for completeness
+      auto const freeCQInputLRFULL = std::regex("(FULLMAT|FULL|FULLMATRIX|DOFULL)", std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputLRFULL) ) {
+        //If we ever do a froz core/virt in lin. resp. we'll need to rethink this
+        addData("RESPONSE/DOFULL", "TRUE");
+        addData("RESPONSE/FULLMAT", "TRUE");
+      }
+      
+      auto const freeCQInputLRroots = std::regex("(NROOTS|NSTATES)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)",std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputLRroots) ) {
+        addData("RESPONSE/DOFULL", "FALSE");
+        addData("RESPONSE/FULLMAT", "FALSE");
+        addData("RESPONSE/NROOTS", expandSciNote(lrMatch.str(2)));
+      }
+      
+      auto const freeCQInputLRiter = std::regex("(NCYCLES|MAXCYCLES|MAXITER|NITER)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)",std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputLRiter) ) {
+        addData("RESPONSE/DOFULL", "FALSE");
+        addData("RESPONSE/FULLMAT", "FALSE");
+        addData("RESPONSE/MAXITER", expandSciNote(lrMatch.str(2)));
+      }
+      
+      auto const freeCQInputDEMIN = std::regex("(DEMIN)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)", std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputDEMIN) ) {
+        //addData("RESPONSE/GPLHR_SIGMA", lrMatch.str(2));
+        addData("RESPONSE/DOFULL", "FALSE");
+        addData("RESPONSE/FULLMAT", "FALSE");
+        addData("RESPONSE/DEMIN", expandSciNote(lrMatch.str(2)));
+      }
+      
+      auto const freeCQInputSIGMA = std::regex("(SIGMA)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)", std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputSIGMA) ) {
+        addData("RESPONSE/DOFULL", "FALSE");
+        addData("RESPONSE/FULLMAT", "FALSE");
+        addData("RESPONSE/GPLHR_SIGMA", expandSciNote(lrMatch.str(2)));
+      }
+      
+      auto const freeCQInputCONV = std::regex("(CONV|ACCURACY)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)", std::regex_constants::icase);
+      if ( std::regex_search(lrInputOptions, lrMatch, freeCQInputCONV) ) {
+        addData("RESPONSE/CONV", expandSciNote(lrMatch.str(2)));
+      }
+      //Clear Line
+      line = std::regex_replace(line, freeCQInputLR, "");
+      return true;  
+    }//LR Match
+    else if ( isCI ) {
+      std::cout<< "CI JOB IDENTIFIED: " << methodMatchCI[0].str() << std::endl;
+      parseFreeCQInputCI(line, freeCQInputCI);
+      line = std::regex_replace(line, freeCQInputCI, "");
+      return true;
+    }//CI Match
+    else if ( isRT ){
+      std::cout<< "RT JOB IDENTIFIED: " << methodMatchRT[0].str() << std::endl;
+      std::cout<< "WARNING: for realtime propagator, integrals must be COMPLEX" << std::endl;
+      parseFreeCQInputRT(line, freeCQInputRT);
+      line = std::regex_replace(line, freeCQInputRT, "");
+      return true;
+    }//RT Match
+    return false;
+  }//parseFreeCQInputJob
+  
+  bool CQInputFile::parseFreeCQInputRef (std::string &line){
     std::smatch methodMatch;
+    std::smatch ksMatch;
+    
+    //////////////////////////////
+    // Reference Input          //
+    // example, SF-X2C-HF       //
+    // example, B3LYP           //
+    // example, 4C-B3LYP        //
+    // example, X2C-B3LYP       //
+    // example, B3LYP           //
+    // example, B3LYP           //
+    //////////////////////////////
+    
+    auto const freeCQInputHF = std::regex("(SF)?[-]?(2C|X2C|4C)?[-]?(R|U|G)?[-]?HF/?",std::regex_constants::icase);
+    //Make regex key from defined DFT keys:
+    std::string allowedDFT = "(";
+    for ( int i = 0; i < KSRefs.size(); i++ ){
+      allowedDFT += escapeRegEx(KSRefs[i]);
+      allowedDFT += "|";
+    }
+    allowedDFT.pop_back();
+    allowedDFT += ")";
+
+    //Test if an allowed DFT is present:
+    bool foundKS = false;
+    auto const dvar = std::regex(allowedDFT, std::regex_constants::icase);
+    line = " " + line + " ";
+    if(std::regex_search(line, ksMatch, dvar)){
+      foundKS = true;
+    }    
+    
     if ( std::regex_search(line, methodMatch, freeCQInputHF) ) {
-      if( methodMatch.str(1).size()==0 ) std::cout<< "xsli test HF " <<std::endl;
-      if( methodMatch.str(2).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(2)<<std::endl;
-      if( methodMatch.str(3).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(3)<<std::endl;
-      if( methodMatch.str(4).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(4)<<std::endl;
-      if( methodMatch.str(5).size()>0 ) std::cout<< "xsli test HF type: " <<methodMatch.str(5)<<std::endl;
+      //Hartree Fock
+      std::cout<< "HF REFERENCE IDENTIFIED: " << methodMatch[0].str() << std::endl;
+      
+      //(SF)?[-]?(2C|X2C|4C)?[-]?(R|U|G)?[-]?HF/?
+      //  1           2             3
+      
+      //Spinfree X2C
+      if ( methodMatch[1].str().size() > 0 ) addData("QM/X2CTYPE","SPINFREE");
+      
+      //Reference (x2c || rug):
+      addData("QM/REFERENCE", methodMatch[2].str() + methodMatch[3].str() + "HF" );
+      
+      //Clear line:
       line = std::regex_replace(line, freeCQInputHF, "");
-    }
-    else if ( std::regex_search(line, methodMatch, freeCQInputCCSD) ) {
-      if( methodMatch.str(1).size()==0 ) std::cout<< "xsli test CCSD " <<std::endl;
-      if( methodMatch.str(2).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(2)<<std::endl;
-      if( methodMatch.str(3).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(3)<<std::endl;
-      if( methodMatch.str(4).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(4)<<std::endl;
-      if( methodMatch.str(5).size()>0 ) std::cout<< "xsli test CCSD type: " <<methodMatch.str(5)<<std::endl;
-      if( methodMatch.str(7).size()>0 ) std::cout<< "xsli test CCSDT "<<std::endl;
-      if( methodMatch.str(8).size()>0 ) std::cout<< "xsli test CCSD(T) "<<std::endl;
-      line = std::regex_replace(line, freeCQInputCCSD, "");
-    }
+      //Check for KS and HF refs:
+      if ( foundKS ) CErr("Both HF and DFT reference found, please choose one.");
+      return true;
+    }//HF Reference
+    else if ( foundKS ) {
+      //DFT (have to do both search for DFT and then catch method)
+      auto const freeCQInputDFT = std::regex("(SF)?[-]?(2C|X2C|4C)?[-]?(R|U|G)?[-]?(" + ksMatch[1].str() + ")/?",std::regex_constants::icase);
+      std::regex_search(line, methodMatch, freeCQInputDFT);
+      std::cout<< "DFT REFERENCE IDENTIFIED: " << methodMatch[0].str() << std::endl;
+      
+      //(SF)?[-]?(2C|X2C|4C)?[-]?(R|U|G)?[-]?(DFT)/?
+      //  1           2             3          4
+      
+      //Spinfree X2C
+      if ( methodMatch[1].str().size() > 0 ) addData("QM/X2CTYPE","SPINFREE");
+      
+      //Reference (x2c || rug):
+      addData("QM/REFERENCE", methodMatch[2].str() + methodMatch[3].str() + methodMatch[4].str() );
 
-
-    auto const freeCQInputSTO3G   = std::regex("((CD)|(RI)-?)?STO-3G",std::regex_constants::icase);
-    auto const freeCQInput321G    = std::regex("((CD)|(RI)-?)?3-21G",std::regex_constants::icase);
-    auto const freeCQInput631G    = std::regex("((CD)|(RI)-?)?6-31G",std::regex_constants::icase);
-    auto const freeCQInput6311G   = std::regex("((CD)|(RI)-?)?6-311G",std::regex_constants::icase);
-
+      //DEFAULTS:
+      addData("DFTINT/INHOUSE","FALSE");
+      addData("DFTINT/GAUXC","TRUE");
+      
+      //Clear line:
+      line = std::regex_replace(line, freeCQInputDFT, "");
+      return true;
+    }//DFT Reference
+    return false;
+  }//parseFreeCQInputRef
+  
+  bool CQInputFile::parseFreeCQInputBas (std::string &line){
     std::smatch basisMatch;
-    if ( std::regex_search(line, basisMatch, freeCQInputSTO3G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test STO-3G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test CD-STO-3G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test RI-STO-3G"<<std::endl;
-      line = std::regex_replace(line, freeCQInputSTO3G, "");
+   
+    //Make regex key from defined keys:
+    std::string allowedBasis = "(\\ ";
+    for ( const auto& n : basisKeyword ){
+      allowedBasis += escapeRegEx(n.first);
+      allowedBasis += "\\ |\\ ";
     }
-    else if ( std::regex_search(line, basisMatch, freeCQInput321G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 3-21G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test CD-3-21G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test RI-3-21G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput321G, "");
-    }
-    else if ( std::regex_search(line, basisMatch, freeCQInput631G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test 6-31G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput631G, "");
-    }
-    else if ( std::regex_search(line, basisMatch, freeCQInput6311G) ) {
-      if( basisMatch.str(1).size()==0 ) std::cout<<"xsli test 6-311G"<<std::endl;
-      else if( basisMatch.str(2).size()>0 ) std::cout<<"xsli test 6-311GG"<<std::endl;
-      else if( basisMatch.str(3).size()>0 ) std::cout<<"xsli test 6-311G"<<std::endl;
-      line = std::regex_replace(line, freeCQInput6311G, "");
-    }
+    allowedBasis.pop_back();
+    allowedBasis += "\\ )";
 
-  };
+    //The Pople sets (at least) have substrings as part so need to put some 
+    //flavor of separator so you get the one you request:
+    line = " " + line + " ";
+    auto const bvar = std::regex(allowedBasis, std::regex_constants::icase);
+    if(std::regex_search(line, basisMatch, bvar)){
+      std::string match = basisMatch[1].str();
+      match.erase(match.begin());
+      match.erase(match.end()-1);
+      std::cout<<"Basis Specified: "<<match<<std::endl;
+      addData("BASIS/BASIS", match);
+      line = std::regex_replace(line, bvar, "");
+      return true;
+    }//if basismatch
+    return false;
+  }//parseFreeCQInputBas
 
   void CQInputFile::parseFreeCQInputSCF (std::string &line) {
 
-    /**************************************************/
-    /* SCF Input                                      */
-    /* example, SCF(accuracy=1.e-8)                   */
-    /* example, SCF(cdiis, maxiteration=100)          */
-    /* example, SCF(energyonly)                       */
-    /**************************************************/
+    ////////////////////////////////////////////////////
+    // SCF Input                                      //
+    // example, SCF(accuracy=1.e-8)                   //
+    // example, SCF(cdiis, maxiteration=100)          //
+    // example, SCF(energyonly)                       //
+    ////////////////////////////////////////////////////
 
     auto const freeCQInputSCF = std::regex("(SCF)(\\((.*?)\\))", std::regex_constants::icase);
     std::smatch scfMatch;
@@ -280,37 +400,38 @@ namespace ChronusQ {
       std::string scfInputOptions = scfMatch.str(3);
 
       // read in SCF accuracy
-      auto const freeCQInputSCFAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
+      auto const freeCQInputSCFAccuracy = std::regex("accuracy\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFAccuracy) ) {
-        addData("SCF/ACCURACY", scfMatch.str(1));
-        std::cout<<"xsli test read in accuracy = "<<std::stod(scfMatch.str(1))<<std::endl;
+        addData("SCF/ACCURACY", expandSciNote(scfMatch.str(1)));
+        //std::cout<<"xsli test read in accuracy = "<<std::stod(scfMatch.str(1))<<std::endl;
       }
 
       auto const freeCQInputEnergyOnly = std::regex("energyonly|skip", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputEnergyOnly) ) {
-        addData("SCF/ENERGYONLY", "SKIP");
-        std::cout<<"xsli test read in energyonly"<<std::endl;
+        addData("SCF/ALG", "SKIP");
       }
 
-      auto const freeCQInputSCFMethod = std::regex("(diis)|(nodiis)|(cdiis)|(ediis)|(qc)", std::regex_constants::icase);
+      auto const freeCQInputSCFMethod = std::regex("(diis)|(nodiis)|(cdiis)|(ediis)|(qc)|(cediis)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFMethod) ) {
         if(!scfMatch.str(1).empty()) addData("SCF/DIISALG","CDIIS");// std::cout<<"xsli test read in SCF method = DIIS "<<std::stod(scfMatch.str(1))<<std::endl;
         if(!scfMatch.str(2).empty()) addData("SCF/DIISALG","NONE"); // std::cout<<"xsli test read in SCF method = NoDIIS "<<std::stod(scfMatch.str(2))<<std::endl;
         if(!scfMatch.str(3).empty()) addData("SCF/DIISALG","CDIIS"); // std::cout<<"xsli test read in SCF method = CDIIS "<<std::stod(scfMatch.str(3))<<std::endl;
         if(!scfMatch.str(4).empty()) addData("SCF/DIISALG","EDIIS"); // std::cout<<"xsli test read in SCF method = EnDIIS "<<std::stod(scfMatch.str(4))<<std::endl;
         if(!scfMatch.str(4).empty()) addData("SCF/ALG","NR"); // std::cout<<"xsli test read in SCF method = QC "<<std::stod(scfMatch.str(5))<<std::endl;
+        if(!scfMatch.str(5).empty()) addData("SCF/DIISALG","CEDIIS"); // std::cout<<"xsli test read in SCF method = CEDIIS "<<std::stod(scfMatch.str(5))<<std::endl;
       }
 
       // Check for SCF maxSteps
-      auto const freeCQInputSCFSteps = std::regex("(MAXSTEP|MAXSTEPS|MAXITERATION|MAXITERATIONS|MAXCYCLE|MAXCYCLES)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
+      auto const freeCQInputSCFSteps = std::regex("(NITER|NITERATIONS|MAXSTEP|MAXSTEPS|MAXITERATION|MAXITERATIONS|MAXCYCLE|MAXCYCLES)\\s*\\=\\s*(\\d*\\.?\\d*(?:[de][+\\-]?\\d*)?)", std::regex_constants::icase);
       if ( std::regex_search(scfInputOptions, scfMatch, freeCQInputSCFSteps) ) {
-        addData("SCF/MAXITER", scfMatch.str(2));
-        std::cout<<"xsli test read in MAXITERATIONS = "<<std::stod(scfMatch.str(2))<<std::endl;
+        addData("SCF/MAXITER", expandSciNote(scfMatch.str(2)));
+        //std::cout<<"xsli test read in MAXITERATIONS = "<<std::stod(scfMatch.str(2))<<std::endl;
       }
     }
 
   };
 
+#if(0)
   void SCFControls::parseSection(const std::map<std::string,std::string> &dict) {
     if (dict.count("ENERGYONLY")) {
       scfAlg = _CONVENTIONAL_SCF;
@@ -320,7 +441,7 @@ namespace ChronusQ {
     if (dict.count("ACCURACY")) {
       rmsdPConvTol = std::stod(dict.at("ACCURACY"));
       maxdPConvTol = rmsdPConvTol*100;
-      eneConvTol   = rmsdPConvTol*100;
+      eneConvTol   = rmsdPConvTol;
     }
 
       if (dict.at("DIISALG") == "CDIIS") diisAlg = CDIIS;
@@ -332,6 +453,7 @@ namespace ChronusQ {
 
       if (dict.count("MAXITER")) maxSCFIter = std::stoi(dict.at("MAXITER"));
   }
+#endif
 
   void CQInputFile::parseFreeCQInputSSGuess (std::string &line) {
 
@@ -351,7 +473,7 @@ namespace ChronusQ {
       if (Guessmatch.str(3).size() > 0) {
         std::string GuessInputOptions = Guessmatch.str(3);
 
-        auto const freeCQInputGuessType = std::regex("(SAD)|(CORE)|(READ)|(FCHK)\\s*([,;:]|$)", std::regex_constants::icase);
+        auto const freeCQInputGuessType = std::regex("(SAD)|(CORE)|(READ)|(FCHK)|(ONLY)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(GuessInputOptions, Guessmatch, freeCQInputGuessType) ) {
 //          if(!Guessmatch.str(1).empty()) ssGuessOptions.electronicGuess = SADGuess;
 //          if(!Guessmatch.str(2).empty()) ssGuessOptions.electronicGuess = CoreGuess;
@@ -361,13 +483,14 @@ namespace ChronusQ {
           if(!Guessmatch.str(2).empty()) addData("SCF/GUESS", "CORE");
           if(!Guessmatch.str(3).empty()) addData("SCF/GUESS", "READMO");
           if(!Guessmatch.str(4).empty()) addData("SCF/GUESS", "FCHKMO");
+          if(!Guessmatch.str(5).empty()) addData("SCF/ALG", "SKIP");
         }
         GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessType, "");
 
         auto const freeCQInputGuessSwap = std::regex("(SWAP)\\s*=((\\s*([ab]?)(\\d+)-\\4(\\d+))|(homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
         while( std::regex_search(GuessInputOptions, Guessmatch, freeCQInputGuessSwap) ) {
           if(!Guessmatch.str(3).empty()) {
-            std::cout<<"xsli test guess swap = "<<Guessmatch.str(4)<<Guessmatch.str(5)<<Guessmatch.str(6)<<std::endl;
+            // std::cout<<"xsli test guess swap = "<<Guessmatch.str(4)<<Guessmatch.str(5)<<Guessmatch.str(6)<<std::endl;
             if(Guessmatch.str(4)=="a" or Guessmatch.str(4)=="A" or Guessmatch.str(4).size()==0)
               ssGuessOptions.alphaElectronicMOSwap.push_back({(size_t)std::stoi(Guessmatch.str(5)), (size_t)std::stoi(Guessmatch.str(5))});
             else if(Guessmatch.str(4)=="b" or Guessmatch.str(4)=="B")
@@ -377,7 +500,7 @@ namespace ChronusQ {
             GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessSwap1, "");
           }
           if(!Guessmatch.str(7).empty() or !Guessmatch.str(8).empty()) {
-            std::cout<<"xsli test guess swap = HOMO-LUMO"<<std::endl;
+            // std::cout<<"xsli test guess swap = HOMO-LUMO"<<std::endl;
             ssGuessOptions.alphaElectronicMOSwap.push_back({0,0});
             auto const freeCQInputGuessSwap2 = std::regex("(SWAP)\\s*=((homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
             GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessSwap2, "");
@@ -386,14 +509,14 @@ namespace ChronusQ {
 
         for (size_t i = 0; i < ssGuessOptions.alphaElectronicMOSwap.size(); i++) {
           for (size_t j = 0; j < ssGuessOptions.alphaElectronicMOSwap[i].size(); j++) {
-            addData("SCF/GUESS.ALPHASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
+            addData("SCF/GUESS/ALPHASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
                     std::to_string(ssGuessOptions.alphaElectronicMOSwap[i][j]));
           }
         }
 
         for (size_t i = 0; i < ssGuessOptions.betaElectronicMOSwap.size(); i++) {
           for (size_t j = 0; j < ssGuessOptions.betaElectronicMOSwap[i].size(); j++) {
-            addData("SCF/GUESS.BETASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
+            addData("SCF/GUESS/BETASWAP[" + std::to_string(i) + "][" + std::to_string(j) + "]",
                     std::to_string(ssGuessOptions.betaElectronicMOSwap[i][j]));
           }
         }
@@ -406,6 +529,7 @@ namespace ChronusQ {
 
     }
 
+#if(0)
     auto const freeCQInputNEOGuess = std::regex("(NEOGUESS)(\\((.*?)\\))?", std::regex_constants::icase);
     if (std::regex_search(line, Guessmatch, freeCQInputNEOGuess)) {
       // str(3) captures the input inside the parentheses
@@ -430,12 +554,12 @@ namespace ChronusQ {
         auto const freeCQInputNEOGuessSwap = std::regex("(SWAP)\\s*=((\\s*([ab]?)(\\d+)-\\4(\\d+))|(homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
         while( std::regex_search(GuessInputOptions, Guessmatch, freeCQInputNEOGuessSwap) ) {
           if(!Guessmatch.str(3).empty()) {
-            std::cout<<"xsli test guess swap = "<<Guessmatch.str(4)<<Guessmatch.str(5)<<Guessmatch.str(6)<<std::endl;
+            // std::cout<<"xsli test guess swap = "<<Guessmatch.str(4)<<Guessmatch.str(5)<<Guessmatch.str(6)<<std::endl;
             auto const freeCQInputNEOGuessSwap1 = std::regex("(SWAP)\\s*=\\s*([ab]?)(\\d+)-\\2(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
             GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputNEOGuessSwap1, "");
           }
           if(!Guessmatch.str(7).empty() or !Guessmatch.str(8).empty()) {
-            std::cout<<"xsli test guess swap = HOMO-LUMO"<<std::endl;
+            // std::cout<<"xsli test guess swap = HOMO-LUMO"<<std::endl;
             auto const freeCQInputGuessNEOSwap2 = std::regex("(SWAP)\\s*=((homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
             GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessNEOSwap2, "");
           }
@@ -448,6 +572,7 @@ namespace ChronusQ {
       }
 
     }
+#endif
   };
 
   void SingleSlaterGuessOptions::parseSection(const std::map<std::string,std::string> &dict) {
@@ -472,16 +597,18 @@ namespace ChronusQ {
 
   }
 
-  void CQInputFile::parseFreeCQInputRT (std::string &line) {
+  void CQInputFile::parseFreeCQInputRT (std::string &line, const std::regex &freeCQInputRT) {
 
     /***********************************************************************/
     /* RT Input                                                            */
     /* example, RT(MMUT, stepsize= 1.0 as, nsteps = 1000, maxtime = 1.0fs) */
     /***********************************************************************/
 
+    addData("QM/JOB", "RT");
+    
     TDSCFOptions tdSCFControls;
-    auto const freeCQInputRT = std::regex("(RT|REALTIME)(\\((.*?)\\))?", std::regex_constants::icase);
     std::smatch RTmatch;
+
 
     if (std::regex_search(line, RTmatch, freeCQInputRT)) {
       // str(3) captures the input inside the parentheses
@@ -495,7 +622,7 @@ namespace ChronusQ {
           tdSCFControls.deltaT = std::stod(RTmatch.str(2));
           if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.deltaT/=(FSPerAUTime()*1.e3);
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.deltaT/=FSPerAUTime();
-          std::cout<<"xsli test read in timestep = "<<tdSCFControls.deltaT<<" au"<<std::endl;
+          // std::cout<<"xsli test read in timestep = "<<tdSCFControls.deltaT<<" au"<<std::endl;
           addData("RT/DELTAT", doubleToString(tdSCFControls.deltaT));
           addData("RT/UNITS", "AU");
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputStepsize, "");
@@ -506,7 +633,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputNSteps) ) {
           tdSCFControls.maxSteps = std::stoi(RTmatch.str(2));
           tdSCFControls.tMax = tdSCFControls.maxSteps*tdSCFControls.deltaT;
-          std::cout<<"xsli test read in maxSteps = "<<tdSCFControls.maxSteps<<std::endl;
+          // std::cout<<"xsli test read in maxSteps = "<<tdSCFControls.maxSteps<<std::endl;
           addData("RT/TMAX", doubleToString(tdSCFControls.tMax));
           addData("RT/MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputNSteps, "");
@@ -519,7 +646,7 @@ namespace ChronusQ {
           if(!RTmatch.str(5).empty() or !RTmatch.str(6).empty()) tdSCFControls.tMax/=(FSPerAUTime()*1.e3);
           else if (!RTmatch.str(7).empty() or !RTmatch.str(8).empty()) tdSCFControls.tMax/=FSPerAUTime();
           tdSCFControls.maxSteps = (tdSCFControls.tMax + tdSCFControls.deltaT / 4) / tdSCFControls.deltaT;
-          std::cout<<"xsli test read in maxTime = "<<tdSCFControls.tMax<<std::endl;
+          // std::cout<<"xsli test read in maxTime = "<<tdSCFControls.tMax<<std::endl;
           addData("RT/TMAX", doubleToString(tdSCFControls.tMax));
           addData("RT/MAXSTEPS", std::to_string(tdSCFControls.maxSteps));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputMaxTime, "");
@@ -564,7 +691,7 @@ namespace ChronusQ {
         auto const freeCQInputISave = std::regex("(ISAVE|AUTOSAVE)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputISave) ) {
           tdSCFControls.iSave = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in iSave = "<<tdSCFControls.iSave<<std::endl;
+          // std::cout<<"xsli test read in iSave = "<<tdSCFControls.iSave<<std::endl;
           addData("RT/SAVESTEP", std::to_string(tdSCFControls.iSave));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputISave, "");
         }
@@ -573,8 +700,8 @@ namespace ChronusQ {
         auto const freeCQInputICube = std::regex("(ICUBE|CUBEGEN)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputICube) ) {
           tdSCFControls.iCube = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in iCube = "<<tdSCFControls.iCube<<std::endl;
-          addData("RT.SAVECUBE", std::to_string(tdSCFControls.iCube));
+          // std::cout<<"xsli test read in iCube = "<<tdSCFControls.iCube<<std::endl;
+          addData("RT/SAVECUBE", std::to_string(tdSCFControls.iCube));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputICube, "");
         }
 
@@ -582,7 +709,7 @@ namespace ChronusQ {
         auto const freeCQInputIPrint = std::regex("(IPRINT|AUTOPRINT)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIPrint) ) {
           tdSCFControls.iPrint = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in iPrint = "<<tdSCFControls.iPrint<<std::endl;
+          // std::cout<<"xsli test read in iPrint = "<<tdSCFControls.iPrint<<std::endl;
           addData("RT/PRINTSTEP", std::to_string(tdSCFControls.iPrint));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputIPrint, "");
         }
@@ -591,7 +718,7 @@ namespace ChronusQ {
         auto const freeCQInputIRestart = std::regex("(IRESTART|AUTORESTART)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputIRestart) ) {
           tdSCFControls.iRestart = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in iRestart = "<< std::to_string(tdSCFControls.iRestart) <<std::endl;
+          // std::cout<<"xsli test read in iRestart = "<< std::to_string(tdSCFControls.iRestart) <<std::endl;
           addData("RT/IRSTRT", std::to_string(tdSCFControls.iRestart));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputIRestart, "");
         }
@@ -601,7 +728,7 @@ namespace ChronusQ {
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputRestart) ) {
           tdSCFControls.restoreFromStep = -1;
           if(!RTmatch.str(2).empty()) tdSCFControls.restoreFromStep = std::stoi(RTmatch.str(2));
-          std::cout<<"xsli test read in do restart = "<<tdSCFControls.restoreFromStep<<std::endl;
+          // std::cout<<"xsli test read in do restart = "<<tdSCFControls.restoreFromStep<<std::endl;
           addData("RT/RESTARTFROM", std::to_string(tdSCFControls.restoreFromStep));
           addData("RT/RESTART", "TRUE");
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputRestart, "");
@@ -643,7 +770,7 @@ namespace ChronusQ {
         auto const freeCQInputBORTPrint = std::regex("BORTPRINT(\\s*=\\s*(\\d+))?\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputBORTPrint) ) {
           if(!RTmatch.str(2).empty()) tdSCFControls.BORTPrintLevel = std::stoi(RTmatch.str(2));
-          addData("RT.BORTPRINTLEVEL", std::to_string(tdSCFControls.BORTPrintLevel));
+          addData("RT/BORTPRINTLEVEL", std::to_string(tdSCFControls.BORTPrintLevel));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputBORTPrint, "");
         }
 
@@ -651,7 +778,7 @@ namespace ChronusQ {
         auto const freeCQInputBORTAccuracy = std::regex("(BORTACCURACY)\\s*=\\s*(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
         if ( std::regex_search(RTInputOptions, RTmatch, freeCQInputBORTAccuracy) ) {
           tdSCFControls.BORTAccuracy = std::stod(RTmatch.str(2));
-          addData("RT.BORTACCURACY", doubleToString(tdSCFControls.BORTAccuracy));
+          addData("RT/BORTACCURACY", doubleToString(tdSCFControls.BORTAccuracy));
           RTInputOptions = std::regex_replace(RTInputOptions, freeCQInputBORTAccuracy, "");
         }
 
@@ -719,7 +846,7 @@ namespace ChronusQ {
 
     /**************************************************************************/
     /* Field Input                                                            */
-    /* example, Filed(delta, start= 1.0 as, end = 10 fs, amplitude = 10 au)   */
+    /* example, Field(delta, start= 1.0 as, end = 10 fs, amplitude = 10 au)   */
     /**************************************************************************/
     auto const freeCQInputField = std::regex("FIELD(\\((.*?)\\))?", std::regex_constants::icase);
     std::smatch Fieldmatch;
@@ -728,12 +855,12 @@ namespace ChronusQ {
       // str(3) captures the input inside the parentheses
       if (Fieldmatch.str(2).size() > 0) {
         std::string FieldInputOptions = Fieldmatch.str(2);
-        std::cout << "xsli test Field: " << FieldInputOptions << std::endl;
+        // std::cout << "xsli test Field: " << FieldInputOptions << std::endl;
 
         // step function
         auto const freeCQInputFieldStep = std::regex("(DELTA|STEP|CONSTANT)", std::regex_constants::icase);
         if ( std::regex_search(FieldInputOptions, Fieldmatch, freeCQInputFieldStep) ) {
-          std::cout<<"xsli test read in field type = "<<Fieldmatch.str(0)<<std::endl;
+          // std::cout<<"xsli test read in field type = "<<Fieldmatch.str(0)<<std::endl;
           FieldInputOptions = std::regex_replace(FieldInputOptions, freeCQInputFieldStep, "");
         }
 
@@ -750,7 +877,7 @@ namespace ChronusQ {
               else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) starttime /= FSPerAUTime();
             }
           }
-          std::cout<<"xsli test read in tOn = "<<starttime<<" au"<<std::endl;
+          // std::cout<<"xsli test read in tOn = "<<starttime<<" au"<<std::endl;
           FieldInputOptions = std::regex_replace(FieldInputOptions, freeCQInputFieldStart, "");
         }
 
@@ -767,7 +894,7 @@ namespace ChronusQ {
               else if (!Fieldmatch.str(9).empty() or !Fieldmatch.str(10).empty()) endtime/=FSPerAUTime();
             }
           }
-          std::cout<<"xsli test read in tOff = "<<endtime<<" au"<<std::endl;
+          // std::cout<<"xsli test read in tOff = "<<endtime<<" au"<<std::endl;
           FieldInputOptions = std::regex_replace(FieldInputOptions, freeCQInputFieldEnd, "");
         }
 
@@ -779,7 +906,7 @@ namespace ChronusQ {
           amp = std::stod(Fieldmatch.str(2));
           if(!Fieldmatch.str(5).empty()) amp/=EVPerHartree();
           else if (!Fieldmatch.str(6).empty()) amp/=(EVPerHartree()*1.e3);
-          std::cout<<"xsli test read in amp = "<<amp<<" au"<<std::endl;
+          // std::cout<<"xsli test read in amp = "<<amp<<" au"<<std::endl;
           FieldInputOptions = std::regex_replace(FieldInputOptions, freeCQInputFieldAmp, "");
         }
 
@@ -789,9 +916,18 @@ namespace ChronusQ {
         else line = std::regex_replace(line, freeCQInputField, "");
       }
     }
-  }
+  }//parseFreeCQInputField
 
-  void CQInputFile::parseFreeCQInputCI (std::string &line) {
+  void CQInputFile::parseFreeCQInputCC (std::string &line, const std::regex &freeCQInputCI){
+    /****************************************************************************************/
+    /* CC Input                                                                           */
+    /* example, CCSDT(skipscf,maxiter=1000,etol=1d-6)                                     */
+    /* example, X2C-CCSD                                      *                           */
+    /****************************************************************************************/
+    
+  } //parseFreeCQInputCC
+
+  void CQInputFile::parseFreeCQInputCI (std::string &line, const std::regex &freeCQInputCI){
 
     /****************************************************************************************/
     /* CI Input                                                                             */
@@ -800,123 +936,167 @@ namespace ChronusQ {
     /* example, 4C-RASCI(40o,20e,RAS1(10o,10e,1h),RAS2(20o,10e),RAS3(10o,0e,2p),nstates=10) */
     /****************************************************************************************/
 
-    auto const freeCQInputCI = std::regex("((2C)|(X2C)|(4C)|(G))?(-)?((CASSCF)|(RASSCF)|(DASSCF)|(CASCI)|(RASCI)|(DASCI))\\((([^()]*(\\([^()]*\\))?[^()]*)*)\\)", std::regex_constants::icase);
+    //"((2C)|(X2C)|(4C)|(G))?(-)?((CASSCF)|(DASSCF)|(CASCI)|(DASCI)|(CI))"
+    //            1                                        2
+    
+    addData("QM/JOB", "CI");
+    
     std::smatch CIMatch;
+    std::regex_search(line, CIMatch, freeCQInputCI);
 
-    if (std::regex_search(line, CIMatch, freeCQInputCI)) {
+    //Non-switched defaults
+    addData("CI/PRINTRDMS","2");
+    //TODO:addData("CI/PRINTDETOCC","TRUE"); //needs to be put into dev first
 
-      std::cout<< "xsli test CI-0 type: " <<CIMatch.str(0)<<std::endl;
-      // str(1) captures the CI type (e.g., X2C, 4C)
-      if (CIMatch.str(1).size() > 0) {
-        if( CIMatch.str(2).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(2)<<std::endl;
-        if( CIMatch.str(3).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(3)<<std::endl;
-        if( CIMatch.str(4).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(4)<<std::endl;
-        if( CIMatch.str(5).size()>0 ) std::cout<< "xsli test CI type: " <<CIMatch.str(5)<<std::endl;
+    // CIMATCH captures the CI type (e.g., X2C, 4C)
+    // auto const meth = std::regex("(SF)?-?(R|U|X2C|G)");
+    //if (std::regex_search(line, CIMatch, meth) {
+    //  //TODO G/X2C/etc.
+    //}
+
+    bool doSCF = false;
+    //Redefine maximum number of casscf iterations:
+    std::regex nSCFITR("(nscf|ncasscf|nscfiter|ncasscfiter|maxscfiter)\\=([0-9]*)",std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, nSCFITR) ) {
+      std::cout << "Max. Number CASSCF Iterations: " + CIMatch.str(2) << std::endl;
+      addData("CI/MAXSCFITER",CIMatch.str(2));
+      doSCF = true;
+    }//Max SCF Iter
+
+    // read in CAS algo
+    auto const freeCQInputCASAlgo = std::regex("(scfalg|casalg)\\=([a-z]*)", std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputCASAlgo) ) {
+      addData("CI/SCFALG",CIMatch.str(2));
+    }//cas alg.
+
+    //state avgeraging (defaults to true)
+    auto const freeCQInputSACAS = std::regex("(stateaverage)\\=(true|false)", std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputSACAS) ) {
+      addData("CI/STATEAVERAGE",CIMatch.str(2));
+    }//bool stavg
+
+    auto const freeCQInputCASSCF = std::regex("scf",std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputCASSCF) or doSCF ) {
+      doSCF = true;
+      std::cout << "JOBTYPE=SCF" << std::endl;
+      addData("CI/JOBTYPE","DASSCF");
+    } else {
+      std::cout << "JOBTYPE=CI" << std::endl;
+      addData("CI/JOBTYPE","DASCI");
+    }//parse type of ci
+
+    //Determine active space:
+    int nelec = 0;
+    int norbt = 0;
+
+    std::regex nEle("\\b([0-9]+)(e|E)\\b"); // an integer number followed by "e" - number of electrons
+    std::regex_search(line, CIMatch, nEle);
+    std::cout<<"      nElectrons = "+CIMatch.str(1)<< std::endl;
+    addData("CI/NACTELEC",CIMatch.str(1));
+    nelec = std::stoi(CIMatch.str(1));
+
+    std::regex nOrb("\\b([0-9]+)(o|O)\\b"); // an integer number followed by "o" - number of orbitals
+    std::regex_search(line, CIMatch, nOrb);
+    std::cout<<"      nOrbitals = "+CIMatch.str(1)<< std::endl;
+    addData("CI/NACTORB",CIMatch.str(1));
+    norbt = std::stoi(CIMatch.str(1));
+
+    // read in CI eigensolver accuracy
+    auto const freeCQInputCIAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputCIAccuracy) ) {
+      addData("CI/CICONV",CIMatch.str(1));
+    }//solver acc
+
+    // read in CI eigensolver algo
+    auto const freeCQInputCIAlgo = std::regex("(alg|cialg|cidiagalg)\\=([a-z]*)", std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputCIAlgo) ) {
+      addData("CI/CIDIAGALG",CIMatch.str(2));
+    } else {
+      addData("CI/CIDIAGALG","DAVIDSON");
+      addData("CI/CISIGMA2EALG","KNOWLESHANDY");
+    }//solver algo
+
+    // read in CI eigensolver algo (david above defaults kh, reg. default naive
+    auto const freeCQInputCI2eAlgo = std::regex("(cisigma2ealg)\\=([a-z]*)", std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, freeCQInputCI2eAlgo) ) {
+      addData("CI/CISIGMA2EALG",CIMatch.str(2));
+    }//sigma2ealg
+
+    // nstates = an integer number == number of eigenstates to solve for
+    int nroots = 3;
+    std::regex nStates("(nstates|nroots)\\=([0-9]*)",std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, nStates) ) {
+      nroots = std::stoi(CIMatch.str(2));
+    }//Number roots
+    //std::cout<<"      Num. Roots = " + std::to_string(nroots) << std::endl;
+    addData("CI/NROOTS", std::to_string(nroots));
+
+    // nosc = an integer number == number of eigenstates to calculate f for
+    // TODO Raj's osc. order may mess this up
+    int nosc = 1;
+    std::regex nOsc("(nosc|oscistren)\\=([0-9]*)",std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, nOsc) ) {
+      nosc = std::stoi(CIMatch.str(2));
+    }//Number Oscistren
+    addData("CI/OSCISTREN", "TRUE");
+    addData("CI/OSCISTREN_INITSTATES", std::to_string(std::min(nosc,nroots)));
+
+    // nDAS = an integer number == number of DAS TODO self-defined das line?
+    int nDAS = 1;
+    std::string dasStream = "";
+    std::regex nDASspace("ndas\\=([0-9]*)",std::regex_constants::icase);
+    if ( std::regex_search(line, CIMatch, nDASspace) ) {
+      nDAS = std::stoi(CIMatch.str(1));
+      if ( nDAS > norbt ) {
+        CErr("You've declared more DAS spaces than you have active orbitals, pull yourself together.");
       }
+      // auto: set up das spaces
+      int distElec = 0;
+      int distOrb  = 0;
+      int distDAS  = 0;
+      //In case nOrbt doesn't go evenly into nSpace:
+      for ( int i = 0; i < norbt % nDAS; i++ ) {
+        int orbPerSpace = int(double(norbt)/double(nDAS)+0.5);
+        if ( 0 < nelec - orbPerSpace ) {
+          distElec = orbPerSpace;
+          nelec -= orbPerSpace;
+        } else if ( 0 < nelec ) {
+          distElec = nelec;
+          nelec -= nelec;
+        } else {
+          distElec = 0;
+          nelec = 0;
+        }//Reducing number electrons into spaces
+        distOrb += orbPerSpace;
+        distDAS += 1;
+        dasStream += "{[" + std::to_string(orbPerSpace) + "o," \
+            + std::to_string(distElec) + "e,\"Space " + std::to_string(distDAS) + "\"]}";
+      }//non-equal das spaces
+      //remainder and/or if norbt % ndas == 0
+      for ( int i = 0; i < nDAS - distDAS; i++) {
+        int orbPerSpace = (norbt-distOrb)/(nDAS-distDAS);
+        if ( 0 < nelec - orbPerSpace ) {
+          distElec = orbPerSpace;
+          nelec -= orbPerSpace;
+        } else if ( 0 < nelec ) {
+          distElec = nelec;
+          nelec -= nelec;
+        } else {
+          distElec = 0;
+          nelec = 0;
+        }//elect check
+        dasStream += "{[" + std::to_string(orbPerSpace) \
+            + "o," + std::to_string(distElec) + "e,\"Space " + std::to_string(distDAS + i) + "\"]}";
+        }//Remaining das spaces
+    }//DAS
 
-      bool CASSCF(false),RASSCF(false),DASSCF(false),CASCI(false),RASCI(false),DASCI(false);
-      // str(7) captures the CI methods
-      if (CIMatch.str(7).size() > 0) {
-        if( CIMatch.str(8).size()>0 ) CASSCF = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(8)<<std::endl;
-        if( CIMatch.str(9).size()>0 ) RASSCF = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(9)<<std::endl;
-        if( CIMatch.str(10).size()>0 ) DASSCF =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(10)<<std::endl;
-        if( CIMatch.str(11).size()>0 ) CASCI =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(11)<<std::endl;
-        if( CIMatch.str(12).size()>0 ) RASCI = true; //std::cout<< "xsli test CI method: " <<CIMatch.str(12)<<std::endl;
-        if( CIMatch.str(13).size()>0 ) DASCI =  true; //std::cout<< "xsli test CI method: " <<CIMatch.str(13)<<std::endl;
-      }
+    std::cout << "      Splitting into " << nDAS << " DAS spaces" << std::endl;
+    if ( nDAS > 1 ) {
+      //stream printing
+      std::cout << "      DAS STREAM: " << dasStream << std::endl;
+    }//stream print
+    addData("CI/DAS",std::to_string(nDAS) + "\n" + dasStream);
 
-      // str(14) captures the input inside the parentheses
-      if (CIMatch.str(14).size() > 0) {
-        std::string CIInputOptions = CIMatch.str(14);
-        std::cout << "xsli test CI Options: " << CIInputOptions << std::endl;
-
-        // read in CI eigensolver accuracy
-        auto const freeCQInputCIAccuracy = std::regex("accuracy\\s*=\\s*((\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?)\\s*([,;:]|$)", std::regex_constants::icase);
-        if ( std::regex_search(CIInputOptions, CIMatch, freeCQInputCIAccuracy) ) {
-          std::cout<<"xsli test read in accuracy = "<<std::stod(CIMatch.str(1))<<std::endl;
-        }
-
-        std::regex nEle("\\b([0-9]+)(e|E)\\b"); // an integer number followed by "e" - number of electrons
-        std::regex nOrb("\\b([0-9]+)(o|O)\\b"); // an integer number followed by "o" - number of orbitals
-        std::regex_search(CIInputOptions, CIMatch, nEle);
-        std::cout<<"      nElectrons = "+CIMatch.str(1)<< std::endl;
-        std::regex_search(CIInputOptions, CIMatch, nOrb);
-        std::cout<<"      nOrbitals = "+CIMatch.str(1)<< std::endl;
-
-        // nstates = an integer number - number of eigenstates to solve for
-        std::regex nStates("(nstates)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)",std::regex_constants::icase);
-        std::regex_search(CIInputOptions, CIMatch, nStates);
-        std::cout<<"      nStates = "+CIMatch.str(3)<< std::endl;
-
-        if(DASCI or DASSCF) {
-          // nDAS = an integer number - number of DAS
-          std::regex nDAS("(ndas)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)", std::regex_constants::icase);
-          std::regex_search(CIInputOptions, CIMatch, nDAS);
-          std::cout << "      nDAS = " + CIMatch.str(3) << std::endl;
-
-          // maxexcitation = an integer number - max number of inter-space excitations
-          std::regex MaxExcitation("(maxexcitation)\\s*(=)\\s*([0-9]+)\\s*([,;:]|$)", std::regex_constants::icase);
-          std::regex_search(CIInputOptions, CIMatch, MaxExcitation);
-          std::cout << "      MaxExcitation = " + CIMatch.str(3) << std::endl;
-        }
-
-        if(RASCI or RASSCF) {
-          auto const freeCQInputRAS1 = std::regex("RAS1(\\((.*?)\\))", std::regex_constants::icase);
-          auto const freeCQInputRAS2 = std::regex("RAS2(\\((.*?)\\))", std::regex_constants::icase);
-          auto const freeCQInputRAS3 = std::regex("RAS3(\\((.*?)\\))", std::regex_constants::icase);
-          std::regex nHole("\\b([0-9]+)(h|H)\\b"); // an integer number followed by "e" - number of electrons
-          std::regex nParticle("\\b([0-9]+)(p|P)\\b"); // an integer number followed by "o" - number of orbitals
-
-          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS1)) {
-            std::string RAS1InputOptions = CIMatch.str(1);
-            std::regex_search(RAS1InputOptions, CIMatch, nEle);
-            std::cout<<"      RAS1-nElectrons = "+CIMatch.str(1)<< std::endl;
-            std::regex_search(RAS1InputOptions, CIMatch, nOrb);
-            std::cout<<"      RAS1-nOrbitals = "+CIMatch.str(1)<< std::endl;
-            if(std::regex_search(RAS1InputOptions, CIMatch, nHole)) {
-              std::cout<<"      RAS1-nHoles = "+CIMatch.str(1)<< std::endl;
-            }
-            if(std::regex_search(RAS1InputOptions, CIMatch, nParticle)){
-              std::cout<<"      RAS1-nParticles = "+CIMatch.str(1)<< std::endl;
-            }
-          }
-
-          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS2)) {
-            std::string RAS2InputOptions = CIMatch.str(1);
-            std::regex_search(RAS2InputOptions, CIMatch, nEle);
-            std::cout<<"      RAS2-nElectrons = "+CIMatch.str(1)<< std::endl;
-            std::regex_search(RAS2InputOptions, CIMatch, nOrb);
-            std::cout<<"      RAS2-nOrbitals = "+CIMatch.str(1)<< std::endl;
-            if(std::regex_search(RAS2InputOptions, CIMatch, nHole)) {
-              std::cout<<"      RAS2-nHoles = "+CIMatch.str(1)<< std::endl;
-            }
-            if(std::regex_search(RAS2InputOptions, CIMatch, nParticle)){
-              std::cout<<"      RAS2-nParticles = "+CIMatch.str(1)<< std::endl;
-            }
-          }
-
-          if(std::regex_search(CIInputOptions, CIMatch, freeCQInputRAS3)) {
-            std::string RAS3InputOptions = CIMatch.str(1);
-            std::regex_search(RAS3InputOptions, CIMatch, nEle);
-            std::cout<<"      RAS3-nElectrons = "+CIMatch.str(1)<< std::endl;
-            std::regex_search(RAS3InputOptions, CIMatch, nOrb);
-            std::cout<<"      RAS3-nOrbitals = "+CIMatch.str(1)<< std::endl;
-            if(std::regex_search(RAS3InputOptions, CIMatch, nHole)) {
-              std::cout<<"      RAS3-nHoles = "+CIMatch.str(1)<< std::endl;
-            }
-            if(std::regex_search(RAS3InputOptions, CIMatch, nParticle)){
-              std::cout<<"      RAS3-nParticles = "+CIMatch.str(1)<< std::endl;
-            }
-          }
-
-        }
-
-      }
-
-      line = std::regex_replace(line, freeCQInputCI, "");
-    }
-
-  };
-
+  };//parseFreeCQInputCI
 }; // namespace ChronusQ
 

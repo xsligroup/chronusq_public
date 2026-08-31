@@ -116,9 +116,9 @@ namespace ChronusQ {
       ref_(ref)
       {
       
-      //if (std::is_same<IntsT, dcomplex>::value) 
+      //if (std::is_same<IntsT, dcomplex>::value)
       //   CErr("MCWaveFunction with dcomplex IntsT is not tested yet!");
-      
+
       mointsTF = ref_->generateMOIntsTransformer();
 	
     };  // MCWaveFunction constructor

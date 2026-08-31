@@ -34,6 +34,7 @@ namespace ChronusQ {
     SECTION_HEADER,
     DATA_ENTRY,
     CONTINUATION,
+    FREE_PARSER,
     EMPTY
   };
 
@@ -90,6 +91,13 @@ namespace ChronusQ {
     // Check if we have a section header
     if( lBrckPos == firstNonSpace and rBrckPos == lastNonSpace )
       return InputLineType::SECTION_HEADER;
+    
+    // Check if we have a free parsing
+    auto const freeCQInput = std::regex("^\\?|CQ[[:blank:]]*=|CQ[[:blank:]]*:|CHRONUSQ[[:blank:]]*=|CHRONUSQ[[:blank:]]*:",std::regex_constants::icase);
+    if( std::regex_search(line, freeCQInput) ) {
+      line = std::regex_replace(line, freeCQInput, "");
+      return InputLineType::FREE_PARSER;
+    }
 
     // Check if we have a data entry
     if( containsUnenclosedEqualSign(line) ) {
@@ -150,7 +158,16 @@ namespace ChronusQ {
         continue;
   
       }
-  
+      
+      // Free Parser
+      if(lineType == InputLineType::FREE_PARSER){
+        std::cout<<"CQ E-Z Input Identified: Please review manual."<<std::endl;
+        strToUpper(line);
+        parseFreeCQInput(line);
+        std::cout<<"End E-Z parse."<<std::endl;
+        std::cout<<"--------------------------------------------------------"<<std::endl;
+        sectionHeader = "MOLECULE";
+      }
   
       // Data line
       if(lineType == InputLineType::DATA_ENTRY) {
@@ -286,8 +303,10 @@ namespace ChronusQ {
    * \param [in] value Value of the data field
    */
   void CQInputFile::addData(const std::string &prefix, const std::string &key, const std::string &value) {
-    if (containsData(prefix + key))
-      CErr("Key " + key + " already exists in the parsed input.", std::cout);
+    if (containsData(prefix + key)) {
+      std::cout<<"WARN: Key " + key + " already exists in the parsed input."<< std::endl;
+      std::cout<<"You may have conflicting declarations, please check \"Parsed Input\" (below) for what will be run." << std::endl;
+    }
     dict_[prefix][key] = value;
   }
   void CQInputFile::addData(const std::string &path, const std::string &value) {
@@ -509,15 +528,18 @@ namespace ChronusQ {
 
     std::string freeFormatLine;
 
+    /*
     // Parse the free format input
     if (containsData("CQ")) {
       freeFormatLine = getData<std::string>("CQ");
     } else if (containsData("CHRONUSQ")) {
       freeFormatLine = getData<std::string>("CHRONUSQ");
     }
-
-    if (freeFormatLine != "")
+    if (freeFormatLine != ""){
+      std::cout<<"Line Type is Data, didn't catch Free Format!"<<std::endl;
       parseFreeCQInput(freeFormatLine);
+    }
+    */
 
   }; // CQInputFile::parse
 
