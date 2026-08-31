@@ -36,8 +36,8 @@ namespace ChronusQ {
 
       SingleSlater<MatsT,IntsT> * ss_ptr = &reference();
 
-      // Currently no NEO-CI
-      auto cube = cubes[PAR_TYPE::ELECTRONIC]; 
+      // Currently no NEO-CI: the first cube is always the electronic cube
+      auto cube = cubes[0]; 
 
       std::string cube_name;
       if(cubeOptsMC.cubeFileName.empty()) {

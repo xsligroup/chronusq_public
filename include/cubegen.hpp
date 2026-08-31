@@ -41,12 +41,6 @@ namespace ChronusQ {
     FINE
   };
 
-  // Particle type for cube
-  enum PAR_TYPE {
-    ELECTRONIC,
-    PROTONIC,
-  };
-
   /**
    * @brief Generates a cubefile of specfied surface.
    * 

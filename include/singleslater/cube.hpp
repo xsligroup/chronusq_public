@@ -37,15 +37,7 @@ namespace ChronusQ {
   void SingleSlater<MatsT,IntsT> :: runCube(std::vector<std::shared_ptr<CubeGen>> cubes, std::string prefix, std::shared_ptr<Molecule> mol) {
 
       // Electron only for SingleSlater 
-      std::shared_ptr<CubeGen> cube;
-      if(this->particle.charge == 1.0)
-      {
-        cube = cubes[PAR_TYPE::PROTONIC];
-      }
-      else
-      {
-        cube = cubes[PAR_TYPE::ELECTRONIC]; 
-      }
+      std::shared_ptr<CubeGen> cube = cubes[0];
 
       if(mol){
         cube->updateMolAndBasis(mol);
@@ -62,10 +54,16 @@ namespace ChronusQ {
           cube_name = cube_name + prefix;
       }
 
-      if(this->particle.charge == 1.0)
-      {
-        cube_name += "_PROT";
-      }
+      generateCubeFiles(cube, cube_name);
+
+  }
+
+  /*
+   * Brief: Evaluate the density/orbital cubes on a given CubeGen object with a given name
+   *
+   */
+  template<typename MatsT,typename IntsT>
+  void SingleSlater<MatsT,IntsT> :: generateCubeFiles(std::shared_ptr<CubeGen> cube, std::string cube_name) {
 
       // density cube 
       if (cubeOptsSS.denCube) {
@@ -148,8 +146,7 @@ namespace ChronusQ {
         }
 
         // Beta pieces
-        // Also prevents Proton NEO cubes from generating beta files!
-        if((this->nC >= 2 || ! this->iCS) && this->particle.charge != 1.0)
+        if(this->nC >= 2 or (not this->iCS and this->nOB > 0))
         {
           // Large Beta real/mag
           if(this->nC == 1)

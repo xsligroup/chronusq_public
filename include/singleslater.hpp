@@ -410,7 +410,9 @@ namespace ChronusQ {
 
     // Post-processing functions
     virtual bool secondSCF();
-    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, std::string prefix, std::shared_ptr<Molecule> mol) override;
+    void runCube(std::vector<std::shared_ptr<CubeGen>> cu, std::string prefix = "", std::shared_ptr<Molecule> mol = nullptr) override;
+    // Evaluate density/orbital cubes for a subsystem
+    void generateCubeFiles(std::shared_ptr<CubeGen> cube, std::string cube_name);
 
     // SCF Specific Functions
     inline virtual double getTotalEnergy() { return this->totalEnergy; };

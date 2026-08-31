@@ -286,11 +286,11 @@ namespace ChronusQ {
     // SCF options
     SCFControls scfControls = CQSCFOptions(output,input,emPert);
 
-    // cubegen for input mol and electronic basis
-    auto cube = CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis,emPert,-1.0);
-    // cubegen for NEO.
-    std::shared_ptr<CubeGen> pcube = nullptr;
-    //TODDOAL: add logic to handle multiparticle cube generation
+    // Cubes for all quantum particles
+    std::vector<std::shared_ptr<CubeGen>> cubes;
+    // The first cube is always the electronic cube
+    cubes.push_back(CQCUBEOptions(output,input,std::make_shared<Molecule>(mol),basis,emPert,-1.0));
+    auto cube = cubes[0];
 
     // Create the SingleSlater object
     if (doNEO) {
@@ -302,10 +302,20 @@ namespace ChronusQ {
       ss = CQMultiParticleSSOptions(output,input,mol,quantumSubsystems,quantumPairInteractions,scfControls);
       ss->scfControls = scfControls;
       ssOptions = quantumSubsystems.front().ssOptions;
-      
-      // TODOAL: handle MO swapping for MultiParticleSS
 
-      // TODOAL: handle cube generation for MultiParticleSS
+      
+      if( auto multiParticleSS = std::dynamic_pointer_cast<MultiParticleSSBase>(ss)) {
+
+        // MO swapping applies to the electronic subsystem
+        HandleOrbitalSwaps(output, input, *multiParticleSS->getSubSSBase("E"), "");
+
+        ParseCubeSubsection(output, input, "SCF", ss->cubeOptsSS, cube);
+        for(const auto& label : multiParticleSS->getLabels()) {
+          if(label == "E") continue; // Electronic is already built 
+          cubes.push_back(CQCUBEOptions(output, input, std::make_shared<Molecule>(mol),
+                          subsystemBasis.at(label), emPert, multiParticleSS->getSubSSBase(label)->particle.charge));
+        }
+      }
     } else {
       if(not scfControls.subsystemGuesses.empty())
         CErr("Per-subsystem SCF guess controls require SCF/NEO = TRUE", output);
@@ -388,12 +398,6 @@ namespace ChronusQ {
         if(pair.integrals) pair.integrals->savFile = rstFile;
       }
     }
-
-    // Pack up cubes
-    std::vector<std::shared_ptr<CubeGen>> cubes;
-    cubes.push_back(cube);
-    if (pcube)
-      cubes.push_back(pcube);
 
     // Save reference info to bin file
     saveRefs( ssOptions, ss );

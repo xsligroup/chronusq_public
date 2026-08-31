@@ -36,7 +36,8 @@ namespace ChronusQ {
         // Because this is called AFTER the dipole is calculated
         // the onePDM is already populated in the singleslater reference
         // and we can simply evaluate the cube normally
-        auto cube = this->intScheme.rtcubes[PAR_TYPE::ELECTRONIC];
+        // (cubes[0] is always the electronic cube)
+        auto cube = this->intScheme.rtcubes[0];
 
         std::string cube_name;
         if(this->intScheme.cubeOptsRTMS.cubeFileName.empty())

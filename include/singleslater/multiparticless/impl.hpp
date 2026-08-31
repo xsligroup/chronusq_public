@@ -69,6 +69,29 @@ namespace ChronusQ {
   };
 
   template <typename MatsT, typename IntsT>
+  void MultiParticleSS<MatsT,IntsT>::runCube(
+    std::vector<std::shared_ptr<CubeGen>> cubes, std::string prefix, std::shared_ptr<Molecule> mol) {
+    // Generate cubes for every quantum subsystem. 
+    for(size_t i = 0; i < order_.size(); ++i) {
+      const auto& label = order_[i];
+      auto& ss = subsystems.at(label);
+      ss->cubeOptsSS = this->cubeOptsSS;
+      auto cube = cubes[i];
+      if(mol) cube->updateMolAndBasis(mol);
+
+      std::string cube_name;
+      if(ss->cubeOptsSS.cubeFileName.empty() and prefix.empty()) cube_name = "SCF";
+      else {
+        cube_name = ss->cubeOptsSS.cubeFileName;
+        cube_name += prefix.empty() ? "_SCF" : prefix;
+      }
+      if(label != "E") cube_name += "_" + label;
+
+      ss->generateCubeFiles(cube, cube_name);
+    }
+  };
+
+  template <typename MatsT, typename IntsT>
   void MultiParticleSS<MatsT,IntsT>::addInteraction(const std::string label1, const std::string label2,
     const std::shared_ptr<TwoPInts<IntsT>>& ints,
     bool contractSecond) {

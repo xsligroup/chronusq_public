@@ -468,6 +468,7 @@ namespace ChronusQ {
       }
       // Functions for OrbitalModifier
       void printProperties() override;
+      void runCube(std::vector<std::shared_ptr<CubeGen>>, std::string prefix="", std::shared_ptr<Molecule> = nullptr) override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getOnePDM() override;
       virtual std::vector<cqmatrix::Matrix<MatsT>> getOnePDMOrtho() override;
       virtual std::vector<std::shared_ptr<cqmatrix::Matrix<MatsT>>> getFock() override;

@@ -484,26 +484,8 @@ void RealTimeSCF<singleSlaterT,MatsT,IntsT>::saveCube() {
     std::cout << tdSCFOptions.iCube << std::endl;
     std::cout << "  *** Saving density of step #"<<integrationProgress.currentStep<<"( t = "<<integrationProgress.currentTime<<" au) in cube ***" << std::endl;
 
-    {
-
-      auto ss = dynamic_cast<SingleSlater<MatsT,IntsT>*>(&this->singleSlaterSystem);
-      auto cube = tdSCFOptions.rtcubes[PAR_TYPE::ELECTRONIC];
-      std::string cube_name;
-      if(tdSCFOptions.cubeOptsRT.cubeFileName.empty()) {
-        cube_name = "RT_" + std::to_string(integrationProgress.currentStep);
-      } else {
-        cube_name = tdSCFOptions.cubeOptsRT.cubeFileName;
-        cube_name = cube_name + "_RT_" + std::to_string(integrationProgress.currentStep);
-      }
-
-      // density cube 
-      if (tdSCFOptions.cubeOptsRT.denCube) {
-
-
-        cube->evalDenCube(cube_name,ss->onePDM,true);
-      }
-
-    }
+    this->singleSlaterSystem.cubeOptsSS = tdSCFOptions.cubeOptsRT;
+    this->singleSlaterSystem.runCube(tdSCFOptions.rtcubes, "_RT_" + std::to_string(integrationProgress.currentStep));
 
   }
   }

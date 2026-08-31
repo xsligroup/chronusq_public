@@ -138,7 +138,6 @@ add_cq_test( KS_FUNC      scftest "KS_FUNC.*"    )
 add_cq_test( RI_RKS_SCF   scftest "RI_RKS.*"     )
 add_cq_test( RI_UKS_SCF   scftest "RI_UKS.*"     )
 add_cq_test( RI_X2CKS_SCF scftest "RI_X2CKS.*"   )
-# TODOAL: NEO-RKS was not being tested before? Anyways add it back in when NEO-RKS is working
 add_cq_test( NEO_RKS_SCF  scftest "NEO_RKS.*"  )
 add_cq_test( NEO_RHF_SCF  scftest "NEO_RHF.*"  )
 add_cq_test( NEO_GHF_SCF  scftest "NEO_GHF.*"  )
