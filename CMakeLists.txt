@@ -1,7 +1,7 @@
 #
 # This file is part of the Chronus Quantum (ChronusQ) software package
 # 
-# Copyright (C) 2014-2022 Li Research Group (University of Washington)
+# Copyright (C) 2014-2026 Li Research Group (University of Washington)
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 
 project(ChronusQ
-    VERSION 0.6.0
+    VERSION 1.0.0
     DESCRIPTION
     "Chronus Quantum is an ab initio computational chemistry \
 software package that focuses on explicitly time-dependent and unconventional \

@@ -5,15 +5,24 @@
 Chronus Quantum 
 ===============
 
-The Chronus Quantum (ChronusQ) Software Package [v. Beta] is a high-performance
-computational chemistry software package with a strong emphasis on explicitly
-time-dependent and post-SCF quantum mechanical methods.
+The Chronus Quantum (ChronusQ) Software Package [v. 1.0] is
+an open-source software platform for modern electronic structure theory
+with particular emphasis on the molecular Dirac--Coulomb--Breit Hamiltonian,
+relativistic many-body methods, multicomponent quantum chemistry, and time-dependent phenomena.
 
-* [Changelog](CHANGELOG.md)
 * [Documentation](../../wikis/home)
 * [Installation](#installation)
 
+## New Features in ChronusQ 1.0
 
+- Molecular 4-component Dirac–Coulomb–Breit Hamiltonian
+- Exact two-component (X2C) methods
+- Small-Tensor Product Distributed Active Space (STP-DAS) multiconfigurational methods
+- Nuclear–electronic orbital (NEO) methods
+- Multi-component Cholesky-decomposed atomic-orbital integrals
+- Finite-magnetic-field calculations with gauge-including atomic orbitals (GIAO)
+- Relativistic coupled-cluster (CC) theory
+- Real-time quantum dynamics
 
 Installation
 ------------
@@ -39,11 +48,11 @@ For more details about using the Docker image, see the
 
 ### Prerequisites for compilation
 
-- C++14 compiler 
+- C++20 compiler 
 - C compiler (for LibXC)
 - Fortran compiler (for LibXC)
-- [CMake](http://cmake.org) build system (Version 3.11+).
-- [HDF5](https://support.hdfgroup.org/HDF5/)
+- [CMake](http://cmake.org) build system (Version 3.11+)
+- [HDF5](https://support.hdfgroup.org/HDF5/) (Version 1.14+)
 - [Eigen3](http://eigen.tuxfamily.org)
 
 ### Quick compilation
@@ -51,7 +60,7 @@ For more details about using the Docker image, see the
 If you have all the prerequisites above, all you need to do is:
 
 ```
-git clone https://urania.chem.washington.edu/chronusq/chronusq_public.git
+git clone https://github.com/xsligroup/chronusq_public
 mkdir chronusq_public/build && cd chronusq_public/build
 cmake ..
 cmake --build .
@@ -74,10 +83,13 @@ The following WIREs paper and software citation should be cited in publications 
 
 Found a bug or want a new feature?
 ----------------------------------
-Please submit a bug report or feature request on the [issues](https://urania.chem.washington.edu/chronusq/chronusq_public/-/issues) page.
+Please submit a bug report or feature request on the [issues](https://github.com/xsligroup/chronusq_public/issues) page.
 
 
 General Inquiries
 -----------------
 - Contact xsli at uw dot edu
 
+Acknowledgments
+-----------------
+The development of the ChronusQ software is supported by the Office of Advanced Cyberinfrastructure, U.S. National Science Foundation (Grants No. OAC-2103717 to XL, OAC-2401207 to SHS, OAC-2103705 to AED, and OAC-2103738 to EFV).
