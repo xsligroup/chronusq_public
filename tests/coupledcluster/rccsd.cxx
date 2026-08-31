@@ -65,6 +65,11 @@ TEST( RCCSD, H2O_631G_RHF_CCSD_REBUILDFOCK) {
            "h2o_631g_rhf_ccsd_frozencore.bin.ref", "", false, false, false, false, false, true);
 }
 
+TEST( RCCSD, H2O_631G_RHF_CCSD_RESTART_DIFFERENT_GEOMETRY) {
+  CQCCTEST("coupledcluster/serial/rccsd/h2o_631g_rhf_ccsd_restart_different_geometry",
+           "h2o_631g_rhf_ccsd_restart_different_geometry.bin.ref", "h2o_631g_rhf_ccsd.bin.ref", true, false, false, false, false, true);
+}
+
 #ifdef _CQ_DO_PARTESTS
 
 TEST( RCCSD, PAR_H2O_STO3G_RHF_CCSD) {
@@ -105,6 +110,11 @@ TEST( RCCSD, PAR_H2O_631G_RHF_CCSD_FROZENCOREVIRTUAL) {
 TEST( RCCSD, PAR_H2O_631G_RHF_CCSD_REBUILDFOCK) {
   CQCCTEST("coupledcluster/parallel/rccsd/h2o_631g_rhf_ccsd_rebuildfock",
            "h2o_631g_rhf_ccsd_frozencore.bin.ref", "", false, false, false, false, false, true);
+}
+
+TEST( RCCSD, PAR_H2O_631G_RHF_CCSD_RESTART_DIFFERENT_GEOMETRY) {
+  CQCCTEST("coupledcluster/parallel/rccsd/h2o_631g_rhf_ccsd_restart_different_geometry",
+           "h2o_631g_rhf_ccsd_restart_different_geometry.bin.ref", "h2o_631g_rhf_ccsd.bin.ref", true, false, false, false, false, true);
 }
 
 #endif

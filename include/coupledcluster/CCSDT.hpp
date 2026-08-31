@@ -106,7 +106,6 @@ namespace ChronusQ{
       MatsT * t_amp = CQMemManager::get().malloc<MatsT>(size);
       TA::get_default_world().gop.fence();
       if (MPIRank() == 0) this->savFile_.readData("/CC/T_AMPLITUDE", t_amp);
-      if (MPIRank() == 0) this->savFile_.readData("/CC/REFERENCE_ENERGY",   &this->intermediates_.E_ref);
       if (MPIRank() == 0) this->savFile_.readData("/CC/CORRELATION_ENERGY", &this->CorrE);
       MPIBCast(t_amp, size, 0, MPI_COMM_WORLD);
       MPIBCast(&this->intermediates_.E_ref, 1, 0, MPI_COMM_WORLD);

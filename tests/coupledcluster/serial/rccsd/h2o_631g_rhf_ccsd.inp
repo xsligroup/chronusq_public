@@ -18,6 +18,7 @@ job = CC
 TYPE = CCSD
 ETOL = 1.0e-8
 TTOL = 1.0e-8
+SAVE = true
 
 [MISC]
 MEM = 256 MB

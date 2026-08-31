@@ -1,0 +1,32 @@
+[MOLECULE]
+charge = 0
+mult = 1
+geom:
+ O  0.0000  0.0000  0.1173
+ H  0.0000  0.7872 -0.4992
+ H  0.0000 -0.7872 -0.4992
+
+[QM]
+reference = ghf
+job = cc
+
+[CC]
+type = ccsd
+etol = 1.0e-10
+ttol = 1.0e-10
+save = true
+restart = true
+
+[MISC]
+mem = 256 mb
+nsmp = 1
+
+[INTS]
+alg = incore
+libcint = true
+
+[BASIS]
+basis = 6-31g
+ 
+[PHYSCON]
+legacy_constants = true

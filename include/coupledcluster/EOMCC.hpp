@@ -526,7 +526,7 @@ namespace ChronusQ{
           }
         });
         MatsT CorrE;
-        if (MPIRank() == 0) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
+        // if (MPIRank() == 0 and not this->ccSettings_.skipSCF) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
         if (MPIRank() == 0) savFile_.readData("/CC/CORRELATION_ENERGY",&CorrE);             
         intermediates_.E_cc = intermediates_.E_ref + std::real(CorrE);
         MPIBCast(&intermediates_.E_cc, 1, 0, MPI_COMM_WORLD);
@@ -745,7 +745,7 @@ namespace ChronusQ{
             }
           });
           MatsT CorrE;
-          if (MPIRank() == 0) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
+          // if (MPIRank() == 0 and not this->ccSettings_.skipSCF) savFile_.readData("/CC/REFERENCE_ENERGY",&intermediates_.E_ref);
           if (MPIRank() == 0) savFile_.readData("/CC/CORRELATION_ENERGY",&CorrE);             
           intermediates_.E_cc = intermediates_.E_ref + std::real(CorrE);
           TA::get_default_world().gop.fence();
