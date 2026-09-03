@@ -110,7 +110,6 @@ namespace ChronusQ {
     parseFreeCQInputSCF(line);
     parseFreeCQInputSSGuess(line);
     parseFreeCQInputField(line);
-    parseFreeCQInputNEO(line);
     //parseFreeCQInputMisc(line);
     
     //Requirements for basic Job:
@@ -128,58 +127,6 @@ namespace ChronusQ {
     if(line.size()>0) std::cout<<"CQ input ignored: "<< line <<std::endl;
 
   }; // Free Format Input Parser
-
-  void CQInputFile::parseFreeCQInputNEO (std::string &line){
-
-    /*************************************/
-    /* NEO Input                         */
-    /* example, NEO(EPC19/prot-pb6-g)    */
-    /* example, NEO(EPC19/CD-prot-pb6-g) */
-    /* example, NEO(EPC19/ri-prot-pb6-g) */
-    /*************************************/
-    
-    //TODO ability to specify real/cmoplex:
-    auto const freeCQInputNEOMETH = std::regex("((2C)|(X2C)|(4C)|(G)|(U)|(R))?(-)?((HF)|(EPC17)|(EPC19))");
-    auto const freeCQInputNEOBASIS= std::regex("(CD|RI)?-?(PROT-SP|PROT-PB4-D|PROT-PB4-F1|PROT-PB4-F2|PROT-PB5-F|PROT-PB5-G|PROT-PB6-G)");
-
-    auto const freeCQInputNEO = std::regex("NEO(\\((.*?)\\))?",std::regex_constants::icase);
-    std::smatch NEOmatch;
-
-    if( std::regex_search(line, NEOmatch, freeCQInputNEO) ){
-      addData("SCF/NEO", "TRUE");
-      // str(2) captures what is inside NEO()
-      if(NEOmatch.str(2).size()>0) {
-        // Parse user-defined input
-        // std::cout<<"xsli test NEO Section "<<std::endl;
-        std::string NEOInputOptions = NEOmatch.str(2);
-
-        // Methods
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputNEOMETH) ) {
-          addData("PROTQM/REFERENCE",NEOmatch.str(0));
-        }
-
-        // Basis Sets
-        if ( std::regex_search(NEOInputOptions, NEOmatch, freeCQInputNEOBASIS) ) {
-          if ( ! NEOmatch.str(1).empty()) {
-            addData("INTS/ALG","INCORE");
-            addData("INTS/RI","DYNAMICERI");
-            addData("EPINTS/ALG","INCORE");
-            addData("EPINTS/RI","COMBINEAUXBASIS");
-          }//CD/RI
-          addData("PBASIS/BASIS",NEOmatch.str(2));
-        }
-      } else{
-        //use defaults
-        std::cout<<" WARNING: no NEO specifications given, using defaults" << std::endl;
-        addData("PROTQM/REFERENCE","UHF");
-        addData("PBASIS/BASIS","PROT-SP");
-      }
-
-      // We need to delete the NEO section so that we can parse the electronic section properly
-      line = std::regex_replace(line, freeCQInputNEO, "");
-    } // NEO Input
-
-  };
 
   bool CQInputFile::parseFreeCQInputJob (std::string &line){
     std::smatch methodMatchCC;
@@ -528,51 +475,6 @@ namespace ChronusQ {
       }
 
     }
-
-#if(0)
-    auto const freeCQInputNEOGuess = std::regex("(NEOGUESS)(\\((.*?)\\))?", std::regex_constants::icase);
-    if (std::regex_search(line, Guessmatch, freeCQInputNEOGuess)) {
-      // str(3) captures the input inside the parentheses
-      if (Guessmatch.str(3).size() > 0) {
-        std::string GuessInputOptions = Guessmatch.str(3);
-
-        auto const freeCQInputNEOGuessType = std::regex("(SAD)|(CORE)|(READ)|(FCHK)|(CLASSICAL)\\s*([,;:]|$)", std::regex_constants::icase);
-        if ( std::regex_search(GuessInputOptions, Guessmatch, freeCQInputNEOGuessType) ) {
-//          if(!Guessmatch.str(1).empty()) ssGuessOptions.nuclearGuess = SADGuess;
-//          if(!Guessmatch.str(2).empty()) ssGuessOptions.nuclearGuess = CoreGuess;
-//          if(!Guessmatch.str(3).empty()) ssGuessOptions.nuclearGuess = ReadBin;
-//          if(!Guessmatch.str(4).empty()) ssGuessOptions.nuclearGuess = ReadGaussFCHK;
-//          if(!Guessmatch.str(5).empty()) ssGuessOptions.nuclearGuess = ClassicalGuess;
-          if(!Guessmatch.str(1).empty()) addData("SCF/QP_GUESS", "SAD");
-          if(!Guessmatch.str(2).empty()) addData("SCF/QP_GUESS", "CORE");
-          if(!Guessmatch.str(3).empty()) addData("SCF/QP_GUESS", "READMO");
-          if(!Guessmatch.str(4).empty()) addData("SCF/QP_GUESS", "FCHKMO");
-          if(!Guessmatch.str(5).empty()) addData("SCF/QP_GUESS", "CLASSICAL");
-        }
-        GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputNEOGuessType, "");
-
-        auto const freeCQInputNEOGuessSwap = std::regex("(SWAP)\\s*=((\\s*([ab]?)(\\d+)-\\4(\\d+))|(homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
-        while( std::regex_search(GuessInputOptions, Guessmatch, freeCQInputNEOGuessSwap) ) {
-          if(!Guessmatch.str(3).empty()) {
-            // std::cout<<"xsli test guess swap = "<<Guessmatch.str(4)<<Guessmatch.str(5)<<Guessmatch.str(6)<<std::endl;
-            auto const freeCQInputNEOGuessSwap1 = std::regex("(SWAP)\\s*=\\s*([ab]?)(\\d+)-\\2(\\d+)\\s*([,;:]|$)", std::regex_constants::icase);
-            GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputNEOGuessSwap1, "");
-          }
-          if(!Guessmatch.str(7).empty() or !Guessmatch.str(8).empty()) {
-            // std::cout<<"xsli test guess swap = HOMO-LUMO"<<std::endl;
-            auto const freeCQInputGuessNEOSwap2 = std::regex("(SWAP)\\s*=((homo-lumo)|(lumo-homo))\\s*([,;:]|$)", std::regex_constants::icase);
-            GuessInputOptions = std::regex_replace(GuessInputOptions, freeCQInputGuessNEOSwap2, "");
-          }
-        }
-
-        auto const freeDividers = std::regex("\\s+|,+",std::regex_constants::icase);
-        GuessInputOptions = std::regex_replace(GuessInputOptions, freeDividers, "");
-        if(!GuessInputOptions.empty()) CErr("Unrecognized NEO Guess Input Options: "+GuessInputOptions);
-        else line = std::regex_replace(line, freeCQInputNEOGuess, "");
-      }
-
-    }
-#endif
   };
 
   void SingleSlaterGuessOptions::parseSection(const std::map<std::string,std::string> &dict) {

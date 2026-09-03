@@ -73,7 +73,7 @@ namespace ChronusQ {
     bool useGPU = false;                
     float gpuMemFrac = 0.95;           
     double basisTol  = 1e-10;
-    double otherBasisTol = 1e-10;
+    std::map<std::string,double> subsystemBasisTol; ///< Per-label override, from <LABEL>_BASISTOL
     size_t batchSize = 4096;
     std::string funcName;
     ExchCXX::Spin xcSpin;

@@ -46,8 +46,6 @@ namespace ChronusQ {
         "GPUMEMFRAC",               // Float between 0 and 1
         "BATCHSIZE",                // size_t
         "BASISTOL",                 // double
-        "OTHERBASISTOL",            // double
-        "PBASISTOL",                // double, legacy alias for OTHERBASISTOL
         "GRID",                     // string: fine, ultrafine, superfine, GM3, GM5
         "PRUNINGSCHEME",            // string: unpruned, robust, treutler
         "XCWEIGHTALG",              // string: Becke, SSF, LKO
@@ -57,6 +55,15 @@ namespace ChronusQ {
         "FUNCTIONAL",               // Build functional from list of allowed x and c kernels. 
         "XHFX",                     // Global hybrid scaling factor
     };
+
+    // Per-subsystem shell tolerances use <LABEL>_BASISTOL.
+    const std::string tolSuffix = "_BASISTOL";
+    for(const auto& item : inputSection) {
+      const auto& key = item.first;
+      if(key.size() > tolSuffix.size() and
+         key.compare(key.size() - tolSuffix.size(), tolSuffix.size(), tolSuffix) == 0)
+        allowedKeywords.insert(key);
+    }
 
     return CQInvalidKeywords(allowedKeywords, inputSection);
   } //CQGAUXC_VALID
@@ -82,8 +89,12 @@ namespace ChronusQ {
     
     // Parse basisset tolerance 
     OPTOPT( gauxcOpts.basisTol      = input.getData<double>("GAUXC/BASISTOL"); )
-    OPTOPT( gauxcOpts.otherBasisTol = input.getData<double>("GAUXC/PBASISTOL"); )
-    OPTOPT( gauxcOpts.otherBasisTol = input.getData<double>("GAUXC/OTHERBASISTOL"); )
+    for(const auto& [key, value] : input.getSection("GAUXC")) {
+      const std::string suffix = "_BASISTOL";
+      if(key.size() <= suffix.size() or
+         key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
+      gauxcOpts.subsystemBasisTol[key.substr(0, key.size() - suffix.size())] = std::stod(value);
+    }
     
     // Parse batch size
     OPTOPT( gauxcOpts.batchSize = input.getData<size_t>("GAUXC/BATCHSIZE"); )
@@ -388,7 +399,13 @@ namespace ChronusQ {
             gauxcUtils->gmol, pruningScheme, GauXC::BatchSize(batchSize), radialQuad, grid);
 
       for(size_t i = 0; i < gauxcUtils->gbases.size(); ++i) {
-        const double tol = i == 0 ? basisTol : otherBasisTol;
+        const auto& sys = quantumSubsystems[i];
+        double tol = basisTol;
+
+        auto it = subsystemBasisTol.find(sys.label);
+        if(it == subsystemBasisTol.end()) it = subsystemBasisTol.find(sys.inputLabel);
+        if(it != subsystemBasisTol.end()) tol = it->second;
+
         for(auto& sh : gauxcUtils->gbases[i]) sh.set_shell_tolerance(tol);
       }
 
@@ -486,8 +503,13 @@ namespace ChronusQ {
     out << basisTol << std::endl;
 
     if(doMultiParticle) {
-      out << "  " << std::setw(width) << "Other Basis Tolerance:";
-      out << otherBasisTol << std::endl;
+      for(const auto& sys : *quantumSubsystems) {
+        auto it = subsystemBasisTol.find(sys.label);
+        if(it == subsystemBasisTol.end()) it = subsystemBasisTol.find(sys.inputLabel);
+        if(it == subsystemBasisTol.end()) continue;
+        out << "  " << std::setw(width) << (sys.label + " Basis Tolerance:");
+        out << it->second << std::endl;
+      }
     }
 
     out << "  " << std::setw(width) << "Grid:";

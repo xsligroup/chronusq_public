@@ -241,10 +241,8 @@ namespace ChronusQ {
     trim(neoonlyoptstring);
     if(!neoonlyoptstring.empty())
     {
-      if ( ! neoonlyoptstring.compare("ELECTRONIC"))
-        scfControls.NEOSubSystemOpt.push_back("E");   // "Electronic" subsystem is now handled as "E" in the MultiParticleSS
-      else if ( ! neoonlyoptstring.compare("PROTONIC") or ! neoonlyoptstring.compare("QP"))
-        scfControls.NEOSubSystemOpt.push_back("QP");  // "Protonic" subsystem is now handled as "QP" in the MultiParticleSS
+      if ( ! neoonlyoptstring.compare("E") or ! neoonlyoptstring.compare("QP"))
+        scfControls.NEOSubSystemOpt.push_back(neoonlyoptstring);
       else
         CErr("Unrecognized entry for SCF/NEOOPTIMIZEONLY");
     }
@@ -260,10 +258,8 @@ namespace ChronusQ {
       trim(neooptfirststring);
       if(!neooptfirststring.empty())
       {
-        if ( ! neooptfirststring.compare("ELECTRONIC"))
-          scfControls.NEOSubSystemOpt.push_back("E");
-        else if ( ! neooptfirststring.compare("PROTONIC") or ! neooptfirststring.compare("QP"))
-          scfControls.NEOSubSystemOpt.push_back("QP");
+        if ( ! neooptfirststring.compare("E") or ! neooptfirststring.compare("QP"))
+          scfControls.NEOSubSystemOpt.push_back(neooptfirststring);
         else
           CErr("Unrecognized entry for SCF/NEOOPTIMIZEFIRST");
       }
@@ -326,40 +322,6 @@ namespace ChronusQ {
     else
     {
       CErr("Unrecognized option for SCF/DENMODIFIER");
-    }
-
-    std::string protrdmbuilderstr = "";
-    OPTOPT( protrdmbuilderstr = input.getData<std::string>("SCF/PROT_DENMODIFIER"));
-    if(!protrdmbuilderstr.compare("NEOSTATEAVERAGE"))
-    {
-      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::NEOSTATEAVERAGE;
-      size_t NStates = 0;
-      OPTOPT(NStates = input.getData<size_t>("SCF/NEOSTATEAVERAGESTATES"));
-      if(!NStates)
-        CErr("Requesting a NEO-SCF-StateAveraged Calcualtion requires NEOSTATEAVERAGESTATES > 0!");
-      scfControls.NEOStateAverageNStates = NStates;
-      //OPTOPT(scfControls.NEOStateAverageNStates = input.getData<size_t>("SCF/NEOSTATEAVERAGESTATES"));
-    }
-    else if(!protrdmbuilderstr.compare("MOM"))
-    {
-      auto qpGuess = scfControls.subsystemGuesses.find("QP");
-      if(qpGuess == scfControls.subsystemGuesses.end() or qpGuess->second != READMO)
-        CErr("Proton MOM requires a guess set of orbitals using QP_GUESS = READMO");
-      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::MOM;
-    }
-    else if(!protrdmbuilderstr.compare("NEOFINITETEMP"))
-    {
-      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::FINITETEMP;
-      OPTOPT(scfControls.finitetemp = input.getData<double>("SCF/NEOFINITET");)
-      CErr("NEO Finite Temp NYI!");
-    }
-    else if(!protrdmbuilderstr.compare("AUFBAU") || protrdmbuilderstr.empty())
-    {
-      scfControls.protrdmBuilderType = RDM_BUILDER_TYPE::AUFBAU;
-    }
-    else
-    {
-      CErr("Unrecognized option for SCF/PROT_DENMODIFIER");
     }
 
 

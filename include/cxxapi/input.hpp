@@ -94,7 +94,6 @@ namespace ChronusQ {
     bool parseFreeCQInputBas(std::string&);
     //Additional input options:
     void parseFreeCQInput(std::string&);
-    void parseFreeCQInputNEO(std::string&);
     //void parseFreeCQInputElectron(std::string&);
     void parseFreeCQInputSCF(std::string&);
     void parseFreeCQInputRT(std::string&, const std::regex &freeCQInputRT);

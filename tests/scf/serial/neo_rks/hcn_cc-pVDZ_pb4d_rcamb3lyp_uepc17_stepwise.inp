@@ -21,7 +21,7 @@ qp_guess = tight
 accuracy = 1e-10
 maxiter = 512
 neostepwiseoptimize = true
-neooptimizefirst = protonic
+neooptimizefirst = QP
 
 [DFTINT]
 inhouse = false

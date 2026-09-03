@@ -53,7 +53,7 @@ namespace ChronusQ {
       // RI Options
       "RI",           // String, determines which algorithm to use for RI/CD
                       // For INTS/QPINTS section (and per-label variants, e.g. QP0INTS): "AUXBASIS" or "TRADITIONAL" or "DYNAMICALL" or "SPANFACTOR" or "DYNAMICERI" or "CHOLESKY" or "SPANFACTOREUSE"
-                      // For EQPINTS section (and per-label-pair variants, e.g. EQP0INTS): "INT1_AUX" (="ELEC_AUX") or "INT2_AUX" (="PROT_AUX")) or "CONNECTOR" (="ELEC_AND_PROT_AUX") or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
+                      // For EQPINTS section (and per-label-pair variants, e.g. EQP0INTS): "INT1_AUX" or "INT2_AUX" or "CONNECTOR" or "COMBINEAUXBASIS" or "COMBINEMATRIX" or "AUTO"
       "RIDISTRIBUTE", // True or False, whether to distribute the 3-index ERI across MPI processes
       "RIREDISTRIBUTE", // True or False, whether to redistribute the 3-index ERI across MPI processes 
       "RITHRESHOLD",  // double
@@ -156,11 +156,11 @@ namespace ChronusQ {
         // Decode RI keywrod for asymmetric integrals sections
         if (not RI.compare("AUTO")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::AUTO;
-        } else if (not RI.compare("INT1_AUX") or not RI.compare("ELEC_AUX") ){
+        } else if (not RI.compare("INT1_AUX")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::INT1_AUX;
-        } else if (not RI.compare("INT2_AUX") or not RI.compare("PROT_AUX")){
+        } else if (not RI.compare("INT2_AUX")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::INT2_AUX;
-        } else if (not RI.compare("CONNECTOR") or not RI.compare("ELEC_AND_PROT_AUX")){
+        } else if (not RI.compare("CONNECTOR")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::CONNECTOR;
         } else if (not RI.compare("COMBINEAUXBASIS")){
           options.cdriintsoptions.CDRI_asymmCDalg = ASYMM_CD_ALG::COMBINEAUXBASIS;

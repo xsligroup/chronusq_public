@@ -1290,10 +1290,10 @@ namespace ChronusQ {
         for(const auto & atomQIndex : mol.atomsQ)
         {
           if(mol.atoms[atomQIndex].atomicMass != atomicReference["H-1"].atomicMass)
-            bool isHMass = false;
+            isHMass = false;
         }
-        if(!options.refOptions.funcName.compare("ECP19") && !isHMass)
-          CErr("EPC19 currently hardcoded for H-1, while H-2 was requested!");
+        if(!options.refOptions.funcName.compare("EPC19") && !isHMass)
+          CErr("EPC19 is currently parameterized for H-1 only, but a different isotope was requested!");
 
         if(not options.intParam.useGauXC){
           if(!options.refOptions.funcName.compare("EPC17_1"))

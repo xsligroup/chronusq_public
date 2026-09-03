@@ -45,7 +45,6 @@ namespace ChronusQ {
       "FIELD", // Time dependent perturbation
       "FIELDINDEPENDENTHAMILTONIAN", // RTMS are we applying the perturbation separately? Is the hamiltonian time independent?
       "INTALG",
-      "PROT_INTALG",
       "RESTARTALG",
       "RESTARTSTEP",
       "RESTARTFROM",
