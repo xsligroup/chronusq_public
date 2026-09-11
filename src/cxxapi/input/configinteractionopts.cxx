@@ -474,7 +474,7 @@ namespace ChronusQ {
     } else if(not ciALG.empty())
       CErr(ciALG + "is not a valid CI/CIDiagAlg",out);
 
-    if(ciSettings->SparseDavidson and ciALG.compare("FULLMATRIX")) {
+    if(ciSettings->SparseDavidson and not ciALG.compare("FULLMATRIX")) {
       CErr("Sparse Davidson cannot be used with CI/CIDiagAlg = FullMatrix, only with CI/CIDiagAlg = Davidson");
     }
     
@@ -489,7 +489,7 @@ namespace ChronusQ {
 
     if(ciSettings->SparseDavidson and not (ciSigma2eALG == "NAIVE" or ciSigma2eALG == "DEFAULT" 
       or ciSigma2eALG == "NAIVELOOP" or ciSigma2eALG == "NL" or ciSigma2eALG == "SIMPLE")) {
-      CErr("Sparse DAS only supports CI?ciSigma2eALG = Simple");
+      CErr("Sparse DAS only supports CISIGMA2EALG = Simple");
     }
 
     // Parse Orbital Rotation Options

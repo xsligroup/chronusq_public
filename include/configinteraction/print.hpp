@@ -42,8 +42,8 @@ void CISettings::print(bool fourComp) {
     
     std::string ciSigma2eContAlgPrintStr;
     if (ciSigma2eContAlg == "NAIVE" or ciSigma2eContAlg == "NAIVELOOP"
-        or ciSigma2eContAlg == "NL") {
-      ciSigma2eContAlgPrintStr = "Naive Loop (Default)"; 
+        or ciSigma2eContAlg == "NL" or ciSigma2eContAlg == "SIMPLE" ) {
+      ciSigma2eContAlgPrintStr = "Simple (Default)"; 
     } else if (ciSigma2eContAlg == "KNOWLESHANDY" or ciSigma2eContAlg == "KH" ) {
       ciSigma2eContAlgPrintStr = "Knowles-Handy"; 
     } else if (ciSigma2eContAlg == "OLSENROOS" or ciSigma2eContAlg == "OR") {
