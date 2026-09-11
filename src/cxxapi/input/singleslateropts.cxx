@@ -576,7 +576,7 @@ namespace ChronusQ {
       hamiltonianOptions.SNSO = false;
       hamiltonianOptions.AtomicMeanField = false;
 
-    } else if( not X.compare("FOCK")) {
+    } else if( not X.compare("FOCK") or not X.compare("MMF")) {
 
       hamiltonianOptions.x2cType = X2C_TYPE::FOCK;
       hamiltonianOptions.OneEScalarRelativity = true;
@@ -749,8 +749,9 @@ namespace ChronusQ {
     bool SFOptions = hamiltonianOptions.SpinFree;
     
     // Dirac-Coulomb
-    // For 4C default to full DC (including SSSS see below)
-    if (refOptions.refType == isFourCRef) hamiltonianOptions.DiracCoulomb = true;
+    // For 4C and mmf-X2C default to full DC (including SSSS)
+    if (refOptions.refType == isFourCRef or 
+      hamiltonianOptions.x2cType == X2C_TYPE::FOCK) hamiltonianOptions.DiracCoulomb = true;
 
     try { 
       std::string DCOptions = "FALSE";
