@@ -1,12 +1,13 @@
 In any publication that involves calculations performed by the Chronus Quantum (ChronusQ)
 software package, please use the following BibTeX entries
 
-@article{Li2019_e1436,
+@article{WilliamsYoung2020_e1436,
   title={The Chronus Quantum Software Package},
   author={Williams-Young, David B and Petrone, Alessio and Sun, Shichao and Stetina, Torin F and Lestrange, Patrick and Hoyer, Chad E and Nascimento, Daniel R and Koulias, Lauren and Wildman, Andrew and Kasper, Joseph and Goings, Joshua J and Ding, Feizhi and DePrince III, A Eugene and Valeev, Edward F and Li, Xiaosong},
   journal={Wiley Interdisciplinary Reviews: Computational Molecular Science},
   pages={e1436},
-  year={2019},
+  year={2020},
+  doi={10.1002/wcms.1436},
   publisher={Wiley Online Library}
 }
 
